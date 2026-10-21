@@ -12,26 +12,39 @@ from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from freedom_ls.accounts.account_setup import (
     AccountAlreadySetUp,
+    EmailInUseOnAnotherSite,
     SetupEmailRecentlySent,
     is_pending,
+    lookup_user,
+    match_or_create_user,
     resend_account_setup_email,
+    send_account_setup_email,
 )
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
+    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
+    AddMemberForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
+    MemberEmailForm,
+)
+from freedom_ls.educator_interface.members import (
+    ORGANISATION_SCOPE,
+    RoleEntry,
+    current_role_entries,
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.learner_actions import (
@@ -50,9 +63,11 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
+    OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
+    MEMBER_ROLES,
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
@@ -65,19 +80,23 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_management.role_assignment import (
     GrantableRole,
+    assign_role,
     grantable_roles,
+    is_site_level_admin,
 )
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
     unregister_cohort_from_course,
 )
 from freedom_ls.learner_progress.utils import move_progress_preview
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
     FormPanelAction,
     PanelAction,
+    changed_response,
     count_noun,
     count_phrase,
     denied_response,
@@ -87,6 +106,11 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.role_based_permissions.exceptions import (
+    RefusalReason,
+    RoleChangeRefused,
+)
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -112,10 +136,16 @@ def _uuid_from(params: Mapping[str, str], name: str) -> UUID:
         raise Http404(f"No such {name}") from None
 
 
+def _action_params(request: HttpRequest) -> Mapping[str, str]:
+    """The parameters an action's trigger sent along: the form on a submit,
+    the query string otherwise."""
+    return request.POST if request.method == "POST" else request.GET
+
+
 def _uuid_param(request: HttpRequest, name: str) -> UUID:
-    """A UUID the action's trigger sent along: from the form on a submit, from
-    the query string otherwise. A missing or malformed value is a 404."""
-    return _uuid_from(request.POST if request.method == "POST" else request.GET, name)
+    """A UUID the action's trigger sent along. A missing or malformed value is
+    a 404."""
+    return _uuid_from(_action_params(request), name)
 
 
 def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpResponse:
@@ -442,11 +472,7 @@ class ResendSetupEmailAction(PanelAction):
                 {"learner": learner},
                 status=422,
             )
-        response = HttpResponse(status=204)
-        response["HX-Trigger"] = build_hx_trigger(
-            {LEARNER_CHANGED: [str(learner.pk)]}, close_modal=True
-        )
-        return response
+        return changed_response({LEARNER_CHANGED: [str(learner.pk)]})
 
 
 KEEPING_NAMES_SHOWN = 10
@@ -504,11 +530,7 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
 
 def _registration_changed_response(learner: Learner) -> HttpResponse:
     ids = [str(learner.pk)]
-    response = HttpResponse(status=204)
-    response["HX-Trigger"] = build_hx_trigger(
-        {REGISTRATION_CHANGED: ids, LEARNER_CHANGED: ids}, close_modal=True
-    )
-    return response
+    return changed_response({REGISTRATION_CHANGED: ids, LEARNER_CHANGED: ids})
 
 
 class RegisterLearnerForCourseAction(FormPanelAction):
@@ -663,12 +685,9 @@ def _membership_changed_response(
 ) -> HttpResponse:
     """The 204 every membership change answers with: both events, and the
     modal closed."""
-    response = HttpResponse(status=204)
-    response["HX-Trigger"] = build_hx_trigger(
-        {LEARNER_CHANGED: learner_event_ids, COHORT_CHANGED: cohort_event_ids},
-        close_modal=True,
+    return changed_response(
+        {LEARNER_CHANGED: learner_event_ids, COHORT_CHANGED: cohort_event_ids}
     )
-    return response
 
 
 def _joinable_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
@@ -1164,3 +1183,326 @@ class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):
 def cohort_state_actions() -> list[PanelAction]:
     """Both state actions; `is_offered` picks which one renders."""
     return [DeactivateCohortAction(), ReactivateCohortAction()]
+
+
+#: The in-dialog message for each refusal the interface can show. NOT_PERMITTED is
+#: the 403 denied fragment instead, and LAST_SITE_ADMIN cannot arise, because
+#: site_admin is never granted or removed from here, so a KeyError on it is a bug.
+REFUSAL_MESSAGES: dict[RefusalReason, str] = {
+    RefusalReason.INACTIVE_USER: (
+        "This person's account is turned off, so they can't be given a role."
+    ),
+    RefusalReason.SELF: (
+        "You can't change your own roles. Ask another organisation admin."
+    ),
+    RefusalReason.LAST_ORGANISATION_ADMIN: (
+        "{name} is this organisation's only organisation admin. "
+        "Add another organisation admin first."
+    ),
+}
+
+OTHER_SITE_MESSAGE = (
+    "This address belongs to an account on another site. Use a different address."
+)
+
+
+def _organisation(ctx: PanelContext) -> Organisation:
+    return cast("OrganisationScopedRequest", ctx.request).organisation
+
+
+def refusal_response(
+    ctx: PanelContext, action: PanelAction, refused: RoleChangeRefused, name: str
+) -> HttpResponse:
+    """What a refused role change answers with: the 403 denied fragment for
+    a missing capability, else a 422 message inside the dialog."""
+    if refused.reason == RefusalReason.NOT_PERMITTED:
+        return denied_response(ctx, action)
+    return render(
+        ctx.request,
+        "educator_interface/modal/member_change_refused.html",
+        {"message": REFUSAL_MESSAGES[refused.reason].format(name=name)},
+        status=422,
+    )
+
+
+def member_changed_response(user: User) -> HttpResponse:
+    return changed_response({MEMBER_CHANGED: [str(user.pk)]})
+
+
+def _entries_after(
+    before: list[RoleEntry],
+    grantor: User,
+    role: str,
+    display_name: str,
+    cohorts: list[Cohort],
+) -> list[RoleEntry]:
+    """`before` with `role` on `cohorts` merged in, in MEMBER_ROLES order."""
+    held = {entry.role: entry for entry in before}
+    existing = held.get(role)
+    merged = {*(existing.cohorts if existing else ()), *cohorts}
+    held[role] = RoleEntry(
+        role=role,
+        display_name=display_name,
+        cohorts=tuple(sorted(merged, key=lambda c: c.name)),
+        assigned_by=grantor,
+        assigned_at=timezone.now(),
+    )
+    return [held[key] for key in MEMBER_ROLES if key in held]
+
+
+class AddMemberAction(PanelAction):
+    """Gives an existing account a member role, in a dialog of steps: look up
+    the address, choose the role, confirm. Nothing is written until the
+    confirmation is submitted."""
+
+    label = "Add member"
+    action_name = "add_member"
+    capability = "freedom_ls_learner_management.add_organisationmember"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "educator_interface/modal/add_member.html"
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return _organisation(ctx)
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return bool(self._grantable(ctx))
+
+    def _grantable(self, ctx: PanelContext) -> list[GrantableRole]:
+        return grantable_roles_for(ctx.request)
+
+    def _preset(self, ctx: PanelContext) -> Cohort | None:
+        return None
+
+    def _email_step(
+        self, ctx: PanelContext, form: MemberEmailForm, status: int = 200
+    ) -> HttpResponse:
+        return render(
+            ctx.request,
+            self.template_name,
+            {"step": "email", "form": form, "form_url": self.get_action_url(ctx)},
+            status=status,
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            "step": "email",
+            "form": MemberEmailForm(),
+            "form_url": self.get_action_url(ctx),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        if not self._grantable(ctx):
+            return denied_response(ctx, self)
+        if ctx.request.POST.get("step") == "lookup":
+            return self._lookup(ctx)
+        return self._submit(ctx)
+
+    def _other_site_response(self, ctx: PanelContext) -> HttpResponse:
+        form = MemberEmailForm(ctx.request.POST)
+        form.is_valid()
+        form.add_error("email", OTHER_SITE_MESSAGE)
+        return self._email_step(ctx, form, status=422)
+
+    def _no_account_response(self, ctx: PanelContext) -> HttpResponse:
+        return render(
+            ctx.request,
+            self.template_name,
+            {"step": "no_account", "form_url": self.get_action_url(ctx)},
+            status=422,
+        )
+
+    def _match(self, ctx: PanelContext, email: str) -> User | HttpResponse:
+        """The account for `email`, else the response that says why there is
+        none to use."""
+        try:
+            user = lookup_user(_organisation(ctx).site, email)
+        except EmailInUseOnAnotherSite:
+            return self._other_site_response(ctx)
+        if user is None:
+            return self._no_account_response(ctx)
+        return user
+
+    def _role_cards(self, ctx: PanelContext) -> list[dict[str, str]]:
+        config = get_role_config(_organisation(ctx).site.name)
+        return [
+            {
+                "key": grantable.role,
+                "display_name": config[grantable.role].display_name,
+                "description": config[grantable.role].description,
+            }
+            for grantable in self._grantable(ctx)
+        ]
+
+    def _role_note(self, ctx: PanelContext) -> str:
+        if not Cohort.objects.filter(
+            organisation=_organisation(ctx), is_active=True
+        ).exists():
+            return "This organisation has no active cohorts yet."
+        if len(self._grantable(ctx)) < len(MEMBER_ROLES):
+            return "You can only give roles at or below your own."
+        return ""
+
+    def _role_step(
+        self, ctx: PanelContext, user: User, form: AddMemberForm, status: int = 200
+    ) -> HttpResponse:
+        return render(
+            ctx.request,
+            self.template_name,
+            {
+                "step": "role",
+                "match": user,
+                "form": form,
+                "form_url": self.get_action_url(ctx),
+                "role_cards": self._role_cards(ctx),
+                "selected_role": form["role"].value() or "",
+                "role_note": self._role_note(ctx),
+            },
+            status=status,
+        )
+
+    def _lookup(self, ctx: PanelContext) -> HttpResponse:
+        email_form = MemberEmailForm(ctx.request.POST)
+        if not email_form.is_valid():
+            return self._email_step(ctx, email_form, status=422)
+        matched = self._match(ctx, email_form.cleaned_data["email"])
+        if isinstance(matched, HttpResponse):
+            return matched
+        form = AddMemberForm(
+            None,
+            roles=[
+                (grantable.role, grantable.role) for grantable in self._grantable(ctx)
+            ],
+            cohorts=self._cohort_choices(ctx),
+            preset=self._preset(ctx),
+        )
+        form.fields["email"].initial = email_form.cleaned_data["email"]
+        return self._role_step(ctx, matched, form)
+
+    def _cohort_choices(self, ctx: PanelContext) -> QuerySet[Cohort]:
+        return Cohort.objects.filter(organisation=_organisation(ctx))
+
+    def _targets(
+        self, ctx: PanelContext, role: str, cohorts: list[Cohort]
+    ) -> list[Organisation | Cohort] | None:
+        """What the role is given on, or None when the grantor may not give
+        this role there. The cohorts must be among that role's own grantable
+        cohorts, not those of another role."""
+        grantable = {g.role: g for g in self._grantable(ctx)}.get(role)
+        if grantable is None:
+            return None
+        if grantable.cohorts is None:
+            return [_organisation(ctx)]
+        allowed = set(grantable.cohorts)
+        if not all(cohort in allowed for cohort in cohorts):
+            return None
+        return list(cohorts)
+
+    def _submit(self, ctx: PanelContext) -> HttpResponse:
+        form = AddMemberForm(
+            ctx.request.POST,
+            roles=[(role, role) for role in MEMBER_ROLES],
+            cohorts=self._cohort_choices(ctx),
+            preset=self._preset(ctx),
+        )
+        matched = self._match(ctx, form["email"].value() or "")
+        if isinstance(matched, HttpResponse):
+            return matched
+        if not form.is_valid():
+            return self._role_step(ctx, matched, form, status=422)
+        role = cast(str, form.cleaned_data["role"])
+        cohorts = sorted(form.cleaned_data["cohorts"], key=lambda c: c.name)
+        targets = self._targets(ctx, role, cohorts)
+        if targets is None:
+            return denied_response(ctx, self)
+        email = cast(str, form.cleaned_data["email"])
+        if ctx.request.POST.get("confirmed") != "1":
+            return self._confirmation(ctx, email, matched, role, cohorts)
+        return self._perform(ctx, matched, email, role, targets)
+
+    def _confirmation(
+        self,
+        ctx: PanelContext,
+        email: str,
+        user: User,
+        role: str,
+        cohorts: list[Cohort],
+    ) -> HttpResponse:
+        organisation = _organisation(ctx)
+        site = organisation.site
+        role_config = get_role_config(site.name)[role]
+        before = current_role_entries(user, organisation)
+        if role == "organisation_admin" and any(entry.role == role for entry in before):
+            return render(
+                ctx.request,
+                "educator_interface/modal/member_change_refused.html",
+                {
+                    "message": f"{user.display_name} is already an organisation admin here."
+                },
+                status=422,
+            )
+        member = OrganisationMember.objects.filter(
+            organisation=organisation, user=user
+        ).first()
+        if member is None:
+            member_state = "missing"
+        elif not member.is_active:
+            member_state = "inactive"
+        else:
+            member_state = "active"
+        after = (
+            _entries_after(
+                before,
+                cast("User", ctx.request.user),
+                role,
+                role_config.display_name,
+                cohorts,
+            )
+            if before
+            else []
+        )
+        return render(
+            ctx.request,
+            self.template_name,
+            {
+                "step": "confirmation",
+                "match": user,
+                "form_url": self.get_action_url(ctx),
+                "email": email,
+                "role": role,
+                "cohort_ids": [str(cohort.pk) for cohort in cohorts],
+                "display_name": role_config.display_name,
+                "description": role_config.description,
+                "scope": (
+                    ORGANISATION_SCOPE
+                    if role == "organisation_admin"
+                    else join_prose([cohort.name for cohort in cohorts])
+                ),
+                "current_entries": before,
+                "after_entries": after,
+                "member_state": member_state,
+                "site_level": is_site_level_admin(user, site),
+            },
+        )
+
+    def _perform(
+        self,
+        ctx: PanelContext,
+        user: User,
+        email: str,
+        role: str,
+        targets: list[Organisation | Cohort],
+    ) -> HttpResponse:
+        organisation = _organisation(ctx)
+        name = user.display_name
+        try:
+            with transaction.atomic():
+                user, created = match_or_create_user(organisation.site, email)
+                for target in targets:
+                    assign_role(cast("User", ctx.request.user), user, role, target)
+                if created:
+                    send_account_setup_email(user, organisation.name)
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, name)
+        except EmailInUseOnAnotherSite:
+            return self._other_site_response(ctx)
+        return member_changed_response(user)

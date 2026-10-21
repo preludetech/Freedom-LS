@@ -47,21 +47,31 @@ def is_pending(user: User) -> bool:
     return user.last_login is None and not user.has_usable_password()
 
 
+def lookup_user(site: Site, email: str) -> User | None:
+    """The user for an address, or None.
+
+    The lookup spans every site on purpose: an address is unique across the
+    installation, so a match on another site is refused rather than treated
+    as free. The exception carries only the address, never the other account.
+    """
+    address = UserManager.normalize_email(email.strip())
+    existing = User._base_manager.filter(email__iexact=address).first()
+    if existing is not None and existing.site_id != site.pk:
+        raise EmailInUseOnAnotherSite(address)
+    return existing
+
+
 def match_or_create_user(
     site: Site, email: str, first_name: str = "", last_name: str = ""
 ) -> tuple[User, bool]:
     """Find the user for an address, or make a pending one on `site`.
 
-    The lookup spans every site on purpose: an address is unique across the
-    installation, so a match on another site must be refused, not duplicated.
     Names are only used for a new user; an existing user keeps their own.
     """
-    address = UserManager.normalize_email(email.strip())
-    existing = User._base_manager.filter(email__iexact=address).first()
+    existing = lookup_user(site, email)
     if existing is not None:
-        if existing.site_id != site.pk:
-            raise EmailInUseOnAnotherSite(address)
         return existing, False
+    address = UserManager.normalize_email(email.strip())
     user = User(site=site, email=address, first_name=first_name, last_name=last_name)
     user.set_unusable_password()
     user.save()

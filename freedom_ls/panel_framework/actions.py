@@ -33,6 +33,13 @@ def navigation_response(path: str) -> HttpResponse:
     return response
 
 
+def changed_response(events: dict[str, list[str]]) -> HttpResponse:
+    """204 that closes the modal and fires the domain events."""
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+    return response
+
+
 def count_phrase(count: int, singular: object, plural: object) -> str:
     """A count and a noun, singular for exactly one."""
     return f"{count} {singular if count == 1 else plural}"

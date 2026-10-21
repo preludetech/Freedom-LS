@@ -24,6 +24,7 @@ from freedom_ls.accounts.account_setup import (
     EmailInUseOnAnotherSite,
     SetupEmailRecentlySent,
     is_pending,
+    lookup_user,
     match_or_create_user,
     pending_user_q,
     resend_account_setup_email,
@@ -88,6 +89,50 @@ def _clear_resend_guard():
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.mark.django_db
+def test_lookup_user_matches_case_insensitively_with_whitespace(
+    mock_site_context: Site,
+) -> None:
+    existing = UserFactory(email="Learner@Example.com")
+
+    assert lookup_user(mock_site_context, "  learner@example.COM ") == existing
+
+
+@pytest.mark.django_db
+def test_lookup_user_returns_none_for_an_unknown_address_and_creates_nothing(
+    mock_site_context: Site,
+) -> None:
+    before = User._base_manager.count()
+
+    found = lookup_user(mock_site_context, "nobody@example.com")
+
+    assert (found, User._base_manager.count()) == (None, before)
+
+
+@pytest.mark.django_db
+def test_lookup_user_raises_for_another_sites_user_carrying_only_the_address(
+    mock_site_context: Site,
+) -> None:
+    other_site = SiteFactory()
+    User._base_manager.create(
+        site=other_site, email="away@example.com", first_name="Away"
+    )
+
+    with pytest.raises(EmailInUseOnAnotherSite) as raised:
+        lookup_user(mock_site_context, " away@Example.com ")
+
+    assert raised.value.args == ("away@example.com",)
+
+
+@pytest.mark.django_db
+def test_match_or_create_user_returns_a_new_user_flagged_created(
+    mock_site_context: Site,
+) -> None:
+    user, created = match_or_create_user(mock_site_context, "new@example.com")
+
+    assert (user.email, created) == ("new@example.com", True)
 
 
 @pytest.mark.django_db

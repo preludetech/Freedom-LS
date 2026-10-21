@@ -13,7 +13,7 @@ from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.actions import PanelAction, changed_response
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.tables import Column
@@ -934,3 +934,117 @@ class TestIntro:
         )
 
         assert "stub-intro" not in response.content.decode()
+
+
+# A list root's actions: footer ones render in the page header and the empty
+# state, row-scoped ones only through row_action_urls.
+
+
+class _FooterThingAction(PanelAction):
+    label = "Footer thing"
+    action_name = "footer_thing"
+    trigger_template_name = "panel_framework/test_action_url.html"
+    template_name = "panel_framework/test_action_url.html"
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        return changed_response({"itemChanged": []})
+
+
+class _RowThingAction(_FooterThingAction):
+    label = "Row thing"
+    action_name = "row_thing"
+    renders_in_footer = False
+
+
+class RowActionsTable(StubDataTable):
+    empty_state_template = "panel_framework/test_header_actions_empty.html"
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Row",
+                template="panel_framework/test_row_action.html",
+                card="primary",
+            )
+        ]
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+
+class RowActionsConfig(RecordingCapabilityConfig, ListViewConfig):
+    url_name = "row-actions"
+    menu_label = "Row actions"
+    model = StubModel
+    list_view = RowActionsTable
+    table_key = "row_actions"
+    instance_view = None
+
+    @classmethod
+    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
+        return [_FooterThingAction(), _RowThingAction()]
+
+
+ROW_ACTIONS_CONFIG = [NavGroup("Rows", [RowActionsConfig, StubBaseConfig])]
+FOOTER_URL = "/test-panel/framework/row-actions/__actions/footer_thing"
+ROW_URL = "/test-panel/framework/row-actions/__actions/row_thing"
+
+
+def _row_actions_page(*, empty: bool = False, **request_kwargs: object) -> str:
+    RowActionsConfig.reset(answer=True, scope=make_stub())
+    if empty:
+        StubModel.objects.all().delete()
+    request = make_request("row-actions", **request_kwargs)
+    return call_view(request, "row-actions", config=ROW_ACTIONS_CONFIG).content.decode()
+
+
+class TestListRootActions:
+    def test_the_page_header_holds_only_the_footer_action(
+        self, mock_site_context: Site
+    ) -> None:
+        html = _row_actions_page(empty=True).split('class="stub-empty-actions"')[0]
+
+        assert FOOTER_URL in html
+        assert ROW_URL not in html
+
+    def test_the_card_repeats_neither_action(self, mock_site_context: Site) -> None:
+        make_stub()
+
+        html = _row_actions_page()
+
+        assert html.count(f'data-url="{FOOTER_URL}"') == 1
+
+    def test_a_cell_reads_the_row_actions_url_from_row_action_urls(
+        self, mock_site_context: Site
+    ) -> None:
+        make_stub()
+
+        html = _row_actions_page()
+
+        assert f'<span class="stub-row-action">{ROW_URL}</span>' in html
+
+    def test_the_empty_state_renders_the_footer_action_from_header_actions(
+        self, mock_site_context: Site
+    ) -> None:
+        html = _row_actions_page(empty=True)
+
+        empty = html.split('class="stub-empty-actions"')[1]
+        assert FOOTER_URL in empty
+        assert ROW_URL not in empty
+
+    @pytest.mark.parametrize("name", ["footer_thing", "row_thing"])
+    def test_both_actions_resolve_and_submit_on_the_list_root(
+        self, mock_site_context: Site, name: str
+    ) -> None:
+        RowActionsConfig.reset(answer=True, scope=make_stub())
+        path = f"row-actions/__actions/{name}"
+
+        response = call_view(
+            make_request(path, method="post", htmx=True),
+            path,
+            config=ROW_ACTIONS_CONFIG,
+        )
+
+        assert response.status_code == 204

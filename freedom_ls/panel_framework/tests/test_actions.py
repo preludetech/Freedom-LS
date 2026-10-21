@@ -21,6 +21,7 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
     PanelAction,
+    changed_response,
     count_noun,
     join_prose,
     navigation_response,
@@ -198,6 +199,15 @@ def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -
         "target": "#main-content",
         "swap": "outerHTML",
     }
+
+
+def test_changed_response_closes_the_modal_and_fires_the_events() -> None:
+    response = changed_response({"thingChanged": ["1", "2"]})
+
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"thingChanged": ["1", "2"]}, close_modal=True
+    )
 
 
 @pytest.mark.django_db

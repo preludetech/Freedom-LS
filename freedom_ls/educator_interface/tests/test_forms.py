@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from django.http import QueryDict
+
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
+    AddMemberForm,
     CohortCourseRegistrationForm,
     LearnerPickerForm,
 )
@@ -120,3 +123,68 @@ def test_learner_picker_labels_each_learner_by_display_name(mock_site_context):
 
     labels = {label for _, label in form.fields["learners"].choices}
     assert labels == {"Ada Lovelace", "pick@example.com"}
+
+
+def _member_form(
+    data: dict[str, str | list[str]], preset: Cohort | None = None
+) -> AddMemberForm:
+    return AddMemberForm(
+        _query_dict(data),
+        roles=[
+            ("organisation_admin", "Organisation admin"),
+            ("cohort_admin", "Cohort admin"),
+        ],
+        cohorts=Cohort.objects.all(),
+        preset=preset,
+    )
+
+
+def _query_dict(data: dict[str, str | list[str]]) -> QueryDict:
+    query = QueryDict(mutable=True)
+    for name, value in data.items():
+        query.setlist(name, value if isinstance(value, list) else [value])
+    return query
+
+
+@pytest.mark.django_db
+def test_add_member_form_requires_a_cohort_for_a_cohort_role(mock_site_context):
+    form = _member_form({"email": "a@example.com", "role": "cohort_admin"})
+
+    assert not form.is_valid()
+    assert form.errors["cohorts"] == ["Choose at least one cohort."]
+
+
+@pytest.mark.django_db
+def test_add_member_form_needs_no_cohort_for_organisation_admin(mock_site_context):
+    cohort = CohortFactory()
+    form = _member_form(
+        {
+            "email": "a@example.com",
+            "role": "organisation_admin",
+            "cohorts": [str(cohort.pk)],
+        }
+    )
+
+    assert form.is_valid()
+    assert list(form.cleaned_data["cohorts"]) == []
+
+
+@pytest.mark.django_db
+def test_add_member_form_accepts_a_cohort_role_with_a_cohort(mock_site_context):
+    cohort = CohortFactory()
+    form = _member_form(
+        {"email": "a@example.com", "role": "cohort_admin", "cohorts": [str(cohort.pk)]}
+    )
+
+    assert form.is_valid()
+    assert list(form.cleaned_data["cohorts"]) == [cohort]
+
+
+@pytest.mark.django_db
+def test_add_member_form_hides_and_fixes_a_preset_cohort(mock_site_context):
+    cohort = CohortFactory()
+
+    form = _member_form({}, preset=cohort)
+
+    field = form.fields["cohorts"]
+    assert (field.widget.is_hidden, field.initial) == (True, [cohort.pk])

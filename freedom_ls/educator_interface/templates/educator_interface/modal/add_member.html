@@ -1,0 +1,106 @@
+{% comment %}
+The Add member dialog, one template for every step. Context: step (email,
+no_account, role or confirmation) and form_url; email adds form, role adds
+match, form, role_cards, selected_role and role_note; confirmation adds match,
+email, role, cohort_ids, display_name, description, scope, current_entries,
+after_entries, member_state and site_level.
+{% endcomment %}
+{% if step == "email" %}
+<c-modal-header>Add a member</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <input type="hidden" name="step" value="lookup">
+    <div class="px-6 py-4">
+        {% include "partials/form.html" %}
+    </div>
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Looking up...">Look up</c-button>
+    </c-button-group>
+</form>
+{% elif step == "no_account" %}
+<c-modal-header focus_title="true">Add a member</c-modal-header>
+<div class="max-w-prose px-6 py-4 text-sm">
+    <p>No account yet.</p>
+</div>
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button>
+</c-button-group>
+{% elif step == "role" %}
+<c-modal-header>Add a member</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <input type="hidden" name="step" value="submit">
+    {{ form.email }}
+    <div class="space-y-4 px-6 py-4 text-sm">
+        {% if form.errors %}
+        <div data-error-summary
+             tabindex="-1"
+             role="alert"
+             class="rounded-md border border-error/20 bg-error/10 p-3 text-error">
+            {{ form.role.errors }}
+            {{ form.cohorts.errors }}
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        <p>Existing account: {{ match.display_name }}, {{ match.email }}</p>
+        <fieldset class="space-y-2">
+            <legend class="mb-2 font-semibold">Role</legend>
+            {% for card in role_cards %}
+            <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
+                <input type="radio" name="role" value="{{ card.key }}"{% if card.key == selected_role %} checked{% endif %} class="mr-2">
+                <span class="font-semibold">{{ card.display_name }}</span>
+                <span class="mt-1 block text-muted">{{ card.description }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+        {% if role_note %}<p class="text-muted">{{ role_note }}</p>{% endif %}
+    </div>
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Add member</c-button>
+    </c-button-group>
+</form>
+{% elif step == "confirmation" %}
+<c-modal-header focus_title="true">Add {{ match.display_name }} as {{ display_name }}</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <input type="hidden" name="step" value="submit">
+    <input type="hidden" name="confirmed" value="1">
+    <input type="hidden" name="email" value="{{ email }}">
+    <input type="hidden" name="role" value="{{ role }}">
+    {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
+    <div class="space-y-3 px-6 py-4 text-sm">
+        <p>{{ description }}</p>
+        <p>Scope: {{ scope }}.</p>
+        {% if current_entries %}
+        <div>
+            <p class="font-semibold">Now</p>
+            <ul>{% for entry in current_entries %}<li>{{ entry.display_name }}: {{ entry.scope }}</li>{% endfor %}</ul>
+        </div>
+        <div>
+            <p class="font-semibold">After</p>
+            <ul>{% for entry in after_entries %}<li>{{ entry.display_name }}: {{ entry.scope }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        {% if member_state == "inactive" %}
+        <p>{{ match.display_name }} is suspended here, so the role takes effect only once they are reactivated.</p>
+        {% elif member_state == "missing" %}
+        <p>{{ match.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
+        {% endif %}
+        {% if site_level %}
+        <p>{{ match.display_name }} already has access to every organisation. This role lists them among this organisation's members.</p>
+        {% endif %}
+    </div>
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Adding...">Add member</c-button>
+    </c-button-group>
+</form>
+{% endif %}

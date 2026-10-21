@@ -176,3 +176,51 @@ class AddLearnersForm(forms.Form):
             ] + ["", ""]
             entries.append(LearnerEntry(email, first_name, last_name))
         return entries
+
+
+class MemberEmailForm(forms.Form):
+    """The email step: one address, looked up before anything is chosen."""
+
+    email = forms.EmailField(label="Email address")
+
+
+class AddMemberForm(forms.Form):
+    """The role step and the submit.
+
+    On a GET the choices are what the grantor may give; on a POST they are
+    every member role and every cohort of the organisation, so a submitted
+    choice outside the grantor's reach reaches the permission check and is
+    refused as a denial rather than as a form error.
+    """
+
+    email = forms.EmailField(widget=forms.HiddenInput)
+    role = forms.ChoiceField(widget=forms.RadioSelect)
+    cohorts = forms.ModelMultipleChoiceField(
+        queryset=Cohort.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        roles: list[tuple[str, str]],
+        cohorts: QuerySet[Cohort],
+        preset: Cohort | None = None,
+    ) -> None:
+        super().__init__(data)
+        cast(forms.ChoiceField, self.fields["role"]).choices = roles
+        cohort_field = cast(forms.ModelMultipleChoiceField, self.fields["cohorts"])
+        cohort_field.queryset = cohorts
+        if preset is not None:
+            cohort_field.widget = forms.MultipleHiddenInput()
+            cohort_field.initial = [preset.pk]
+
+    def clean(self) -> dict[str, object]:
+        cleaned = super().clean() or {}
+        if cleaned.get("role") == "organisation_admin":
+            cleaned["cohorts"] = Cohort.objects.none()
+        elif cleaned.get("role") and not cleaned.get("cohorts"):
+            self.add_error("cohorts", "Choose at least one cohort.")
+        return cleaned

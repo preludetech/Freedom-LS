@@ -1,0 +1,3 @@
+{% comment %}Only used by test_views.py: an empty state that renders the page's own actions from header_actions.{% endcomment %}
+{% load panel_tags %}
+<div class="stub-empty-actions">{% for action in header_actions %}{% render_action action panel.ctx %}{% endfor %}</div>

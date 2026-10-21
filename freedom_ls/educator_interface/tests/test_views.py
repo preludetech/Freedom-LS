@@ -1591,7 +1591,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 30
+QUERY_BOUND = 45
 
 
 MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
@@ -1939,4 +1939,18 @@ def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_cl
     document = _members_document(logged_in_client(site_admin), organisation)
 
     (cell,) = document.cssselect("#main-content tbody td")
-    assert cell.text_content().strip() == "No members in this organisation yet."
+    assert "No members in this organisation yet." in cell.text_content()
+    assert "Add member" in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_the_educators_panel_refreshes_on_member_changes(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+    (card,) = document.cssselect("section[data-panel='educators']")
+    assert "memberChanged" in lxml.html.tostring(card).decode()

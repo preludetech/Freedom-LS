@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import MEMBER_ROLES
+from freedom_ls.learner_management.queries import MEMBER_ROLES, member_assignments
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from django.contrib.sites.models import Site
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.organisations.models import Organisation
 
 ORGANISATION_SCOPE = "Whole organisation"
 _NAMED_COHORTS = 2
@@ -84,3 +85,14 @@ def member_role_entries(user: User, site: Site) -> list[RoleEntry]:
             )
         )
     return entries
+
+
+def current_role_entries(user: User, organisation: Organisation) -> list[RoleEntry]:
+    """The roles `user` holds in `organisation`, loaded for just this user."""
+    user.__dict__["held_assignments"] = list(
+        member_assignments(organisation)
+        .filter(user=user)
+        .select_related("assigned_by")
+        .prefetch_related("target")
+    )
+    return member_role_entries(user, organisation.site)

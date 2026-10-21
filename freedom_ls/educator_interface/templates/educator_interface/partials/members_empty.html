@@ -3,10 +3,12 @@ The Members table's empty state. Renders with the table's own context: a
 search or filter in play means nothing matches, otherwise there are no
 members yet.
 {% endcomment %}
+{% load panel_tags %}
 {% if any_filter_set or query.search %}
     {% querystring request.GET clear_changes clear_search_changes as qs %}
     <p>No members match.</p>
     <a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" class="text-primary underline">Clear filters</a>
 {% else %}
     <p>No members in this organisation yet.</p>
+    {% for action in header_actions %}{% render_action action panel.ctx %}{% endfor %}
 {% endif %}

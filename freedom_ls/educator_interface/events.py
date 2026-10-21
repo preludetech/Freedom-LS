@@ -9,4 +9,4 @@ from __future__ import annotations
 LEARNER_CHANGED = "learnerChanged"
 COHORT_CHANGED = "cohortChanged"
 REGISTRATION_CHANGED = "registrationChanged"
-EDUCATOR_CHANGED = "educatorChanged"
+MEMBER_CHANGED = "memberChanged"

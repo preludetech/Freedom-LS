@@ -310,8 +310,12 @@ class ListViewPanel(DataTablePanel):
     """
 
     title = ""
+    actions: list[PanelAction] = []
     bulk_actions: list[BulkAction] = []
     cell_context: dict[str, object] = {}
+
+    def get_actions(self) -> list[PanelAction]:
+        return self.actions
 
     def get_bulk_actions(self) -> list[BulkAction]:
         return self.bulk_actions
@@ -319,6 +323,10 @@ class ListViewPanel(DataTablePanel):
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
         context.update(self.cell_context)
+        # The page header renders the footer actions, so the card must not
+        # repeat them; an empty-state template renders them from header_actions.
+        context["header_actions"] = context["actions"]
+        context["actions"] = []
         return context
 
 
@@ -436,6 +444,7 @@ def _bind_root(
             )
             table.data_table = section.list_view
             table.table_key = section.table_key
+            table.actions = section.get_actions(request)
             table.bulk_actions = section.get_bulk_actions(request)
             table.cell_context = section.get_cell_context(request)
             return table, None, 1
@@ -759,7 +768,7 @@ def _main_for(
         list_actions = [
             action
             for action in section.get_actions(request)
-            if action.is_available(root.ctx)
+            if action.renders_in_footer and action.is_available(root.ctx)
         ]
         return (
             "panel_framework/views/list_view.html",

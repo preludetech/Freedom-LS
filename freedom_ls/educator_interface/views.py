@@ -29,6 +29,7 @@ from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
     AddLearnersAction,
     AddLearnersToCohortAction,
+    AddMemberAction,
     AddToCohortAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
@@ -47,8 +48,8 @@ from freedom_ls.educator_interface.actions import (
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
-    EDUCATOR_CHANGED,
     LEARNER_CHANGED,
+    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
@@ -871,7 +872,7 @@ class CohortEducatorsPanel(Panel):
     title = "Educators"
     capability = "freedom_ls_learner_management.view_organisationmember"
     template_name = "educator_interface/panels/cohort_educators.html"
-    refresh_events = (COHORT_CHANGED, EDUCATOR_CHANGED)
+    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
         return []
@@ -1360,6 +1361,11 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
     check_access_exempt_reason = "members have no instance pages"
 
     intro_template_name = "educator_interface/partials/members_intro.html"
+    refresh_events = (MEMBER_CHANGED,)
+
+    @classmethod
+    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
+        return [AddMemberAction()]
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:

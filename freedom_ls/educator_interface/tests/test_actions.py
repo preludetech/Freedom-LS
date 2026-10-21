@@ -15,7 +15,8 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.config import config
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.actions import (
@@ -25,6 +26,7 @@ from freedom_ls.educator_interface.actions import (
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
+    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
 )
 from freedom_ls.learner_management.factories import (
@@ -40,12 +42,19 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
+    OrganisationMember,
 )
-from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.role_based_permissions.exceptions import (
+    RefusalReason,
+    RoleChangeRefused,
+)
+from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -2663,3 +2672,540 @@ def test_grantable_roles_are_cached_on_the_request(
 
     with django_assert_max_num_queries(0):
         grantable_roles_for(request)
+
+
+# add member
+
+
+def _add_member_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "members/__actions/add_member")
+
+
+def _holder_client(
+    logged_in_client, target: Organisation | Cohort, role: str = "organisation_admin"
+) -> tuple[Client, User]:
+    user = cast(User, UserFactory(staff=True))
+    assign_role(UserFactory(superuser=True), user, role, target)
+    return logged_in_client(user), user
+
+
+def _lookup(client: Client, organisation: Organisation, email: str):
+    return _post(
+        client, _add_member_url(organisation), {"step": "lookup", "email": email}
+    )
+
+
+def _submit_role(
+    client: Client,
+    organisation: Organisation,
+    email: str,
+    role: str,
+    **extra: str,
+):
+    return _post(
+        client,
+        _add_member_url(organisation),
+        {"step": "submit", "email": email, "role": role, **extra},
+    )
+
+
+def _confirm(
+    client: Client, organisation: Organisation, email: str, role: str, **extra: str
+):
+    return _submit_role(client, organisation, email, role, confirmed="1", **extra)
+
+
+def _text(response) -> str:
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
+@pytest.fixture
+def organisation(mock_site_context: Site) -> Organisation:
+    return cast(Organisation, OrganisationFactory())
+
+
+@pytest.fixture
+def admin_client(logged_in_client, organisation: Organisation) -> Client:
+    CohortFactory(organisation=organisation)
+    return _holder_client(logged_in_client, organisation)[0]
+
+
+@pytest.mark.django_db
+def test_the_email_step_asks_for_an_address(admin_client, organisation):
+    response = admin_client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("input[name='email']")
+
+
+@pytest.mark.django_db
+def test_the_lookup_shows_an_existing_accounts_name_and_email(
+    admin_client, organisation
+):
+    UserFactory(first_name="Ada", last_name="Lovelace", email="ada@example.com")
+
+    text = _text(_lookup(admin_client, organisation, "ada@example.com"))
+
+    assert "Existing account: Ada Lovelace, ada@example.com" in text
+
+
+@pytest.mark.django_db
+def test_the_lookup_creates_no_user(admin_client, organisation):
+    UserFactory(email="ada@example.com")
+    before = User._base_manager.count()
+
+    _lookup(admin_client, organisation, "ada@example.com")
+    _lookup(admin_client, organisation, "nobody@example.com")
+
+    assert User._base_manager.count() == before
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_another_sites_address_shows_the_message_and_no_name(
+    admin_client, organisation
+):
+    User._base_manager.create(
+        site=SiteFactory(), email="away@example.com", first_name="Awaynamed"
+    )
+
+    response = _lookup(admin_client, organisation, "away@example.com")
+
+    text = _text(response)
+    assert response.status_code == 422
+    assert "belongs to an account on another site" in text
+    assert "Awaynamed" not in text
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_an_unknown_address_says_there_is_no_account_yet(
+    admin_client, organisation
+):
+    response = _lookup(admin_client, organisation, "nobody@example.com")
+
+    assert (response.status_code, "No account yet." in _text(response)) == (422, True)
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_an_invalid_address_is_422(admin_client, organisation):
+    response = _lookup(admin_client, organisation, "not-an-email")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_the_role_step_offers_the_three_member_roles_with_their_descriptions(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com")
+    config = get_role_config(organisation.site.name)
+
+    response = _lookup(admin_client, organisation, "ada@example.com")
+
+    document = lxml.html.fromstring(response.content.decode())
+    offered = [r.get("value") for r in document.cssselect("input[name='role']")]
+    text = _text(response)
+    assert offered == ["organisation_admin", "cohort_admin", "cohort_viewer"]
+    assert all(config[role].description in text for role in offered)
+    assert not document.cssselect("input[name='role'][checked]")
+
+
+@pytest.mark.django_db
+def test_a_site_admin_is_offered_three_roles(
+    mock_site_context, logged_in_client, organisation
+):
+    CohortFactory(organisation=organisation)
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+    UserFactory(email="ada@example.com")
+
+    response = _lookup(logged_in_client(site_admin), organisation, "ada@example.com")
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert len(document.cssselect("input[name='role']")) == 3
+
+
+@pytest.mark.django_db
+def test_with_no_active_cohort_only_organisation_admin_is_offered(
+    mock_site_context, logged_in_client, organisation
+):
+    client, _ = _holder_client(logged_in_client, organisation)
+    UserFactory(email="ada@example.com")
+
+    response = _lookup(client, organisation, "ada@example.com")
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert [r.get("value") for r in document.cssselect("input[name='role']")] == [
+        "organisation_admin"
+    ]
+    assert "This organisation has no active cohorts yet." in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_member_role_the_grantor_cannot_give_is_explained(
+    admin_client, organisation, monkeypatch
+):
+    UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("organisation_admin", None)],
+    )
+
+    text = _text(_lookup(admin_client, organisation, "ada@example.com"))
+
+    assert "You can only give roles at or below your own." in text
+
+
+@pytest.mark.django_db
+def test_submitting_without_confirmation_shows_the_confirmation_and_writes_nothing(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com", first_name="Ada", last_name="Lovelace")
+    roles_before = ObjectRoleAssignment.objects.count()
+    members_before = OrganisationMember.objects.count()
+    config = get_role_config(organisation.site.name)["organisation_admin"]
+
+    response = _submit_role(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    text = _text(response)
+    assert response.status_code == 200
+    assert "Add Ada Lovelace as Organisation admin" in text
+    assert config.description in text
+    assert "Scope: Whole organisation." in text
+    assert (
+        ObjectRoleAssignment.objects.count(),
+        OrganisationMember.objects.count(),
+    ) == (
+        roles_before,
+        members_before,
+    )
+
+
+@pytest.mark.django_db
+def test_the_confirmation_lists_the_current_and_after_roles(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = CohortFactory(organisation=organisation, name="Alpha")
+    client, _ = _holder_client(logged_in_client, organisation)
+    holder = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), holder, "cohort_viewer", cohort)
+
+    text = _text(
+        _submit_role(client, organisation, "ada@example.com", "organisation_admin")
+    )
+
+    assert "Now Cohort viewer: Alpha After" in text
+    assert "Organisation admin: Whole organisation" in text
+
+
+@pytest.mark.django_db
+def test_confirming_grants_organisation_admin_and_fires_member_changed(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 204
+    assert trigger[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert ObjectRoleAssignment.objects.filter(
+        user=user, role="organisation_admin", object_id=str(organisation.pk)
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_granting_organisation_admin_to_a_holder_is_422_with_the_message(
+    admin_client, organisation
+):
+    holder = UserFactory(email="ada@example.com", first_name="Ada", last_name="L")
+    assign_role(UserFactory(superuser=True), holder, "organisation_admin", organisation)
+
+    response = _submit_role(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert response.status_code == 422
+    assert "Ada L is already an organisation admin here." in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_role_outside_the_grantors_reach_is_the_403_fragment_and_writes_nothing(
+    admin_client, organisation, monkeypatch
+):
+    cohort = CohortFactory(organisation=organisation)
+    target = UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("cohort_viewer", (cohort,))],
+    )
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert response.status_code == 403
+    assert not ObjectRoleAssignment.objects.filter(user=target).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_role_is_checked_against_that_roles_own_cohorts(
+    admin_client, organisation, monkeypatch
+):
+    allowed = CohortFactory(organisation=organisation)
+    other = CohortFactory(organisation=organisation)
+    target = UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [
+            GrantableRole("cohort_admin", (other,)),
+            GrantableRole("cohort_viewer", (allowed,)),
+        ],
+    )
+
+    response = _confirm(
+        admin_client,
+        organisation,
+        "ada@example.com",
+        "cohort_viewer",
+        cohorts=str(other.pk),
+    )
+
+    assert response.status_code == 403
+    assert not ObjectRoleAssignment.objects.filter(user=target).exists()
+
+
+@pytest.mark.django_db
+def test_a_user_with_nothing_to_grant_is_denied_at_the_lookup(
+    mock_site_context, logged_in_client, organisation, monkeypatch
+):
+    client, _ = _holder_client(logged_in_client, organisation)
+    UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles", lambda *a: []
+    )
+
+    response = _lookup(client, organisation, "ada@example.com")
+
+    assert response.status_code == 403
+    assert "Ada" not in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_refused_grant_to_oneself_is_422_with_the_message(
+    mock_site_context, logged_in_client, organisation
+):
+    CohortFactory(organisation=organisation)
+    client, me = _holder_client(logged_in_client, organisation)
+
+    response = _confirm(client, organisation, me.email, "cohort_admin")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("reason", "message"),
+    [
+        (
+            RefusalReason.SELF,
+            "You can't change your own roles. Ask another organisation admin.",
+        ),
+        (
+            RefusalReason.INACTIVE_USER,
+            "This person's account is turned off, so they can't be given a role.",
+        ),
+    ],
+)
+def test_each_refusal_answers_422_with_its_message(
+    admin_client, organisation, monkeypatch, reason, message
+):
+    UserFactory(email="ada@example.com")
+
+    def refuse(*args: object) -> None:
+        raise RoleChangeRefused(reason)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert (response.status_code, message in _text(response)) == (422, True)
+
+
+@pytest.mark.django_db
+def test_a_not_permitted_refusal_is_the_403_fragment(
+    admin_client, organisation, monkeypatch
+):
+    UserFactory(email="ada@example.com")
+
+    def refuse(*args: object) -> None:
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_a_turned_off_account_cannot_be_given_a_role(admin_client, organisation):
+    UserFactory(email="ada@example.com", is_active=False)
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert response.status_code == 422
+    assert "account is turned off" in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_confirmed_post_for_another_sites_address_is_422_and_writes_nothing(
+    admin_client, organisation
+):
+    away = User._base_manager.create(
+        site=SiteFactory(), email="away@example.com", first_name="Awaynamed"
+    )
+
+    response = _confirm(
+        admin_client, organisation, "away@example.com", "organisation_admin"
+    )
+
+    text = _text(response)
+    assert response.status_code == 422
+    assert "belongs to an account on another site" in text
+    assert "Awaynamed" not in text
+    assert not ObjectRoleAssignment.objects.filter(user_id=away.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_a_site_level_admin_says_they_already_have_access(
+    admin_client, organisation
+):
+    site_admin = UserFactory(email="boss@example.com")
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+
+    text = _text(
+        _submit_role(
+            admin_client, organisation, "boss@example.com", "organisation_admin"
+        )
+    )
+
+    assert "already has access to every organisation" in text
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_a_suspended_member_says_the_role_waits_for_reactivation(
+    admin_client, organisation
+):
+    cohort = CohortFactory(organisation=organisation)
+    suspended = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), suspended, "cohort_viewer", cohort)
+    OrganisationMember.objects.filter(user=suspended).update(is_active=False)
+
+    text = _text(
+        _submit_role(
+            admin_client, organisation, "ada@example.com", "organisation_admin"
+        )
+    )
+    _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
+
+    assert "takes effect only once they are reactivated" in text
+    assert not OrganisationMember.objects.get(user=suspended).is_active
+
+
+@pytest.mark.django_db
+def test_a_grant_to_someone_with_no_member_row_creates_an_active_one(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+
+    text = _text(
+        _submit_role(
+            admin_client, organisation, "ada@example.com", "organisation_admin"
+        )
+    )
+    _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
+
+    assert "Adding this role creates one" in text
+    assert OrganisationMember.objects.get(
+        user=user, organisation=organisation
+    ).is_active
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_reaching_the_add_member_url_gets_404(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = CohortFactory(organisation=organisation)
+    client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
+
+    response = client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_empty_members_page_offers_add_member_in_the_header_and_the_empty_state(
+    mock_site_context, logged_in_client, organisation
+):
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+
+    html = (
+        logged_in_client(site_admin)
+        .get(_interface_url(organisation.slug, "members"))
+        .content.decode()
+    )
+
+    header, _, empty_state = html.partition("No members in this organisation yet.")
+    assert "/members/__actions/add_member" in header
+    assert "/members/__actions/add_member" in empty_state
+
+
+@pytest.mark.django_db
+def test_the_members_page_header_holds_the_add_member_trigger(
+    admin_client, organisation
+):
+    html = admin_client.get(
+        _interface_url(organisation.slug, "members")
+    ).content.decode()
+
+    assert "/members/__actions/add_member" in html
+
+
+@pytest.mark.django_db
+def test_a_site_admin_with_nothing_to_grant_sees_no_add_member_trigger(
+    mock_site_context, logged_in_client, organisation, monkeypatch
+):
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles", lambda *a: []
+    )
+
+    html = (
+        logged_in_client(site_admin)
+        .get(_interface_url(organisation.slug, "members"))
+        .content.decode()
+    )
+
+    assert "/members/__actions/add_member" not in html
