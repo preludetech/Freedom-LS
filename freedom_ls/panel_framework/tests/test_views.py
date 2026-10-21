@@ -15,6 +15,8 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.tables import Column
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -824,3 +826,52 @@ class TestListWithoutInstancePages:
 
         with pytest.raises(Http404):
             call_view(make_request(path), path, config=GATED_CONFIG)
+
+
+# ListViewConfig.get_cell_context reaches every cell template of the list.
+
+
+class CellContextTable(StubDataTable):
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Context",
+                template="panel_framework/test_cell_context.html",
+                card="primary",
+            )
+        ]
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+
+class CellContextConfig(RecordingCapabilityConfig, ListViewConfig):
+    url_name = "cell-context"
+    menu_label = "Cell context"
+    model = StubModel
+    list_view = CellContextTable
+    table_key = "cell_context"
+    instance_view = None
+
+    @classmethod
+    def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
+        return {"stub_cell_value": "from the config"}
+
+
+CELL_CONTEXT_CONFIG = [NavGroup("Cells", [CellContextConfig, StubBaseConfig])]
+
+
+class TestCellContext:
+    def test_a_configs_cell_context_is_present_in_its_cell_template(
+        self, mock_site_context: Site
+    ) -> None:
+        CellContextConfig.reset(answer=True, scope=make_stub())
+        make_stub()
+
+        response = call_view(
+            make_request("cell-context"), "cell-context", config=CELL_CONTEXT_CONFIG
+        )
+
+        assert 'class="stub-cell-context">from the config<' in response.content.decode()

@@ -607,3 +607,113 @@ class TestConvenienceRoleQueries:
 
         assert get_cohort_roles(user, cohort) == {"cohort_admin"}
         assert get_cohort_roles(user, cohort) == get_object_roles(user, cohort)
+
+
+_JANUARY = datetime(2026, 1, 1, tzinfo=UTC)
+_FEBRUARY = datetime(2026, 2, 1, tzinfo=UTC)
+
+
+class TestAssignedAt:
+    """assigned_at is the time of the grant that set assigned_by."""
+
+    @pytest.mark.django_db
+    def test_reactivating_an_object_assignment_moves_assigned_at(self) -> None:
+        user = UserFactory()
+        cohort = CohortFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_object_role(user, cohort, "cohort_admin")
+        remove_object_role(user, cohort, "cohort_admin")
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_object_role(user, cohort, "cohort_admin")
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _FEBRUARY
+
+    @pytest.mark.django_db
+    def test_changing_the_grantor_of_an_object_assignment_moves_assigned_at(
+        self,
+    ) -> None:
+        user = UserFactory()
+        cohort = CohortFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_object_role(user, cohort, "cohort_admin", UserFactory())
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_object_role(user, cohort, "cohort_admin", UserFactory())
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _FEBRUARY
+
+    @pytest.mark.django_db
+    def test_an_unchanged_object_assignment_keeps_assigned_at(self) -> None:
+        user = UserFactory()
+        cohort = CohortFactory()
+        grantor = UserFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_object_role(user, cohort, "cohort_admin", grantor)
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_object_role(user, cohort, "cohort_admin", grantor)
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _JANUARY
+
+    @pytest.mark.django_db
+    def test_reactivating_a_site_assignment_moves_assigned_at(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_site_role(user, "site_admin")
+            assign_site_role(UserFactory(), "site_admin")
+        remove_site_role(user, "site_admin")
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_site_role(user, "site_admin")
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _FEBRUARY
+
+    @pytest.mark.django_db
+    def test_changing_the_grantor_of_a_site_assignment_moves_assigned_at(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_site_role(user, "site_admin", UserFactory())
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_site_role(user, "site_admin", UserFactory())
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _FEBRUARY
+
+    @pytest.mark.django_db
+    def test_an_unchanged_site_assignment_keeps_assigned_at(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        grantor = UserFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_site_role(user, "site_admin", grantor)
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_site_role(user, "site_admin", grantor)
+
+        assignment.refresh_from_db()
+        assert assignment.assigned_at == _JANUARY
+
+    @pytest.mark.django_db
+    def test_reactivating_a_system_assignment_keeps_assigned_at(self) -> None:
+        user = UserFactory()
+        with time_machine.travel(_JANUARY, tick=False):
+            assign_system_role(user, "system_admin")
+        remove_system_role(user, "system_admin")
+
+        with time_machine.travel(_FEBRUARY, tick=False):
+            assignment = assign_system_role(user, "system_admin")
+
+        assignment.refresh_from_db()
+        assert assignment.is_active is True
+        assert assignment.assigned_at == _JANUARY

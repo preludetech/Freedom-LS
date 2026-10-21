@@ -39,6 +39,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     Learner,
+    OrganisationMember,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
@@ -1568,3 +1569,240 @@ def test_a_member_name_is_escaped(members_client):
 
     assert "&lt;b&gt;x&lt;/b&gt;" in response.content.decode()
     assert "<b>x</b>" not in response.content.decode()
+
+
+def _members_document(client: Client, organisation: Organisation):
+    return _get_document(client, _interface_url(organisation.slug, "members"))
+
+
+def _member_row(document, email: str):
+    """The table row whose text includes `email`."""
+    (row,) = [
+        r
+        for r in document.cssselect("#main-content tbody tr")
+        if email in r.text_content()
+    ]
+    return row
+
+
+def _scope_lines(row) -> list[str]:
+    return [e.text_content().strip() for e in row.cssselect("ul li span[title]")]
+
+
+# Measured for a page of ten: the count must not grow with the number of rows.
+QUERY_BOUND = 30
+
+
+MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
+
+
+def _marker_labels(row) -> set[str]:
+    return {e.text_content().strip() for e in row.cssselect("span")} & MARKERS
+
+
+def _hold(user, role: str, target, grantor=None) -> None:
+    assign_role(grantor or UserFactory(superuser=True), user, role, target)
+
+
+@pytest.mark.django_db
+def test_an_organisation_admins_roles_cell_reads_whole_organisation(members_client):
+    organisation = OrganisationFactory()
+    _hold(UserFactory(email="boss@example.com"), "organisation_admin", organisation)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "boss@example.com")
+
+    assert _scope_lines(row) == ["Whole organisation"]
+    assert "Organisation admin" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_two_cohorts_read_both_names(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="two@example.com")
+    for name in ("Alpha", "Bravo"):
+        _hold(user, "cohort_admin", CohortFactory(organisation=organisation, name=name))
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "two@example.com")
+
+    assert _scope_lines(row) == ["Alpha, Bravo"]
+
+
+@pytest.mark.django_db
+def test_four_cohorts_read_two_names_and_the_rest_as_a_count(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="four@example.com")
+    for name in ("Alpha", "Bravo", "Charlie", "Delta"):
+        _hold(
+            user, "cohort_viewer", CohortFactory(organisation=organisation, name=name)
+        )
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "four@example.com")
+
+    (scope,) = row.cssselect("ul li span[title]")
+    assert scope.text_content().strip() == "Alpha, Bravo +2 more"
+    assert scope.get("title") == "Alpha, Bravo, Charlie, Delta"
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_carries_the_inactive_marker(members_client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Old", is_active=False)
+    _hold(UserFactory(email="old@example.com"), "cohort_viewer", cohort)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "old@example.com")
+
+    assert _scope_lines(row) == ["Old (inactive)"]
+
+
+@pytest.mark.django_db
+def test_a_role_names_who_added_it(members_client):
+    organisation = OrganisationFactory()
+    grantor = UserFactory(superuser=True, first_name="Grace", last_name="Hopper")
+    _hold(
+        UserFactory(email="added@example.com"),
+        "organisation_admin",
+        organisation,
+        grantor,
+    )
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "added@example.com")
+
+    assert "by Grace Hopper" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_a_role_with_no_recorded_grantor_reads_not_recorded(members_client):
+    organisation = OrganisationFactory()
+    grantor = UserFactory(superuser=True)
+    _hold(
+        UserFactory(email="orphan@example.com"),
+        "organisation_admin",
+        organisation,
+        grantor,
+    )
+    grantor.delete()
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "orphan@example.com")
+
+    assert "by Not recorded" in row.text_content()
+
+
+def _make_viewer_and_subject(members_client, organisation, case: str):
+    """Returns (client, email of the row to inspect) for a marker case."""
+    subject = UserFactory(email="subject@example.com")
+    _hold(subject, "cohort_viewer", CohortFactory(organisation=organisation))
+    viewer_client = members_client(organisation, "organisation_admin")
+    if case == "suspended":
+        OrganisationMember.objects.filter(user=subject).update(is_active=False)
+    elif case == "turned_off":
+        subject.is_active = False
+        subject.save()
+    elif case == "learner":
+        LearnerFactory(user=subject, organisation=organisation)
+    elif case == "inactive_learner":
+        LearnerFactory(user=subject, organisation=organisation, is_active=False)
+    return viewer_client
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    [
+        ("plain", set()),
+        ("suspended", {"Suspended"}),
+        ("turned_off", {"Account turned off"}),
+        ("learner", {"Also a learner"}),
+        ("inactive_learner", set()),
+    ],
+)
+def test_each_marker_appears_for_its_case_only(members_client, case, expected):
+    organisation = OrganisationFactory()
+    client = _make_viewer_and_subject(members_client, organisation, case)
+
+    row = _member_row(_members_document(client, organisation), "subject@example.com")
+
+    assert _marker_labels(row) == expected
+
+
+@pytest.mark.django_db
+def test_the_viewers_own_row_is_marked_you(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+    document = _members_document(client, organisation)
+
+    (row,) = document.cssselect("#main-content tbody tr")
+
+    assert _marker_labels(row) == {"You"}
+
+
+@pytest.mark.django_db
+def test_a_member_with_no_organisation_member_row_is_suspended(members_client):
+    organisation = OrganisationFactory()
+    subject = UserFactory(email="subject@example.com")
+    _hold(subject, "organisation_admin", organisation)
+    OrganisationMember.objects.filter(user=subject).delete()
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "subject@example.com")
+
+    assert _marker_labels(row) == {"Suspended"}
+
+
+@pytest.mark.django_db
+def test_a_superuser_holding_one_cohort_role_shows_that_role_only(members_client):
+    organisation = OrganisationFactory()
+    superuser = UserFactory(superuser=True, email="super@example.com")
+    _hold(superuser, "cohort_viewer", CohortFactory(organisation=organisation))
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "super@example.com")
+
+    assert len(row.cssselect("ul li")) == 1
+    assert "Cohort viewer" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_a_cohort_name_is_escaped_in_the_scope(members_client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="<i>x</i>")
+    _hold(UserFactory(), "cohort_viewer", cohort)
+    client = members_client(organisation, "organisation_admin")
+
+    content = client.get(_interface_url(organisation.slug, "members")).content.decode()
+
+    assert "&lt;i&gt;x&lt;/i&gt;" in content
+    assert "<i>x</i>" not in content
+
+
+@pytest.mark.django_db
+def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
+    members_client, django_assert_max_num_queries
+):
+    organisation = OrganisationFactory()
+    grantor = UserFactory(superuser=True)
+    for _ in range(10):
+        user = UserFactory()
+        _hold(user, "organisation_admin", organisation, grantor)
+        _hold(user, "cohort_viewer", CohortFactory(organisation=organisation), grantor)
+        LearnerFactory(user=user, organisation=organisation)
+    client = members_client(organisation, "organisation_admin")
+    url = _interface_url(organisation.slug, "members")
+
+    with django_assert_max_num_queries(QUERY_BOUND):
+        response = client.get(url)
+
+    assert response.status_code == 200
+    assert (
+        len(
+            lxml.html.fromstring(response.content.decode()).cssselect(
+                "#main-content tbody tr"
+            )
+        )
+        == 10
+    )

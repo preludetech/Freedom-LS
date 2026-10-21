@@ -60,6 +60,7 @@ from freedom_ls.educator_interface.filters import (
     VisibleCourseFilter,
 )
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
@@ -72,6 +73,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
+    OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
@@ -83,6 +85,7 @@ from freedom_ls.learner_management.queries import (
     courses_visible_to,
     learner_status,
     learners_visible_to,
+    member_assignments,
     members_of,
     organisations_accessible_to,
 )
@@ -1261,8 +1264,39 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 class MemberDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        scoped = cast(OrganisationScopedRequest, request)
-        return members_of(scoped.organisation)
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        return members_of(organisation).prefetch_related(
+            Prefetch(
+                "object_role_assignments",
+                queryset=member_assignments(organisation)
+                .select_related("assigned_by")
+                .prefetch_related("target"),
+                to_attr="held_assignments",
+            ),
+            Prefetch(
+                "organisationmember_set",
+                queryset=OrganisationMember.objects.filter(organisation=organisation),
+                to_attr="member_rows",
+            ),
+            Prefetch(
+                "learner_set",
+                queryset=Learner.objects.filter(
+                    organisation=organisation, is_active=True
+                ),
+                to_attr="learner_rows",
+            ),
+        )
+
+    @classmethod
+    def get_rows(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> Page:
+        page_obj = super().get_rows(request, queryset, query)
+        site = cast(OrganisationScopedRequest, request).organisation.site
+        for row in page_obj.object_list:
+            row.role_entries = member_role_entries(row, site)
+            row.is_suspended = not any(m.is_active for m in row.member_rows)
+        return page_obj
 
     @staticmethod
     def get_columns() -> list[Column]:
@@ -1273,6 +1307,11 @@ class MemberDataTable(DataTable):
                 sortable=True,
                 sort_field="first_name",
                 card="primary",
+            ),
+            Column(
+                header="Roles",
+                template="educator_interface/data-table-cells/member_roles.html",
+                card="secondary",
             ),
         ]
 
@@ -1291,6 +1330,10 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
     view_capability = "freedom_ls_learner_management.view_organisationmember"
     # Rows have no page of their own, so there is nothing to authorise.
     check_access_exempt_reason = "members have no instance pages"
+
+    @classmethod
+    def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
+        return {"viewer": request.user}
 
 
 interface_config = [

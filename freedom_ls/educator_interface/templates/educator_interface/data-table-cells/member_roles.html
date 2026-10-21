@@ -1,0 +1,14 @@
+{% comment %}
+The roles a member holds, one item each: the role name, where it applies, and
+who added it and when. The full list of cohorts is in the scope line's title,
+because the visible text names only the first two.
+{% endcomment %}
+<ul class="m-0 flex list-none flex-col gap-2 p-0">
+    {% for entry in object.role_entries %}
+        <li>
+            <span class="block font-bold text-on-surface">{{ entry.display_name }}</span>
+            <span class="block text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
+            <span class="block text-xs text-muted">Added {{ entry.assigned_at|date }} by {{ entry.assigned_by.display_name|default:"Not recorded" }}</span>
+        </li>
+    {% endfor %}
+</ul>

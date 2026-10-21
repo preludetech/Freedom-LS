@@ -194,6 +194,32 @@ def sync_user_object_permissions(
     }
 
 
+def _refresh_assignment(
+    assignment: ObjectRoleAssignment | SiteRoleAssignment | SystemRoleAssignment,
+    assigned_by: User | None,
+    *,
+    stamp: bool,
+) -> list[str]:
+    """Reactivate the row and record the grantor; with `stamp`, the grant
+    time moves too, so "added on" is the time of the grant that set
+    "added by".
+
+    Returns the fields changed on the instance, for the caller to save. Empty
+    when nothing changed.
+    """
+    fields_to_update: list[str] = []
+    if not assignment.is_active:
+        assignment.is_active = True
+        fields_to_update.append("is_active")
+    if assignment.assigned_by != assigned_by:
+        assignment.assigned_by = assigned_by
+        fields_to_update.append("assigned_by")
+    if fields_to_update and stamp:
+        assignment.assigned_at = timezone.now()
+        fields_to_update.append("assigned_at")
+    return fields_to_update
+
+
 def assign_object_role(
     user: User,
     target: Model,
@@ -216,13 +242,7 @@ def assign_object_role(
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
     if not created:
-        fields_to_update: list[str] = []
-        if not assignment.is_active:
-            assignment.is_active = True
-            fields_to_update.append("is_active")
-        if assignment.assigned_by != assigned_by:
-            assignment.assigned_by = assigned_by
-            fields_to_update.append("assigned_by")
+        fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
         if fields_to_update:
             assignment.save(update_fields=fields_to_update)
 
@@ -279,13 +299,7 @@ def assign_site_role(
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
     if not created:
-        fields_to_update: list[str] = []
-        if not assignment.is_active:
-            assignment.is_active = True
-            fields_to_update.append("is_active")
-        if assignment.assigned_by != assigned_by:
-            assignment.assigned_by = assigned_by
-            fields_to_update.append("assigned_by")
+        fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
         if fields_to_update:
             assignment.save(update_fields=fields_to_update)
 
@@ -357,13 +371,7 @@ def assign_system_role(
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
     if not created:
-        fields_to_update: list[str] = []
-        if not assignment.is_active:
-            assignment.is_active = True
-            fields_to_update.append("is_active")
-        if assignment.assigned_by != assigned_by:
-            assignment.assigned_by = assigned_by
-            fields_to_update.append("assigned_by")
+        fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=False)
         if fields_to_update:
             assignment.save(update_fields=fields_to_update)
 

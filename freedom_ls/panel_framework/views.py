@@ -231,6 +231,12 @@ class ListViewConfig(SectionConfigBase):
         return []
 
     @classmethod
+    def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
+        """Extra context every cell template of this list renders with,
+        computed once per request rather than once per row. Empty by default."""
+        return {}
+
+    @classmethod
     def get_action(cls, request: HttpRequest, action_name: str) -> PanelAction | None:
         return _find_action(cls.get_actions(request), action_name)
 
@@ -290,14 +296,22 @@ class ListViewPanel(DataTablePanel):
     The framework binds it as a root panel and sets `data_table` from the
     config's `list_view` on the bound instance, so every list refreshes the
     same way a table panel does. `bulk_actions` is set the same way, from the
-    config's `get_bulk_actions`.
+    config's `get_bulk_actions`. `cell_context` is set from the config's
+    `get_cell_context` and merged into the context the cell templates render
+    with.
     """
 
     title = ""
     bulk_actions: list[BulkAction] = []
+    cell_context: dict[str, object] = {}
 
     def get_bulk_actions(self) -> list[BulkAction]:
         return self.bulk_actions
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context.update(self.cell_context)
+        return context
 
 
 type SectionConfig = (
@@ -415,6 +429,7 @@ def _bind_root(
             table.data_table = section.list_view
             table.table_key = section.table_key
             table.bulk_actions = section.get_bulk_actions(request)
+            table.cell_context = section.get_cell_context(request)
             return table, None, 1
         instance_view = section.get_instance_view(request, parts[1])
         instance_base_url = f"{section_url}/{parts[1]}"
