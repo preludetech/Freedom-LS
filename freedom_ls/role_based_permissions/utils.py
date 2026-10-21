@@ -31,6 +31,25 @@ from freedom_ls.role_based_permissions.models import (
 )
 
 
+def delete_role_rows_for(target: Model) -> None:
+    """Delete every object role assignment on `target`, active or not, and
+    the guardian rows that go with them.
+
+    For a target that is about to be deleted: deactivating would leave
+    guardian rows behind and assignments whose target resolves to None.
+    _base_manager, because a delete from the admin or a management command
+    may run with no request site in scope, where the site-aware manager would
+    match nothing and leave the rows behind.
+    """
+    target_type = ContentType.objects.get_for_model(target)
+    ObjectRoleAssignment._base_manager.filter(
+        content_type=target_type, object_id=str(target.pk)
+    ).delete()
+    UserObjectPermission.objects.filter(
+        content_type=target_type, object_pk=str(target.pk)
+    ).delete()
+
+
 def clear_permission_cache() -> None:
     """Clear the permission codename cache. Intended for use in tests."""
     _get_valid_codenames_for_content_type.cache_clear()

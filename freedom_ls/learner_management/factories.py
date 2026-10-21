@@ -7,6 +7,7 @@ import factory
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
+from django.db.models.signals import pre_delete
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -23,6 +24,7 @@ from freedom_ls.learner_management.models import (
     LearnerDeadline,
     OrganisationMember,
 )
+from freedom_ls.learner_management.signals import delete_cohort_role_rows
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -211,3 +213,13 @@ class LearnerCohortDeadlineOverrideFactory(SiteAwareFactory):
     object_id = factory.LazyAttribute(
         lambda obj: obj.content_item.pk if obj.content_item else None
     )
+
+
+def delete_cohort_leaving_role_rows(cohort: Cohort) -> None:
+    """Delete `cohort` without the receiver that cleans up its role rows, to
+    build the orphaned assignments an older database can still hold."""
+    pre_delete.disconnect(delete_cohort_role_rows, sender=Cohort)
+    try:
+        cohort.delete()
+    finally:
+        pre_delete.connect(delete_cohort_role_rows, sender=Cohort)

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 import time_machine
+from guardian.models import UserObjectPermission
 from guardian.shortcuts import get_objects_for_user, get_perms
 from pytest_mock import MockerFixture
 
@@ -32,6 +33,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     assign_system_role,
     check_role_name_in_config,
+    delete_role_rows_for,
     get_cohort_roles,
     get_object_roles,
     remove_object_role,
@@ -557,6 +559,51 @@ class TestGuardianIntegration:
         )
         assert cohort in accessible
         assert other_cohort not in accessible
+
+
+class TestDeleteRoleRowsFor:
+    @pytest.mark.django_db
+    def test_removes_active_and_inactive_assignments_on_the_target(self) -> None:
+        cohort = CohortFactory()
+        assign_object_role(UserFactory(), cohort, "cohort_admin")
+        ObjectRoleAssignmentFactory(
+            target_object=cohort, role="cohort_viewer", is_active=False
+        )
+
+        delete_role_rows_for(cohort)
+
+        assert not ObjectRoleAssignment.objects.filter(
+            content_type=ContentType.objects.get_for_model(cohort),
+            object_id=str(cohort.pk),
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_removes_the_guardian_rows_on_the_target(self) -> None:
+        cohort = CohortFactory()
+        assign_object_role(UserFactory(), cohort, "cohort_admin")
+
+        delete_role_rows_for(cohort)
+
+        assert not UserObjectPermission.objects.filter(
+            content_type=ContentType.objects.get_for_model(cohort),
+            object_pk=str(cohort.pk),
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_leaves_another_targets_rows_alone(self) -> None:
+        cohort = CohortFactory()
+        other = CohortFactory()
+        assign_object_role(UserFactory(), other, "cohort_admin")
+
+        delete_role_rows_for(cohort)
+
+        other_type = ContentType.objects.get_for_model(other)
+        assert ObjectRoleAssignment.objects.filter(
+            content_type=other_type, object_id=str(other.pk)
+        ).exists()
+        assert UserObjectPermission.objects.filter(
+            content_type=other_type, object_pk=str(other.pk)
+        ).exists()
 
 
 class TestAssignmentScopeEnforcement:

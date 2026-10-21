@@ -6,13 +6,14 @@ nothing imports is never connected, and fails silently rather than loudly.
 
 from __future__ import annotations
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import Signal, receiver
 
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.utils import ensure_organisation_member
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.role_based_permissions.utils import delete_role_rows_for
 
 # Sent synchronously inside the move's transaction, after the destination
 # membership exists, with `learner`, `source` and `destination`. A receiver that
@@ -41,3 +42,12 @@ def ensure_member_for_active_grant(
         ensure_organisation_member(instance.user, target)
     elif isinstance(target, Cohort):
         ensure_organisation_member(instance.user, target.organisation)
+
+
+@receiver(pre_delete, sender=Cohort)
+def delete_cohort_role_rows(
+    sender: type[Cohort], instance: Cohort, **kwargs: object
+) -> None:
+    """Runs inside the deleting transaction, so a delete from the Django
+    admin is covered too."""
+    delete_role_rows_for(instance)

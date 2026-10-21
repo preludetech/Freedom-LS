@@ -13,7 +13,10 @@ from django.contrib.sites.models import Site
 from django.core.management import call_command
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    delete_cohort_leaving_role_rows,
+)
 from freedom_ls.role_based_permissions.factories import ObjectRoleAssignmentFactory
 from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
@@ -127,7 +130,7 @@ class TestSyncRolePermissionsOrphanedAssignment:
 
         # Delete the cohort but leave the assignment
         cohort_pk = str(cohort.pk)
-        cohort.delete()
+        delete_cohort_leaving_role_rows(cohort)
 
         # Verify assignment still exists
         assert ObjectRoleAssignment.objects.filter(
