@@ -3,7 +3,7 @@ The Change cohorts dialog. Context: step (form or confirmation), member,
 entry and form_url. The form step adds cohort_rows (pk, name, checked) and
 read_only (the held cohorts left as they are, each with its reason); the
 confirmation step adds cohort_ids, added and removed (prose lists),
-widening, removes_role and creates_member_row.
+widening, removes_role and member_state (missing, inactive or active).
 {% endcomment %}
 {% if step == "form" %}
 <c-modal-header>Change cohorts for {{ member.display_name }}</c-modal-header>
@@ -60,7 +60,9 @@ widening, removes_role and creates_member_row.
         {% if removed %}
         <p>{{ member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
         {% endif %}
-        {% if creates_member_row %}
+        {% if added and member_state == "inactive" %}
+        <p>{{ member.display_name }} is suspended here, so the added cohorts take effect only once they are reactivated.</p>
+        {% elif added and member_state == "missing" %}
         <p>{{ member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
     </div>

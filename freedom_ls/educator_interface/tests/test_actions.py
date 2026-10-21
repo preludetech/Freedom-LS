@@ -4147,6 +4147,23 @@ def test_the_confirmation_for_a_person_with_no_member_row_says_the_grant_creates
 
 
 @pytest.mark.django_db
+def test_the_confirmation_for_a_suspended_member_says_the_cohorts_wait_for_reactivation(
+    admin_client, organisation
+):
+    held = _cohort(organisation)
+    added = _cohort(organisation)
+    user = _member_holding("cohort_viewer", held)
+    OrganisationMember.objects.filter(user=user).update(is_active=False)
+
+    text = _text(
+        _change(admin_client, organisation, user, [held, added], confirmed=False)
+    )
+
+    assert "is suspended here, so the added cohorts take effect only once" in text
+    assert "has no active membership here" not in text
+
+
+@pytest.mark.django_db
 def test_a_change_for_an_organisation_admin_role_answers_the_unavailable_fragment(
     admin_client, organisation
 ):

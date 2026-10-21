@@ -1260,6 +1260,22 @@ def member_changed_response(user: User) -> HttpResponse:
     return changed_response({MEMBER_CHANGED: [str(user.pk)]})
 
 
+def member_state(user: User | None, organisation: Organisation) -> str:
+    """Where a role given now would land: "new" for an account not yet
+    created, "missing" for one with no OrganisationMember row here,
+    "inactive" for a suspended row, else "active"."""
+    if user is None:
+        return "new"
+    member = OrganisationMember.objects.filter(
+        organisation=organisation, user=user
+    ).first()
+    if member is None:
+        return "missing"
+    if not member.is_active:
+        return "inactive"
+    return "active"
+
+
 def _entries_after(
     before: list[RoleEntry],
     grantor: User,
@@ -1543,21 +1559,6 @@ class AddMemberAction(PanelAction):
         site = organisation.site
         role_config = get_role_config(site.name)[role]
         name = _member_name(user, email)
-        member = (
-            None
-            if user is None
-            else OrganisationMember.objects.filter(
-                organisation=organisation, user=user
-            ).first()
-        )
-        if user is None:
-            member_state = "new"
-        elif member is None:
-            member_state = "missing"
-        elif not member.is_active:
-            member_state = "inactive"
-        else:
-            member_state = "active"
         after = (
             _entries_after(
                 before,
@@ -1604,7 +1605,7 @@ class AddMemberAction(PanelAction):
                 ),
                 "current_entries": before,
                 "after_entries": after,
-                "member_state": member_state,
+                "member_state": member_state(user, organisation),
                 "site_level": user is not None and is_site_level_admin(user, site),
             },
         )
@@ -1873,9 +1874,6 @@ class ChangeCohortsAction(MemberRoleAction):
         after = (before - {(entry.role, str(c.pk)) for c in plan.removed}) | {
             (entry.role, str(c.pk)) for c in plan.added
         }
-        has_member_row = OrganisationMember.objects.filter(
-            organisation=organisation, user=user
-        ).exists()
         return render(
             ctx.request,
             self.template_name,
@@ -1890,7 +1888,7 @@ class ChangeCohortsAction(MemberRoleAction):
                 "widening": is_widening(before, after),
                 "removes_role": not plan.added
                 and len(plan.removed) == len(entry.cohorts),
-                "creates_member_row": bool(plan.added) and not has_member_row,
+                "member_state": member_state(user, organisation),
             },
         )
 
