@@ -3209,3 +3209,203 @@ def test_a_site_admin_with_nothing_to_grant_sees_no_add_member_trigger(
     )
 
     assert "/members/__actions/add_member" not in html
+
+
+# add member on cohorts
+
+
+def _cohort(organisation: Organisation, **kwargs: str) -> Cohort:
+    return cast(Cohort, CohortFactory(organisation=organisation, **kwargs))
+
+
+def _cohort_post(
+    client: Client,
+    organisation: Organisation,
+    role: str,
+    cohorts: list[Cohort],
+    confirmed: bool = False,
+):
+    data: dict[str, str | list[str]] = {
+        "step": "submit",
+        "email": "ada@example.com",
+        "role": role,
+        "cohorts": [str(cohort.pk) for cohort in cohorts],
+    }
+    if confirmed:
+        data["confirmed"] = "1"
+    return _post(client, _add_member_url(organisation), data)
+
+
+@pytest.mark.django_db
+def test_the_role_step_lists_each_grantable_cohort_with_the_roles_it_is_offered_for(
+    admin_client, organisation, monkeypatch
+):
+    admin_only = _cohort(organisation, name="Alpha")
+    both = _cohort(organisation, name="Beta")
+    UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [
+            GrantableRole("cohort_admin", (admin_only, both)),
+            GrantableRole("cohort_viewer", (both,)),
+        ],
+    )
+
+    response = _lookup(admin_client, organisation, "ada@example.com")
+
+    rows = lxml.html.fromstring(response.content.decode()).cssselect(
+        "[data-cohort-row]"
+    )
+    assert [(r.get("data-name"), r.get("data-roles")) for r in rows] == [
+        ("alpha", "cohort_admin"),
+        ("beta", "cohort_admin cohort_viewer"),
+    ]
+
+
+@pytest.mark.django_db
+def test_the_role_step_explains_that_every_cohort_is_not_organisation_admin(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com")
+
+    response = _lookup(admin_client, organisation, "ada@example.com")
+
+    assert "Choosing every cohort is not the same as organisation admin" in _text(
+        response
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_role_without_a_cohort_is_422_on_the_role_step(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_post(admin_client, organisation, "cohort_admin", [])
+
+    assert response.status_code == 422
+    assert "Choose at least one cohort." in _text(response)
+
+
+@pytest.mark.django_db
+def test_the_confirmation_names_the_cohorts_escaped(admin_client, organisation):
+    cohort = _cohort(organisation, name="<b>Bold</b> cohort")
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_post(admin_client, organisation, "cohort_admin", [cohort])
+
+    html = response.content.decode()
+    assert "&lt;b&gt;Bold&lt;/b&gt; cohort" in html
+    assert "<b>Bold</b>" not in html
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_new_cohorts_says_what_the_person_gains(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Spring")
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_post(admin_client, organisation, "cohort_admin", [cohort])
+
+    assert "will be able to do more than they can now" in _text(response)
+
+
+@pytest.mark.django_db
+def test_confirming_grants_the_role_on_each_cohort(admin_client, organisation):
+    first = _cohort(organisation)
+    second = _cohort(organisation)
+    user = UserFactory(email="ada@example.com")
+
+    response = _cohort_post(
+        admin_client, organisation, "cohort_admin", [first, second], confirmed=True
+    )
+
+    granted = set(
+        ObjectRoleAssignment.objects.filter(user=user, role="cohort_admin").values_list(
+            "object_id", flat=True
+        )
+    )
+    assert (response.status_code, granted) == (204, {str(first.pk), str(second.pk)})
+
+
+@pytest.mark.django_db
+def test_a_role_already_held_on_every_chosen_cohort_is_422(admin_client, organisation):
+    cohort = _cohort(organisation)
+    holder = UserFactory(email="ada@example.com", first_name="Ada", last_name="L")
+    assign_role(UserFactory(superuser=True), holder, "cohort_admin", cohort)
+
+    response = _cohort_post(admin_client, organisation, "cohort_admin", [cohort])
+
+    assert response.status_code == 422
+    assert "Ada L already holds this role on these cohorts." in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_partial_overlap_names_the_held_cohorts_in_the_confirmation(
+    admin_client, organisation
+):
+    held = _cohort(organisation, name="Held cohort")
+    new = _cohort(organisation, name="New cohort")
+    holder = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), holder, "cohort_admin", held)
+
+    response = _cohort_post(admin_client, organisation, "cohort_admin", [held, new])
+
+    text = _text(response)
+    assert "Scope: New cohort." in text
+    assert "already holds this role on Held cohort" in text
+
+
+@pytest.mark.django_db
+def test_a_partial_overlap_grants_only_the_new_cohorts(admin_client, organisation):
+    held = _cohort(organisation)
+    new = _cohort(organisation)
+    holder = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), holder, "cohort_admin", held)
+
+    response = _cohort_post(
+        admin_client, organisation, "cohort_admin", [held, new], confirmed=True
+    )
+
+    granted = set(
+        ObjectRoleAssignment.objects.filter(
+            user=holder, role="cohort_admin"
+        ).values_list("object_id", flat=True)
+    )
+    assert (response.status_code, granted) == (204, {str(held.pk), str(new.pk)})
+
+
+@pytest.mark.django_db
+def test_a_cohort_outside_the_chosen_roles_grantable_cohorts_is_the_403_fragment(
+    admin_client, organisation, monkeypatch
+):
+    allowed = _cohort(organisation)
+    outside = _cohort(organisation)
+    user = UserFactory(email="ada@example.com")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("cohort_admin", (allowed,))],
+    )
+
+    response = _cohort_post(
+        admin_client, organisation, "cohort_admin", [outside], confirmed=True
+    )
+
+    assert response.status_code == 403
+    assert not ObjectRoleAssignment.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_of_another_organisation_is_a_form_error_and_writes_nothing(
+    admin_client, organisation
+):
+    foreign = _cohort(cast(Organisation, OrganisationFactory()))
+    user = UserFactory(email="ada@example.com")
+
+    response = _cohort_post(
+        admin_client, organisation, "cohort_admin", [foreign], confirmed=True
+    )
+
+    assert response.status_code == 422
+    assert not ObjectRoleAssignment.objects.filter(user=user).exists()

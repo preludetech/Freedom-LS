@@ -75,6 +75,7 @@ from freedom_ls.learner_management.queries import (
     courses_gaining_access,
     courses_losing_access,
     learners_visible_to,
+    member_assignments,
     members_keeping_access,
     other_grants_for,
 )
@@ -83,6 +84,7 @@ from freedom_ls.learner_management.role_assignment import (
     assign_role,
     grantable_roles,
     is_site_level_admin,
+    is_widening,
 )
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
@@ -1322,15 +1324,37 @@ class AddMemberAction(PanelAction):
             return self._no_account_response(ctx)
         return user
 
-    def _role_cards(self, ctx: PanelContext) -> list[dict[str, str]]:
+    def _role_cards(self, ctx: PanelContext) -> list[dict[str, str | bool]]:
         config = get_role_config(_organisation(ctx).site.name)
         return [
             {
                 "key": grantable.role,
                 "display_name": config[grantable.role].display_name,
                 "description": config[grantable.role].description,
+                "needs_cohorts": grantable.cohorts is not None,
             }
             for grantable in self._grantable(ctx)
+        ]
+
+    def _cohort_rows(
+        self, ctx: PanelContext, chosen: list[str]
+    ) -> list[dict[str, object]]:
+        """One checklist row per cohort the grantor may give any cohort role
+        on, each naming the roles it is offered for."""
+        roles_by_cohort: dict[Cohort, list[str]] = {}
+        for grantable in self._grantable(ctx):
+            for cohort in grantable.cohorts or ():
+                roles_by_cohort.setdefault(cohort, []).append(grantable.role)
+        return [
+            {
+                "pk": str(cohort.pk),
+                "name": cohort.name,
+                "roles": " ".join(roles),
+                "checked": str(cohort.pk) in chosen,
+            }
+            for cohort, roles in sorted(
+                roles_by_cohort.items(), key=lambda item: item[0].name
+            )
         ]
 
     def _role_note(self, ctx: PanelContext) -> str:
@@ -1345,6 +1369,7 @@ class AddMemberAction(PanelAction):
     def _role_step(
         self, ctx: PanelContext, user: User, form: AddMemberForm, status: int = 200
     ) -> HttpResponse:
+        chosen = [str(pk) for pk in form["cohorts"].value() or []]
         return render(
             ctx.request,
             self.template_name,
@@ -1354,6 +1379,7 @@ class AddMemberAction(PanelAction):
                 "form": form,
                 "form_url": self.get_action_url(ctx),
                 "role_cards": self._role_cards(ctx),
+                "cohort_rows": self._cohort_rows(ctx, chosen),
                 "selected_role": form["role"].value() or "",
                 "role_note": self._role_note(ctx),
             },
@@ -1415,9 +1441,37 @@ class AddMemberAction(PanelAction):
         if targets is None:
             return denied_response(ctx, self)
         email = cast(str, form.cleaned_data["email"])
+        held = self._already_held(ctx, matched, role, cohorts)
+        new_cohorts = [cohort for cohort in cohorts if cohort not in held]
+        if cohorts and not new_cohorts:
+            return render(
+                ctx.request,
+                "educator_interface/modal/member_change_refused.html",
+                {
+                    "message": f"{matched.display_name} already holds this role "
+                    "on these cohorts."
+                },
+                status=422,
+            )
+        new_targets: list[Organisation | Cohort] = [*new_cohorts] or targets
         if ctx.request.POST.get("confirmed") != "1":
-            return self._confirmation(ctx, email, matched, role, cohorts)
-        return self._perform(ctx, matched, email, role, targets)
+            return self._confirmation(
+                ctx, email, matched, role, new_cohorts, held, cohorts
+            )
+        return self._perform(ctx, matched, email, role, new_targets)
+
+    def _already_held(
+        self, ctx: PanelContext, user: User, role: str, cohorts: list[Cohort]
+    ) -> list[Cohort]:
+        """The cohorts among `cohorts` that `user` already holds `role` on."""
+        if not cohorts:
+            return []
+        held_keys = set(
+            member_assignments(_organisation(ctx))
+            .filter(user=user, role=role)
+            .values_list("object_id", flat=True)
+        )
+        return [cohort for cohort in cohorts if str(cohort.pk) in held_keys]
 
     def _confirmation(
         self,
@@ -1426,6 +1480,8 @@ class AddMemberAction(PanelAction):
         user: User,
         role: str,
         cohorts: list[Cohort],
+        already_held: list[Cohort],
+        chosen: list[Cohort],
     ) -> HttpResponse:
         organisation = _organisation(ctx)
         site = organisation.site
@@ -1460,6 +1516,12 @@ class AddMemberAction(PanelAction):
             if before
             else []
         )
+        before_pairs = {
+            (assignment.role, assignment.object_id)
+            for assignment in member_assignments(organisation).filter(user=user)
+        }
+        new_keys = [str(cohort.pk) for cohort in cohorts] or [str(organisation.pk)]
+        after_pairs = before_pairs | {(role, key) for key in new_keys}
         return render(
             ctx.request,
             self.template_name,
@@ -1469,7 +1531,9 @@ class AddMemberAction(PanelAction):
                 "form_url": self.get_action_url(ctx),
                 "email": email,
                 "role": role,
-                "cohort_ids": [str(cohort.pk) for cohort in cohorts],
+                "cohort_ids": [str(cohort.pk) for cohort in chosen],
+                "already_held": join_prose([cohort.name for cohort in already_held]),
+                "widening": is_widening(before_pairs, after_pairs),
                 "display_name": role_config.display_name,
                 "description": role_config.description,
                 "scope": (

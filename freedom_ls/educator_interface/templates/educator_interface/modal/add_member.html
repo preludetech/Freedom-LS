@@ -1,9 +1,11 @@
 {% comment %}
 The Add member dialog, one template for every step. Context: step (email,
 no_account, role or confirmation) and form_url; email adds form, role adds
-match, form, role_cards, selected_role and role_note; confirmation adds match,
-email, role, cohort_ids, display_name, description, scope, current_entries,
-after_entries, member_state and site_level.
+match, form, role_cards (key, display_name, description, needs_cohorts),
+cohort_rows (pk, name, roles, checked), selected_role and role_note;
+confirmation adds match, email, role, cohort_ids, display_name, description,
+scope, current_entries, after_entries, already_held, widening, member_state and
+site_level.
 {% endcomment %}
 {% if step == "email" %}
 <c-modal-header>Add a member</c-modal-header>
@@ -48,16 +50,36 @@ after_entries, member_state and site_level.
         </div>
         {% endif %}
         <p>Existing account: {{ match.display_name }}, {{ match.email }}</p>
-        <fieldset class="space-y-2">
-            <legend class="mb-2 font-semibold">Role</legend>
-            {% for card in role_cards %}
-            <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
-                <input type="radio" name="role" value="{{ card.key }}"{% if card.key == selected_role %} checked{% endif %} class="mr-2">
-                <span class="font-semibold">{{ card.display_name }}</span>
-                <span class="mt-1 block text-muted">{{ card.description }}</span>
-            </label>
-            {% endfor %}
-        </fieldset>
+        <div x-data="memberRoleChooser" class="space-y-4">
+            <fieldset class="space-y-2">
+                <legend class="mb-2 font-semibold">Role</legend>
+                {% for card in role_cards %}
+                <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
+                    <input type="radio" name="role" value="{{ card.key }}" data-needs-cohorts="{{ card.needs_cohorts|yesno:'true,false' }}" x-on:change="chooseRole"{% if card.key == selected_role %} checked{% endif %} class="mr-2">
+                    <span class="font-semibold">{{ card.display_name }}</span>
+                    <span class="mt-1 block text-muted">{{ card.description }}</span>
+                </label>
+                {% endfor %}
+            </fieldset>
+            <fieldset x-show="showsCohorts" x-cloak x-transition>
+                <legend class="mb-2 font-semibold">Cohorts</legend>
+                <div x-data="cohortChecklist" x-on:member-role-chosen.window="filter" class="space-y-2">
+                    <div class="flex items-center gap-3">
+                        <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2">
+                        <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
+                    </div>
+                    <div class="max-h-48 space-y-1 overflow-y-auto">
+                        {% for row in cohort_rows %}
+                        <label data-cohort-row data-name="{{ row.name|lower }}" data-roles="{{ row.roles }}" class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
+                            <input type="checkbox" name="cohorts" value="{{ row.pk }}" x-on:change="count"{% if row.checked %} checked{% endif %}>
+                            <span>{{ row.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted">Choosing every cohort is not the same as organisation admin: the role covers only the cohorts chosen, not ones added later.</p>
+                </div>
+            </fieldset>
+        </div>
         {% if role_note %}<p class="text-muted">{{ role_note }}</p>{% endif %}
     </div>
     <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
@@ -79,6 +101,12 @@ after_entries, member_state and site_level.
     <div class="space-y-3 px-6 py-4 text-sm">
         <p>{{ description }}</p>
         <p>Scope: {{ scope }}.</p>
+        {% if already_held %}
+        <p>{{ match.display_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
+        {% endif %}
+        {% if widening %}
+        <p>{{ match.display_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
+        {% endif %}
         {% if current_entries %}
         <div>
             <p class="font-semibold">Now</p>
