@@ -1895,6 +1895,36 @@ def test_the_role_filter_narrows_the_members_page(members_client):
 
 
 @pytest.mark.django_db
+def test_picking_a_role_from_the_default_drops_all_roles_from_its_link(members_client):
+    """From the default "All roles" state, a role's choice link selected only
+    that role instead of keeping "All roles" beside it."""
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    document = _members_document(client, organisation)
+
+    (link,) = [
+        a
+        for a in document.cssselect("details a")
+        if a.text_content().strip() == "Cohort admin"
+    ]
+    assert link.get("href").endswith("?members-role=cohort_admin")
+
+
+@pytest.mark.django_db
+def test_the_mobile_role_select_has_a_single_all_roles_option(members_client):
+    """The mobile Role select listed both a blank "All" and "All roles"."""
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    document = _members_document(client, organisation)
+
+    (select,) = document.cssselect("select[name=members-role]")
+    labels = [o.text_content().strip() for o in select.cssselect("option")]
+    assert labels[:2] == ["All roles", "Organisation admin"]
+
+
+@pytest.mark.django_db
 def test_the_help_paragraph_carries_each_role_description(members_client):
     organisation = OrganisationFactory()
     client = members_client(organisation, "organisation_admin")

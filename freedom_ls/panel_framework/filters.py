@@ -59,6 +59,13 @@ class TableFilter:
         allowed = {value for value, _ in self.get_choices(request)}
         return [value for value in values if value in allowed]
 
+    def toggled(self, values: list[str], value: str) -> list[str]:
+        """The selection a choice link for `value` leads to: `value` removed
+        if selected, appended if not."""
+        if value in values:
+            return [existing for existing in values if existing != value]
+        return [*values, value]
+
     def apply(self, queryset: QuerySet, values: list[str]) -> QuerySet:
         return queryset.filter(**{f"{self.lookup}__in": values})
 

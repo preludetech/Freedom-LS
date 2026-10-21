@@ -156,5 +156,12 @@ class MemberRoleFilter(ChoiceFilter):
             *((role, config[role].display_name) for role in MEMBER_ROLES),
         ]
 
+    def toggled(self, values: list[str], value: str) -> list[str]:
+        # "All roles" is the no-selection state: picking a role replaces it,
+        # and picking it replaces any roles.
+        if value == self.ALL:
+            return [self.ALL]
+        return super().toggled([v for v in values if v != self.ALL], value)
+
     def apply(self, queryset: QuerySet[User], values: list[str]) -> QuerySet[User]:
         return queryset

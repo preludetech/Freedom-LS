@@ -37,7 +37,7 @@ when htmx swaps this fragment in.
                     <label class="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-muted">
                         {{ entry.filter.label }}
                         <select name="{{ query.key }}-{{ entry.filter.key }}">
-                            <option value="">All</option>
+                            {% if not entry.filter.default %}<option value="">All</option>{% endif %}
                             {% for choice in entry.choices %}
                                 <option value="{{ choice.value }}" {% if choice.selected %}selected{% endif %}>
                                     {{ choice.label }}

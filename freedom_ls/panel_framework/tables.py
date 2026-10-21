@@ -420,14 +420,6 @@ class DataTable:
         }
 
 
-def _toggled(values: list[str], value: str) -> list[str]:
-    """`values` with `value` removed if present, appended if not — the
-    selection a filter choice link toggles to."""
-    if value in values:
-        return [existing for existing in values if existing != value]
-    return [*values, value]
-
-
 def _toolbar_entry(
     request: HttpRequest, query: TableQuery, table_filter: TableFilter
 ) -> dict[str, object]:
@@ -457,7 +449,7 @@ def _toolbar_entry(
                 "label": label,
                 "selected": value in values,
                 "changes": query.filter_changes(
-                    table_filter.key, _toggled(values, value)
+                    table_filter.key, table_filter.toggled(values, value)
                 ),
             }
             for value, label in choices
