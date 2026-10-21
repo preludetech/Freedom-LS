@@ -3211,9 +3211,6 @@ def test_a_site_admin_with_nothing_to_grant_sees_no_add_member_trigger(
     assert "/members/__actions/add_member" not in html
 
 
-# add member on cohorts
-
-
 def _cohort(organisation: Organisation, **kwargs: str) -> Cohort:
     return cast(Cohort, CohortFactory(organisation=organisation, **kwargs))
 
