@@ -5,6 +5,34 @@
  * alpine-components.js script.
  */
 
+// An unmarked 403 or 404 on an htmx request is a full page: the user has lost
+// access to what they are looking at, so the page reloads onto the page a
+// fresh visit shows instead of a click that does nothing. This belongs to the
+// panel framework's pages alone: a learner page with a half-filled form must
+// keep what was typed, so the base script never reloads. Only a real user
+// action reloads, so polling and scripted refreshes can never loop.
+// #interface-main has its own fallback, and a container that draws its own
+// error state (data-htmx-owns-errors) keeps doing so.
+document.addEventListener("htmx:beforeSwap", (event) => {
+    const status = event.detail.xhr.status;
+    if (status !== 403 && status !== 404) return;
+    const body = event.detail.xhr.responseText || "";
+    if (body.includes("data-htmx-swap-error")) return;
+    const trigger =
+        event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
+    const target = event.detail.target;
+    if (
+        trigger &&
+        trigger.isTrusted &&
+        target &&
+        target.id !== "interface-main" &&
+        !target.closest("[data-htmx-owns-errors]")
+    ) {
+        event.detail.shouldSwap = false;
+        window.location.reload();
+    }
+});
+
 // Adds a listener and records it alongside its target, type and options, so
 // a component's destroy() can remove every listener it registered without
 // hand-listing them a second time. options is passed through to both calls
