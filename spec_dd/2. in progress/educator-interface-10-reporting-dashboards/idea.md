@@ -24,7 +24,7 @@ The cohort report (`freedom_ls/reports/`) has proved useful. It gathers, per coh
 
 **Statuses.** The attention flags are the report's: no activity, failed latest quiz, inactive. The status badge vocabulary in spec 4 maps to them plus not started, in progress and complete. One definition, in `reports`, used by the dashboard, the lists and the badges.
 
-**Downloads.** Generate the cohort report PDF from the cohort page and download it there, reusing `GeneratedReport`, the existing task and the existing `can_view_cohort` gate. The one-in-flight-per-cohort rule is surfaced as "a report is being generated". Roster export (members plus the educators with grants, as CSV) through spec 2's export hook. The admin route stays.
+**Downloads.** Generate the cohort report PDF from the cohort page and download it there, reusing `GeneratedReport`, the existing task and the existing `can_view_cohort` gate. The one-in-flight-per-cohort rule is surfaced as "a report is being generated". Roster export (the cohort's learners plus the organisation members who hold a role on it, as CSV) through spec 2's export hook. The admin route stays.
 
 **Permissions.** From the spec 5 matrix. Cohort admins and cohort viewers see dashboards and reports for their assigned cohorts only; the organisation dashboard aggregates only what they may see.
 

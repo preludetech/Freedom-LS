@@ -10,7 +10,7 @@ A staff-readable record of who did what to whom in an organisation. One append-o
 
 ## Why
 
-Five of the seven comparable systems have one, and the earlier permission research recommended it. FLS has none. The role assignment utilities carry six `# TODO: AuditLog entry` comments, `system_admin` has a `view_audit_log` permission pencilled in as future, and the only audit-shaped records are `LegalConsent`, `WebhookEvent` and the `assigned_by` fields. Once organisation admins can deactivate learners and remove educators from a screen, "who did this" is a question someone will ask.
+Five of the seven comparable systems have one, and the earlier permission research recommended it. FLS has none. The role assignment utilities carry six `# TODO: AuditLog entry` comments, `system_admin` has a `view_audit_log` permission pencilled in as future, and the only audit-shaped records are `LegalConsent`, `WebhookEvent` and the `assigned_by` fields. Once organisation admins can deactivate learners and remove members from a screen, "who did this" is a question someone will ask.
 
 The product owner chose to build this as its own spec after the actions exist, rather than fold a model into each of specs 6 to 9, so those specs could run in parallel without sharing a model.
 

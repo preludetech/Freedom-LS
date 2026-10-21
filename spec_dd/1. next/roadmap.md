@@ -39,13 +39,14 @@ idea assumes you have.
 
 The source idea asks for three things. A panel framework that is complete and self-contained. An
 educator interface where organisation admins administer learners, cohorts, course registrations
-and other educators. Reporting on learner progress built on the cohort report machinery. That is
-too much for one SDD run, so it is twelve.
+and the organisation's members (everyone who holds a role in it, whether or not they teach).
+Reporting on learner progress built on the cohort report machinery. That is too much for one SDD
+run, so it is twelve.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 8 | `educator-interface-8-bulk-operations` | CSV import as a page flow with a preview and per-row outcome labels. Multi-select bulk actions on the learner and cohort tables. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration` | next |
-| 9 | `educator-interface-9-educator-administration` | An educators section. Add, remove and scope cohort admins and cohort viewers; add and remove organisation admins; role descriptions; confirmation on escalation and removal. | `educator-interface-5-permissions`, `educator-interface-7-learner-administration` | in progress |
+| 9 | `educator-interface-9-educator-administration` | A members section (everyone who holds a role in an organisation, whether or not they teach). Add, remove and scope cohort admins and cohort viewers; add and remove organisation admins; role descriptions; confirmation on escalation and removal. | `educator-interface-5-permissions`, `educator-interface-7-learner-administration` | in progress |
 | 10 | `educator-interface-10-reporting-dashboards` | Organisation dashboard as a base view, the cohort report on screen from the existing gathered data, a learner drill-down that replaces the deleted matrix, PDF generation and download from the interface, roster CSV. | `educator-interface-2-panel-framework-tables`, `educator-interface-4-panel-framework-components` | in progress |
 | 11 | `educator-interface-11-audit-log` | An append-only audit log recorded by the role utilities and every action in specs 6 to 9, shown per organisation, learner and cohort. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration`, `educator-interface-9-educator-administration` | next |
 | 12 | `educator-interface-12-docs-and-polish` | Product doc and an `fls-dev` skill for the panel framework, the educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
@@ -53,7 +54,7 @@ too much for one SDD run, so it is twelve.
 ```
 1 core ──┬── 2 tables ──────┬── 6 cohort admin ──┬── 8 bulk ──────────┐
          ├── 3 dialogs ─────┤                    │                    │
-         ├── 4 components ──┼── 7 learner admin ─┼── 9 educator admin ┼── 11 audit ── 12 docs and polish
+         ├── 4 components ──┼── 7 learner admin ─┼── 9 member admin ──┼── 11 audit ── 12 docs and polish
          └── 5 permissions ─┘                    │                    │
                             └── 10 reporting ────┘────────────────────┘
 ```

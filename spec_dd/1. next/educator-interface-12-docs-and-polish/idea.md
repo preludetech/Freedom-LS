@@ -18,7 +18,7 @@ Each of the eleven specs documents its own change, but nobody has read the resul
 
 **An `fls-dev` skill.** `claude_plugins/fls-dev/skills/panel-framework/` so an agent building a section reads the contract instead of guessing from the educator interface. It follows the shape of the existing skills. The `alpine-js` skill's component inventory is corrected to what is registered.
 
-**Product doc.** `docs/product/educator-interface.md` rewritten as one document, with fresh screenshots from the QA folders, in the order an educator meets the interface: dashboard, learners, cohorts, courses, educators, history, reports. `docs/product/roadmap.md` loses the entries this effort closed.
+**Product doc.** `docs/product/educator-interface.md` rewritten as one document, with fresh screenshots from the QA folders, in the order an educator meets the interface: dashboard, learners, cohorts, courses, members, history, reports. `docs/product/roadmap.md` loses the entries this effort closed.
 
 **Polish pass.** Every screen at 390 wide and 1440 wide, in the default theme and in dark mode, matched against the mockups for layout and density. Keyboard through every action. A screen reader through the quick view, the modal and the tables. Fix what is found; a list of what is deliberately left goes in the spec.
 
