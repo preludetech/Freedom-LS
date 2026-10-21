@@ -138,6 +138,7 @@ class StubCreateAction(CreateInstanceAction):
 
 class StubDataTable(DataTable):
     search_fields = ["name"]
+    default_sort = "name"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:

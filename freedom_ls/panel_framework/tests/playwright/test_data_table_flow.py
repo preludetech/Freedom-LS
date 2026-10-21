@@ -72,7 +72,8 @@ def test_data_table_interaction(
     page.goto(f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/")
     expect_no_nested_panel(page)
     # Each click waits for its pushed URL so the next one hits the swapped link.
-    for sort_param in ("name", "-name", "name"):
+    # Name is the table's default sort, so the first click flips to descending.
+    for sort_param in ("-name", "name", "-name"):
         page.get_by_role("link", name="Name").click()
         expect(page).to_have_url(re.compile(rf"stub-sort={sort_param}$"))
         expect_no_nested_panel(page)
@@ -93,7 +94,7 @@ def test_data_table_interaction(
     expect(sheet).not_to_have_attribute("open", re.compile(".*"))
 
     page.get_by_role("link", name="Name").click()
-    expect(page).to_have_url(re.compile(r"stubs-sort=name"))
+    expect(page).to_have_url(re.compile(r"stubs-sort=-name"))
     expect(page.locator("#stubs-table [data-table-anchor]")).to_be_focused()
     expect(page.locator("#stubs-search input[name='stubs-sort']")).to_have_count(1)
     expect(page.locator("[data-panel]")).to_have_count(1)
@@ -102,19 +103,19 @@ def test_data_table_interaction(
 
     # Paging keeps the sort param and does not nest frames.
     page2_link = _page_link(page, 2)
-    expect(page2_link).to_have_attribute("href", re.compile(r"stubs-sort=name"))
+    expect(page2_link).to_have_attribute("href", re.compile(r"stubs-sort=-name"))
     expect(page2_link).to_have_attribute("href", re.compile(r"stubs-page=2"))
     page2_link.click()
     expect(page).to_have_url(re.compile(r"stubs-page=2"))
-    expect(page).to_have_url(re.compile(r"stubs-sort=name"))
+    expect(page).to_have_url(re.compile(r"stubs-sort=-name"))
     expect_no_nested_panel(page, name="")
 
     # Back restores the sorted, unpaged table in the URL and the rows.
     page.go_back()
-    expect(page).to_have_url(re.compile(r"stubs-sort=name"))
+    expect(page).to_have_url(re.compile(r"stubs-sort=-name"))
     expect(page).not_to_have_url(re.compile(r"stubs-page"))
     rows = page.locator("#stubs-table tbody tr")
-    expect(rows.first).to_contain_text("row-00")
+    expect(rows.first).to_contain_text(f"row-{PAGE_SIZE + 4:02d}")
 
     # Search narrows the table while a sort is active.
     search = page.locator("#stubs-q")

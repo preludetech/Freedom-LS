@@ -24,10 +24,18 @@ class TableQuery:
     sort: str = ""  # a sort_field, "-" prefix for descending
     page: str = "1"  # raw; Paginator.get_page clamps it
     filters: dict[str, list[str]] = field(default_factory=dict)
+    default_sort: str = ""  # the table's declared default, same shape as sort
 
     def param(self, name: str) -> str:
         """This table's own name for a bare parameter name, e.g. "page"."""
         return f"{self.key}-{name}"
+
+    @property
+    def effective_sort(self) -> str:
+        """The sort the rows are in: the request's, or the table's default.
+        Only `sort` travels in URLs; the default is already the queryset's
+        own order."""
+        return self.sort or self.default_sort
 
     def to_params(self) -> dict[str, list[str]]:
         """This query's current state as prefixed GET parameters.
@@ -53,10 +61,10 @@ class TableQuery:
 
     def sort_changes(self, column: Column) -> dict[str, object]:
         """The `{% querystring %}` changes that sort by `column`, flipping
-        its direction when it is already the sorted column. Sorting always
-        returns to page 1, since the current page may not exist in the new
-        order."""
-        currently_ascending = self.sort == column.sort_field
+        its direction when it is already the sorted column, the table's
+        default sort included. Sorting always returns to page 1, since the
+        current page may not exist in the new order."""
+        currently_ascending = self.effective_sort == column.sort_field
         next_sort = (
             f"-{column.sort_field}" if currently_ascending else column.sort_field
         )
@@ -206,6 +214,12 @@ class DataTable:
     #: region_id), so it can tell "nothing yet" from "nothing matches" and offer
     #: the way back.
     empty_state_template: str | None = None
+    #: The `sort_field` (with a leading "-" for descending) that the queryset's
+    #: own ordering already applies. With no sort in the URL that column's
+    #: header reads as sorted this way and its first click flips the direction,
+    #: instead of repeating the order already on screen. Empty means no column
+    #: reads as sorted until one is clicked.
+    default_sort: str = ""
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -266,7 +280,14 @@ class DataTable:
             )
             if validated:
                 filters[table_filter.key] = validated
-        return TableQuery(key=key, search=search, sort=sort, page=page, filters=filters)
+        return TableQuery(
+            key=key,
+            search=search,
+            sort=sort,
+            page=page,
+            filters=filters,
+            default_sort=cls.default_sort,
+        )
 
     @classmethod
     def filter_queryset(
@@ -324,9 +345,9 @@ class DataTable:
         page_obj = cls.get_rows(request, queryset, query)
 
         def _sort_state(column: Column) -> Literal["asc", "desc", ""]:
-            if query.sort == column.sort_field:
+            if query.effective_sort == column.sort_field:
                 return "asc"
-            if query.sort == f"-{column.sort_field}":
+            if query.effective_sort == f"-{column.sort_field}":
                 return "desc"
             return ""
 

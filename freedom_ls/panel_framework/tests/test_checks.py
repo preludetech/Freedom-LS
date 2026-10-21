@@ -10,6 +10,7 @@ import pytest
 from django.core.management import call_command
 
 from freedom_ls.panel_framework.checks import (
+    default_sort_errors,
     filter_key_errors,
     panel_errors,
     table_key_errors,
@@ -241,6 +242,40 @@ def test_reserved_filter_key_raises_e007() -> None:
     assert len(errors) == 1
     assert errors[0].id == "freedom_ls_panel_framework.E007"
     assert errors[0].obj is ReservedFilterTablePanel
+
+
+def test_a_default_sort_on_a_field_no_column_sorts_by_raises_e008() -> None:
+    # Arrange
+    class BadDefaultSortDataTable(StubDataTable):
+        default_sort = "kind"
+
+    class BadDefaultSortTablePanel(DataTablePanel):
+        data_table = BadDefaultSortDataTable
+        table_key = "bad_default_sort"
+
+    # Act
+    errors = default_sort_errors(BadDefaultSortTablePanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E008"
+    assert errors[0].obj is BadDefaultSortTablePanel
+
+
+def test_a_descending_default_sort_on_a_sortable_column_raises_no_error() -> None:
+    # Arrange
+    class DescendingDefaultSortDataTable(StubDataTable):
+        default_sort = "-name"
+
+    class DescendingDefaultSortTablePanel(DataTablePanel):
+        data_table = DescendingDefaultSortDataTable
+        table_key = "descending_default_sort"
+
+    # Act
+    errors = default_sort_errors(DescendingDefaultSortTablePanel)
+
+    # Assert
+    assert errors == []
 
 
 def test_bad_filter_key_format_raises_e007() -> None:

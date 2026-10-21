@@ -370,7 +370,7 @@ def test_sort_link_resets_page(mock_site_context: Site) -> None:
     sort_links = [
         link
         for link in table_a.cssselect("a[href]")
-        if "a-sort=name" in link.get("href", "")
+        if "a-sort=-name" in link.get("href", "")
     ]
     assert sort_links
     for link in sort_links:
@@ -391,7 +391,7 @@ def test_search_text_is_url_encoded(mock_site_context: Site) -> None:
     (sort_link,) = [
         link
         for link in document.cssselect("a[href]")
-        if "stub-sort=name" in link.get("href", "")
+        if "stub-sort=-name" in link.get("href", "")
     ]
     href = sort_link.get("href")
     assert "stub-q=a" in href
@@ -477,8 +477,8 @@ def test_region_response_includes_announcement(mock_site_context: Site) -> None:
     ).content.decode()
 
     assert 'hx-swap-oob="innerHTML:#scope-announcer"' in html
-    assert f"Showing 1\u2013{_PAGE_SIZE} of {_ROWS}" in html
-    assert ", sorted by" not in html
+    # The stub names Name as its default sort, so it reads as sorted from the start.
+    assert f"Showing 1\u2013{_PAGE_SIZE} of {_ROWS}, sorted by Name" in html
 
 
 def test_region_response_announcement_includes_sort(mock_site_context: Site) -> None:
@@ -939,6 +939,113 @@ def test_a_sort_on_the_default_field_does_not_repeat_it(
     )
 
     assert rows.query.order_by == ("-name", "pk")
+
+
+# A table that names its default sort column shows that column as sorted
+# before any sort is in the URL, so its first click flips the direction
+# instead of repeating the order already on screen.
+
+
+class _DefaultSortedDataTable(StubDataTable):
+    default_sort = "name"
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            *StubDataTable.get_columns(),
+            Column(
+                header="SAT score",
+                template="cotton/data-table-cells/text.html",
+                attr="sat_score",
+                sortable=True,
+            ),
+        ]
+
+
+class _DefaultSortedTablePanel(DataTablePanel):
+    title = "Default sorted"
+    data_table = _DefaultSortedDataTable
+    table_key = "defsort"
+
+
+def _header_states(html: str) -> dict[str, str]:
+    """Each sortable header's text mapped to the sort its link applies."""
+    document = lxml.html.fromstring(html)
+    return {
+        link.text_content().strip(): link.get("href")
+        for link in document.cssselect("thead a[href]")
+    }
+
+
+def test_the_default_sort_counts_as_the_effective_sort_but_not_as_a_parameter() -> None:
+    request = RequestFactory().get("/")
+
+    query = _DefaultSortedDataTable.parse_query(request, "defsort")
+
+    assert query.effective_sort == "name"
+    assert query.sort == ""
+    assert "defsort-sort" not in query.to_params()
+
+
+def test_with_no_sort_the_default_column_links_to_descending(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-x")
+    panel = _bind_table_panel(_DefaultSortedTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "defsort-sort=-name" in _header_states(html)["Name"]
+
+
+def test_with_no_sort_another_column_still_links_to_ascending(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-x")
+    panel = _bind_table_panel(_DefaultSortedTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "defsort-sort=sat_score" in _header_states(html)["SAT score"]
+
+
+def test_with_no_sort_the_default_column_reads_as_sorted(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-x")
+    panel = _bind_table_panel(_DefaultSortedTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "Sorted by Name" in html
+
+
+def test_an_explicit_descending_sort_on_the_default_column_links_back_to_ascending(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-x")
+    panel = _DefaultSortedTablePanel(
+        PanelContext(
+            request=RequestFactory().get("/p", {"defsort-sort": "-name"}),
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "defsort-sort=name" in _header_states(html)["Name"]
 
 
 class _DefaultedFilterTable(StubDataTable):

@@ -275,6 +275,7 @@ def _registration_columns() -> list[Column]:
 
 class CohortDataTable(DataTable):
     search_fields = ["name"]
+    default_sort = "name"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -424,6 +425,7 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
 
 class LearnerDataTable(DataTable):
     search_fields = ["user__first_name", "user__last_name", "user__email"]
+    default_sort = "user__first_name"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -1203,6 +1205,8 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 
 class CourseLearnerRegistrationDataTable(DataTable):
+    default_sort = "learner__user__first_name"
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         # Courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
@@ -1276,6 +1280,7 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 class MemberDataTable(DataTable):
     search_fields = ["first_name", "last_name", "email"]
+    default_sort = "first_name"
     empty_state_template = "educator_interface/partials/members_empty.html"
 
     @staticmethod

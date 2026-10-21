@@ -1968,6 +1968,18 @@ def test_the_only_member_line_goes_once_a_second_member_exists(members_client):
 
 
 @pytest.mark.django_db
+def test_the_member_header_first_links_to_descending_first_name(members_client):
+    """The list already arrives by first name, so the first click flips it."""
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    document = _get_document(client, _interface_url(organisation.slug, "members"))
+
+    (link,) = document.xpath("//thead//a[normalize-space()='Member']")
+    assert "members-sort=-first_name" in link.get("href")
+
+
+@pytest.mark.django_db
 def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_client):
     organisation = OrganisationFactory()
     client = members_client(organisation, "organisation_admin")

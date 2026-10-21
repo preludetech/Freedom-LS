@@ -832,6 +832,8 @@ class TestListWithoutInstancePages:
 
 
 class CellContextTable(StubDataTable):
+    default_sort = ""  # the stub's sortable Name column is not among these
+
     @staticmethod
     def get_columns() -> list[Column]:
         return [
@@ -957,6 +959,7 @@ class _RowThingAction(_FooterThingAction):
 
 
 class RowActionsTable(StubDataTable):
+    default_sort = ""  # the stub's sortable Name column is not among these
     empty_state_template = "panel_framework/test_header_actions_empty.html"
 
     @staticmethod

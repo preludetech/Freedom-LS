@@ -41,9 +41,11 @@ def check_panels(
         errors.extend(panel_errors(panel_class))
         errors.extend(table_key_errors(panel_class))
         errors.extend(filter_key_errors(panel_class))
+        errors.extend(default_sort_errors(panel_class))
     for config_class in _all_subclasses(ListViewConfig):
         errors.extend(table_key_errors(config_class))
         errors.extend(filter_key_errors(config_class))
+        errors.extend(default_sort_errors(config_class))
     return errors
 
 
@@ -234,3 +236,30 @@ def filter_key_errors(cls: type) -> list[CheckMessage]:
             )
         )
     return errors
+
+
+def default_sort_errors(cls: type) -> list[CheckMessage]:
+    """Validate the `default_sort` of the `DataTable` reachable from `cls`:
+    it must name a field one of the table's sortable columns sorts by, or a
+    header would never read as sorted and the first click would repeat the
+    order on screen."""
+    data_table = _reachable_data_table(cls)
+    if data_table is None or not data_table.default_sort:
+        return []
+    sort_field = data_table.default_sort.removeprefix("-")
+    sortable_fields = {
+        column.sort_field for column in data_table.get_columns() if column.sortable
+    }
+    if sort_field in sortable_fields:
+        return []
+    return [
+        Error(
+            f"{cls.__name__}'s {data_table.__name__} declares default_sort "
+            f"'{data_table.default_sort}', but no sortable column sorts by "
+            f"'{sort_field}'.",
+            hint="Use the sort_field of a sortable column, with a leading '-' "
+            "for descending.",
+            id="freedom_ls_panel_framework.E008",
+            obj=cls,
+        )
+    ]
