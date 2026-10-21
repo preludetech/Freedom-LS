@@ -1230,6 +1230,16 @@ def _organisation(ctx: PanelContext) -> Organisation:
     return cast("OrganisationScopedRequest", ctx.request).organisation
 
 
+def _refused(ctx: PanelContext, message: str) -> HttpResponse:
+    """The 422 message a member dialog shows in place of its body."""
+    return render(
+        ctx.request,
+        "educator_interface/modal/member_change_refused.html",
+        {"message": message},
+        status=422,
+    )
+
+
 def refusal_response(
     ctx: PanelContext, action: PanelAction, refused: RoleChangeRefused, name: str
 ) -> HttpResponse:
@@ -1237,12 +1247,7 @@ def refusal_response(
     a missing capability, else a 422 message inside the dialog."""
     if refused.reason == RefusalReason.NOT_PERMITTED:
         return denied_response(ctx, action)
-    return render(
-        ctx.request,
-        "educator_interface/modal/member_change_refused.html",
-        {"message": REFUSAL_MESSAGES[refused.reason].format(name=name)},
-        status=422,
-    )
+    return _refused(ctx, REFUSAL_MESSAGES[refused.reason].format(name=name))
 
 
 def _member_name(user: User | None, email: str) -> str:
@@ -1489,14 +1494,10 @@ class AddMemberAction(PanelAction):
         )
         new_cohorts = [cohort for cohort in cohorts if cohort not in held]
         if cohorts and not new_cohorts:
-            return render(
-                ctx.request,
-                "educator_interface/modal/member_change_refused.html",
-                {
-                    "message": f"{_member_name(matched, email)} already holds "
-                    "this role on these cohorts."
-                },
-                status=422,
+            return _refused(
+                ctx,
+                f"{_member_name(matched, email)} already holds this role on "
+                "these cohorts.",
             )
         new_targets: list[Organisation | Cohort] = [*new_cohorts] or targets
         if ctx.request.POST.get("confirmed") != "1":
@@ -1535,12 +1536,7 @@ class AddMemberAction(PanelAction):
         name = _member_name(user, email)
         before = [] if user is None else current_role_entries(user, organisation)
         if role == "organisation_admin" and any(entry.role == role for entry in before):
-            return render(
-                ctx.request,
-                "educator_interface/modal/member_change_refused.html",
-                {"message": f"{name} is already an organisation admin here."},
-                status=422,
-            )
+            return _refused(ctx, f"{name} is already an organisation admin here.")
         member = (
             None
             if user is None
@@ -1830,20 +1826,10 @@ class ChangeCohortsAction(MemberRoleAction):
         entry = self._entry(ctx, user)
         chosen = self._chosen(ctx, entry)
         if user == grantor:
-            return render(
-                ctx.request,
-                "educator_interface/modal/member_change_refused.html",
-                {"message": REFUSAL_MESSAGES[RefusalReason.SELF]},
-                status=422,
-            )
+            return _refused(ctx, REFUSAL_MESSAGES[RefusalReason.SELF])
         plan = self._plan(ctx, entry, chosen)
         if not plan.added and not plan.removed:
-            return render(
-                ctx.request,
-                "educator_interface/modal/member_change_refused.html",
-                {"message": "Nothing changed. Tick or untick a cohort first."},
-                status=422,
-            )
+            return _refused(ctx, "Nothing changed. Tick or untick a cohort first.")
         if ctx.request.POST.get("confirmed") != "1":
             return self._confirmation(ctx, user, entry, chosen, plan)
         try:
@@ -1899,7 +1885,6 @@ class MemberStateAction(PanelAction):
     renders_in_footer = False
     capability = CHANGE_MEMBER
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    target_state: bool
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
@@ -1913,7 +1898,6 @@ class MemberStateAction(PanelAction):
 class SuspendMemberAction(MemberStateAction):
     label = "Suspend"
     action_name = "suspend"
-    target_state = False
     template_name = "educator_interface/modal/suspend_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
@@ -1945,7 +1929,6 @@ class SuspendMemberAction(MemberStateAction):
 class ReactivateMemberAction(MemberStateAction):
     label = "Reactivate"
     action_name = "reactivate"
-    target_state = True
     template_name = "educator_interface/modal/reactivate_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
