@@ -193,13 +193,13 @@ Manifestations: 9.1-9.2 (desktop), 9.4 (desktop).
 | Bug | Status |
 |---|---|
 | B1 | **FIXED** (commit: 4f5c55c6) — Role filter keeps 'All roles' selected beside a picked role, so picking a role does not filter |
-| B2 | **UNRESOLVED** — 'Clear filters' in the members empty state leaves the old search text in the search box (reason: fix budget exhausted this run) |
-| B3 | **UNRESOLVED** — First click on the Member header sorts ascending, which looks identical to the default order (reason: plan and the shared table sort convention disagree; which is intended is a product decision) |
+| B2 | **FIXED** (commit: 92e6daf7) — 'Clear filters' in the members empty state leaves the old search text in the search box; the cause was the search input's hx-preserve keeping the old element, so panel_framework now copies the incoming value onto the kept input for every swap the search form did not start |
+| B3 | **FIXED** (commit: 96dceff0) — First click on the Member header sorts ascending, which looks identical to the default order; a table now names its default sort column, so that header reads as sorted and its first click flips to descending (Members, Learners, Cohorts and course registrations) |
 | B4 | **FIXED** (commit: bfd66e9f) — Adding or removing a member's role returns 500 in the dev server (no SITE_ID); fixed mid-run at the user's request although it touches the permissions code |
 | B5 | **FIXED** (commit: d3ab8df1) — Remove confirmation's 'They lose' sentence is ungrammatical and truncates the scope |
-| B6 | **UNRESOLVED** — Member row actions are under 44px tall at 375 wide (reason: fix budget exhausted this run) |
-| B7 | **UNRESOLVED** — Cohort-preset Add member dialog does not name the cohort and tells an organisation admin 'You can only give roles at or below your own.' (reason: spec R6 and the test plan disagree on the title and the 'at or below' line) |
-| B8 | **UNRESOLVED** — After losing access to the organisation, htmx clicks and open dialogs silently do nothing (reason: security-adjacent access-denial path; needs a decision on how lost access is surfaced to htmx requests across the interface) |
+| B6 | **FIXED** (commit: 2f03199c) — Member row actions are under 44px tall at 375 wide; card buttons, the phone Filter and Sort buttons and the pager controls are 44px below md, with Playwright checks at 375 |
+| B7 | **FIXED** (commit: 4df97a13) — Cohort-preset Add member dialog does not name the cohort and tells an organisation admin 'You can only give roles at or below your own.'; the dialog is titled "Add a member to {cohort}" and the line shows only for a role that dialog could offer (spec R6 and R7 updated) |
+| B8 | **FIXED** (commit: 0b94f646) — After losing access to the organisation, htmx clicks and open dialogs silently do nothing; the shared htmx listener now reloads the page on an unmarked 403/404 from a user action, landing on the not-found page a fresh visit shows, while marked fragments keep swapping in place |
 
 ## General notes
 
@@ -215,4 +215,4 @@ Manifestations: 9.1-9.2 (desktop), 9.4 (desktop).
   - The tampered-cohort error echoes the raw UUID ("Select a valid choice. <uuid> is not one of the available choices.").
 - The plan's section 2.13 "Eve" search matches Vee Eleven / Vee Seven by substring (expected). Section 3.8 scope shows "Cohort A, Cohort B +1 more" per the spec's two-names rule rather than all three names as the plan wrote.
 
-status: ok · reason: 8 bugs — 3 fixed, 5 unresolved; report rendered, screenshots verified
+status: ok · reason: 8 bugs — 3 fixed in the run, the remaining 5 fixed afterwards (TDD, one commit each); report rendered, screenshots verified
