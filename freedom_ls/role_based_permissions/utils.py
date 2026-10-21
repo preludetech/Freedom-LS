@@ -63,6 +63,14 @@ class SyncResult(TypedDict):
     removed: set[str]
 
 
+def _site_name_for(obj: Model) -> str | None:
+    """The name of the site `obj` belongs to, or None when it has none."""
+    if isinstance(obj, Site):
+        return obj.name
+    site = getattr(obj, "site", None)
+    return site.name if isinstance(site, Site) else None
+
+
 def check_role_name_in_config(role_name: str, site_name: str | None = None) -> None:
     """Raise ValueError if role_name is not in the role config.
 
@@ -175,8 +183,8 @@ def sync_user_object_permissions(
 
     Returns a dict describing the changes made (or that would be made).
     """
-    if site_name is None and isinstance(obj, Site):
-        site_name = obj.name
+    if site_name is None:
+        site_name = _site_name_for(obj)
     config = get_role_config(site_name)
 
     if isinstance(obj, Site):
@@ -249,8 +257,9 @@ def assign_object_role(
 
     Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
     """
-    check_role_name_in_config(role)
-    _check_assignment_scope(role, "object")
+    site_name = _site_name_for(target)
+    check_role_name_in_config(role, site_name=site_name)
+    _check_assignment_scope(role, "object", site_name=site_name)
     ct = ContentType.objects.get_for_model(target)
     assignment: ObjectRoleAssignment
     assignment, created = ObjectRoleAssignment.objects.get_or_create(
@@ -280,7 +289,7 @@ def remove_object_role(
 
     Deactivates the ObjectRoleAssignment, then resyncs guardian permissions.
     """
-    check_role_name_in_config(role)
+    check_role_name_in_config(role, site_name=_site_name_for(target))
     ct = ContentType.objects.get_for_model(target)
     ObjectRoleAssignment.objects.filter(
         user=user,

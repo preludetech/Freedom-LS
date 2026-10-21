@@ -11,6 +11,7 @@ from pytest_mock import MockerFixture
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.factories import CohortFactory
@@ -69,6 +70,46 @@ class TestCheckRoleNameInConfig:
         """Unknown role raises ValueError."""
         with pytest.raises(ValueError, match="Unknown role"):
             check_role_name_in_config("nonexistent_role")
+
+
+@pytest.fixture
+def no_site_id(mocker: MockerFixture) -> None:
+    """Make the ambient-site lookup fail as it does when SITE_ID is unset."""
+    mocker.patch(
+        "django.contrib.sites.models.SiteManager.get_current",
+        side_effect=ImproperlyConfigured("SITE_ID not set"),
+    )
+
+
+class TestObjectRolesWithoutSiteId:
+    """Object roles resolve their config from the target's site, not SITE_ID."""
+
+    @pytest.mark.django_db
+    def test_assign_object_role_works_without_site_id(self, no_site_id: None) -> None:
+        """Assigning an object role used to crash when SITE_ID was unset."""
+        user = UserFactory()
+        cohort = CohortFactory()
+
+        assignment = assign_object_role(user, cohort, "cohort_admin")
+
+        assert assignment.is_active is True
+
+    @pytest.mark.django_db
+    def test_remove_object_role_works_without_site_id(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Removing an object role used to crash when SITE_ID was unset."""
+        user = UserFactory()
+        cohort = CohortFactory()
+        assign_object_role(user, cohort, "cohort_admin")
+        mocker.patch(
+            "django.contrib.sites.models.SiteManager.get_current",
+            side_effect=ImproperlyConfigured("SITE_ID not set"),
+        )
+
+        remove_object_role(user, cohort, "cohort_admin")
+
+        assert "view_cohort" not in get_perms(user, cohort)
 
 
 class TestAssignObjectRole:
