@@ -98,3 +98,58 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     page.set_viewport_size(QA_VIEWPORTS[0])
     page.goto(interface_url(live_server, organisation.slug, "members"))
     expect(main.locator("[data-card-primary-line]").first).to_be_visible()
+
+
+def test_clear_filters_after_a_no_match_search_empties_the_search_box(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The search box survives the region swap, so the server's empty value
+    has to reach it; otherwise the box contradicts the restored list."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, organisation.slug, "members"))
+    main = page.locator("#main-content")
+    search = main.locator("#members-q")
+    search.fill("zzz")
+    # The empty state renders once for the table and once for the card list.
+    expect(main.get_by_text("No members match.").first).to_be_visible()
+
+    main.get_by_role("link", name="Clear filters", exact=True).first.click()
+
+    expect(main.get_by_text("No members match.")).to_have_count(0)
+    expect(search).to_have_value("")
+
+
+def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+    viewer = UserFactory(
+        email="viewer@example.com", first_name="Vee", last_name="Viewer"
+    )
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(interface_url(live_server, organisation.slug, "members"))
+    main = page.locator("#main-content")
+    card = main.locator("li").filter(has_text="Vee Viewer")
+    expect(card).to_be_visible()
+
+    for control in (
+        card.get_by_role("button", name="Remove", exact=True),
+        card.get_by_role("button", name="Suspend", exact=True),
+        main.get_by_role("button", name="Filter"),
+        main.get_by_role("button", name="Sort"),
+    ):
+        box = control.bounding_box()
+        assert box is not None
+        assert box["height"] >= 44, f"{control} is {box['height']}px high"

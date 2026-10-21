@@ -663,3 +663,24 @@ document.addEventListener("htmx:afterSwap", () => {
     input.focus();
     input.setSelectionRange(start, end);
 });
+
+// The kept search input (hx-preserve) outlives the value the server rendered
+// for it, so a search the server has dropped, such as after the empty state's
+// "Clear filters", would stay on screen and re-apply on the next keystroke.
+// When the swap was not started by the search form itself, copy the incoming
+// input's value onto the kept element. While the user is typing, the form's
+// own value stands: the response may lag behind what they have typed since.
+document.addEventListener("htmx:beforeSwap", (event) => {
+    const target = event.detail.target;
+    if (!event.detail.shouldSwap || !target || !target.hasAttribute("data-table-region")) {
+        return;
+    }
+    const source = event.detail.requestConfig && event.detail.requestConfig.elt;
+    if (source && source.matches("form[id$='-search']")) return;
+    const kept = target.querySelector("input[type='search'][hx-preserve]");
+    if (!kept) return;
+    const incoming = new DOMParser()
+        .parseFromString(event.detail.serverResponse, "text/html")
+        .getElementById(kept.id);
+    if (incoming) kept.value = incoming.getAttribute("value") || "";
+});
