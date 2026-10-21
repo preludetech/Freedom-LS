@@ -194,6 +194,8 @@ class AddMemberForm(forms.Form):
     """
 
     email = forms.EmailField(widget=forms.HiddenInput)
+    first_name = forms.CharField(max_length=150, required=False, label="First name")
+    last_name = forms.CharField(max_length=150, required=False, label="Last name")
     role = forms.ChoiceField(widget=forms.RadioSelect)
     cohorts = forms.ModelMultipleChoiceField(
         queryset=Cohort.objects.none(),
@@ -208,8 +210,12 @@ class AddMemberForm(forms.Form):
         roles: list[tuple[str, str]],
         cohorts: QuerySet[Cohort],
         preset: Cohort | None = None,
+        new_account: bool = False,
     ) -> None:
         super().__init__(data)
+        if not new_account:
+            del self.fields["first_name"]
+            del self.fields["last_name"]
         cast(forms.ChoiceField, self.fields["role"]).choices = roles
         cohort_field = cast(forms.ModelMultipleChoiceField, self.fields["cohorts"])
         cohort_field.queryset = cohorts

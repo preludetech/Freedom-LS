@@ -7,6 +7,7 @@ from typing import cast
 
 import lxml.html
 import pytest
+from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 from django.core import mail
@@ -2779,12 +2780,118 @@ def test_the_lookup_of_another_sites_address_shows_the_message_and_no_name(
 
 
 @pytest.mark.django_db
-def test_the_lookup_of_an_unknown_address_says_there_is_no_account_yet(
+def test_the_lookup_of_an_unknown_address_says_an_account_will_be_created(
     admin_client, organisation
 ):
     response = _lookup(admin_client, organisation, "nobody@example.com")
 
-    assert (response.status_code, "No account yet." in _text(response)) == (422, True)
+    assert response.status_code == 200
+    assert "No account yet. One will be created and a setup email sent." in _text(
+        response
+    )
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_an_unknown_address_offers_optional_name_fields(
+    admin_client, organisation
+):
+    response = _lookup(admin_client, organisation, "nobody@example.com")
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("input[name='first_name']")
+    assert document.cssselect("input[name='last_name']")
+    assert document.cssselect("input[name='role']")
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_an_existing_address_offers_no_name_fields(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com")
+
+    response = _lookup(admin_client, organisation, "ada@example.com")
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("input[name='first_name']")
+
+
+@pytest.mark.django_db
+def test_the_lookup_of_an_unknown_address_creates_nothing(admin_client, organisation):
+    _lookup(admin_client, organisation, "nobody@example.com")
+
+    assert not EmailAddress.objects.filter(email="nobody@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_an_unknown_address_says_an_account_will_be_created(
+    admin_client, organisation
+):
+    response = _submit_role(
+        admin_client,
+        organisation,
+        "nobody@example.com",
+        "organisation_admin",
+        first_name="Ada",
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert (
+        "An account will be created for nobody@example.com and a setup email sent."
+        in _text(response)
+    )
+    assert document.cssselect("input[type='hidden'][name='first_name'][value='Ada']")
+    assert not User._base_manager.filter(email="nobody@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_confirming_an_unknown_address_creates_the_account_with_the_names_and_role(
+    admin_client, organisation
+):
+    _confirm(
+        admin_client,
+        organisation,
+        "nobody@example.com",
+        "organisation_admin",
+        first_name="Ada",
+        last_name="Lovelace",
+    )
+
+    user = User.objects.get(email="nobody@example.com")
+    assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
+    assert EmailAddress.objects.filter(user=user).count() == 1
+    assert ObjectRoleAssignment.objects.filter(
+        user=user, role="organisation_admin"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_confirming_an_unknown_address_sends_one_setup_email(
+    admin_client, organisation, django_capture_on_commit_callbacks
+):
+    with django_capture_on_commit_callbacks(execute=True):
+        _confirm(admin_client, organisation, "nobody@example.com", "organisation_admin")
+
+    assert [message.to for message in mail.outbox] == [["nobody@example.com"]]
+
+
+@pytest.mark.django_db
+def test_a_refusal_after_the_account_step_rolls_the_account_back(
+    admin_client, organisation, monkeypatch, django_capture_on_commit_callbacks
+):
+    def refuse(*args: object) -> None:
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _confirm(
+            admin_client, organisation, "nobody@example.com", "organisation_admin"
+        )
+
+    assert response.status_code == 403
+    assert not User._base_manager.filter(email="nobody@example.com").exists()
+    assert not EmailAddress.objects.filter(email="nobody@example.com").exists()
+    assert mail.outbox == []
 
 
 @pytest.mark.django_db

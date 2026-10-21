@@ -1227,6 +1227,12 @@ def refusal_response(
     )
 
 
+def _member_name(user: User | None, email: str) -> str:
+    """What the dialog calls the person: their name, or the address of an
+    account not yet created."""
+    return email if user is None else user.display_name
+
+
 def member_changed_response(user: User) -> HttpResponse:
     return changed_response({MEMBER_CHANGED: [str(user.pk)]})
 
@@ -1305,23 +1311,13 @@ class AddMemberAction(PanelAction):
         form.add_error("email", OTHER_SITE_MESSAGE)
         return self._email_step(ctx, form, status=422)
 
-    def _no_account_response(self, ctx: PanelContext) -> HttpResponse:
-        return render(
-            ctx.request,
-            self.template_name,
-            {"step": "no_account", "form_url": self.get_action_url(ctx)},
-            status=422,
-        )
-
-    def _match(self, ctx: PanelContext, email: str) -> User | HttpResponse:
-        """The account for `email`, else the response that says why there is
-        none to use."""
+    def _match(self, ctx: PanelContext, email: str) -> User | HttpResponse | None:
+        """The account for `email`, None when there is none yet, or the
+        response that says why the address cannot be used."""
         try:
             user = lookup_user(_organisation(ctx).site, email)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
-        if user is None:
-            return self._no_account_response(ctx)
         return user
 
     def _role_cards(self, ctx: PanelContext) -> list[dict[str, str | bool]]:
@@ -1367,7 +1363,11 @@ class AddMemberAction(PanelAction):
         return ""
 
     def _role_step(
-        self, ctx: PanelContext, user: User, form: AddMemberForm, status: int = 200
+        self,
+        ctx: PanelContext,
+        user: User | None,
+        form: AddMemberForm,
+        status: int = 200,
     ) -> HttpResponse:
         chosen = [str(pk) for pk in form["cohorts"].value() or []]
         return render(
@@ -1376,6 +1376,7 @@ class AddMemberAction(PanelAction):
             {
                 "step": "role",
                 "match": user,
+                "new_account": user is None,
                 "form": form,
                 "form_url": self.get_action_url(ctx),
                 "role_cards": self._role_cards(ctx),
@@ -1400,6 +1401,7 @@ class AddMemberAction(PanelAction):
             ],
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
+            new_account=matched is None,
         )
         form.fields["email"].initial = email_form.cleaned_data["email"]
         return self._role_step(ctx, matched, form)
@@ -1424,15 +1426,16 @@ class AddMemberAction(PanelAction):
         return list(cohorts)
 
     def _submit(self, ctx: PanelContext) -> HttpResponse:
+        matched = self._match(ctx, ctx.request.POST.get("email", ""))
+        if isinstance(matched, HttpResponse):
+            return matched
         form = AddMemberForm(
             ctx.request.POST,
             roles=[(role, role) for role in MEMBER_ROLES],
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
+            new_account=matched is None,
         )
-        matched = self._match(ctx, form["email"].value() or "")
-        if isinstance(matched, HttpResponse):
-            return matched
         if not form.is_valid():
             return self._role_step(ctx, matched, form, status=422)
         role = cast(str, form.cleaned_data["role"])
@@ -1442,29 +1445,37 @@ class AddMemberAction(PanelAction):
             return denied_response(ctx, self)
         email = cast(str, form.cleaned_data["email"])
         held = self._already_held(ctx, matched, role, cohorts)
+        names = (
+            (
+                cast(str, form.cleaned_data["first_name"]),
+                cast(str, form.cleaned_data["last_name"]),
+            )
+            if matched is None
+            else ("", "")
+        )
         new_cohorts = [cohort for cohort in cohorts if cohort not in held]
         if cohorts and not new_cohorts:
             return render(
                 ctx.request,
                 "educator_interface/modal/member_change_refused.html",
                 {
-                    "message": f"{matched.display_name} already holds this role "
-                    "on these cohorts."
+                    "message": f"{_member_name(matched, email)} already holds "
+                    "this role on these cohorts."
                 },
                 status=422,
             )
         new_targets: list[Organisation | Cohort] = [*new_cohorts] or targets
         if ctx.request.POST.get("confirmed") != "1":
             return self._confirmation(
-                ctx, email, matched, role, new_cohorts, held, cohorts
+                ctx, email, matched, role, new_cohorts, held, cohorts, names
             )
-        return self._perform(ctx, matched, email, role, new_targets)
+        return self._perform(ctx, matched, email, role, new_targets, names)
 
     def _already_held(
-        self, ctx: PanelContext, user: User, role: str, cohorts: list[Cohort]
+        self, ctx: PanelContext, user: User | None, role: str, cohorts: list[Cohort]
     ) -> list[Cohort]:
         """The cohorts among `cohorts` that `user` already holds `role` on."""
-        if not cohorts:
+        if user is None or not cohorts:
             return []
         held_keys = set(
             member_assignments(_organisation(ctx))
@@ -1477,29 +1488,35 @@ class AddMemberAction(PanelAction):
         self,
         ctx: PanelContext,
         email: str,
-        user: User,
+        user: User | None,
         role: str,
         cohorts: list[Cohort],
         already_held: list[Cohort],
         chosen: list[Cohort],
+        names: tuple[str, str],
     ) -> HttpResponse:
         organisation = _organisation(ctx)
         site = organisation.site
         role_config = get_role_config(site.name)[role]
-        before = current_role_entries(user, organisation)
+        name = _member_name(user, email)
+        before = [] if user is None else current_role_entries(user, organisation)
         if role == "organisation_admin" and any(entry.role == role for entry in before):
             return render(
                 ctx.request,
                 "educator_interface/modal/member_change_refused.html",
-                {
-                    "message": f"{user.display_name} is already an organisation admin here."
-                },
+                {"message": f"{name} is already an organisation admin here."},
                 status=422,
             )
-        member = OrganisationMember.objects.filter(
-            organisation=organisation, user=user
-        ).first()
-        if member is None:
+        member = (
+            None
+            if user is None
+            else OrganisationMember.objects.filter(
+                organisation=organisation, user=user
+            ).first()
+        )
+        if user is None:
+            member_state = "new"
+        elif member is None:
             member_state = "missing"
         elif not member.is_active:
             member_state = "inactive"
@@ -1516,10 +1533,14 @@ class AddMemberAction(PanelAction):
             if before
             else []
         )
-        before_pairs = {
-            (assignment.role, assignment.object_id)
-            for assignment in member_assignments(organisation).filter(user=user)
-        }
+        before_pairs = (
+            set()
+            if user is None
+            else {
+                (assignment.role, assignment.object_id)
+                for assignment in member_assignments(organisation).filter(user=user)
+            }
+        )
         new_keys = [str(cohort.pk) for cohort in cohorts] or [str(organisation.pk)]
         after_pairs = before_pairs | {(role, key) for key in new_keys}
         return render(
@@ -1528,12 +1549,16 @@ class AddMemberAction(PanelAction):
             {
                 "step": "confirmation",
                 "match": user,
+                "member_name": name,
+                "creates_account": user is None,
+                "first_name": names[0],
+                "last_name": names[1],
                 "form_url": self.get_action_url(ctx),
                 "email": email,
                 "role": role,
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
                 "already_held": join_prose([cohort.name for cohort in already_held]),
-                "widening": is_widening(before_pairs, after_pairs),
+                "widening": user is not None and is_widening(before_pairs, after_pairs),
                 "display_name": role_config.display_name,
                 "description": role_config.description,
                 "scope": (
@@ -1544,23 +1569,24 @@ class AddMemberAction(PanelAction):
                 "current_entries": before,
                 "after_entries": after,
                 "member_state": member_state,
-                "site_level": is_site_level_admin(user, site),
+                "site_level": user is not None and is_site_level_admin(user, site),
             },
         )
 
     def _perform(
         self,
         ctx: PanelContext,
-        user: User,
+        user: User | None,
         email: str,
         role: str,
         targets: list[Organisation | Cohort],
+        names: tuple[str, str],
     ) -> HttpResponse:
         organisation = _organisation(ctx)
-        name = user.display_name
+        name = _member_name(user, email)
         try:
             with transaction.atomic():
-                user, created = match_or_create_user(organisation.site, email)
+                user, created = match_or_create_user(organisation.site, email, *names)
                 for target in targets:
                     assign_role(cast("User", ctx.request.user), user, role, target)
                 if created:

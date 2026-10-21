@@ -1,9 +1,9 @@
 {% comment %}
 The Add member dialog, one template for every step. Context: step (email,
-no_account, role or confirmation) and form_url; email adds form, role adds
-match, form, role_cards (key, display_name, description, needs_cohorts),
+role or confirmation) and form_url; email adds form, role adds
+match (None for an address with no account), new_account, form, role_cards (key, display_name, description, needs_cohorts),
 cohort_rows (pk, name, roles, checked), selected_role and role_note;
-confirmation adds match, email, role, cohort_ids, display_name, description,
+confirmation adds match, member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
 scope, current_entries, after_entries, already_held, widening, member_state and
 site_level.
 {% endcomment %}
@@ -22,14 +22,6 @@ site_level.
         <c-button type="submit" variant="primary" loading="true" loading_text="Looking up...">Look up</c-button>
     </c-button-group>
 </form>
-{% elif step == "no_account" %}
-<c-modal-header focus_title="true">Add a member</c-modal-header>
-<div class="max-w-prose px-6 py-4 text-sm">
-    <p>No account yet.</p>
-</div>
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button>
-</c-button-group>
 {% elif step == "role" %}
 <c-modal-header>Add a member</c-modal-header>
 <form hx-post="{{ form_url }}"
@@ -44,12 +36,22 @@ site_level.
              tabindex="-1"
              role="alert"
              class="rounded-md border border-error/20 bg-error/10 p-3 text-error">
+            {{ form.first_name.errors }}
+            {{ form.last_name.errors }}
             {{ form.role.errors }}
             {{ form.cohorts.errors }}
             {{ form.non_field_errors }}
         </div>
         {% endif %}
+        {% if new_account %}
+        <p>No account yet. One will be created and a setup email sent.</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block"><span class="mb-1 block font-semibold">First name (optional)</span>{{ form.first_name }}</label>
+            <label class="block"><span class="mb-1 block font-semibold">Last name (optional)</span>{{ form.last_name }}</label>
+        </div>
+        {% else %}
         <p>Existing account: {{ match.display_name }}, {{ match.email }}</p>
+        {% endif %}
         <div x-data="memberRoleChooser" class="space-y-4">
             <fieldset class="space-y-2">
                 <legend class="mb-2 font-semibold">Role</legend>
@@ -88,7 +90,7 @@ site_level.
     </c-button-group>
 </form>
 {% elif step == "confirmation" %}
-<c-modal-header focus_title="true">Add {{ match.display_name }} as {{ display_name }}</c-modal-header>
+<c-modal-header focus_title="true">Add {{ member_name }} as {{ display_name }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
@@ -97,15 +99,22 @@ site_level.
     <input type="hidden" name="confirmed" value="1">
     <input type="hidden" name="email" value="{{ email }}">
     <input type="hidden" name="role" value="{{ role }}">
+    {% if creates_account %}
+    <input type="hidden" name="first_name" value="{{ first_name }}">
+    <input type="hidden" name="last_name" value="{{ last_name }}">
+    {% endif %}
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
     <div class="space-y-3 px-6 py-4 text-sm">
+        {% if creates_account %}
+        <p>An account will be created for {{ email }} and a setup email sent.</p>
+        {% endif %}
         <p>{{ description }}</p>
         <p>Scope: {{ scope }}.</p>
         {% if already_held %}
-        <p>{{ match.display_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
+        <p>{{ member_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
         {% endif %}
         {% if widening %}
-        <p>{{ match.display_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
+        <p>{{ member_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
         {% endif %}
         {% if current_entries %}
         <div>
@@ -118,12 +127,12 @@ site_level.
         </div>
         {% endif %}
         {% if member_state == "inactive" %}
-        <p>{{ match.display_name }} is suspended here, so the role takes effect only once they are reactivated.</p>
+        <p>{{ member_name }} is suspended here, so the role takes effect only once they are reactivated.</p>
         {% elif member_state == "missing" %}
-        <p>{{ match.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
+        <p>{{ member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
         {% if site_level %}
-        <p>{{ match.display_name }} already has access to every organisation. This role lists them among this organisation's members.</p>
+        <p>{{ member_name }} already has access to every organisation. This role lists them among this organisation's members.</p>
         {% endif %}
     </div>
     <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
