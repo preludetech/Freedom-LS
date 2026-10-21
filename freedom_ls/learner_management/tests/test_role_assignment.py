@@ -270,6 +270,49 @@ def test_removing_an_organisation_admin_locks_the_organisation_row(
     )
 
 
+def _locks_the_organisation_row(captured: CaptureQueriesContext) -> bool:
+    return any(
+        "freedom_ls_organisations_organisation" in query["sql"]
+        and "FOR UPDATE" in query["sql"]
+        for query in captured.captured_queries
+    )
+
+
+@pytest.mark.django_db
+def test_suspending_a_member_who_is_no_organisation_admin_takes_no_lock(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+    viewer = UserFactory()
+    assign_object_role(viewer, cohort, "cohort_viewer")
+    member = OrganisationMember.objects.get(user=viewer, organisation=organisation)
+
+    with CaptureQueriesContext(connection) as captured:
+        set_organisation_member_active(grantor, member, False)
+
+    assert not _locks_the_organisation_row(captured)
+    member.refresh_from_db()
+    assert member.is_active is False
+
+
+@pytest.mark.django_db
+def test_removing_a_cohort_role_takes_no_lock(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+    viewer = UserFactory()
+    assign_object_role(viewer, cohort, "cohort_viewer")
+
+    with CaptureQueriesContext(connection) as captured:
+        remove_role(grantor, viewer, "cohort_viewer", cohort)
+
+    assert not _locks_the_organisation_row(captured)
+
+
 def _grantable(
     grantor: User, organisation: Organisation
 ) -> list[tuple[str, list[str] | None]]:

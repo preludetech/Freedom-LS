@@ -98,12 +98,15 @@ def _lock_and_refuse_last_organisation_admin(
 ) -> None:
     """Refuse when `user` is the only organisation_admin left standing.
 
-    Locks the organisation row rather than the assignment rows: an empty set
-    of rows locks nothing, and locking the assignment being removed still
-    leaves a race against a concurrent deactivation of someone else's
-    OrganisationMember. The caller must already be inside
-    transaction.atomic().
+    Someone who holds no organisation_admin here cannot be the last one, so
+    the lock is skipped for them. Otherwise it locks the organisation row
+    rather than the assignment rows: an empty set of rows locks nothing, and
+    locking the assignment being removed still leaves a race against a
+    concurrent deactivation of someone else's OrganisationMember. The caller
+    must already be inside transaction.atomic().
     """
+    if not _holds_organisation_admin(user, organisation):
+        return
     Organisation.objects.select_for_update().get(pk=organisation.pk)
     if is_last_organisation_admin(organisation, user):
         raise RoleChangeRefused(RefusalReason.LAST_ORGANISATION_ADMIN)
