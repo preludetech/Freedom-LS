@@ -114,6 +114,23 @@ class SectionConfigBase:
     #: requires no request attribute of its own.
     required_request_attrs: tuple[str, ...] = ()
 
+    #: The capability a request needs to see this section at all, asked on
+    #: get_scope's object. None means the section shows whenever the
+    #: interface itself is reachable. A section the request cannot see is
+    #: left out of the menu and every path under it is a 404, so its
+    #: existence is never confirmed to someone outside its audience.
+    view_capability: str | None = None
+
+    @classmethod
+    def is_visible(cls, request: HttpRequest) -> bool:
+        """Whether `request` may see this section in the menu and reach its paths."""
+        if cls.view_capability is None:
+            return True
+        scope = cls.get_scope(request)
+        if scope is None:
+            return False
+        return cls.has_capability(request, cls.view_capability, scope)
+
     @classmethod
     def get_menu_count(cls, request: HttpRequest) -> int | None:
         """A number to show beside the menu label, or None to show none."""
@@ -219,8 +236,10 @@ class ListViewConfig(SectionConfigBase):
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
-        if cls.model is None or cls.instance_view is None:
-            raise ValueError(f"{cls.__name__} must define model and instance_view")
+        if cls.model is None:
+            raise ValueError(f"{cls.__name__} must define model")
+        if cls.instance_view is None:
+            raise Http404(f"{cls.__name__} has no instance pages")
         # pk is a raw, visitor-supplied URL segment and these models have UUID
         # primary keys, so anything that isn't a well-formed UUID fails in the
         # field rather than the query: get_object_or_404 only turns
@@ -464,6 +483,8 @@ def _resolve_path(
         section = sections[parts[0]]
     except KeyError as err:
         raise Http404(f"Unknown path segment '{parts[0]}'") from err
+    if not section.is_visible(request):
+        raise Http404("Section not shown")
 
     root, instance_view, i = _bind_root(request, section, parts, section_url)
     if not root.is_shown():
@@ -920,6 +941,8 @@ def _build_menu_items(
     for group in config:
         items: list[dict[str, object]] = []
         for section in group.sections:
+            if not section.is_visible(request):
+                continue
             is_active = section.url_name == active_section
             # The section stays marked on its own instance pages, but only
             # its list is the page itself.

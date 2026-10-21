@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from django.db.models import (
+    CharField,
     Count,
     Exists,
     Model,
@@ -11,6 +12,7 @@ from django.db.models import (
     QuerySet,
     TextChoices,
 )
+from django.db.models.functions import Cast
 
 from freedom_ls.accounts.account_setup import is_pending, pending_user_q
 from freedom_ls.content_engine.models import Course, CourseVisibility
@@ -32,6 +34,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -43,6 +46,11 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
+
+#: The roles the educator interface grants and lists. A fixed tuple: a
+#: downstream site may add roles to its config, but none of them has an
+#: assign_ capability, so none can be offered or shown here.
+MEMBER_ROLES: tuple[str, ...] = ("organisation_admin", "cohort_admin", "cohort_viewer")
 
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
@@ -803,6 +811,34 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
         .filter(pk__in=members.values("user_id"))
         .order_by("first_name", "last_name")
     )
+
+
+def member_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignment]:
+    """Active member-role assignments on the organisation itself or on any
+    of its cohorts, active cohorts and inactive alike. Built from the
+    assignment rows rather than OrganisationMember rows, because a member
+    row only exists once a grant created it and nothing backfilled them."""
+    roles = frozenset(MEMBER_ROLES)
+    cohort_keys = (
+        Cohort.objects.filter(organisation=organisation)
+        .annotate(key=Cast("pk", output_field=CharField()))
+        .values("key")
+    )
+    return _active_role_assignments(Organisation, roles).filter(
+        object_id=str(organisation.pk)
+    ) | _active_role_assignments(Cohort, roles).filter(object_id__in=cohort_keys)
+
+
+def members_of(organisation: Organisation) -> QuerySet[User]:
+    """Everyone holding a member role in the organisation, suspended members
+    and turned-off accounts included: they still hold the role. A site
+    admin or superuser is here only through such a role, never through
+    their site-level access."""
+    from freedom_ls.accounts.models import User
+
+    return User.objects.filter(
+        pk__in=member_assignments(organisation).values("user_id")
+    ).order_by("first_name", "last_name", "email", "pk")
 
 
 def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:

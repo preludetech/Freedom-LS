@@ -27,7 +27,13 @@ from freedom_ls.panel_framework.views import (
 
 from .helpers import make_staff_user, make_stub
 from .stub_models import StubModel
-from .stub_panels import StubDataTablePanel, StubDetailsPanel
+from .stub_panels import (
+    RecordingCapabilityConfig,
+    StubBaseConfig,
+    StubDataTable,
+    StubDataTablePanel,
+    StubDetailsPanel,
+)
 from .view_helpers import call_view, fetch, make_request
 
 pytestmark = pytest.mark.django_db
@@ -704,3 +710,117 @@ class TestBuildBreadcrumbs:
         crumbs = _build_breadcrumbs(["dashboard"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
 
         assert crumbs == [{"label": "Dashboard"}]
+
+
+# Sections that need a capability to be seen at all.
+
+
+class GatedListConfig(RecordingCapabilityConfig, ListViewConfig):
+    """A list with no instance pages, shown only to a request holding the
+    capability its `view_capability` names."""
+
+    url_name = "gated"
+    menu_label = "Gated"
+    model = StubModel
+    list_view = StubDataTable
+    table_key = "gated"
+    instance_view = None
+    view_capability = "stubs.view_gated"
+
+
+GATED_CONFIG = [NavGroup("Gated", [GatedListConfig, StubBaseConfig])]
+GATED_LINK = 'href="/test-panel/framework/gated"'
+
+
+class TestSectionVisibility:
+    def test_a_section_the_request_may_not_see_is_left_out_of_the_menu(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=False, scope=make_stub())
+
+        response = call_view(
+            make_request("stub-base"), "stub-base", config=GATED_CONFIG
+        )
+
+        assert GATED_LINK not in response.content.decode()
+
+    def test_a_section_the_request_may_not_see_is_a_404(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=False, scope=make_stub())
+
+        with pytest.raises(Http404):
+            call_view(make_request("gated"), "gated", config=GATED_CONFIG)
+
+    def test_a_path_under_a_section_the_request_may_not_see_is_a_404(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=False, scope=make_stub())
+
+        with pytest.raises(Http404):
+            call_view(
+                make_request("gated/__actions/create"),
+                "gated/__actions/create",
+                config=GATED_CONFIG,
+            )
+
+    def test_a_section_the_request_may_see_is_in_the_menu(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+
+        response = call_view(
+            make_request("stub-base"), "stub-base", config=GATED_CONFIG
+        )
+
+        assert GATED_LINK in response.content.decode()
+
+    def test_a_section_the_request_may_see_renders(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+
+        response = call_view(make_request("gated"), "gated", config=GATED_CONFIG)
+
+        assert response.status_code == 200
+
+    def test_a_section_with_no_scope_is_hidden(self, mock_site_context: Site) -> None:
+        GatedListConfig.reset(answer=True, scope=None)
+
+        with pytest.raises(Http404):
+            call_view(make_request("gated"), "gated", config=GATED_CONFIG)
+
+    def test_a_section_with_no_view_capability_never_asks(
+        self, mock_site_context: Site
+    ) -> None:
+        GatedListConfig.view_capability = None
+        try:
+            GatedListConfig.reset(answer=False, scope=make_stub())
+            call_view(make_request("gated"), "gated", config=GATED_CONFIG)
+        finally:
+            GatedListConfig.view_capability = "stubs.view_gated"
+
+        assert GatedListConfig.asked == []
+
+
+class TestListWithoutInstancePages:
+    def test_the_list_renders(self, mock_site_context: Site) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+
+        response = call_view(make_request("gated"), "gated", config=GATED_CONFIG)
+
+        assert response.status_code == 200
+
+    def test_an_instance_path_is_a_404(self, mock_site_context: Site) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+        path = f"gated/{make_stub().pk}"
+
+        with pytest.raises(Http404):
+            call_view(make_request(path), path, config=GATED_CONFIG)
+
+    def test_a_quick_view_path_is_a_404(self, mock_site_context: Site) -> None:
+        GatedListConfig.reset(answer=True, scope=make_stub())
+        path = f"gated/{make_stub().pk}/__quick-view"
+
+        with pytest.raises(Http404):
+            call_view(make_request(path), path, config=GATED_CONFIG)

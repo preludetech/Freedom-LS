@@ -1,4 +1,4 @@
-"""The educator sidebar: one "Teaching" group and a footer naming the user."""
+"""The educator sidebar: the "Teaching" and "Administration" groups and a footer naming the user."""
 
 from __future__ import annotations
 
@@ -46,11 +46,11 @@ def test_sidebar_groups_its_sections_under_a_teaching_heading(
 
     headings = [h.text_content().strip() for h in nav.cssselect("h2")]
 
-    assert headings == ["Teaching"]
+    assert headings == ["Teaching", "Administration"]
 
 
 @pytest.mark.django_db
-def test_sidebar_lists_the_four_sections_each_with_an_icon(
+def test_sidebar_lists_the_five_sections_each_with_an_icon(
     sidebar: tuple[lxml.html.HtmlElement, str],
 ) -> None:
     nav, _page = sidebar
@@ -62,6 +62,7 @@ def test_sidebar_lists_the_four_sections_each_with_an_icon(
         "Cohorts",
         "Learners",
         "Courses",
+        "Members",
     ]
     assert all(link.cssselect("svg") for link in links)
 

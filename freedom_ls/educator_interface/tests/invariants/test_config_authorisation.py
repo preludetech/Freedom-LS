@@ -23,16 +23,26 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.educator_interface.tests import interface_walk
 from freedom_ls.educator_interface.tests.interface_walk import (
     SECTIONS,
     config_path_strings,
+)
+from freedom_ls.educator_interface.views import (
+    MemberDataTable,
+    OrganisationSectionConfig,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
 )
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.views import BaseViewConfig, SectionConfig
+from freedom_ls.panel_framework.views import (
+    BaseViewConfig,
+    ListViewConfig,
+    SectionConfig,
+)
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
@@ -160,3 +170,22 @@ class TestCourseDetailIsScopedToTheOrganisation:
         )
 
         assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
+    mock_site_context, monkeypatch
+):
+    class _NoInstancePagesConfig(OrganisationSectionConfig, ListViewConfig):
+        url_name = "no-instance-pages"
+        model = Cohort
+        list_view = MemberDataTable
+        table_key = "no-instance-pages"
+
+    monkeypatch.setattr(interface_walk, "SECTIONS", [_NoInstancePagesConfig])
+    organisation = OrganisationFactory()
+
+    paths = config_path_strings(organisation)
+
+    assert paths == ["no-instance-pages"]
+    assert Cohort.objects.count() == 0

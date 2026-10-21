@@ -63,6 +63,7 @@ from freedom_ls.learner_management.queries import (
     learner_status_q,
     learners_visible_to,
     members_keeping_access,
+    members_of,
     organisation_for_learner_course,
     organisations_accessible_to,
     other_grants_for,
@@ -1811,3 +1812,91 @@ def test_courses_gaining_access_runs_a_fixed_number_of_queries(
 
     with django_assert_num_queries(3):
         courses_gaining_access(learner, destination)
+
+
+@pytest.mark.django_db
+class TestMembersOf:
+    def test_includes_an_organisation_admin(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+
+        assert list(members_of(organisation)) == [admin]
+
+    def test_includes_a_cohort_admin_on_an_active_cohort(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(
+            admin, _make_cohort(organisation=organisation), "cohort_admin"
+        )
+
+        assert list(members_of(organisation)) == [admin]
+
+    def test_includes_a_cohort_viewer_on_an_inactive_cohort(self, mock_site_context):
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        Cohort.objects.filter(pk=cohort.pk).update(is_active=False)
+        viewer = UserFactory()
+        assign_object_role(viewer, cohort, "cohort_viewer")
+
+        assert list(members_of(organisation)) == [viewer]
+
+    def test_includes_a_suspended_member(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+        OrganisationMember.objects.filter(user=admin, organisation=organisation).update(
+            is_active=False
+        )
+
+        assert list(members_of(organisation)) == [admin]
+
+    def test_includes_a_turned_off_account(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory(is_active=False)
+        assign_object_role(admin, organisation, "organisation_admin")
+
+        assert list(members_of(organisation)) == [admin]
+
+    def test_leaves_out_a_removed_assignment(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+        remove_object_role(admin, organisation, "organisation_admin")
+
+        assert list(members_of(organisation)) == []
+
+    def test_leaves_out_another_organisations_members(self, mock_site_context):
+        organisation = OrganisationFactory()
+        assign_object_role(UserFactory(), OrganisationFactory(), "organisation_admin")
+        assign_object_role(UserFactory(), _make_cohort(), "cohort_admin")
+
+        assert list(members_of(organisation)) == []
+
+    def test_leaves_out_a_learner_with_no_role(self, mock_site_context):
+        organisation = OrganisationFactory()
+        LearnerFactory(organisation=organisation)
+
+        assert list(members_of(organisation)) == []
+
+    def test_leaves_out_a_site_admin_with_no_organisation_role(self, mock_site_context):
+        organisation = OrganisationFactory()
+        assign_site_role(UserFactory(), "site_admin", site=mock_site_context)
+
+        assert list(members_of(organisation)) == []
+
+    def test_leaves_out_a_superuser_with_no_organisation_role(self, mock_site_context):
+        organisation = OrganisationFactory()
+        UserFactory(superuser=True)
+
+        assert list(members_of(organisation)) == []
+
+    def test_returns_a_user_holding_several_roles_once(self, mock_site_context):
+        organisation = OrganisationFactory()
+        user = UserFactory(superuser=True)
+        assign_object_role(user, organisation, "organisation_admin")
+        assign_object_role(
+            user, _make_cohort(organisation=organisation), "cohort_viewer"
+        )
+
+        assert list(members_of(organisation)) == [user]

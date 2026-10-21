@@ -23,6 +23,7 @@ from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpRespons
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -82,6 +83,7 @@ from freedom_ls.learner_management.queries import (
     courses_visible_to,
     learner_status,
     learners_visible_to,
+    members_of,
     organisations_accessible_to,
 )
 from freedom_ls.organisations.models import Organisation
@@ -1256,8 +1258,44 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
     panel = DashboardPanel
 
 
+class MemberDataTable(DataTable):
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        scoped = cast(OrganisationScopedRequest, request)
+        return members_of(scoped.organisation)
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Member",
+                template="educator_interface/data-table-cells/member.html",
+                sortable=True,
+                sort_field="first_name",
+                card="primary",
+            ),
+        ]
+
+    @staticmethod
+    def get_row_label(row: Model) -> str:
+        return cast(User, row).display_name
+
+
+class MemberConfig(OrganisationSectionConfig, ListViewConfig):
+    url_name = "members"
+    menu_label = "Members"
+    icon = "user"
+    model = User
+    list_view = MemberDataTable
+    table_key = "members"
+    view_capability = "freedom_ls_learner_management.view_organisationmember"
+    # Rows have no page of their own, so there is nothing to authorise.
+    check_access_exempt_reason = "members have no instance pages"
+
+
 interface_config = [
     NavGroup("Teaching", [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig]),
+    NavGroup("Administration", [MemberConfig]),
 ]
 
 

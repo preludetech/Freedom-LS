@@ -145,6 +145,8 @@ def walk_interface(organisation: Organisation) -> list[Walked]:
                 )
                 for action in section.get_actions(request)
             )
+            if section.instance_view is None:
+                continue
             instance = _seed_instance(section.model, organisation)
             detail = f"{url_name}/{instance.pk}"
         else:

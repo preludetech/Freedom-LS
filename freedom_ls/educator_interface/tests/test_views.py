@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import cast
@@ -1452,3 +1453,118 @@ def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
         if "__actions/move" in button.get("hx-get")
     }
     assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
+
+
+@pytest.fixture
+def members_client(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> Callable[[Organisation | Cohort, str], Client]:
+    """Factory: a logged-in staff user holding `role` on `target`."""
+
+    def _make(
+        target: Organisation | Cohort, role: str = "organisation_admin"
+    ) -> Client:
+        user = UserFactory(staff=True)
+        assign_role(UserFactory(superuser=True), user, role, target)
+        return logged_in_client(user)
+
+    return _make
+
+
+def _grant_member(
+    target: Organisation | Cohort, role: str = "organisation_admin", **user_fields: str
+) -> None:
+    assign_role(UserFactory(superuser=True), UserFactory(**user_fields), role, target)
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_sees_each_members_name_and_email(members_client):
+    organisation = OrganisationFactory()
+    _grant_member(
+        organisation, first_name="Ada", last_name="Lovelace", email="ada@example.com"
+    )
+    client = members_client(organisation, "organisation_admin")
+
+    text = _get_document(client, _interface_url(organisation.slug, "members"))
+
+    assert "Ada Lovelace" in text.text_content()
+    assert "ada@example.com" in text.text_content()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+def test_a_cohort_role_holder_sees_no_administration_group(members_client, role):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = members_client(cohort, role)
+
+    document = _get_document(client, _interface_url(organisation.slug, "cohorts"))
+
+    headings = [h.text_content().strip() for h in document.cssselect("#sidebar-nav h2")]
+    assert headings == ["Teaching"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+def test_members_is_a_404_for_a_cohort_role_holder(members_client, role):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = members_client(cohort, role)
+
+    response = client.get(_interface_url(organisation.slug, "members"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_site_admin_with_no_role_in_the_organisation_can_open_members(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", mock_site_context
+    )
+
+    response = logged_in_client(site_admin).get(
+        _interface_url(organisation.slug, "members")
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_nameless_member_shows_the_email_alone(members_client):
+    organisation = OrganisationFactory()
+    _grant_member(organisation, first_name="", last_name="", email="bare@example.com")
+    client = members_client(organisation, "organisation_admin")
+
+    document = _get_document(client, _interface_url(organisation.slug, "members"))
+
+    names = [
+        e.text_content() for e in document.cssselect("#main-content span.truncate")
+    ]
+    assert "bare@example.com" in names
+    assert not document.cssselect("#main-content span.truncate.text-muted")
+
+
+@pytest.mark.django_db
+def test_a_member_path_with_an_id_under_it_is_a_404(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    response = client.get(_interface_url(organisation.slug, f"members/{uuid.uuid4()}"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_member_name_is_escaped(members_client):
+    organisation = OrganisationFactory()
+    _grant_member(organisation, first_name="<b>x</b>")
+    client = members_client(organisation, "organisation_admin")
+
+    response = client.get(_interface_url(organisation.slug, "members"))
+
+    assert "&lt;b&gt;x&lt;/b&gt;" in response.content.decode()
+    assert "<b>x</b>" not in response.content.decode()

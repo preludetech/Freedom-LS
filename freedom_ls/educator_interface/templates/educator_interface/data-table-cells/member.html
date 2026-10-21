@@ -1,0 +1,9 @@
+{% load data_table_tags panel_tags %}
+{% comment %}
+A member as an avatar chip: bold name, with the email under it when the user
+has a name. A nameless user is shown by the email alone. The chip is not a
+link: a member has no page of their own.
+{% endcomment %}
+<span class="font-bold text-on-surface">
+    <c-panel-avatar-chip name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" />
+</span>
