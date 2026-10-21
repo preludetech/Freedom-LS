@@ -1809,9 +1809,6 @@ def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
     )
 
 
-# search, the role filter, the help paragraph and the empty states
-
-
 def _member_emails(document) -> list[str]:
     return [
         row.cssselect("td")[0].text_content()

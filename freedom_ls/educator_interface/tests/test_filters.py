@@ -305,9 +305,6 @@ def test_learner_course_filter_drops_a_member_of_an_inactive_cohort_registered()
     assert list(result) == []
 
 
-# the member list's role filter narrows through the table
-
-
 def _member_pks(request, roles: list[str] | None = None) -> list:
     filters = {} if roles is None else {"role": roles}
     query = TableQuery(key="members", filters=filters)
