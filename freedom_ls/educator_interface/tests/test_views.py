@@ -1592,7 +1592,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 49
+QUERY_BOUND = 54
 
 
 MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
@@ -2090,3 +2090,88 @@ def test_a_turned_off_accounts_row_offers_remove_and_nothing_else(members_client
 
     assert len(row.cssselect("button[hx-get]")) == 1
     assert len(_remove_triggers(row)) == 1
+
+
+def _state_triggers(row, action: str) -> list[str]:
+    return [
+        button.get("hx-get")
+        for button in row.cssselect("button[hx-get]")
+        if f"__actions/{action}" in button.get("hx-get")
+    ]
+
+
+@pytest.mark.django_db
+def test_an_active_member_row_offers_suspend_and_not_reactivate(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="other@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    (trigger,) = _state_triggers(row, "suspend")
+    assert f"user={user.pk}" in trigger
+    assert _state_triggers(row, "reactivate") == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("row_state", ["inactive", "missing"])
+def test_a_suspended_member_row_offers_reactivate_and_not_suspend(
+    members_client, row_state
+):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="other@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    members = OrganisationMember.objects.filter(user=user)
+    if row_state == "inactive":
+        members.update(is_active=False)
+    else:
+        members.delete()
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    (trigger,) = _state_triggers(row, "reactivate")
+    assert f"user={user.pk}" in trigger
+    assert _state_triggers(row, "suspend") == []
+
+
+def _make_site_level(user: User, organisation: Organisation) -> None:
+    assign_role(UserFactory(superuser=True), user, "site_admin", organisation.site)
+
+
+def _turn_off(user: User, organisation: Organisation) -> None:
+    User.objects.filter(pk=user.pk).update(is_active=False)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "prepare", [_make_site_level, _turn_off], ids=["site_level", "turned_off"]
+)
+def test_a_site_level_or_turned_off_row_offers_neither_state_action(
+    members_client, prepare
+):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="other@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    prepare(user, organisation)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    assert _state_triggers(row, "suspend") == []
+    assert _state_triggers(row, "reactivate") == []
+
+
+@pytest.mark.django_db
+def test_the_viewers_own_row_offers_neither_state_action(members_client):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True, email="me@example.com")
+    assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
+    client = Client()
+    client.force_login(viewer)
+
+    row = _member_row(_members_document(client, organisation), "me@example.com")
+
+    assert _state_triggers(row, "suspend") == []
+    assert _state_triggers(row, "reactivate") == []

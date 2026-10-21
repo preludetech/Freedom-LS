@@ -1,0 +1,27 @@
+{% comment %}
+The modal fragment a SuspendMemberAction's GET returns. Context: member,
+organisation, last_organisation_admin, grantor_is_site_level, confirm_url.
+{% endcomment %}
+<c-modal-header>Suspend {{ member.display_name }}</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    <p>They keep their roles but can do nothing in {{ organisation.name }} until reactivated.</p>
+    {% if last_organisation_admin and grantor_is_site_level %}
+        <c-callout level="warning">
+            {{ member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
+        </c-callout>
+    {% endif %}
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ confirm_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="user" value="{{ member.pk }}">
+        <c-button type="submit" variant="secondary" loading="true" loading_text="Suspending...">
+            Suspend
+        </c-button>
+    </form>
+</c-button-group>

@@ -30,6 +30,7 @@ from freedom_ls.educator_interface.events import (
     MEMBER_CHANGED,
     REGISTRATION_CHANGED,
 )
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -4107,3 +4108,239 @@ def test_a_refusal_partway_through_a_change_keeps_every_assignment(
 
     assert response.status_code == 403
     assert _active_roles(user) == before
+
+
+def _state_url(organisation: Organisation, action: str) -> str:
+    return _interface_url(organisation.slug, f"members/__actions/{action}")
+
+
+def _state_dialog(client: Client, organisation: Organisation, user: User, action: str):
+    return client.get(
+        _state_url(organisation, action),
+        {"user": str(user.pk)},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _state_post(client: Client, organisation: Organisation, user: User, action: str):
+    return _post(client, _state_url(organisation, action), {"user": str(user.pk)})
+
+
+def _member_row(user: User, organisation: Organisation) -> OrganisationMember:
+    return cast(
+        OrganisationMember,
+        OrganisationMember.objects.get(user=user, organisation=organisation),
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["suspend", "reactivate"])
+def test_the_state_dialogs_leave_the_member_row_unchanged(
+    admin_client, organisation, action
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    before = _member_row(user, organisation).is_active
+
+    _state_dialog(admin_client, organisation, user, action)
+
+    assert _member_row(user, organisation).is_active == before
+
+
+@pytest.mark.django_db
+def test_the_suspend_dialog_says_they_keep_their_roles(admin_client, organisation):
+    user = _member_holding(
+        "cohort_viewer", _cohort(organisation), first_name="Ada", last_name="Lovelace"
+    )
+
+    text = _text(_state_dialog(admin_client, organisation, user, "suspend"))
+
+    assert "Suspend Ada Lovelace" in text
+    assert (
+        f"They keep their roles but can do nothing in {organisation.name} "
+        "until reactivated."
+    ) in text
+
+
+@pytest.mark.django_db
+def test_suspending_stops_a_cohort_capability_and_answers_204(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_viewer", cohort)
+    capability = "freedom_ls_learner_management.view_cohort"
+    assert can(user, capability, cohort)
+
+    response = _state_post(admin_client, organisation, user, "suspend")
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert not _member_row(user, organisation).is_active
+    assert not can(user, capability, cohort)
+
+
+@pytest.mark.django_db
+def test_reactivating_restores_the_capability_and_answers_204(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_viewer", cohort)
+    OrganisationMember.objects.filter(user=user).update(is_active=False)
+
+    response = _state_post(admin_client, organisation, user, "reactivate")
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert can(user, "freedom_ls_learner_management.view_cohort", cohort)
+
+
+@pytest.mark.django_db
+def test_the_reactivate_dialog_lists_the_roles_that_take_effect_again(
+    admin_client, organisation
+):
+    user = _member_holding(
+        "cohort_viewer",
+        _cohort(organisation, name="Evening group"),
+        first_name="Ada",
+        last_name="Lovelace",
+    )
+    OrganisationMember.objects.filter(user=user).update(is_active=False)
+
+    text = _text(_state_dialog(admin_client, organisation, user, "reactivate"))
+
+    assert "Reactivate Ada Lovelace" in text
+    assert "These roles take effect again: Cohort viewer on Evening group." in text
+
+
+@pytest.mark.django_db
+def test_reactivating_a_member_with_no_row_creates_an_active_one(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    OrganisationMember.objects.filter(user=user).delete()
+
+    response = _state_post(admin_client, organisation, user, "reactivate")
+
+    assert response.status_code == 204
+    assert _member_row(user, organisation).is_active
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_suspending_the_last_organisation_admin_is_422(
+    admin_client, organisation, monkeypatch
+):
+    sole = _member_holding("organisation_admin", organisation, first_name="Ada")
+    monkeypatch.setattr(
+        "freedom_ls.learner_management.role_assignment.is_last_organisation_admin",
+        lambda *args: True,
+    )
+
+    response = _state_post(admin_client, organisation, sole, "suspend")
+
+    assert response.status_code == 422
+    assert "Ada is this organisation's only organisation admin." in _text(response)
+    assert _member_row(sole, organisation).is_active
+
+
+@pytest.mark.django_db
+def test_a_site_admin_is_warned_in_the_suspend_dialog_and_succeeds(
+    mock_site_context, logged_in_client, organisation
+):
+    sole = _member_holding(
+        "organisation_admin", organisation, first_name="Ada", last_name="Lovelace"
+    )
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+    client = logged_in_client(site_admin)
+
+    dialog = _text(_state_dialog(client, organisation, sole, "suspend"))
+    response = _state_post(client, organisation, sole, "suspend")
+
+    assert "Ada Lovelace is the only organisation admin." in dialog
+    assert response.status_code == 204
+    assert not _member_row(sole, organisation).is_active
+
+
+@pytest.mark.django_db
+def test_the_suspend_dialog_has_no_warning_while_another_organisation_admin_remains(
+    admin_client, organisation
+):
+    other = _member_holding("organisation_admin", organisation)
+
+    text = _text(_state_dialog(admin_client, organisation, other, "suspend"))
+
+    assert "only organisation admin" not in text
+
+
+@pytest.mark.django_db
+def test_a_stale_suspend_of_an_inactive_row_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    OrganisationMember.objects.filter(user=user).update(is_active=False)
+
+    response = _state_post(admin_client, organisation, user, "suspend")
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_stale_suspend_of_a_member_with_no_row_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    OrganisationMember.objects.filter(user=user).delete()
+
+    response = _state_post(admin_client, organisation, user, "suspend")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_stale_reactivate_of_an_active_row_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+
+    response = _state_post(admin_client, organisation, user, "reactivate")
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_suspending_yourself_is_422_with_the_self_message(
+    mock_site_context, logged_in_client, organisation
+):
+    client, me = _holder_client(logged_in_client, organisation)
+
+    response = _state_post(client, organisation, me, "suspend")
+
+    assert response.status_code == 422
+    assert "You can't change your own roles." in _text(response)
+    assert _member_row(me, organisation).is_active
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["suspend", "reactivate"])
+def test_a_state_change_for_a_non_member_answers_the_unavailable_fragment(
+    admin_client, organisation, action
+):
+    response = _state_post(admin_client, organisation, UserFactory(), action)
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
+    user = _member_holding(
+        "cohort_viewer", _cohort(organisation), first_name="<b>Bold</b>"
+    )
+
+    html = _state_dialog(admin_client, organisation, user, "suspend").content.decode()
+
+    assert "<b>Bold</b>" not in html
+    assert "&lt;b&gt;Bold&lt;/b&gt;" in html

@@ -83,6 +83,7 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
+    CHANGE_MEMBER,
     GrantableRole,
     assign_role,
     grantable_roles,
@@ -90,8 +91,10 @@ from freedom_ls.learner_management.role_assignment import (
     is_site_level_admin,
     is_widening,
     remove_role,
+    set_organisation_member_active,
 )
 from freedom_ls.learner_management.utils import (
+    ensure_organisation_member,
     register_cohort_for_course,
     unregister_cohort_from_course,
 )
@@ -1841,3 +1844,95 @@ class ChangeCohortsAction(MemberRoleAction):
                 "creates_member_row": bool(plan.added) and not has_member_row,
             },
         )
+
+
+class MemberStateAction(PanelAction):
+    """Flips one member's OrganisationMember row, named by the `user`
+    parameter, after confirmation. Renders per row, never in the header."""
+
+    variant = "secondary"
+    renders_in_footer = False
+    capability = CHANGE_MEMBER
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    target_state: bool
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return _organisation(ctx)
+
+    def _member(self, ctx: PanelContext) -> User:
+        try:
+            pk = int(_action_params(ctx.request).get("user", ""))
+        except ValueError:
+            raise Http404("No such user") from None
+        return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
+
+    def _row(self, user: User, organisation: Organisation) -> OrganisationMember | None:
+        return OrganisationMember.objects.filter(
+            user=user, organisation=organisation
+        ).first()
+
+
+class SuspendMemberAction(MemberStateAction):
+    label = "Suspend"
+    action_name = "suspend"
+    target_state = False
+    template_name = "educator_interface/modal/suspend_member_confirmation.html"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        organisation = _organisation(ctx)
+        user = self._member(ctx)
+        return {
+            "member": user,
+            "organisation": organisation,
+            "last_organisation_admin": is_last_organisation_admin(organisation, user),
+            "grantor_is_site_level": is_site_level_admin(
+                cast("User", ctx.request.user), organisation.site
+            ),
+            "confirm_url": self.get_action_url(ctx),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        organisation = _organisation(ctx)
+        user = self._member(ctx)
+        row = self._row(user, organisation)
+        if row is None or not row.is_active:
+            raise Http404("The member is already suspended")
+        try:
+            set_organisation_member_active(cast("User", ctx.request.user), row, False)
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
+        return member_changed_response(user)
+
+
+class ReactivateMemberAction(MemberStateAction):
+    label = "Reactivate"
+    action_name = "reactivate"
+    target_state = True
+    template_name = "educator_interface/modal/reactivate_member_confirmation.html"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        user = self._member(ctx)
+        entries = current_role_entries(user, _organisation(ctx))
+        return {
+            "member": user,
+            "roles": join_prose(
+                [f"{entry.display_name} on {entry.scope}" for entry in entries]
+            ),
+            "confirm_url": self.get_action_url(ctx),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        organisation = _organisation(ctx)
+        user = self._member(ctx)
+        row = self._row(user, organisation)
+        if row is not None and row.is_active:
+            raise Http404("The member is already active")
+        try:
+            with transaction.atomic():
+                row = row or ensure_organisation_member(user, organisation)
+                set_organisation_member_active(
+                    cast("User", ctx.request.user), row, True
+                )
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
+        return member_changed_response(user)

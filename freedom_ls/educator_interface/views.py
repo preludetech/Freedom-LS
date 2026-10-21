@@ -36,12 +36,14 @@ from freedom_ls.educator_interface.actions import (
     EditCohortAction,
     EditLearnerNameAction,
     MoveToCohortAction,
+    ReactivateMemberAction,
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     RemoveRoleAction,
     ReregisterLearnerForCourseAction,
     ResendSetupEmailAction,
+    SuspendMemberAction,
     UnregisterCohortFromCourseAction,
     UnregisterLearnerFromCourseAction,
     cohort_not_empty_sentence,
@@ -94,6 +96,7 @@ from freedom_ls.learner_management.queries import (
     member_assignments,
     members_of,
     organisations_accessible_to,
+    site_level_admins,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole
 from freedom_ls.organisations.models import Organisation
@@ -1325,7 +1328,13 @@ class MemberDataTable(DataTable):
     ) -> Page:
         page_obj = super().get_rows(request, queryset, query)
         site = cast(OrganisationScopedRequest, request).organisation.site
+        site_level_ids = set(
+            site_level_admins(site)
+            .filter(pk__in=[row.pk for row in page_obj.object_list])
+            .values_list("pk", flat=True)
+        )
         for row in page_obj.object_list:
+            row.is_site_level = row.pk in site_level_ids
             row.role_entries = member_role_entries(row, site)
             row.is_suspended = not any(m.is_active for m in row.member_rows)
         return page_obj
@@ -1373,7 +1382,13 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddMemberAction(), RemoveRoleAction(), ChangeCohortsAction()]
+        return [
+            AddMemberAction(),
+            RemoveRoleAction(),
+            ChangeCohortsAction(),
+            SuspendMemberAction(),
+            ReactivateMemberAction(),
+        ]
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
