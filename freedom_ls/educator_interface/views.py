@@ -31,6 +31,7 @@ from freedom_ls.educator_interface.actions import (
     AddLearnersToCohortAction,
     AddMemberAction,
     AddToCohortAction,
+    ChangeCohortsAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
@@ -1372,7 +1373,7 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddMemberAction(), RemoveRoleAction()]
+        return [AddMemberAction(), RemoveRoleAction(), ChangeCohortsAction()]
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:

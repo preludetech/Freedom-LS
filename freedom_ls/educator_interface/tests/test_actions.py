@@ -3764,3 +3764,346 @@ def test_the_remove_confirmation_escapes_the_persons_name(admin_client, organisa
 
     assert "<b>Bold</b>" not in html
     assert "&lt;b&gt;Bold&lt;/b&gt;" in html
+
+
+def _change_cohorts_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "members/__actions/change_cohorts")
+
+
+def _change_dialog(
+    client: Client, organisation: Organisation, user: User, role: str = "cohort_viewer"
+):
+    return client.get(
+        _change_cohorts_url(organisation),
+        {"user": str(user.pk), "role": role},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _change(
+    client: Client,
+    organisation: Organisation,
+    user: User,
+    cohorts: list[Cohort],
+    role: str = "cohort_viewer",
+    confirmed: bool = True,
+):
+    data: dict[str, str | list[str]] = {
+        "user": str(user.pk),
+        "role": role,
+        "cohorts": [str(cohort.pk) for cohort in cohorts],
+    }
+    if confirmed:
+        data["confirmed"] = "1"
+    return client.post(_change_cohorts_url(organisation), data, HTTP_HX_REQUEST="true")
+
+
+def _checkbox_state(response) -> dict[str, bool]:
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        box.get("value"): box.get("checked") is not None
+        for box in document.cssselect("input[name='cohorts']")
+    }
+
+
+@pytest.mark.django_db
+def test_the_change_dialog_ticks_the_cohorts_the_person_holds(
+    admin_client, organisation
+):
+    held = _cohort(organisation, name="Held group")
+    free = _cohort(organisation, name="Free group")
+    user = _member_holding("cohort_viewer", held)
+
+    response = _change_dialog(admin_client, organisation, user)
+
+    state = _checkbox_state(response)
+    assert (state[str(held.pk)], state[str(free.pk)]) == (True, False)
+
+
+@pytest.mark.django_db
+def test_a_held_cohort_outside_the_grantors_reach_is_listed_read_only(
+    admin_client, organisation, monkeypatch
+):
+    reachable = _cohort(organisation, name="Reachable")
+    unreachable = _cohort(organisation, name="Beyond reach")
+    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
+    )
+
+    response = _change_dialog(admin_client, organisation, user)
+
+    assert _checkbox_state(response) == {str(reachable.pk): True}
+    assert "Beyond reach (outside the cohorts you can give)" in _text(response)
+
+
+@pytest.mark.django_db
+def test_an_inactive_held_cohort_is_listed_read_only(admin_client, organisation):
+    active = _cohort(organisation)
+    dormant = _cohort(organisation, name="Dormant group")
+    user = _member_holding("cohort_viewer", [active, dormant])
+    Cohort.objects.filter(pk=dormant.pk).update(is_active=False)
+
+    response = _change_dialog(admin_client, organisation, user)
+
+    assert str(dormant.pk) not in _checkbox_state(response)
+    assert "Dormant group (inactive)" in _text(response)
+
+
+@pytest.mark.django_db
+def test_an_inactive_held_cohort_is_untouched_by_a_change(admin_client, organisation):
+    active = _cohort(organisation)
+    dormant = _cohort(organisation)
+    user = _member_holding("cohort_viewer", [active, dormant])
+    Cohort.objects.filter(pk=dormant.pk).update(is_active=False)
+
+    _change(admin_client, organisation, user, [])
+
+    assert _active_roles(user) == {("cohort_viewer", str(dormant.pk))}
+
+
+@pytest.mark.django_db
+def test_a_held_cohort_outside_the_grantors_reach_is_untouched_by_a_change(
+    admin_client, organisation, monkeypatch
+):
+    reachable = _cohort(organisation)
+    unreachable = _cohort(organisation)
+    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
+    )
+
+    _change(admin_client, organisation, user, [])
+
+    assert _active_roles(user) == {("cohort_viewer", str(unreachable.pk))}
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
+    admin_client, organisation
+):
+    held = _cohort(organisation)
+    added = _cohort(organisation, name="Newly given")
+    user = _member_holding("cohort_viewer", held)
+
+    response = _change(admin_client, organisation, user, [held, added], confirmed=False)
+
+    text = _text(response)
+    assert "Adds: Newly given" in text
+    assert "will be able to do more than they can now" in text
+    assert "Removes:" not in text
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_a_removed_cohort_names_the_loss(
+    admin_client, organisation
+):
+    kept = _cohort(organisation)
+    dropped = _cohort(organisation, name="Let go")
+    user = _member_holding("cohort_viewer", [kept, dropped])
+
+    response = _change(admin_client, organisation, user, [kept], confirmed=False)
+
+    text = _text(response)
+    assert "Removes: Let go" in text
+    assert "will be able to do more" not in text
+    assert "Adds:" not in text
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_an_added_and_a_removed_cohort_names_both(
+    admin_client, organisation
+):
+    held = _cohort(organisation, name="Dropped one")
+    added = _cohort(organisation, name="Added one")
+    user = _member_holding("cohort_viewer", held)
+
+    response = _change(admin_client, organisation, user, [added], confirmed=False)
+
+    text = _text(response)
+    assert "Adds: Added one" in text
+    assert "Removes: Dropped one" in text
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_every_cohort_removed_uses_the_remove_wording(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_viewer", cohort)
+
+    response = _change(admin_client, organisation, user, [], confirmed=False)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert f"Remove {user.display_name} from Cohort viewer" in _text(response)
+    (button,) = document.cssselect("button[type=submit]")
+    assert button.text_content().split()[0] == "Remove"
+
+
+@pytest.mark.django_db
+def test_a_confirmed_addition_grants_the_cohort(admin_client, organisation):
+    held = _cohort(organisation)
+    added = _cohort(organisation)
+    user = _member_holding("cohort_viewer", held)
+
+    _change(admin_client, organisation, user, [held, added])
+
+    assert _active_roles(user) == {
+        ("cohort_viewer", str(held.pk)),
+        ("cohort_viewer", str(added.pk)),
+    }
+
+
+@pytest.mark.django_db
+def test_a_confirmed_removal_deactivates_the_cohort(admin_client, organisation):
+    kept = _cohort(organisation)
+    dropped = _cohort(organisation)
+    user = _member_holding("cohort_viewer", [kept, dropped])
+
+    _change(admin_client, organisation, user, [kept])
+
+    assert _active_roles(user) == {("cohort_viewer", str(kept.pk))}
+
+
+@pytest.mark.django_db
+def test_a_confirmed_change_with_an_addition_and_a_removal_does_both(
+    admin_client, organisation
+):
+    dropped = _cohort(organisation)
+    added = _cohort(organisation)
+    user = _member_holding("cohort_viewer", dropped)
+
+    _change(admin_client, organisation, user, [added])
+
+    assert _active_roles(user) == {("cohort_viewer", str(added.pk))}
+
+
+@pytest.mark.django_db
+def test_removing_every_cohort_leaves_no_active_assignment_for_the_role(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_viewer", cohort)
+    assign_role(UserFactory(superuser=True), user, "cohort_admin", cohort)
+
+    _change(admin_client, organisation, user, [])
+
+    assert _active_roles(user) == {("cohort_admin", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_a_confirmed_change_answers_204_with_member_changed(admin_client, organisation):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+
+    response = _change(admin_client, organisation, user, [_cohort(organisation)])
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+
+
+@pytest.mark.django_db
+def test_an_unconfirmed_change_leaves_every_assignment_unchanged(
+    admin_client, organisation
+):
+    held = _cohort(organisation)
+    user = _member_holding("cohort_viewer", held)
+    before = _active_roles(user)
+
+    _change(admin_client, organisation, user, [_cohort(organisation)], confirmed=False)
+
+    assert _active_roles(user) == before
+
+
+@pytest.mark.django_db
+def test_an_unchanged_selection_is_422(admin_client, organisation):
+    held = _cohort(organisation)
+    user = _member_holding("cohort_viewer", held)
+
+    response = _change(admin_client, organisation, user, [held], confirmed=False)
+
+    assert response.status_code == 422
+    assert "Nothing changed. Tick or untick a cohort first." in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_cohort_outside_the_offered_set_answers_the_unavailable_fragment(
+    admin_client, organisation, monkeypatch
+):
+    reachable = _cohort(organisation)
+    outside = _cohort(organisation)
+    user = _member_holding("cohort_viewer", reachable)
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
+    )
+
+    response = _change(admin_client, organisation, user, [reachable, outside])
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+    assert _active_roles(user) == {("cohort_viewer", str(reachable.pk))}
+
+
+@pytest.mark.django_db
+def test_a_change_naming_the_viewer_is_422_with_the_self_message(
+    mock_site_context, logged_in_client, organisation
+):
+    client, me = _holder_client(logged_in_client, organisation)
+    cohort = _cohort(organisation)
+    assign_role(UserFactory(superuser=True), me, "cohort_viewer", cohort)
+    before = _active_roles(me)
+
+    response = _change(client, organisation, me, [_cohort(organisation)])
+
+    assert response.status_code == 422
+    assert "You can't change your own roles." in _text(response)
+    assert _active_roles(me) == before
+
+
+@pytest.mark.django_db
+def test_the_confirmation_for_a_person_with_no_member_row_says_the_grant_creates_one(
+    admin_client, organisation
+):
+    held = _cohort(organisation)
+    added = _cohort(organisation)
+    user = _member_holding("cohort_viewer", held)
+    OrganisationMember.objects.filter(user=user).delete()
+
+    response = _change(admin_client, organisation, user, [held, added], confirmed=False)
+
+    assert "Adding this role creates one" in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_change_for_an_organisation_admin_role_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    user = _member_holding("organisation_admin", organisation)
+
+    response = _change(
+        admin_client, organisation, user, [_cohort(organisation)], "organisation_admin"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_refusal_partway_through_a_change_keeps_every_assignment(
+    admin_client, organisation, monkeypatch
+):
+    dropped = _cohort(organisation)
+    added = _cohort(organisation)
+    user = _member_holding("cohort_viewer", dropped)
+    before = _active_roles(user)
+
+    def refuse(*args: object) -> None:
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.remove_role", refuse)
+
+    response = _change(admin_client, organisation, user, [added])
+
+    assert response.status_code == 403
+    assert _active_roles(user) == before

@@ -1,0 +1,72 @@
+{% comment %}
+The Change cohorts dialog. Context: step (form or confirmation), member,
+entry and form_url. The form step adds cohort_rows (pk, name, checked) and
+read_only (the held cohorts left as they are, each with its reason); the
+confirmation step adds cohort_ids, added and removed (prose lists),
+widening, removes_role and creates_member_row.
+{% endcomment %}
+{% if step == "form" %}
+<c-modal-header>Change cohorts for {{ member.display_name }}</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <input type="hidden" name="user" value="{{ member.pk }}">
+    <input type="hidden" name="role" value="{{ entry.role }}">
+    <div class="space-y-4 px-6 py-4 text-sm">
+        <p>{{ entry.display_name }} on these cohorts.</p>
+        <div x-data="cohortChecklist" class="space-y-2">
+            <div class="flex items-center gap-3">
+                <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2">
+                <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
+            </div>
+            <div class="max-h-48 space-y-1 overflow-y-auto">
+                {% for row in cohort_rows %}
+                <label data-cohort-row data-name="{{ row.name|lower }}" class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
+                    <input type="checkbox" name="cohorts" value="{{ row.pk }}" x-on:change="count"{% if row.checked %} checked{% endif %}>
+                    <span>{{ row.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% if read_only %}
+        <div>
+            <p class="font-semibold">Kept as they are</p>
+            <ul class="text-muted">{% for item in read_only %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+    </div>
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Change cohorts</c-button>
+    </c-button-group>
+</form>
+{% elif step == "confirmation" %}
+<c-modal-header focus_title="true">{% if removes_role %}Remove {{ member.display_name }} from {{ entry.display_name }}{% else %}Change cohorts for {{ member.display_name }}{% endif %}</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <input type="hidden" name="user" value="{{ member.pk }}">
+    <input type="hidden" name="role" value="{{ entry.role }}">
+    <input type="hidden" name="confirmed" value="1">
+    {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
+    <div class="space-y-3 px-6 py-4 text-sm">
+        {% if added %}<p>Adds: {{ added }}</p>{% endif %}
+        {% if removed %}<p>Removes: {{ removed }}</p>{% endif %}
+        {% if widening %}
+        <p>{{ member.display_name }} will be able to do more than they can now: {{ entry.display_name }} on {{ added }}.</p>
+        {% endif %}
+        {% if removed %}
+        <p>{{ member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
+        {% endif %}
+        {% if creates_member_row %}
+        <p>{{ member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
+        {% endif %}
+    </div>
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Saving...">{% if removes_role %}Remove{% else %}Change cohorts{% endif %}</c-button>
+    </c-button-group>
+</form>
+{% endif %}

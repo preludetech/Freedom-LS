@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
 
 from django import forms
@@ -36,6 +36,7 @@ from freedom_ls.educator_interface.forms import (
     AddMemberForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
+    CohortSetForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
@@ -1692,3 +1693,151 @@ class RemoveRoleAction(MemberRoleAction):
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
         return member_changed_response(user)
+
+
+class CohortChange(NamedTuple):
+    added: list[Cohort]
+    removed: list[Cohort]
+    untouched: list[Cohort]
+
+
+class ChangeCohortsAction(MemberRoleAction):
+    """Adds and removes the cohorts of one cohort-role entry in a single
+    transaction, after a confirmation that names what is gained and lost."""
+
+    label = "Change cohorts"
+    action_name = "change_cohorts"
+    template_name = "educator_interface/modal/change_cohorts.html"
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return any(g.cohorts for g in grantable_roles_for(ctx.request))
+
+    def _offered(self, ctx: PanelContext, role: str) -> tuple[Cohort, ...]:
+        for grantable in grantable_roles_for(ctx.request):
+            if grantable.role == role and grantable.cohorts is not None:
+                return grantable.cohorts
+        raise Http404("This role is not given on cohorts here")
+
+    def _plan(
+        self, ctx: PanelContext, entry: RoleEntry, chosen: list[Cohort]
+    ) -> CohortChange:
+        """Cohorts the person holds outside the offered set, and inactive
+        ones they hold, are untouched."""
+        offered = self._offered(ctx, entry.role)
+        held = list(entry.cohorts)
+        return CohortChange(
+            added=[cohort for cohort in chosen if cohort not in held],
+            removed=[
+                cohort for cohort in held if cohort in offered and cohort not in chosen
+            ],
+            untouched=[cohort for cohort in held if cohort not in offered],
+        )
+
+    def _dialog(
+        self, ctx: PanelContext, user: User, entry: RoleEntry
+    ) -> dict[str, object]:
+        offered = self._offered(ctx, entry.role)
+        held = set(entry.cohorts)
+        return {
+            "member": user,
+            "entry": entry,
+            "form_url": self.get_action_url(ctx),
+            "cohort_rows": [
+                {
+                    "pk": str(cohort.pk),
+                    "name": cohort.name,
+                    "checked": cohort in held,
+                }
+                for cohort in offered
+            ],
+            "read_only": [
+                f"{cohort.name} (inactive)"
+                if not cohort.is_active
+                else f"{cohort.name} (outside the cohorts you can give)"
+                for cohort in entry.cohorts
+                if cohort not in offered
+            ],
+        }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        user = self._member(ctx)
+        entry = self._entry(ctx, user)
+        return {"step": "form", **self._dialog(ctx, user, entry)}
+
+    def _chosen(self, ctx: PanelContext, entry: RoleEntry) -> list[Cohort]:
+        form = CohortSetForm(ctx.request.POST)
+        cohorts = cast(forms.ModelMultipleChoiceField, form.fields["cohorts"])
+        cohorts.queryset = Cohort.objects.filter(organisation=_organisation(ctx))
+        if not form.is_valid():
+            raise Http404("No such cohort")
+        chosen = sorted(form.cleaned_data["cohorts"], key=lambda c: c.name)
+        offered = self._offered(ctx, entry.role)
+        if not all(cohort in offered for cohort in chosen):
+            raise Http404("This cohort is no longer offered")
+        return chosen
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        user = self._member(ctx)
+        grantor = cast("User", ctx.request.user)
+        entry = self._entry(ctx, user)
+        chosen = self._chosen(ctx, entry)
+        if user == grantor:
+            return render(
+                ctx.request,
+                "educator_interface/modal/member_change_refused.html",
+                {"message": REFUSAL_MESSAGES[RefusalReason.SELF]},
+                status=422,
+            )
+        plan = self._plan(ctx, entry, chosen)
+        if not plan.added and not plan.removed:
+            return render(
+                ctx.request,
+                "educator_interface/modal/member_change_refused.html",
+                {"message": "Nothing changed. Tick or untick a cohort first."},
+                status=422,
+            )
+        if ctx.request.POST.get("confirmed") != "1":
+            return self._confirmation(ctx, user, entry, chosen, plan)
+        try:
+            with transaction.atomic():
+                for cohort in plan.added:
+                    assign_role(grantor, user, entry.role, cohort)
+                for cohort in plan.removed:
+                    remove_role(grantor, user, entry.role, cohort)
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
+        return member_changed_response(user)
+
+    def _confirmation(
+        self,
+        ctx: PanelContext,
+        user: User,
+        entry: RoleEntry,
+        chosen: list[Cohort],
+        plan: CohortChange,
+    ) -> HttpResponse:
+        organisation = _organisation(ctx)
+        before = {(entry.role, str(cohort.pk)) for cohort in entry.cohorts}
+        after = (before - {(entry.role, str(c.pk)) for c in plan.removed}) | {
+            (entry.role, str(c.pk)) for c in plan.added
+        }
+        has_member_row = OrganisationMember.objects.filter(
+            organisation=organisation, user=user
+        ).exists()
+        return render(
+            ctx.request,
+            self.template_name,
+            {
+                "step": "confirmation",
+                "member": user,
+                "entry": entry,
+                "form_url": self.get_action_url(ctx),
+                "cohort_ids": [str(cohort.pk) for cohort in chosen],
+                "added": join_prose([cohort.name for cohort in plan.added]),
+                "removed": join_prose([cohort.name for cohort in plan.removed]),
+                "widening": is_widening(before, after),
+                "removes_role": not plan.added
+                and len(plan.removed) == len(entry.cohorts),
+                "creates_member_row": bool(plan.added) and not has_member_row,
+            },
+        )

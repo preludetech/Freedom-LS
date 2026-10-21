@@ -1592,7 +1592,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 47
+QUERY_BOUND = 49
 
 
 MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
@@ -1994,6 +1994,72 @@ def test_another_members_entry_offers_remove_to_an_organisation_admin(members_cl
 
     (trigger,) = _remove_triggers(row)
     assert f"user={user.pk}&role=cohort_viewer" in trigger
+
+
+def _change_cohorts_triggers(row) -> list[str]:
+    return [
+        button.get("hx-get")
+        for button in row.cssselect("button[hx-get]")
+        if "change_cohorts" in button.get("hx-get")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_cohort_role_entry_offers_change_cohorts(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="other@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    (trigger,) = _change_cohorts_triggers(row)
+    assert f"user={user.pk}&role=cohort_viewer" in trigger
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_entry_offers_no_change_cohorts(members_client):
+    organisation = OrganisationFactory()
+    _hold(UserFactory(email="boss@example.com"), "organisation_admin", organisation)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "boss@example.com")
+
+    assert _change_cohorts_triggers(row) == []
+
+
+@pytest.mark.django_db
+def test_a_role_the_viewer_may_not_give_has_no_change_cohorts(
+    members_client, monkeypatch
+):
+    organisation = OrganisationFactory()
+    _hold(
+        UserFactory(email="other@example.com"),
+        "cohort_viewer",
+        CohortFactory(organisation=organisation),
+    )
+    client = members_client(organisation, "organisation_admin")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("organisation_admin", None)],
+    )
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    assert _change_cohorts_triggers(row) == []
+
+
+@pytest.mark.django_db
+def test_a_turned_off_accounts_row_has_no_change_cohorts(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="off@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    User.objects.filter(pk=user.pk).update(is_active=False)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "off@example.com")
+
+    assert _change_cohorts_triggers(row) == []
 
 
 @pytest.mark.django_db

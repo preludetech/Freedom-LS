@@ -230,3 +230,14 @@ class AddMemberForm(forms.Form):
         elif cleaned.get("role") and not cleaned.get("cohorts"):
             self.add_error("cohorts", "Choose at least one cohort.")
         return cleaned
+
+
+class CohortSetForm(forms.Form):
+    """The cohorts a role should cover after the change, among the ones
+    offered. An empty selection is valid: it means remove the role."""
+
+    cohorts = forms.ModelMultipleChoiceField(
+        queryset=Cohort.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )

@@ -21,10 +21,11 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // The cohort checklist of the Add member dialog. A row shows when its
-    // name contains the search text and the chosen role is one of the roles
-    // the row is offered for (data-roles). A row that is not offered is also
-    // disabled, so it is neither counted nor submitted.
+    // A cohort checklist. A row shows when its name contains the search text
+    // and, in a form with role radios, the chosen role is one of the roles the
+    // row is offered for (data-roles). A row that is not offered is also
+    // disabled, so it is neither counted nor submitted. In a form with no role
+    // radios every row is offered.
     Alpine.data("cohortChecklist", () => ({
         query: "",
         selected: 0,
@@ -38,9 +39,11 @@ document.addEventListener("alpine:init", () => {
         },
 
         _chosenRole() {
-            const checked = this.$root
-                .closest("form")
-                .querySelector('input[name="role"]:checked');
+            const form = this.$root.closest("form");
+            if (form.querySelector('input[type="radio"][name="role"]') === null) {
+                return null;
+            }
+            const checked = form.querySelector('input[name="role"]:checked');
             return checked === null ? "" : checked.value;
         },
 
@@ -48,7 +51,7 @@ document.addEventListener("alpine:init", () => {
             const role = this._chosenRole();
             const text = this.query.trim().toLowerCase();
             this.$root.querySelectorAll("[data-cohort-row]").forEach((row) => {
-                const offered = row.dataset.roles.split(" ").includes(role);
+                const offered = role === null || row.dataset.roles.split(" ").includes(role);
                 row.querySelector("input").disabled = !offered;
                 row.hidden = !offered || !row.dataset.name.includes(text);
             });

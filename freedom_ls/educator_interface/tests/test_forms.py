@@ -12,6 +12,7 @@ from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
     AddMemberForm,
     CohortCourseRegistrationForm,
+    CohortSetForm,
     LearnerPickerForm,
 )
 from freedom_ls.learner_management.factories import (
@@ -188,3 +189,10 @@ def test_add_member_form_hides_and_fixes_a_preset_cohort(mock_site_context):
 
     field = form.fields["cohorts"]
     assert (field.widget.is_hidden, field.initial) == (True, [cohort.pk])
+
+
+def test_an_empty_cohort_selection_is_valid():
+    form = CohortSetForm(QueryDict(""))
+
+    assert form.is_valid()
+    assert list(form.cleaned_data["cohorts"]) == []
