@@ -71,6 +71,7 @@ from freedom_ls.learner_management.queries import (
     peers_through,
     registerable_courses_for,
     registerable_courses_for_learner,
+    site_level_admins,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -83,6 +84,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.models import SiteRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import (
@@ -1900,3 +1902,31 @@ class TestMembersOf:
         )
 
         assert list(members_of(organisation)) == [user]
+
+
+@pytest.mark.django_db
+class TestSiteLevelAdmins:
+    def test_holds_superusers_and_active_site_admins(self, mock_site_context):
+        superuser = UserFactory(superuser=True)
+        site_admin = UserFactory()
+        assign_site_role(site_admin, "site_admin", site=mock_site_context)
+
+        assert set(site_level_admins(mock_site_context)) == {superuser, site_admin}
+
+    def test_leaves_out_an_inactive_site_admin_grant(self, mock_site_context):
+        holder = UserFactory()
+        assign_site_role(holder, "site_admin", site=mock_site_context)
+        SiteRoleAssignment.objects.filter(user=holder).update(is_active=False)
+
+        assert list(site_level_admins(mock_site_context)) == []
+
+    def test_leaves_out_another_sites_admin(self, mock_site_context):
+        other_site = SiteFactory()
+        assign_site_role(UserFactory(), "site_admin", site=other_site)
+
+        assert list(site_level_admins(mock_site_context)) == []
+
+    def test_leaves_out_an_organisation_admin(self, mock_site_context):
+        assign_object_role(UserFactory(), OrganisationFactory(), "organisation_admin")
+
+        assert list(site_level_admins(mock_site_context)) == []

@@ -63,6 +63,10 @@ from freedom_ls.learner_management.queries import (
     members_keeping_access,
     other_grants_for,
 )
+from freedom_ls.learner_management.role_assignment import (
+    GrantableRole,
+    grantable_roles,
+)
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
     unregister_cohort_from_course,
@@ -85,7 +89,20 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 
 if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
+
+
+def grantable_roles_for(request: HttpRequest) -> list[GrantableRole]:
+    """The grantor's grantable roles in the request's organisation, computed
+    once and kept on the request, so every cell and action on a page reads
+    the same list."""
+    scoped = cast("OrganisationScopedRequest", request)
+    cached = getattr(scoped, "grantable_roles", None)
+    if cached is None:
+        cached = grantable_roles(cast("User", scoped.user), scoped.organisation)
+        scoped.grantable_roles = cached
+    return cached
 
 
 def _uuid_from(params: Mapping[str, str], name: str) -> UUID:

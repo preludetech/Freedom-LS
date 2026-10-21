@@ -34,7 +34,10 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
-from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.role_based_permissions.models import (
+    ObjectRoleAssignment,
+    SiteRoleAssignment,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -785,6 +788,22 @@ def peers_of(learner: Learner) -> QuerySet[Learner]:
         cohorts=cohorts,
         own_courses=own.values("course_id"),
         cohort_courses=through_cohorts.values("course_id"),
+    )
+
+
+def site_level_admins(site: Site) -> QuerySet[User]:
+    """Users who reach every organisation on the site without a member row:
+    superusers and active site_admin holders. The one definition both the
+    last-admin locks and the members list read."""
+    from freedom_ls.accounts.models import User
+
+    return User.objects.filter(
+        Q(is_superuser=True)
+        | Exists(
+            SiteRoleAssignment.objects.filter(
+                user=OuterRef("pk"), site=site, role="site_admin", is_active=True
+            )
+        )
     )
 
 

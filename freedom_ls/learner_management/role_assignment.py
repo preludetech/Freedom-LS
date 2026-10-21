@@ -10,6 +10,7 @@ an organisation without anyone able to administer it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from django.contrib.sites.models import Site
@@ -17,13 +18,17 @@ from django.db import transaction
 
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.models import Cohort, OrganisationMember
-from freedom_ls.learner_management.queries import active_organisation_admins
+from freedom_ls.learner_management.queries import (
+    MEMBER_ROLES,
+    active_organisation_admins,
+    cohorts_visible_to,
+    site_level_admins,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
 )
-from freedom_ls.role_based_permissions.models import SiteRoleAssignment
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
@@ -60,17 +65,13 @@ def _refuse_unless(
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
 
 
-def _is_site_level_admin(user: User, site: Site) -> bool:
+def is_site_level_admin(user: User, site: Site) -> bool:
     """Whether `user` may bypass the last-organisation-admin lock: a
     superuser, or an active site_admin on `site`, always has another way to
     reach the organisation, so the lock only protects organisation admins
     from locking each other out.
     """
-    if user.is_superuser:
-        return True
-    return SiteRoleAssignment.objects.filter(
-        user=user, site=site, role="site_admin", is_active=True
-    ).exists()
+    return site_level_admins(site).filter(pk=user.pk).exists()
 
 
 def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
@@ -80,6 +81,15 @@ def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
         _active_role_assignments(Organisation, frozenset({"organisation_admin"}))
         .filter(user=user, object_id=str(organisation.pk))
         .exists()
+    )
+
+
+def is_last_organisation_admin(organisation: Organisation, user: User) -> bool:
+    """Whether removing or suspending `user` would leave the organisation
+    with no active organisation admin. The dialogs preview this and the
+    lock enforces it, from the one expression."""
+    return _holds_organisation_admin(user, organisation) and not (
+        active_organisation_admins(organisation).exclude(pk=user.pk).exists()
     )
 
 
@@ -95,7 +105,7 @@ def _lock_and_refuse_last_organisation_admin(
     transaction.atomic().
     """
     Organisation.objects.select_for_update().get(pk=organisation.pk)
-    if not active_organisation_admins(organisation).exclude(pk=user.pk).exists():
+    if is_last_organisation_admin(organisation, user):
         raise RoleChangeRefused(RefusalReason.LAST_ORGANISATION_ADMIN)
 
 
@@ -128,8 +138,7 @@ def remove_role(
         if (
             role == "organisation_admin"
             and isinstance(target, Organisation)
-            and _holds_organisation_admin(user, target)
-            and not _is_site_level_admin(grantor, target.site)
+            and not is_site_level_admin(grantor, target.site)
         ):
             _lock_and_refuse_last_organisation_admin(target, user)
         remove_object_role(user, target, role, removed_by=grantor)
@@ -147,11 +156,47 @@ def set_organisation_member_active(
         actor, member.user, CHANGE_MEMBER, member.organisation, assigning=is_active
     )
     with transaction.atomic():
-        if (
-            not is_active
-            and _holds_organisation_admin(member.user, member.organisation)
-            and not _is_site_level_admin(actor, member.site)
-        ):
+        if not is_active and not is_site_level_admin(actor, member.site):
             _lock_and_refuse_last_organisation_admin(member.organisation, member.user)
         member.is_active = is_active
         member.save(update_fields=["is_active"])
+
+
+@dataclass(frozen=True)
+class GrantableRole:
+    """A role the grantor may give here. `cohorts` is None for a role on the
+    whole organisation, else the active cohorts it may be given on."""
+
+    role: str
+    cohorts: tuple[Cohort, ...] | None
+
+
+def grantable_roles(grantor: User, organisation: Organisation) -> list[GrantableRole]:
+    """The roles and cohorts a grantor may hand out in this organisation,
+    in MEMBER_ROLES order. The cohorts come from one queryset per role,
+    built from the same grant builders can() reads, so the cost does not
+    grow with the number of cohorts. This is the source of every choice
+    offered and every submitted choice checked; assign_role and
+    remove_role remain the authoritative check on each target."""
+    result: list[GrantableRole] = []
+    for role in MEMBER_ROLES:
+        capability = ASSIGN.format(role=role)
+        if role == "organisation_admin":
+            if can(grantor, capability, organisation):
+                result.append(GrantableRole(role, None))
+            continue
+        cohorts = tuple(
+            cohorts_visible_to(grantor, organisation, capability=capability)
+            .filter(is_active=True)
+            .order_by("name")
+        )
+        if cohorts:
+            result.append(GrantableRole(role, cohorts))
+    return result
+
+
+def is_widening(before: set[tuple[str, str]], after: set[tuple[str, str]]) -> bool:
+    """Whether `after` lets the person do anything `before` did not. Each
+    pair is a role and the key of its target (the organisation's pk or a
+    cohort's pk)."""
+    return bool(after - before)

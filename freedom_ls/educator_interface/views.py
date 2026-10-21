@@ -91,6 +91,7 @@ from freedom_ls.learner_management.queries import (
     members_of,
     organisations_accessible_to,
 )
+from freedom_ls.learner_management.role_assignment import GrantableRole
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
@@ -143,6 +144,7 @@ class OrganisationScopedRequest(HttpRequest):
     path_string: str
     panel_announcement: str
     panel_extra_oob: list[str]
+    grantable_roles: list[GrantableRole]
 
 
 class OrganisationSectionConfig(SectionConfigBase):

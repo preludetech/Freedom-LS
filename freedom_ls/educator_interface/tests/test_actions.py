@@ -18,7 +18,10 @@ from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
-from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
+from freedom_ls.educator_interface.actions import (
+    cohort_not_empty_sentence,
+    grantable_roles_for,
+)
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -2648,3 +2651,15 @@ def test_a_picker_with_something_to_offer_keeps_its_submit_button(
     document = lxml.html.fromstring(response.content.decode())
     assert document.cssselect("select[name='cohort']")
     assert document.cssselect("button[type='submit']")
+
+
+@pytest.mark.django_db
+def test_grantable_roles_are_cached_on_the_request(
+    panel_request, django_assert_max_num_queries
+) -> None:
+    request = panel_request()
+    request.user = UserFactory(superuser=True)
+    grantable_roles_for(request)
+
+    with django_assert_max_num_queries(0):
+        grantable_roles_for(request)

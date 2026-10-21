@@ -7,24 +7,32 @@ from types import ModuleType
 from unittest.mock import patch
 
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     OrganisationMemberFactory,
 )
 from freedom_ls.learner_management.models import OrganisationMember
 from freedom_ls.learner_management.role_assignment import (
+    ASSIGN,
     CHANGE_MEMBER,
     assign_role,
+    grantable_roles,
+    is_last_organisation_admin,
+    is_site_level_admin,
+    is_widening,
     remove_role,
     set_organisation_member_active,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -34,6 +42,7 @@ from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
 )
+from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
 
@@ -259,3 +268,224 @@ def test_removing_an_organisation_admin_locks_the_organisation_row(
         and "FOR UPDATE" in query["sql"]
         for query in captured.captured_queries
     )
+
+
+def _grantable(
+    grantor: User, organisation: Organisation
+) -> list[tuple[str, list[str] | None]]:
+    return [
+        (g.role, None if g.cohorts is None else [c.name for c in g.cohorts])
+        for g in grantable_roles(grantor, organisation)
+    ]
+
+
+@pytest.mark.django_db
+def test_a_superuser_may_grant_every_role_on_every_active_cohort(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort_b = CohortFactory(organisation=organisation, name="B")
+    cohort_a = CohortFactory(organisation=organisation, name="A")
+
+    result = _grantable(UserFactory(superuser=True), organisation)
+
+    assert result == [
+        ("organisation_admin", None),
+        ("cohort_admin", [cohort_a.name, cohort_b.name]),
+        ("cohort_viewer", [cohort_a.name, cohort_b.name]),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_site_admin_may_grant_every_role_on_every_active_cohort(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_site_role(grantor, "site_admin", site=mock_site_context)
+
+    result = _grantable(grantor, organisation)
+
+    assert result == [
+        ("organisation_admin", None),
+        ("cohort_admin", [cohort.name]),
+        ("cohort_viewer", [cohort.name]),
+    ]
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_may_grant_every_role_on_every_active_cohort(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+
+    result = _grantable(grantor, organisation)
+
+    assert result == [
+        ("organisation_admin", None),
+        ("cohort_admin", [cohort.name]),
+        ("cohort_viewer", [cohort.name]),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+def test_a_cohort_level_role_holder_may_grant_nothing(
+    mock_site_context: Site, role: str
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, cohort, role)
+
+    assert grantable_roles(grantor, organisation) == []
+
+
+@pytest.mark.django_db
+def test_a_user_with_no_role_may_grant_nothing(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation)
+
+    assert grantable_roles(UserFactory(), organisation) == []
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_is_not_grantable(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    active = CohortFactory(organisation=organisation, name="Active")
+    CohortFactory(organisation=organisation, name="Inactive", is_active=False)
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+
+    result = _grantable(grantor, organisation)
+
+    assert result[1:] == [
+        ("cohort_admin", [active.name]),
+        ("cohort_viewer", [active.name]),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_downstream_role_is_never_grantable(
+    mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    organisation = OrganisationFactory()
+    grantor = UserFactory(superuser=True)
+    module_path = "fake_permissions_module_for_grantable_roles"
+    fake_module = ModuleType(module_path)
+    fake_module.ROLES = SiteRolesConfig(
+        {
+            **BASE_ROLES,
+            "org_helper": Role(
+                display_name="Org helper",
+                permissions=frozenset({ASSIGN.format(role="org_helper")}),
+                assignment_scope=SCOPE_OBJECT,
+            ),
+        }
+    )
+    settings.FREEDOMLS_PERMISSIONS_MODULES = {mock_site_context.name: module_path}
+
+    with patch(
+        "freedom_ls.role_based_permissions.loader.import_module",
+        return_value=fake_module,
+    ):
+        clear_caches()
+        roles = [g.role for g in grantable_roles(grantor, organisation)]
+
+    assert "org_helper" not in roles
+
+
+@pytest.mark.django_db
+def test_grantable_roles_query_count_does_not_grow_with_cohorts(
+    mock_site_context: Site, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+    with CaptureQueriesContext(connection) as one_cohort:
+        grantable_roles(grantor, organisation)
+    CohortFactory.create_batch(5, organisation=organisation)
+
+    with django_assert_max_num_queries(len(one_cohort)):
+        grantable_roles(grantor, organisation)
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "expected"),
+    [
+        (set(), {("cohort_viewer", "c1")}, True),
+        ({("cohort_viewer", "c1")}, set(), False),
+        (
+            {("cohort_viewer", "c1")},
+            {("cohort_viewer", "c1"), ("cohort_admin", "c2")},
+            True,
+        ),
+        ({("cohort_viewer", "c1")}, {("cohort_viewer", "c1")}, False),
+    ],
+    ids=["add", "remove", "mixed", "unchanged"],
+)
+def test_is_widening(
+    before: set[tuple[str, str]], after: set[tuple[str, str]], expected: bool
+) -> None:
+    assert is_widening(before, after) is expected
+
+
+@pytest.mark.django_db
+def test_a_superuser_is_a_site_level_admin(mock_site_context: Site) -> None:
+    assert is_site_level_admin(UserFactory(superuser=True), mock_site_context)
+
+
+@pytest.mark.django_db
+def test_an_active_site_admin_is_a_site_level_admin(mock_site_context: Site) -> None:
+    user = UserFactory()
+    assign_site_role(user, "site_admin", site=mock_site_context)
+
+    assert is_site_level_admin(user, mock_site_context)
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_is_not_a_site_level_admin(
+    mock_site_context: Site,
+) -> None:
+    user = UserFactory()
+    assign_object_role(user, OrganisationFactory(), "organisation_admin")
+
+    assert not is_site_level_admin(user, mock_site_context)
+
+
+@pytest.mark.django_db
+def test_the_sole_active_admin_is_the_last_organisation_admin(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    admin = UserFactory()
+    assign_object_role(admin, organisation, "organisation_admin")
+
+    assert is_last_organisation_admin(organisation, admin)
+
+
+@pytest.mark.django_db
+def test_an_admin_is_not_the_last_when_another_active_admin_exists(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    admin = UserFactory()
+    assign_object_role(admin, organisation, "organisation_admin")
+    assign_object_role(UserFactory(), organisation, "organisation_admin")
+
+    assert not is_last_organisation_admin(organisation, admin)
+
+
+@pytest.mark.django_db
+def test_a_user_without_the_admin_role_is_not_the_last_organisation_admin(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    assign_object_role(UserFactory(), organisation, "organisation_admin")
+
+    assert not is_last_organisation_admin(organisation, UserFactory())
