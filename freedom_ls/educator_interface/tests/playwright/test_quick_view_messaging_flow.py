@@ -84,7 +84,7 @@ def test_messaging_a_learner_from_the_quick_view(
     open_link = quick_view.get_by_role("link", name="Open conversation")
 
     page.goto(_learners_url(live_server, organisation.slug))
-    page.get_by_role("link", name="Quick view: Kai", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
     expect(quick_view).to_be_visible()
     expect(quick_view.locator("#quick-view-title")).to_have_text("Kai Ngata")
 
@@ -105,19 +105,19 @@ def test_messaging_a_learner_from_the_quick_view(
 
     # The fresh composer after a send is not a draft: another learner opens
     # without a prompt.
-    page.get_by_role("link", name="Quick view: Mere", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Mere Tane", exact=True).first.click()
     expect(quick_view.locator("#quick-view-title")).to_have_text("Mere Tane")
     expect(prompt).to_be_hidden()
 
     # An unsent draft asks before the next learner opens.
     page.get_by_label("Message to Mere Tane").fill("Half a thought")
-    page.get_by_role("link", name="Quick view: Kai", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
     expect(prompt).to_be_visible()
     prompt.get_by_role("button", name="Keep editing").click()
     expect(prompt).to_be_hidden()
     expect(page.get_by_label("Message to Mere Tane")).to_have_value("Half a thought")
 
-    page.get_by_role("link", name="Quick view: Kai", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
     prompt.get_by_role("button", name="Discard").click()
     expect(quick_view.locator("#quick-view-title")).to_have_text("Kai Ngata")
     expect(prompt).to_be_hidden()
@@ -145,7 +145,7 @@ def test_sending_from_the_quick_view_bottom_sheet_on_a_phone(
     quick_view = page.locator("#quick-view")
 
     page.goto(_learners_url(live_server, organisation.slug))
-    page.get_by_role("link", name="Quick view: Kai", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
     expect(quick_view).to_be_visible()
     expect(quick_view).to_have_css("transform", "none")
     sheet = quick_view.bounding_box()
@@ -164,6 +164,6 @@ def test_sending_from_the_quick_view_bottom_sheet_on_a_phone(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(_learners_url(live_server, organisation.slug))
-        page.get_by_role("link", name="Quick view: Kai", exact=True).first.click()
+        page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
         expect(quick_view.get_by_label("Message to Kai Ngata")).to_be_visible()
         assert_no_horizontal_overflow(page)
