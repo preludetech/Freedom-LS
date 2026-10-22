@@ -24,6 +24,11 @@ Conversations (times relative to the run), written directly by factories:
   viewer <-> l1  1 message from viewer; unread for l1
 Any other conversation a persona takes part in is deleted.
 
+Factories raise no notifications, so the seed writes what send_message would
+have left behind: one unread "New message from <sender>" rollup notification
+per participant whose conversation is unread (edu from Lena, l2 from Eve,
+l1 from Vic, s1 from Sid), timed at the newest message.
+
 Idempotent: users, organisations, cohorts, conversations and messages are
 reused (messages are keyed by a deterministic client_key); message times and
 read markers are re-aimed at "now" on every run.
@@ -42,14 +47,20 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
+from guardian.models import UserObjectPermission
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    MessageFactory,
+    NotificationFactory,
+)
 from freedom_ls.comms.messaging import inbox_for, pair_key_for
 from freedom_ls.comms.models import (
     Conversation,
@@ -285,6 +296,49 @@ def _edu_l1_messages() -> list[_Msg]:
     return messages
 
 
+def _raise_unread_notifications(site: Site, conversations: list[Conversation]) -> None:
+    """Mirror send_message: an unread rollup notification for each participant
+    with an unread incoming message, naming the newest message's sender."""
+    content_type = ContentType.objects.get_for_model(Conversation)
+    for conversation in conversations:
+        newest: Message | None = (
+            Message._base_manager.filter(conversation=conversation)
+            .select_related("sender")
+            .order_by("-created_at")
+            .first()
+        )
+        if newest is None or newest.sender is None:
+            continue
+        for participant in ConversationParticipant._base_manager.filter(
+            conversation=conversation
+        ).select_related("user"):
+            if participant.user_id == newest.sender_id:
+                continue
+            if (
+                participant.last_read_at is not None
+                and participant.last_read_at >= newest.created_at
+            ):
+                continue
+            notification = cast(
+                Notification,
+                NotificationFactory(
+                    site=site,
+                    user=participant.user,
+                    category="message.received",
+                    target=conversation,
+                    data={"sender_name": newest.sender.display_name},
+                    rollup_key=f"{content_type.pk}:{conversation.pk}",
+                ),
+            )
+            Notification._base_manager.filter(pk=notification.pk).update(
+                created_at=newest.created_at
+            )
+            click.echo(
+                f"NOTIFICATION pk={notification.pk} for {participant.user.email}: "
+                f"New message from {newest.sender.display_name}"
+            )
+
+
 def _echo_delete(label: str, queryset: QuerySet) -> None:
     rows = list(queryset)
     if not rows:
@@ -313,6 +367,12 @@ def _strip_roles(site: Site, users: list[User]) -> None:
     _echo_delete(
         "OrganisationMember row(s)",
         OrganisationMember._base_manager.filter(user__in=users),
+    )
+    # The guardian rows a grant syncs; deleting the assignment rows above in
+    # bulk leaves them behind, still granting view_cohort and friends.
+    _echo_delete(
+        "guardian object permission(s)",
+        UserObjectPermission.objects.filter(user__in=users),
     )
 
 
@@ -476,6 +536,7 @@ def _seed(site: Site) -> None:
         ),
     }
     _prune_conversations(personas, list(conversations.values()))
+    _raise_unread_notifications(site, list(conversations.values()))
 
     click.secho("--- Direct messaging QA data ---", fg="cyan", bold=True)
     click.echo(f"SITE {site.name} pk={site.pk}; COURSE {course.slug} pk={course.pk}")

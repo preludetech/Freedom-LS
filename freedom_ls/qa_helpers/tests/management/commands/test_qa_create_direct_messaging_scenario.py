@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from typing import cast
 
 import pytest
+from guardian.models import UserObjectPermission
+from guardian.shortcuts import assign_perm
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -88,6 +90,23 @@ def test_strip_roles_leaves_other_users_grants(mock_site_context) -> None:
         ObjectRoleAssignment._base_manager.values_list("user_id", flat=True)
     ) == [bystander.pk]
     assert list(OrganisationMember._base_manager.values_list("user_id", flat=True)) == [
+        bystander.pk
+    ]
+
+
+@pytest.mark.django_db
+def test_strip_roles_takes_the_personas_guardian_rows(mock_site_context) -> None:
+    # Bulk-deleting role assignments leaves their synced guardian rows behind,
+    # still granting view_cohort.
+    persona = cast(User, UserFactory(site=mock_site_context))
+    bystander = cast(User, UserFactory(site=mock_site_context))
+    cohort = CohortFactory()
+    for user in (persona, bystander):
+        assign_perm("view_cohort", user, cohort)
+
+    _strip_roles(mock_site_context, [persona])
+
+    assert list(UserObjectPermission.objects.values_list("user_id", flat=True)) == [
         bystander.pk
     ]
 
