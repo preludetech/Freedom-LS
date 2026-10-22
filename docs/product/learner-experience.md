@@ -1,15 +1,15 @@
 # Learner Experience
 
-_Last updated: 2026-10-18_
+_Last updated: 2026-10-22_
 
 ## Summary
 
-- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees.
+- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees, plus a **Your applications** panel when they have started an application.
 - A site can group its courses into named categories and choose which of those get a section of their own on the dashboard, in the order the site declares. A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the **Available courses** section, so nothing drops off the page.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
 - A course can show a **price**: a fixed amount, a range, a discounted amount or "price on request". The price is for display only, because FLS takes no payment. See [Course Prices](#course-prices).
 - An application-gated course can carry an author-written **application form**. When it does, "Apply now" takes the applicant into it, page by page, then through a check-your-answers page, before the application is submitted once. A gated course with no form asks for confirmation and then shows a status page.
-- **"Apply now" needs no account.** An anonymous visitor gives their name and email, completes and submits the application without a password, and finishes their account from an emailed link. See [applying without an account](#applying-to-a-course).
+- **"Apply now" needs no account.** An anonymous visitor gives their name and email and is emailed a link straight away; they complete and submit the application without a password, and finish their account from that link. The same link lets them pick up an unfinished application on another device. See [applying without an account](#applying-to-a-course).
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
@@ -28,7 +28,7 @@ _Last updated: 2026-10-18_
 
 The learner dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
 
-**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the site's course-discovery sections: any category sections it has declared, the catch-all **Available courses**, and **Coming soon** where a course isn't yet open for enrolment. The personalised sections — the "Welcome back" greeting, In progress, Recommended courses, Learning history, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
+**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the site's course-discovery sections: any category sections it has declared, the catch-all **Available courses**, and **Coming soon** where a course isn't yet open for enrolment. The personalised sections — the "Welcome back" greeting, In progress, Recommended courses and Learning history — are not shown. The one exception is the **Your applications** panel (below), which an anonymous visitor sees for applications started in their browser session. They are omitted entirely rather than shown as "sign in to see this" placeholders.
 
 ![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
 
@@ -46,7 +46,7 @@ Each course card shows the course title, its registration status, and a progress
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
-When application-gated courses are in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses.
+When application-gated courses are in use, the dashboard also shows a **Your applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses. An anonymous visitor sees the panel for the applications their browser session has started, with no name or email shown on the page.
 
 The site header shows **Log in** and **Sign up** affordances for anonymous visitors (carrying a `?next=` parameter so the visitor returns to the page they were on after authenticating). These affordances are absent from the header for authenticated users.
 
@@ -196,7 +196,7 @@ For a gated course with no application form, selecting "Apply now" leads to a co
 
 ![Apply confirmation page](screenshots/learner_apply_confirm.png)
 
-![Applicant status page](screenshots/learner_application_status.png)
+![Status page of a submitted application whose address is not yet verified, with "Send the email again" and a change-of-address form](screenshots/learner_application_status.png)
 
 Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
 
@@ -208,13 +208,15 @@ When the course names an application form, "Apply now" opens the first page of t
 
 ![Check-your-answers page with one card per form page and an Edit link on each](screenshots/learner_application_check_answers.png)
 
-**Applying without an account.** An anonymous visitor who clicks "Apply now" first reaches an applicant details step asking for their email and name, and for acceptance of the terms of service and privacy policy where the site's signup policy requires it. They then apply exactly as a signed-in learner would, with no password and no account yet. After submitting, the status page says the application was received and that a link has been emailed to them, with a "Send the email again" button for an email that never arrived. If the email could not be sent, because the address has had several in the last hour or the mail server refused it, the page says so and offers the same button.
+**Applying without an account.** An anonymous visitor who clicks "Apply now" first reaches an applicant details step asking for their email and name, and for acceptance of the terms of service and privacy policy where the site's signup policy requires it. They then apply exactly as a signed-in learner would, with no password and no account yet. The claim email is sent as soon as they finish that step, not when they submit. Until they claim, every form page and the check-your-answers page carry a notice naming the address the link went to, with **Send the link again** and **Wrong address? Change it** actions, and after submitting the status page offers the same two. If the email could not be sent, because the address has had several in the last hour or the mail server refused it, the notice says so and offers the same actions. A course with no application form sends the email when the applicant confirms.
 
 ![Applicant details step asking for email, name and consent before the application form](screenshots/learner_applicant_details_step.png)
 
-- **Following the emailed link** and confirming creates their account, or attaches the application to their existing account on the site, and signs them in; see [authentication](./authentication.md#accounts-created-by-claiming-an-application). An account holds one application per course: if it already has one for that course, a submitted application is kept over a draft, otherwise the one already on the account stays, and the other is discarded, even when it is the one the applicant just made. The link can be used once and expires, and an expired link offers to send a new one to the same address.
-- **Until the link is followed**, staff can see the application, marked unverified (see [admin interface](./admin-interface.md)). The applicant cannot correct a mistyped email after submitting.
-- **Progress lives in the browser session.** The applicant can leave and come back in the same browser, but cannot pick the application up from another device until they have claimed it.
+![First form page of an anonymous draft with the claim link notice naming the emailed address, "Send the link again" and "Wrong address? Change it"](screenshots/learner_application_claim_link_notice.png)
+
+- **Following the emailed link** and confirming creates their account, or attaches the application to their existing account on the site, and signs them in; see [authentication](./authentication.md#accounts-created-by-claiming-an-application). An account holds one application per course: if it already has one for that course, a submitted application is kept over a draft, and between two drafts the one just claimed replaces the one on the account. Either way the applicant is told which application was kept and which was discarded. The link can be used once and expires, and an expired link offers to send a new one to the same address.
+- **Until the link is followed**, staff can see the application, marked unverified (see [admin interface](./admin-interface.md)). The applicant can correct a mistyped address, on a draft from the details step and on a submitted application from its status page; links sent to the old address then stop working.
+- **The emailed link also claims an unfinished draft.** An applicant who has not submitted can open the link on another device, claim the draft and carry on there. In the original browser the application is also reachable from the dashboard's **Your applications** panel and, on the course page, through "View my application" in place of "Apply now".
 
 A gated course that names no form behaves as before: confirming "Apply now" leads straight to the status page. There is still no review or approval workflow. The status page is static, with no reviewer messages or withdraw action; see [roadmap](./roadmap.md).
 

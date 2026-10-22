@@ -62,7 +62,7 @@ Each course carries an access configuration controlling what a learner may do �
 
 FLS's reference configuration selects the application-gated backend, so both free and application-gated courses work out of the box. A deployment that does not want course applications points `COURSE_ACCESS_BACKEND` at the free-only backend instead; the apply flow, its call-to-action, and its dashboard panel all belong to the backend, so switching removes them entirely — there is nothing left behind on any core screen. The setting has no built-in fallback value: a downstream project must set it.
 
-Adding a future access model — a subscription, a per-course purchase — is a new backend class and a settings change, with no template, view, or migration work.
+Adding a future access model — a subscription, a per-course purchase — is a new backend class and a settings change, with no template, view, or migration work. A backend can also recognise a visitor who has no account but whose browser session holds an application, which is how the application-gated backend lets an anonymous applicant return to their application; a backend that decides by user alone needs nothing extra. See [learner experience](./learner-experience.md#applying-to-a-course) for what the applicant sees.
 
 `COURSE_ACCESS_CONFIG_VALIDATOR` names the validator that checks each course's access configuration when content is loaded. A custom backend introducing its own configuration keys points this at its own validator; most deployments never set it.
 
