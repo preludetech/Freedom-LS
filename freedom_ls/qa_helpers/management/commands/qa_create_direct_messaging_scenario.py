@@ -1,20 +1,28 @@
-"""Seed the browser-QA data set for direct messaging.
+"""Seed the browser-QA data set for direct messaging (frontend_qa.md §0.2).
 
-Organisations, cohorts and personas: Northside (Cohort A with
-l1/l2/l3 registered for one published demo course, Cohort B with b1, the
-deactivated learner gone@), Southside (Cohort S with s1), and the educator
-personas edu, edu2, viewer and south.admin. Every persona's password is its
-own email address, with a verified primary EmailAddress.
+Organisations, cohorts and personas: Northside (Cohort A with l1/l2/l3
+registered for one published demo course, Cohort B with b1, and gone@ whose
+Northside Learner row is inactive and who is no longer in Cohort A),
+Southside (Cohort S with s1), and the role-less accounts edu, edu2, viewer
+and south.admin. Every persona's password is its own email address, with a
+verified primary EmailAddress.
 
-Conversations (times relative to the run):
-  edu  <-> l1    3 messages over 2 days, newest from Eve 10 min ago; unread for l1
-  edu2 <-> l1    2 messages, newest 3 h ago; read by l1
-  l1   <-> l2    1 message from l1 1 day ago; read by l1, unread for l2
+The seed grants NO role: it deletes every role assignment and
+OrganisationMember row the personas hold (the QA run grants them through the
+Members UI), deletes org.admin@qa.test if an earlier run made it, deletes the
+personas' notifications, and resets the DemoDev site / Northside / Southside
+messaging configuration to the defaults.
+
+Conversations (times relative to the run), written directly by factories:
+  edu  <-> l1    35 messages alternating, 3 days ago .. 10 min ago (newest
+                 from l1); unread for edu, read for l1
   edu  <-> l2    2 messages from edu yesterday; l2 never opened it
-  edu  <-> gone  2 messages last week; read only for both
-  edu  <-> edu2  1 message from edu2 an hour ago; unread for edu
+  edu  <-> gone  2 messages last week; read for both
+  edu  <-> edu2  1 message from edu2 an hour ago; read for both
   edu  <-> (deleted user)  2 messages, then the other account deleted
   south.admin <-> s1  1 message from south.admin
+  viewer <-> l1  1 message from viewer; unread for l1
+Any other conversation a persona takes part in is deleted.
 
 Idempotent: users, organisations, cohorts, conversations and messages are
 reused (messages are keyed by a deterministic client_key); message times and
@@ -36,17 +44,36 @@ import djclick as click
 from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
-from freedom_ls.comms.messaging import inbox_for, other_participant, pair_key_for
-from freedom_ls.comms.messaging_loader import get_messaging_policy
-from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
+from freedom_ls.comms.messaging import inbox_for, pair_key_for
+from freedom_ls.comms.models import (
+    Conversation,
+    ConversationParticipant,
+    Message,
+    Notification,
+)
 from freedom_ls.content_engine.models import Course
-from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.factories import LearnerFactory
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    Learner,
+    OrganisationMember,
+)
+from freedom_ls.messaging_policy.models import (
+    CohortCourseRegistrationMessagingConfig,
+    CohortMessagingConfig,
+    LearnerCourseRegistrationMessagingConfig,
+    LearnerMessagingConfig,
+    OrganisationMessagingConfig,
+    SiteMessagingConfig,
+)
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
     _ensure_cohort,
     _ensure_cohort_registration,
@@ -57,10 +84,15 @@ from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios 
     _pin_current_site,
     _site_context,
 )
-from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.role_based_permissions.models import (
+    ObjectRoleAssignment,
+    SiteRoleAssignment,
+    SystemRoleAssignment,
+)
 
 COURSE_SLUG = "functionality-demo-course-parts"
 DELETED_EMAIL = "deleted.partner@qa.test"
+ORG_ADMIN_EMAIL = "org.admin@qa.test"
 KEY_NAMESPACE = uuid.UUID("6f1b8a52-3c1e-4d55-9a0e-0d6c1f4e2b11")
 
 PERSONAS: dict[str, tuple[str, str]] = {
@@ -73,7 +105,7 @@ PERSONAS: dict[str, tuple[str, str]] = {
     "edu@qa.test": ("Eve", "Educator"),
     "edu2@qa.test": ("Eli", "Educator"),
     "viewer@qa.test": ("Vic", "Viewer"),
-    "south.admin@qa.test": ("Sid", "Southadmin"),
+    "south.admin@qa.test": ("Sid", "South"),
 }
 
 
@@ -138,9 +170,13 @@ def _write_messages(
             )
         created_at = now - spec.ago
         Message._base_manager.filter(pk=message.pk).update(
-            created_at=created_at, body=spec.body
+            created_at=created_at, body=spec.body, sender=sender
         )
         times.append(created_at)
+    planned = [_client_key(conversation_key, i) for i in range(len(messages))]
+    Message._base_manager.filter(conversation=conversation).exclude(
+        client_key__in=planned
+    ).delete()
     Conversation._base_manager.filter(pk=conversation.pk).update(
         last_message_at=max(times)
     )
@@ -226,12 +262,120 @@ def _deleted_partner_conversation(
     return conversation
 
 
+def _edu_l1_messages() -> list[_Msg]:
+    """35 messages alternating, oldest 3 days ago, newest 10 minutes ago from
+    l1. Even indices are l1's, so index 0 and index 34 are both l1's."""
+    count = 35
+    oldest = timedelta(days=3)
+    newest = timedelta(minutes=10)
+    step = (oldest - newest) / (count - 1)
+    messages: list[_Msg] = []
+    for index in range(count):
+        if index % 2 == 0:
+            sender, body = (
+                "l1@qa.test",
+                f"Lena, message {index + 1}: a question on part {index // 2 + 1}.",
+            )
+        else:
+            sender, body = (
+                "edu@qa.test",
+                f"Eve, message {index + 1}: here is a pointer.",
+            )
+        messages.append(_Msg(sender, oldest - step * index, body))
+    return messages
+
+
+def _echo_delete(label: str, queryset: QuerySet) -> None:
+    rows = list(queryset)
+    if not rows:
+        return
+    click.echo(f"Deleting {len(rows)} {label}:")
+    for row in rows:
+        click.echo(f"  pk={row.pk} {row}")
+    click.echo(f"  cascade: {queryset.delete()}")
+
+
+def _strip_roles(site: Site, users: list[User]) -> None:
+    """Remove every grant an earlier run (or §1 of an earlier QA run) left on
+    the personas, so the Members UI starts from nothing."""
+    _echo_delete(
+        "object role assignment(s)",
+        ObjectRoleAssignment._base_manager.filter(user__in=users),
+    )
+    _echo_delete(
+        "site role assignment(s)",
+        SiteRoleAssignment._base_manager.filter(user__in=users),
+    )
+    _echo_delete(
+        "system role assignment(s)",
+        SystemRoleAssignment.objects.filter(user__in=users),
+    )
+    _echo_delete(
+        "OrganisationMember row(s)",
+        OrganisationMember._base_manager.filter(user__in=users),
+    )
+
+
+def _reset_messaging_config(
+    site: Site, organisations: list[Organisation], cohorts: list[Cohort]
+) -> None:
+    """Back to the defaults: learner-started messaging closed."""
+    _echo_delete(
+        "organisation messaging config(s)",
+        OrganisationMessagingConfig._base_manager.filter(
+            organisation__in=organisations
+        ),
+    )
+    _echo_delete(
+        "cohort messaging config(s)",
+        CohortMessagingConfig._base_manager.filter(
+            cohort__organisation__in=organisations
+        ),
+    )
+    _echo_delete(
+        "learner messaging config(s)",
+        LearnerMessagingConfig._base_manager.filter(
+            learner__organisation__in=organisations
+        ),
+    )
+    _echo_delete(
+        "learner registration messaging config(s)",
+        LearnerCourseRegistrationMessagingConfig._base_manager.filter(
+            registration__learner__organisation__in=organisations
+        ),
+    )
+    _echo_delete(
+        "cohort registration messaging config(s)",
+        CohortCourseRegistrationMessagingConfig._base_manager.filter(
+            registration__cohort__in=cohorts
+        ),
+    )
+    _echo_delete(
+        "site messaging config(s)",
+        SiteMessagingConfig._base_manager.filter(site=site),
+    )
+
+
+def _prune_conversations(users: list[User], keep: list[Conversation]) -> None:
+    """Delete every conversation a persona is in that the plan does not name."""
+    _echo_delete(
+        "stray conversation(s)",
+        Conversation._base_manager.filter(participants__user__in=users)
+        .exclude(pk__in=[c.pk for c in keep])
+        .distinct(),
+    )
+
+
 def _seed(site: Site) -> None:
     course = Course._base_manager.filter(site=site, slug=COURSE_SLUG).first()
     if course is None:
         raise click.ClickException(
             f"Course {COURSE_SLUG!r} not on {site.name}; run content_save first."
         )
+    _echo_delete(
+        "org.admin@qa.test account(s)",
+        User._base_manager.filter(site=site, email=ORG_ADMIN_EMAIL),
+    )
     north = _ensure_organisation(site, "Northside", "northside")
     south = _ensure_organisation(site, "Southside", "southside")
     cohort_a = _ensure_cohort(site, north, "Cohort A")
@@ -242,61 +386,36 @@ def _seed(site: Site) -> None:
         email: _ensure_user(site, email, first, last)
         for email, (first, last) in PERSONAS.items()
     }
-    for email in ("l1@qa.test", "l2@qa.test", "l3@qa.test", "gone@qa.test"):
+    personas = list(users.values())
+    _strip_roles(site, personas)
+    _echo_delete(
+        "notification(s)", Notification._base_manager.filter(user__in=personas)
+    )
+
+    for email in ("l1@qa.test", "l2@qa.test", "l3@qa.test"):
         _ensure_member(site, cohort_a, users[email])
     _ensure_member(site, cohort_b, users["b1@qa.test"])
     _ensure_member(site, cohort_s, users["s1@qa.test"])
     _ensure_cohort_registration(site, cohort_a, course)
-    # gone@ was in Cohort A; its Learner row is now inactive.
-    Learner._base_manager.filter(user=users["gone@qa.test"], organisation=north).update(
-        is_active=False
+    Learner._base_manager.filter(user__in=personas).exclude(
+        user=users["gone@qa.test"]
+    ).update(is_active=True)
+    # gone@ was in Cohort A: no membership now, and the Learner row is inactive.
+    gone = users["gone@qa.test"]
+    _echo_delete(
+        "gone@ cohort membership(s)",
+        CohortMembership._base_manager.filter(learner__user=gone),
     )
-
-    assign_object_role(users["edu@qa.test"], cohort_a, "cohort_admin")
-    assign_object_role(users["edu@qa.test"], cohort_b, "cohort_admin")
-    assign_object_role(users["edu2@qa.test"], cohort_a, "cohort_admin")
-    assign_object_role(users["viewer@qa.test"], cohort_a, "cohort_viewer")
-    assign_object_role(users["south.admin@qa.test"], south, "organisation_admin")
+    if not Learner._base_manager.filter(user=gone, organisation=north).exists():
+        LearnerFactory(site=site, user=gone, organisation=north)
+    Learner._base_manager.filter(user=gone, organisation=north).update(is_active=False)
+    _reset_messaging_config(site, [north, south], [cohort_a, cohort_b, cohort_s])
 
     now = timezone.now()
     edu, edu2, l1, l2 = "edu@qa.test", "edu2@qa.test", "l1@qa.test", "l2@qa.test"
     conversations: dict[str, Conversation] = {
         "edu <-> l1": _pair(
-            site,
-            users,
-            "edu-l1",
-            edu,
-            l1,
-            [
-                _Msg(edu, timedelta(days=2), "Hi Lena, how is the course going?"),
-                _Msg(l1, timedelta(days=1), "Going well, stuck on part 2 though."),
-                _Msg(edu, timedelta(minutes=10), "Let's look at part 2 together."),
-            ],
-            {l1: 1, edu: 2},
-            now,
-        ),
-        "edu2 <-> l1": _pair(
-            site,
-            users,
-            "edu2-l1",
-            edu2,
-            l1,
-            [
-                _Msg(l1, timedelta(hours=5), "Hi Eli, is the deadline flexible?"),
-                _Msg(edu2, timedelta(hours=3), "Yes, take an extra week."),
-            ],
-            {l1: 1, edu2: 1},
-            now,
-        ),
-        "l1 <-> l2": _pair(
-            site,
-            users,
-            "l1-l2",
-            l1,
-            l2,
-            [_Msg(l1, timedelta(days=1), "Luis, want to study together?")],
-            {l1: 0, l2: None},
-            now,
+            site, users, "edu-l1", edu, l1, _edu_l1_messages(), {l1: 34, edu: 33}, now
         ),
         "edu <-> l2": _pair(
             site,
@@ -331,7 +450,7 @@ def _seed(site: Site) -> None:
             edu,
             edu2,
             [_Msg(edu2, timedelta(hours=1), "Eve, can you cover my Friday session?")],
-            {edu2: 0, edu: None},
+            {edu2: 0, edu: 0},
             now,
         ),
         "edu <-> deleted user": _deleted_partner_conversation(site, users, now),
@@ -345,14 +464,33 @@ def _seed(site: Site) -> None:
             {"south.admin@qa.test": 0, "s1@qa.test": None},
             now,
         ),
+        "viewer <-> l1": _pair(
+            site,
+            users,
+            "viewer-l1",
+            "viewer@qa.test",
+            l1,
+            [_Msg("viewer@qa.test", timedelta(hours=2), "Hi Lena, I'm Vic.")],
+            {"viewer@qa.test": 0, l1: None},
+            now,
+        ),
     }
+    _prune_conversations(personas, list(conversations.values()))
 
     click.secho("--- Direct messaging QA data ---", fg="cyan", bold=True)
     click.echo(f"SITE {site.name} pk={site.pk}; COURSE {course.slug} pk={course.pk}")
     for org in (north, south):
         click.echo(f"ORG {org.name} pk={org.pk} slug={org.slug}")
     for cohort in (cohort_a, cohort_b, cohort_s):
-        click.echo(f"COHORT {cohort.name} pk={cohort.pk} active={cohort.is_active}")
+        members = sorted(
+            CohortMembership._base_manager.filter(cohort=cohort).values_list(
+                "learner__user__email", flat=True
+            )
+        )
+        click.echo(
+            f"COHORT {cohort.name} pk={cohort.pk} active={cohort.is_active} "
+            f"members={members}"
+        )
     for email, user in users.items():
         click.echo(f"USER pk={user.pk} {email} ({user.first_name} {user.last_name})")
     for label, conversation in conversations.items():
@@ -361,21 +499,10 @@ def _seed(site: Site) -> None:
             f"messages={Message._base_manager.filter(conversation=conversation).count()} "
             f"last_message_at={conversation.last_message_at:%Y-%m-%d %H:%M:%S%z}"
         )
-
-    lena = users[l1]
-    click.secho("--- inbox_for(l1@qa.test) ---", fg="cyan", bold=True)
-    unread = set(inbox_for(lena).filter(Q(is_unread=True)).values_list("pk", flat=True))
-    for row in inbox_for(lena):
-        other = other_participant(row, lena)
-        name = other.display_name if other is not None else "Deleted user"
-        click.echo(
-            f"  pk={row.pk} {name}: last_message_at={row.last_message_at} "
-            f"is_unread={row.pk in unread}"
-        )
-    has_recipients = (
-        get_messaging_policy().recipients_for(sender=lena, site=site).exists()
-    )
-    click.echo(f"recipients_for(l1).exists() = {has_recipients}")
+    for email in (edu, l1, l2):
+        person = users[email]
+        unread = inbox_for(person).filter(Q(is_unread=True)).count()
+        click.echo(f"INBOX {email}: rows={inbox_for(person).count()} unread={unread}")
 
 
 @click.command()
