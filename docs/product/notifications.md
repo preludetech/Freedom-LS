@@ -1,6 +1,6 @@
 # Notifications
 
-_Last updated: 2026-10-18_
+_Last updated: 2026-10-22_
 
 ## Summary
 
@@ -18,7 +18,7 @@ Every signed-in user, learner or educator, has a bell in the shared header. It c
 
 ## What Triggers a Notification
 
-FLS never notifies someone about what they just did. A learner is notified when someone else registers them for a course. Self-registering and finishing a course notify nobody, because the learner is already looking at the result. The corresponding [webhooks](./webhooks.md) still fire in both cases.
+FLS never notifies someone about what they just did. A learner is notified when someone else registers them for a course, including when a [registration rule](./registration-rules.md) does it; a learner a rule reactivates after retracting them is not notified a second time. Self-registering and finishing a course notify nobody, because the learner is already looking at the result. The corresponding [webhooks](./webhooks.md) still fire in both cases.
 
 A user is also notified when they receive a [direct message](./messaging.md). Each conversation has at most one unread notification for a user: a later message refreshes it rather than adding another. Opening the conversation marks it read.
 

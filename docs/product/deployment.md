@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-09-27_
+_Last updated: 2026-10-22_
 
 ## Summary
 
@@ -10,7 +10,7 @@ FLS is never deployed standalone. It is a library, installed into a **concrete p
 
 Django 6's built-in task framework is wired in. Production uses a durable, database-backed backend that stores tasks as rows in PostgreSQL — no Celery, Redis, or separate broker — and enqueued tasks are inspectable in the Django admin. Dev and test instead run tasks synchronously inside the request cycle, so the whole test suite runs without a worker process.
 
-**`python manage.py fls_run_worker` is a required production process.** An enqueued task sits in the database until a worker picks it up; without one running, background work — webhook delivery and [cohort report](./reports.md) generation — is accepted but never executes, and a requested report stays pending indefinitely. A deployment that turns on email queueing puts outgoing email on that same list — and unlike a stuck report, which sits visibly pending on screen, a queued email that never sends fails silently: the person is told to check their inbox and nothing ever arrives. Run it as its own long-lived process or container. It maintains a heartbeat file an external probe can poll to confirm the work loop is still turning, and exits rather than sitting wedged on a task it can no longer make progress on. A long-running task is not mistaken for a wedged one: the worker holds the heartbeat up for the whole of a task it is genuinely working on, up to a configurable ceiling, so a large cohort report renders to completion rather than being killed part-way. Past that ceiling the task is treated as hung and the worker exits as before.
+**`python manage.py fls_run_worker` is a required production process.** An enqueued task sits in the database until a worker picks it up; without one running, background work — webhook delivery, [cohort report](./reports.md) generation and [registration rule](./registration-rules.md) evaluation — is accepted but never executes, and a requested report stays pending indefinitely. A deployment that turns on email queueing puts outgoing email on that same list — and unlike a stuck report, which sits visibly pending on screen, a queued email that never sends fails silently: the person is told to check their inbox and nothing ever arrives. Run it as its own long-lived process or container. It maintains a heartbeat file an external probe can poll to confirm the work loop is still turning, and exits rather than sitting wedged on a task it can no longer make progress on. A long-running task is not mistaken for a wedged one: the worker holds the heartbeat up for the whole of a task it is genuinely working on, up to a configurable ceiling, so a large cohort report renders to completion rather than being killed part-way. Past that ceiling the task is treated as hung and the worker exits as before.
 
 Delivery is at-least-once, so a task can be redelivered. Task producers are idempotent under redelivery: a webhook is not sent twice for the same event and endpoint. See [webhooks](./webhooks.md).
 

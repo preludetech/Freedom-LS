@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-10-18_
+_Last updated: 2026-10-22_
 
 ## Summary
 
@@ -16,9 +16,9 @@ _Last updated: 2026-10-18_
 Webhooks are an outbound data flow to third-party systems. These events ship by default:
 
 - **User registration.** A new user completes email verification, or an anonymous course applicant [follows their emailed claim link](./learner-experience.md#applying-to-a-course) and a new account is created for them. That second kind can arrive before the account has a password, and while the site's signups are turned off. It does not fire for an applicant who never follows the link, or when the link attaches the application to an existing account. Accounts that staff create when [adding a learner](./educator-interface.md#learners) do not send it either; they send the learner-added event, so an integration listening only for sign-ups will miss them.
-- **Course registration.** A learner self-registers, or is registered, for a course, or an inactive registration is reactivated.
+- **Course registration.** A learner self-registers, or is registered, for a course, or an inactive registration is reactivated. This includes registrations a [registration rule](./registration-rules.md) makes or reactivates, and it fires wherever the registration happens, including from a background task.
 - **Course completion.** A learner completes every item in a course.
-- **Learner administration.** A learner is added to an organisation (the event says whether a new account was created), deactivated, reactivated, added to or removed from a cohort, or unregistered from a course. Moving a learner between cohorts sends a removal followed by an addition that share a move identifier, so a receiver can tell a move from two unrelated changes.
+- **Learner administration.** A learner is added to an organisation (the event says whether a new account was created), deactivated, reactivated, added to or removed from a cohort, or unregistered from a course (including when a [registration rule](./registration-rules.md) retracts a registration). Moving a learner between cohorts sends a removal followed by an addition that share a move identifier, so a receiver can tell a move from two unrelated changes.
 - **Cohort course registration.** A cohort is registered for, or unregistered from, a course. These events name the cohort and course but no individual learner.
 
 The learner administration events come from the actions in [the educator interface](./educator-interface.md#learners), and fire whether the action ran from a web request or not.

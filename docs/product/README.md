@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-10-21_
+_Last updated: 2026-10-22_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -26,7 +26,8 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Notifications](./notifications.md) | An in-app bell, badge and notification centre, off by default, telling a user when someone else registers them for a course or sends them a direct message. Projects can add their own notification categories. No email delivery, no preferences, no retention policy. |
 | [Direct Messaging](./messaging.md) | One-to-one messages between users: an inbox, conversation threads, and a Messages button in the header with an unread count. A messaging policy decides who may message whom, and educators can message learners from the educator interface. Off by default. No group or broadcast messages, attachments, editing, reporting or email. |
 | [Signup Attribution](./signup-attribution.md) | Where each signup came from: advert code, UTM parameters and ad-platform click identifiers frozen at first landing, a daily per-campaign tally of tracked arrivals for conversion rates, two read-only admin lists with CSV export, and the privacy questions an operator must settle before enabling it. No dashboard, no consent gate, no retention tooling. |
-| [HR Attributes](./hr-attributes.md) | An optional app in which an administrator records each learner's job title, department, location and four start dates, chosen from per-organisation lists, plus an off-by-default per-organisation registration rules switch that nothing reads yet. Admin only: no educator-interface screens, no CSV import, no SSO/SCIM sync, and no registration rules. |
+| [HR Attributes](./hr-attributes.md) | An optional app in which an administrator records each learner's job title, department, location and four start dates, chosen from per-organisation lists, plus an off-by-default per-organisation switch that turns on [registration rules](./registration-rules.md). Admin only: no educator-interface screens, no CSV import, no SSO/SCIM sync. |
+| [Registration Rules](./registration-rules.md) | An optional app, requiring HR attributes, in which an administrator says "everyone in Finance in Cape Town is registered for Budgeting Basics": one rule per organisation and course, matching on job title, department, location and start-date windows, with a preview of who will be registered or retracted before any change applies, and a record on every registration a rule made. Admin only, and it needs the background worker running: no educator-interface screens, no rules that recommend instead of register, no CSV import. |
 | [Referral Codes](./referral-codes.md) | Named short links an operator creates in the admin — one URL for a click, one for a printed QR symbol — redirecting to a page on the site, counting how often each is followed, and feeding the code into signup attribution as a first touch. No QR image generation, no dashboard, no automatic pruning of the visit log. |
 
 ## Security & Data

@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-10-21_
+_Last updated: 2026-10-22_
 
 ## Summary
 
@@ -20,6 +20,7 @@ _Last updated: 2026-10-21_
 - Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
 - Referral codes are managed in the admin: created and deactivated, but never deleted, with the code text locked once saved. Visits to a code are logged in a separate read-only list, and both lists export to CSV. See [referral codes](./referral-codes.md).
 - HR attributes are an optional extra. When that app is installed, the admin lists each organisation's job titles, departments and locations, which can be deactivated rather than deleted, and a learner's page records their job title, department, location and four start dates from their own organisation's entries. An entry a learner holds cannot be deleted. See [HR attributes](./hr-attributes.md).
+- Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. A course registration's admin page shows which rule made it. See [registration rules](./registration-rules.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 
 ## Unfold
@@ -34,7 +35,7 @@ Each cohort's and organisation's admin page carries a permissions tab. It govern
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default; nothing reads it yet. See [HR attributes](./hr-attributes.md).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default. With [registration rules](./registration-rules.md) installed, the switch decides whether the organisation's rules act at all. See [HR attributes](./hr-attributes.md).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
 

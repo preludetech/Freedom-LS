@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-10-21_
+_Last updated: 2026-10-22_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
 - **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadlines), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -43,16 +43,17 @@ The review workflow attaches to seams already in place; it will not require rear
 
 ## Registration Rules
 
-**Status: HR attributes built; registration rules not built.**
+**Status: HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built.**
 
-Registration rules would let an organisation register learners automatically, for example "everyone with job title Driver is registered for Road Safety". The first part is built: an optional app that records each learner's job title, department, location and start dates in the Django admin; see [HR attributes](./hr-attributes.md). Each organisation also has a "Registration rules enabled" switch in the admin, off by default. Nothing uses it yet.
+Registration rules let an organisation register learners automatically, for example "everyone with job title Driver is registered for Road Safety". Both parts are built, as optional apps managed in the Django admin: [HR attributes](./hr-attributes.md) record each learner's job title, department, location and start dates, and [registration rules](./registration-rules.md) register matching learners and retract them when they stop matching. Each organisation has a "Registration rules enabled" switch, off by default, that decides whether its rules act.
 
 Not built:
 
-- **The rules themselves**, including a record of how a learner came to be registered by a rule and undoing it when they stop matching.
 - **Rules that recommend** a course rather than register for it.
-- **Educator-interface screens** for the attribute lists, a learner's attributes and the rules.
+- **Educator-interface screens** for the attribute lists, a learner's attributes and the rules; all of these are Django admin only. A registration's source is not shown in the educator interface either.
 - **CSV import** of attributes.
+- **A wider rule language**: only attribute matching exists; there are no other rule kinds, no rules that register cohorts, no exclusion conditions, and no "or" across attributes.
+- **Rule administration extras**: no bulk enable or disable, no periodic reconcile job, and no audit log of rule changes.
 
 Not planned: syncing attributes from SSO or SCIM, line managers, relative due dates, recertification, and organisation-defined custom attributes.
 
