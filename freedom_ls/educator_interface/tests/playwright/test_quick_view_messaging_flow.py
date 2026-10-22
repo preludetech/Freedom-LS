@@ -123,6 +123,17 @@ def test_messaging_a_learner_from_the_quick_view(
     expect(prompt).to_be_hidden()
     expect(quick_view.get_by_text("Welcome to the course")).to_be_visible()
 
+    # Discarding a draft while closing the drawer drops it: reopening the same
+    # learner shows an empty box.
+    box.fill("Closing draft")
+    page.keyboard.press("Escape")
+    expect(prompt).to_be_visible()
+    prompt.get_by_role("button", name="Discard").click()
+    expect(quick_view).to_be_hidden()
+    page.get_by_role("link", name="Quick view: Kai Ngata", exact=True).first.click()
+    expect(quick_view).to_be_visible()
+    expect(box).to_have_value("")
+
 
 def test_sending_from_the_quick_view_bottom_sheet_on_a_phone(
     live_server,

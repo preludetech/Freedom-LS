@@ -579,7 +579,12 @@ document.addEventListener("alpine:init", () => {
         // ask first when the drawer holds an unsent draft.
         _requestClose() {
             if (this._qvDialog.open && this._qvDirty) {
-                this._showDiscardPrompt(() => this._close());
+                // The drawer keeps its content while closed, so a discarded
+                // draft would reappear on reopen unless it is refetched.
+                this._showDiscardPrompt(() => {
+                    this._stale = true;
+                    this._close();
+                });
                 return;
             }
             this._close();
