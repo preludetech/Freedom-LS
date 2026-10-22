@@ -20,6 +20,7 @@ from freedom_ls.site_aware_models.models import (
     UnknownSite,
     _thread_locals,
     get_cached_site,
+    site_of,
 )
 
 type AssertNumQueries = Callable[[int], AbstractContextManager[None]]
@@ -213,3 +214,18 @@ def test_a_rejected_host_leaves_site_unset_rather_than_assigning_it(
             policy.full_clean(validate_unique=False, validate_constraints=False)
 
     assert "site" in error.value.error_dict
+
+
+@pytest.mark.django_db
+def test_site_of_a_site_is_the_site_itself() -> None:
+    site = SiteFactory()
+
+    assert site_of(site) == site
+
+
+@pytest.mark.django_db
+def test_site_of_a_site_aware_object_is_the_site_it_belongs_to() -> None:
+    site = SiteFactory()
+    policy = SiteSignupPolicyFactory(site=site)
+
+    assert site_of(policy) == site

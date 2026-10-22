@@ -28,7 +28,11 @@ from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
 )
-from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
+from freedom_ls.site_aware_models.models import (
+    _thread_locals,
+    get_cached_site,
+    site_of,
+)
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -70,10 +74,8 @@ def _site_of(scope: Model) -> Site:
     Raises for a scope kind can() has no rule for, matching
     _organisation_of: an unsupported scope is a bug in the caller.
     """
-    if isinstance(scope, Site):
-        return scope
-    if isinstance(scope, (Organisation, Cohort, Learner)):
-        return scope.site
+    if isinstance(scope, (Site, Organisation, Cohort, Learner)):
+        return site_of(scope)
     raise TypeError(f"can() has no site rule for {type(scope).__name__}")
 
 

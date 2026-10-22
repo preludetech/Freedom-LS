@@ -21,6 +21,7 @@ from freedom_ls.role_based_permissions.exceptions import (
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.types import AssignmentScope
+from freedom_ls.site_aware_models.models import SiteAwareModelBase, site_of
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -61,14 +62,6 @@ class SyncResult(TypedDict):
     roles: list[str]
     added: set[str]
     removed: set[str]
-
-
-def _site_name_for(obj: Model) -> str | None:
-    """The name of the site `obj` belongs to, or None when it has none."""
-    if isinstance(obj, Site):
-        return obj.name
-    site = getattr(obj, "site", None)
-    return site.name if isinstance(site, Site) else None
 
 
 def check_role_name_in_config(role_name: str, site_name: str | None = None) -> None:
@@ -179,12 +172,12 @@ def sync_user_object_permissions(
 
     Args:
         site_name: Site name to load config for. If not provided, resolves
-            from the object (for Site instances) or falls back to the current site.
+            from the object's site, or falls back to the current site.
 
     Returns a dict describing the changes made (or that would be made).
     """
-    if site_name is None:
-        site_name = _site_name_for(obj)
+    if site_name is None and isinstance(obj, Site | SiteAwareModelBase):
+        site_name = site_of(obj).name
     config = get_role_config(site_name)
 
     if isinstance(obj, Site):
@@ -249,7 +242,7 @@ def _refresh_assignment(
 
 def assign_object_role(
     user: User,
-    target: Model,
+    target: SiteAwareModelBase,
     role: str,
     assigned_by: User | None = None,
 ) -> ObjectRoleAssignment:
@@ -257,7 +250,7 @@ def assign_object_role(
 
     Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
     """
-    site_name = _site_name_for(target)
+    site_name = site_of(target).name
     check_role_name_in_config(role, site_name=site_name)
     _check_assignment_scope(role, "object", site_name=site_name)
     ct = ContentType.objects.get_for_model(target)
@@ -281,7 +274,7 @@ def assign_object_role(
 
 def remove_object_role(
     user: User,
-    target: Model,
+    target: SiteAwareModelBase,
     role: str,
     removed_by: User | None = None,
 ) -> None:
@@ -289,7 +282,7 @@ def remove_object_role(
 
     Deactivates the ObjectRoleAssignment, then resyncs guardian permissions.
     """
-    check_role_name_in_config(role, site_name=_site_name_for(target))
+    check_role_name_in_config(role, site_name=site_of(target).name)
     ct = ContentType.objects.get_for_model(target)
     ObjectRoleAssignment.objects.filter(
         user=user,

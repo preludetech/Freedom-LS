@@ -157,6 +157,11 @@ class SiteAwareModelBase(models.Model):
                     self.site = site
 
 
+def site_of(obj: Site | SiteAwareModelBase) -> Site:
+    """The site `obj` belongs to. A Site is its own site."""
+    return obj if isinstance(obj, Site) else obj.site
+
+
 class SiteAwareModel(SiteAwareModelBase):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
