@@ -129,7 +129,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER in content
         assert f'href="{reverse("conversations:inbox")}"' in content
 
-    def test_the_link_shows_only_the_icon(
+    def test_the_link_shows_the_icon_and_a_messages_label(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
@@ -141,7 +141,7 @@ class TestMessagesButton:
         link = html.fromstring(response.content).xpath(
             "//a[@aria-labelledby='messages-button-label']"
         )[0]
-        assert link.text_content().strip() == ""
+        assert link.text_content().strip() == "Messages"
         assert link.xpath(".//svg")
 
     def test_the_badge_element_loads_lazily_and_carries_the_poll_seconds(

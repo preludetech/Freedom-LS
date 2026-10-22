@@ -180,8 +180,8 @@ Manifestations: test 5.5 (desktop).
 
 ## Bug status
 
-- **UNRESOLVED** — B1: Header Messages button has no visible "Messages" label at desktop width (reason: the spec asks for an icon plus an aria-label, but the test plan and the design show a visible label; choosing between them is a product decision)
-- **UNRESOLVED** — B2: Educator thread page has a back link, not a breadcrumb (reason: plan 2 and the test plan name a "<Organisation> › Messages › <learner>" breadcrumb, but every educator-interface instance page uses a "← Section" back link and the design checklist does not list the breadcrumb; keeping or changing the shared pattern is a product decision)
+- **FIXED** — B1: Header Messages button has no visible "Messages" label at desktop width (decision: show the label from `sm` up, icon-only below, keep the corner badge; `messages_button.html` changed, `test_the_link_shows_the_icon_and_a_messages_label` rewritten, spec Header section updated)
+- **RESOLVED, no code change** — B2: Educator thread page has a back link, not a breadcrumb (decision: keep the educator interface's shared "← Messages" back link; plan 2 design element 1 and test plan 5.5 amended to describe it)
 
 ## General notes
 
