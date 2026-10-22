@@ -102,6 +102,7 @@ forbidden_modules = ["freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_
 ignore_imports = [
     # baseline
     "freedom_ls.course_access.tests.test_visibility_enforcing_backend -> freedom_ls.course_applications.factories",
+    "freedom_ls.course_access.tests.test_visibility_enforcing_backend -> freedom_ls.course_applications.tests.helpers",
 ]
 
 [[tool.importlinter.contracts]]

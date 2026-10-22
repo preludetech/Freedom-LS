@@ -28,6 +28,7 @@ freedom_ls.content_base.tests.test_admin_filters -> freedom_ls.content_engine.fa
 
 # course_access
 freedom_ls.course_access.tests.test_visibility_enforcing_backend -> freedom_ls.course_applications.factories
+freedom_ls.course_access.tests.test_visibility_enforcing_backend -> freedom_ls.course_applications.tests.helpers
 
 # course_applications
 freedom_ls.course_applications.tests.test_views -> freedom_ls.learner_progress.models

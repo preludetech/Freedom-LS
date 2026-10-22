@@ -21,10 +21,8 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
-from freedom_ls.course_applications.factories import (
-    CourseApplicationFactory,
-    anonymous_request_holding,
-)
+from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.tests.helpers import anonymous_request_holding
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,

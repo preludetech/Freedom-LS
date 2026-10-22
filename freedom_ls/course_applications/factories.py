@@ -4,16 +4,8 @@ from __future__ import annotations
 
 import factory
 
-from django.contrib.auth.models import AnonymousUser
-from django.contrib.sessions.backends.db import SessionStore
-from django.http import HttpRequest
-from django.test import RequestFactory
-
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.course_applications.anonymous_session import (
-    remember_anonymous_applicant,
-)
 from freedom_ls.course_applications.models import (
     AnonymousApplicant,
     CourseApplication,
@@ -61,13 +53,3 @@ class CourseApplicationFactory(SiteAwareFactory):
             ),
             form_progress=factory.SubFactory(FormProgressFactory, user=None),
         )
-
-
-def anonymous_request_holding(*applicants: AnonymousApplicant) -> HttpRequest:
-    """An anonymous request whose session remembers each applicant."""
-    request = RequestFactory().get("/")
-    request.user = AnonymousUser()
-    request.session = SessionStore()
-    for applicant in applicants:
-        remember_anonymous_applicant(request, applicant)
-    return request
