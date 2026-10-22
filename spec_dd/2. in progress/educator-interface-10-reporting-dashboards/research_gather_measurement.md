@@ -35,6 +35,31 @@ learner count) took 2 to 4 ms and 1 query at every size.
 - `indexes.load_progress_index`: about 0.4 s.
 - Everything else, including the pure-Python per-learner assembly, makes up the remainder.
 
+## Progress gather and pickle sizes (second session, same seed)
+
+The progress gather here means `load_cohort`, `load_registrations`, `load_roster`,
+`build_course_catalogue` and `load_progress_index`, then `_build_learner_detail` per learner with
+no wrong answers, `_build_attention_list` and `_completion_statistics`. The sizes ran in sequence,
+as in run 1.
+
+| Learners | Full gather median | Full pickle | Progress gather median (min to max) | Queries | Progress pickle |
+| --- | --- | --- | --- | --- | --- |
+| 30 | 176 ms | 124 KiB | 46 ms (36 to 51) | 11 | 36 KiB |
+| 100 | 570 ms | 433 KiB | 75 ms (64 to 77) | 11 | 128 KiB |
+| 300 | 14 139 ms | 1 269 KiB | 1 243 ms (1 216 to 1 472) | 11 | 385 KiB |
+
+The 14 s full gather at 300 came back when the sizes ran in sequence, so run 2's 1.7 s is the
+outlier. Both gathers jump far more than threefold between 100 and 300 learners. Python work grows
+linearly with learners, so the jump probably comes from query plans over freshly inserted,
+unanalysed rows. That is a guess: no `EXPLAIN` was taken.
+
+## One learner
+
+The same core loaders, run for one learner of the 30-learner cohort across both courses, then
+`_build_learner_detail`: median 24 ms (18 to 42 ms over 7 runs), 11 queries. This approximates
+the drill-down. Most of the cost is the course catalogue traversal, which does not grow with
+learners.
+
 ## What follows
 
 - The query count is constant, as `test_query_count_is_constant_across_learner_and_question_scale`
