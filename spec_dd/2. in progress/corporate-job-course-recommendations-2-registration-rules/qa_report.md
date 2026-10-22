@@ -1,58 +1,77 @@
 # Frontend QA report: registration rules
 
+Date: 2026-10-22. Branch: corporate-job-course-recommendations-2-registration-rules. Dev server port: 8954.
+
+All tests passed (every test record has status pass) and no bugs were found. The run covered the registration rule admin (add, change, preview and confirm), hand-over between rules, learner attribute changes, the switch-off state, inactive entries and unpublished courses, deletion protection, permission and tampering checks, and desktop, tablet and mobile layouts.
+
 ## Methodology
 
-The test plan (`3. frontend_qa.md`) was walked by hand with Playwright MCP against a dev server on port 8142. I logged in as the dev superuser. Where the plan says so, I also logged in as learners and as a staff user who may only view registration rules. Screenshots are collected in `screenshots/` beside this report, and every image referenced below exists there.
-
-A pre-step rebase onto main ran first. It had two conflicts, both resolved:
-- `docs/app_structure.md` and `import_contracts.toml`.
-- `webhooks/events.py`. Main's `site=` argument and the branch's `fire_webhook_event_for_site` were combined. Two main tests were re-pointed at `fire_webhook_event_for_site`. The full test tier passed after that fix.
-
-The rebuild recreated the dev DB. It was re-seeded through the qa-data-helper: `create_demo_data` plus a new `qa_create_registration_rules_scenario` command. That command and its test are left uncommitted.
+The run was driven by hand through Playwright MCP against a dev server started for this run. The qa-data-helper agent reset the seed data to the test plan's section 0 before section 1, because a previous run had changed it. Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists there. Compression ran and found nothing over 1 MB.
 
 ## Diff scoping
 
-Class: FULL. It was triggered by the two templates under `freedom_ls/registration_rules/templates/admin/registration_rules/` (`preview.html` and `preview_list.html`). Desktop, mobile and tablet all ran. Nothing was skipped.
+Class: FULL. The changed templates `freedom_ls/registration_rules/templates/admin/registration_rules/preview.html` and `preview_list.html` triggered it. Other changed files: `freedom_ls/registration_rules/*.py`, `freedom_ls/hr_attributes/admin.py`, `freedom_ls/hr_attributes/models.py`, `freedom_ls/learner_progress/*.py`, `freedom_ls/webhooks/events.py` and `config/settings_base.py`. Desktop, mobile and tablet all ran; nothing was skipped.
 
 ## Smoke gate
 
-Pass. Pages checked:
-- http://127.0.0.1:8142/
-- http://127.0.0.1:8142/admin/freedom_ls_registration_rules/registrationrule/
+Pass. Both pages loaded: `http://127.0.0.1:8954/` and `http://127.0.0.1:8954/admin/freedom_ls_registration_rules/registrationrule/`.
 
 ## Results
 
-| Test | Viewport | Result | Note | Screenshot |
+| Test | Viewport | Status | Note | Screenshot |
 |---|---|---|---|---|
-| 1.1 | desktop | pass | Admin index has one "Registration rules" entry. Add page has Name, Organisation and Course only. Save lands on the change page. The debug toolbar covered Save and was hidden first (dev-only). | ![](screenshots/page-2026-10-21T09-21-32-278Z.png) |
-| 1.2 | desktop | pass | Read-only Org and Course, conditions inline, department/location/job title choices scoped to the organisation. Changelist has all 7 columns. "Last evaluated at" is already set (see General notes). | ![](screenshots/page-2026-10-21T09-22-24-604Z.png) |
-| 1.3 | desktop | pass | Inverted organisation start dates refused with a field error. No preview. Nothing saved. | ![](screenshots/page-2026-10-21T09-23-07-174Z.png) |
-| 2.1 | desktop | pass | Confirmation page in the admin shell. Will be registered (2): Nina Newhire, Fiona Finance. Other lists say Nobody. A second tab shows nothing saved yet. | ![](screenshots/page-2026-10-21T09-23-28-840Z.png) |
-| 2.2 | desktop | pass | Back to the form keeps the entered values. Reload shows nothing saved. | none |
-| 2.3 | desktop | pass | Confirm lands on the changelist with "changed successfully". 3 active registrations. Fiona's registration links to the rule. | ![](screenshots/page-2026-10-21T09-24-14-501Z.png) |
-| 2.4 | desktop | pass | Fiona sees the course as Registered and gets an unread notification. Oscar Ops sees it only under Available courses. | ![](screenshots/page-2026-10-21T09-25-39-991Z.png) |
-| 3.1 | desktop | pass | Adding Durban previews Dawn Durban. Her registration is active after confirm. | none |
-| 3.2 | desktop | pass | Removing Cape Town previews Retracted (1) Nina. Fiona stops matching but stays registered (Started the course). No rows deleted. | ![](screenshots/page-2026-10-21T09-26-29-471Z.png) |
-| 3.3 | desktop | pass | Adding Cape Town back reactivates Nina's same row with the same Registered at. Only one notification. | ![](screenshots/page-newhire-notifications.png) |
-| 4 | desktop | pass | Hand-over between overlapping rules works. Expectations in §4 and §4.4 differ from the plan (see General notes). | ![](screenshots/page-handover-preview.png) |
-| 5.1-5.5 | desktop | pass | HR attribute changes, a new user with attributes, and the Is active toggle all register and retract as expected. Bea Blank has no registration. | none |
-| 6 | desktop | pass | Unticking Is active detaches the rule from a registration. Renaming the rule previews Nobody. Nina stays inactive. | ![](screenshots/page-detached-registration.png) |
-| 7.1 | desktop | pass | Switch-off warning shown only once a change is not yet applied (see General notes). Changes while switched off are held, not applied. | ![](screenshots/page-switch-off-preview.png) |
-| 7.2 | desktop | pass | Switching on catches up registrations. "Change not yet applied" clears and "Last evaluated at" updates. | ![](screenshots/page-switch-on-rules.png) |
-| 7.3 | desktop | pass | Another organisation's Finance entry is offered only to its own organisation's rule. Switched off, Otto Other is not registered. | none |
-| 8.1 | desktop | pass | Inactive entries are not offered. A selected entry deactivated later shows "(inactive)" and a warning. Deselecting retracts Audrey. | ![](screenshots/page-inactive-entry-warning.png) |
-| 8.2 | desktop | pass | Unpublished-course warning shown. The rule still registers learners and retracts them when disabled. | ![](screenshots/page-unpublished-warning.png) |
-| 9 | desktop | pass | Enabled rule has no Delete link, and /delete/ returns 403. Bulk delete is refused with protected objects. Disabled rules delete. The registration reads "(deleted)". | ![](screenshots/page-bulk-delete-refused.png) |
-| 10.1 | desktop | pass | Browser back gives Chromium's resubmission page, so the double confirm was simulated by re-POSTing the form. 200, no traceback, registration count unchanged (11 and 11). | none |
-| 10.2 | desktop | pass | An injected cross-organisation option is refused with "Choose entries from this rule's organisation." | ![](screenshots/page-cross-org-refused.png) |
-| 10.3 | desktop | pass | A view-only staff user sees a read-only page with no inputs. A forced POST returns 403. | ![](screenshots/page-viewer-readonly.png) |
-| 11 | desktop | pass | 1920px: no horizontal scroll, buttons visible, three list headings full-width, no console errors. | ![](screenshots/page-layout-preview-desktop.png) |
-| 11 | mobile | pass | 375px: no horizontal scroll, lists wrap in the card, Confirm and save is 38px tall. "Back to the form" is a 20px-tall text link. Change page stacks (see also [change page at mobile](screenshots/page-layout-change-mobile.png)). | ![](screenshots/page-layout-preview-names-mobile.png) |
-| 11 | tablet | pass | 768px: no horizontal scroll, lists readable, both buttons visible. Sidebar collapsed as at mobile (see also [change page at tablet](screenshots/page-layout-change-tablet.png)). | ![](screenshots/page-layout-preview-names-tablet.png) |
+| 1.1 | desktop | pass | Admin index has one "Registration rules" entry. Add page has only Name, Organisation, Course. Save lands on the change page. | [screenshot](screenshots/page-2026-10-22T15-53-15-388Z.png) |
+| 1.2 | desktop | pass | Change page and changelist correct; pickers scoped to the organisation. "Last evaluated at" already set (plan is stale, see General notes). | [screenshot](screenshots/page-2026-10-22T15-55-41-907Z.png) |
+| 1.3 | desktop | pass | Inverted dates with Is enabled ticked return a field error, no preview; rule stays disabled. | [screenshot](screenshots/page-2026-10-22T16-00-00-001Z.png) |
+| 2.1 | desktop | pass | Preview inside the admin shell. Will be registered (2): Nina Newhire, Fiona Finance. Nothing saved yet. | [screenshot](screenshots/page-2026-10-22T15-56-42-135Z.png) |
+| 2.2 | desktop | pass | "Back to the form" restores the selections without saving; reload shows the rule disabled. | [screenshot](screenshots/page-2026-10-22T16-00-00-002Z.png) |
+| 2.3 | desktop | pass | Confirm and save registers 3 active learners; registration shows the rule link. | [screenshot](screenshots/page-2026-10-22T16-00-00-004Z.png) |
+| 2.4 | desktop | pass | Finance learner sees the course as registered, with a bell notification; ops learner does not. | [screenshot](screenshots/page-2026-10-22T16-00-00-007Z.png) |
+| 3.1 | desktop | pass | Adding Durban previews and registers Dawn Durban. | none |
+| 3.2 | desktop | pass | Removing Cape Town retracts Nina Newhire; Fiona Finance stays (started the course); no rows deleted. | [screenshot](screenshots/page-2026-10-22T16-00-00-009Z.png) |
+| 3.3 | desktop | pass | Adding Cape Town back reactivates the same row; one notification only. | [screenshot](screenshots/page-2026-10-22T16-00-00-010Z.png) |
+| 4 | desktop | pass | Hand-over to another enabled matching rule works per the spec; plan expectations stale (see General notes). | [screenshot](screenshots/page-2026-10-22T16-00-00-011Z.png) |
+| 5.1-5.2 | desktop | pass | Department change in the Learner admin reactivates and deactivates the registration with no preview. | [screenshot](screenshots/page-2026-10-22T16-00-00-012Z.png) |
+| 5.3-5.5 | desktop | pass | New learner with HR attributes registered; is-active toggling deactivates and reactivates the same row; blank learner never registered. | none |
+| 6 | desktop | pass | Staff deactivation blanks the rule link; later rule saves leave it alone. Name-only edit previews no lists. | [screenshot](screenshots/page-2026-10-22T16-00-00-013Z.png) |
+| 7.1 | desktop | pass | Switch-off: changes are stored but not applied; warning shown on the change page once a change is unapplied. | [screenshot](screenshots/page-2026-10-22T16-00-00-016Z.png) |
+| 7.2 | desktop | pass | Switching on applies the pending change and updates last evaluated. | [screenshot](screenshots/page-2026-10-22T16-00-00-017Z.png) |
+| 7.3 | desktop | pass | Org Two rule is scoped to its own organisation's entries; switch-off notice shown; nothing registered cross-organisation. | none |
+| 8.1 | desktop | pass | Inactive entries: not offered in the picker, kept when already selected, with warning and changelist flag; cleared on deselect. | [screenshot](screenshots/page-2026-10-22T16-00-00-018Z.png) |
+| 8.2 | desktop | pass | Unpublished course warning shown; rule still registers 4 learners; disabling retracts all 4. | [screenshot](screenshots/page-2026-10-22T16-00-00-019Z.png) |
+| 9 | desktop | pass | Enabled rule has no Delete link and /delete/ returns 403; bulk delete refused; disabled rules delete; registration shows "(deleted)". | [screenshot](screenshots/page-2026-10-22T16-00-00-022Z.png) |
+| 10.1 | desktop | pass | Back after confirm lands on Chrome's resubmission page; reload and confirm saved normally; double click safe; no duplicates. | none |
+| 10.2 | desktop | pass | Injected cross-organisation option rejected with a field error. | [screenshot](screenshots/page-2026-10-22T16-00-00-023Z.png) |
+| 10.3 | desktop | pass | View-only staff user sees a read-only page; forced POSTs return 403. | [screenshot](screenshots/page-2026-10-22T16-00-00-024Z.png) |
+| 11 | desktop | pass | 1920px: no horizontal scroll on preview or change page. | [screenshot](screenshots/page-2026-10-22T16-10-00-002Z.png) |
+| 11 | mobile | pass | 375px: no horizontal scroll; lines wrap; both buttons visible; sidebar behind dock toggle. | [screenshot](screenshots/page-2026-10-22T16-10-00-005Z.png) |
+| 11 | tablet | pass | 768px: collapsed sidebar, full breadcrumbs, no horizontal scroll, both buttons visible. | [screenshot](screenshots/page-2026-10-22T16-10-00-008Z.png) |
+
+### Key screenshots
+
+Preview page, desktop:
+
+![](screenshots/page-2026-10-22T15-56-42-135Z.png)
+
+Switch-off warning:
+
+![](screenshots/page-2026-10-22T16-00-00-016Z.png)
+
+Inactive-entry warning:
+
+![](screenshots/page-2026-10-22T16-00-00-018Z.png)
+
+Mobile preview:
+
+![](screenshots/page-2026-10-22T16-10-00-005Z.png)
+
+Tablet preview:
+
+![](screenshots/page-2026-10-22T16-10-00-008Z.png)
 
 ## Design check
 
-no design states tested
+No design states tested.
 
 ## Bugs
 
@@ -60,23 +79,26 @@ No bugs found.
 
 ## Bug status
 
-No bugs.
+No bugs found this run.
 
 ## General notes
 
-No test failed. Four places where the test plan's expectation differs from the spec. In each, the code follows the spec:
+Test-plan expectations that disagree with the spec. The code follows the spec in each case, so these are not bugs, but the plan should be corrected.
 
-1. **§1.2.** The plan expects "Last evaluated at" to be empty on a new disabled rule. Test plan expectation differs from the spec; the code follows the spec. Every rule save enqueues `evaluate_rule`, so the field is set.
-2. **§4 (knock-on in §4.4 and §9.3).** The plan expects the finance learner (Fiona) to stay with "Finance in Cape Town" as "Started the course". Test plan expectation differs from the spec; the code follows the spec. The hand-over runs before the started check, so Fiona is handed to "Everyone in Cape Town". This changes the §4.4 expectation: disabling "Everyone" leaves Fiona as "Started the course", where the plan expected 0. It also changes §9.3: Fiona's Budgeting registration had been handed back to Finance in Cape Town by the §7.2 catch-up, so it no longer pointed at Everyone.
-3. **§7.1.** The plan expects the switch-off warning right after switching off. Test plan expectation differs from the spec; the code follows the spec. The warning appears only once the rule has a change not yet applied.
-4. **§10.1.** The plan uses the browser back button on the POST result. Test plan expectation differs from the spec; the code follows the spec. Chromium shows a form-resubmission page (ERR_CACHE_MISS), so the double submit was simulated by re-POSTing the confirmation form.
+- Section 1.2 expects "Last evaluated at" to be empty on a freshly created disabled rule. Any rule save enqueues `evaluate_rule`, which stamps the field when the run finishes (spec: `last_evaluated_at` is "set when an `evaluate_rule` run finishes"; see the triggers table).
+- Section 4 step 2 expects the started finance learner to be listed as "Started the course" and to stay with "Finance in Cape Town". The spec's Retract step checks hand-over to another enabled matching rule before the started check, so she is handed to "Everyone in Cape Town" ("Still matched by Everyone in Cape Town"). Section 4 step 4 then lists her under "Stops matching but stays registered (1)" rather than (0).
+- Section 7.1 step 2 expects the switch-off warning on the change page right after switching off. The spec shows that warning only when the rule's last change has not been applied, which is what happens: it appears after the Analyst edit.
 
-Other observations, none of them a bug:
-- The Django debug toolbar covers the admin Save button at 1920px until it is hidden. This is dev-only.
-- "Back to the form" on the preview is a 20px-tall text link at mobile width. It is small for touch but reachable.
-- The preview's opening sentence names the rule by its saved name, not the name being typed. For example, it reads 'Saving "Finance in Cape Town (renamed)"' while renaming it back.
-- The rule change page offers "Save and add another".
+Because of the hand-over, later steps ran against slightly different ownership than the plan assumed. For example, the retract list in section 7.1 was Jo Joiner and Dawn Durban rather than "everyone except the finance learner". Behaviour matched the spec at each step.
 
-Recommendation: update the test plan's expectations in §1.2, §4 (including §4.4 and §9.3), §7.1 and §10.1 to match the spec.
+Section 10.1: the browser back button after confirming lands on Chrome's "Confirm form resubmission" page, because the preview is a POST response. Reloading resubmitted, and confirming again saved normally with no duplicates. A scripted double click was also safe.
 
-status: ok · reason: report rendered, 0 bugs documented
+Minor observations, no action taken:
+
+- The preview header says "changes who is registered" even when every list is "Nobody" (for example a name-only edit).
+- The "Back to the form" text link is about 20 px tall on mobile, below the 44 px touch-target guideline.
+- The Django debug toolbar overlays the Save button until hidden (dev-only).
+
+Dev data left behind: rules "Finance in Cape Town" (enabled) and "Org Two Finance" (disabled), the joiner learner, and a view-only staff user qa_rule_viewer@email.com, all created during the run.
+
+status: ok · reason: 0 bugs — 0 fixed, 0 unresolved; report rendered, screenshots verified
