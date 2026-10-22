@@ -370,7 +370,7 @@ def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
     page = logged_in_page
     kai = UserFactory(first_name="Kai", last_name="Ngata")
     conversation = ConversationFactory(between=(logged_in_user, kai))
-    for number in range(1, 36):
+    for number in range(1, 66):
         MessageFactory(
             conversation=conversation, sender=kai, body=f"Entry {number:02d}"
         )
@@ -378,7 +378,7 @@ def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
         reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
     )
     log = page.locator("#thread-log")
-    reading = page.get_by_text("Entry 06", exact=True)
+    reading = page.get_by_text("Entry 36", exact=True)
     expect(reading).to_be_visible()
 
     # The reader sits at the top of the log, looking at the oldest loaded entry.
@@ -386,12 +386,48 @@ def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
     top_before = reading.evaluate(OFFSET_IN_LOG)
 
     page.get_by_role("button", name="Load earlier messages").click()
-    expect(page.get_by_text("Entry 01", exact=True)).to_be_attached()
+    expect(page.get_by_text("Entry 06", exact=True)).to_be_attached()
 
     # The log scrolled by the height of the prepended entries, so the entry
     # the reader was looking at has not moved.
     page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
     top_after = reading.evaluate(OFFSET_IN_LOG)
+    assert abs(top_after - top_before) < 2
+
+
+def test_loading_the_last_page_of_earlier_messages_does_not_shift_the_view(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    """Loading the final page removed the load-earlier control above the log,
+    which grew the log and moved the entry the reader was looking at upward."""
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = logged_in_page
+    page.set_viewport_size({"width": 1280, "height": 800})
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    conversation = ConversationFactory(between=(logged_in_user, kai))
+    for number in range(1, 36):
+        MessageFactory(
+            conversation=conversation, sender=kai, body=f"Entry {number:02d}"
+        )
+    page.goto(
+        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
+    )
+    reading = page.get_by_text("Entry 06", exact=True)
+    expect(reading).to_be_visible()
+    page.locator("#thread-log").evaluate("el => { el.scrollTop = 0; }")
+    top_before = reading.evaluate("el => el.getBoundingClientRect().top")
+
+    page.get_by_role("button", name="Load earlier messages").click()
+    expect(page.get_by_text("Entry 01", exact=True)).to_be_attached()
+    expect(page.get_by_role("button", name="Load earlier messages")).to_have_count(0)
+
+    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
+    top_after = reading.evaluate("el => el.getBoundingClientRect().top")
     assert abs(top_after - top_before) < 2
 
 

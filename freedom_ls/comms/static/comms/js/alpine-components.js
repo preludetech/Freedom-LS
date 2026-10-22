@@ -280,6 +280,7 @@ document.addEventListener("alpine:init", () => {
             this.beforePrepend = {
                 height: log.scrollHeight,
                 top: log.scrollTop,
+                logTop: log.getBoundingClientRect().top,
             };
         },
         // Entries after the one that ended the log before the swap are new.
@@ -310,7 +311,9 @@ document.addEventListener("alpine:init", () => {
             }
         },
         // Prepended entries push the reader's place down by their height, so
-        // the scroll offset grows by the same amount to keep it still.
+        // the scroll offset grows by the same amount to keep it still. The
+        // log's own top edge can move too, when the load-earlier control above
+        // it disappears on the last page, and the offset follows that as well.
         keepScrollAfterPrepend() {
             this.followAppended();
             if (this.beforePrepend === null) {
@@ -318,7 +321,9 @@ document.addEventListener("alpine:init", () => {
             }
             const log = this.$refs.log;
             log.scrollTop =
-                this.beforePrepend.top + (log.scrollHeight - this.beforePrepend.height);
+                this.beforePrepend.top +
+                (log.scrollHeight - this.beforePrepend.height) +
+                (log.getBoundingClientRect().top - this.beforePrepend.logTop);
             this.beforePrepend = null;
         },
         // The first scroll on load is instant; later ones glide unless the
