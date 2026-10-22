@@ -261,7 +261,7 @@ class TestThreadPage:
         assert counter
         failed = composer.xpath(".//*[@x-show='failed']")[0]
         assert failed.get("role") == "alert"
-        assert "Not sent. Check your connection." in failed.text_content()
+        assert "Not sent. Check your connection and try again." in failed.text_content()
         assert failed.xpath(".//button[normalize-space()='Retry']")
 
     @pytest.mark.parametrize(

@@ -98,7 +98,7 @@ message.
     {% endif %}
     <p x-show="failed" x-cloak role="alert" class="m-0 mt-1 flex items-center gap-1 text-sm text-error">
         <c-icon name="error" class="size-4 shrink-0" />
-        <span>Not sent. Check your connection.</span>
+        <span>Not sent. Check your connection and try again.</span>
         <button type="button"
                 x-on:click="retry"
                 title="Retry"
