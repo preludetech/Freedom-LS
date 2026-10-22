@@ -9,9 +9,11 @@ import pytest
 import time_machine
 
 from django.core import serializers
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import ProtectedError
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.tests.app_guards import app_not_installed
 
@@ -185,6 +187,34 @@ def test_removing_an_entry_from_a_picker_queues_an_evaluation_of_the_rule(
     assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
 
 
+@pytest.mark.django_db
+def test_clearing_an_entrys_conditions_from_the_entry_side_queues_an_evaluation_of_the_rule(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    """The rule loses its only entry and widens to the whole organisation;
+    the run that applies that must be queued, and the change must read as
+    unapplied until it starts."""
+    # Arrange
+    entry = JobTitleFactory()
+    conditions = AttributeRuleConditionsFactory(
+        rule__organisation=entry.organisation, job_titles=[entry]
+    )
+    RegistrationRule.objects.filter(pk=conditions.rule_id).update(
+        last_evaluated_at=timezone.now()
+    )
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        entry.registration_rule_conditions.clear()
+
+    # Assert
+    queued = _queued_tasks().get()
+    assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
+    rule = RegistrationRule.objects.get(pk=conditions.rule_id)
+    assert rule.last_evaluated_at < rule.updated_at
+
+
 REGISTRATION_CHANGE = (
     "admin:freedom_ls_learner_management_learnercourseregistration_change"
 )
@@ -294,6 +324,28 @@ def test_a_learner_registering_again_detaches_the_rule_from_a_retracted_row(
 
 
 @pytest.mark.django_db
+def test_saving_a_stale_instance_for_another_field_keeps_the_rule(
+    mock_site_context, rule_made_registration
+):
+    """A view that loaded the row while it was active, then saved another
+    field after the engine retracted it, has decided nothing about is_active."""
+    # Arrange
+    link = rule_made_registration
+    stale = LearnerCourseRegistration.objects.get(pk=link.registration_id)
+    drop_ambient_request()
+    evaluate_rule(link.rule.pk, link.rule.site_id)
+
+    # Act
+    stale.self_registered = True
+    stale.save(update_fields=["self_registered"])
+
+    # Assert
+    link.refresh_from_db()
+    assert link.is_retracted is True
+    assert link.registration.is_active is False
+
+
+@pytest.mark.django_db
 def test_a_detached_registration_is_left_alone_by_the_next_run(
     mock_site_context, rule_made_registration
 ):
@@ -358,6 +410,28 @@ def test_saving_a_learner_queues_an_evaluation_of_the_learner(
     # Assert
     queued = _queued_tasks("evaluate_learner_task").get()
     assert queued.args_kwargs["args"] == [str(learner.pk), learner.site_id]
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_field_no_rule_reads_queues_nothing_and_runs_no_query(
+    organisation_using_rules,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
+):
+    # Arrange
+    learner = LearnerFactory(organisation=organisation_using_rules)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with (
+        django_capture_on_commit_callbacks(execute=True),
+        CaptureQueriesContext(connection) as queries,
+    ):
+        learner.save(update_fields=["user"])
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()
+    assert [q["sql"] for q in queries if "registration_rules" in q["sql"]] == []
 
 
 @pytest.mark.django_db

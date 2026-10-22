@@ -27,7 +27,7 @@ from freedom_ls.hr_attributes.models import (
     OrganisationHRSettings,
 )
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
-from freedom_ls.registration_rules.evaluation import rules_enabled_for
+from freedom_ls.registration_rules.evaluation import is_engine_write
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
@@ -95,8 +95,10 @@ def _learner_needs_evaluation(
     already owns one of their registrations (a learner who moved away).
     """
     if RegistrationRule._base_manager.filter(
-        site_id=site_id, organisation_id=organisation_id
-    ).exists() and rules_enabled_for(organisation_id):
+        site_id=site_id,
+        organisation_id=organisation_id,
+        organisation__hr_settings__registration_rules_enabled=True,
+    ).exists():
         return True
     return RuleRegistration._base_manager.filter(
         site_id=site_id, registration__learner_id=learner_id
@@ -134,21 +136,28 @@ def detach_rule_on_foreign_is_active_change(
     sender: type[LearnerCourseRegistration],
     instance: LearnerCourseRegistration,
     raw: bool = False,
+    update_fields: frozenset[str] | None = None,
     **kwargs: object,
 ) -> None:
     """A deactivation or reactivation the engine did not make ends the rule's ownership.
 
-    The engine only ever changes is_active with QuerySet.update(), which never
-    reaches here, so any save that flips the stored value is someone else's
-    decision: staff in the admin, or the learner registering again.
+    The engine marks its own saves, so any other save that flips the loaded
+    value is someone else's decision: staff in the admin, or the learner
+    registering again. A save that does not write is_active decides nothing,
+    whatever a stale instance holds.
     """
-    if raw or instance._state.adding:
+    if raw or instance._state.adding or is_engine_write():
         return
-    stored = (
-        LearnerCourseRegistration._base_manager.filter(pk=instance.pk)
-        .values_list("is_active", flat=True)
-        .first()
-    )
+    if update_fields is not None and "is_active" not in update_fields:
+        return
+    stored = instance.loaded_is_active
+    if stored is None:
+        # Loaded with is_active deferred.
+        stored = (
+            LearnerCourseRegistration._base_manager.filter(pk=instance.pk)
+            .values_list("is_active", flat=True)
+            .first()
+        )
     if stored is None or stored == instance.is_active:
         return
     RuleRegistration._base_manager.filter(registration_id=instance.pk).delete()
@@ -176,20 +185,22 @@ def _evaluate_rule_on_m2m_change(
     **kwargs: object,
 ) -> None:
     """Queue an evaluation when a picker's selection changes, from either side."""
-    if action not in {"post_add", "post_remove", "post_clear"}:
-        return
     if not reverse:
-        conditions = cast(AttributeRuleConditions, instance)
-        _rule_changed(conditions.rule_id, conditions.site_id)
+        if action in {"post_add", "post_remove", "post_clear"}:
+            conditions = cast(AttributeRuleConditions, instance)
+            _rule_changed(conditions.rule_id, conditions.site_id)
         return
-    # Reverse side: an entry's conditions set changed and pk_set holds
-    # conditions pks. post_clear gives no pk_set, so there is nothing to
-    # enqueue for; no admin or import takes that path.
-    if pk_set is None:
+    # Reverse side: an entry's conditions set changed. A clear names no pks
+    # afterwards, so the rules it will widen are read before it happens.
+    changed: models.QuerySet[AttributeRuleConditions]
+    if action == "pre_clear":
+        entry = cast(JobTitle | Department | Location, instance)
+        changed = entry.registration_rule_conditions.all()
+    elif action in {"post_add", "post_remove"} and pk_set is not None:
+        changed = AttributeRuleConditions._base_manager.filter(pk__in=pk_set)
+    else:
         return
-    for rule_id, site_id in AttributeRuleConditions._base_manager.filter(
-        pk__in=pk_set
-    ).values_list("rule_id", "site_id"):
+    for rule_id, site_id in changed.values_list("rule_id", "site_id"):
         _rule_changed(rule_id, site_id)
 
 
@@ -225,15 +236,24 @@ def protect_entry_a_rule_names(
 
 @receiver(post_save, sender=Learner)
 def evaluate_learner_on_save(
-    sender: type[Learner], instance: Learner, raw: bool = False, **kwargs: object
+    sender: type[Learner],
+    instance: Learner,
+    raw: bool = False,
+    update_fields: frozenset[str] | None = None,
+    **kwargs: object,
 ) -> None:
     """Queue an evaluation of a learner save that a rule could act on.
 
     Creation, an organisation change and an is_active change are all saves,
     and evaluation reconciles state, so a run that finds nothing to do is
-    harmless. An organisation that does not use rules gets no runs at all.
+    harmless. An organisation that does not use rules gets no runs at all,
+    and a save that writes neither field costs no query.
     """
     if raw:
+        return
+    if update_fields is not None and update_fields.isdisjoint(
+        {"organisation", "is_active"}
+    ):
         return
     if _learner_needs_evaluation(
         instance.pk, instance.organisation_id, instance.site_id

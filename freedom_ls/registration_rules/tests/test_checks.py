@@ -9,7 +9,27 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
-from freedom_ls.registration_rules.checks import check_rule_kinds_import
+from freedom_ls.registration_rules.checks import (
+    check_default_kind_is_configured,
+    check_rule_kinds_import,
+)
+
+
+def test_e003_when_the_default_kind_is_not_configured(settings):
+    # Arrange
+    settings.REGISTRATION_RULE_KINDS = {
+        "custom": "freedom_ls.registration_rules.kinds.AttributeRuleKind"
+    }
+
+    # Act
+    errors = check_default_kind_is_configured(None)
+
+    # Assert
+    assert [e.id for e in errors] == ["freedom_ls_registration_rules.E003"]
+
+
+def test_the_default_kind_passes_the_check():
+    assert check_default_kind_is_configured(None) == []
 
 
 def test_e002_for_a_kind_path_that_does_not_import(settings):

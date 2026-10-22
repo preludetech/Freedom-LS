@@ -192,11 +192,17 @@ def test_a_disabled_rule_can_be_deleted(staff_client):
     assert not RegistrationRule.objects.filter(pk=rule.pk).exists()
 
 
+def _mark_run_applied(rule: RegistrationRule) -> None:
+    """Stamp the rule as the engine does when a run of it finishes."""
+    RegistrationRule.objects.filter(pk=rule.pk).update(last_evaluated_at=timezone.now())
+
+
 @pytest.mark.django_db
 def test_deleting_a_disabled_rule_leaves_its_registrations_with_its_name(staff_client):
     # Arrange
     link = RuleRegistrationFactory(rule__is_enabled=False)
     rule_name = link.rule.name
+    _mark_run_applied(link.rule)
 
     # Act
     staff_client.post(reverse(RULE_DELETE, args=[link.rule.pk]), {"post": "yes"})
@@ -205,6 +211,64 @@ def test_deleting_a_disabled_rule_leaves_its_registrations_with_its_name(staff_c
     link = RuleRegistration.objects.get(pk=link.pk)
     assert link.rule is None
     assert link.rule_name == rule_name
+
+
+@pytest.mark.django_db
+def test_a_disabled_rule_still_holding_active_registrations_cannot_be_deleted_before_its_run(
+    staff_client,
+):
+    """Deleted before the run that retracts them, the rows would stay active
+    with no rule left to retract them."""
+    # Arrange
+    link = RuleRegistrationFactory(rule__is_enabled=False)
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_DELETE, args=[link.rule.pk]), {"post": "yes"}
+    )
+
+    # Assert
+    assert response.status_code == 403
+    assert RegistrationRule.objects.filter(pk=link.rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_disabled_rule_holding_only_inactive_registrations_can_be_deleted_before_its_run(
+    staff_client,
+):
+    # Arrange
+    link = RuleRegistrationFactory(
+        rule__is_enabled=False, registration__is_active=False, is_retracted=True
+    )
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_DELETE, args=[link.rule.pk]), {"post": "yes"}
+    )
+
+    # Assert
+    assert response.status_code == 302
+    assert not RegistrationRule.objects.filter(pk=link.rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_delete_confirmation_names_a_rule_still_retracting_as_protected(
+    staff_client,
+):
+    # Arrange
+    link = RuleRegistrationFactory(rule__is_enabled=False)
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_CHANGELIST),
+        {"action": "delete_selected", "_selected_action": [str(link.rule.pk)]},
+    )
+
+    # Assert
+    assert response.status_code == 200
+    assert response.context["protected"] == [
+        f"Rule still retracting its registrations: {link.rule.name}"
+    ]
 
 
 @pytest.mark.django_db

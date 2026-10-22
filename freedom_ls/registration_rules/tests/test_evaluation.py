@@ -633,6 +633,55 @@ def test_reactivating_raises_no_notification(
 
 
 @pytest.mark.django_db
+def test_reactivating_announces_course_registered_to_integrators(
+    title_rule,
+    job_title,
+    unmatched_learner,
+    settings,
+    django_capture_on_commit_callbacks,
+):
+    # Arrange
+    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+    registration, _ = _rule_made_registration(
+        title_rule, unmatched_learner, is_active=False, is_retracted=True
+    )
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    WebhookEvent._base_manager.all().delete()
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    event = WebhookEvent._base_manager.get(event_type="course.registered")
+    assert event.site_id == title_rule.site_id
+    assert event.payload["course_id"] == str(registration.course_id)
+    assert event.payload["user_id"] == unmatched_learner.user_id
+
+
+@pytest.mark.django_db
+def test_retracting_announces_course_unregistered_to_integrators(
+    title_rule, unmatched_learner, settings, django_capture_on_commit_callbacks
+):
+    # Arrange
+    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+    registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    WebhookEvent._base_manager.all().delete()
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    event = WebhookEvent._base_manager.get(event_type="course.unregistered")
+    assert event.site_id == title_rule.site_id
+    assert event.payload["course_id"] == str(registration.course_id)
+    assert event.payload["learner_id"] == str(unmatched_learner.pk)
+
+
+@pytest.mark.django_db
 def test_hands_a_learner_to_another_enabled_rule_and_keeps_them_registered(
     organisation_with_rules_on, unmatched_learner
 ):

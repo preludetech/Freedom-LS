@@ -4,17 +4,23 @@ The work is split into a read that classifies what would change and a write
 that applies it, so a caller can inspect the changes without making them.
 Every query names its site: evaluation runs in a task with no request for the
 site-aware manager to read.
+
+A registration's is_active is written with save(), under `engine_writes`, so
+the progress and webhook receivers run for the engine's changes as they do for
+anyone else's. The marker is how the detach receiver tells them apart.
 """
 
 from __future__ import annotations
 
 import itertools
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import OuterRef, Q
+from django.db.models import OuterRef, Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
@@ -24,6 +30,22 @@ from freedom_ls.registration_rules.config import config
 from freedom_ls.registration_rules.kinds import RuleState
 from freedom_ls.registration_rules.loader import get_rule_kind
 from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
+
+_engine_writing: ContextVar[bool] = ContextVar("engine_writing", default=False)
+
+
+@contextmanager
+def engine_writes() -> Iterator[None]:
+    """Mark the saves inside as the engine's own."""
+    token = _engine_writing.set(True)
+    try:
+        yield
+    finally:
+        _engine_writing.reset(token)
+
+
+def is_engine_write() -> bool:
+    return _engine_writing.get()
 
 
 @dataclass(frozen=True)
@@ -184,7 +206,7 @@ def apply_rule_changes(
                     is_active=True,
                     self_registered=False,
                 )
-                # save(), not bulk_create: the progress record and the
+                # Not bulk_create: the progress record and the
                 # course.registered announcement hang off post_save.
                 registration.save()
                 RuleRegistration._base_manager.create(
@@ -197,15 +219,17 @@ def apply_rule_changes(
             continue
         registered.append(learner_id)
 
-    # Reactivate: update(), never save(), so the detach receiver can tell the
-    # engine's writes from anyone else's. No post_save means no second
-    # course.registered: the learner was told the first time.
-    LearnerCourseRegistration._base_manager.filter(
-        site_id=rule.site_id,
-        course_id=rule.course_id,
-        learner_id__in=changes.reactivate,
-        rule_registration__is_retracted=True,
-    ).update(is_active=True)
+    # Reactivate. post_save announces course.registered again and notifies
+    # nobody: a reactivation is news to integrators, not to the learner.
+    _set_is_active(
+        LearnerCourseRegistration._base_manager.filter(
+            site_id=rule.site_id,
+            course_id=rule.course_id,
+            learner_id__in=changes.reactivate,
+            rule_registration__is_retracted=True,
+        ),
+        True,
+    )
     RuleRegistration._base_manager.filter(
         site_id=rule.site_id,
         registration__course_id=rule.course_id,
@@ -221,31 +245,40 @@ def apply_rule_changes(
             rule=rule,
         ).update(rule_id=hand_over.rule_id, rule_name=hand_over.rule_name)
 
-    # Retract: the started check sits inside the UPDATE, so a learner who
-    # opens the course between the read above and this write keeps it.
-    owned = LearnerCourseRegistration._base_manager.filter(
-        site_id=rule.site_id,
-        course_id=rule.course_id,
-        learner_id__in=changes.retract,
-        rule_registration__rule=rule,
-    )
-    owned.filter(is_active=True).filter(
-        ~started_course_exists(OuterRef("learner_id"), rule.course_id)
-    ).update(is_active=False)
-    # The rows just deactivated: inactive but not yet marked retracted.
-    retracted = list(
-        owned.filter(
-            is_active=False, rule_registration__is_retracted=False
-        ).values_list("learner_id", "pk")
+    # Retract: the started check is re-run here, inside the batch's
+    # transaction, so a learner who opened the course since the classifying
+    # read keeps it.
+    retracted = _set_is_active(
+        LearnerCourseRegistration._base_manager.filter(
+            site_id=rule.site_id,
+            course_id=rule.course_id,
+            learner_id__in=changes.retract,
+            rule_registration__rule=rule,
+            is_active=True,
+        ).filter(~started_course_exists(OuterRef("learner_id"), rule.course_id)),
+        False,
     )
     RuleRegistration._base_manager.filter(
-        site_id=rule.site_id, registration__in=[pk for _, pk in retracted]
+        site_id=rule.site_id,
+        registration__in=[registration.pk for registration in retracted],
     ).update(is_retracted=True)
     return EvaluationResult(
         registered=tuple(registered),
         reactivated=changes.reactivate,
-        retracted=tuple(sorted(learner_id for learner_id, _ in retracted)),
+        retracted=tuple(sorted(registration.learner_id for registration in retracted)),
     )
+
+
+def _set_is_active(
+    registrations: QuerySet[LearnerCourseRegistration], is_active: bool
+) -> list[LearnerCourseRegistration]:
+    """Save the flip row by row, as the engine, and return the rows written."""
+    written = list(registrations.order_by("learner_id"))
+    with engine_writes():
+        for registration in written:
+            registration.is_active = is_active
+            registration.save(update_fields=["is_active"])
+    return written
 
 
 def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:

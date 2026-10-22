@@ -138,7 +138,6 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         "last_evaluated_at",
     ]
     list_filter = ["organisation", "is_enabled", "course"]
-    list_select_related = ["organisation", "course"]
     search_fields = ["name"]
     autocomplete_fields = ["organisation", "course"]
     readonly_fields = ["last_evaluated_at", "created_at", "updated_at"]
@@ -164,7 +163,7 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
             for model in _PICKER_MODELS.values()
         ]
         queryset: QuerySet[RegistrationRule] = super().get_queryset(request)
-        return queryset.annotate(
+        return queryset.select_related("organisation", "course").annotate(
             uses_inactive_entries=inactive[0] | inactive[1] | inactive[2],
             change_not_yet_applied=ExpressionWrapper(
                 Q(is_enabled=True)
@@ -241,6 +240,24 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         )
         return response
 
+    def render_change_form(
+        self,
+        request: HttpRequest,
+        context: dict[str, object],
+        add: bool = False,
+        change: bool = False,
+        form_url: str = "",
+        obj: RegistrationRule | None = None,
+    ) -> HttpResponse:
+        if change and obj is not None and request.method == "GET":
+            # Warnings belong on the page a person is about to edit.
+            for warning in self._change_form_warnings(obj):
+                messages.warning(request, warning)
+        response: HttpResponse = super().render_change_form(
+            request, context, add, change, form_url, obj
+        )
+        return response
+
     @csrf_protect_m
     def changeform_view(
         self,
@@ -249,12 +266,6 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         form_url: str = "",
         extra_context: dict[str, object] | None = None,
     ) -> HttpResponse:
-        if request.method == "GET" and object_id is not None:
-            obj = self.get_object(request, unquote(object_id))
-            if obj is not None:
-                # Warnings belong on the page a person is about to edit.
-                for warning in self._change_form_warnings(obj):
-                    messages.warning(request, warning)
         if (
             request.method != "POST"
             or object_id is None
@@ -411,7 +422,7 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
     def has_delete_permission(
         self, request: HttpRequest, obj: RegistrationRule | None = None
     ) -> bool:
-        if obj is not None and obj.is_enabled:
+        if obj is not None and _delete_refusal(obj) is not None:
             return False
         allowed: bool = super().has_delete_permission(request, obj)
         return allowed
@@ -420,14 +431,37 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         self, objs: Iterable[RegistrationRule], request: HttpRequest
     ) -> tuple[list[str], dict[str, int], set[str], list[str]]:
         # A list from the single-object view, a queryset from the bulk action.
-        # Enabled rules are reported as protected, which makes the confirmation
+        # Refused rules are reported as protected, which makes the confirmation
         # page refuse the selection and name them.
         rules = list(objs)
+        refusals = {rule.pk: _delete_refusal(rule) for rule in rules}
         to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
-            [rule for rule in rules if not rule.is_enabled], request
+            [rule for rule in rules if refusals[rule.pk] is None], request
         )
-        enabled = [f"Enabled rule: {rule.name}" for rule in rules if rule.is_enabled]
-        return to_delete, model_count, perms_needed, [*protected, *enabled]
+        refused = [reason for reason in refusals.values() if reason is not None]
+        return to_delete, model_count, perms_needed, [*protected, *refused]
+
+
+def _delete_refusal(rule: RegistrationRule) -> str | None:
+    """Why this rule may not be deleted yet; None when it may.
+
+    Deleting a rule leaves its registrations as they are, so it waits until
+    the rule is disabled and the run that retracts its registrations has
+    happened. Deleted sooner, the rows it still held active would never be
+    retracted by anyone.
+    """
+    if rule.is_enabled:
+        return f"Enabled rule: {rule.name}"
+    unapplied = (
+        rule.last_evaluated_at is None or rule.last_evaluated_at < rule.updated_at
+    )
+    if unapplied and (
+        RuleRegistration._base_manager.filter(
+            rule=rule, registration__is_active=True
+        ).exists()
+    ):
+        return f"Rule still retracting its registrations: {rule.name}"
+    return None
 
 
 @admin.display(description="Registration rule")

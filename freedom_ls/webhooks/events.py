@@ -16,8 +16,6 @@ def fire_webhook_event(
     (an action run from a command or a task); otherwise from the request, and
     with neither the event is dropped.
     """
-    validate_event_type(event_type)
-
     if site is None:
         request = getattr(_thread_locals, "request", None)
         if request is None:

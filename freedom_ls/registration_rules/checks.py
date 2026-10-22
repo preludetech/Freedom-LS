@@ -1,6 +1,7 @@
 """Django system checks for the registration_rules app.
 
 E002 - A REGISTRATION_RULE_KINDS path does not import.
+E003 - The kind a new rule gets by default is not in REGISTRATION_RULE_KINDS.
 
 A missing hr_attributes is refused by the app config instead (E001 is retired):
 the app cannot load far enough without it for a check to run.
@@ -34,3 +35,23 @@ def check_rule_kinds_import(
                 )
             )
     return errors
+
+
+@register()
+def check_default_kind_is_configured(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[CheckMessage]:
+    """E003: the model's default kind must be a configured kind, or every new rule is unloadable."""
+    from freedom_ls.registration_rules.config import config
+    from freedom_ls.registration_rules.models import RegistrationRule
+
+    default = RegistrationRule._meta.get_field("kind").default
+    if default in config.REGISTRATION_RULE_KINDS:
+        return []
+    return [
+        Error(
+            f"REGISTRATION_RULE_KINDS has no {default!r} entry, the kind every new rule gets.",
+            hint="Add it, or change RegistrationRule.kind's default in a project model.",
+            id="freedom_ls_registration_rules.E003",
+        )
+    ]
