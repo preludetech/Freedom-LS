@@ -6,8 +6,9 @@ import pytest
 
 from django.http import QueryDict
 from django.test import RequestFactory
+from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -31,13 +32,17 @@ def request_for_site(mock_site_context, rf: RequestFactory):
     return request
 
 
-def _form(request, **data: str) -> ApplicantDetailsForm:
+def _query(**data: str) -> QueryDict:
     payload = {"email": "ada@example.com", "first_name": "Ada", "last_name": "L"}
     payload.update(data)
-    instance = AnonymousApplicant(course=AnonymousApplicantFactory().course)
     query = QueryDict(mutable=True)
     query.update(payload)
-    return ApplicantDetailsForm(query, request=request, instance=instance)
+    return query
+
+
+def _form(request, **data: str) -> ApplicantDetailsForm:
+    instance = AnonymousApplicant(course=AnonymousApplicantFactory().course)
+    return ApplicantDetailsForm(_query(**data), request=request, instance=instance)
 
 
 def test_form_refuses_a_filled_honeypot_with_the_application_message(request_for_site):
@@ -189,3 +194,49 @@ def test_email_form_refuses_an_invalid_address(request_for_site):
 
     assert form.is_valid() is False
     assert "email" in form.errors
+
+
+def test_saving_an_existing_applicant_keeps_a_claim_that_landed_meanwhile(
+    request_for_site,
+):
+    """The form holds the applicant as loaded before the claim; its save must
+    not write that stale `user` and `claimed_at` back over the claim."""
+    applicant = AnonymousApplicantFactory(email="ada@example.com", first_name="Ada")
+    form = ApplicantDetailsForm(
+        _query(email="ada@example.com", first_name="Mary", last_name="L"),
+        request=request_for_site,
+        instance=applicant,
+    )
+    assert form.is_valid()
+    claimed = AnonymousApplicant.objects.get(pk=applicant.pk)
+    claimed.user = UserFactory()
+    claimed.claimed_at = timezone.now()
+    claimed.save(update_fields=["user", "claimed_at"])
+
+    form.save()
+
+    applicant.refresh_from_db()
+    assert (applicant.first_name, applicant.user, applicant.claimed_at) == (
+        "Mary",
+        claimed.user,
+        claimed.claimed_at,
+    )
+
+
+def test_saving_an_existing_applicant_leaves_the_address_to_the_view(
+    request_for_site,
+):
+    """The address of an existing applicant changes only through
+    `update_applicant_email`, so the form's own save never writes it."""
+    applicant = AnonymousApplicantFactory(email="ada@example.com")
+    form = ApplicantDetailsForm(
+        _query(email="new@example.com", first_name="Ada", last_name="L"),
+        request=request_for_site,
+        instance=applicant,
+    )
+    assert form.is_valid()
+
+    form.save()
+
+    applicant.refresh_from_db()
+    assert applicant.email == "ada@example.com"

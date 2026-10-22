@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
 from uuid import UUID
 
-from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 from allauth.account.signals import user_signed_up
 
@@ -20,7 +18,11 @@ from freedom_ls.accounts.allauth_account_adapter import announce_user_registered
 from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
-from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+    claim_link_max_age,
+)
 
 # A namespace for the signature, not a secret.
 CLAIM_TOKEN_SALT = "freedom_ls.course_applications.claim"  # noqa: S105
@@ -109,18 +111,6 @@ def _token_payload(payload: object) -> tuple[UUID, int] | None:
         return None
 
 
-def claim_link_max_age() -> timedelta:
-    """How long a claim link works. It matches the signup confirmation link, so
-    one setting governs both."""
-    return timedelta(days=allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS)
-
-
-def claim_link_is_live(applicant: AnonymousApplicant) -> bool:
-    """Whether the last link emailed to the applicant still works."""
-    sent_at = applicant.claim_email_sent_at
-    return sent_at is not None and sent_at > timezone.now() - claim_link_max_age()
-
-
 def read_claim_token(token: str) -> ClaimLink | None:
     """The applicant a claim token names, and whether the token has expired.
 
@@ -162,7 +152,8 @@ def update_applicant_email(applicant: AnonymousApplicant, email: str) -> bool:
     The version moves on so earlier links stop matching, and the sent stamp
     clears so the pages say truthfully that nothing has reached the new
     address yet. Returns False, and writes nothing, for an address equal to
-    the stored one.
+    the stored one, and for an applicant somebody has claimed since the
+    caller loaded it: the address is the account's now.
 
     The row is locked and re-read, so two changes at once each move the
     version on from the other's. The stored address, version and stamp are
@@ -172,7 +163,7 @@ def update_applicant_email(applicant: AnonymousApplicant, email: str) -> bool:
     email = normalise_email(email)
     with transaction.atomic():
         stored = AnonymousApplicant.objects.select_for_update().get(pk=applicant.pk)
-        changed: bool = email != stored.email
+        changed: bool = stored.claimed_at is None and email != stored.email
         if changed:
             stored.email = email
             stored.claim_link_version += 1

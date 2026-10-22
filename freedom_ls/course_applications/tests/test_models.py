@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from django.db import IntegrityError
 from django.db.models import ProtectedError, RestrictedError
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
@@ -20,7 +23,10 @@ from freedom_ls.course_applications.factories import (
     AnonymousApplicantFactory,
     CourseApplicationFactory,
 )
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import (
+    CourseApplication,
+    claim_link_max_age,
+)
 
 
 @pytest.mark.django_db
@@ -223,3 +229,53 @@ def test_an_unclaimed_applications_label_names_the_applicant_not_none(
         f"CourseApplication(anonymous {application.anonymous_applicant_id}, "
         f"{application.course_id})"
     )
+
+
+@pytest.mark.django_db
+def test_a_claim_link_is_not_live_before_any_email_went_out(mock_site_context):
+    applicant = AnonymousApplicantFactory(claim_email_sent_at=None)
+
+    assert applicant.claim_link_is_live is False
+
+
+@pytest.mark.django_db
+def test_a_claim_link_sent_just_now_is_live(mock_site_context):
+    applicant = AnonymousApplicantFactory(claim_email_sent_at=timezone.now())
+
+    assert applicant.claim_link_is_live is True
+
+
+@pytest.mark.django_db
+def test_a_claim_link_older_than_the_max_age_is_not_live(mock_site_context):
+    applicant = AnonymousApplicantFactory(
+        claim_email_sent_at=timezone.now() - claim_link_max_age() - timedelta(seconds=1)
+    )
+
+    assert applicant.claim_link_is_live is False
+
+
+@pytest.mark.django_db
+def test_an_unclaimed_applications_unverified_applicant_is_its_applicant(
+    mock_site_context,
+):
+    application = CourseApplicationFactory(anonymous=True)
+
+    assert application.unverified_applicant == application.anonymous_applicant
+
+
+@pytest.mark.django_db
+def test_a_claimed_application_has_no_unverified_applicant(mock_site_context):
+    application = CourseApplicationFactory(anonymous=True)
+    application.user = UserFactory()
+    application.save(update_fields=["user"])
+
+    assert application.unverified_applicant is None
+
+
+@pytest.mark.django_db
+def test_a_signed_in_applicants_application_has_no_unverified_applicant(
+    mock_site_context,
+):
+    application = CourseApplicationFactory()
+
+    assert application.unverified_applicant is None

@@ -49,7 +49,6 @@ from freedom_ls.course_applications.backends import APPLICATION_GATED
 from freedom_ls.course_applications.claims import (
     ClaimOwner,
     attach_claimed_application,
-    claim_link_is_live,
     claim_sets_a_password,
     read_claim_token,
     resolve_claim_owner,
@@ -187,9 +186,10 @@ def _status_applications(request: HttpRequest) -> QuerySet[CourseApplication]:
 def _unverified_applicant_of(app: CourseApplication) -> AnonymousApplicant:
     """The applicant whose address is still unproven, or 404: a verified
     application has no claim email to send or address to change."""
-    if app.anonymous_applicant is None or app.is_email_verified:
+    applicant = app.unverified_applicant
+    if applicant is None:
         raise Http404
-    return app.anonymous_applicant
+    return applicant
 
 
 def _report_claim_email(request: HttpRequest, app: CourseApplication) -> None:
@@ -218,7 +218,7 @@ def _send_claim_email_unless_live(
     that one, or whose link expired while they were filling in the form; the
     notice on the next page reports the outcome.
     """
-    if not claim_link_is_live(applicant):
+    if not applicant.claim_link_is_live:
         send_application_claim_email(request, applicant, is_submitted=is_submitted)
 
 
@@ -262,7 +262,7 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         request,
         app,
         ApplicantEmailForm(request=request)
-        if app.anonymous_applicant is not None and not app.is_email_verified
+        if app.unverified_applicant is not None
         else None,
     )
 
@@ -316,6 +316,12 @@ def change_applicant_email(request: HttpRequest, pk: UUID) -> HttpResponse:
             return limited
         if update_applicant_email(applicant, form.cleaned_data["email"]):
             _report_claim_email(request, app)
+        else:
+            messages.info(
+                request,
+                f"{applicant.email} is already the address on this application. "
+                'Didn\'t get the email? Use "Send the email again".',
+            )
         return redirect(status_url)
     if tripped_honeypot(form):
         limit.spend_for_honeypot()
@@ -503,7 +509,6 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
             email: str = form.cleaned_data["email"]
-            address_changed = email != previous_email
             limited = limit.spend()
             if limited is not None:
                 return limited
@@ -517,12 +522,16 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                 return redirect(
                     "course_applications:applicant_details", course_slug=course.slug
                 )
-            if applicant is not None and previous_email is not None and address_changed:
-                # Validation already wrote the posted address onto the instance.
-                # The stored one goes back first, so the change runs through the
-                # one helper that invalidates the links sent to it.
-                applicant.email = previous_email
-                update_applicant_email(applicant, email)
+            # A new applicant gets its first link. An existing one gets a link
+            # only when the address really changed in the database: a second
+            # POST of the same new address finds it stored and sends nothing.
+            address_changed = applicant is None
+            if applicant is not None and email != previous_email:
+                # The one helper that invalidates the links sent to the old
+                # address. It reads the stored row, not the instance validation
+                # wrote the posted address onto, and the form's save leaves the
+                # address to it.
+                address_changed = update_applicant_email(applicant, email)
             applicant = form.save()
             remember_anonymous_applicant(request, applicant)
             if course.application_form is None:

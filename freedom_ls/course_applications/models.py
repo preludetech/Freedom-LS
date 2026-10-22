@@ -9,10 +9,21 @@ themselves live in form_engine.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from allauth.account import app_settings as allauth_account_settings
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+
+
+def claim_link_max_age() -> timedelta:
+    """How long a claim link works. It matches the signup confirmation link, so
+    one setting governs both."""
+    return timedelta(days=allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS)
 
 
 class AnonymousApplicant(SiteAwareModel, TimestampedModel):
@@ -62,6 +73,12 @@ class AnonymousApplicant(SiteAwareModel, TimestampedModel):
         # No email here: the admin writes this into its log on delete, and the
         # log outlives the erasure of the applicant.
         return f"Anonymous applicant {self.pk}"
+
+    @property
+    def claim_link_is_live(self) -> bool:
+        """Whether the last link emailed to the applicant still works."""
+        sent_at = self.claim_email_sent_at
+        return sent_at is not None and sent_at > timezone.now() - claim_link_max_age()
 
 
 class CourseApplication(SiteAwareModel):
@@ -159,6 +176,12 @@ class CourseApplication(SiteAwareModel):
         following the claim link, which is what sets `user`.
         """
         return self.user_id is not None
+
+    @property
+    def unverified_applicant(self) -> AnonymousApplicant | None:
+        """The applicant whose address is still unproven: None once somebody
+        has verified it, or when the application never had one."""
+        return self.anonymous_applicant if not self.is_email_verified else None
 
     @property
     def applicant_email(self) -> str:

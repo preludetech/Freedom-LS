@@ -22,30 +22,34 @@
                     Your application for <strong>{{ application.course.title }}</strong> is in.
                     Before anyone reviews it, confirm your email address.
                 </p>
-                {% if application.anonymous_applicant.claim_email_sent_at %}
+                {% with applicant=application.unverified_applicant %}
+                {% if applicant.claim_link_is_live %}
                     <p class="text-muted">
-                        We've emailed a link to {{ application.anonymous_applicant.email }}. Follow it
+                        We've emailed a link to {{ applicant.email }}. Follow it
                         to finish setting up your account. A reviewer will then look at your application.
                     </p>
-                    <form method="post" class="flex flex-wrap items-center gap-3">
-                        {% csrf_token %}
-                        <span class="text-muted">Didn't get it?</span>
-                        <c-button type="submit" variant="secondary">
-                            Send the email again
-                        </c-button>
-                    </form>
+                {% elif applicant.claim_email_sent_at %}
+                    <p class="text-muted">
+                        The link we emailed to {{ applicant.email }} has expired. Send a new one,
+                        then follow it to finish setting up your account.
+                    </p>
                 {% else %}
                     <p class="text-muted">
-                        We couldn't email {{ application.anonymous_applicant.email }} just now. Try again
+                        We couldn't email {{ applicant.email }} just now. Try again
                         in a little while.
                     </p>
-                    <form method="post">
-                        {% csrf_token %}
-                        <c-button type="submit" variant="secondary">
-                            Send the email again
-                        </c-button>
-                    </form>
                 {% endif %}
+                {# The action is explicit because the change-address form re-renders this page at its own URL. #}
+                <form method="post" action="{% url 'course_applications:status' pk=application.pk %}" class="flex flex-wrap items-center gap-3">
+                    {% csrf_token %}
+                    {% if applicant.claim_link_is_live %}
+                        <span class="text-muted">Didn't get it?</span>
+                    {% endif %}
+                    <c-button type="submit" variant="secondary">
+                        Send the email again
+                    </c-button>
+                </form>
+                {% endwith %}
                 {% if email_form %}
                     <form method="post" action="{% url 'course_applications:change_applicant_email' pk=application.pk %}" class="space-y-3" data-testid="change-email-form">
                         {% csrf_token %}

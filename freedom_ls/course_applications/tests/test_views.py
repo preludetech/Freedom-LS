@@ -51,7 +51,11 @@ from freedom_ls.course_applications.anonymous_session import (
 )
 from freedom_ls.course_applications.claims import claim_token, update_applicant_email
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+    claim_link_max_age,
+)
 from freedom_ls.course_applications.views import (
     _details_in_flight_key,
     _start_application,
@@ -4272,3 +4276,84 @@ def test_status_page_of_a_verified_application_has_no_change_form(
     ).content.decode()
 
     assert 'data-testid="change-email-form"' not in body
+
+
+@pytest.mark.django_db
+def test_resend_form_on_the_change_email_422_page_posts_to_the_status_url(
+    client, gated_course
+):
+    """The 422 page renders at the change-email URL, so a resend form with no
+    action would post the change form again and never send anything."""
+    application = _submitted_unverified(client, gated_course)
+
+    body = _change_email(client, application, email="not-an-email").content.decode()
+
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+    assert f'<form method="post" action="{status_url}"' in body
+
+
+@pytest.mark.django_db
+def test_posting_the_same_address_says_it_is_already_the_address(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application, email="ada@example.com")
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "ada@example.com is already the address on this application. "
+        'Didn\'t get the email? Use "Send the email again".'
+    ]
+
+
+def _let_the_claim_link_expire(application) -> None:
+    applicant = application.anonymous_applicant
+    applicant.claim_email_sent_at = (
+        timezone.now() - claim_link_max_age() - timedelta(seconds=1)
+    )
+    applicant.save(update_fields=["claim_email_sent_at"])
+
+
+@pytest.mark.django_db
+def test_status_page_says_when_the_emailed_link_has_expired(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+    _let_the_claim_link_expire(CourseApplication.objects.get(course=gated_course))
+
+    body = client.get(url).content.decode()
+
+    assert (
+        "The link we emailed to ada@example.com has expired" in body,
+        "We've emailed a link" in body,
+    ) == (True, False)
+
+
+@pytest.mark.django_db
+def test_form_page_notice_says_when_the_emailed_link_has_expired(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    _let_the_claim_link_expire(application)
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert (
+        'data-sent="true" data-live="false"' in body,
+        "has expired" in body,
+    ) == (True, True)
+
+
+@pytest.mark.django_db
+def test_reposting_a_new_address_another_post_already_stored_sends_nothing(
+    mock_site_context, client
+):
+    """Two tabs post the same new address: the second finds it stored, so the
+    helper reports no change and no second email goes out."""
+    course, _form = gated_course_with_form()
+    _post_details(client, course)
+    mail.outbox.clear()
+
+    with patch(
+        "freedom_ls.course_applications.views.update_applicant_email",
+        return_value=False,
+    ):
+        _post_details(client, course, email="new@example.com")
+
+    assert mail.outbox == []

@@ -62,6 +62,23 @@ class ApplicantDetailsForm(forms.ModelForm):
         reject_honeypot(self, self.request, HONEYPOT_APPLICATION_MESSAGE)
         return cleaned_data
 
+    # What a repost may write onto an applicant that already exists. Not the
+    # address: the view changes that through the helper that invalidates the
+    # links sent to it. Not `user` or `claimed_at`: a claim that lands between
+    # the view's lookup and this save sets them, and a full save would write
+    # None over them.
+    REPOST_FIELDS = (
+        "first_name",
+        "last_name",
+        "terms_version",
+        "terms_git_hash",
+        "privacy_version",
+        "privacy_git_hash",
+        "consent_ip_address",
+        "consented_at",
+        "updated_at",
+    )
+
     def save(self, commit: bool = True) -> AnonymousApplicant:
         applicant: AnonymousApplicant = super().save(commit=False)
         site = get_cached_site(self.request)
@@ -69,8 +86,10 @@ class ApplicantDetailsForm(forms.ModelForm):
         # host simply has nothing to record here.
         if isinstance(site, Site):
             self._record_consent_evidence(applicant, site)
-        if commit:
+        if commit and applicant._state.adding:
             applicant.save()
+        elif commit:
+            applicant.save(update_fields=self.REPOST_FIELDS)
         return applicant
 
     def _record_consent_evidence(

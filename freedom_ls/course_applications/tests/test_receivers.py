@@ -12,6 +12,7 @@ from freedom_ls.accounts.factories import (
     SiteFactory,
     UserFactory,
 )
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -337,3 +338,33 @@ def test_deleting_a_user_leaves_another_addresses_applicant(mock_site_context):
     user.delete()
 
     assert AnonymousApplicant.objects.filter(pk=other.applicant.pk).exists()
+
+
+def test_signing_in_with_a_held_draft_and_a_submitted_session_application_says_submitted(
+    client, mock_site_context
+):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    client.post(
+        reverse(
+            "course_applications:applicant_details",
+            kwargs={"course_slug": course.slug},
+        ),
+        {"email": "ada@example.com", "first_name": "Ada", "last_name": "Lovelace"},
+    )
+    client.post(
+        reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+    )
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    CourseApplicationFactory(
+        user=user,
+        course=course,
+        form_progress=FormProgressFactory(user=user, completed_time=None),
+    )
+
+    _sign_in(client, user)
+
+    assert _application_messages(client) == [
+        f"Your unfinished application for {course.title} "
+        "was replaced by the one you just submitted."
+    ]

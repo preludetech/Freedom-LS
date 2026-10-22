@@ -106,10 +106,11 @@ def adopt_anonymous_applications_on_login(
                     fail_silently=True,
                 )
             elif result.discarded_draft:
+                verb = "submitted" if result.application.is_submitted else "started"
                 messages.info(
                     request,
                     f"Your unfinished application for {course_title} "
-                    "was replaced by the one you just started.",
+                    f"was replaced by the one you just {verb}.",
                     fail_silently=True,
                 )
     forget_all_anonymous_applicants(request)

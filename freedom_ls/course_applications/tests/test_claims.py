@@ -890,3 +890,25 @@ def test_a_claim_sets_a_password_only_when_nobody_has_proven_one(mock_site_conte
         claim_sets_a_password(ClaimOwner(user, verified=False)),
         claim_sets_a_password(ClaimOwner(passwordless, verified=True)),
     ) == (True, False, True, True)
+
+
+def test_update_applicant_email_on_a_claimed_applicant_writes_nothing(
+    account_with_user,
+):
+    """A claim that lands between the caller's lookup and the change leaves
+    the address the account's."""
+    incoming = _anonymous_draft_for("taken@example.com")
+    applicant = incoming.anonymous_applicant
+    attach_to_user(incoming, applicant, account_with_user)
+    stale = AnonymousApplicant.objects.get(pk=applicant.pk)
+    stale.claimed_at = None
+
+    changed = update_applicant_email(stale, "new@example.com")
+
+    applicant.refresh_from_db()
+    assert (changed, applicant.email, applicant.claim_link_version, stale.email) == (
+        False,
+        "taken@example.com",
+        0,
+        "taken@example.com",
+    )
