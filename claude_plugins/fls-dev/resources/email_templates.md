@@ -90,6 +90,7 @@ All templates are in `freedom_ls/accounts/templates/account/email/`.
 | Account already exists | `account_already_exists` | `base_email` | `password_reset_url` |
 | Password changed | `password_changed` | `base_notification_email` | `user`, `ip`, `user_agent`, `timestamp` |
 | Password set | `password_set` | `base_notification_email` | `user`, `ip`, `user_agent`, `timestamp` |
+| Password reset done | `password_reset` | `base_notification_email` | `user`, `ip`, `user_agent`, `timestamp` |
 | Email changed | `email_changed` | `base_notification_email` | `user`, `from_email`, `to_email` |
 | Email confirmed | `email_confirm` | `base_notification_email` | `user` |
 | Email deleted | `email_deleted` | `base_notification_email` | `user`, `deleted_email` |

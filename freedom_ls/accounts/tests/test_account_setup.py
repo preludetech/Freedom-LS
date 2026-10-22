@@ -14,6 +14,7 @@ from allauth.account.models import EmailAddress
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.test import Client
 from django.urls import reverse
@@ -379,6 +380,37 @@ def test_following_the_setup_link_sets_a_password_and_logs_the_user_in(
         client.session.get("_auth_user_id") == str(user.pk),
         is_pending(user),
     ) == (True, False)
+
+
+@pytest.mark.django_db
+def test_setting_a_first_password_sends_a_branded_confirmation_email(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+) -> None:
+    user = _pending(mock_site_context)
+    with django_capture_on_commit_callbacks(execute=True):
+        send_account_setup_email(user, "Acme Academy")
+    link = _setup_link()
+    client = Client()
+    page = client.get(urlparse(link).path, follow=True)
+    new_password = "a-long-fresh-passphrase-9"  # pragma: allowlist secret  # noqa: S105
+
+    client.post(
+        page.request["PATH_INFO"],
+        {"password1": new_password, "password2": new_password},
+    )
+
+    assert len(mail.outbox) == 2
+    message = mail.outbox[1]
+    assert isinstance(message, EmailMultiAlternatives)
+    html, mimetype = message.alternatives[0]
+    assert isinstance(html, str)
+    assert message.subject.endswith("] Your password has been set")
+    assert ("Hi Sam," in message.body, "Cheers," in message.body) == (True, True)
+    assert (mimetype, "Your password has been set" in html, "Hi Sam," in html) == (
+        "text/html",
+        True,
+        True,
+    )
 
 
 @pytest.mark.django_db

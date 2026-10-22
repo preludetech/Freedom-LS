@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from freedom_ls.accounts import email_utils
 from freedom_ls.accounts.email_utils import (
@@ -794,6 +795,13 @@ NOTIFICATION_EMAIL_TYPES: list[
         "A password has been set for your account",
     ),
     (
+        "password_reset",
+        {},
+        ["Your password has been set", "is ready to use"],
+        ["Your password has been set", "is ready to use"],
+        "Your password has been set",
+    ),
+    (
         "email_changed",
         {
             "from_email": "old@example.com",
@@ -1423,6 +1431,22 @@ class TestGreetingPersonalization:
         assert "Hi ," not in html
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("suffix", ["message.html", "message.txt", "subject.txt"])
+def test_password_reset_email_says_reset_for_a_user_who_has_logged_in_before(
+    base_context: dict[str, object], suffix: str
+) -> None:
+    user = UserFactory(first_name="Alice", last_login=timezone.now())
+    context = {**base_context, "user": user, **SECURITY_CONTEXT}
+
+    rendered = render_to_string(f"account/email/password_reset_{suffix}", context)
+
+    assert ("Your password has been reset" in rendered, "has been set" in rendered) == (
+        True,
+        False,
+    )
+
+
 # ---------------------------------------------------------------------------
 # 6. Size test for all HTML emails
 # ---------------------------------------------------------------------------
@@ -1446,6 +1470,7 @@ ALL_HTML_TEMPLATES: list[tuple[str, dict[str, str]]] = [
         "account/email/password_reset_key_message.html",
         {"password_reset_url": "https://example.com/reset"},
     ),
+    ("account/email/password_reset_message.html", {}),
     (
         "account/email/unknown_account_message.html",
         {"email": "test@example.com", "signup_url": "https://example.com/signup"},
