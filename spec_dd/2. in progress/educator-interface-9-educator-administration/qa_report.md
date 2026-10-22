@@ -1,214 +1,289 @@
-# QA report: member administration
+# Frontend QA report: member administration
 
-Date: 2026-10-22 · Branch: `educator-interface-9-educator-administration` · Server: `http://127.0.0.1:8116/`
+Run date 2026-10-22, dev server on port 8496. All 100 test records passed across desktop (1920x1080), mobile (375x812) and tablet (768x1024); no bugs were found. The dev database was wiped and reseeded before the run (full wipe: db drop, create, migrate, `create_demo_data --yes`, `content_save ./demo_content DemoDev`, `qa_create_member_administration_scenario`) because the previous run's residue (Eve's roles, Nina's account) would have blocked §3 and §4.
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report. Every referenced image exists there. Tests were driven interactively with Playwright MCP against a dev server on port 8116. The viewports ran in this order: 1920×1080 (desktop), then 375×812 (mobile), then 768×1024 (tablet). The dev data was reset to the plan's §0 state by the data helper before the run. The run completed and nothing aborted.
+- Screenshots were collected into `<spec-dir>/screenshots/` and every referenced image exists beside this report.
+- Tests were driven by hand with Playwright MCP: navigation, snapshots, clicks, and scripted multi-step flows that returned the dialog text and list rows.
+- Second browser contexts were used for the other personas and for stale-tab flows.
+- Mailpit's API was read for §4.
+- Three shell checks backed §10.4/§10.5 and §11.2.
+- The compression step found no PNG over 1024KB.
+- Nothing was skipped.
 
 ## Diff scoping
 
-Class: FULL. The diff touched files under `templates/` and `static/`, and `.html` and `.js` files, so the full pass applies. Nothing was skipped. The desktop, mobile and tablet passes all ran.
+Class: FULL. Templates, static JS and CSS changed under educator_interface, panel_framework, base and accounts, plus Python across educator_interface, panel_framework, learner_management, role_based_permissions and accounts. Desktop, mobile and tablet passes all ran; nothing was skipped.
 
 ## Smoke gate
 
-Outcome: pass. Pages loaded:
+Pass. Pages loaded as org.admin@qa.test: `/` and `/educator/organisations/northside/members`.
 
-- `http://127.0.0.1:8116/`
-- `http://127.0.0.1:8116/educator/organisations/northside/members`
-
-## Results
-
-Total 96 tests, 96 passes, 0 failures, 0 skips. Desktop: 89 run, 89 pass, 0 fail, 0 skip. Mobile: 4 run, 4 pass, 0 fail, 0 skip. Tablet: 3 run, 3 pass, 0 fail, 0 skip.
+## Results by section
 
 ### §1 Who can open the section
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 1.1 | desktop | pass | As Oscar the sidebar shows Teaching (Dashboard, Cohorts, Learners, Courses) and Administration (Members); Members page heading is Members, title names Northside. | ![](screenshots/page-2026-10-22T05-30-57-228Z.png) |
-| 1.2 | desktop | pass | cohort.admin: sidebar has only the Teaching group, no Administration/Members; /members 404; /members/__actions/add_member 404; Cohort A overview has no Educators panel and no Add member. | |
-| 1.3 | desktop | pass | cohort.viewer: same three checks give the same answers (404, 404, no Educators panel). | ![](screenshots/page-2026-10-22T05-34-24-400Z.png) |
-| 1.4 | desktop | pass | site.admin: Members opens (200) for Northside, Southside, Westside and Eastside; searching her own email in each gives No members match, so Sandra is listed nowhere. | |
-| 1.5 | desktop | pass | demodev@email.com: Members opens for every organisation; demodev is listed in none (only appears in Added-by lines). | |
-| 1.6 | desktop | pass | south.admin: Northside members 404; Southside lists exactly Sam South with the You marker and the lock text, no row buttons; the only-member callout shows. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 1.1 | desktop | pass | As org.admin: sidebar has Teaching (Dashboard, Cohorts, Learners, Courses) and Administration (Members) groups; page heading Members; title 'Members — Northside — DemoDev'. |
+| 1.2 | desktop | pass | cohort.admin: sidebar has only Teaching; /members 404; /members/__actions/add_member 404; Cohort A overview has no Educators panel and no Add member. |
+| 1.3 | desktop | pass | cohort.viewer: same three answers as 1.2. |
+| 1.4 | desktop | pass | site.admin opens Members for all four organisations (by URL). Sandra is listed in none except Northside, where 3.12 had already given her Cohort viewer on Cohort A (run order), shown with the You marker. |
+| 1.5 | desktop | pass | demodev opens Members for all four organisations and is listed in none. |
+| 1.6 | desktop | pass | south.admin: Northside members 404; Southside lists exactly Sam South with You and the locked message, no buttons. |
+
+![](screenshots/page-2026-10-22T08-33-18-031Z.png)
 
 ### §2 The list
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 2.1 | desktop | pass | Help paragraph present with the three role descriptions word for word. | ![](screenshots/page-2026-10-22T05-30-57-228Z.png) |
-| 2.2 | desktop | pass | Columns Member, Roles, unlabelled actions; chip reads Role: All roles; pager with pages 1-3; rows sorted by first name ascending (nameless member first as it has no name). | |
-| 2.3 | desktop | pass | Oscar: You marker (info chip), Organisation admin / Whole organisation / Added by line, lock text, no buttons. | |
-| 2.4 | desktop | pass | Lars: Suspended marker; Remove + Reactivate; no Suspend. | |
-| 2.5 | desktop | pass | Noa (no member row): Suspended marker; Remove, Change cohorts, Reactivate. | |
-| 2.6 | desktop | pass | Otto: Account turned off marker; only Remove. | |
-| 2.7 | desktop | pass | Bea: Also a learner uses chip-muted (neutral); Cohort admin on Cohort C; Change cohorts, Remove, Suspend. | |
-| 2.8 | desktop | pass | Ola scope: Cohort A, Cohort Old (inactive). | |
-| 2.9 | desktop | pass | Manny scope: Cohort A, Cohort B +2 more; title attribute lists all four. | |
-| 2.10 | desktop | pass | nameless member shows the email as the name with no second line. | |
-| 2.11 | desktop | pass | Nia added-by line reads Not recorded. | |
-| 2.12 | desktop | pass | Sita listed once with Cohort viewer on Cohort A; no Site admin entry; no Suspend/Reactivate. | |
-| 2.13 | desktop | pass | Lena and Sandra: No members match. Eve Existing absent (the search Eve only matches Vee Eleven / Vee Seven by substring). | |
-| 2.14 | desktop | pass | Role chip is a single-choice list (All roles / Organisation admin / Cohort admin / Cohort viewer). Cohort admin: Bea, Cora. Organisation admin: Lars, Olga, Oscar. Cohort viewer: nameless, Manny, Nia, Noa, Ola, Otto, Sita, the twelve Vee viewers, Vera. All roles returns the full 25-member list. Mobile single select checked in the mobile pass. | |
-| 2.15 | desktop | pass | Search zzz shows No members match. with Clear filters; clicking it returns the full list and the search box is empty (earlier bug B2 fixed). | |
-| 2.16 | desktop | pass | Member header shows ascending by default; first click goes to -first_name (Vera first), second click back to ascending (earlier bug B3 fixed). | |
-| 2.17 | desktop | pass | west.admin: one row (Wes, You) and the only-member callout. Added existing@qa.test as Organisation admin: list refreshed in place with Eve, callout stayed until reload, then gone. Removed Eve again (no last-admin warning, Wes remains). | ![](screenshots/page-2026-10-22T05-38-59-689Z.png) |
-| 2.18 | desktop | pass | site.admin on Eastside: No members in this organisation yet. with an Add member button inside the empty state. | ![](screenshots/page-2026-10-22T05-40-03-229Z.png) |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 2.1 | desktop | pass | Help paragraph present with the three role descriptions word for word. |
+| 2.2 | desktop | pass | Columns Member / Roles / unlabelled actions; chip reads 'Role: All roles'; Page 1 of 3 pager; rows ordered by first name (nameless email first, then Bea, Cora, Lars...). |
+| 2.3 | desktop | pass | Oscar: You marker, Organisation admin / Whole organisation / Added ... by demodev@email.com, lock icon with self message, no buttons. |
+| 2.4 | desktop | pass | Lars: Suspended marker; Remove on entry, Reactivate on row, no Suspend. |
+| 2.5 | desktop | pass | Noa: Suspended marker; Remove, Change cohorts, Reactivate. |
+| 2.6 | desktop | pass | Otto: Account turned off marker (chip-muted); only Remove. |
+| 2.7 | desktop | pass | Bea: Also a learner marker uses chip-muted (neutral), Cohort admin on Cohort C; Change cohorts + Remove; Suspend. |
+| 2.8 | desktop | pass | Ola scope: 'Cohort A, Cohort Old (inactive)'. |
+| 2.9 | desktop | pass | Manny scope 'Cohort A, Cohort B +2 more'; title attribute lists all four cohorts. |
+| 2.10 | desktop | pass | nameless: email shown as the name, no second line. |
+| 2.11 | desktop | pass | Nia: 'Added ... by Not recorded'. |
+| 2.12 | desktop | pass | Sita listed once, Cohort viewer on Cohort A only; no Site admin entry; no Suspend/Reactivate. |
+| 2.13 | desktop | pass | Lena, Sandra: 'No members match.' Searching 'Eve' matched Vee Eleven and Vee Seven by substring but not Eve Existing (she holds no role). |
+| 2.14 | desktop | pass | Cohort admin: Bea, Cora. Organisation admin: Lars, Olga, Oscar. Cohort viewer: 20 rows. Ticking roles accumulates (cohort_admin+organisation_admin gave the union); All roles returns the full list. Chip label follows the selection. |
+| 2.14 | mobile | pass | Filter chip opens a 'Filter and sort' bottom sheet with Role as a single select (All roles / Organisation admin / Cohort admin / Cohort viewer), Reset, Cancel and Show results; choosing Cohort admin and Show results lists Bea and Cora with the chip reading 'Role: Cohort admin'. |
+| 2.15 | desktop | pass | 'zzz' shows 'No members match.' with Clear filters; clicking it restores the full list and empties the search box. |
+| 2.16 | desktop | pass | First click on Member header sorts descending (Vera first, ?members-sort=-first_name); second click ascending. |
+| 2.17 | desktop | pass | Westside: one row (Wes, You) and callout 'You're the only member here. Add another organisation admin...'. Adding Eve as Organisation admin refreshed the list in place with the callout still showing; after reload it was gone. Eve's role removed again; callout back after reload. |
+| 2.18 | desktop | pass | Eastside: 'No members in this organisation yet.' with an Add member button inside the empty state. After an htmx refresh to an empty list an sr-only 'No results' live-region announcement is present (not visible). |
 
-### §3 Add member, existing account
+2.17 (desktop):
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 3.1 | desktop | pass | Dialog title Add a member, one email field + Look up. Empty submit is blocked by the field itself (required: Please fill out this field.), dialog stays open. | |
-| 3.2 | desktop | pass | Padded, upper-cased address resolves to Existing account: Eve Existing, existing@qa.test; Cancel leaves no Eve row. | |
-| 3.3 | desktop | pass | Three radio cards with the exact descriptions, none preselected, no rank line, no no-cohorts line. | |
-| 3.4 | desktop | pass | Org admin hides the checklist; Cohort admin shows Cohort A/B/C only, search box, 0 selected count and the not-the-same-as-org-admin note; search B filters to Cohort B; ticking A and C reads 2 selected. | ![](screenshots/page-2026-10-22T05-41-00-192Z.png) |
-| 3.5 | desktop | pass | No cohort ticked: Choose at least one cohort. with the dialog open. | |
-| 3.6 | desktop | pass | Confirmation: Add Eve Existing as Cohort admin, scope Cohort A and Cohort C, description restated, no account-created text, no Now/After block. It does add the spec-mandated no-active-membership sentence. Cancel leaves Eve absent. | ![](screenshots/page-2026-10-22T05-41-17-236Z.png) |
-| 3.7 | desktop | pass | Confirm closes the dialog, list refreshes in place; Eve row: Cohort admin, Cohort A, Cohort C, Added Oct. 22, 2026 by Oscar Orgadmin. | |
-| 3.8 | desktop | pass | Same role/cohorts again: This change was not made / already holds this role on these cohorts, in the dialog. A+B: confirmation says Cohort A stays as it is, scope Cohort B, Now/After block; after confirm scope is Cohort A, Cohort B +1 more (title lists C). | |
-| 3.9 | desktop | pass | Org admin for Eve: Now (Cohort admin on three) vs After (plus Organisation admin). Row gains a second entry. | |
-| 3.10 | desktop | pass | Lars: confirmation says the role takes effect only once reactivated; row gains Cohort viewer on Cohort A and keeps Suspended. | |
-| 3.11 | desktop | pass | Noa: confirmation says adding creates an active membership and existing roles take effect; Suspended gone, Suspend offered. | |
-| 3.12 | desktop | pass | Sandra: confirmation says she already has access to every organisation and the role lists her as a member; row appears with Cohort viewer on Cohort A, no Suspend/Reactivate. | |
-| 3.13 | desktop | pass | Otto: on confirm, This person account is turned off, so they cannot be given a role. Row unchanged. | |
-| 3.14 | desktop | pass | Self: You cannot change your own roles. Ask another organisation admin. | |
-| 3.15 | desktop | pass | away@qa.test: This address belongs to an account on another site. Use a different address. No name, no role step. | |
-| 3.16 | desktop | pass | Hidden cohorts input changed to Cohort S pk: the dialog answers Select a valid choice ... is not one of the available choices / Choose at least one cohort. Lena gains no role. | |
-| 3.17 | desktop | pass | Lena added normally: row appears with Also a learner. | |
-| 3.18 | desktop | pass | Westside Add member for existing@qa.test offers only Organisation admin and says This organisation has no active cohorts yet. | ![](screenshots/page-2026-10-22T05-39-30-983Z.png) |
+![](screenshots/page-2026-10-22T08-44-27-658Z.png)
 
-### §4 Add member, new account
+2.14 (mobile):
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 4.1 | desktop | pass | new.member@qa.test lookup: No account yet. One will be created and a setup email sent. plus optional First/Last name fields. | |
-| 4.2 | desktop | pass | Confirmation says an account will be created and a setup email sent. After Cancel, Mailpit has 0 messages and no Nina row. | |
-| 4.3 | desktop | pass | Confirm: Nina Newmember row with Cohort viewer on Cohort B. Mailpit has exactly one message to new.member@qa.test, subject [FirstClass] Set your password, naming Northside. The link host is the Site domain 127.0.0.1:8000 (account_setup.py builds it from user.site.domain on commit, no request in scope), not this server port 8116; that is the configured dev Site domain, not a defect. | |
-| 4.4 | desktop | pass | In a fresh browser context the set-password link (port swapped to 8116) opened the set-password form; after submitting twice Nina was logged in; /educator/ opened Northside and the Cohorts list showed Cohort B only. | |
-| 4.5 | desktop | pass | Looking up new.member@qa.test again reads Existing account: Nina Newmember, new.member@qa.test. | |
+![](screenshots/page-2026-10-22T09-07-57-290Z.png)
+
+### §3 Add member existing account
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 3.1 | desktop | pass | Dialog 'Add a member' with email field + Look up. Empty submit is blocked by the browser's required validation, dialog stays open. |
+| 3.2 | desktop | pass | '  EXISTING@qa.test ' resolves to 'Existing account: Eve Existing, existing@qa.test'; after Cancel Eve is absent from the list. |
+| 3.3 | desktop | pass | Three radio cards with the exact descriptions, none preselected; no rank line, no no-cohorts line. |
+| 3.4 | desktop | pass | Organisation admin hides the checklist; Cohort admin shows Cohort A/B/C (not Old, not S), search box, '0 selected', and the not-the-same-as-organisation-admin note. Search 'B' narrows to Cohort B; ticking A and C gives '2 selected'. |
+| 3.5 | desktop | pass | Submit with no cohort: 'Choose at least one cohort.' (422) inside the open dialog. |
+| 3.6 | desktop | pass | Confirmation: 'Add Eve Existing as Cohort admin', description, 'Scope: Cohort A and Cohort C.', widening line; no account-creation sentence, no current-roles block. It also carries the no-active-membership sentence, which fits (Eve has no member row). Cancel leaves the list unchanged. |
+| 3.7 | desktop | pass | Confirm closes the dialog; list refreshes without a page load (window marker survived); Eve's row: Cohort admin, Cohort A, Cohort C, added today by Oscar Orgadmin. |
+| 3.8 | desktop | pass | Same grant again: 'This change wasn't made / Eve Existing already holds this role on these cohorts.' (422, Close button; header X also closes it). A and B: confirmation says Cohort A stays as it is and only Cohort B is added, with Now/After blocks; after confirm scope reads 'Cohort A, Cohort B +1 more' (spec: first two names then +N more; the plan's 'Cohort A, Cohort B, Cohort C' wording was the slip). |
+| 3.9 | desktop | pass | Organisation admin confirmation shows Now (Cohort admin on three cohorts) and After (plus Organisation admin). Row now has two entries. |
+| 3.10 | desktop | pass | Lars: confirmation says the role takes effect only once they are reactivated; row gains Cohort viewer on Cohort A and keeps Suspended. |
+| 3.11 | desktop | pass | Noa: confirmation says a membership row is created and existing roles take effect; afterwards Suspended marker gone, row offers Suspend, scope Cohort B, Cohort C. |
+| 3.12 | desktop | pass | Sandra: confirmation says she already has access to every organisation and the role lists her among members; row appears with Cohort viewer on Cohort A, no Suspend/Reactivate. |
+| 3.13 | desktop | pass | Otto: confirm answers 'This person's account is turned off, so they can't be given a role.'; row unchanged (Cohort A only). |
+| 3.14 | desktop | pass | Self: 'You can't change your own roles. Ask another organisation admin.' |
+| 3.15 | desktop | pass | away@qa.test: 'This address belongs to an account on another site. Use a different address.' No name, no role step (0 radios). |
+| 3.16 | desktop | pass | Hidden cohorts input set to Cohort S's pk: refused with a form error ('Select a valid choice. <uuid> is not one of the available choices.' + 'Choose at least one cohort.'); Lena gained no role. Polish note: the error echoes the raw uuid. |
+| 3.17 | desktop | pass | Lena added normally: row appears with 'Also a learner' marker, Cohort viewer on Cohort A. |
+| 3.18 | desktop | pass | Westside role step offers only Organisation admin with 'This organisation has no active cohorts yet.' |
+
+3.4:
+
+![](screenshots/page-2026-10-22T08-38-11-689Z.png)
+
+3.6:
+
+![](screenshots/page-2026-10-22T08-38-29-432Z.png)
+
+3.8:
+
+![](screenshots/page-2026-10-22T08-39-43-105Z.png)
+
+### §4 Add member new account
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 4.1 | desktop | pass | Lookup of new.member@qa.test: 'No account yet. One will be created and a setup email sent.' with optional First name / Last name fields; Cohort viewer on Cohort B chosen. |
+| 4.2 | desktop | pass | Confirmation: 'An account will be created for new.member@qa.test and a setup email sent.' Cancel: Mailpit still empty, no Nina row. |
+| 4.3 | desktop | pass | Confirm: Nina Newmember row with Cohort viewer on Cohort B. Mailpit: exactly one message to new.member@qa.test, subject '[FirstClass] Set your password', naming Northside, with a set-password link. The link's host is the Site's configured domain 127.0.0.1:8000 rather than the request's port 8496 (the port was rewritten to follow it). |
+| 4.4 | desktop | pass | In a fresh browser context the link opened the Change Password form; after setting the password Nina was logged in (no consent step appeared); /educator/ opened Northside's dashboard and the Cohorts page lists Cohort B only. Logged out. |
+| 4.6 | desktop | pass | Lookup again reads 'Existing account: Nina Newmember, new.member@qa.test'. |
+| 4.5 | desktop | pass | Second Mailpit message '[FirstClass] Your password has been set' to new.member@qa.test: logo header, 'Hi Nina,', Security Information block (IP, browser, time), 'Cheers, The FirstClass Team'; text view carries the same wording. It says the account 'on FirstClass' is ready to use (email_label is the site's display name by design). |
 
 ### §5 Remove a role
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 5.1 | desktop | pass | Title Remove Eve Existing from Cohort admin; loses Cohort admin on Cohort A, Cohort B and Cohort C with the description; keeps account and Organisation admin; no learner access named. Cancel changes nothing. | |
-| 5.2 | desktop | pass | Confirm closes the dialog; Eve row shows only Organisation admin. | |
-| 5.3 | desktop | pass | Bea Remove: keeps sentence names her learner access in this organisation. Cancelled. | ![](screenshots/page-2026-10-22T05-45-27-067Z.png) |
-| 5.4 | desktop | pass | Removing Olga: no last-admin warning; after confirm Olga is off the list; in a second context Olga gets 404 on Northside members and on /educator/ (Northside was her only organisation). | |
-| 5.5 | desktop | pass | Olga added back. Plain GET of remove_role?user=72 renders the confirmation as a bare unstyled htmx fragment (no layout, no htmx loaded, so its Remove button cannot submit by itself). POSTing the form directly, with and without HX-Request, answers 422 You cannot change your own roles. Ask another organisation admin. Oscar unchanged. | ![](screenshots/page-2026-10-22T05-46-46-501Z.png) |
-| 5.6 | desktop | pass | site.admin on Southside: Remove Sam dialog warns Sam South is the only organisation admin and nobody can administer it until you add one. Confirm: list shows No members in this organisation yet. Sam added back. | |
-| 5.7 | desktop | pass | south.admin removing own role (POST, no button exists): 422 You cannot change your own roles. Row unchanged. | |
-| 5.8 | desktop | pass | Sita Remove dialog: site-level access is unaffected, only takes them off the member list, keeps account; no loses sentence. Confirm drops Sita; site.member still opens Northside members (200). Sita added back as Cohort viewer on Cohort A. | |
-| 5.9 | desktop | pass | Stale tab: after tab 2 removed Vera, confirming tab 1 dialog answers This is no longer available / It may have been removed, or you may no longer have access to it. Vera added back. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 5.1 | desktop | pass | Dialog 'Remove Eve Existing from Cohort admin': loses Cohort admin on Cohort A, Cohort B and Cohort C with the description; keeps account and Organisation admin on Whole organisation; no learner access named. Cancel: unchanged. |
+| 5.2 | desktop | pass | Confirm: dialog closes, list refreshes, Eve's row shows only Organisation admin. |
+| 5.3 | desktop | pass | Bea's Remove: 'They keep their account and their learner access in this organisation.' Cancelled. |
+| 5.4 | desktop | pass | Removing Olga's Organisation admin: no last-admin warning. After confirm Olga drops off; in Olga's own context Northside members and /educator/ both answer 404 (Northside was her only organisation). |
+| 5.5 | desktop | pass | Olga added back. Plain GET of remove_role?user=71 renders the confirmation (bare fragment); POSTing it answers 422 'You can't change your own roles. Ask another organisation admin.'; Oscar's row unchanged. |
+| 5.6 | desktop | pass | As site.admin, removing Sam's Organisation admin warns 'Sam South is the only organisation admin. After this, nobody in the organisation can administer it until you add one.' Confirm: empty state. Sam added back (added by Sandra Siteadmin). |
+| 5.7 | desktop | pass | south.admin: plain GET of remove_role?user=<self> renders the confirmation as a bare fragment (no layout, no htmx, so its submit button does nothing natively); a POST with the same fields answers 422 'You can't change your own roles. Ask another organisation admin.' and nothing changes. |
+| 5.8 | desktop | pass | Sita's Remove dialog: 'Their site-level access is unaffected; this only takes them off this organisation's member list. They keep their account.' No 'lose' sentence. After confirm Sita is off the list, yet logged in as site.member Northside's Members still opens (200). Sita added back as Cohort viewer on Cohort A. |
+| 5.9 | desktop | pass | Tab 1 held Vera's Remove dialog while tab 2 removed her role; confirming in tab 1 answered 'This is no longer available / It may have been removed, or you may no longer have access'. Vera added back. |
+
+5.8:
+
+![](screenshots/page-2026-10-22T08-50-24-602Z.png)
 
 ### §6 Change cohorts
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 6.1 | desktop | pass | Change cohorts for Manny Many: A, B, C ticked, search box, 3 selected, Kept as they are: Cohort Old (inactive) with no checkbox. | ![](screenshots/page-2026-10-22T05-49-13-981Z.png) |
-| 6.2 | desktop | pass | Untick B: confirmation Removes: Cohort B / loses Cohort viewer on Cohort B, nothing added, button Change cohorts. After: scope A, C, Old (title attribute lists them). | |
-| 6.3 | desktop | pass | Add one, remove one: confirmation shows Adds and Removes lines, the widening sentence and the loses sentence. Scope updates accordingly. Manny restored to A, B, C, Old afterwards. | |
-| 6.4 | desktop | pass | No change: This change was not made / Nothing changed. Tick or untick a cohort first. Dialog stays open with Close. | |
-| 6.5 | desktop | pass | Vera unticking her only cohort: title Remove Vera Viewer from Cohort viewer, button Remove; she drops off the list. Added back. | |
-| 6.6 | desktop | pass | Noa Change cohorts open in tab 1, role removed in tab 2, confirm in tab 1: This is no longer available. Noa added back as viewer on Cohort B. | |
-| 6.7 | desktop | pass | No Change cohorts on Organisation admin entries (Oscar, Olga, Lars) nor on Otto row. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 6.1 | desktop | pass | Manny's Change cohorts: A, B, C ticked, search box, '3 selected', 'Kept as they are: Cohort Old (inactive)' with no checkbox. |
+| 6.2 | desktop | pass | Untick B: confirmation 'Removes: Cohort B / Manny Many loses Cohort viewer on Cohort B.' with a Change cohorts button; afterwards scope 'Cohort A, Cohort C +1 more' (Old). |
+| 6.3 | desktop | pass | Tick B, untick A: 'Adds: Cohort B / Removes: Cohort A' with both the widening and loss sentences; scope then 'Cohort B, Cohort C +1 more'. |
+| 6.4 | desktop | pass | No change: 'This change wasn't made / Nothing changed. Tick or untick a cohort first.' (422, dialog open). |
+| 6.5 | desktop | pass | Vera unticking Cohort A: confirmation titled 'Remove Vera Viewer from Cohort viewer' with a Remove button; she drops off the list; added back. |
+| 6.6 | desktop | pass | Noa's Change cohorts open in tab 1 while tab 2 removed her role: tab 1 answers 'This is no longer available'. Noa added back as Cohort viewer on Cohort B. |
+| 6.7 | desktop | pass | No Change cohorts on Organisation admin entries (Oscar, Olga, Lars's org-admin entry) nor on Otto's row. Lars's only Change cohorts is on the Cohort viewer entry 3.10 added. |
+
+6.1:
+
+![](screenshots/page-2026-10-22T08-52-24-973Z.png)
 
 ### §7 Suspend and reactivate
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 7.1 | desktop | pass | Reactivate Lars Lapsed lists Organisation admin on Whole organisation and Cohort viewer on Cohort A; after confirm Suspended is gone and Suspend is offered. | ![](screenshots/page-2026-10-22T05-51-40-794Z.png) |
-| 7.2 | desktop | pass | lapsed.admin opens Northside members (200) once reactivated. | |
-| 7.3 | desktop | pass | Suspend dialog: keeps roles but can do nothing in Northside until reactivated; no last-admin warning. After confirm Suspended returns and lapsed.admin gets 404. | |
-| 7.4 | desktop | pass | Stale Suspend dialog in tab 2 after tab 1 suspended: This is no longer available. | |
-| 7.5 | desktop | pass | Olga suspended fine. Self-suspend by URL (POST user=72): 422 self message. As site.admin, Oscar row offers Suspend. With Olga, Lars and Eve (org admin since 3.9) suspended, the dialog warns Oscar is the only organisation admin. With Eve still active there is correctly no warning. Cancelled; Olga and Eve reactivated. | ![](screenshots/page-2026-10-22T05-53-30-174Z.png) |
-| 7.6 | desktop | pass | As Olga, Oscar Suspend dialog carries no warning. Cancelled. | |
-| 7.7 | desktop | pass | Sita row: no Suspend/Reactivate. Otto row: only Remove. Own row: lock text and no buttons. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 7.1 | desktop | pass | Reactivate Lars: 'These roles take effect again: Organisation admin on Whole organisation and Cohort viewer on Cohort A.' After confirm Suspended marker gone, row offers Suspend. |
+| 7.2 | desktop | pass | lapsed.admin: Northside Members opens (200). |
+| 7.3 | desktop | pass | Suspend Lars: 'They keep their roles but can do nothing in Northside until reactivated.' No last-admin warning. After confirm Suspended returns; lapsed.admin gets 404 on Northside Members. |
+| 7.4 | desktop | pass | Suspend dialog opened in tab 2 before tab 1 suspended Lars: confirming in tab 2 answers 'This is no longer available'. |
+| 7.5 | desktop | pass | Suspending Olga: no warning. POST suspend?user=71 (self): 422 self message; plain GET renders the bare confirmation. As site.admin Oscar's row offers Suspend. With Eve still an active Organisation admin (from 3.9) the dialog carried no warning, correctly; after suspending Eve and Olga too the dialog warned 'Oscar Orgadmin is the only organisation admin. After this, nobody in the organisation can administer it until you add one.' Cancelled; Olga and Eve reactivated as Sandra. |
+| 7.6 | desktop | pass | As Olga, Oscar's Suspend dialog carries no warning (Olga remains). Cancelled. |
+| 7.7 | desktop | pass | Sita's, Otto's and Oscar's rows offer neither Suspend nor Reactivate. |
 
 ### §8 Cohort overview
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 8.1 | desktop | pass | Cohort A Educators panel lists Cora (Cohort admin), Lena, Manny, Ola, Sandra, Sita, Vera (Cohort viewer) and an Add member button. Lars (suspended) and Otto (turned off) are not listed even though they hold viewer on A. | ![](screenshots/page-2026-10-22T05-54-21-084Z.png) |
-| 8.2 | desktop | pass | Dialog title Add a member to Cohort A (earlier bug B7 fixed); role step offers only Cohort admin and Cohort viewer, no checklist, no rank line. Confirm closes the dialog and the panel re-renders with Eve Existing / Cohort viewer; a window marker survived, so no page load. | ![](screenshots/page-2026-10-22T05-56-23-406Z.png) |
-| 8.3 | desktop | pass | Northside Members: Eve row shows the new Cohort viewer / Cohort A entry beside Organisation admin. | |
-| 8.4 | desktop | pass | cohort.admin on Cohort A overview: no Educators panel and no Add member (verified in 1.2). | |
-| 8.5 | desktop | pass | site.admin on Cohort S overview: panel reads No educators assigned to this cohort. with Add member; dialog titled Add a member to Cohort S; cancelled. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 8.1 | desktop | pass | Cohort A overview Educators panel lists Cora (Cohort admin), Lena, Ola, Sandra, Sita, Vera (Cohort viewer) with an Add member button. Manny is absent because 6.3 took Cohort A out of his scope; Lars (suspended) is not listed. |
+| 8.2 | desktop | pass | Dialog 'Add a member to Cohort A'; after lookup only Cohort admin and Cohort viewer radios, no checklist; confirmation shows Now/After; on confirm the dialog closes and the Educators panel refreshes in place (window marker survived) listing Eve Existing as Cohort viewer. |
+| 8.3 | desktop | pass | Northside Members: Eve's row shows the new Cohort viewer / Cohort A entry beside Organisation admin. |
+| 8.4 | desktop | pass | cohort.admin on Cohort A overview: no Educators panel, no Add member (checked in 1.2). |
+| 8.5 | desktop | pass | site.admin on Cohort S overview: Educators panel ('No educators assigned to this cohort.') offers Add member; dialog titled 'Add a member to Cohort S'; cancelled. |
+
+8.1:
+
+![](screenshots/page-2026-10-22T08-56-38-710Z.png)
 
 ### §9 Mid-session removal
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 9.1 | desktop | pass | Context 1 Vera on Cohort A overview; context 2 Oscar removed her only role. | |
-| 9.2 | desktop | pass | Vera clicking the Learners tab (htmx) reloads the page into the 404 page (earlier bug B8 fixed: no silent no-op). /educator/ answers 404 since Northside was her only organisation. | |
-| 9.3 | desktop | pass | Vera added back as Cohort viewer on Cohort A. | |
-| 9.4 | desktop | pass | Olga with Eve Remove dialog open; Oscar removed Olga role; Olga confirming reloads into the 404 page (unmarked 404 on the htmx action). Eve row unchanged for Oscar. Olga added back. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 9.1 | desktop | pass | Vera's context had Cohort A's overview open; Oscar removed her only role. |
+| 9.2 | desktop | pass | Clicking the htmx Learners tab in Vera's stale page reloaded into the 404 page (shared htmx 404 listener); /educator/ answers 404 (Northside was her only organisation). |
+| 9.3 | desktop | pass | Vera added back as Cohort viewer on Cohort A. |
+| 9.4 | desktop | pass | Olga's context held Eve's Remove dialog while Oscar removed Olga's Organisation admin; confirming reloaded into the 404 page for Northside (unmarked 404 on the htmx POST); Eve's entries unchanged on Oscar's reload. Olga added back. |
 
 ### §10 Cohort deletion cleanup
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 10.1 | desktop | pass | Created Cohort Doomed via Cohorts > Create Cohort; added existing@qa.test as Cohort viewer on it; Eve scope read Cohort A, Cohort Doomed. | |
-| 10.2 | desktop | pass | Settings tab > Delete > confirm: redirected to the Cohorts list. | |
-| 10.3 | desktop | pass | Eve Cohort viewer entry now names Cohort A only. | |
-| 10.4 | desktop | pass | Shell: cohort ObjectRoleAssignment and UserObjectPermission counts returned to the pre-step baseline (36 / 64); zero rows point at the deleted cohort pk; no orphan rows for any cohort. | |
-| 10.5 | desktop | pass | As demodev: created Cohort Doomed Two, added Eve as viewer on it, deleted it at /admin/freedom_ls_learner_management/cohort/&lt;pk&gt;/delete/. Eve scope back to Cohort A; counts back to baseline; zero rows point at that pk. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 10.1 | desktop | pass | Created 'Cohort Doomed' via Cohorts > Create Cohort; Add member offered it in the checklist; Eve's Cohort viewer entry read 'Cohort A, Cohort Doomed'. |
+| 10.2 | desktop | pass | Settings tab > Delete > 'Delete Cohort Doomed / Deleting this cohort cannot be undone.' Confirmed; back on the Cohorts list. |
+| 10.3 | desktop | pass | Eve's Cohort viewer entry reads 'Cohort A' only. |
+| 10.4 | desktop | pass | Shell: cohort role rows 37 -> 36 and guardian cohort perms 64 -> 62 (exactly the Doomed rows: 1 and 2); zero rows with object_id/object_pk = the deleted pk; cohort gone. |
+| 10.5 | desktop | pass | Recreated Cohort Doomed with Eve's Cohort viewer role, then deleted it as demodev via /admin/freedom_ls_learner_management/cohort/ (delete confirmation listed only the cohort). Shell: role rows and guardian perms back to 36 / 62, none pointing at the pk. |
 
 ### §11 Isolation and enumeration
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 11.1 | desktop | pass | south.admin: Northside members, add_member and remove_role URLs all 404 (htmx and plain). | |
-| 11.2 | desktop | pass | Oscar: members/&lt;uuid&gt; and members/76 are 404; remove_role for Sam (user 99) answers 404 with the no-longer-available fragment on GET and POST; change_cohorts POST naming Cohort S answers 404 no-longer-available and writes nothing (Vera still Cohort A only). | |
-| 11.3 | desktop | pass | The other-site message in 3.15 never named Avery Away. | |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 11.1 | desktop | pass | south.admin: Northside members, add_member and remove_role?user=75&role=cohort_viewer all 404. |
+| 11.2 | desktop | pass | As Oscar: /members/<uuid> 404; remove_role?user=98 (Sam, not a Northside member): GET 404, POST 404 with the 'no longer available' fragment; change_cohorts POST naming Cohort S's pk for Vera: 404 'no longer available' and Vera's scope unchanged (Cohort A only, confirmed in the shell). |
+| 11.3 | desktop | pass | The other-site message in 3.15 never named Avery Away. |
 
 ### §12 Layout at the QA viewports
 
-| Test | Viewport | Result | Notes | Screenshot |
-|---|---|---|---|---|
-| 12.1 | desktop | pass | 1920: no horizontal scroll (scrollWidth 1920); row actions 38px high at desktop density by design. | |
-| 12.2 | desktop | pass | Add member dialog at 1920: email step, radio cards, checklist with search and count, confirmation all fit; buttons inside the viewport. | ![](screenshots/page-2026-10-22T05-41-00-192Z.png) |
-| 12.1 | mobile | pass | 375: no horizontal scroll; rows are cards with the bold member chip, markers beside it, a Roles label and stacked actions; Remove/Change cohorts/Suspend all 44px high (earlier bug B6 fixed); Filter and Sort 44px; pager Next 44px and reachable. Filter sheet shows Role as a single select (All roles / Organisation admin / Cohort admin / Cohort viewer). | ![](screenshots/page-2026-10-22T06-01-50-393Z.png) |
-| 12.2 | mobile | pass | Add member dialog is a full-width bottom sheet: email step, three radio cards 291px wide with wrapped descriptions, checklist with search and 2 selected count, confirmation. The body scrolls inside the dialog with the header and footer pinned; Cancel/Add member stay inside the viewport. | ![](screenshots/page-2026-10-22T06-03-06-134Z.png) |
-| 12.3 | mobile | pass | Remove, Change cohorts, Suspend and Reactivate dialogs at 375 are readable, no horizontal overflow, buttons at bottom 796 of 812. | ![](screenshots/page-2026-10-22T06-04-10-287Z.png) |
-| 12.4 | mobile | pass | Cohort A Educators panel at 375: single column list with the Add member button, no overflow. Hamburger drawer opens with Organisation, Teaching and Administration groups. | ![](screenshots/page-2026-10-22T06-04-42-928Z.png) |
-| 12.1 | tablet | pass | 768: table layout kept (Member, Roles, actions) with no horizontal scroll; toolbar shows search, Role chip and Sorted by; hamburger drawer used for navigation and opens with both groups. | ![](screenshots/page-2026-10-22T06-05-00-257Z.png) |
-| 12.2 | tablet | pass | Add member dialog at 768 is a centred 512px modal; radio cards 428px wide; checklist and buttons inside the viewport. | ![](screenshots/page-2026-10-22T06-05-14-682Z.png) |
-| 12.4 | tablet | pass | Educators panel at 768 lays out in three columns with the Add member button; no overflow. | ![](screenshots/page-2026-10-22T06-05-32-597Z.png) |
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 12.1 | desktop | pass | 1920x1080: document, body and main scrollWidth all 1920 (no horizontal scroll); table 1598px wide. |
+| 12.2 | desktop | pass | Add member dialog at 1920: email step, radio cards, cohort checklist and confirmation all fit (512px wide, inside the viewport, no overflow); Cancel/Look up/Add member buttons inside the viewport. |
+| 12.1 | mobile | pass | 375x812: no horizontal scroll (scrollWidth 375). Rows render as cards: bold member line with avatar, email and markers; 'Roles' as a labelled line with each entry's scope and added-by; Remove/Change cohorts/Suspend/Reactivate all 44px high; Filter and Sort chips 44px; pager Next 44px, 'Page 1 of 3' shown. |
+| 12.2 | mobile | pass | Add member bottom sheet at 375: email step, three radio cards (291px wide, descriptions wrap, no overflow), cohort checklist with search and count, confirmation. Buttons are inside the viewport on every step; on the checklist step the sheet fills the viewport and scrolls internally, so Cancel/Add member sit below the fold until the sheet is scrolled (header Close is sticky). No document overflow. |
+| 12.3 | mobile | pass | Remove, Change cohorts, Suspend and Reactivate dialogs at 375: 16px body text, full-width bottom sheets, Cancel and the action button inside the viewport (bottom 796 of 812). |
+| 12.4 | mobile | pass | Cohort A overview at 375: Educators panel 343px wide, no overflow, seven entries, Add member button (146x40) inside the viewport. Page has no horizontal scroll. |
+| nav | mobile | pass | 'Open navigation panel' opens a bottom-sheet drawer with the Teaching and Administration groups (Dashboard, Cohorts, Learners, Courses, Members); Escape closes it; no overflow. |
+| 12.1 | tablet | pass | 768x1024: no horizontal scroll (scrollWidth 768). The desktop table renders at 718px with Member (303) / Roles (265) / actions (150) columns, desktop Role chip 'Role: All roles', 'Sorted by Member', pager 'Page 1 of 3'. Row actions are desktop density (38px) since 768 is the md breakpoint. Sidebar collapses to the 'Open navigation panel' hamburger. |
+| 12.2 | tablet | pass | Add member at 768 is a centred 512px modal; email, radio cards (428px, no overflow), checklist (839px tall, fits without scrolling) and confirmation all inside the viewport with buttons inside. |
+| 12.4 | tablet | pass | Cohort A overview at 768: Educators panel 720px wide (single column), seven entries, Add member button (146x40) inside; no horizontal scroll. |
+| nav | tablet | pass | Hamburger opens the bottom-sheet drawer (768px wide, 475px tall) with Teaching and Administration groups; Escape closes it; content not overlapped when closed. |
+
+12.1 mobile:
+
+![](screenshots/page-2026-10-22T09-06-57-525Z.png)
+
+12.2 mobile:
+
+![](screenshots/page-2026-10-22T09-09-29-772Z.png)
+
+12.3 mobile (Remove):
+
+![](screenshots/page-2026-10-22T09-10-04-328Z.png)
+
+12.3 mobile (Change cohorts):
+
+![](screenshots/page-2026-10-22T09-10-21-408Z.png)
+
+12.3 mobile (Suspend):
+
+![](screenshots/page-2026-10-22T09-10-42-334Z.png)
+
+12.4 mobile:
+
+![](screenshots/page-2026-10-22T09-11-11-453Z.png)
+
+nav mobile:
+
+![](screenshots/page-2026-10-22T09-11-23-453Z.png)
+
+12.1 tablet:
+
+![](screenshots/page-2026-10-22T09-12-10-777Z.png)
+
+12.2 tablet:
+
+![](screenshots/page-2026-10-22T09-12-35-961Z.png)
+
+nav tablet:
+
+![](screenshots/page-2026-10-22T09-12-48-196Z.png)
+
+12.4 tablet:
+
+![](screenshots/page-2026-10-22T09-13-05-077Z.png)
+
+12.1 and 12.2 desktop reuse the screenshots shown under §1 (page-2026-10-22T08-33-18-031Z.png) and §3 (page-2026-10-22T08-38-29-432Z.png).
 
 ## Design check
 
-no design states tested
-
-## Bugs
-
-No bugs were found this run. The five bugs the previous run filed were all re-verified fixed:
-
-- B2 (clear-filters search text): test 2.15.
-- B3 (default sort direction): test 2.16.
-- B6 (44px touch targets): test 12.1 on mobile.
-- B7 (cohort-preset dialog title and rank line): test 8.2.
-- B8 (htmx reload on an unmarked 403/404): test 9.2.
+No design states tested.
 
 ## Bug status
 
-No bugs this run.
+No bugs found this run.
 
 ## General notes
 
-- Data: the previous run left residue (a Nina Newmember account and extra grants on Eve, Sandra, Lena, Lars, Noa). The seed command qa_create_member_administration_scenario adds grants but never removes stray ones, so the data helper deleted the residue by pk before this run. Future runs will need the same.
-- Set-password email link host: account_setup.py builds the link from user.site.domain (DemoDev is 127.0.0.1:8000) because the mail is sent on commit with no request in scope, so the link points at port 8000 rather than the QA server port. Expected for the configured dev Site domain; the link key worked once the port was swapped.
-- Plain non-htmx GET of a row action URL (e.g. remove_role?user=72&role=organisation_admin) renders the confirmation as a bare unstyled fragment with no layout and no htmx, so its Remove button cannot submit on its own. The server-side guards were verified by posting the form directly (422 self message). Observation only; the actions are designed to run inside the dialog.
-- Add member confirmation for a person with no member row (including someone with no roles at all, e.g. Eve in 3.6) includes the spec-mandated sentence: X has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it. The QA plan 3.6 did not list it; the spec (Elsewhere: Adding a role to a person with no member row makes them active, and the confirmation says so) does.
-- The Role filter is a single-choice link list (All roles / Organisation admin / Cohort admin / Cohort viewer); the plan 2.14 wording about ticking All roles while Cohort viewer is still ticked does not apply, All roles simply clears the filter.
-- The Educators panel omits suspended members (Lars) and turned-off accounts (Otto) who hold a role on the cohort; it lists active holders only.
-- Tampered hidden cohort input (3.16) is refused with the form error Select a valid choice. &lt;uuid&gt; is not one of the available choices. The raw UUID is echoed in the message.
-- Touch targets outside the B6 scope at 375: the filter sheet Cancel/Show results buttons and the dialog footer buttons are 42px high; the navigation drawer links are 36px high. Row actions, Filter/Sort chips and pager controls are 44px as required.
-- The plan 7.5 step assumes Oscar becomes the only organisation admin once Olga is suspended, but Eve still holds Organisation admin from 3.9; the warning correctly appeared only after Eve was suspended too.
-- Stale-dialog confirmation after losing access (9.4) reloads the page into the 404 page (the shared htmx 403/404 reload from the earlier B8 fix) rather than showing a fragment; the plan accepts either.
-- Transient: right after login the dashboard briefly showed a Could not load your notifications alert once; it did not recur on reload.
-- The Django debug toolbar handle (DjDT) overlaps the right edge in screenshots; dev-only.
-- No compression was needed: no PNG was over 1024KB.
+- The set-password email's link uses the Site's configured domain (127.0.0.1:8000) rather than the request port; the QA run rewrote the port to follow it. This is the Django Sites domain in the demo data, not a feature defect.
+- The password-set email names the site ("your account on FirstClass is ready to use") rather than the organisation; `email_label` is the site's display name everywhere by design and neither spec nor plan requires the organisation name there. The plan's "on Northside" wording in §4.5 is the slip.
+- A scope with three cohorts renders as "Cohort A, Cohort B +1 more" (spec: first two names, then "+N more"); the plan's §3.8 wording listing all three was the slip.
+- The hand-made cohort choice (§3.16) is refused with a form error that echoes the raw UUID ("Select a valid choice. <uuid> is not one of the available choices.") — functional, slightly unpolished.
+- A plain (non-htmx) GET of an action URL such as `remove_role?user=…` renders the confirmation as a bare fragment without the page layout or htmx, so its button does nothing natively; the server-side guard was verified by POST instead (422 with the self message).
+- After an htmx refresh leaves a list empty, an sr-only "No results" live-region announcement is present (not visible); a fresh load has none.
+- Searching "Eve" also matched Vee Eleven and Vee Seven by substring.
+- At 375 the Add member bottom sheet scrolls internally on the checklist step, so Cancel/Add member sit below the fold until the sheet is scrolled; the header Close is sticky. At 768 row actions are desktop density (38px) since 768 is the md breakpoint; the 44px minimum applies below md as decided in B6.
+- The Educators panel's Add member button is 40px high at 375 (a standard secondary button; the 44px rule covered the members list's row actions, chips and pager).
+- In §7.5 Eve still held Organisation admin from §3.9, so the first check of Sandra's Suspend dialog for Oscar correctly showed no warning; after suspending Eve and Olga the warning appeared. The plan's step order leaves Eve as an org admin at that point.
+- §9.4 and §9.2: a stale htmx request that now answers an unmarked 404 reloads the page into the 404 page (the shared listener added for B8), which is what the plan allows ("no longer available or the denied fragment") in spirit — the person has lost the whole organisation.
+- The §1.4 check ran after §3.12, so Sandra was listed in Northside through the Cohort viewer role that step gave her.
 
-status: ok · reason: report rendered, 0 bugs documented
+status: ok
+reason: report rendered, 0 bugs documented, 100 test records (all pass), 20 screenshots verified
