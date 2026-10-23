@@ -1,30 +1,96 @@
 {% comment %}
-The callout an unverified draft carries on every form page: where the claim link
-went, whether it still works, and the two ways to get another one. It reads the
-applicant row, so a reload or a new tab shows the same state the last send left.
-The resend comes back to the page it was sent from. Renders nothing for a
-verified application or one with no applicant.
+The notice an unverified application carries on every form page and on its
+status page: where the claim link went, whether it still works, and the two ways
+to get another one. It reads the applicant row, so a reload or a new tab shows
+the same state the last send left.
+Send again and Change both post by HTMX and swap the whole notice for the one
+the server sends back. After a Send again that one carries `resend`, "sent" or
+"failed", and says so in place of the usual message, so a click always visibly
+does something. Change opens a form in place. Takes `email_form`, an
+ApplicantEmailForm, bound after a failed change, and `notice_next_url`, the page
+the notice sits on when it is rendered as a response to its own forms.
+The notice and its form carry no id: htmx's settle step gives a swapped-in
+element the old attributes of the element with its id, which would undo the
+state Alpine sets as it starts.
+Renders nothing for a verified application or one with no applicant.
 {% endcomment %}
 {% with applicant=application.unverified_applicant %}
 {% if applicant %}
-<div data-testid="claim-link-notice" data-sent="{% if applicant.claim_email_sent_at %}true{% else %}false{% endif %}" data-live="{% if applicant.claim_link_is_live %}true{% else %}false{% endif %}">
-    <c-callout level="{% if applicant.claim_link_is_live %}info{% else %}warning{% endif %}">
-        {% if applicant.claim_link_is_live %}
-            <p>We've emailed a link to <strong>{{ applicant.email }}</strong> so you can come back to this application. Carry on here.</p>
-        {% elif applicant.claim_email_sent_at %}
-            <p>The link we emailed to <strong>{{ applicant.email }}</strong> has expired. Send a new one so you can come back to this application.</p>
-        {% else %}
-            <p>We couldn't email <strong>{{ applicant.email }}</strong> just now. You can carry on and send the link again.</p>
-        {% endif %}
-        <div class="flex flex-wrap items-center gap-3">
-            <form method="post" action="{% url 'course_applications:status' pk=application.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <c-button type="submit" variant="secondary" size="small">Send the link again</c-button>
-            </form>
-            <a href="{% url 'course_applications:applicant_details' course_slug=application.course.slug %}">Wrong address? Change it</a>
+<div data-testid="claim-link-notice" data-sent="{% if applicant.claim_email_sent_at %}true{% else %}false{% endif %}" data-live="{% if applicant.claim_link_is_live %}true{% else %}false{% endif %}"
+     data-resend="{{ resend }}" x-data="claimLinkNotice" data-editing="{% if email_form.errors %}true{% else %}false{% endif %}"
+     class="my-6 flex flex-col gap-3 rounded-md border border-border bg-surface px-4 py-3 text-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="flex flex-1 items-center gap-3">
+            {% if resend == "sent" %}
+                <c-icon name="success" class="size-4 shrink-0 text-success" aria_label="Email sent" />
+                <p class="text-muted" role="status">We've sent a new link to <strong class="text-on-surface">{{ applicant.email }}</strong>. It can take a few minutes to arrive, so check your spam folder too.</p>
+            {% elif resend == "failed" %}
+                <c-icon name="warning" class="size-4 shrink-0 text-on-warning-light" aria_label="Email not sent" />
+                <p class="text-muted" role="status">We couldn't email <strong class="text-on-surface">{{ applicant.email }}</strong> just now. Try again in a little while.</p>
+            {% elif applicant.claim_link_is_live %}
+                <c-icon name="mail" class="size-4 shrink-0 text-muted" aria_label="Email sent" />
+                <p class="text-muted">We've emailed a link to <strong class="text-on-surface">{{ applicant.email }}</strong>{% if application.is_submitted %}. Follow it to confirm your address.{% else %} so you can come back to this application.{% endif %}</p>
+            {% elif applicant.claim_email_sent_at %}
+                <c-icon name="warning" class="size-4 shrink-0 text-on-warning-light" aria_label="Link expired" />
+                <p class="text-muted">The link we emailed to <strong class="text-on-surface">{{ applicant.email }}</strong> has expired. Send a new one {% if application.is_submitted %}to confirm your address{% else %}so you can come back to this application{% endif %}.</p>
+            {% else %}
+                <c-icon name="warning" class="size-4 shrink-0 text-on-warning-light" aria_label="Email not sent" />
+                <p class="text-muted">We couldn't email <strong class="text-on-surface">{{ applicant.email }}</strong> just now. {% if application.is_submitted %}Try again in a little while.{% else %}You can carry on and send the link again.{% endif %}</p>
+            {% endif %}
         </div>
-    </c-callout>
+        <div class="flex shrink-0 items-center gap-4 pl-7 sm:pl-0">
+            {% if resend == "sent" %}
+                <span class="inline-flex items-center gap-1 font-semibold text-success">
+                    <c-icon name="check" class="size-4" />Sent
+                </span>
+            {% else %}
+                <form method="post" action="{% url 'course_applications:status' pk=application.pk %}"
+                      hx-post="{% url 'course_applications:status' pk=application.pk %}"
+                      hx-target="closest [data-testid='claim-link-notice']" hx-swap="outerHTML"
+                      hx-disabled-elt="find button">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ notice_next_url|default:request.get_full_path }}">
+                    <button type="submit" class="cursor-pointer font-semibold text-primary hover:text-primary-hover disabled:cursor-wait">
+                        <span class="[.htmx-request_&]:hidden">Send again</span>
+                        <span class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-1"><c-icon name="loading" class="size-4 animate-spin" />Sending...</span>
+                    </button>
+                </form>
+            {% endif %}
+            <button type="button" x-on:click="toggleEditing" x-bind:aria-expanded="editing"
+                    class="cursor-pointer font-semibold text-primary hover:text-primary-hover">Change<span class="sr-only"> email address</span></button>
+        </div>
+    </div>
+    <form data-testid="change-email-form"
+          method="post" action="{% url 'course_applications:change_applicant_email' pk=application.pk %}"
+          hx-post="{% url 'course_applications:change_applicant_email' pk=application.pk %}"
+          hx-target="closest [data-testid='claim-link-notice']" hx-swap="outerHTML"
+          hx-disabled-elt="find button[type='submit']"
+          x-show="editing" x-cloak x-transition
+          class="space-y-2 pl-7">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ notice_next_url|default:request.get_full_path }}">
+        {% with field=email_form.email %}
+        <label for="claim-link-notice-email" class="block font-semibold text-on-surface">New email address</label>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input type="email" id="claim-link-notice-email" name="{{ field.html_name }}" autocomplete="email" required
+                   x-ref="emailInput"
+                   value="{{ field.value|default:applicant.email }}"
+                   {% if field.errors %}aria-invalid="true" aria-describedby="claim-link-notice-email-error"{% endif %}
+                   class="w-full flex-1 rounded-md border border-border bg-white px-3 py-2 text-on-surface
+                          focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" />
+            <c-button type="submit" loading="true" loading_text="Updating...">Update</c-button>
+        </div>
+        {% if field.errors %}
+            <p class="text-error" id="claim-link-notice-email-error">
+                <span class="sr-only">Error: </span>{{ field.errors|join:" " }}
+            </p>
+        {% endif %}
+        {% endwith %}
+        {% if email_form.non_field_errors %}
+            <p class="text-error" role="alert">{% for error in email_form.non_field_errors %}{{ error }} {% endfor %}</p>
+        {% endif %}
+        <div hidden>{% for field in email_form.hidden_fields %}{{ field }}{% endfor %}</div>
+    </form>
 </div>
 {% endif %}
 {% endwith %}

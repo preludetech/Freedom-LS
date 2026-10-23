@@ -25,7 +25,7 @@ from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import escape
+from django.utils.html import escape, strip_tags
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import (
@@ -3606,8 +3606,12 @@ def test_status_page_of_an_unverified_application_shows_the_emailed_link_sentenc
     _post_details(client, gated_course)
     response = client.post(_apply_url(gated_course), follow=True)
 
-    body = response.content.decode()
-    assert "emailed a link to ada@example.com" in body
+    assert "emailed a link to ada@example.com" in _page_text(response)
+
+
+def _page_text(response) -> str:
+    """The page as a reader sees it: no tags, and runs of whitespace as one space."""
+    return " ".join(strip_tags(response.content.decode()).split())
 
 
 def _unverified_status_url(client, course) -> str:
@@ -3621,9 +3625,10 @@ def _unverified_status_url(client, course) -> str:
 def test_status_page_offers_to_send_the_email_again(client, gated_course):
     url = _unverified_status_url(client, gated_course)
 
-    body = client.get(url).content.decode()
+    notice = client.get(url).content.decode()
 
-    assert ("Didn't get it?" in body, "Send the email again" in body) == (True, True)
+    assert 'data-testid="claim-link-notice"' in notice
+    assert ">Send again</span>" in notice
 
 
 @pytest.mark.django_db
@@ -3632,7 +3637,7 @@ def test_status_page_says_when_no_email_went_out(client, gated_course):
         cache.clear()
         url = _unverified_status_url(client, gated_course)
 
-    body = client.get(url).content.decode()
+    body = _page_text(client.get(url))
 
     assert (
         "We couldn't email ada@example.com just now" in body,
@@ -3826,7 +3831,7 @@ def test_form_page_notice_names_the_applicants_address(client, mock_site_context
 
     body = client.get(_page_url(application, 1)).content.decode()
 
-    assert "<strong>ada@example.com</strong>" in body
+    assert ">ada@example.com</strong>" in body
 
 
 @pytest.mark.django_db
@@ -3869,19 +3874,102 @@ def test_notice_form_posts_to_the_status_url(client, mock_site_context):
 
     body = client.get(_page_url(application, 1)).content.decode()
 
-    assert f'<form method="post" action="{status_url}">' in body
+    assert f'hx-post="{status_url}"' in body
 
 
 @pytest.mark.django_db
-def test_notice_link_points_at_the_details_step(client, mock_site_context):
+def test_notice_change_form_posts_to_the_change_email_url(client, mock_site_context):
     application = _anonymous_draft(client)
+    change_url = reverse(
+        "course_applications:change_applicant_email", kwargs={"pk": application.pk}
+    )
 
     body = client.get(_page_url(application, 1)).content.decode()
 
-    assert (
-        f'<a href="{_details_url(application.course)}">Wrong address? Change it</a>'
-        in body
+    assert f'hx-post="{change_url}"' in body
+
+
+@pytest.mark.django_db
+def test_notice_change_form_starts_with_the_current_address(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    body = client.get(_check_url(application)).content.decode()
+
+    assert 'value="ada@example.com"' in body
+
+
+def _htmx_change_email(client, application, *, next_url: str = "", **data: str):
+    return client.post(
+        reverse(
+            "course_applications:change_applicant_email", kwargs={"pk": application.pk}
+        ),
+        {"email": "new@example.com", "next": next_url, **data},
+        HTTP_HX_REQUEST="true",
     )
+
+
+@pytest.mark.django_db
+def test_htmx_change_on_a_draft_returns_the_notice_naming_the_new_address(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+
+    response = _htmx_change_email(client, application)
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert 'data-testid="claim-link-notice" data-sent="true"' in body
+    assert ">new@example.com</strong>" in body
+    assert "<html" not in body
+
+
+@pytest.mark.django_db
+def test_htmx_change_on_a_draft_sends_one_link_to_the_new_address(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    mail.outbox.clear()
+
+    _htmx_change_email(client, application)
+
+    assert [message.to for message in mail.outbox] == [["new@example.com"]]
+
+
+@pytest.mark.django_db
+def test_htmx_change_with_an_invalid_address_is_422_with_the_form_open(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+
+    response = _htmx_change_email(client, application, email="not-an-address")
+
+    body = response.content.decode()
+    assert response.status_code == 422
+    assert 'data-editing="true"' in body
+    assert 'aria-invalid="true"' in body
+
+
+@pytest.mark.django_db
+def test_htmx_change_keeps_the_resend_on_the_page_it_came_from(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    page_url = f"{_page_url(application, 1)}?return=check"
+
+    body = _htmx_change_email(client, application, next_url=page_url).content.decode()
+
+    assert f'<input type="hidden" name="next" value="{escape(page_url)}">' in body
+
+
+@pytest.mark.django_db
+def test_htmx_change_drops_a_next_url_on_another_host(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    body = _htmx_change_email(
+        client, application, next_url="https://evil.example.com/"
+    ).content.decode()
+
+    assert "evil.example.com" not in body
 
 
 @pytest.mark.django_db
@@ -3917,6 +4005,62 @@ def test_resend_post_from_a_draft_redirects_to_the_status_url(
     response = client.post(status_url)
 
     assert response["Location"] == status_url
+
+
+def _htmx_resend(client, application, *, next_url: str = ""):
+    return client.post(
+        reverse("course_applications:status", kwargs={"pk": application.pk}),
+        {"next": next_url},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+@pytest.mark.django_db
+def test_htmx_resend_returns_the_notice_saying_a_new_link_went(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    mail.outbox.clear()
+
+    response = _htmx_resend(client, application)
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert 'data-resend="sent"' in body
+    assert "We've sent a new link to" in body
+    assert "<html" not in body
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_htmx_resend_says_when_the_email_could_not_be_sent(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        body = _htmx_resend(client, application).content.decode()
+
+    assert 'data-resend="failed"' in body
+
+
+@pytest.mark.django_db
+def test_htmx_resend_raises_no_toast(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    body = _htmx_resend(client, application).content.decode()
+
+    assert "toast-region" not in body
+
+
+@pytest.mark.django_db
+def test_htmx_resend_keeps_the_next_resend_on_the_page_it_came_from(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    page_url = _page_url(application, 1)
+
+    body = _htmx_resend(client, application, next_url=page_url).content.decode()
+
+    assert f'<input type="hidden" name="next" value="{escape(page_url)}">' in body
 
 
 @pytest.mark.django_db
@@ -4172,12 +4316,13 @@ def test_change_post_reads_no_user_table(client, gated_course):
 
 
 @pytest.mark.django_db
-def test_change_email_on_a_draft_is_404(client, mock_site_context):
+def test_change_email_on_a_draft_moves_it_to_the_new_address(client, mock_site_context):
     application = _anonymous_draft(client)
 
-    response = _change_email(client, application)
+    _change_email(client, application)
 
-    assert response.status_code == 404
+    application.anonymous_applicant.refresh_from_db()
+    assert application.anonymous_applicant.email == "new@example.com"
 
 
 @pytest.mark.django_db
@@ -4250,6 +4395,29 @@ def test_change_email_over_the_per_ip_limit_is_429_and_writes_nothing(gated_cour
 
 
 @pytest.mark.django_db
+def test_htmx_change_over_the_limit_is_429_with_the_notice_and_a_toast(
+    mock_site_context,
+):
+    client = Client()
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        application = _anonymous_draft(client)
+        _post_details_from_one_ip(application.course, 5)
+
+        response = client.post(
+            _change_email_url(application),
+            {"email": "new@example.com"},
+            REMOTE_ADDR="10.9.9.9",
+            HTTP_HX_REQUEST="true",
+        )
+
+    body = response.content.decode()
+    assert response.status_code == 429
+    assert 'data-testid="claim-link-notice"' in body
+    assert "too many emails" in body
+
+
+@pytest.mark.django_db
 def test_status_page_of_an_unverified_application_offers_the_change_form(
     client, gated_course
 ):
@@ -4300,7 +4468,7 @@ def test_posting_the_same_address_says_it_is_already_the_address(client, gated_c
 
     assert [str(m) for m in get_messages(response.wsgi_request)] == [
         "ada@example.com is already the address on this application. "
-        'Didn\'t get the email? Use "Send the email again".'
+        "Didn't get the email? Send it again."
     ]
 
 
@@ -4317,7 +4485,7 @@ def test_status_page_says_when_the_emailed_link_has_expired(client, gated_course
     url = _unverified_status_url(client, gated_course)
     _let_the_claim_link_expire(CourseApplication.objects.get(course=gated_course))
 
-    body = client.get(url).content.decode()
+    body = _page_text(client.get(url))
 
     assert (
         "The link we emailed to ada@example.com has expired" in body,

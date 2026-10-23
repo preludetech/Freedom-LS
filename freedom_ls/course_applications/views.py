@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -237,6 +237,8 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     serves a draft too: the redirect goes back to the page in `next`, the one
     the resend came from, or here, which carries a draft on to its form. The page says whether an email has gone out at all, so an
     applicant whose first one was skipped or lost is never left waiting for it.
+    An HTMX POST comes from the claim link notice and gets the notice back,
+    saying whether this send went out.
 
     NOTE: when application review lands, dynamic state rendering (state badge,
       reviewer message, withdraw action via get_available_user_state_transitions)
@@ -247,15 +249,21 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         return found
     app = found
     if request.method == "POST":
+        if request.headers.get("HX-Request") == "true":
+            sent = send_application_claim_email(
+                request, _unverified_applicant_of(app), is_submitted=app.is_submitted
+            )
+            return _render_claim_link_notice(
+                request,
+                app,
+                ApplicantEmailForm(request=request),
+                resend="sent" if sent else "failed",
+            )
         _report_claim_email(request, app)
-        next_url = request.POST.get("next", "")
-        if next_url and url_has_allowed_host_and_scheme(
-            next_url,
-            allowed_hosts={request.get_host()},
-            require_https=request.is_secure(),
-        ):
-            return redirect(next_url)
-        return redirect("course_applications:status", pk=app.pk)
+        return redirect(
+            _posted_next_url(request)
+            or reverse("course_applications:status", kwargs={"pk": app.pk})
+        )
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
     return _render_status(
@@ -264,6 +272,69 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         ApplicantEmailForm(request=request)
         if app.unverified_applicant is not None
         else None,
+    )
+
+
+def _posted_next_url(request: HttpRequest) -> str:
+    """The same-site page in the POST's `next`, or "" for none or any other."""
+    next_url = request.POST.get("next", "")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return ""
+
+
+def _claim_link_notice_context(
+    request: HttpRequest, app: CourseApplication
+) -> dict[str, object]:
+    """What the claim link notice reads beyond the application: the empty
+    change-address form, for an application that has an unproven address."""
+    if app.unverified_applicant is None:
+        return {}
+    return {"email_form": ApplicantEmailForm(request=request)}
+
+
+def _render_claim_link_notice(
+    request: HttpRequest,
+    app: CourseApplication,
+    email_form: ApplicantEmailForm,
+    *,
+    resend: Literal["sent", "failed", ""] = "",
+    status: int = 200,
+) -> HttpResponse:
+    """The notice alone, for its own HTMX forms to swap in for it.
+
+    `resend` is the outcome of a Send again just made, which the notice
+    reports in place of its usual message. The forms inside it post `next`
+    back, the page the notice sits on, not this request's URL.
+    """
+    return render(
+        request,
+        "course_applications/partials/claim_link_notice.html",
+        {
+            "application": app,
+            "email_form": email_form,
+            "resend": resend,
+            "notice_next_url": _posted_next_url(request)
+            or reverse("course_applications:status", kwargs={"pk": app.pk}),
+        },
+        status=status,
+    )
+
+
+def _htmx_rate_limited(request: HttpRequest, app: CourseApplication) -> HttpResponse:
+    """A 429 the notice can swap in: htmx drops an error page, but swaps a
+    response that carries a toast."""
+    messages.error(
+        request,
+        "That address has had too many emails in the last hour. "
+        "Try again in a little while.",
+    )
+    return _render_claim_link_notice(
+        request, app, ApplicantEmailForm(request=request), status=429
     )
 
 
@@ -277,19 +348,26 @@ def _render_status(
     return render(
         request,
         "course_applications/application_status.html",
-        {"application": app, "email_form": email_form},
+        {
+            "application": app,
+            "email_form": email_form,
+            "status_url": reverse("course_applications:status", kwargs={"pk": app.pk}),
+        },
         status=status,
     )
 
 
 @require_POST
 def change_applicant_email(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """Move a submitted, unverified application to another address.
+    """Move an unverified application to another address.
 
     The old address was never proven, so it hears nothing. Every link sent to
-    it stops working and one new link goes to the new address. A draft
-    changes its address on the details step instead, where the applicant
-    already is.
+    it stops working and one new link goes to the new address.
+
+    An HTMX POST comes from the claim link notice on a draft's pages and gets
+    the notice back, which says itself whether the new link went out. Any
+    other POST comes from the status page and goes back to it, reporting by
+    toast.
     """
     status_url = reverse("course_applications:status", kwargs={"pk": pk})
     # A visitor whose session ended is sent to log in and then to the status
@@ -301,30 +379,40 @@ def change_applicant_email(request: HttpRequest, pk: UUID) -> HttpResponse:
         return found
     app = found
     applicant = _unverified_applicant_of(app)
-    if not app.is_submitted:
-        raise Http404
+    is_htmx = request.headers.get("HX-Request") == "true"
     limit = _AddressLimit.for_post(
         request, request.POST.get("email", ""), applicant.email
     )
     refused = limit.refuse_if_exhausted()
     if refused is not None:
-        return refused
+        return _htmx_rate_limited(request, app) if is_htmx else refused
     form = ApplicantEmailForm(request.POST, request=request)
     if form.is_valid():
         limited = limit.spend()
         if limited is not None:
-            return limited
+            return _htmx_rate_limited(request, app) if is_htmx else limited
         if update_applicant_email(applicant, form.cleaned_data["email"]):
-            _report_claim_email(request, app)
+            if is_htmx:
+                send_application_claim_email(
+                    request, applicant, is_submitted=app.is_submitted
+                )
+            else:
+                _report_claim_email(request, app)
         else:
             messages.info(
                 request,
                 f"{applicant.email} is already the address on this application. "
-                'Didn\'t get the email? Use "Send the email again".',
+                "Didn't get the email? Send it again.",
             )
-        return redirect(status_url)
+        if is_htmx:
+            return _render_claim_link_notice(
+                request, app, ApplicantEmailForm(request=request)
+            )
+        return redirect(_posted_next_url(request) or status_url)
     if tripped_honeypot(form):
         limit.spend_for_honeypot()
+    if is_htmx:
+        return _render_claim_link_notice(request, app, form, status=422)
     return _render_status(request, app, form, status=422)
 
 
@@ -666,16 +754,20 @@ def application_form_page(
 
     if not read_only:
         form_progress.record_page_reached(page_number)
-    context = page_context(
-        form, current, form_progress, submission, url_for_page, read_only=read_only
-    ) | {
-        "application": app,
-        "course": app.course,
-        "return_to_check": return_to_check,
-        "check_answers_url": reverse(
-            "course_applications:check_answers", kwargs={"pk": app.pk}
-        ),
-    }
+    context = (
+        page_context(
+            form, current, form_progress, submission, url_for_page, read_only=read_only
+        )
+        | _claim_link_notice_context(request, app)
+        | {
+            "application": app,
+            "course": app.course,
+            "return_to_check": return_to_check,
+            "check_answers_url": reverse(
+                "course_applications:check_answers", kwargs={"pk": app.pk}
+            ),
+        }
+    )
     if app.user_id is None and page_number == 1:
         context["previous_page_url"] = reverse(
             "course_applications:applicant_details",
@@ -746,6 +838,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         request,
         "course_applications/check_your_answers.html",
         {
+            **_claim_link_notice_context(request, app),
             "application": app,
             "course": app.course,
             "sections": sections,

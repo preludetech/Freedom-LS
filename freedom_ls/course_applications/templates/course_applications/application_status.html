@@ -1,13 +1,17 @@
 {% extends "_base.html" %}
+{% load static %}
 
 {% block head_title %}Application — {{ application.course.title }}{% endblock %}
+
+{% block extra_alpine_components %}{{ block.super }}
+    <script defer src="{% static 'course_applications/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
 
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
-            <h1>Your application</h1>
-
             {% if application.is_email_verified %}
+                <h1>Your application</h1>
                 <p>
                     Your application for <strong>{{ application.course.title }}</strong> has been
                     received and is currently pending review.
@@ -18,53 +22,12 @@
                     has been made. No action is required from you at this time.
                 </p>
             {% else %}
+                <h1>Check your email</h1>
                 <p>
                     Your application for <strong>{{ application.course.title }}</strong> is in.
                     Before anyone reviews it, confirm your email address.
                 </p>
-                {% with applicant=application.unverified_applicant %}
-                {% if applicant.claim_link_is_live %}
-                    <p class="text-muted">
-                        We've emailed a link to {{ applicant.email }}. Follow it
-                        to finish setting up your account. A reviewer will then look at your application.
-                    </p>
-                {% elif applicant.claim_email_sent_at %}
-                    <p class="text-muted">
-                        The link we emailed to {{ applicant.email }} has expired. Send a new one,
-                        then follow it to finish setting up your account.
-                    </p>
-                {% else %}
-                    <p class="text-muted">
-                        We couldn't email {{ applicant.email }} just now. Try again
-                        in a little while.
-                    </p>
-                {% endif %}
-                {# The action is explicit because the change-address form re-renders this page at its own URL. #}
-                <form method="post" action="{% url 'course_applications:status' pk=application.pk %}" class="flex flex-wrap items-center gap-3">
-                    {% csrf_token %}
-                    {% if applicant.claim_link_is_live %}
-                        <span class="text-muted">Didn't get it?</span>
-                    {% endif %}
-                    <c-button type="submit" variant="secondary">
-                        Send the email again
-                    </c-button>
-                </form>
-                {% endwith %}
-                {% if email_form %}
-                    <form method="post" action="{% url 'course_applications:change_applicant_email' pk=application.pk %}" class="space-y-3" data-testid="change-email-form">
-                        {% csrf_token %}
-                        {% if email_form.non_field_errors %}
-                            <div role="alert">
-                                <c-callout level="error">{% for error in email_form.non_field_errors %}{{ error }} {% endfor %}</c-callout>
-                            </div>
-                        {% endif %}
-                        {% include "course_applications/partials/applicant_details_field.html" with field=email_form.email %}
-                        <div hidden>{% for field in email_form.hidden_fields %}{{ field }}{% endfor %}</div>
-                        <c-button type="submit" variant="secondary">
-                            Change address and send the link
-                        </c-button>
-                    </form>
-                {% endif %}
+                {% include "course_applications/partials/claim_link_notice.html" with notice_next_url=status_url %}
             {% endif %}
 
             {% comment %}

@@ -1,7 +1,11 @@
 {% extends "_base.html" %}
-{% load form_engine_tags %}
+{% load static form_engine_tags %}
 
 {% block head_title %}Check your answers — {{ course.title }}{% endblock %}
+
+{% block extra_alpine_components %}{{ block.super }}
+    <script defer src="{% static 'course_applications/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
 
 {% block content %}
     <c-page width="narrow">

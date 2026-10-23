@@ -223,6 +223,8 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
 
     page.get_by_role("button", name="Submit application").click()
     expect(page.get_by_text("Before anyone reviews it")).to_be_visible()
+    expect(page.get_by_test_id("claim-link-notice")).to_be_visible()
+    page.get_by_role("button", name="Change email address").click()
     expect(page.get_by_test_id("change-email-form")).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
@@ -277,3 +279,68 @@ def test_the_claim_link_from_the_details_step_signs_a_second_browser_in_on_the_d
         expect(other_page.get_by_role("link", name="Sign in")).to_be_hidden()
     finally:
         other_context.close()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_changing_the_address_from_the_notice_stays_on_the_form_page(
+    live_server, live_server_site, mock_site_context, page: Page
+):
+    course, _form = gated_course_with_form()
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+    page.get_by_label("Email").fill("anon.applicant@example.com")
+    page.get_by_label("First name").fill("Ada")
+    page.get_by_role("button", name="Next").click()
+    notice = page.get_by_test_id("claim-link-notice")
+    expect(notice).to_be_visible()
+    form_page_url = page.url
+    mail.outbox.clear()
+
+    change_form = page.get_by_test_id("change-email-form")
+    expect(change_form).to_be_hidden()
+    notice.get_by_role("button", name="Change email address").click()
+    expect(change_form).to_be_visible()
+    page.get_by_label("New email address").fill("ada.lovelace@example.com")
+    change_form.get_by_role("button", name="Update").click()
+
+    expect(notice).to_contain_text("ada.lovelace@example.com")
+    expect(change_form).to_be_hidden()
+    assert page.url == form_page_url
+    assert [message.to for message in mail.outbox] == [["ada.lovelace@example.com"]]
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_send_again_from_the_notice_says_a_new_link_went(
+    live_server, live_server_site, mock_site_context, page: Page
+):
+    course, _form = gated_course_with_form()
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+    page.get_by_label("Email").fill("anon.applicant@example.com")
+    page.get_by_label("First name").fill("Ada")
+    page.get_by_role("button", name="Next").click()
+    notice = page.get_by_test_id("claim-link-notice")
+    expect(notice).to_be_visible()
+    form_page_url = page.url
+    mail.outbox.clear()
+
+    notice.get_by_role("button", name="Send again").click()
+
+    expect(notice).to_contain_text(
+        "We've sent a new link to anon.applicant@example.com"
+    )
+    expect(notice.get_by_role("button", name="Send again")).to_have_count(0)
+    assert page.url == form_page_url
+    assert len(mail.outbox) == 1

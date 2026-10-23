@@ -44,6 +44,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "user",
     "cohort",
     "notifications",
+    "mail",
     "achievement",
     "loading",
     # Data display
