@@ -26,6 +26,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.tests.helpers import requires_tailwind_bundle
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     remove_object_role,
@@ -367,3 +368,24 @@ def test_quick_view_and_learners_list_layout_across_viewports(
     expect(next_link).to_be_visible()
     next_box = _box(next_link)
     assert next_box["x"] + next_box["width"] <= _box(drawer)["x"]
+
+
+@pytest.mark.weasyprint
+@requires_tailwind_bundle
+def test_educator_generates_and_downloads_the_cohort_pdf_report(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+
+    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
+    page.get_by_role("link", name="Report", exact=True).click()
+    page.get_by_role("button", name="Generate PDF report").click()
+
+    # The immediate task backend renders the PDF inside the POST, so the
+    # region that comes back already holds the finished report.
+    expect(page.get_by_role("link", name=re.compile("^Download PDF"))).to_be_visible()

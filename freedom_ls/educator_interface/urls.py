@@ -18,6 +18,11 @@ urlpatterns = [
         views.cohort_members_csv,
         name="cohort_members_csv",
     ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/reports/(?P<report_pk>[0-9a-f-]{36})/download/$",
+        views.cohort_report_download,
+        name="cohort_report_download",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation

@@ -5,13 +5,16 @@ from __future__ import annotations
 import csv
 import io
 from collections.abc import Callable
+from datetime import timedelta
 from email.message import Message
 from typing import cast
 
+import lxml.html
 import pytest
 import time_machine
 
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
@@ -23,6 +26,11 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.factories import GeneratedReportFactory
+from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.tests.test_views import (
+    _role_config_granting_view_cohort_only,
+)
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 HEADER = ["Name", "Email", "Role", "Status"]
@@ -191,5 +199,290 @@ class TestCohortMembersCsv:
         assign_object_role(admin, organisation, "organisation_admin")
 
         response = logged_in_client(admin).get(_csv_url(organisation.slug, "0" * 36))
+
+        assert response.status_code == 404
+
+
+def _downloads_url(organisation_slug: str, cohort_pk: object) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "path_string": f"cohorts/{cohort_pk}/__tabs/report/__panels/downloads",
+        },
+    )
+
+
+def _pdf_url(organisation_slug: str, cohort_pk: object, report_pk: object) -> str:
+    return reverse(
+        "educator_interface:cohort_report_download",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "cohort_pk": cohort_pk,
+            "report_pk": report_pk,
+        },
+    )
+
+
+def _region_id(client: Client, url: str) -> str:
+    """The id of the downloads region, read from the panel's own page."""
+    document = lxml.html.fromstring(client.get(url).content.decode())
+    return str(
+        document.cssselect("[data-panel='downloads'] div[id^='panel-']")[0].get("id")
+    )
+
+
+def _refresh(client: Client, url: str) -> lxml.html.HtmlElement:
+    """The downloads region as an htmx refresh of it returns it."""
+    response = client.get(
+        url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET=_region_id(client, url)
+    )
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _generate(client: Client, url: str) -> HttpResponse:
+    return cast(
+        HttpResponse,
+        client.post(
+            f"{url}/__actions/generate_report",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET=_region_id(client, url),
+        ),
+    )
+
+
+def _org_admin(organisation) -> object:
+    admin = UserFactory(staff=True)
+    assign_object_role(admin, organisation, "organisation_admin")
+    return admin
+
+
+def _ready_report(cohort, **fields) -> GeneratedReport:
+    report = cast(
+        GeneratedReport,
+        GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY, **fields
+        ),
+    )
+    report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
+    return report
+
+
+@pytest.mark.django_db
+class TestReportTab:
+    def test_the_report_tab_sits_between_courses_and_settings(self, logged_in_client):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        response = client.get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": cohort.organisation.slug,
+                    "path_string": f"cohorts/{cohort.pk}",
+                },
+            )
+        )
+
+        document = lxml.html.fromstring(response.content.decode())
+        (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
+        assert [a.get("href").rsplit("/", 1)[-1] for a in nav.cssselect("a")] == [
+            "overview",
+            "learners",
+            "courses",
+            "report",
+            "settings",
+        ]
+
+    def test_a_viewer_without_the_download_capability_sees_the_csv_link_and_no_generate_button(
+        self, logged_in_client, mock_site_context
+    ):
+        cohort = CohortFactory()
+        viewer = UserFactory(staff=True)
+        with _role_config_granting_view_cohort_only(mock_site_context.name):
+            assign_object_role(viewer, cohort, "cohort_viewer")
+
+            region = _refresh(
+                logged_in_client(viewer),
+                _downloads_url(cohort.organisation.slug, cohort.pk),
+            )
+
+        assert region.cssselect("a[href$='/members-csv/']")
+        assert not region.cssselect("form")
+
+    def test_posting_the_action_creates_a_report_and_returns_the_in_flight_region(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+
+        response = _generate(client, url)
+
+        region = lxml.html.fromstring(response.content.decode())
+        assert response.status_code == 200
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
+        assert "A report is being generated" in region.text_content()
+
+    def test_posting_again_while_one_is_in_flight_returns_the_same_region_without_a_second_report(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+        _generate(client, url)
+
+        response = _generate(client, url)
+
+        assert response.status_code == 200
+        assert "A report is being generated" in response.content.decode()
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
+
+    def test_an_in_flight_region_polls_every_three_seconds(self, logged_in_client):
+        cohort = CohortFactory()
+        GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_RUNNING)
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        assert region.cssselect("[hx-trigger='every 3s']")
+
+    def test_an_in_flight_region_older_than_ten_minutes_stops_polling_and_offers_a_recheck(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_PENDING
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+
+        with time_machine.travel(report.requested_at + timedelta(minutes=11)):
+            region = _refresh(client, url)
+
+        assert not region.cssselect("[hx-trigger]")
+        assert "This is taking longer than expected." in region.text_content()
+        assert region.cssselect("a[hx-get]")
+
+    def test_a_ready_region_links_to_the_download_and_does_not_poll(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        report = _ready_report(cohort)
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        assert region.cssselect(
+            f"a[href='{_pdf_url(cohort.organisation.slug, cohort.pk, report.pk)}']"
+        )
+        assert not region.cssselect("[hx-trigger]")
+
+    def test_a_failed_region_shows_the_reason_and_offers_to_try_again(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        GeneratedReportFactory(
+            cohort=cohort,
+            status=GeneratedReport.STATUS_FAILED,
+            error_message="The cohort is too large to report on.",
+        )
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        assert not region.cssselect("[hx-trigger]")
+        assert "The cohort is too large to report on." in region.text_content()
+        assert "Try again" in region.text_content()
+
+
+@pytest.mark.django_db
+class TestCohortReportDownload:
+    def test_a_ready_report_downloads_as_a_private_attachment_named_for_the_cohort(
+        self, logged_in_client
+    ):
+        organisation = OrganisationFactory(name="Acme School")
+        cohort = CohortFactory(organisation=organisation, name="Year 9")
+        report = _ready_report(cohort)
+
+        response = logged_in_client(_org_admin(organisation)).get(
+            _pdf_url(organisation.slug, cohort.pk, report.pk)
+        )
+
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "private, no-store, must-revalidate"
+        assert (
+            "acme-school-year-9-progress-report.pdf" in response["Content-Disposition"]
+        )
+        assert b"".join(response.streaming_content) == b"%PDF-1.4 bytes"
+
+    def test_an_organisation_the_user_cannot_access_answers_404(self, logged_in_client):
+        cohort = CohortFactory()
+        report = _ready_report(cohort)
+        outsider = _org_admin(OrganisationFactory())
+
+        response = logged_in_client(outsider).get(
+            _pdf_url(cohort.organisation.slug, cohort.pk, report.pk)
+        )
+
+        assert response.status_code == 404
+
+    def test_a_cohort_outside_the_named_organisation_answers_404(
+        self, logged_in_client
+    ):
+        organisation = OrganisationFactory()
+        foreign = CohortFactory()
+        report = _ready_report(foreign)
+
+        response = logged_in_client(_org_admin(organisation)).get(
+            _pdf_url(organisation.slug, foreign.pk, report.pk)
+        )
+
+        assert response.status_code == 404
+
+    def test_another_cohorts_report_answers_404(self, logged_in_client):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        other = CohortFactory(organisation=organisation)
+        report = _ready_report(other)
+
+        response = logged_in_client(_org_admin(organisation)).get(
+            _pdf_url(organisation.slug, cohort.pk, report.pk)
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "status", [GeneratedReport.STATUS_PENDING, GeneratedReport.STATUS_FAILED]
+    )
+    def test_a_report_that_is_not_ready_answers_404(self, logged_in_client, status):
+        cohort = CohortFactory()
+        report = GeneratedReportFactory(cohort=cohort, status=status)
+
+        response = logged_in_client(_org_admin(cohort.organisation)).get(
+            _pdf_url(cohort.organisation.slug, cohort.pk, report.pk)
+        )
+
+        assert response.status_code == 404
+
+    def test_a_viewer_without_the_download_capability_answers_404(
+        self, logged_in_client, mock_site_context
+    ):
+        cohort = CohortFactory()
+        report = _ready_report(cohort)
+        viewer = UserFactory(staff=True)
+        with _role_config_granting_view_cohort_only(mock_site_context.name):
+            assign_object_role(viewer, cohort, "cohort_viewer")
+
+            response = logged_in_client(viewer).get(
+                _pdf_url(cohort.organisation.slug, cohort.pk, report.pk)
+            )
 
         assert response.status_code == 404

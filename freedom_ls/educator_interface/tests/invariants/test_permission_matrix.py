@@ -1,8 +1,9 @@
 """The permission matrix: can() answers exactly what the permission table allows.
 
 MATRIX is a hand-written transcription of that table, reviewed against it and
-never parsed from it. MATRIX and CAPABILITY_SCOPE_KINDS cover every row, but
-the reports capability's own check is not exercised here yet.
+never parsed from it. MATRIX and CAPABILITY_SCOPE_KINDS cover every row,
+including download_cohort_report, which the cohort Report tab's generate
+action asks about.
 
 The world: site A has organisation O1 (cohorts C1 granted and C2, learners L1
 in C1 and L2 in C2) and O2 (C3, L3). Site B has O3 (C4, L4). Grants:
@@ -588,6 +589,20 @@ def test_assign_cohort_viewer_is_reachable_from_the_interface(
     }
 
     assert ASSIGN_COHORT_VIEWER in capabilities
+
+
+@pytest.mark.django_db
+def test_download_cohort_report_is_reachable_from_the_interface(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    capabilities = {
+        item.action.get_capability(item.ctx)
+        for item in walk_interface(organisation)
+        if isinstance(item, WalkedAction)
+    }
+
+    assert DOWNLOAD_COHORT_REPORT in capabilities
 
 
 def test_assign_cohort_viewer_is_in_the_matrix() -> None:

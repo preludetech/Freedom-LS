@@ -7,37 +7,23 @@ No `urls.py`: these are wired into the admin namespace by
 
 from __future__ import annotations
 
+from typing import cast
+
 from unfold.admin import ModelAdmin
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.tasks import default_task_backend
 from django.urls import reverse
-from django.utils.text import slugify
 
+from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import all_cohorts_visible_to
 from freedom_ls.reports.forms import GenerateReportForm
 from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.reports.tasks import _generate_cohort_report_task
+from freedom_ls.reports.services import report_file_response, request_cohort_report
 from freedom_ls.site_aware_models.admin import admin_page_context
-
-
-def _has_inflight_report(cohort: Cohort) -> bool:
-    """Friendly pre-check only, for the common case.
-
-    A check-then-act pre-check loses a genuine race; the partial unique
-    index in generate_report_view's `except IntegrityError` clause is the
-    guard that actually holds under concurrent requests.
-    """
-    return GeneratedReport.objects.filter(
-        cohort=cohort,
-        status__in=[GeneratedReport.STATUS_PENDING, GeneratedReport.STATUS_RUNNING],
-    ).exists()
 
 
 def generate_report_view(
@@ -76,30 +62,7 @@ def generate_report_view(
 
     changelist_url = reverse("admin:freedom_ls_reports_generatedreport_changelist")
 
-    if _has_inflight_report(cohort):
-        messages.info(request, "A report for this cohort is already being generated.")
-        return redirect(changelist_url)
-
-    try:
-        with transaction.atomic():
-            report = GeneratedReport.objects.create(
-                cohort=cohort,
-                # Explicit, not thread-local-derived: this must equal the
-                # value the enqueued task filters every one of its queries on
-                # (freedom_ls/reports/tasks.py), independent of ambient site
-                # context -- a deliberate, documented exception to the usual
-                # "site_id is never set by hand" rule.
-                site_id=cohort.site_id,
-                requested_by=request.user,
-            )
-            transaction.on_commit(
-                lambda: default_task_backend.enqueue(
-                    _generate_cohort_report_task,
-                    args=[str(report.pk), cohort.site_id],
-                    kwargs={},
-                )
-            )
-    except IntegrityError:
+    if request_cohort_report(cohort, cast(User, request.user)) is None:
         messages.info(request, "A report for this cohort is already being generated.")
     else:
         messages.success(request, f"Generating a progress report for {cohort.name}.")
@@ -117,20 +80,4 @@ def download_report_view(request: HttpRequest, object_id: str) -> FileResponse:
         report.cohort,
     ):
         raise PermissionDenied
-    if report.status != GeneratedReport.STATUS_READY or not report.file:
-        raise Http404
-    # allow_unicode=True: the default ASCII-only slugify drops a wholly
-    # non-Latin organisation name entirely, which would silently omit the
-    # organisation from the filename for exactly the tenants whose name
-    # matters most.
-    filename = (
-        f"{slugify(report.cohort.organisation.name, allow_unicode=True)}-"
-        f"{slugify(report.cohort.name, allow_unicode=True)}-progress-report.pdf"
-    )
-    try:
-        file_handle = report.file.open("rb")
-    except FileNotFoundError as exc:
-        raise Http404 from exc
-    response = FileResponse(file_handle, as_attachment=True, filename=filename)
-    response["Cache-Control"] = "private, no-store, must-revalidate"
-    return response
+    return report_file_response(report)

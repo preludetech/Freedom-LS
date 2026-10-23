@@ -79,7 +79,7 @@ def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
 
 
 @pytest.mark.django_db
-def test_cohort_detail_page_has_overview_learners_courses_and_settings_tabs(
+def test_cohort_detail_page_has_overview_learners_courses_report_and_settings_tabs(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -99,6 +99,7 @@ def test_cohort_detail_page_has_overview_learners_courses_and_settings_tabs(
         "overview",
         "learners",
         "courses",
+        "report",
         "settings",
     ]
     assert links[0].get("aria-current") == "page"

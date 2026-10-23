@@ -4,17 +4,37 @@ from __future__ import annotations
 
 import csv
 import io
-from typing import cast
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, cast
 
 from django.http import HttpResponse
+from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 from django.utils.text import slugify
 
+from freedom_ls.accounts.models import User
 from freedom_ls.base.csv_safety import UTF8_BOM, escape_csv_formula
+from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import cohort_educators, learner_status
+from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.reports.indexes import learner_sort_key, load_active_memberships
+from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.services import latest_cohort_reports, request_cohort_report
+
+if TYPE_CHECKING:
+    from freedom_ls.educator_interface.views import OrganisationScopedRequest
+
+#: How often the downloads region asks again while a report is being generated.
+REPORT_POLL_SECONDS = 3
+#: An in-flight report older than this is assumed stuck, and the page stops polling for it.
+IN_FLIGHT_STALL = timedelta(minutes=10)
+DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
 
 
 def cohort_members_csv_response(cohort: Cohort) -> HttpResponse:
@@ -70,3 +90,79 @@ def _members_csv_filename(cohort: Cohort) -> str:
     organisation = slugify(cohort.organisation.name, allow_unicode=True)
     name = slugify(cohort.name, allow_unicode=True)
     return f"{organisation}-{name}-members-{timezone.localdate():%Y-%m-%d}.csv"
+
+
+def is_stalled(report: GeneratedReport | None, now: datetime) -> bool:
+    """An in-flight report older than the stall window, which stops the page polling for it."""
+    return report is not None and now - report.requested_at > IN_FLIGHT_STALL
+
+
+def render_region(panel: Panel) -> HttpResponse:
+    """A panel's refresh region on its own, the fragment a targeted swap replaces."""
+    return render(
+        panel.request,
+        panel.region_template_name or panel.template_name,
+        panel.get_context_data(),
+    )
+
+
+class GenerateReportAction(PanelAction):
+    label = "Generate PDF report"
+    action_name = "generate_report"
+    capability = DOWNLOAD_COHORT_REPORT
+    # The downloads region draws its own button from row_action_urls.
+    renders_in_footer = False
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        request_cohort_report(cast(Cohort, ctx.instance), cast(User, ctx.request.user))
+        # A lost race returns None, and the region reads the in-flight row
+        # either way, so the losing request sees the same state the winner does.
+        return render_region(CohortReportDownloadsPanel(ctx))
+
+
+class CohortReportDownloadsPanel(Panel):
+    model = Cohort
+    title = "Downloads"
+    template_name = "educator_interface/panels/cohort_report_downloads.html"
+    region_template_name = (
+        "educator_interface/panels/cohort_report_downloads_region.html"
+    )
+    refresh_events = (COHORT_CHANGED,)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [GenerateReportAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        request = cast("OrganisationScopedRequest", self.request)
+        url_kwargs = {**request.panel_url_kwargs, "cohort_pk": str(cohort.pk)}
+        state = latest_cohort_reports(cohort)
+        context = super().get_context_data()
+        context.update(
+            cohort=cohort,
+            page_url=self.ctx.page_url,
+            can_download=can(request.user, DOWNLOAD_COHORT_REPORT, cohort),
+            csv_url=reverse("educator_interface:cohort_members_csv", kwargs=url_kwargs),
+            in_flight=state.in_flight,
+            is_stalled=is_stalled(state.in_flight, timezone.now()),
+            ready=state.ready,
+            pdf_url=_pdf_url(url_kwargs, state.ready),
+            failed=state.failed,
+            poll_seconds=REPORT_POLL_SECONDS,
+        )
+        return context
+
+
+def _pdf_url(url_kwargs: dict[str, str], ready: GeneratedReport | None) -> str:
+    if ready is None:
+        return ""
+    return reverse(
+        "educator_interface:cohort_report_download",
+        kwargs={**url_kwargs, "report_pk": str(ready.pk)},
+    )
+
+
+class CohortReportStack(PanelStack):
+    title = "Report"
+    refresh_events = (COHORT_CHANGED,)
+    children = {"downloads": CohortReportDownloadsPanel}

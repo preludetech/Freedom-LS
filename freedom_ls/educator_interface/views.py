@@ -21,6 +21,7 @@ from django.db.models import (
     Subquery,
 )
 from django.http import (
+    FileResponse,
     Http404,
     HttpRequest,
     HttpResponse,
@@ -104,7 +105,11 @@ from freedom_ls.educator_interface.quick_views import (
     LearnerQuickView,
     visible_registrations_with_progress,
 )
-from freedom_ls.educator_interface.reporting import cohort_members_csv_response
+from freedom_ls.educator_interface.reporting import (
+    DOWNLOAD_COHORT_REPORT,
+    CohortReportStack,
+    cohort_members_csv_response,
+)
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -158,6 +163,8 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
     sections_by_url_name,
 )
+from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.services import report_file_response
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -967,6 +974,7 @@ class CohortTabSet(TabSet):
         "overview": CohortOverviewStack,
         "learners": CohortLearnersPanel,
         "courses": CohortCoursesPanel,
+        "report": CohortReportStack,
         "settings": CohortSettingsPanel,
     }
 
@@ -1748,6 +1756,21 @@ def cohort_members_csv(
     return cohort_members_csv_response(
         _scoped_cohort(request, organisation_slug, cohort_pk)
     )
+
+
+@login_required
+def cohort_report_download(
+    request: HttpRequest, organisation_slug: str, cohort_pk: str, report_pk: str
+) -> FileResponse:
+    cohort = _scoped_cohort(request, organisation_slug, cohort_pk)
+    report = get_object_or_404(
+        GeneratedReport.objects.select_related("cohort__organisation"),
+        pk=report_pk,
+        cohort=cohort,
+    )
+    if not can(request.user, DOWNLOAD_COHORT_REPORT, cohort):
+        raise Http404
+    return report_file_response(report)
 
 
 @login_required_htmx_to("educator_interface:root")

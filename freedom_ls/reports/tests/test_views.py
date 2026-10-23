@@ -181,7 +181,7 @@ class TestGenerateReportViewPost:
         user = _staff_user_with_cohort_view_permission(cohort)
         client.force_login(user)
         mocker.patch(
-            "freedom_ls.reports.views._has_inflight_report", return_value=False
+            "freedom_ls.reports.services.has_inflight_report", return_value=False
         )
 
         client.post(_generate_url(), data={"cohort": str(cohort.pk)})

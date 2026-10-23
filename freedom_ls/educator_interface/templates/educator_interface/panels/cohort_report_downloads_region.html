@@ -1,0 +1,32 @@
+{% comment %}
+The downloads panel's refresh region. The polling attributes sit on the
+region itself and only while a report is in flight and not stalled, so a
+response for a ready, failed or stalled report carries no hx-trigger and
+polling stops. The generate form targets the same region.
+{% endcomment %}
+<div id="{{ region_id }}" class="space-y-4"
+     {% if in_flight and not is_stalled %}
+     hx-get="{{ base_url }}" hx-trigger="every {{ poll_seconds }}s"
+     hx-target="#{{ region_id }}" hx-swap="outerHTML"
+     role="status" aria-live="polite"
+     {% endif %}>
+    <div class="space-y-1">
+        <c-button href="{{ csv_url }}" hx-boost="false" variant="secondary" class="w-full md:w-auto">Download cohort members (CSV)</c-button>
+        <p class="text-sm text-muted">Lists the learners and the educators assigned to this cohort.</p>
+    </div>
+    {% if can_download %}
+        {% if in_flight %}
+            <p>A report is being generated, requested by {{ in_flight.requested_by.display_name|default:"the system" }} at {{ in_flight.requested_at|date:"j M Y, H:i" }}.</p>
+            {% if is_stalled %}
+                <p>This is taking longer than expected.</p>
+                <a hx-get="{{ base_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" href="{{ page_url }}" class="link">Check again</a>
+            {% endif %}
+        {% else %}
+            {% if ready %}<c-button href="{{ pdf_url }}" hx-boost="false" class="w-full md:w-auto">Download PDF (generated {{ ready.finished_at|date:"j M Y, H:i" }} by {{ ready.requested_by.display_name|default:"the system" }})</c-button>{% endif %}
+            {% if failed %}<p role="alert" class="text-error">{{ failed.error_message }}</p>{% endif %}
+            <form hx-post="{{ row_action_urls.generate_report }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">
+                <c-button type="submit" variant="{% if ready %}secondary{% else %}primary{% endif %}" class="w-full md:w-auto">{% if failed %}Try again{% elif ready %}Generate a new report{% else %}Generate PDF report{% endif %}</c-button>
+            </form>
+        {% endif %}
+    {% endif %}
+</div>
