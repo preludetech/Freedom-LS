@@ -13,7 +13,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 `/sdd:roadmap`; `/sdd:start` and `/sdd:finish_worktree` keep it current between syncs.
 
 - `cookie-banner`
-- `deadlines-1-dates-and-overdue`
 - `educator-interface-11-audit-log`
 - `educator-interface-8-bulk-operations`
 - `failed-login-follow-up`
@@ -510,7 +509,7 @@ is at risk.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 1 | `deadlines-1-dates-and-overdue` | Remove the old deadline models. New item due dates and a course time limit, fixed or relative, authored in content and overridden in the admin; learners see due dates and "overdue". | none | next |
+| 1 | `deadlines-1-dates-and-overdue` | Remove the old deadline models. New item due dates and a course time limit, fixed or relative, authored in content and overridden in the admin; learners see due dates and "overdue". | none | in progress |
 | 2 | `deadlines-2-consequence-policy` | A deadline policy chosen per site, organisation, cohort, course or registration: grace window, close the item, end course access, flag educators. Enforced in the player and the access check. | `deadlines-1-dates-and-overdue` | next |
 | 3 | `deadlines-3-extensions-and-pause` | Staff extend a learner's deadlines and pause or resume their course in the admin. The clock stops, dates shift, content locks while paused; webhooks for each. | `deadlines-2-consequence-policy` | next |
 | 4 | `deadlines-4-learner-self-pause` | Learners pause and resume their own course from the learner interface, within the policy's limits, with a reason. | `deadlines-3-extensions-and-pause` | next |
