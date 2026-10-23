@@ -21,7 +21,7 @@ A deadline nobody is reminded of is a trap. The research found reminders are the
 comparable systems, and also where they fail: one notification per offset, reminders that
 silently stop for soft or extended deadlines (Docebo), no reminder at all (Canvas), and learners
 who mute a bell that fires too often. FLS has no scheduler of its own, and
-`user-communication-7-email-digests` explicitly leaves deadline reminders to the deadlines
+`user-communication-2-notification-email` explicitly leaves deadline reminders to the deadlines
 effort, so this spec owns the scan, the categories and the answers to the `notifications` skill.
 The sweep is also the only place a time-driven webhook can come from, since nothing fires at the
 instant a date passes.
@@ -83,8 +83,7 @@ instant a date passes.
 
 ## Out of scope
 
-- Digests, quiet hours and email delivery (`user-communication-2-notification-email`,
-  `user-communication-7-email-digests`).
+- Digests, quiet hours and email delivery (`user-communication-2-notification-email`).
 - Line-manager escalation, scheduled or emailed reports, SMS and push channels.
 - Educator-interface lists of overdue learners (spec 7).
 - Webhooks for pause, resume and extension themselves, which fire from spec 3's actions.
@@ -98,6 +97,6 @@ instant a date passes.
 - `spec_dd/1. next/deadlines/research_lms_deadlines_landscape.md`: section (e), how SuccessFactors, Docebo and
   Moodle remind.
 - `spec_dd/1. next/deadlines/research_deadlines_user_sentiment.md`: section (e) and implications 9 to 11.
-- `spec_dd/1. next/user-communication-7-email-digests/idea.md`: the exclusion that leaves this scan to the
+- `spec_dd/1. next/user-communication-2-notification-email/idea.md`: the exclusion that leaves this scan to the
   deadlines effort.
 - Skills: `notifications`, `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:testing`.

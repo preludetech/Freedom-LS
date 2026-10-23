@@ -55,7 +55,7 @@ Section and artboard names as they appear in `User Communication.html`. Every ar
 | 1 Bell and unread badge: header states, panel open (latest eight, one message item), full-width sheet on mobile | 1 | `user-communication-1-notifications-core` |
 | 2 Notification centre: populated, all read, empty, long list | 2 | `user-communication-1-notifications-core` |
 | 3 Notification preferences: Immediately / Off with a site-disabled category, saved confirmation | 3 | `user-communication-2-notification-email` |
-| 3 Notification preferences: four email options and quiet hours; at 375px email becomes a select | 3 | `user-communication-7-email-digests` |
+| 3 Notification preferences: four email options and quiet hours; at 375px email becomes a select | 3 | `user-communication-2-notification-email` |
 | 3 Unsubscribe landing, and after Undo | 3 | `user-communication-2-notification-email` |
 | 4 Notification email: new messages, course completion. Message content is never put in the email | 4 | `user-communication-2-notification-email` |
 | 5 Learner inbox: populated, empty and able to start, empty and messaging not available, mobile list and thread with back | 5 | `user-communication-4-direct-messaging` |

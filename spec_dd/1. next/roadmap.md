@@ -23,7 +23,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `retry-sent-emails`
 - `server-side-conversion-tracking`
 - `test-organisation-and-hygene-4-shared-test-infrastructure`
-- `user-communication-5-educator-messaging`
 - `user-communication-6-moderation`
 - `user-communication-ux-improve`
 
@@ -171,30 +170,32 @@ notification enqueues nothing, so email goes out once per unread stretch.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate-or-off preferences page, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
-| 5 | `user-communication-5-educator-messaging` | Educators message learners inside the educator interface: an inbox section and a message tab in the learner quick view, on spec 4's conversations. | `user-communication-4-direct-messaging`, `educator-interface-3-panel-framework-dialogs` | next |
+| 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate, daily, weekly or off preferences and timezone-aware quiet hours, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`, and a new `fls_run_housekeeping` sweep for digests and held mail with its cadence documented. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
 | 6 | `user-communication-6-moderation` | Report a message, block a user, and a report queue where site admins hide messages. Nothing is hard deleted. | `user-communication-4-direct-messaging` | next |
-| 7 | `user-communication-7-email-digests` | Daily and weekly digests and timezone-aware quiet hours for notification email, sent by a new `fls_run_housekeeping` sweep with its cadence documented. | `user-communication-2-notification-email` | next |
 | 8 | `user-communication-8-realtime` | Optional Django Channels push for the unread badge and open threads, off by default, polling as the fallback, the ASGI and channel-layer deployment documented. | `user-communication-4-direct-messaging`, `user-communication-6-moderation` | next |
 
 ```
-1 notifications core ──┬── 2 email ──── 7 digests
+1 notifications core ──┬── 2 email
                        │
-3 messaging policy ────┴── 4 direct messaging ──┬── 5 educator messaging ──┬── 8 realtime
-                                                └── 6 moderation ──────────┘
+3 messaging policy ────┴── 4 direct messaging ──── 6 moderation ──── 8 realtime
 ```
 
-External edges: 2 needs `retry-sent-emails`; 5 needs `educator-interface-3-panel-framework-dialogs`.
+External edges: 2 needs `retry-sent-emails`.
+
+Spec 5, `user-communication-5-educator-messaging`, was absorbed by spec 4, which built the educator
+interface's Messages section and the message box in the learner quick view. Spec 7,
+`user-communication-7-email-digests`, was absorbed by spec 2, which builds digests and quiet hours
+alongside immediate email.
 
 #### Ordering and parallelism
 
 - **Specs 1 and 3 run in parallel and first.** 1 builds the notification layer, 3 the messaging permissions. They share only the new `comms` app's scaffolding: whichever lands first creates the app, the other rebases.
 - **Spec 2 after 1 and `retry-sent-emails`.** It can run beside 3 and 4.
 - **Spec 4 after 1 and 3.** It is the first spec where two people can message each other.
-- **Specs 5 and 6 run in parallel after 4.** 5 also waits on the educator interface's spec 3. Both add controls to the thread view 4 builds: 5 owns the educator-side layout, 6 owns the report and block controls on both sides, so whoever lands second rebases.
-- **Spec 7 any time after 2. Spec 8 last.**
-- Shortest path to something a learner sees: 1 alone. Shortest path to educator-learner messaging: 1 and 3, then 4, then 5.
-- The UI specs (1, 2, 4, 5, 6, 7) build to the Claude Design design registered in `user-communication/design.md`. Read it through the Claude Design integration, as that file says.
+- **Spec 6 after 4.** It adds the report and block controls to the thread views 4 built, on both the learner and educator sides.
+- **Spec 8 last.**
+- Shortest path to something a learner sees: 1 alone. Shortest path to educator-learner messaging: 1 and 3, then 4.
+- The UI specs (1, 2, 4, 6) build to the Claude Design design registered in `user-communication/design.md`. Read it through the Claude Design integration, as that file says.
 
 #### Decisions already taken
 
@@ -205,7 +206,7 @@ These were settled with the product owner while cutting the specs. The ideas rel
 3. **Messaging permissions are layered and closed by default.** Installs communicate very differently, so who may message whom is configured at site, organisation, cohort or course registration, and learner level, the most specific level winning. A free course sign-up must not let a learner message staff or other learners; a premium arrangement may let a learner message their cohort admin. The policy is a swappable class, like `COURSE_ACCESS_BACKEND`.
 4. **Notification settings are simpler**: Django settings defaults, a per-site override row, and per-user preferences. No course or registration level for notifications.
 5. **Moderation is report, hide and block.** Site admins work a report queue. Nothing is hard deleted.
-6. **Email is immediate or off per category first.** Messages roll up, so an active conversation never sends one email per message. Digests and quiet hours are spec 7.
+6. **Email is immediate, daily, weekly or off per category, with quiet hours.** Messages roll up, so an active conversation never sends one email per message. Spec 2 builds all of it; spec 7 was folded in so no site ships with per-event email as its only option.
 7. **The design is drawn in Claude Design** from `user-communication/design_brief.md`.
 8. **The `student-communication/` draft is gone.** This section and the eight ideas are the record.
 
@@ -228,12 +229,12 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 | Unknown | Owner | Affects |
 |---|---|---|
-| Does raising a notification go through `fire_webhook_event`'s registry, or does `comms` keep its own category registry that webhooks may also read? Resolved: `comms` keeps its own registry, extended through `NOTIFICATION_CATEGORIES`, and never imports `webhooks`. | 1 | 2, 4, 7 |
-| How a layered messaging rule is expressed (flags per level, or named policies per level), how cohort and individual registrations combine, and whose configuration governs a pair. | 3 | 4, 5 |
-| Whether a conversation may continue once the policy stops permitting the pair (registration ended, learner left the organisation, config changed). | 3 | 4, 5, 6 |
-| Does a conversation record the organisation it was started in, giving one conversation per pair per organisation? | 4 | 5 |
+| Does raising a notification go through `fire_webhook_event`'s registry, or does `comms` keep its own category registry that webhooks may also read? Resolved: `comms` keeps its own registry, extended through `NOTIFICATION_CATEGORIES`, and never imports `webhooks`. | 1 | 2, 4 |
+| How a layered messaging rule is expressed (flags per level, or named policies per level), how cohort and individual registrations combine, and whose configuration governs a pair. | 3 | 4 |
+| Whether a conversation may continue once the policy stops permitting the pair (registration ended, learner left the organisation, config changed). | 3 | 4, 6 |
+| Does a conversation record the organisation it was started in, giving one conversation per pair per organisation? | 4 | none |
 | Where the report queue lives: the Django admin, or an educator-interface section for `site_admin`. | 6 | 8 |
-| What a digest contains when a user has both unread notifications and unread conversations, and where a user's timezone comes from. | 7 | none |
+| What a digest contains when a user has both unread notifications and unread conversations, and where a user's timezone comes from. | 2 | none |
 
 #### Out of scope for all eight
 
@@ -539,9 +540,8 @@ External edges: 6 needs `educator-interface-8-bulk-operations` and `educator-int
   `course_minimal_toc.html`, which `test-organisation-and-hygene-13`/`-14`,
   `compliance-form-randomization` and `form-engine-branch-logic` also touch; 1, 2, 3 and 4 all edit
   the player gates; whoever lands second rebases. 5 adds a sweep to `deployment/housekeeping.py`
-  beside `retry-sent-emails`, `file-scanning` and `user-communication-7-email-digests`. 6 and 7 edit
-  `educator_interface/views.py`, as do educator-interface specs 10 and 12 and
-  `user-communication-5-educator-messaging` (the learner quick view). 7 edits `reports/at_risk.py`
+  beside `retry-sent-emails`, `file-scanning` and `user-communication-2-notification-email`. 6 and 7 edit
+  `educator_interface/views.py`, as do educator-interface specs 10 and 12. 7 edits `reports/at_risk.py`
   beside `test-organisation-and-hygene-11-reports`. Move test files in their own commit.
 
 #### Decisions already taken
@@ -652,7 +652,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
 | `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
-| `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | next | Overlaps `user-communication-5-educator-messaging` on the educator learner page; agree which spec owns that before starting either. |
+| `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | next | |
 | `user-profile-upgrades` | Redesign the user profile page and add phone number and date of birth, some possibly required at signup. | `phone-number-form-field` | next | |
 | `anon-application-improvements` | Anonymous applicants get the email check after the first application page, and see an unfinished application on the dashboard. | none | in progress | |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
