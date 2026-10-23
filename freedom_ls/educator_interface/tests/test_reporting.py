@@ -953,6 +953,27 @@ class TestLearnerCoursesPanel:
         assert "Secret Course" not in text
         assert "Hidden group" not in text
 
+    def test_the_course_cards_list_shows_no_list_markers(self, logged_in_client):
+        """The theme bullets bare lists, so each course card had a stray marker."""
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, course=CourseFactory())
+        client = logged_in_client(_org_admin(learner.organisation))
+        path = f"learners/{learner.pk}/__tabs/courses/__panels/courses"
+
+        response = client.get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": learner.organisation.slug,
+                    "path_string": path,
+                },
+            )
+        )
+
+        document = lxml.html.fromstring(response.content.decode())
+        (card_list,) = document.xpath("//ul[li//h3]")
+        assert "list-none" in card_list.get("class").split()
+
     def test_a_learner_with_no_registrations_gets_the_empty_message(
         self, logged_in_client
     ):

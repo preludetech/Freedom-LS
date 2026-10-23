@@ -372,6 +372,22 @@ def test_an_attention_row_has_one_learner_link_and_a_named_quick_view_trigger(
 
 
 @pytest.mark.django_db
+def test_an_attention_rows_cohort_list_shows_no_list_markers(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    """The theme bullets bare lists, so the flagged-cohort list had stray markers."""
+    organisation, user = educator
+    _members(CohortFactory(organisation=organisation), ["Alpha"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (cohort_list,) = document.xpath("//li[.//button[@aria-controls='quick-view']]//ul")
+    assert "list-none" in cohort_list.get("class").split()
+
+
+@pytest.mark.django_db
 def test_the_bare_root_redirects_to_the_dashboard(
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],

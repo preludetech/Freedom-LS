@@ -68,7 +68,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
                                 <c-icon name="quick_view" class="size-4" />
                             </button>
                         </c-slot>
-                        <ul class="mt-1 space-y-1">
+                        <ul class="list-none ml-0 mt-1 space-y-1">
                             {% for entry in row.cohorts %}
                                 {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                                 <li class="text-sm">
