@@ -294,6 +294,9 @@ def _latest_completion(
     """
     best_title: str | None = None
     best_at: datetime | None = None
+    completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
+        learner_id, set()
+    )
     for item in items:
         if isinstance(item, Topic):
             at = progress.topics.complete_time.get((learner_id, item.id))
@@ -301,7 +304,7 @@ def _latest_completion(
             key = (learner_id, item.id)
             at = (
                 progress.forms.latest_by_learner_form[key].completed_time
-                if progress.forms.completed_attempts_by_learner_form.get(key)
+                if item.id in completed_form_ids
                 else None
             )
         if at is not None and (best_at is None or at > best_at):
@@ -313,6 +316,9 @@ def _completed_items(
     items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
 ) -> list[CompletedItem]:
     completed: list[CompletedItem] = []
+    completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
+        learner_id, set()
+    )
     for item in items:
         if isinstance(item, Topic):
             at = progress.topics.complete_time.get((learner_id, item.id))
@@ -322,12 +328,11 @@ def _completed_items(
                 )
         else:
             key = (learner_id, item.id)
-            if progress.forms.completed_attempts_by_learner_form.get(key):
+            if item.id in completed_form_ids:
                 fp = progress.forms.latest_by_learner_form[key]
-                # completed_attempts_by_learner_form only collects rows with
-                # completed_time set, and the ordering that produced "latest"
-                # guarantees a completed row sorts first whenever one exists —
-                # so completed_time is never None here.
+                # A form only reaches completed_form_ids when its latest
+                # completed sitting passed, and that sitting is the "latest" row
+                # — so completed_time is never None here.
                 if fp.completed_time is not None:
                     completed.append(
                         CompletedItem(

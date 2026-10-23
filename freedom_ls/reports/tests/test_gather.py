@@ -1760,6 +1760,22 @@ class TestLatestCompletion:
 
         assert _latest_completion([quiz], LEARNER_ID, progress) == (None, None)
 
+    def test_a_quiz_whose_latest_sitting_failed_is_not_the_last_completion(
+        self,
+    ) -> None:
+        topic = a_topic("Stars")
+        quiz = a_quiz("Astronomy Quiz", pass_percentage=50)
+        failed = an_attempt(
+            quiz, completed_time=JAN_2, scores={"score": 1, "max_score": 4}
+        )
+        progress = attempted(quiz, [failed])
+        progress.topics.complete_time[(LEARNER_ID, topic.id)] = JAN_1
+
+        assert _latest_completion([topic, quiz], LEARNER_ID, progress) == (
+            "Stars",
+            JAN_1,
+        )
+
     def test_a_learner_with_no_completions_has_no_title_and_no_time(self) -> None:
         assert _latest_completion([a_topic()], LEARNER_ID, a_progress_index()) == (
             None,
@@ -1788,6 +1804,15 @@ class TestCompletedItems:
         assert [(item.title, item.is_quiz) for item in completed] == [
             ("Astronomy Quiz", True)
         ]
+
+    def test_a_quiz_whose_latest_sitting_failed_is_absent(self) -> None:
+        quiz = a_quiz("Astronomy Quiz", pass_percentage=50)
+        failed = an_attempt(
+            quiz, completed_time=JAN_1, scores={"score": 1, "max_score": 4}
+        )
+        progress = attempted(quiz, [failed])
+
+        assert _completed_items([quiz], LEARNER_ID, progress) == []
 
     def test_a_survey_form_is_not_marked_as_a_quiz(self) -> None:
         survey = a_survey("Confidence Survey")

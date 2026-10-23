@@ -36,6 +36,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
     QuestionType,
 )
+from freedom_ls.form_engine.queries import attempt_completes_form
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 from freedom_ls.reports.indexes import (
     CohortRoster,
@@ -220,7 +221,9 @@ def attempted(
     """
     completed = [attempt for attempt in attempts if attempt.completed_time is not None]
     latest = completed[-1] if completed else attempts[-1]
+    finished = bool(completed) and attempt_completes_form(completed[-1])
     return a_progress_index(
         latest_by_learner_form={(learner_id, form.id): latest},
         completed_attempts_by_learner_form={(learner_id, form.id): completed},
+        completed_form_ids_by_learner={learner_id: {form.id}} if finished else {},
     )
