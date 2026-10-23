@@ -1,12 +1,8 @@
-"""Tests for the cohort members CSV: its rows, ordering, safety and filename."""
+"""Tests for the on-screen reporting: badges, the Report tab, attention cards and learner courses."""
 
 from __future__ import annotations
 
-import csv
-import io
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from email.message import Message
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -15,7 +11,6 @@ import lxml.html
 import pytest
 import time_machine
 
-from django.contrib.auth.models import AbstractBaseUser
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
@@ -71,174 +66,10 @@ from freedom_ls.reports.tests.test_views import (
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
-HEADER = ["Name", "Email", "Role", "Status"]
-
 
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
-
-
-def _csv_url(organisation_slug: str, cohort_pk: object) -> str:
-    return reverse(
-        "educator_interface:cohort_members_csv",
-        kwargs={"organisation_slug": organisation_slug, "cohort_pk": cohort_pk},
-    )
-
-
-def _rows(response: HttpResponse) -> list[list[str]]:
-    body = response.content.decode("utf-8-sig")
-    return list(csv.reader(io.StringIO(body, newline="")))
-
-
-def _download(
-    logged_in_client: Callable[[AbstractBaseUser], Client], cohort, **user_kwargs
-) -> HttpResponse:
-    admin = UserFactory(staff=True, **user_kwargs)
-    assign_object_role(admin, cohort.organisation, "organisation_admin")
-    return cast(
-        HttpResponse,
-        logged_in_client(admin).get(_csv_url(cohort.organisation.slug, cohort.pk)),
-    )
-
-
-@pytest.mark.django_db
-class TestCohortMembersCsv:
-    def test_a_formula_looking_name_gets_a_leading_apostrophe(self, logged_in_client):
-        cohort = CohortFactory()
-        CohortMembershipFactory(
-            cohort=cohort,
-            learner__user=UserFactory(first_name='=HYPERLINK("x","y")', last_name=""),
-        )
-
-        rows = _rows(_download(logged_in_client, cohort))
-
-        assert rows[1][0] == '\'=HYPERLINK("x","y")'
-
-    def test_awkward_names_round_trip_through_a_csv_reader(self, logged_in_client):
-        cohort = CohortFactory()
-        CohortMembershipFactory(
-            cohort=cohort,
-            learner__user=UserFactory(first_name="Zoë", last_name="Ñandú"),
-        )
-        CohortMembershipFactory(
-            cohort=cohort,
-            learner__user=UserFactory(first_name='Al, "Bo"\nCy', last_name="Zzz"),
-        )
-
-        names = {row[0] for row in _rows(_download(logged_in_client, cohort))[1:3]}
-
-        assert names == {"Zoë Ñandú", 'Al, "Bo"\nCy Zzz'}
-
-    def test_the_body_starts_with_a_byte_order_mark_and_the_header(
-        self, logged_in_client
-    ):
-        response = _download(logged_in_client, CohortFactory())
-
-        assert response.content.startswith(b"\xef\xbb\xbf")
-        assert _rows(response)[0] == HEADER
-
-    def test_a_removed_learner_is_absent_and_educators_follow_the_learners(
-        self, logged_in_client
-    ):
-        cohort = CohortFactory()
-        CohortMembershipFactory(
-            cohort=cohort,
-            learner__user=UserFactory(first_name="Kept", last_name="Learner"),
-        )
-        CohortMembershipFactory(
-            cohort=cohort,
-            learner=LearnerFactory(
-                user=UserFactory(first_name="Gone", last_name="Learner"),
-                organisation=cohort.organisation,
-                is_active=False,
-            ),
-        )
-        educator = UserFactory(first_name="Edna", last_name="Educator")
-        assign_object_role(educator, cohort, "cohort_admin")
-
-        rows = _rows(_download(logged_in_client, cohort))
-
-        assert rows[1:] == [
-            ["Kept Learner", rows[1][1], "Learner", "Active"],
-            ["Edna Educator", educator.email, rows[2][2], ""],
-        ]
-        assert rows[2][2] != ""
-
-    def test_learner_rows_are_in_surname_order(self, logged_in_client):
-        cohort = CohortFactory()
-        for first, last in [("Ada", "Zeta"), ("Bo", "Alpha"), ("Cy", "Mu")]:
-            CohortMembershipFactory(
-                cohort=cohort,
-                learner__user=UserFactory(first_name=first, last_name=last),
-            )
-
-        rows = _rows(_download(logged_in_client, cohort))
-
-        assert [row[0] for row in rows[1:]] == ["Bo Alpha", "Cy Mu", "Ada Zeta"]
-
-    @time_machine.travel("2026-03-04 10:00:00+00:00", tick=False)
-    def test_a_non_ascii_cohort_name_yields_a_parseable_dated_filename(
-        self, logged_in_client
-    ):
-        organisation = OrganisationFactory(name="Škola")
-        cohort = CohortFactory(organisation=organisation, name="Třída A")
-
-        response = _download(logged_in_client, cohort)
-
-        message = Message()
-        message["Content-Disposition"] = response["Content-Disposition"]
-        assert message.get_content_disposition() == "attachment"
-        assert message.get_filename() == "škola-třída-a-members-2026-03-04.csv"
-
-    def test_an_organisation_the_user_cannot_access_answers_404(self, logged_in_client):
-        cohort = CohortFactory()
-        outsider = UserFactory(staff=True)
-        assign_object_role(outsider, OrganisationFactory(), "organisation_admin")
-
-        response = logged_in_client(outsider).get(
-            _csv_url(cohort.organisation.slug, cohort.pk)
-        )
-
-        assert response.status_code == 404
-
-    def test_a_cohort_outside_the_named_organisation_answers_404(
-        self, logged_in_client
-    ):
-        organisation = OrganisationFactory()
-        foreign_cohort = CohortFactory()
-        admin = UserFactory(staff=True)
-        assign_object_role(admin, organisation, "organisation_admin")
-
-        response = logged_in_client(admin).get(
-            _csv_url(organisation.slug, foreign_cohort.pk)
-        )
-
-        assert response.status_code == 404
-
-    def test_a_cohort_the_cohort_scoped_role_does_not_cover_answers_404(
-        self, logged_in_client
-    ):
-        organisation = OrganisationFactory()
-        granted = CohortFactory(organisation=organisation)
-        other = CohortFactory(organisation=organisation)
-        educator = UserFactory(staff=True)
-        assign_object_role(educator, granted, "cohort_admin")
-        client = logged_in_client(educator)
-
-        covered = client.get(_csv_url(organisation.slug, granted.pk))
-        uncovered = client.get(_csv_url(organisation.slug, other.pk))
-
-        assert (covered.status_code, uncovered.status_code) == (200, 404)
-
-    def test_a_malformed_cohort_id_answers_404(self, logged_in_client):
-        organisation = OrganisationFactory()
-        admin = UserFactory(staff=True)
-        assign_object_role(admin, organisation, "organisation_admin")
-
-        response = logged_in_client(admin).get(_csv_url(organisation.slug, "0" * 36))
-
-        assert response.status_code == 404
 
 
 def _downloads_url(organisation_slug: str, cohort_pk: object) -> str:
@@ -296,6 +127,14 @@ def _org_admin(organisation) -> object:
     return admin
 
 
+def _course_with_topic():
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    return course
+
+
 def _ready_report(cohort, **fields) -> GeneratedReport:
     report = cast(
         GeneratedReport,
@@ -333,21 +172,45 @@ class TestReportTab:
             "settings",
         ]
 
-    def test_a_viewer_without_the_download_capability_sees_the_csv_link_and_no_generate_button(
+    def test_a_viewer_without_the_download_capability_gets_the_body_and_no_downloads_panel(
         self, logged_in_client, mock_site_context
     ):
         cohort = CohortFactory()
         viewer = UserFactory(staff=True)
         with _role_config_granting_view_cohort_only(mock_site_context.name):
             assign_object_role(viewer, cohort, "cohort_viewer")
-
-            region = _refresh(
-                logged_in_client(viewer),
-                _downloads_url(cohort.organisation.slug, cohort.pk),
+            client = logged_in_client(viewer)
+            tab = client.get(
+                reverse(
+                    "educator_interface:interface",
+                    kwargs={
+                        "organisation_slug": cohort.organisation.slug,
+                        "path_string": f"cohorts/{cohort.pk}/__tabs/report",
+                    },
+                )
             )
+            downloads = client.get(_downloads_url(cohort.organisation.slug, cohort.pk))
 
-        assert region.cssselect("a[href$='/members-csv/']")
-        assert not region.cssselect("form")
+        document = lxml.html.fromstring(tab.content.decode())
+        assert document.cssselect("[data-panel='body']")
+        assert not document.cssselect("[data-panel='downloads']")
+        assert downloads.status_code == 404
+
+    def test_the_generate_button_disables_itself_and_shows_a_loading_label_while_posting(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _refresh(client, _downloads_url(cohort.organisation.slug, cohort.pk))
+
+        (form,) = region.cssselect("form[hx-post]")
+        (button,) = form.cssselect("button[type='submit']")
+        assert form.get("hx-disabled-elt") == "find button[type='submit']"
+        labels = [" ".join(span.text_content().split()) for span in button]
+        assert labels == ["Generate PDF report", "Generating…"]
+        assert "[.htmx-request_&]:hidden" in button[0].get("class")
+        assert "hidden" in button[1].get("class").split()
 
     def test_posting_the_action_creates_a_report_and_returns_the_in_flight_region(
         self, logged_in_client
@@ -601,6 +464,7 @@ class TestNeedsAttentionCard:
         self, logged_in_client
     ):
         cohort = CohortFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
         membership = CohortMembershipFactory(
             cohort=cohort,
             learner__user=UserFactory(first_name="Cy", last_name="Cook"),
@@ -632,6 +496,20 @@ class TestNeedsAttentionCard:
             client, _attention_url(cohort.organisation.slug, cohort.pk)
         )
 
+        assert "Nobody needs attention right now" in region.text_content()
+
+    def test_members_of_a_cohort_registered_for_no_course_are_not_flagged(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert region.cssselect("li") == []
         assert "Nobody needs attention right now" in region.text_content()
 
     def test_a_removed_learner_is_not_listed(self, logged_in_client):
@@ -1050,9 +928,11 @@ class TestLearnerCoursesPanel:
         self, logged_in_client
     ):
         learner = LearnerFactory()
-        LearnerCourseRegistrationFactory(
-            learner=learner, course=CourseFactory(title="Algebra")
+        course = CourseFactory(title="Algebra")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=TopicFactory(), order=0
         )
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
         client = logged_in_client(_org_admin(learner.organisation))
 
         text = _courses_panel(client, learner.organisation.slug, learner)

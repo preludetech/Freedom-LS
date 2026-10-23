@@ -31,6 +31,7 @@ class _Learner:
     """
 
     has_any_progress: bool = True
+    total_item_count: int = 5
     last_completed_at: datetime | None = None
     report_generated_at: datetime = field(default_factory=timezone.now)
     quiz_results: list[_QuizResult] = field(default_factory=list)
@@ -46,6 +47,14 @@ class TestNoRecordedActivityRule:
 
     def test_silent_for_learner_with_progress(self) -> None:
         learner = _Learner(has_any_progress=True)
+
+        reason = NoRecordedActivityRule().evaluate(learner)
+
+        assert reason is None
+
+    def test_silent_for_learner_with_nothing_to_do(self) -> None:
+        """No course items to start means nothing has been left unstarted."""
+        learner = _Learner(has_any_progress=False, total_item_count=0)
 
         reason = NoRecordedActivityRule().evaluate(learner)
 

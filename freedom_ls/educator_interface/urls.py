@@ -14,11 +14,6 @@ urlpatterns = [
         name="messages_unread_count",
     ),
     re_path(
-        r"^organisations/(?P<organisation_slug>[-\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/members-csv/$",
-        views.cohort_members_csv,
-        name="cohort_members_csv",
-    ),
-    re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/cohorts/(?P<cohort_pk>[0-9a-f-]{36})/reports/(?P<report_pk>[0-9a-f-]{36})/download/$",
         views.cohort_report_download,
         name="cohort_report_download",

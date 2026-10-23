@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import csv
 import dataclasses
-import io
 import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Prefetch, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import content_disposition_header
-from django.utils.text import slugify
 
 from freedom_ls.accounts.models import User
-from freedom_ls.base.csv_safety import UTF8_BOM, escape_csv_formula
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -30,12 +25,15 @@ from freedom_ls.educator_interface.quick_views import (
     visible_registrations_with_progress,
 )
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+)
 from freedom_ls.learner_management.queries import (
-    cohort_educators,
     cohort_learner_count,
     cohorts_visible_to,
-    learner_status,
 )
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
@@ -43,7 +41,6 @@ from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.config import config as reports_config
 from freedom_ls.reports.gather import gather_learner_course_details
-from freedom_ls.reports.indexes import learner_sort_key, load_active_memberships
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     ATTENTION_LIST_MAX,
@@ -91,61 +88,6 @@ def flag_badge(flag: AtRiskFlag) -> StatusBadge:
     return StatusBadge(tone=flag.severity, label=flag.label)
 
 
-def cohort_members_csv_response(cohort: Cohort) -> HttpResponse:
-    """The cohort's active learners, then its educators, as one formula-safe CSV.
-
-    The body is built in memory rather than streamed: a streamed body is read
-    after the site thread-local is cleared, and a cohort's membership list is
-    small. learner_status reads only the loaded User row, so no query runs
-    per row.
-    """
-    learners = sorted(
-        (
-            membership.learner
-            for membership in load_active_memberships(cohort, cohort.site_id)
-        ),
-        key=lambda learner: learner_sort_key(learner.user),
-    )
-    buffer = io.StringIO()
-    buffer.write(UTF8_BOM)
-    writer = csv.writer(buffer)
-    writer.writerow(["Name", "Email", "Role", "Status"])
-    for learner in learners:
-        writer.writerow(
-            [
-                escape_csv_formula(learner.user.display_name),
-                escape_csv_formula(learner.user.email),
-                "Learner",  # a label for the reader, not a permission role
-                learner_status(learner).label,
-            ]
-        )
-    for user, role_display_name in cohort_educators(cohort):
-        writer.writerow(
-            [
-                escape_csv_formula(user.display_name),
-                escape_csv_formula(user.email),
-                escape_csv_formula(role_display_name),
-                "",
-            ]
-        )
-    response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
-    # With a filename the header is always produced; None is only returned
-    # when both as_attachment and filename are falsy.
-    response["Content-Disposition"] = cast(
-        str,
-        content_disposition_header(
-            as_attachment=True, filename=_members_csv_filename(cohort)
-        ),
-    )
-    return response
-
-
-def _members_csv_filename(cohort: Cohort) -> str:
-    organisation = slugify(cohort.organisation.name, allow_unicode=True)
-    name = slugify(cohort.name, allow_unicode=True)
-    return f"{organisation}-{name}-members-{timezone.localdate():%Y-%m-%d}.csv"
-
-
 def is_stalled(report: GeneratedReport | None, now: datetime) -> bool:
     """An in-flight report older than the stall window, which stops the page polling for it."""
     return report is not None and now - report.requested_at > IN_FLIGHT_STALL
@@ -175,8 +117,15 @@ class GenerateReportAction(PanelAction):
 
 
 class CohortReportDownloadsPanel(Panel):
+    """Generate the cohort's PDF report and download the latest one.
+
+    Only for a role holding the download capability: without it the panel has
+    nothing to offer, so the framework leaves it off the tab.
+    """
+
     model = Cohort
     title = "Downloads"
+    capability = DOWNLOAD_COHORT_REPORT
     template_name = "educator_interface/panels/cohort_report_downloads.html"
     region_template_name = (
         "educator_interface/panels/cohort_report_downloads_region.html"
@@ -195,8 +144,6 @@ class CohortReportDownloadsPanel(Panel):
         context.update(
             cohort=cohort,
             page_url=self.ctx.page_url,
-            can_download=can(request.user, DOWNLOAD_COHORT_REPORT, cohort),
-            csv_url=reverse("educator_interface:cohort_members_csv", kwargs=url_kwargs),
             in_flight=state.in_flight,
             is_stalled=is_stalled(state.in_flight, timezone.now()),
             ready=state.ready,
@@ -374,10 +321,23 @@ type CohortGather = tuple[Cohort, CohortProgressData]
 
 
 def visible_active_cohorts(request: OrganisationScopedRequest) -> QuerySet[Cohort]:
-    """The active cohorts the user may see, which scope every dashboard figure."""
+    """The active cohorts the user may see, which scope every dashboard figure.
+
+    Each cohort's active course registrations come along, so an attention row
+    can name the courses a flagged cohort is registered for without a query
+    per row.
+    """
     return (
         cohorts_visible_to(request.user, request.organisation)
         .filter(is_active=True)
+        .prefetch_related(
+            Prefetch(
+                "course_registrations",
+                queryset=CohortCourseRegistration.objects.filter(
+                    is_active=True
+                ).select_related("course"),
+            )
+        )
         .order_by("name")
     )
 

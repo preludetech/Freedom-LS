@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, cast
 from uuid import UUID, uuid4
 
@@ -29,6 +30,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.config import config as comms_config
@@ -110,7 +112,6 @@ from freedom_ls.educator_interface.reporting import (
     CohortReportStack,
     DashboardPanel,
     LearnerCoursesPanel,
-    cohort_members_csv_response,
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
@@ -153,7 +154,12 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
-from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
+from freedom_ls.panel_framework.tables import (
+    Column,
+    DataTable,
+    ExportColumn,
+    TableQuery,
+)
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     HeaderStat,
@@ -549,6 +555,41 @@ class LearnerDataTable(DataTable):
             LearnerCourseFilter("course", "Course", lookup=""),
         ]
 
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        # Every value reads the caches get_queryset prefetches or annotates,
+        # so the export streams without a query per learner.
+        return [
+            ExportColumn("Name", "user.display_name"),
+            ExportColumn("Email", "user.email"),
+            ExportColumn(
+                "Status", lambda row: learner_status(cast(Learner, row)).label
+            ),
+            ExportColumn(
+                "Cohorts",
+                lambda row: ", ".join(
+                    membership.cohort.name
+                    for membership in cast(Learner, row).cohortmembership_set.all()
+                ),
+            ),
+            ExportColumn(
+                "Courses",
+                lambda row: ", ".join(
+                    summary.course.title
+                    for summary in learner_course_summaries(cast(Learner, row))
+                ),
+            ),
+            ExportColumn("Last active", _last_active_cell),
+        ]
+
+
+def _last_active_cell(row: Model) -> str:
+    """The annotated last_active as a date, matching the on-screen cell."""
+    last_active = getattr(row, "last_active", None)
+    if not isinstance(last_active, datetime):
+        return ""
+    return timezone.localtime(last_active).strftime("%Y-%m-%d")
+
 
 class CohortLearnerDataTable(LearnerDataTable):
     """The cohort page's learners: the learners table plus a Remove cell."""
@@ -812,6 +853,9 @@ class CohortLearnersPanel(DataTablePanel):
         return (
             super().get_queryset(request).filter(cohortmembership__cohort=self.instance)
         )
+
+    def get_export_scope_slug(self, request: HttpRequest) -> str:
+        return cast(Cohort, self.instance).name
 
     def get_tab_count(self) -> int | None:
         # The table lists removed members too; the tab counts current ones.
@@ -1721,15 +1765,6 @@ def _scoped_cohort(
     """The cohort named in a file URL, after the organisation and cohort checks a page runs."""
     _attach_organisation(request, organisation_slug)
     return cast(Cohort, CohortConfig.get_instance_view(request, cohort_pk).instance)
-
-
-@login_required
-def cohort_members_csv(
-    request: HttpRequest, organisation_slug: str, cohort_pk: str
-) -> HttpResponse:
-    return cohort_members_csv_response(
-        _scoped_cohort(request, organisation_slug, cohort_pk)
-    )
 
 
 @login_required

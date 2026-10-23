@@ -932,6 +932,7 @@ class CourseRiskInput:
     """One course's view of a learner, in the shape the at-risk rules read."""
 
     has_any_progress: bool
+    total_item_count: int
     last_completed_at: datetime | None
     report_generated_at: datetime
     quiz_results: list[QuizResult]
@@ -1006,7 +1007,9 @@ def _build_course_detail(
         ]
         has_any_progress = record_id in progress.learner_ids_with_any_progress
     completion = _completion_percentage(completed_count, total_count)
-    risk_input = CourseRiskInput(has_any_progress, last_at, now, quiz_results)
+    risk_input = CourseRiskInput(
+        has_any_progress, total_count, last_at, now, quiz_results
+    )
     return LearnerCourseDetail(
         course_id=registration.course_id,
         course_title=registration.course.title,

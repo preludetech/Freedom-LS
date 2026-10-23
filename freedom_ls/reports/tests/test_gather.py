@@ -1492,7 +1492,7 @@ def _a_detail(
         sort_key=("Learner", "A"),
         completion_percentage=completion,
         completed_item_count=0,
-        total_item_count=0,
+        total_item_count=1,
         last_completed_title=None,
         last_completed_at=None,
         has_any_progress=False,

@@ -8,7 +8,7 @@ _Last updated: 2026-10-23_
 - A learner or cohort can be previewed in a quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - Educators can create, edit, deactivate and delete cohorts, and register a cohort for courses or unregister it. A cohort's page shows an overview with per-course completion, then Learners, Courses, Report and Settings tabs. See [Cohorts](#cohorts).
-- The landing page is a dashboard of the cohorts the educator can see: totals, the learners who need attention, and each cohort's progress. A cohort's Report tab shows its progress report on screen, with the PDF and a members CSV to download. See [Reporting](#reporting).
+- The landing page is a dashboard of the cohorts the educator can see: totals, the learners who need attention, and each cohort's progress. A cohort's Report tab shows its progress report on screen, with the PDF to download. See [Reporting](#reporting).
 - Educators can add learners by email, see whether each is active, pending or removed, put them in or move them between cohorts, register them for courses, and deactivate or reactivate them. See [Learners](#learners).
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
 - When direct messaging is turned on, educators can message learners from a Messages section or from a learner's quick view. See [Messages](#messages).
@@ -54,6 +54,7 @@ Lists the learners of the current organisation the educator has access to — le
 - **Course registration** — register a learner for any course that is not coming soon, unregister and re-register them. Unregistering keeps their progress and says whether a cohort still gives them the course.
 - **Deactivating** — removes the learner's access to this organisation's courses while keeping their cohorts, registrations and progress, which return on reactivation. On the site's default organisation a learner can undo a deactivation or unregistration by registering themselves for an open course.
 - **Editing** — only a site admin can edit a learner's name. Email is the learner's login for every organisation, so it is changed only in the Django admin.
+- **Export CSV** — the list, and a cohort's Learners tab, export what they show as a spreadsheet-safe CSV: name, email, status, cohorts, courses and last active date, narrowed by the current search and filters.
 
 ![Moving a learner between cohorts, with the courses they lose and the progress they keep](screenshots/educator_learner_move.png)
 
@@ -104,7 +105,7 @@ When direct messaging is turned on, the sidebar has a Messages link with a count
 
 The dashboard is the first page an educator sees. It covers every active cohort they can see in the current organisation: tiles for learners, cohorts, average progress and learners needing attention, a list of flagged learners across those cohorts, and one progress row per cohort. A cohort larger than the report's learner limit is left out, and the dashboard says so. There are no charts.
 
-A cohort's **Report** tab shows the [cohort report](./reports.md) on screen: the cohort at a glance, the learners needing attention, a progress summary per course with quiz scores, and the quiz confusions. Per-learner detail stays in the PDF. From the same tab an educator can generate the PDF and download the latest one, and download a **members CSV** of the cohort's learners and the educators assigned to it, with their roles.
+A cohort's **Report** tab shows the [cohort report](./reports.md) on screen: the cohort at a glance, the learners needing attention, a progress summary per course with quiz scores, and the quiz confusions. Per-learner detail stays in the PDF. From the same tab an educator with the report download capability can generate the PDF and download the latest one; the button shows it is working until the report is being generated. A learner with nothing to do yet, because their cohort is not registered for a course, is never flagged as needing attention.
 
 ![A cohort's Report tab, with downloads above the on-screen report](screenshots/educator_cohort_report.png)
 

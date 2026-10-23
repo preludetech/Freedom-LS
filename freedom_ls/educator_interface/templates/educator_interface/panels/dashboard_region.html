@@ -58,7 +58,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
             <c-panel-attention-list>
                 {% for row in figures.attention_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                    <c-panel-attention-row :subject="row.full_name" :href="learner_url" icon="warning">
+                    <c-panel-attention-row :subject="row.full_name" :href="learner_url">
                         <c-slot name="trigger">
                             <button type="button"
                                     hx-get="{{ learner_url }}/__quick-view" hx-target="#quick-view-body" hx-swap="innerHTML"
@@ -68,11 +68,16 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
                                 <c-icon name="quick_view" class="size-4" />
                             </button>
                         </c-slot>
-                        <ul class="list-none ml-0 mt-1 space-y-1">
+                        <ul class="list-none ml-0 mt-1 space-y-1 lg:mt-0">
                             {% for entry in row.cohorts %}
                                 {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                                 <li class="text-sm">
-                                    <a href="{{ cohort_url }}" class="relative z-10 text-muted underline">{{ entry.cohort.name }}</a>
+                                    <p class="flex flex-wrap items-baseline gap-x-2">
+                                        <a href="{{ cohort_url }}" class="relative z-10 text-muted underline">{{ entry.cohort.name }}</a>
+                                        {% for registration in entry.cohort.course_registrations.all %}
+                                            <span class="text-muted"><span aria-hidden="true">·</span> {{ registration.course.title }}</span>
+                                        {% endfor %}
+                                    </p>
                                     {% include "educator_interface/partials/learner_badges.html" with completion_percentage=entry.completion_percentage flags=entry.flags %}
                                 </li>
                             {% endfor %}

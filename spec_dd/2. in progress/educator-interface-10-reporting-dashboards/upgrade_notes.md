@@ -21,7 +21,7 @@ requires_tailwind_rebuild: true
 
 The educator interface now shows reporting on screen. The organisation dashboard shows progress
 figures, flagged learners and per-cohort progress. A cohort's "Needs attention" card lists its
-flagged learners. Cohorts gain a "Report" tab with the report body, a members CSV download, and
+flagged learners. Cohorts gain a "Report" tab with the report body and
 PDF report generation and download. A learner's "Courses" panel shows per-course detail: badges,
 completed items and quiz attempts.
 
@@ -60,10 +60,15 @@ completed items and quiz attempts.
   panels are cached. These gathers are stored in Django's `default` cache, keyed by site and
   cohort. Learners removed from a cohort drop out on the next read; other changes show once the
   entry expires. With a per-process cache such as `LocMemCache`, each worker keeps its own copy.
-- Two new URLs in the `educator_interface` namespace: `cohort_members_csv` and
-  `cohort_report_download`. Both check the organisation and cohort the same way the cohort page
-  does. The PDF download also requires
+- One new URL in the `educator_interface` namespace, `cohort_report_download`. It checks the
+  organisation and cohort the same way the cohort page does and requires
   `freedom_ls_learner_management.download_cohort_report` on the cohort.
+- The learners tables (the organisation Learners list and a cohort's Learners tab) gain the data
+  table framework's "Export CSV" link: Name, Email, Status, Cohorts, Courses, Last active, honouring
+  the table's search and filters. A downstream `LearnerDataTable` subclass that overrides
+  `get_export_columns` keeps its own columns.
+- A learner with no course items to complete is no longer flagged "No recorded activity". A cohort
+  registered for no course, or for an empty one, now shows nobody needing attention.
 - `freedom_ls/reports/services.py` holds `request_cohort_report` and `report_file_response`. The
   admin report views and the new educator views both use them.
 - `freedom_ls/reports/statuses.py` holds `ProgressStatus` and `progress_status`. These define

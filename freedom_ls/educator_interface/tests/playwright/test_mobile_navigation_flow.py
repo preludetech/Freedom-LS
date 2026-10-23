@@ -15,7 +15,9 @@ from playwright.sync_api import Page, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
@@ -203,6 +205,10 @@ def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Dashboard Org")
     cohort = CohortFactory(organisation=organisation, name="Flagged Cohort")
+    # A member is only flagged when the cohort gives them something to do.
+    course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
     CohortMembershipFactory(
         cohort=cohort,
         learner__user=UserFactory(first_name="Thandi", last_name="Mokoena"),

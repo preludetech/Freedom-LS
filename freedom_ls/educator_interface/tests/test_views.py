@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import uuid
 from collections.abc import Callable
@@ -1402,6 +1404,91 @@ def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
         if "remove_from_cohort" in button.get("hx-get")
     }
     assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
+
+
+def _export_csv(client: Client, path_string: str, organisation: Organisation):
+    """The learners table's CSV export for ``path_string``: (header, rows, filename)."""
+    response = client.get(
+        _interface_url(organisation.slug, path_string), {"learners-export": "csv"}
+    )
+    assert response.status_code == 200
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    return header, rows, response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_a_cohorts_learners_tab_exports_its_members_as_a_csv_named_for_the_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Night class")
+    course = CourseFactory(title="Hydrology")
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    member = CohortMembershipFactory(
+        cohort=cohort,
+        learner__organisation=organisation,
+        learner__user=UserFactory(
+            first_name="Ada", last_name="Able", email="ada@example.com"
+        ),
+    ).learner
+    course_progress_record(course, member.user, last_accessed_time=timezone.now())
+    CohortMembershipFactory(
+        cohort=CohortFactory(organisation=organisation, name="Day class"),
+        learner__organisation=organisation,
+        learner__user=UserFactory(first_name="Bo", last_name="Baker"),
+    )
+
+    header, rows, disposition = _export_csv(
+        staff_client, f"cohorts/{cohort.pk}/__tabs/learners", organisation
+    )
+
+    assert header == ["Name", "Email", "Status", "Cohorts", "Courses", "Last active"]
+    assert [row[:5] for row in rows] == [
+        ["Ada Able", "ada@example.com", "Active", "Night class", "Hydrology"]
+    ]
+    assert rows[0][5] == timezone.localdate().strftime("%Y-%m-%d")
+    assert disposition == (
+        f'attachment; filename="learners-night-class-{timezone.localdate():%Y-%m-%d}.csv"'
+    )
+
+
+@pytest.mark.django_db
+def test_the_learners_export_neutralises_a_formula_looking_name_and_leaves_never_active_blank(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    CohortMembershipFactory(
+        cohort=CohortFactory(organisation=organisation),
+        learner__organisation=organisation,
+        learner__user=UserFactory(
+            first_name='=HYPERLINK("http://evil","x")', last_name=""
+        ),
+    )
+
+    _header, rows, _disposition = _export_csv(staff_client, "learners", organisation)
+
+    (row,) = rows
+    assert row[0].startswith("'=HYPERLINK")
+    assert row[5] == ""
+
+
+@pytest.mark.django_db
+def test_the_learners_tab_toolbar_offers_the_csv_export(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    (link,) = [
+        a for a in document.cssselect("a") if a.text_content().strip() == "Export CSV"
+    ]
+    assert "learners-export=csv" in link.get("href")
 
 
 @pytest.mark.django_db

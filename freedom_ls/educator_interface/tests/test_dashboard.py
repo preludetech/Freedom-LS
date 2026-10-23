@@ -96,10 +96,17 @@ def _finish_topic(course, learner, days_ago: int = 0) -> None:
     )
 
 
-def _course_with_topic():
-    course = CourseFactory()
+def _course_with_topic(**kwargs):
+    course = CourseFactory(**kwargs)
     course.items.create(child=TopicFactory(), order=0)
     return course
+
+
+def _registered_cohort(organisation: Organisation, **kwargs) -> Cohort:
+    """A cohort registered for a one-topic course, so its idle members are flagged."""
+    cohort: Cohort = CohortFactory(organisation=organisation, **kwargs)
+    CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
+    return cohort
 
 
 def _grant(user: AbstractBaseUser, role: str, target) -> AbstractBaseUser:
@@ -111,8 +118,8 @@ def _grant(user: AbstractBaseUser, role: str, target) -> AbstractBaseUser:
 def scoped_organisation(mock_site_context: Site):
     """Cohort A (2 learners) and cohort B (3), plus a cohort of another site (4)."""
     organisation: Organisation = OrganisationFactory()
-    cohort_a = CohortFactory(organisation=organisation, name="Visible A")
-    cohort_b = CohortFactory(organisation=organisation, name="Hidden B")
+    cohort_a = _registered_cohort(organisation, name="Visible A")
+    cohort_b = _registered_cohort(organisation, name="Hidden B")
     _members(cohort_a, ["Alpha", "Bravo"])
     _members(cohort_b, ["Charlie", "Delta", "Echo"])
     other_site = SiteFactory()
@@ -127,7 +134,7 @@ def test_the_page_renders_the_four_tile_labels_and_two_skeleton_tiles(
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
-    _members(CohortFactory(organisation=organisation), ["Alpha"])
+    _members(_registered_cohort(organisation), ["Alpha"])
 
     response = logged_in_client(user).get(_dashboard_url(organisation))
 
@@ -149,7 +156,7 @@ def test_the_loaded_fetch_fills_the_two_lazy_tiles(
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
-    _members(CohortFactory(organisation=organisation), ["Alpha", "Bravo"])
+    _members(_registered_cohort(organisation), ["Alpha", "Bravo"])
 
     response = _load_region(logged_in_client(user), organisation)
 
@@ -189,7 +196,7 @@ def test_the_attention_tile_counts_every_flagged_learner_beyond_the_list_cap(
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
-    cohort = CohortFactory(organisation=organisation)
+    cohort = _registered_cohort(organisation)
     _members(cohort, [f"Learner{n:02d}" for n in range(15)])
 
     response = _load_region(logged_in_client(user), organisation)
@@ -264,8 +271,8 @@ def test_cohort_rows_order_by_lowest_mean_then_name_with_an_empty_cohort_last(
     cohorts = [
         zulu,
         CohortFactory(organisation=organisation, name="Empty"),
-        CohortFactory(organisation=organisation, name="Bravo"),
-        CohortFactory(organisation=organisation, name="Alpha"),
+        _registered_cohort(organisation, name="Bravo"),
+        _registered_cohort(organisation, name="Alpha"),
     ]
     _members(cohorts[2], ["One"])
     _members(cohorts[3], ["Two"])
@@ -288,8 +295,8 @@ def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
-    _members(CohortFactory(organisation=organisation, name="Big"), ["A", "B", "C"])
-    _members(CohortFactory(organisation=organisation, name="Small"), ["D"])
+    _members(_registered_cohort(organisation, name="Big"), ["A", "B", "C"])
+    _members(_registered_cohort(organisation, name="Small"), ["D"])
     client = logged_in_client(user)
 
     inline = _tiles(client.get(_dashboard_url(organisation)))
@@ -347,12 +354,27 @@ def test_an_empty_cohort_loads_with_a_dash_for_average_progress(
 
 
 @pytest.mark.django_db
+def test_members_of_a_cohort_registered_for_no_course_are_not_flagged(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    """With nothing to start, no activity is not a sign of risk."""
+    organisation, user = educator
+    _members(CohortFactory(organisation=organisation), ["Idle", "Waiting"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    assert _tiles(response)["Learners needing attention"] == "0"
+    assert "Nobody needs attention right now" in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_an_attention_row_has_one_learner_link_and_a_named_quick_view_trigger(
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
-    (learner,) = _members(CohortFactory(organisation=organisation), ["Alpha"])
+    (learner,) = _members(_registered_cohort(organisation), ["Alpha"])
     learner_path = reverse(
         "educator_interface:interface",
         kwargs={
@@ -372,13 +394,42 @@ def test_an_attention_row_has_one_learner_link_and_a_named_quick_view_trigger(
 
 
 @pytest.mark.django_db
+def test_an_attention_row_names_each_flagged_cohorts_active_courses_without_an_icon(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    """The row says what the learner was meant to be doing, and every row looked
+    the same with the decorative icon, so it carries none."""
+    organisation, user = educator
+    cohort = CohortFactory(organisation=organisation, name="Night class")
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=_course_with_topic(title="Hydrology")
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=_course_with_topic(title="Old syllabus"), is_active=False
+    )
+    _members(cohort, ["Alpha"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (row,) = document.xpath("//li[.//button[@aria-controls='quick-view']]")
+    (cohort_line,) = row.xpath(".//p[a[contains(., 'Night class')]]")
+    assert " ".join(cohort_line.text_content().split()) == "Night class · Hydrology"
+    assert (
+        row.xpath("./span[@aria-hidden='true'][not(contains(@class, 'md:hidden'))]")
+        == []
+    )
+
+
+@pytest.mark.django_db
 def test_an_attention_rows_cohort_list_shows_no_list_markers(
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     """The theme bullets bare lists, so the flagged-cohort list had stray markers."""
     organisation, user = educator
-    _members(CohortFactory(organisation=organisation), ["Alpha"])
+    _members(_registered_cohort(organisation), ["Alpha"])
 
     response = _load_region(logged_in_client(user), organisation)
 

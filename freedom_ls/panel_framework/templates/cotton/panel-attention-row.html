@@ -24,8 +24,10 @@ Attributes:
   action_href   The action's target; the action only renders when both this
                 and action_label are given (default none).
 
-The default slot holds extra content under the subject and reason, such as
-per-cohort detail or badges (default none).
+The default slot holds extra content about the subject, such as per-cohort
+detail or badges (default none). Below lg it sits under the subject and
+reason; from lg up it becomes a second column to their right, so a row with
+several lines of detail stays short on a wide screen.
 
 The named slot `trigger` renders after the subject block, for one control
 beside the row such as a quick view button (default none). It must be a
@@ -43,10 +45,12 @@ icon trails, so the DOM still holds only the one link to href.
     {% elif icon %}
         <span aria-hidden="true" class="shrink-0 {% include "panel_framework/partials/tone_text_class.html" with tone=icon_tone only %}"><c-icon :name="icon" class="size-5" /></span>
     {% endif %}
-    <div class="min-w-0 grow">
-        <a href="{{ href }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
-        {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
-        {{ slot }}
+    <div class="min-w-0 grow lg:flex lg:items-start lg:gap-6">
+        <div class="min-w-0 lg:w-56 lg:shrink-0">
+            <a href="{{ href }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
+            {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
+        </div>
+        {% if slot.strip %}<div class="min-w-0 lg:grow">{{ slot }}</div>{% endif %}
     </div>
     {% if trigger.strip %}{{ trigger }}{% endif %}
     {% if badge_label %}<c-panel-status-badge :tone="badge_tone" :label="badge_label" />{% endif %}

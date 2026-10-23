@@ -40,6 +40,8 @@ class LearnerDetailLike(Protocol):
     @property
     def has_any_progress(self) -> bool: ...
     @property
+    def total_item_count(self) -> int: ...
+    @property
     def last_completed_at(self) -> datetime | None: ...
     @property
     def report_generated_at(self) -> datetime: ...
@@ -69,7 +71,10 @@ class NoRecordedActivityRule:
     severity = SEVERITY_ERROR
 
     def evaluate(self, learner: LearnerDetailLike) -> str | None:
-        if learner.has_any_progress:
+        # A learner with no course items to complete -- a cohort registered
+        # for no course, or for an empty one -- has nothing to have started,
+        # so there is no activity to miss.
+        if learner.total_item_count == 0 or learner.has_any_progress:
             return None
         return "Has not started any course item."
 
