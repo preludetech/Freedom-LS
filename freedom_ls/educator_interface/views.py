@@ -109,6 +109,7 @@ from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
     CohortNeedsAttentionPanel,
     CohortReportStack,
+    DashboardPanel,
     cohort_members_csv_response,
 )
 from freedom_ls.learner_management.capabilities import can
@@ -1542,11 +1543,6 @@ class CourseConfig(OrganisationSectionConfig, ListViewConfig):
             .exists()
         ):
             raise OrganisationScopeDenied
-
-
-class DashboardPanel(Panel):
-    title = "Reporting"
-    template_name = "educator_interface/panels/dashboard.html"
 
 
 class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):

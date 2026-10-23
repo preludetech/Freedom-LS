@@ -164,6 +164,25 @@ somewhere on the page to land.
             </c-panel-attention-list>
         </div>
 
+        <div id="attention-row-detail-and-trigger">
+            <p class="text-sm text-muted">Use when a row needs per-cohort detail under the reason and one control beside it. The trigger must be a button with <code>relative z-10</code> and a name that includes the subject.</p>
+            <c-panel-attention-list>
+                <c-panel-attention-row
+                    subject="Thandi Mokoena"
+                    href="#attention-row-target"
+                    icon="warning"
+                    icon_tone="warning"
+                >
+                    <p class="text-sm text-muted">Foundations cohort: 20% complete</p>
+                    <c-slot name="trigger">
+                        <button type="button" aria-label="Quick view: Thandi Mokoena" class="relative z-10 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-primary md:size-8">
+                            <c-icon name="quick_view" class="size-4" />
+                        </button>
+                    </c-slot>
+                </c-panel-attention-row>
+            </c-panel-attention-list>
+        </div>
+
         <span id="attention-row-target" class="sr-only">Attention row target</span>
         <span id="attention-row-action" class="sr-only">Attention row action</span>
     </section>

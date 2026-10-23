@@ -3,17 +3,23 @@ The shared frame of a lazy panel's refresh region. The first render is a
 skeleton whose wrapper fetches the loaded region as soon as it loads; the
 fetch carries loaded=1 and swaps this whole region for the body. A region that
 cannot be built because the cohort is too large shows the reason in its place.
-A panel's region template extends this and fills loaded_body.
+A panel's region template extends this and fills loaded_body, and may fill
+skeleton_body to shape the placeholder or override region_content to wrap or
+replace the whole state switch.
 {% endcomment %}
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
-    {% if too_large_message %}
-        <c-panel-empty-state :message="too_large_message" />
-    {% elif is_loaded %}
-        {% block loaded_body %}{% endblock loaded_body %}
-    {% else %}
-        <div hx-get="{{ loaded_url }}" hx-trigger="load" hx-target="#{{ region_id }}" hx-swap="outerHTML">
-            <c-panel-skeleton :shape="skeleton_shape" :lines="skeleton_lines" />
-            <noscript><a href="{{ loaded_url }}">Load the figures</a></noscript>
-        </div>
-    {% endif %}
+    {% block region_content %}
+        {% if too_large_message %}
+            <c-panel-empty-state :message="too_large_message" />
+        {% elif is_loaded %}
+            {% block loaded_body %}{% endblock loaded_body %}
+        {% else %}
+            <div hx-get="{{ loaded_url }}" hx-trigger="load" hx-target="#{{ region_id }}" hx-swap="outerHTML">
+                {% block skeleton_body %}
+                    <c-panel-skeleton :shape="skeleton_shape" :lines="skeleton_lines" />
+                {% endblock skeleton_body %}
+                <noscript><a href="{{ loaded_url }}">Load the figures</a></noscript>
+            </div>
+        {% endif %}
+    {% endblock region_content %}
 </div>

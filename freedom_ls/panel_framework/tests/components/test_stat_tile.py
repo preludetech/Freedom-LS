@@ -127,3 +127,14 @@ def test_stat_row_renders_the_slot_inside_one_root_element(variant: str) -> None
     assert html.count("Learners") == 1
     assert html.count("Cohorts") == 1
     assert html.count("<div") == 1
+
+
+def test_value_content_slot_replaces_the_value_text() -> None:
+    html = render_cotton(
+        '<c-panel-stat-tile label="Cohorts" value="3">'
+        '<c-slot name="value_content"><a href="/cohorts">3 cohorts</a></c-slot>'
+        "</c-panel-stat-tile>"
+    )
+
+    assert '<a href="/cohorts">3 cohorts</a>' in html
+    assert ">3</dd>" not in html

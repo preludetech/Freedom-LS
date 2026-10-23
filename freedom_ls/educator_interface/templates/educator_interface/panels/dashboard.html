@@ -1,5 +1,7 @@
-{% extends "panel_framework/panels/panel.html" %}
-
-{% block panel_body %}
-    <p class="text-muted">On-screen reporting for {{ request.organisation.name }} arrives in a later release.</p>
-{% endblock panel_body %}
+{% comment %}
+The dashboard has no card around it: its tiles and lists are cards of their
+own, so the section only carries the panel plumbing.
+{% endcomment %}
+<section data-panel="{{ name }}">
+    {% include region_template_name %}
+</section>

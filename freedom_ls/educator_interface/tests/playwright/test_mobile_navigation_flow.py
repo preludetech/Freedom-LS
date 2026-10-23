@@ -15,10 +15,17 @@ from playwright.sync_api import Page, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerFactory,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
+    assert_no_horizontal_overflow,
+)
 
 from .helpers import interface_url
 
@@ -186,3 +193,30 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     assert page.evaluate(
         "document.querySelector('header.header').contains(document.activeElement)"
     )
+
+
+def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Dashboard Org")
+    cohort = CohortFactory(organisation=organisation, name="Flagged Cohort")
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner__user=UserFactory(first_name="Thandi", last_name="Mokoena"),
+    )
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    dashboard_url = interface_url(live_server, organisation.slug, "dashboard")
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(dashboard_url)
+        attention_tile = page.locator("dl", has_text="Learners needing attention")
+        expect(attention_tile.locator("dd").first).to_have_text("1")
+        expect(
+            page.get_by_role("button", name="Quick view: Thandi Mokoena")
+        ).to_be_visible()
+        expect(page.get_by_role("link", name="Flagged Cohort").first).to_be_visible()
+        assert_no_horizontal_overflow(page)

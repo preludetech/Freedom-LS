@@ -7,6 +7,7 @@ import io
 from collections.abc import Callable
 from datetime import timedelta
 from email.message import Message
+from pathlib import Path
 from typing import cast
 
 import lxml.html
@@ -629,3 +630,27 @@ class TestNeedsAttentionCard:
         )
 
         assert "exceeding the configured limit of 1" in region.text_content()
+
+
+_NEW_REPORTING_FILES = [
+    "reporting.py",
+    "templates/educator_interface/panels/dashboard.html",
+    "templates/educator_interface/panels/dashboard_region.html",
+    "templates/educator_interface/panels/lazy_panel.html",
+    "templates/educator_interface/panels/_lazy_region.html",
+    "templates/educator_interface/panels/cohort_needs_attention_region.html",
+    "templates/educator_interface/panels/cohort_report_downloads.html",
+    "templates/educator_interface/panels/cohort_report_downloads_region.html",
+    "templates/educator_interface/partials/learner_badges.html",
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("relative_path", _NEW_REPORTING_FILES)
+def test_reporting_surfaces_never_read_the_stored_progress_percentage(
+    relative_path: str,
+) -> None:
+    """Figures are recomputed from progress rows, never read from the stored column."""
+    source = (Path(__file__).parent.parent / relative_path).read_text()
+
+    assert "progress_percentage" not in source

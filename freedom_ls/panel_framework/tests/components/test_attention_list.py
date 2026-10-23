@@ -85,3 +85,34 @@ def test_a_stringified_none_user_id_falls_back_to_the_severity_icon() -> None:
         r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="warning"', html
     )
     assert ">CA</span>" not in html
+
+
+def test_default_slot_content_renders_under_the_reason() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" '
+        'reason="4 days idle"><p>Foundations: 20% complete</p></c-panel-attention-row>'
+    )
+
+    assert "Foundations: 20% complete" in html
+    assert html.index("4 days idle") < html.index("Foundations: 20% complete")
+
+
+def test_trigger_slot_renders_its_button_without_a_second_link_to_href() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/">'
+        '<c-slot name="trigger"><button type="button" '
+        'aria-label="Quick view: Thandi Mokoena">Open</button></c-slot>'
+        "</c-panel-attention-row>"
+    )
+
+    assert 'aria-label="Quick view: Thandi Mokoena"' in html
+    assert html.index("</a>") < html.index("<button")
+    assert html.count('href="/learners/42/"') == 1
+
+
+def test_no_trigger_markup_without_a_trigger_slot() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Thandi Mokoena" href="/learners/42/" />'
+    )
+
+    assert "<button" not in html

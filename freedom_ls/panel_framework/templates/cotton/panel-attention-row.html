@@ -25,7 +25,12 @@ Attributes:
                 and action_label are given (default none).
 
 The default slot holds extra content under the subject and reason, such as
-badges (default none).
+per-cohort detail or badges (default none).
+
+The named slot `trigger` renders after the subject block, for one control
+beside the row such as a quick view button (default none). It must be a
+<button>, not a link, with `relative z-10` so it sits above the stretched
+row link below md, and its accessible name must include the subject.
 
 Below md the whole row is the tap target for href (the subject link
 stretches over it via ::after), the action hides and a decorative "next"
@@ -43,6 +48,7 @@ icon trails, so the DOM still holds only the one link to href.
         {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
         {{ slot }}
     </div>
+    {% if trigger.strip %}{{ trigger }}{% endif %}
     {% if badge_label %}<c-panel-status-badge :tone="badge_tone" :label="badge_label" />{% endif %}
     {% if action_label and action_href %}
         <c-button href="{{ action_href }}" variant="ghost" class="hidden md:inline-flex">{{ action_label }}<span class="sr-only"> {{ subject }}</span></c-button>

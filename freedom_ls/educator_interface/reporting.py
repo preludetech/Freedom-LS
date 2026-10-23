@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import csv
+import dataclasses
 import io
+import statistics
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, cast
+from uuid import UUID
 
+from django.db.models import Count, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -18,15 +23,26 @@ from freedom_ls.accounts.models import User
 from freedom_ls.base.csv_safety import UTF8_BOM, escape_csv_formula
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import cohort_educators, learner_status
+from freedom_ls.learner_management.models import Cohort, CohortMembership
+from freedom_ls.learner_management.queries import (
+    cohort_educators,
+    cohort_learner_count,
+    cohorts_visible_to,
+    learner_status,
+)
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.panel_framework.views import StatusBadge
+from freedom_ls.reports.config import config as reports_config
 from freedom_ls.reports.indexes import learner_sort_key, load_active_memberships
 from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.reports.report_data import AtRiskFlag, ReportTooLargeError
+from freedom_ls.reports.report_data import (
+    ATTENTION_LIST_MAX,
+    AtRiskFlag,
+    CohortProgressData,
+    ReportTooLargeError,
+)
 from freedom_ls.reports.screen_cache import cached_cohort_progress
 from freedom_ls.reports.services import latest_cohort_reports, request_cohort_report
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
@@ -241,3 +257,204 @@ class CohortNeedsAttentionPanel(LazyBodyPanel):
                 cast(Cohort, self.instance)
             ).attention_list
         }
+
+
+@dataclasses.dataclass(frozen=True)
+class InlineFigures:
+    """The two dashboard tiles that need no gather."""
+
+    learner_count: int
+    cohort_count: int
+
+
+@dataclasses.dataclass(frozen=True)
+class CohortFlags:
+    """One cohort's view of a flagged learner."""
+
+    cohort: Cohort
+    completion_percentage: int
+    flags: list[AtRiskFlag]
+
+
+@dataclasses.dataclass(frozen=True)
+class FlaggedLearnerRow:
+    """A learner flagged in at least one visible cohort, with each cohort's detail."""
+
+    learner_id: UUID
+    full_name: str
+    sort_key: tuple[str, str]
+    lowest_completion: int
+    cohorts: list[CohortFlags]
+
+
+@dataclasses.dataclass(frozen=True)
+class CohortProgressRow:
+    cohort: Cohort
+    mean_completion: int | None
+    learner_count: int
+    flagged_count: int
+
+
+@dataclasses.dataclass(frozen=True)
+class ExcludedCohort:
+    """A visible cohort over the report size limit, left out of the gathered figures."""
+
+    cohort: Cohort
+    learner_count: int
+
+
+@dataclasses.dataclass(frozen=True)
+class GatheredFigures:
+    average_progress: int | None
+    # Distinct flagged learners, not capped to the rows shown.
+    attention_count: int
+    # The first ATTENTION_LIST_MAX by lowest completion.
+    attention_rows: list[FlaggedLearnerRow]
+    cohort_rows: list[CohortProgressRow]
+    excluded: list[ExcludedCohort]
+    # The oldest gather behind the figures; None when no cohort was gathered.
+    figures_as_of: datetime | None
+
+
+type CohortGather = tuple[Cohort, CohortProgressData]
+
+
+def visible_active_cohorts(request: OrganisationScopedRequest) -> QuerySet[Cohort]:
+    """The active cohorts the user may see, which scope every dashboard figure."""
+    return (
+        cohorts_visible_to(request.user, request.organisation)
+        .filter(is_active=True)
+        .order_by("name")
+    )
+
+
+def inline_figures(cohorts: QuerySet[Cohort]) -> InlineFigures:
+    learners = CohortMembership.objects.filter(
+        cohort__in=cohorts, learner__is_active=True
+    ).aggregate(n=Count("learner_id", distinct=True))["n"]
+    return InlineFigures(learner_count=learners, cohort_count=cohorts.count())
+
+
+def _gather_visible(
+    cohorts: list[Cohort],
+) -> tuple[list[CohortGather], list[ExcludedCohort]]:
+    gathers: list[CohortGather] = []
+    excluded: list[ExcludedCohort] = []
+    for cohort in cohorts:
+        try:
+            gathers.append((cohort, cached_cohort_progress(cohort)))
+        except ReportTooLargeError:
+            excluded.append(ExcludedCohort(cohort, cohort_learner_count(cohort)))
+    return gathers, excluded
+
+
+def _average_progress(gathers: list[CohortGather]) -> int | None:
+    """Each learner once, at the mean of their completion across the cohorts gathered."""
+    completions: dict[UUID, list[int]] = defaultdict(list)
+    for _cohort, data in gathers:
+        for learner in data.learners:
+            completions[learner.learner_id].append(learner.completion_percentage)
+    if not completions:
+        return None
+    return round(
+        statistics.fmean(statistics.fmean(values) for values in completions.values())
+    )
+
+
+def _flagged_learner_rows(gathers: list[CohortGather]) -> list[FlaggedLearnerRow]:
+    by_learner: dict[UUID, FlaggedLearnerRow] = {}
+    for cohort, data in gathers:
+        for learner in data.learners:
+            if not learner.flags:
+                continue
+            entry = CohortFlags(cohort, learner.completion_percentage, learner.flags)
+            row = by_learner.get(learner.learner_id)
+            by_learner[learner.learner_id] = (
+                FlaggedLearnerRow(
+                    learner.learner_id,
+                    learner.full_name,
+                    learner.sort_key,
+                    learner.completion_percentage,
+                    [entry],
+                )
+                if row is None
+                else dataclasses.replace(
+                    row,
+                    lowest_completion=min(
+                        row.lowest_completion, learner.completion_percentage
+                    ),
+                    cohorts=[*row.cohorts, entry],
+                )
+            )
+    return sorted(
+        by_learner.values(), key=lambda row: (row.lowest_completion, row.sort_key)
+    )
+
+
+def _cohort_rows(gathers: list[CohortGather]) -> list[CohortProgressRow]:
+    rows = [
+        CohortProgressRow(
+            cohort,
+            data.mean_completion,
+            data.cohort_size,
+            sum(1 for learner in data.learners if learner.flags),
+        )
+        for cohort, data in gathers
+    ]
+    # An empty cohort has no mean, so it sorts after every cohort that has one.
+    return sorted(
+        rows,
+        key=lambda row: (
+            row.mean_completion is None,
+            row.mean_completion or 0,
+            row.cohort.name,
+        ),
+    )
+
+
+def gathered_figures(cohorts: list[Cohort]) -> GatheredFigures:
+    """The dashboard figures that need each cohort's progress gather."""
+    gathers, excluded = _gather_visible(cohorts)
+    flagged = _flagged_learner_rows(gathers)
+    return GatheredFigures(
+        average_progress=_average_progress(gathers),
+        attention_count=len(flagged),
+        attention_rows=flagged[:ATTENTION_LIST_MAX],
+        cohort_rows=_cohort_rows(gathers),
+        excluded=excluded,
+        figures_as_of=min(
+            (data.generated_at for _cohort, data in gathers), default=None
+        ),
+    )
+
+
+class DashboardPanel(LazyBodyPanel):
+    """The organisation dashboard: the inline tiles at once, the gathered figures lazily."""
+
+    title = "Reporting"
+    template_name = "educator_interface/panels/dashboard.html"
+    region_template_name = "educator_interface/panels/dashboard_region.html"
+    skeleton_shape = "row"
+
+    def _cohorts(self) -> QuerySet[Cohort]:
+        return visible_active_cohorts(cast("OrganisationScopedRequest", self.request))
+
+    def get_context_data(self) -> dict[str, object]:
+        request = cast("OrganisationScopedRequest", self.request)
+        cohorts = self._cohorts()
+        context = super().get_context_data()
+        context.update(
+            cohorts=cohorts,
+            inline=inline_figures(cohorts),
+            # An organisation admin can create cohorts; a cohort-scoped role cannot.
+            is_organisation_admin=can(
+                request.user,
+                "freedom_ls_learner_management.change_cohort",
+                request.organisation,
+            ),
+            max_learners=reports_config.REPORTS_MAX_LEARNERS,
+        )
+        return context
+
+    def get_loaded_context(self) -> dict[str, object]:
+        return {"figures": gathered_figures(list(self._cohorts()))}

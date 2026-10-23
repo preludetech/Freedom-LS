@@ -1,0 +1,125 @@
+{% extends "educator_interface/panels/_lazy_region.html" %}
+{% load panel_tags %}
+
+{% comment %}
+The tiles that need no gather sit in region_content, outside the loaded and
+skeleton states, so the skeleton state shows them too. Required context:
+cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
+{% endcomment %}
+
+{% block region_content %}
+    {% if not cohorts %}
+        {% if is_organisation_admin %}
+            <c-panel-empty-state message="You have no cohorts yet" />
+        {% else %}
+            <c-panel-empty-state message="No cohorts are assigned to you" />
+        {% endif %}
+    {% else %}
+        <div class="space-y-6">
+            <c-panel-stat-row>
+                <c-panel-stat-tile label="Learners" :value="inline.learner_count" sub="Across {{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
+                <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count">
+                    <c-slot name="value_content">
+                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}">{{ inline.cohort_count }}</a>
+                    </c-slot>
+                </c-panel-stat-tile>
+                {% if is_loaded %}
+                    <c-panel-stat-tile label="Average progress" value="{% if figures.average_progress is None %}—{% endif %}">
+                        {% if figures.average_progress is not None %}
+                            <c-panel-progress-bar :percentage="figures.average_progress" label="Average progress" />
+                        {% endif %}
+                    </c-panel-stat-tile>
+                    <c-panel-stat-tile label="Learners needing attention" :value="figures.attention_count" />
+                {% else %}
+                    <c-panel-stat-tile label="Average progress">
+                        <c-slot name="value_content"><c-panel-skeleton shape="tile" /></c-slot>
+                    </c-panel-stat-tile>
+                    <c-panel-stat-tile label="Learners needing attention">
+                        <c-slot name="value_content"><c-panel-skeleton shape="tile" /></c-slot>
+                    </c-panel-stat-tile>
+                {% endif %}
+            </c-panel-stat-row>
+
+            {% if is_loaded %}
+                <p class="text-sm text-muted">Figures as of {{ figures.figures_as_of|date:"j M Y, H:i" }}</p>
+                {% for excluded in figures.excluded %}
+                    <p class="text-sm text-warning">{{ excluded.cohort.name }} has {{ excluded.learner_count }} learners, over the report limit of {{ max_learners }}, and is not included</p>
+                {% endfor %}
+            {% endif %}
+
+            {{ block.super }}
+        </div>
+    {% endif %}
+{% endblock region_content %}
+
+{% block loaded_body %}
+    <c-panel-card title="Needs attention" landmark="true">
+        {% if figures.attention_rows %}
+            <c-panel-attention-list>
+                {% for row in figures.attention_rows %}
+                    {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
+                    <c-panel-attention-row :subject="row.full_name" :href="learner_url" icon="warning">
+                        <c-slot name="trigger">
+                            <button type="button"
+                                    hx-get="{{ learner_url }}/__quick-view" hx-target="#quick-view-body" hx-swap="innerHTML"
+                                    hx-sync="#quick-view-body:replace" aria-controls="quick-view" aria-expanded="false"
+                                    aria-label="Quick view: {{ row.full_name }}"
+                                    class="relative z-10 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-primary md:size-8">
+                                <c-icon name="quick_view" class="size-4" />
+                            </button>
+                        </c-slot>
+                        <ul class="mt-1 space-y-1">
+                            {% for entry in row.cohorts %}
+                                {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
+                                <li class="text-sm">
+                                    <a href="{{ cohort_url }}" class="relative z-10 text-muted underline">{{ entry.cohort.name }}</a>
+                                    {% include "educator_interface/partials/learner_badges.html" with completion_percentage=entry.completion_percentage flags=entry.flags %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </c-panel-attention-row>
+                {% endfor %}
+            </c-panel-attention-list>
+            {% include "reports/partials/cap_disclosure.html" with shown=figures.attention_rows|length total=figures.attention_count noun="learners flagged" %}
+        {% else %}
+            <c-panel-empty-state message="Nobody needs attention right now" />
+        {% endif %}
+    </c-panel-card>
+
+    <c-panel-card title="Cohort progress" landmark="true">
+        {% if figures.cohort_rows %}
+            <ul class="divide-y divide-border">
+                {% for row in figures.cohort_rows %}
+                    {% resolve_url_path_template row 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
+                    <li class="relative flex items-center gap-3 py-3">
+                        <div class="min-w-0 grow">
+                            <a href="{{ cohort_url }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ row.cohort.name }}</a>
+                            <p class="text-sm text-muted">{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged</p>
+                        </div>
+                        <div class="w-32 shrink-0 text-right">
+                            {% if row.mean_completion is None %}
+                                <span aria-hidden="true" class="text-muted">—</span><span class="sr-only">No progress to show</span>
+                            {% else %}
+                                <c-panel-progress-bar :percentage="row.mean_completion" label="{{ row.cohort.name }} progress" />
+                            {% endif %}
+                        </div>
+                        <span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <c-panel-empty-state message="No cohorts could be included in these figures" />
+        {% endif %}
+    </c-panel-card>
+{% endblock loaded_body %}
+
+{% block skeleton_body %}
+    <div class="space-y-6">
+        <c-panel-card title="Needs attention" landmark="true">
+            <c-panel-skeleton shape="row" />
+        </c-panel-card>
+        <c-panel-card title="Cohort progress" landmark="true">
+            <c-panel-skeleton shape="row" />
+        </c-panel-card>
+    </div>
+{% endblock skeleton_body %}
