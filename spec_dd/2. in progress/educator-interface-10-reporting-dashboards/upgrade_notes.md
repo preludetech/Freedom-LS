@@ -27,6 +27,10 @@ completed items and quiz attempts.
 
 ## Breaking changes
 
+- **Removed learners leave the cohort report.** The report's roster now keeps only memberships
+  whose learner is active, the same rule the cohort header and Learners tab use. A cohort's PDF
+  report, and its learner count, no longer include removed learners. Tests or downstream code
+  that expected them in the report need updating.
 - **Panels moved to `freedom_ls/educator_interface/reporting.py`.** `DashboardPanel`,
   `CohortNeedsAttentionPanel` and `LearnerCoursesPanel` are now defined there.
   `freedom_ls/educator_interface/views.py` still imports them, so existing imports from `views`
