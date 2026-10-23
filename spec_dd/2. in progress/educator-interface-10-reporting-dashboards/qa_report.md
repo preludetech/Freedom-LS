@@ -1,143 +1,241 @@
-# Frontend QA report: educator-interface-10-reporting-dashboards
+# QA report: reporting and dashboards (educator interface spec 10)
 
-The run executed the plan in `3. frontend_qa.md` across desktop, mobile and tablet viewports. There are 34 test records: 31 pass and 3 fail. Three bugs are documented (B1, B2, B3). B1 is a layout bug on the Report tab on narrow screens, B2 is a data inconsistency on the learner Courses tab, and B3 is a cosmetic bug (stray list bullets). The smoke gate passed. Every referenced screenshot exists in `screenshots/`.
+- Run date: 2026-10-23
+- Base URL: http://127.0.0.1:8822/
+- Logins used:
+  - org admin: qa.org.admin@email.com
+  - cohort viewer: qa.report.viewer@email.com
+  - site admin: demodev@email.com
+  - learner: qa-report-learner-demodev-02@email.com
 
 ## Methodology
 
-Playwright MCP was driven by hand against a dev server on port 8339, logged in as the plan's users. The dev DB was migrated and seeded with `create_demo_data` plus the commands in the plan's section 0. Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there. Test steps that changed data were reverted. These were deactivating a cohort or learner, renaming, and setting `REPORTS_MAX_LEARNERS=6` temporarily in `settings_dev.py`. See General notes for data the run left in the dev DB.
+The test plan was walked manually with Playwright MCP at 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet). Screenshots were collected into `<spec-dir>/screenshots/` and every image referenced in this report exists beside it. Compression ran and found nothing over 1MB.
+
+Some checks were made differently from a plain page walk. HTTP status checks (the 404 checks), CSV contents and the JavaScript-disabled rendering were done with request-level fetches in the same logged-in browser session and with a JavaScript-disabled browser context, as the notes below describe.
 
 ## Diff scoping
 
-Class: FULL. It was triggered by template changes, for example:
+Class: FULL (templates and HTML changed). Desktop, mobile and tablet all ran. Nothing was skipped.
 
-- `freedom_ls/educator_interface/templates/educator_interface/panels/dashboard.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/dashboard_region.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/learner_courses.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads.html`
-- `freedom_ls/panel_framework/templates/cotton/panel-attention-row.html`
-- `freedom_ls/panel_framework/templates/cotton/panel-stat-tile.html`
-
-Desktop, mobile and tablet viewports all ran. Nothing was skipped.
+Changed areas:
+- `educator_interface`: reporting module, dashboard and cohort panel templates, learner badges partial, template tags, views and URLs.
+- `panel_framework`: attention-row and stat-tile cotton components, plus the reference examples.
+- `reports` app.
+- `learner_progress` queries.
+- Product docs, app structure docs and tests.
 
 ## Smoke gate
 
 Status: pass. Pages checked:
+- http://127.0.0.1:8822/
+- http://127.0.0.1:8822/educator/ (redirects to /educator/organisations/demodev/dashboard)
 
-- http://127.0.0.1:8339/
-- http://127.0.0.1:8339/educator/organisations/demodev/dashboard
+## Results by scenario
 
-There was no failure URL and no failure reason.
+### Scenario 1: dashboard for an organisation admin
+
+No separate record for step 1.1.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 1.2 | desktop | pass | Org admin lands on /educator/organisations/demodev/dashboard. Four tiles: Learners 67 'Across 6 cohorts', Cohorts 6 (linked), Average progress 9% with bar, Learners needing attention 4. Lazy tiles filled without reload. Note: qa.org.admin's seeded password is testpass123 (qa_create_single_org_educator), not the email as the plan states. |
+| 1.3 | desktop | pass | Learners 67 includes the 14 seeded plus pre-existing DemoDev learners (Cohort 2025.03.04 has 50). Cohorts 6 includes Empty. Cohorts tile links to the cohorts list, which lists all QA Report cohorts. |
+| 1.4 | desktop | pass | Average progress 9% bar. Needing attention = 4 distinct learners (Haruki Nakamura is flagged in both Alpha and Beta from residue of the earlier QA run and counted once). No Unregistered learner counted. |
+| 1.5 | desktop | pass | 'Figures as of 23 Oct 2026, 17:27' shown under the tiles. |
+| 1.6 | desktop | pass | Needs attention lists 4 rows, lowest completion first (two Not started, then In progress). Name link has no icon; cohort lines to the right at desktop with cohort link, course titles, status badge, flag badge and the reason sentence visible inline. No Unregistered learner. |
+| 1.7 | desktop | pass | Clicking Ines Ferreira opens her learner page. |
+| 1.8 | desktop | pass | Quick view icon opens the drawer with name, Status Active, Last active, Cohorts, Course registrations. Close returns to the dashboard without navigation. |
+| 1.9 | desktop | pass | Cohort progress: 6 rows, lowest mean first (0%, 0%, 33%, 52%), em dash plus 'No progress to show' for the two empty cohorts, which sort last. Learner and flagged counts shown. |
+
+![](screenshots/page-2026-10-23T17-28-17-150Z.png)
+
+![](screenshots/page-2026-10-23T17-29-12-305Z.png)
+
+### Scenario 2: dashboard for a cohort viewer
+
+No separate record for step 2.1.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 2.2 | desktop | pass | Cohort viewer dashboard: Learners 9 'Across 1 cohort', Cohorts 1, Average progress 52%, Learners needing attention 3. Attention list (Ines, Haruki, Margot) and cohort progress mention only QA Report Alpha; Haruki's Beta line is not shown; no other cohort appears. |
+| 2.3 | desktop | pass | Sidebar Cohorts lists only QA Report Alpha. Beta's cohort URL returns 404 for the viewer. |
+
+![](screenshots/page-2026-10-23T17-48-26-786Z.png)
+
+### Scenario 3: dashboard empty states
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 3.2 | desktop | pass | The 'QA Empty Org' organisation (created by the earlier run, qa.org.admin holds its admin role) dashboard shows only 'You have no cohorts yet': no tiles, no lists. The org appears in the sidebar switcher. |
+| 3.1 | desktop | pass | An empty organisation with qa.org.admin as organisation admin already existed from the earlier QA run (qa-empty-org), so it was reused rather than created again. |
+| 3.3 | desktop | pass | With QA Report Alpha deactivated, the cohort viewer's dashboard shows only 'No cohorts are assigned to you' (no tiles). Alpha reactivated afterwards. |
+
+![](screenshots/page-2026-10-23T17-42-34-418Z.png)
+
+![](screenshots/page-2026-10-23T17-50-12-449Z.png)
+
+### Scenario 4: the over-limit notice
+
+No separate record for step 4.1.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 4.2 | desktop | pass | Second server on port 8894 with REPORTS_MAX_LEARNERS=6 (temporary settings module, removed afterwards). Dashboard notice lists 'QA Report Alpha has 9 learners, over the report limit of 6, and is not included' (and the same for the pre-existing 50-learner Cohort 2025.03.04). Learners still 67 and Cohorts still 6; the attention list and cohort progress rows exclude Alpha and still include Beta; needing attention drops to 2. |
+| 4.3 | desktop | pass | Alpha Overview's Needs attention card and the Report tab body both show "Cohort 'QA Report Alpha' has 9 learners, exceeding the configured limit of 6 (REPORTS_MAX_LEARNERS)." instead of a list; the Downloads panel still offers the PDF controls. Note the cohort-page wording differs from the dashboard notice and names the setting. |
+| 4.4 | desktop | pass | Second server stopped and the temporary settings module deleted; the main server on 8822 never had the override. |
+
+![](screenshots/page-2026-10-23T17-53-24-651Z.png)
+
+### Scenario 5: cohort Overview "Needs attention" card
+
+No separate record for step 5.1.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 5.2 | desktop | pass | Alpha Overview: Needs attention card lazy-loads (attention panel then ?loaded=1 request) and lists Ines Ferreira (Not started), Haruki Nakamura (Failed most recent quiz attempt), Margot Thibault (No activity recently), lowest completion first, names linked. No 'Nothing needs attention yet' text. |
+| 5.3 | desktop | pass | Empty cohort and Unregistered cohort (3 learners, no registrations) both show 'Nobody needs attention right now'. On Alpha at desktop each row's badges sit to the right of the name. |
+| 5.4 | desktop | pass | Edit > rename to 'QA Report Alpha (renamed)' > Save: page header updates, the attention panel re-fetches (network shows __panels/attention then ?loaded=1) and lists the same three learners. Renamed back. |
+
+![](screenshots/page-2026-10-23T17-30-26-427Z.png)
+
+![](screenshots/page-2026-10-23T17-34-25-801Z.png)
+
+### Scenario 6: Report tab, Downloads panel, generate and download the PDF
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 6.1 | desktop | pass | Cohort tabs in order Overview, Learners, Courses, Report, Settings. |
+| 6.2 | desktop | pass | Report tab: Downloads panel first, then Cohort report panel. No CSV link in Downloads. Because reports from the earlier QA run already exist, the panel opened in the ready state (Download PDF + Generate a new report) rather than the bare 'Generate PDF report' state. |
+| 6.3 | desktop | pass | Clicking Generate a new report POSTs to __actions/generate_report (200) and the panel swaps, with no further click, to 'Download PDF (generated 23 Oct 2026, 17:36 by Quinn Okafor)' plus Generate a new report. In dev the task finished inside the POST, so the intermediate 'being generated' panel was not observable; the button carries hx-disabled-elt and a hidden 'Generating…' spinner span toggled by htmx-request, so it greys out and ignores a second click during the request. |
+| 6.4 | desktop | pass | Download PDF saved demodev-qa-report-alpha-progress-report.pdf. Its at-a-glance page reads Learners in cohort 9, Median completion 61%, Not started 2, Completed everything 1; cohort size '9 learners'. |
+| 6.5 | desktop | pass | The 'being generated' window is not reachable in dev (the task completes inside the POST), so a concurrent second click could not be made. The submit button is disabled for the request via hx-disabled-elt; no error on repeated generation. |
+| 6.6 | desktop | pass | Admin list /admin/freedom_ls_reports/generatedreport/ shows 12 Alpha rows (ready ones with a Download link, the failed one without). Opening a Download link returns 200 application/pdf. |
+
+![](screenshots/page-2026-10-23T17-35-17-007Z.png)
+
+![](screenshots/page-2026-10-23T17-36-28-516Z.png)
+
+### Scenario 7: failed, stalled, and permission-gated downloads
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 7.1 | desktop | pass | Cloned Alpha's newest report as a failed row (error 'Render failed in QA') with the plan's shell command. |
+| 7.2 | desktop | pass | Report tab in the failed state keeps the ready 'Download PDF (generated 17:36)' link, shows the alert 'Render failed in QA' and the button reads 'Try again'. Clicking it generated a new report and the panel ended on 'Download PDF (generated 23 Oct 2026, 17:43 by Quinn Okafor)' with Generate a new report. |
+| 7.3 | desktop | pass | With a pending row requested 11 minutes ago the panel reads 'A report is being generated, requested by Quinn Okafor at 23 Oct 2026, 17:32.', 'This is taking longer than expected.' and a 'Check again' link. Over 8+ seconds the network log shows no polling requests. Check again re-renders the same state. Pending row deleted afterwards. |
+| 7.6 | desktop | pass | As org admin: Alpha's ready report downloads (200, application/pdf, attachment demodev-qa-report-alpha-progress-report.pdf). Beta's report id under Alpha's cohort URL: 404. Alpha's report id under Beta's cohort URL: 404. The failed report's id: 404. |
+| 7.4 | desktop | pass | Cohort viewer sees the Downloads panel with PDF controls; Generate a new report shows the disabled 'Generating…' button with spinner, then ends on 'Download PDF (generated 23 Oct 2026, 17:49 by Quinn Reporter)'. The viewer's cohort page has no Settings tab. |
+| 7.5 | desktop | pass | Logged in as learner Theo Delacroix, Alpha's Download PDF URL returns 404, not the file. |
+
+![](screenshots/page-2026-10-23T17-43-17-600Z.png)
+
+![](screenshots/page-2026-10-23T17-43-53-789Z.png)
+
+### Scenario 8: Report tab body
+
+No separate record for step 8.1.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 8.2 | desktop | pass | Body lazy-loads (__panels/body?loaded=1). 'Figures as of 23 Oct 2026, 17:34' with Refresh; Cohort at a glance 9 / 61% / 2 / 1; Learners needing attention lists the three flagged; Summary per course: Learner link, status badge, completion bar with 'N of M items', Last item completed, When, quiz columns VQ01/EQ02/TQ03 with legend; cells show percent + Passed/Failed + ×n or an em dash. Quiz confusions per quiz with question number, text, correct options as green chips, wrong options as red chips with ×count, 'N of M learners'. |
+| 8.3 | desktop | pass | No per-learner wrong answers anywhere; confusion tables show aggregate counts only. |
+| 8.4 | desktop | pass | PDF at-a-glance figures 9 / 61% / 2 / 1 match the on-screen Cohort at a glance figures. |
+| 8.6 | desktop | pass | After deactivating Ines Ferreira's learner record and reloading the Report tab without Refresh: 'Figures as of 23 Oct 2026, 17:43' unchanged, Ines absent from the attention list and both course tables, Learners in cohort 8 (was 9), Not started 1 (was 2). Learner reactivated afterwards. |
+| 8.5a | desktop | pass | As learner Theo Delacroix (learner-02), clicking Next on 'Vectors Lesson 03' in the medium course raised the course to 33% complete (4 of 12). Back as the org admin, a plain reload of the Report tab within five minutes kept 'Figures as of 23 Oct 2026, 17:49' and Theo at 25%, 3 of 12 items. |
+| 8.5 | desktop | pass | Clicking Refresh on the Report tab moved 'Figures as of' from 17:49 to 17:51 and Theo Delacroix's row to 33%, 4 of 12 items, last item 'Vectors Lesson 03'. |
+
+![](screenshots/page-2026-10-23T17-35-52-572Z.png)
+
+![](screenshots/page-2026-10-23T17-36-03-295Z.png)
+
+![](screenshots/page-2026-10-23T17-45-52-298Z.png)
+
+### Scenario 9: learners CSV export
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 9.1 | desktop | pass | Alpha Learners tab toolbar: Search, Status filter, Add filter, Export CSV link, sort label. |
+| 9.2 | desktop | pass | Downloaded learners-qa-report-alpha-2026-10-23.csv. Starts with a UTF-8 BOM; columns Name, Email, Status, Cohorts, Courses, Last active; nine rows, all Status Active, both course titles under Courses, Last active a date or empty; 'Sanne Bergström' renders correctly. No educators, no Beta-only learners. Haruki Nakamura's Cohorts cell reads 'QA Report Beta, QA Report Alpha' since he belongs to both (residue from the earlier run). |
+| 9.3 | desktop | pass | Searching 'Margot' filters the table to one row and the Export CSV href picks up learners-q=Margot; the download holds only Margot Thibault's row. |
+| 9.5 | desktop | pass | Organisation Learners list Export CSV downloads learners-2026-10-23.csv with 67 data rows (matches the Learners tile), Alpha, Beta and Unregistered learners included, no educator rows, multi-cohort learners' cohorts joined by commas. |
+| 9.4 | desktop | pass | With Theo's first name set to =HYPERLINK("http://evil","x"), the Alpha export's Name cell is "'=HYPERLINK(""http://evil"",""x"") Delacroix": a leading apostrophe inside a quoted field, so it stays text. Name restored. The export also omitted the then-deactivated Ines (8 rows). |
+| 9.6 | desktop | pass | Cohort viewer's export from Alpha's Learners tab works (200, learners-qa-report-alpha-2026-10-23.csv) with the nine Alpha learners and no Beta-only learner. |
+| 9.7 | desktop | pass | As the learner, both the cohort Learners export URL and the organisation Learners export URL return 404. |
+
+![](screenshots/page-2026-10-23T17-38-30-935Z.png)
+
+### Scenario 10: learner drill-down
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 10.1 | desktop | pass | Haruki Nakamura (flagged 'Failed most recent quiz attempt') opened from Learners; Courses tab loads lazily. |
+| 10.2 | desktop | pass | One card per registration: title, 'via QA Report Alpha' / 'via QA Report Beta' / 'Individual', status badge, at-risk badge with reason, progress bar with 'N of M items', 'Last completed: Deltas Lesson 09, 21 Oct 2026' or 'Nothing completed yet', collapsed 'Completed items (N)' that expands on click, and per attempted quiz a table with Attempt, Completed, Score, Percentage, Pass mark, Result (Passed/Failed badge plus 'Latest'). |
+| 10.3 | desktop | pass | An individual registration for qa-report-short-course already exists for this learner from the earlier QA run: it renders as its own card labelled 'Individual', 'Not started', separate from the Alpha card for the same course. |
+| 10.4 | desktop | pass | As the cohort viewer, Haruki's Courses tab shows the Individual short-course card and the two Alpha cards only; his Beta registration (a cohort the viewer cannot see) is not shown and 'QA Report Beta' appears nowhere on the page. |
+
+![](screenshots/page-2026-10-23T17-41-00-525Z.png)
+
+### Scenario 11: phone width
+
+No separate record for step 11.1 other than the navigation check (11.1-nav). Step 11.5 and the tablet-width checks ran at 768x1024.
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 11.6 | desktop | pass | At 1920 wide each attention row has the name on the left, its cohort lines (cohort, courses, badges, reason) in a column to the right and the quick view icon at the row's end; four rows fit in about 400px. Alpha's Overview Needs attention card puts badges to the right of each name (page-2026-10-23T17-30-26-427Z.png). |
+| 11.2 | mobile | pass | 375x812 dashboard: tiles two per row (164px each at x=16 and x=196); attention rows stack name, cohort line, courses, badges and reason, with the quick view icon (44x44) and an arrow at the right. Tapping blank row space opens the learner page (Ines Ferreira) and, in Cohort progress, the cohort page (Cohort 2025.03.04); the quick view icon opens the full-width drawer without navigating. documentElement.scrollWidth equals clientWidth (375): no horizontal scrollbar. Tile screenshot: page-2026-10-23T17-54-15-589Z.png. |
+| 11.3 | mobile | pass | Alpha Report tab at 375 wide: Download PDF and Generate a new report both span the panel width (309px); summary tables (961px and 708px wide) scroll inside an overflow-x:auto wrapper (275px) with a sticky Learner column (position sticky, left 0); page scrollWidth 375, no page-level sideways scroll. Downloads screenshot: page-2026-10-23T17-55-25-932Z.png. |
+| 11.4 | mobile | pass | Learner Courses tab at 375 wide: the four cards stack at full width (309px); attempts tables (568px) scroll inside their overflow-x:auto wrapper; page scrollWidth 375. |
+| 11.5 | tablet | pass | 768x1024 dashboard: page scrollWidth 768 (no overflow); tiles two per row (352px each); the sidebar is hidden behind the 'Open navigation panel' button; attention rows still stack the cohort lines under the name (name and cohort link share left 73px, cohort 31px lower). |
+| 11.1-nav | mobile | pass | At 375 wide the sidebar is hidden; the 'Open navigation panel' button opens the Sections drawer (343px wide) with Dashboard, Cohorts, Learners, Courses, Messages, Members; Escape closes it. |
+| 11.5-nav | tablet | pass | At 768 wide the tablet gets the mobile navigation: sidebar hidden, 'Open navigation panel' opens the drawer (736px wide) and Escape closes it. The screenshot also catches the pulsing skeleton placeholders for the two lazy tiles and both lists before they fill. |
+| 11.3 | tablet | pass | Alpha Report tab at 768 wide: summary tables (961px/708px) scroll inside their 620px overflow-x:auto wrapper; page scrollWidth 768, no page-level sideways scroll. |
+| 11.4 | tablet | pass | Learner Courses tab at 768 wide: cards stack at full width (670px); the attempts table (620px) fits its wrapper without scrolling; page scrollWidth 768. |
+
+![](screenshots/page-2026-10-23T17-54-15-589Z.png)
+
+![](screenshots/page-2026-10-23T17-55-25-932Z.png)
+
+![](screenshots/page-2026-10-23T17-54-34-691Z.png)
+
+![](screenshots/page-2026-10-23T17-55-40-882Z.png)
+
+![](screenshots/page-2026-10-23T17-55-43-507Z.png)
+
+![](screenshots/page-2026-10-23T17-57-03-248Z.png)
+
+![](screenshots/page-2026-10-23T17-57-47-576Z.png)
+
+![](screenshots/page-2026-10-23T17-57-48-236Z.png)
+
+### Scenario 12: nothing else broke
+
+| Test | Viewport | Result | Notes |
+|---|---|---|---|
+| 12.3 | desktop | pass | Quick view from the organisation Learners list opens and lists course registrations with a percentage ('QA Report Medium Course — through QA Report Alpha — 100%'). |
+| 12.1 | desktop | pass | As org admin, Alpha's Overview, Learners, Courses and Settings tabs all render (Settings heading present, Courses lists both courses). Cohort-viewer 404 on Settings checked in the viewer session. |
+| 12.4 | desktop | pass | With a JavaScript-disabled context: dashboard shows a visible 'Load the figures' link to /dashboard?loaded=1, which renders the tiles, Needs attention and Cohort progress as a plain page (200); the Report tab shows a 'Load the figures' link to __panels/body?loaded=1. The learner Courses panel is not lazy and renders its cards inline without JavaScript, so it has no link. |
+| 12.2 | desktop | pass | Admin 'Generate cohort report' form lists the cohorts; selecting QA Report Alpha and clicking Generate redirects to the list with the message 'Generating a progress report for QA Report Alpha.' |
+| 12.1b | desktop | pass | Alpha's Settings tab returns 404 for the cohort viewer while Overview returns 200. |
+
+![](screenshots/page-2026-10-23T17-40-37-683Z.png)
 
 ## Design check
 
-No design states tested.
-
-## Results table
-
-| Test | Viewport | Status | Note | Screenshot |
-|---|---|---|---|---|
-| 1.1-1.6 | desktop | pass | Org admin dashboard: tiles render, lazy figures fill without reload, attention list capped at 12 of 54 | ![](screenshots/page-2026-10-23T11-33-48-160Z.png) |
-| 1.7-1.8 | desktop | pass | Name link opens the learner page; quick view drawer opens and Escape closes it | ![](screenshots/page-2026-10-23T11-34-10-427Z.png) |
-| 1.9-1.10 | desktop | pass | Cohort progress rows ordered correctly, em-dash cohorts last; links work | ![](screenshots/page-2026-10-23T11-33-26-935Z.png) |
-| 2.1-2.3 | desktop | pass | Cohort viewer sees only QA Report Alpha; Beta URL returns 404 | ![](screenshots/page-2026-10-23T11-34-44-099Z.png) |
-| 3.1-3.2 | desktop | pass | New empty org shows "You have no cohorts yet" | ![](screenshots/page-2026-10-23T11-35-48-276Z.png) |
-| 3.3 | desktop | pass | Alpha deactivated: viewer sees "No cohorts are assigned to you"; reactivated | ![](screenshots/page-2026-10-23T11-36-15-833Z.png) |
-| 5.1-5.4 | desktop | pass | Overview attention card loads lazily; rename re-fetches the panel; tab order correct | ![](screenshots/page-2026-10-23T11-35-09-643Z.png) |
-| 6.1-6.2 | desktop | pass | Report tab: Downloads panel first, then the cohort report panel | none |
-| 6.3 | desktop | pass | Generate swaps to Download PDF; in-flight state not shown in dev (see General notes) | none |
-| 6.4 | desktop | pass | PDF filename and at-a-glance figures match the screen | none |
-| 6.5 | desktop | pass | Concurrent Generate clicks produce one new report row | none |
-| 6.6 | desktop | pass | Admin report list shows 3 ready reports; Download returns a PDF | ![](screenshots/page-2026-10-23T11-39-00-933Z.png) |
-| 7.1-7.2 | desktop | pass | Failed row shows error and "Try again"; retry produces a fresh PDF | ![](screenshots/page-2026-10-23T11-39-22-202Z.png) |
-| 7.3 | desktop | pass | Stalled state with "Check again"; fresh pending row polls every 3s; failure stops polling | ![](screenshots/page-2026-10-23T11-40-07-532Z.png) |
-| 7.6 | desktop | pass | Cross-cohort and failed report ids return 404 | none |
-| 9.1-9.2 | desktop | pass | CSV filename, BOM, columns and ordering correct; accents intact | none |
-| 9.3 | desktop | pass | Formula-injection name exported with a leading apostrophe | none |
-| 9.4, 8.6 | desktop | pass | Deactivated learner dropped from CSV and Report tab | none |
-| 8.1-8.3 | desktop | pass | Report body sections, summary tables and quiz confusions render | ![](screenshots/page-2026-10-23T11-43-47-909Z.png) |
-| 8.4 | desktop | pass | PDF at-a-glance numbers match on-screen figures | none |
-| 8.5 | desktop | pass | Reload keeps cached figures; Refresh updates them | none |
-| 8.6 (re-run) | desktop | pass | Warm cache: deactivated learner disappears without Refresh (reactivation caveat in General notes) | none |
-| 10.1-10.2 | desktop | fail | Courses tab cards render, but completed items and last completed contradict "3 of 6" (B2); stray bullets (B3) | ![](screenshots/page-2026-10-23T11-44-44-361Z.png) |
-| 10.3 | desktop | pass | Individual registration shown as a separate card next to the Alpha card | none |
-| 10.4 | desktop | pass | Cohort viewer does not see the Beta registration | none |
-| 10.5 | desktop | pass | Learner with no registrations shows "Not registered on any courses yet" | none |
-| 7.4 | desktop | pass | Cohort viewer can generate a PDF; no Settings tab | none |
-| 7.5 | desktop | pass | Learner opening the PDF URL gets 404 | none |
-| 9.5-9.6 | desktop | pass | Viewer downloads CSV; learner gets 404 | none |
-| 12.1 (viewer) | desktop | pass | Settings tab 404 for the cohort viewer | none |
-| 4.1-4.4 | desktop | pass | With REPORTS_MAX_LEARNERS=6, over-limit cohorts excluded with notices (message wording in General notes) | ![](screenshots/page-2026-10-23T11-47-38-825Z.png) |
-| 12.1 | desktop | pass | Org admin sees all Alpha tabs render | none |
-| 12.2 | desktop | pass | Admin generate form works and redirects with a message | none |
-| 12.3 | desktop | pass | Learners list quick view opens the drawer | none |
-| 12.4 | desktop | pass | JS off: "Load the figures" links work (full-page quirk in General notes) | ![](screenshots/page-nojs-dashboard.png) |
-| 11.2 | mobile | pass | 375px dashboard: tappable rows, 44px quick view button, no horizontal scroll; stray bullets (B3) | ![](screenshots/page-2026-10-23T11-50-50-927Z.png) |
-| 11.3 | mobile | fail | Report tab scrolls sideways, scrollWidth 910 (B1) | ![](screenshots/page-2026-10-23T11-53-38-643Z.png) |
-| 11.4 | mobile | pass | Courses tab stacks; attempts tables scroll inside wrapper; stray bullets (B3) | ![](screenshots/page-2026-10-23T11-53-47-065Z.png) |
-| 11.5 | tablet | pass | 768px dashboard: no overflow; Courses tab fine; pulse placeholders captured in ![](screenshots/page-2026-10-23T11-54-08-269Z.png) | ![](screenshots/page-2026-10-23T11-54-13-426Z.png) |
-| 11.5 (report tab) | tablet | fail | Report tab scrollWidth 934 (B1) | ![](screenshots/page-2026-10-23T11-54-06-754Z.png) |
-
-## B1: Report tab scrolls sideways on phone and tablet: sr-only quiz-cell text escapes the table's scroll wrapper
-
-Manifestations: 11.3 (mobile), 11.5 report tab (tablet).
-
-![](screenshots/page-2026-10-23T11-53-38-643Z.png)
-![](screenshots/page-2026-10-23T11-54-06-754Z.png)
-
-Expected: summary tables scroll inside their card, and the page itself does not scroll sideways (scrollWidth equals the viewport width).
-
-Actual: page scrollWidth is 910 at 375 wide and 934 at 768 wide. The "Not attempted" sr-only spans in quiz cells are `position:absolute`. Their nearest positioned ancestor is `.side-panel-grid`, outside the `overflow-x-auto` wrapper, so they are not clipped. Making the wrapper `relative` brings scrollWidth back to 375.
-
-## B2: Learner Courses card counts a failed quiz as completed in "Completed items" and "Last completed", contradicting "N of M items"
-
-Manifestations: 10.1-10.2 (desktop).
-
-![](screenshots/page-2026-10-23T11-44-44-361Z.png)
-
-Expected: the completed-items list, its count and "Last completed" agree with the "N of M items" figure. That figure counts a quiz only when its latest attempt passed (`attempt_completes_form`).
-
-Actual: Haruki Nakamura, QA Report Short Course shows "3 of 6 items", but "Completed items (4)" includes the failed Voltage Quiz 01, and "Last completed: Voltage Quiz 01". In `freedom_ls/reports/gather.py`, `_completed_items` and `_latest_completion` use `completed_attempts_by_learner_form` (any finished sitting), while `_completion_counts` uses `completed_form_ids_by_learner` (latest sitting passed). The report summary table's "Last item completed" column shows the same inconsistency.
-
-## B3: Stray list bullets beside learner course cards and dashboard attention-row cohort lists
-
-Manifestations: 10.1-10.2 (desktop), 11.2 (mobile), 11.4 (mobile).
-
-![](screenshots/page-2026-10-23T11-44-44-361Z.png)
-![](screenshots/page-2026-10-23T11-50-50-927Z.png)
-
-Expected: card lists and the cohort list under each attention row render without list markers, like the rest of the interface, which cancels the theme's default bullets with `list-none ml-0`.
-
-Actual: a bullet sits beside each course card on the learner Courses tab (`learner_courses.html:5`, `<ul class='flex flex-col gap-4'>`) and beside each cohort name under a dashboard attention row (`dashboard_region.html:71`, `<ul class='mt-1 space-y-1'>`). Neither has `list-none`.
-
-## Bug status
-
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Report tab scrolls sideways on phone and tablet | **FIXED** (commit: 7838eef4). `relative` added to the table scroll wrappers in the report body and learner Courses templates. Re-verified: scrollWidth equals the viewport at 375 and 768 on the Report tab and the learner Courses tab. |
-| B2 | Failed quiz counted as completed in Courses card lists | **FIXED** (commit: e301e9fd). `_completed_items` and `_latest_completion` now use the same rule as the "N of M" count. Re-verified: Haruki's Short Course card shows "3 of 6 items", "Completed items (3)", "Last completed: Vectors Lesson 03", and the failed attempt is still in the attempts table. The Report row matches after Refresh, and the dashboard and at-a-glance figures are unchanged. |
-| B3 | Stray list bullets beside course cards and attention-row cohort lists | **FIXED** (commit: 4e99b04d). `list-none ml-0` added to the course-card, completed-items and attention-row cohort lists. Re-verified: no `li` with a visible marker on the learner Courses tab or the dashboard. |
+no design states tested
 
 ## General notes
 
-Plan inaccuracies:
+- The plan's login line for qa.org.admin@email.com is wrong: the seeder `qa_create_single_org_educator` sets the password `testpass123`, not the email. The plan's learner emails also omit the `-demodev-` segment the seeder adds (`qa-report-learner-demodev-NN@email.com`).
+- Residue from the earlier QA run was present and reused rather than reset: the QA Empty Org organisation (3.1), Haruki Nakamura's Beta membership and individual short-course registration (10.3), and existing generated reports, so the bare "Generate PDF report" first state of the Downloads panel (6.2) was not seen; the ready/failed/stalled states were.
+- In dev the PDF task runs inside the POST, so the "A report is being generated…" intermediate panel and a true concurrent second click (6.5) could not be observed; the "Generating…" disabled button state was observed once (7.4) and the stalled "being generated / taking longer than expected" state via a seeded pending row (7.3).
+- Two different quizzes in two courses share the title "Voltage Quiz 01", so "Quiz confusions across the cohort" shows two tables with identical headings and nothing says which course each belongs to. Worth a copy decision if real courses reuse quiz titles.
+- The over-limit wording differs between the dashboard notice ("QA Report Alpha has 9 learners, over the report limit of 6, and is not included") and the cohort page/report body ("Cohort 'QA Report Alpha' has 9 learners, exceeding the configured limit of 6 (REPORTS_MAX_LEARNERS)."), and the latter exposes the setting name to educators. The dashboard notice is rendered in a pale amber that is low-contrast on white.
+- "Last active" in the CSV is the login-based figure (empty for seeded learners who never logged in, a date for the one who did), not last progress.
+- Scenario 4 was run on a second dev server (port 8894) with a temporary settings module setting REPORTS_MAX_LEARNERS=6; the module was deleted and the server stopped afterwards.
+- The debug toolbar handle (DJDT) appears in screenshots; it is the dev toolbar, not product UI.
 
-- The org admin `qa.org.admin` has password `testpass123`, not the email as the plan says.
-- Learner emails are `qa-report-learner-demodev-NN` and `qa-report-beta-demodev-NN`, not `qa-report-learner-NN`.
-- The "A report is being generated" state never shows in dev. `TASKS` uses `ImmediateBackend` (`config/settings_base.py`), so the POST blocks while the PDF renders and the response is already the ready state. The in-flight UI was covered by the stalled and pending-row checks in 7.3.
+## Bug status
 
-Observations that are not bugs:
+No bugs found this run.
 
-- Two identical "Voltage Quiz 01" confusion cards appear on the Report tab with no course label. The seed data gives both the medium and short courses a quiz of that title.
-- The over-limit message on the cohort Overview and Report body is the raw exception text, naming `REPORTS_MAX_LEARNERS`: "Cohort 'QA Report Alpha' has 9 learners, exceeding the configured limit of 6 (REPORTS_MAX_LEARNERS)." The dashboard uses educator-facing wording instead.
-- With JS off, the dashboard's "Load the figures" link opens a full page (with nav) rather than a bare fragment. The Report tab body link does open a bare fragment.
-- A learner reactivated after a gather stays missing from the report until Refresh or cache expiry, if the gather ran while the learner was inactive.
-- A learner in two cohorts on the same course shows separate progress per registration, because progress is keyed per registration. Haruki shows "Not started / No recorded activity" in Beta for the medium course he completed via Alpha.
-
-Data the run created stays in the dev DB:
-
-- the QA Empty Org organisation
-- Haruki's individual short-course registration and his Beta membership
-- extra generated reports
-- Theo's quiz attempt
-
-status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented, 62 test records (54 desktop, 4 mobile, 4 tablet), all pass
