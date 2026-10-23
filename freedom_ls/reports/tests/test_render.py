@@ -732,6 +732,7 @@ class TestQuizResultCell:
             passed=True,
             attempt_count=2,
             completed_at=GENERATED_AT,
+            pass_percentage=None,
             attempts=[],
         )
 
@@ -753,6 +754,7 @@ class TestQuizResultCell:
             passed=False,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            pass_percentage=None,
             attempts=[],
         )
 
@@ -773,6 +775,7 @@ class TestQuizResultCell:
             passed=None,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            pass_percentage=None,
             attempts=[],
         )
 
@@ -1027,6 +1030,7 @@ class TestCourseSummaryTable:
             passed=True,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            pass_percentage=None,
             attempts=[],
         )
         row = LearnerRow(
@@ -1159,6 +1163,7 @@ class TestLearnerDetail:
                     passed=True,
                     attempt_count=1,
                     completed_at=GENERATED_AT,
+                    pass_percentage=None,
                     attempts=[
                         QuizAttempt(
                             attempt_number=1,
@@ -1799,6 +1804,7 @@ class TestQuizAttemptsTable:
                     passed=True,
                     attempt_count=2,
                     completed_at=GENERATED_AT,
+                    pass_percentage=None,
                     attempts=attempts,
                 )
             ],
@@ -1828,6 +1834,7 @@ class TestQuizAttemptsTable:
                     passed=None,
                     attempt_count=1,
                     completed_at=GENERATED_AT,
+                    pass_percentage=None,
                     attempts=[
                         QuizAttempt(
                             attempt_number=1,
@@ -2053,6 +2060,7 @@ def _busy_report_data() -> CohortReportData:
                 passed=False,
                 attempt_count=1,
                 completed_at=data.generated_at,
+                pass_percentage=None,
                 attempts=[
                     QuizAttempt(
                         attempt_number=1,

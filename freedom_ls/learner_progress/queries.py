@@ -22,7 +22,12 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import Cohort, Learner
+    from freedom_ls.learner_management.models import (
+        Cohort,
+        CohortCourseRegistration,
+        Learner,
+        LearnerCourseRegistration,
+    )
 
 
 def started_course_exists(learner: OuterRef | UUID, course: OuterRef | UUID) -> Exists:
@@ -290,6 +295,7 @@ class LearnerRegistrationProgress:
 
     course: Course
     cohort: Cohort | None
+    registration: LearnerCourseRegistration | CohortCourseRegistration
     progress_percentage: int | None
     last_accessed_time: datetime | None
 
@@ -340,6 +346,7 @@ def registrations_with_progress_for_learner(
             LearnerRegistrationProgress(
                 course=registration.course,
                 cohort=None,
+                registration=registration,
                 progress_percentage=(
                     record.progress_percentage if record is not None else None
                 ),
@@ -354,6 +361,7 @@ def registrations_with_progress_for_learner(
             LearnerRegistrationProgress(
                 course=registration.course,
                 cohort=registration.cohort,
+                registration=registration,
                 progress_percentage=(
                     record.progress_percentage if record is not None else None
                 ),

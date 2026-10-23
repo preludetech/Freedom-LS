@@ -9,7 +9,8 @@ from django.contrib.staticfiles import finders
 
 from freedom_ls.content_engine.models import Topic
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
     TopicProgressFactory,
@@ -57,3 +58,11 @@ def form_progress(record: CourseProgress, form: Form, **fields: object) -> FormP
         **{f"form_progress__{name}": value for name, value in fields.items()},
     ).form_progress
     return sitting
+
+
+def quiz_form(title: str, pass_percentage: int | None) -> Form:
+    """A quiz with the given pass mark, for tests outside form_engine's dependants."""
+    quiz: Form = FormFactory(
+        title=title, strategy=FormStrategy.QUIZ, quiz_pass_percentage=pass_percentage
+    )
+    return quiz

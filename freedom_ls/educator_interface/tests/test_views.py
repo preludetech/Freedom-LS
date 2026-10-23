@@ -31,7 +31,11 @@ from freedom_ls.comms.messaging import (
 )
 from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingRefusal
 from freedom_ls.comms.models import Conversation
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
@@ -59,9 +63,11 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 
@@ -1331,25 +1337,30 @@ def test_the_registrations_card_leaves_out_a_course_from_an_inactive_cohort(
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_shows_a_percentage(staff_client: Client):
-    learner = LearnerFactory(organisation=OrganisationFactory())
-    registration = LearnerCourseRegistrationFactory(
-        learner=learner, course=CourseFactory(title="Algebra")
+def test_the_courses_tab_shows_the_recomputed_percentage_not_the_stored_one(
+    staff_client: Client,
+):
+    course = CourseFactory(title="Algebra")
+    done_topic = TopicFactory()
+    open_topic = TopicFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=done_topic, order=0
     )
-    CourseProgressFactory(
-        learner=learner,
-        course=registration.course,
-        learner_registration=registration,
-        progress_percentage=40,
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=open_topic, order=1
     )
+    record = course_progress_record(course, UserFactory(), progress_percentage=90)
+    topic_progress(record, done_topic, complete_time=timezone.now())
 
-    document = _learner_page(staff_client, learner, "courses")
+    document = _learner_page(staff_client, record.learner, "courses")
 
-    assert "40%" in _region_text(document)
+    text = _region_text(document)
+    assert "50%" in text
+    assert "90%" not in text
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_reads_never_for_a_registration_without_activity(
+def test_the_courses_tab_says_nothing_completed_for_a_registration_without_activity(
     staff_client: Client,
 ):
     learner = LearnerFactory(organisation=OrganisationFactory())
@@ -1359,7 +1370,7 @@ def test_the_courses_tab_reads_never_for_a_registration_without_activity(
 
     document = _learner_page(staff_client, learner, "courses")
 
-    assert "Never" in _region_text(document)
+    assert "Nothing completed yet" in _region_text(document)
 
 
 @pytest.mark.django_db

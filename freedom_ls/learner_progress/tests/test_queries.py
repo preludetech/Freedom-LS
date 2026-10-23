@@ -418,6 +418,7 @@ def test_an_individual_registration_reports_its_course_and_no_cohort(
         LearnerRegistrationProgress(
             course=course,
             cohort=None,
+            registration=registration,
             progress_percentage=40,
             last_accessed_time=record.last_accessed_time,
         )
@@ -441,6 +442,7 @@ def test_a_registration_through_a_cohort_reports_the_cohort(mock_site_context):
         LearnerRegistrationProgress(
             course=course,
             cohort=cohort,
+            registration=registration,
             progress_percentage=record.progress_percentage,
             last_accessed_time=record.last_accessed_time,
         )
@@ -456,7 +458,9 @@ def test_an_inactive_cohorts_registration_is_skipped_and_the_individual_one_repo
     CohortMembershipFactory(learner=learner, cohort=cohort)
     course: Course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
-    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=True
+    )
 
     result = registrations_with_progress_for_learner(learner)
 
@@ -464,6 +468,7 @@ def test_an_inactive_cohorts_registration_is_skipped_and_the_individual_one_repo
         LearnerRegistrationProgress(
             course=course,
             cohort=None,
+            registration=registration,
             progress_percentage=None,
             last_accessed_time=None,
         )
@@ -476,7 +481,9 @@ def test_a_registration_with_no_progress_record_reports_none_fields(
 ):
     learner = LearnerFactory()
     course: Course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=True
+    )
 
     result = registrations_with_progress_for_learner(learner)
 
@@ -484,6 +491,7 @@ def test_a_registration_with_no_progress_record_reports_none_fields(
         LearnerRegistrationProgress(
             course=course,
             cohort=None,
+            registration=registration,
             progress_percentage=None,
             last_accessed_time=None,
         )

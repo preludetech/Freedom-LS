@@ -21,9 +21,16 @@ from django.utils.text import slugify
 
 from freedom_ls.accounts.models import User
 from freedom_ls.base.csv_safety import UTF8_BOM, escape_csv_formula
-from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
+from freedom_ls.educator_interface.quick_views import (
+    visible_registrations_with_progress,
+)
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.models import Cohort, CohortMembership
+from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
     cohort_educators,
     cohort_learner_count,
@@ -35,6 +42,7 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.config import config as reports_config
+from freedom_ls.reports.gather import gather_learner_course_details
 from freedom_ls.reports.indexes import learner_sort_key, load_active_memberships
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
@@ -504,3 +512,29 @@ class DashboardPanel(LazyBodyPanel):
 
     def get_loaded_context(self) -> dict[str, object]:
         return {"figures": gathered_figures(list(self._cohorts()))}
+
+
+class LearnerCoursesPanel(Panel):
+    """One card per visible registration: recomputed completion, flags, completed items and quiz attempts.
+
+    Runs live and uncached, so a refresh after an educator action reads the
+    current progress.
+    """
+
+    model = Learner
+    title = "Courses"
+    template_name = "educator_interface/panels/learner_courses.html"
+    refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
+
+    def get_context_data(self) -> dict[str, object]:
+        learner = cast(Learner, self.instance)
+        request = cast("OrganisationScopedRequest", self.request)
+        registrations = [
+            entry.registration
+            for entry in visible_registrations_with_progress(learner, request)
+        ]
+        context = super().get_context_data()
+        context["details"] = gather_learner_course_details(
+            learner, registrations, learner.site_id
+        )
+        return context

@@ -14,6 +14,7 @@ from __future__ import annotations
 import dataclasses
 import statistics
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -27,7 +28,13 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
 )
-from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
+)
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.reports.at_risk import AT_RISK_RULES, LearnerDetailLike
 from freedom_ls.reports.config import config
 from freedom_ls.reports.indexes import (
@@ -37,6 +44,8 @@ from freedom_ls.reports.indexes import (
     ProgressIndex,
     QuestionIndex,
     SatQuestions,
+    _registration_filter,
+    _registration_ids,
     build_course_catalogue,
     build_question_index,
     build_sat_questions,
@@ -64,6 +73,7 @@ from freedom_ls.reports.report_data import (
     ConfusionBlock,
     CourseSection,
     FlaggedLearnerLike,
+    LearnerCourseDetail,
     LearnerDetail,
     LearnerRow,
     LearnerSummary,
@@ -95,6 +105,7 @@ __all__ = [
     "CompletedItem",
     "ConfusionBlock",
     "CourseSection",
+    "LearnerCourseDetail",
     "LearnerDetail",
     "LearnerRow",
     "LearnerSummary",
@@ -112,6 +123,7 @@ __all__ = [
     "build_progress_data",
     "gather_cohort_progress",
     "gather_cohort_report_data",
+    "gather_learner_course_details",
 ]
 
 # Free-text answers have no correctness concept at all, so they are excluded
@@ -394,6 +406,7 @@ def _quiz_result_for(
         passed=passed,
         attempt_count=len(attempts),
         completed_at=fp.completed_time,
+        pass_percentage=form.quiz_pass_percentage,
         attempts=attempts,
     )
 
@@ -906,4 +919,104 @@ def gather_cohort_report_data(
         median_completion=stats.median_completion,
         not_started_count=stats.not_started_count,
         complete_count=stats.complete_count,
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class CourseRiskInput:
+    """One course's view of a learner, in the shape the at-risk rules read."""
+
+    has_any_progress: bool
+    last_completed_at: datetime | None
+    report_generated_at: datetime
+    quiz_results: list[QuizResult]
+
+
+def gather_learner_course_details(
+    learner: Learner,
+    registrations: Sequence[LearnerCourseRegistration | CohortCourseRegistration],
+    site_id: int,
+) -> list[LearnerCourseDetail]:
+    """One entry per registration, in the order given, keyed by the registration's course progress record.
+
+    A learner holding one course through a cohort and individually has two
+    records, and each registration reads only its own.
+    """
+    now = timezone.now()
+    catalogue = build_course_catalogue(registrations)
+    ids = _registration_ids(registrations)
+    record_id_by_registration = {
+        cohort_registration_id or learner_registration_id: record_id
+        for record_id, cohort_registration_id, learner_registration_id in (
+            CourseProgress.objects.filter(
+                _registration_filter("", ids), learner=learner, site_id=site_id
+            ).values_list("id", "cohort_registration_id", "learner_registration_id")
+        )
+    }
+    progress = load_progress_index(
+        site_id, registrations, [learner.pk], catalogue, keyed_by="course_progress"
+    )
+    return [
+        _build_course_detail(
+            registration,
+            record_id_by_registration.get(registration.pk),
+            catalogue,
+            progress,
+            now,
+        )
+        for registration in registrations
+    ]
+
+
+def _build_course_detail(
+    registration: LearnerCourseRegistration | CohortCourseRegistration,
+    record_id: UUID | None,
+    catalogue: CourseCatalogue,
+    progress: ProgressIndex,
+    now: datetime,
+) -> LearnerCourseDetail:
+    items = catalogue.course_items[registration.course_id]
+    quiz_forms = [
+        item
+        for item in items
+        if isinstance(item, Form) and item.strategy == FormStrategy.QUIZ
+    ]
+    if record_id is None:
+        # No course progress record yet: nothing to look up, so the entry is
+        # built as not started rather than searching the indexes for nothing.
+        completed_count, total_count, last_title, last_at = 0, len(items), None, None
+        completed_items: list[CompletedItem] = []
+        quiz_results: list[QuizResult] = []
+        has_any_progress = False
+    else:
+        completed_count, total_count = _completion_counts(items, record_id, progress)
+        last_title, last_at = _latest_completion(items, record_id, progress)
+        completed_items = _completed_items(items, record_id, progress)
+        quiz_results = [
+            result
+            for result in (
+                _quiz_result_for(record_id, form, progress.forms) for form in quiz_forms
+            )
+            if result is not None
+        ]
+        has_any_progress = record_id in progress.learner_ids_with_any_progress
+    completion = _completion_percentage(completed_count, total_count)
+    risk_input = CourseRiskInput(has_any_progress, last_at, now, quiz_results)
+    return LearnerCourseDetail(
+        course_id=registration.course_id,
+        course_title=registration.course.title,
+        cohort_name=(
+            registration.cohort.name
+            if isinstance(registration, CohortCourseRegistration)
+            else None
+        ),
+        completion_percentage=completion,
+        completed_item_count=completed_count,
+        total_item_count=total_count,
+        completed_items=completed_items,
+        quiz_results=quiz_results,
+        last_completed_title=last_title,
+        last_completed_at=last_at,
+        flags=_evaluate_at_risk_flags(risk_input),
+        progress_status=progress_status(completion),
     )

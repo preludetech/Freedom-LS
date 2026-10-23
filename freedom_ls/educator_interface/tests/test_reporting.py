@@ -38,6 +38,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, CohortMembership
@@ -56,7 +57,11 @@ from freedom_ls.reports.report_data import (
 )
 from freedom_ls.reports.screen_cache import _cache_key
 from freedom_ls.reports.statuses import ProgressStatus
-from freedom_ls.reports.tests.helpers import topic_progress
+from freedom_ls.reports.tests.helpers import (
+    form_progress,
+    quiz_form,
+    topic_progress,
+)
 from freedom_ls.reports.tests.report_data_builders import (
     cohort_report_data,
     course_section,
@@ -905,6 +910,137 @@ class TestCohortReportBody:
         assert "Wrong answers" not in region.text_content()
 
 
+def _courses_panel(client: Client, organisation_slug: str, learner: object) -> str:
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation_slug,
+                "path_string": f"learners/{learner.pk}/__tabs/courses/__panels/courses",
+            },
+        )
+    )
+    assert response.status_code == 200
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
+@pytest.mark.django_db
+class TestLearnerCoursesPanel:
+    def test_a_registration_through_a_cohort_the_viewer_cannot_see_is_hidden(
+        self, logged_in_client
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        visible = CohortFactory(organisation=organisation, name="Visible group")
+        hidden = CohortFactory(organisation=organisation, name="Hidden group")
+        CohortMembershipFactory(cohort=visible, learner=learner)
+        CohortMembershipFactory(cohort=hidden, learner=learner)
+        CohortCourseRegistrationFactory(
+            cohort=visible, course=CourseFactory(title="Algebra")
+        )
+        CohortCourseRegistrationFactory(
+            cohort=hidden, course=CourseFactory(title="Secret Course")
+        )
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, visible, "cohort_admin")
+
+        text = _courses_panel(logged_in_client(educator), organisation.slug, learner)
+
+        assert "Algebra" in text
+        assert "via Visible group" in text
+        assert "Secret Course" not in text
+        assert "Hidden group" not in text
+
+    def test_a_learner_with_no_registrations_gets_the_empty_message(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        text = _courses_panel(client, learner.organisation.slug, learner)
+
+        assert "Not registered on any courses yet" in text
+
+    def test_a_card_shows_items_completed_attempts_pass_mark_and_verdicts(
+        self, logged_in_client
+    ):
+        course = CourseFactory(title="Algebra")
+        topic = TopicFactory(title="Fractions")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=0
+        )
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=1
+        )
+        user = UserFactory()
+        record = course_progress_record(course, user)
+        topic_progress(record, topic, complete_time=timezone.now())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now() - timedelta(days=1),
+            scores={"score": 0, "max_score": 2},
+        )
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        text = _courses_panel(client, learner.organisation.slug, learner)
+
+        assert "Individual" in text
+        assert "Complete" in text
+        assert "2 of 2 items" in text
+        assert "Completed items (2)" in text
+        assert "0/2 0% 50% Failed" in text
+        assert "2/2 100% 50% Passed Latest" in text
+
+    def test_a_quiz_without_a_pass_mark_says_so_and_shows_no_verdict(
+        self, logged_in_client
+    ):
+        course = CourseFactory()
+        quiz = quiz_form("Open quiz", None)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 1, "max_score": 2},
+        )
+        client = logged_in_client(_org_admin(record.learner.organisation))
+
+        text = _courses_panel(client, record.learner.organisation.slug, record.learner)
+
+        assert "1/2 50% No pass mark Latest" in text
+        assert "Passed" not in text
+        assert "Failed" not in text
+
+    def test_a_course_with_nothing_completed_says_so_and_flags_no_activity(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Algebra")
+        )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        text = _courses_panel(client, learner.organisation.slug, learner)
+
+        assert "Nothing completed yet" in text
+        assert "Not started" in text
+        assert "No recorded activity" in text
+
+
 _NEW_REPORTING_FILES = [
     "reporting.py",
     "templates/educator_interface/panels/dashboard.html",
@@ -915,6 +1051,7 @@ _NEW_REPORTING_FILES = [
     "templates/educator_interface/panels/cohort_report_downloads.html",
     "templates/educator_interface/panels/cohort_report_downloads_region.html",
     "templates/educator_interface/panels/cohort_report_body_region.html",
+    "templates/educator_interface/panels/learner_courses.html",
     "templates/educator_interface/partials/learner_badges.html",
 ]
 

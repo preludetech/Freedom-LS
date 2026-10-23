@@ -1,24 +1,75 @@
 {% extends "panel_framework/panels/panel.html" %}
 
 {% block panel_body %}
-    {% if entries %}
+    {% if details %}
         <ul class="flex flex-col gap-4">
-            {% for entry in entries %}
+            {% for detail in details %}
                 <li>
-                    <div class="flex flex-wrap items-baseline justify-between gap-x-4">
-                        <span class="font-medium">{{ entry.course.title }}</span>
-                        <span class="text-sm text-muted">{% if entry.cohort %}via {{ entry.cohort.name }}{% else %}Individual{% endif %}</span>
-                    </div>
-                    {% if entry.progress_percentage is not None %}
-                        <c-panel-progress-bar percentage="{{ entry.progress_percentage }}" label="{{ entry.course.title }} progress" />
-                    {% else %}
-                        <p class="text-sm text-muted">No progress yet</p>
-                    {% endif %}
-                    <p class="text-sm text-muted">Last active: {% if entry.last_accessed_time %}{{ entry.last_accessed_time|date:"j M Y" }}{% else %}Never{% endif %}</p>
+                    <c-panel-card>
+                        <div class="flex flex-col gap-3">
+                            <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+                                <h3 class="font-medium">{{ detail.course_title }}</h3>
+                                <span class="text-sm text-muted">{% if detail.cohort_name %}via {{ detail.cohort_name }}{% else %}Individual{% endif %}</span>
+                            </div>
+                            {% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}
+                            <c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" />
+                            <p class="text-sm text-muted">{{ detail.completed_item_count }} of {{ detail.total_item_count }} items</p>
+                            <p class="text-sm text-muted">
+                                {% if detail.last_completed_at %}Last completed: {{ detail.last_completed_title }}, {{ detail.last_completed_at|date:"j M Y" }}{% else %}Nothing completed yet{% endif %}
+                            </p>
+                            {% if detail.completed_items %}
+                                <details class="text-sm">
+                                    <summary class="cursor-pointer font-medium">Completed items ({{ detail.completed_items|length }})</summary>
+                                    <ul class="mt-2 flex flex-col gap-1">
+                                        {% for item in detail.completed_items %}
+                                            <li class="flex flex-wrap justify-between gap-x-4">
+                                                <span>{{ item.title }}</span>
+                                                <span class="text-muted">{{ item.completed_at|date:"j M Y" }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                            {% endif %}
+                            {% for quiz in detail.quiz_results %}
+                                <div class="flex flex-col gap-1">
+                                    <h4 class="text-sm font-medium">{{ quiz.title }}</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm">
+                                            <thead>
+                                                <tr class="text-left text-muted">
+                                                    <th scope="col" class="pr-4 font-medium">Attempt</th>
+                                                    <th scope="col" class="pr-4 font-medium">Completed</th>
+                                                    <th scope="col" class="pr-4 font-medium">Score</th>
+                                                    <th scope="col" class="pr-4 font-medium">Percentage</th>
+                                                    <th scope="col" class="pr-4 font-medium">Pass mark</th>
+                                                    <th scope="col" class="font-medium">Result</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for attempt in quiz.attempts %}
+                                                    <tr>
+                                                        <td class="pr-4">{{ attempt.attempt_number }}</td>
+                                                        <td class="pr-4 whitespace-nowrap">{{ attempt.completed_at|date:"j M Y" }}</td>
+                                                        <td class="pr-4">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
+                                                        <td class="pr-4">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
+                                                        <td class="pr-4 whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
+                                                        <td class="whitespace-nowrap">
+                                                            {% if attempt.passed is True %}<c-panel-status-badge tone="success" label="Passed" />{% elif attempt.passed is False %}<c-panel-status-badge tone="error" label="Failed" />{% endif %}
+                                                            {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </c-panel-card>
                 </li>
             {% endfor %}
         </ul>
     {% else %}
-        <c-panel-empty-state message="This learner has no course registrations." />
+        <c-panel-empty-state message="Not registered on any courses yet" />
     {% endif %}
 {% endblock panel_body %}

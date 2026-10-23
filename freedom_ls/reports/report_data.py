@@ -15,6 +15,8 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from freedom_ls.reports.statuses import ProgressStatus
+
 ATTENTION_LIST_MAX = 12
 CONFUSIONS_PER_QUIZ_MAX = 10
 MIN_RESPONDENTS_FOR_PERCENTAGE = 10
@@ -46,6 +48,9 @@ class QuizResult:
     passed: bool | None
     attempt_count: int
     completed_at: datetime | None
+    # The quiz's pass mark, or None when the author set none; carried so an
+    # attempts table can show what each score was measured against.
+    pass_percentage: int | None
     # Chronological, oldest first, so a learner's own section can show whether
     # retries improved on the first sitting. Built from the same rows the
     # latest_* fields above are read from, so the two cannot disagree.
@@ -143,6 +148,24 @@ class AtRiskFlag:
     # flag is. Read off the rule with a fallback, never required of it — see
     # where the flags are built.
     severity: str
+
+
+@dataclasses.dataclass(frozen=True)
+class LearnerCourseDetail:
+    """One course registration as the learner drill-down shows it."""
+
+    course_id: UUID
+    course_title: str
+    cohort_name: str | None  # None for an individual registration
+    completion_percentage: int
+    completed_item_count: int
+    total_item_count: int
+    completed_items: list[CompletedItem]
+    quiz_results: list[QuizResult]
+    last_completed_title: str | None
+    last_completed_at: datetime | None
+    flags: list[AtRiskFlag]
+    progress_status: ProgressStatus
 
 
 @dataclasses.dataclass(frozen=True)

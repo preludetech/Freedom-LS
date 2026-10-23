@@ -7,8 +7,13 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.utils import timezone
 
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -19,6 +24,11 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.tests.helpers import (
+    form_progress,
+    quiz_form,
+    topic_progress,
+)
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -58,7 +68,7 @@ def test_opening_a_learner_and_their_courses_tab(
     expect(page.get_by_text("ada@example.com").first).to_be_visible()
     page.get_by_role("link", name="Courses", exact=True).click()
     expect(page.get_by_text("Algebra")).to_be_visible()
-    expect(page.get_by_text("Never")).to_be_visible()
+    expect(page.get_by_text("Nothing completed yet")).to_be_visible()
     learner_url = page.url
 
     for viewport in QA_VIEWPORTS:
@@ -66,6 +76,41 @@ def test_opening_a_learner_and_their_courses_tab(
         page.goto(list_url)
         assert_no_horizontal_overflow(page)
         page.goto(learner_url)
+        assert_no_horizontal_overflow(page)
+
+
+def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(organisation=organisation)
+    course = CourseFactory(title="Algebra")
+    quiz = quiz_form("Unit quiz", 50)
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=0)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+    # The commit hooks of a transaction=True test have already minted the record.
+    record = CourseProgress.objects.get(learner=learner, course=course)
+    form_progress(
+        record,
+        quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(
+            interface_url(
+                live_server, organisation.slug, f"learners/{learner.pk}/__tabs/courses"
+            )
+        )
+        expect(page.get_by_text("1 of 1 items")).to_be_visible()
+        expect(page.get_by_text("Passed", exact=True)).to_be_visible()
         assert_no_horizontal_overflow(page)
 
 
@@ -111,6 +156,14 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
         user__last_name="Lovelace",
     )
     course = CourseFactory(title="Algebra")
+    done_topic = TopicFactory()
+    open_topic = TopicFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=done_topic, order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=open_topic, order=1
+    )
     source = CohortFactory(organisation=organisation, name="Morning group")
     destination = CohortFactory(organisation=organisation, name="Evening group")
     CohortMembershipFactory(cohort=source, learner=learner)
@@ -119,6 +172,11 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     # The commit hooks of a transaction=True test have already minted the record.
     CourseProgress.objects.filter(learner=learner, course=course).update(
         progress_percentage=40
+    )
+    topic_progress(
+        CourseProgress.objects.get(learner=learner, course=course),
+        done_topic,
+        complete_time=timezone.now(),
     )
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
@@ -135,4 +193,4 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     expect(main.get_by_text("Evening group").first).to_be_visible()
     expect(main.get_by_text("Morning group")).to_have_count(0)
     page.get_by_role("link", name="Courses", exact=True).click()
-    expect(main.get_by_text("40%").first).to_be_visible()
+    expect(main.get_by_text("1 of 2 items")).to_be_visible()

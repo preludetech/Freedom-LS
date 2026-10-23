@@ -103,13 +103,13 @@ from freedom_ls.educator_interface.messaging import (
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
-    visible_registrations_with_progress,
 )
 from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
     CohortNeedsAttentionPanel,
     CohortReportStack,
     DashboardPanel,
+    LearnerCoursesPanel,
     cohort_members_csv_response,
 )
 from freedom_ls.learner_management.capabilities import can
@@ -677,23 +677,6 @@ class LearnerOverviewStack(PanelStack):
         "cohorts": LearnerCohortsPanel,
         "registrations": LearnerRegistrationsPanel,
     }
-
-
-class LearnerCoursesPanel(Panel):
-    model = Learner
-    title = "Courses"
-    template_name = "educator_interface/panels/learner_courses.html"
-    refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
-
-    def get_context_data(self) -> dict[str, object]:
-        learner = cast(Learner, self.instance)
-        request = cast(OrganisationScopedRequest, self.request)
-        context = super().get_context_data()
-        context["entries"] = sorted(
-            visible_registrations_with_progress(learner, request),
-            key=lambda entry: entry.course.title,
-        )
-        return context
 
 
 class LearnerCoursesStack(PanelStack):

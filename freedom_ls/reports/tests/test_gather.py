@@ -18,7 +18,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -26,17 +26,19 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy, QuestionType
+from freedom_ls.form_engine.models import Form, FormStrategy, QuestionType
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import cohort_counts
 from freedom_ls.learner_progress.factories import TopicProgressFactory
@@ -75,6 +77,7 @@ from freedom_ls.reports.gather import (
     build_wrong_answers_by_learner_quiz,
     gather_cohort_progress,
     gather_cohort_report_data,
+    gather_learner_course_details,
     tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
@@ -94,6 +97,7 @@ from freedom_ls.reports.report_data import (
     QuizColumn,
     SelectedOption,
 )
+from freedom_ls.reports.statuses import ProgressStatus
 from freedom_ls.reports.tests.gather_input_builders import (
     JAN_1,
     JAN_2,
@@ -128,6 +132,10 @@ LONG_COHORT_NAME = "Autumn Intake for Advanced Environmental Fieldwork and Surve
 # issues for one course with one quiz, regardless of how many learners or
 # questions it has. See test_query_count_is_constant_across_learner_and_question_scale.
 GATHER_QUERY_BOUND = 12
+
+# The most queries gather_learner_course_details issues for one course with one
+# quiz, however many attempts or registrations the learner has.
+DETAIL_QUERY_BOUND = 12
 
 
 def _attach(
@@ -2752,3 +2760,167 @@ class TestBuildProgressData:
         data = build_progress_data(LEARNER_ID, "Boundaries", JAN_1, summaries)
 
         assert (data.not_started_count, data.complete_count) == (1, 1)
+
+
+def _quiz_course(title: str = "Maths") -> tuple[Course, Topic, Form]:
+    """A course holding one topic and one quiz with a 50% pass mark."""
+    course: Course = CourseFactory(title=title)
+    topic: Topic = TopicFactory()
+    quiz: Form = FormFactory(
+        title="Unit quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50
+    )
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=1)
+    return course, topic, quiz
+
+
+def _cohort_member(course: Course) -> tuple[CohortCourseRegistration, CourseProgress]:
+    """A one-member cohort registered for `course`, and that member's record."""
+    cohort = CohortFactory()
+    registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        cohort=cohort, course=course
+    )
+    user = UserFactory()
+    CohortMembershipFactory(cohort=cohort, learner__user=user)
+    return registration, course_progress_record(course, user)
+
+
+def _own_registration(
+    record: CourseProgress,
+) -> tuple[LearnerCourseRegistration, CourseProgress]:
+    registration: LearnerCourseRegistration = LearnerCourseRegistrationFactory(
+        learner=record.learner, course=record.course
+    )
+    own_record = ensure_course_progress_record(
+        registration.learner, registration.course, registration
+    )
+    return registration, own_record
+
+
+@pytest.mark.django_db
+class TestGatherLearnerCourseDetails:
+    def test_a_course_held_through_a_cohort_and_individually_gives_two_independent_entries(
+        self, mock_site_context
+    ) -> None:
+        course, topic, _quiz = _quiz_course()
+        cohort_registration, cohort_record = _cohort_member(course)
+        own_registration, _own_record = _own_registration(cohort_record)
+        topic_progress(cohort_record, topic, complete_time=timezone.now())
+
+        details = gather_learner_course_details(
+            cohort_record.learner,
+            [cohort_registration, own_registration],
+            mock_site_context.pk,
+        )
+
+        assert [
+            (d.cohort_name is not None, d.completion_percentage, d.completed_item_count)
+            for d in details
+        ] == [(True, 50, 1), (False, 0, 0)]
+        assert [d.progress_status for d in details] == [
+            ProgressStatus.IN_PROGRESS,
+            ProgressStatus.NOT_STARTED,
+        ]
+
+    def test_flags_and_completion_equal_the_cohort_gathers_for_that_learner(
+        self, mock_site_context
+    ) -> None:
+        course, topic, quiz = _quiz_course()
+        registration, record = _cohort_member(course)
+        topic_progress(record, topic, complete_time=timezone.now())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+
+        (detail,) = gather_learner_course_details(
+            record.learner, [registration], mock_site_context.pk
+        )
+
+        (cohort_summary,) = gather_cohort_progress(
+            str(registration.cohort_id), mock_site_context.pk
+        ).attention_list.learners
+        assert detail.completion_percentage == 50
+        assert [flag.rule_id for flag in detail.flags] == ["failed_latest_quiz"]
+        assert cohort_summary.completion_percentage == detail.completion_percentage
+        assert cohort_summary.flags == detail.flags
+
+    def test_a_registration_with_no_record_is_not_started_with_only_the_no_activity_flag(
+        self, mock_site_context
+    ) -> None:
+        course, _topic, _quiz = _quiz_course()
+        learner = LearnerFactory()
+        registration: LearnerCourseRegistration = LearnerCourseRegistrationFactory(
+            learner=learner, course=course
+        )
+        CourseProgress.objects.filter(learner=learner).delete()
+
+        (detail,) = gather_learner_course_details(
+            learner, [registration], mock_site_context.pk
+        )
+
+        assert (
+            detail.completion_percentage,
+            detail.total_item_count,
+            detail.progress_status,
+            [flag.label for flag in detail.flags],
+        ) == (0, 2, ProgressStatus.NOT_STARTED, ["No recorded activity"])
+
+    def test_every_attempt_is_listed_with_the_pass_mark(
+        self, mock_site_context
+    ) -> None:
+        course, _topic, quiz = _quiz_course()
+        registration, record = _cohort_member(course)
+        first = timezone.now() - timedelta(days=1)
+        form_progress(
+            record, quiz, completed_time=first, scores={"score": 0, "max_score": 2}
+        )
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+
+        (detail,) = gather_learner_course_details(
+            record.learner, [registration], mock_site_context.pk
+        )
+
+        (result,) = detail.quiz_results
+        assert result.pass_percentage == 50
+        assert [
+            (a.attempt_number, a.percentage, a.passed) for a in result.attempts
+        ] == [
+            (1, 0, False),
+            (2, 100, True),
+        ]
+
+    def test_the_query_count_does_not_grow_with_attempts_or_registrations(
+        self, mock_site_context, django_assert_max_num_queries
+    ) -> None:
+        course, _topic, quiz = _quiz_course()
+        cohort_registration, record = _cohort_member(course)
+        learner = record.learner
+
+        def attempts(count: int) -> None:
+            for _ in range(count):
+                form_progress(
+                    record,
+                    quiz,
+                    completed_time=timezone.now(),
+                    scores={"score": 1, "max_score": 2},
+                )
+
+        attempts(1)
+        with django_assert_max_num_queries(DETAIL_QUERY_BOUND):
+            gather_learner_course_details(
+                learner, [cohort_registration], mock_site_context.pk
+            )
+        attempts(2)
+        own_registration, _own_record = _own_registration(record)
+        with django_assert_max_num_queries(DETAIL_QUERY_BOUND):
+            gather_learner_course_details(
+                learner, [cohort_registration, own_registration], mock_site_context.pk
+            )
