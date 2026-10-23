@@ -19,12 +19,13 @@ from __future__ import annotations
 import base64
 import dataclasses
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import Literal, NamedTuple, TypedDict, cast
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
-from django.db.models import Count, F, QuerySet, Window
+from django.db.models import Count, F, Q, QuerySet, Window
 from django.db.models.functions import RowNumber
 
 from freedom_ls.accounts.models import User
@@ -44,6 +45,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.organisations.models import Organisation
@@ -85,6 +87,8 @@ class CourseCatalogue:
 
 @dataclasses.dataclass(frozen=True)
 class TopicProgressIndex:
+    # The `*_by_learner` maps are keyed by course progress record when the
+    # loader was asked to key that way.
     learner_ids_seen: set[UUID]
     completed_topic_ids_by_learner: dict[UUID, set[UUID]]
     complete_time: dict[tuple[UUID, UUID], datetime]
@@ -99,6 +103,9 @@ class FormProgressIndex:
     for a pair, and it is the order `completed_attempts_by_learner_form` is reversed
     out of. Neither can be re-derived from this bundle, so both are settled at
     construction and nothing here may be re-sorted afterwards.
+
+    The `*_by_learner*` maps are keyed by course progress record when the
+    loader was asked to key that way.
     """
 
     learner_ids_seen: set[UUID]
@@ -226,7 +233,7 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
 
 
 def build_course_catalogue(
-    registrations: list[CohortCourseRegistration],
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
 ) -> CourseCatalogue:
     """Every viewable item in the cohort's courses, indexed for the loaders below.
 
@@ -270,30 +277,70 @@ def build_course_catalogue(
     )
 
 
-def _registration_ids(registrations: list[CohortCourseRegistration]) -> list[UUID]:
-    """The cohort's own course registrations, which are the grants the report answers for.
+type ProgressKey = Literal["learner", "course_progress"]
+
+
+class RegistrationIds(NamedTuple):
+    cohort: list[UUID]
+    individual: list[UUID]
+
+
+def _registration_ids(
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
+) -> RegistrationIds:
+    """The grants the loaders answer for, split by the column each kind is stored in.
 
     `__in` rather than a single registration: a cohort can be registered for
     more than one course, and a learner holding a second record for the same
     course under their own registration is doing that course separately.
     """
-    return [registration.pk for registration in registrations]
+    return RegistrationIds(
+        cohort=[
+            registration.pk
+            for registration in registrations
+            if isinstance(registration, CohortCourseRegistration)
+        ],
+        individual=[
+            registration.pk
+            for registration in registrations
+            if isinstance(registration, LearnerCourseRegistration)
+        ],
+    )
+
+
+def _registration_filter(record_path: str, ids: RegistrationIds) -> Q:
+    """Rows whose course progress record was minted by one of the registrations.
+
+    record_path is the lookup path to the record, e.g. "course_progress"; empty
+    when the queryset is CourseProgress itself.
+    """
+    path = f"{record_path}__" if record_path else ""
+    return Q(**{f"{path}cohort_registration__in": ids.cohort}) | Q(
+        **{f"{path}learner_registration__in": ids.individual}
+    )
 
 
 def load_topic_progress_rows(
     site_id: int,
-    registrations: list[CohortCourseRegistration],
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
     learner_ids: list[UUID],
     topic_ids: set[UUID],
+    keyed_by: ProgressKey = "learner",
 ) -> list[tuple[UUID, UUID, datetime | None]]:
-    """(learner_id, topic_id, complete_time) for the cohort's topics, in one query."""
+    """(key, topic_id, complete_time) for the registrations' topics, in one query.
+
+    The key is the learner id, or the course progress record id when asked.
+    """
+    key_column = (
+        "course_progress__learner_id" if keyed_by == "learner" else "course_progress_id"
+    )
     return list(
         TopicProgress.objects.filter(
+            _registration_filter("course_progress", _registration_ids(registrations)),
             site_id=site_id,
-            course_progress__cohort_registration__in=_registration_ids(registrations),
             course_progress__learner_id__in=learner_ids,
             topic_id__in=topic_ids,
-        ).values_list("course_progress__learner_id", "topic_id", "complete_time")
+        ).values_list(key_column, "topic_id", "complete_time")
     )
 
 
@@ -319,7 +366,7 @@ def fold_topic_progress_rows(
 
 def load_form_progress_rows(
     site_id: int,
-    registrations: list[CohortCourseRegistration],
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
     learner_ids: list[UUID],
     form_ids: set[UUID],
 ) -> list[FormProgress]:
@@ -334,10 +381,10 @@ def load_form_progress_rows(
     """
     return list(
         FormProgress.objects.filter(
-            site_id=site_id,
-            course_attempt__course_progress__cohort_registration__in=_registration_ids(
-                registrations
+            _registration_filter(
+                "course_attempt__course_progress", _registration_ids(registrations)
             ),
+            site_id=site_id,
             course_attempt__course_progress__learner_id__in=learner_ids,
             form_id__in=form_ids,
         )
@@ -348,6 +395,7 @@ def load_form_progress_rows(
 
 def fold_form_progress_rows(
     form_progress_rows: list[FormProgress],
+    keyed_by: ProgressKey = "learner",
 ) -> FormProgressIndex:
     """Index the loaded sittings, which must arrive newest-completed first."""
     learner_ids_seen: set[UUID] = set()
@@ -359,7 +407,11 @@ def fold_form_progress_rows(
     completed_attempt_ids: list[UUID] = []
     learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]] = {}
     for fp in form_progress_rows:
-        learner_id = fp.course_attempt.course_progress.learner_id
+        learner_id = (
+            fp.course_attempt.course_progress.learner_id
+            if keyed_by == "learner"
+            else fp.course_attempt.course_progress_id
+        )
         learner_ids_seen.add(learner_id)
         key = (learner_id, fp.form_id)
         learner_form_by_attempt_id[fp.id] = key
@@ -405,9 +457,10 @@ def merge_progress_indexes(
 
 def load_progress_index(
     site_id: int,
-    registrations: list[CohortCourseRegistration],
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
     learner_ids: list[UUID],
     catalogue: CourseCatalogue,
+    keyed_by: ProgressKey = "learner",
 ) -> ProgressIndex:
     """Both progress sources, loaded and merged.
 
@@ -417,20 +470,21 @@ def load_progress_index(
     return merge_progress_indexes(
         fold_topic_progress_rows(
             load_topic_progress_rows(
-                site_id, registrations, learner_ids, catalogue.topic_ids
+                site_id, registrations, learner_ids, catalogue.topic_ids, keyed_by
             )
         ),
         fold_form_progress_rows(
             load_form_progress_rows(
                 site_id, registrations, learner_ids, catalogue.form_ids
-            )
+            ),
+            keyed_by,
         ),
     )
 
 
 def load_first_attempt_ids(
     site_id: int,
-    registrations: list[CohortCourseRegistration],
+    registrations: Sequence[CohortCourseRegistration | LearnerCourseRegistration],
     learner_ids: list[UUID],
     quiz_form_ids: set[UUID],
 ) -> set[UUID]:
@@ -445,10 +499,10 @@ def load_first_attempt_ids(
     # Filtering directly on a window annotation works from Django 4.2 onward.
     return set(
         FormProgress.objects.filter(
-            site_id=site_id,
-            course_attempt__course_progress__cohort_registration__in=_registration_ids(
-                registrations
+            _registration_filter(
+                "course_attempt__course_progress", _registration_ids(registrations)
             ),
+            site_id=site_id,
             course_attempt__course_progress__learner_id__in=learner_ids,
             form_id__in=quiz_form_ids,
             completed_time__isnull=False,

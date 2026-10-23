@@ -40,7 +40,10 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
@@ -55,6 +58,8 @@ from freedom_ls.reports.gather import (
 )
 from freedom_ls.reports.indexes import (
     ReportTooLargeError,
+    _registration_filter,
+    _registration_ids,
     build_course_catalogue,
     build_question_index,
     build_sat_questions,
@@ -110,14 +115,21 @@ def _cohort_registered_for(
     return registration, records
 
 
-def _second_record_for(record: CourseProgress) -> CourseProgress:
+def _own_registration_and_record(
+    record: CourseProgress,
+) -> tuple[LearnerCourseRegistration, CourseProgress]:
     """The same learner's own registration for the same course, and its record."""
-    registration = LearnerCourseRegistrationFactory(
+    registration: LearnerCourseRegistration = LearnerCourseRegistrationFactory(
         learner=record.learner, course=record.course
     )
-    return ensure_course_progress_record(
+    return registration, ensure_course_progress_record(
         registration.learner, registration.course, registration
     )
+
+
+def _second_record_for(record: CourseProgress) -> CourseProgress:
+    """The record under the same learner's own registration for the same course."""
+    return _own_registration_and_record(record)[1]
 
 
 class TestLoadRegistrations:
@@ -359,6 +371,30 @@ class TestBuildCourseCatalogue:
         assert catalogue.ordered_quiz_form_ids == [first.id, second.id]
 
 
+class TestRegistrationIds:
+    def test_each_kind_is_split_into_its_own_column(self, mock_site_context):
+        course = CourseFactory()
+        cohort_registration, (record,) = _cohort_registered_for(course)
+        own_registration, _ = _own_registration_and_record(record)
+
+        ids = _registration_ids([cohort_registration, own_registration])
+
+        assert ids.cohort == [cohort_registration.pk]
+        assert ids.individual == [own_registration.pk]
+
+    def test_the_filter_reads_only_records_minted_by_the_given_registrations(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        _, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        ids = _registration_ids([own_registration])
+
+        records = CourseProgress.objects.filter(_registration_filter("", ids))
+
+        assert list(records) == [own_record]
+
+
 class TestLoadTopicProgressRows:
     def test_only_the_named_learners_rows_are_read(self, mock_site_context):
         course = CourseFactory()
@@ -389,6 +425,48 @@ class TestLoadTopicProgressRows:
         )
 
         assert rows == []
+
+    def test_an_individual_registrations_rows_are_read_when_it_is_passed(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        topic = TopicFactory()
+        _attach(course, topic)
+        _, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        topic_progress(own_record, topic, complete_time=timezone.now())
+
+        rows = load_topic_progress_rows(
+            mock_site_context.pk,
+            [own_registration],
+            [own_record.learner_id],
+            {topic.id},
+        )
+
+        assert [row[0] for row in rows] == [own_record.learner_id]
+
+    def test_rows_are_keyed_by_course_progress_record_when_asked(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        topic = TopicFactory()
+        _attach(course, topic)
+        cohort_registration, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        topic_progress(cohort_record, topic, complete_time=timezone.now())
+        topic_progress(own_record, topic, complete_time=timezone.now())
+
+        rows = load_topic_progress_rows(
+            mock_site_context.pk,
+            [cohort_registration, own_registration],
+            [cohort_record.learner_id],
+            {topic.id},
+            keyed_by="course_progress",
+        )
+
+        assert sorted(row[0] for row in rows) == sorted(
+            [cohort_record.pk, own_record.pk]
+        )
 
     def test_rows_are_read_in_one_query(
         self, mock_site_context, django_assert_num_queries
@@ -484,7 +562,72 @@ class TestLoadFormProgressRows:
             ]
 
 
+class TestLoadProgressIndexKeyedByCourseProgress:
+    def test_one_course_held_two_ways_gives_two_keys_whose_completions_never_merge(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        topic = TopicFactory()
+        other_topic = TopicFactory()
+        _attach(course, topic, order=0)
+        _attach(course, other_topic, order=1)
+        cohort_registration, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        topic_progress(cohort_record, topic, complete_time=timezone.now())
+        topic_progress(own_record, other_topic, complete_time=timezone.now())
+
+        index = load_progress_index(
+            mock_site_context.pk,
+            [cohort_registration, own_registration],
+            [cohort_record.learner_id],
+            build_course_catalogue([cohort_registration]),
+            keyed_by="course_progress",
+        )
+
+        assert index.topics.completed_topic_ids_by_learner == {
+            cohort_record.pk: {topic.id},
+            own_record.pk: {other_topic.id},
+        }
+
+    def test_sittings_are_keyed_by_course_progress_record(self, mock_site_context):
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        cohort_registration, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        form_progress(cohort_record, quiz, completed_time=timezone.now(), scores={})
+        form_progress(own_record, quiz, completed_time=timezone.now(), scores={})
+
+        index = load_progress_index(
+            mock_site_context.pk,
+            [cohort_registration, own_registration],
+            [cohort_record.learner_id],
+            build_course_catalogue([cohort_registration]),
+            keyed_by="course_progress",
+        )
+
+        assert set(index.forms.latest_by_learner_form) == {
+            (cohort_record.pk, quiz.pk),
+            (own_record.pk, quiz.pk),
+        }
+
+
 class TestLoadFirstAttemptIds:
+    def test_an_individual_registrations_sitting_is_honoured(self, mock_site_context):
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        _, (cohort_record,) = _cohort_registered_for(course)
+        own_registration, own_record = _own_registration_and_record(cohort_record)
+        own = form_progress(own_record, quiz, completed_time=timezone.now(), scores={})
+
+        assert load_first_attempt_ids(
+            mock_site_context.pk,
+            [own_registration],
+            [own_record.learner_id],
+            {quiz.id},
+        ) == {own.id}
+
     def test_only_the_earliest_completed_sitting_per_learner_and_quiz_is_returned(
         self, mock_site_context
     ):
