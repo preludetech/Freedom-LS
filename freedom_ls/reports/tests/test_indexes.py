@@ -38,6 +38,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.models import CourseProgress
@@ -58,6 +59,8 @@ from freedom_ls.reports.indexes import (
     build_question_index,
     build_sat_questions,
     index_distractors,
+    learner_sort_key,
+    load_active_memberships,
     load_distractor_rows,
     load_first_attempt_ids,
     load_form_progress_rows,
@@ -235,6 +238,47 @@ class TestLoadRoster:
         with django_assert_num_queries(1):
             roster = load_roster(cohort, mock_site_context.pk)
             [user.display_name for user in roster.learners_by_id.values()]
+
+
+class TestLoadActiveMemberships:
+    def test_a_removed_learner_is_excluded(self, mock_site_context):
+        cohort = CohortFactory()
+        kept = CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(
+                user=UserFactory(),
+                organisation=cohort.organisation,
+                is_active=False,
+            ),
+        )
+
+        memberships = load_active_memberships(cohort, mock_site_context.pk)
+
+        assert list(memberships) == [kept]
+
+    def test_members_and_their_users_are_read_in_one_query(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+
+        with django_assert_num_queries(1):
+            memberships = load_active_memberships(cohort, mock_site_context.pk)
+            [m.learner.user.display_name for m in memberships]
+
+
+class TestLearnerSortKey:
+    def test_surname_comes_first_then_first_name(self, mock_site_context):
+        user = UserFactory(first_name=" Ada ", last_name=" Zeta ")
+
+        assert learner_sort_key(user) == ("Zeta", "Ada")
+
+    def test_a_missing_surname_falls_back_to_the_email(self, mock_site_context):
+        user = UserFactory(first_name="", last_name="", email="a@example.test")
+
+        assert learner_sort_key(user) == ("a@example.test", "")
 
 
 class TestBuildCourseCatalogue:

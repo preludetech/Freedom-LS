@@ -24,7 +24,7 @@ from typing import TypedDict, cast
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
-from django.db.models import Count, F, Window
+from django.db.models import Count, F, QuerySet, Window
 from django.db.models.functions import RowNumber
 
 from freedom_ls.accounts.models import User
@@ -152,11 +152,22 @@ class SatQuestions:
     correctness: dict[tuple[UUID, UUID], bool]
 
 
-def _learner_sort_key(user: User) -> tuple[str, str]:
+def learner_sort_key(user: User) -> tuple[str, str]:
     """Surname-first ordering, falling back to the email when no surname is set."""
     first_name = (user.first_name or "").strip()
     last_name = (user.last_name or "").strip()
     return (last_name or user.email, first_name)
+
+
+def load_active_memberships(cohort: Cohort, site_id: int) -> QuerySet[CohortMembership]:
+    """Memberships whose learner is still active in the organisation, with the user loaded.
+
+    Removed learners keep their membership rows, so every reader that counts
+    or lists a cohort's people filters them out here, not by hand.
+    """
+    return CohortMembership.objects.filter(
+        cohort=cohort, site_id=site_id, learner__is_active=True
+    ).select_related("learner__user")
 
 
 def load_cohort(cohort_id: str, site_id: int) -> Cohort:
@@ -193,7 +204,7 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
     # summary table out of step with the Contents page and the learner
     # sections, which are both alphabetical by surname.
     sort_key_by_id: dict[UUID, tuple[str, str]] = {
-        learner_id: _learner_sort_key(user)
+        learner_id: learner_sort_key(user)
         for learner_id, user in learners_by_id.items()
     }
     learner_ids = sorted(

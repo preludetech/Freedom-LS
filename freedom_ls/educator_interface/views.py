@@ -104,6 +104,7 @@ from freedom_ls.educator_interface.quick_views import (
     LearnerQuickView,
     visible_registrations_with_progress,
 )
+from freedom_ls.educator_interface.reporting import cohort_members_csv_response
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -1718,6 +1719,37 @@ def _resolve_organisation(user: User, organisation_slug: str) -> Organisation:
     return organisation
 
 
+def _attach_organisation(request: HttpRequest, organisation_slug: str) -> Organisation:
+    """Resolve and authorise the organisation once and put it on the request.
+
+    Everything the section configs list in required_request_attrs is set
+    here, so a page and a file download start from the same scoped request.
+    """
+    organisation = _resolve_organisation(cast(User, request.user), organisation_slug)
+    scoped_request = cast(OrganisationScopedRequest, request)
+    scoped_request.organisation = organisation
+    scoped_request.panel_scope_name = organisation.name
+    scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
+    return organisation
+
+
+def _scoped_cohort(
+    request: HttpRequest, organisation_slug: str, cohort_pk: str
+) -> Cohort:
+    """The cohort named in a file URL, after the organisation and cohort checks a page runs."""
+    _attach_organisation(request, organisation_slug)
+    return cast(Cohort, CohortConfig.get_instance_view(request, cohort_pk).instance)
+
+
+@login_required
+def cohort_members_csv(
+    request: HttpRequest, organisation_slug: str, cohort_pk: str
+) -> HttpResponse:
+    return cohort_members_csv_response(
+        _scoped_cohort(request, organisation_slug, cohort_pk)
+    )
+
+
 @login_required_htmx_to("educator_interface:root")
 def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpResponse:
     """The Messages nav item's count: the unread conversations of the organisation.
@@ -1749,11 +1781,8 @@ def interface(
     403 would confirm the slug is real and let an attacker enumerate a
     Site's organisation names.
     """
-    organisation = _resolve_organisation(cast(User, request.user), organisation_slug)
+    organisation = _attach_organisation(request, organisation_slug)
     scoped_request = cast(OrganisationScopedRequest, request)
-    scoped_request.organisation = organisation
-    scoped_request.panel_scope_name = organisation.name
-    scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
     scoped_request.accessible_organisations = list(
         organisations_accessible_to(request.user)
     )
