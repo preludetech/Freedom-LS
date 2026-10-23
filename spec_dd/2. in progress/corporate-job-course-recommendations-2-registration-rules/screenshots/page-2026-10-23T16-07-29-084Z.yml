@@ -1,0 +1,117 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=e4]
+      - heading "FirstClass" [level=1] [ref=e5]
+    - navigation [ref=e6]:
+      - generic [ref=e7]:
+        - link "Login" [ref=e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=e10]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - heading "Teach the way your learners need." [level=1] [ref=e14]
+        - paragraph [ref=e15]: "Most learning platforms are digital textbooks — linear, rigid, and full of opinions about how learning should work. This is different: a learning system that flexes around your learners, not the other way around."
+        - link "Browse all courses" [ref=e17] [cursor=pointer]:
+          - /url: /courses/
+      - status [ref=e18]
+      - generic [ref=e21]:
+        - heading "Available courses" [level=2] [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: 1 to 1 of 1
+            - navigation "Available courses pages" [ref=e27]:
+              - link "Previous page" [disabled] [ref=e28] [cursor=pointer]:
+                - img "previous" [ref=e29]
+              - link "Next page" [disabled] [ref=e31] [cursor=pointer]:
+                - img "next" [ref=e32]
+            - link "Browse all courses" [ref=e34] [cursor=pointer]:
+              - /url: /courses/
+          - article [ref=e40]:
+            - generic [ref=e44]:
+              - generic [ref=e45]: Free
+              - heading [level=3] [ref=e47]:
+                - link "QA Budgeting Basics" [ref=e48] [cursor=pointer]:
+                  - /url: /courses/qa-budgeting-basics/detail/
+              - link "Details" [ref=e50] [cursor=pointer]:
+                - /url: /courses/qa-budgeting-basics/detail/
+  - contentinfo [ref=e54]:
+    - generic [ref=e55]:
+      - paragraph [ref=e56]: © 2026 FirstClass
+      - navigation "Legal" [ref=e57]:
+        - link "Terms and Conditions" [ref=e58] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=e59] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=e60] [cursor=pointer]: corporate-job-course-recommendations-2-registration-rules
+  - list [ref=e62]:
+    - listitem [ref=e63]:
+      - link "Hide »" [ref=e64] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e65]:
+      - link "Toggle Theme" [ref=e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e69]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e70] [cursor=pointer]
+      - link "History /" [ref=e71] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e73] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=e74] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e75]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e76] [cursor=pointer]
+      - 'link "Time CPU: 126.17ms (144.53ms)" [ref=e77] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=e78]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e79] [cursor=pointer]
+      - link "Settings" [ref=e80] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e81]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e82] [cursor=pointer]
+      - link "Headers" [ref=e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e84]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e85] [cursor=pointer]
+      - link "Request dashboard" [ref=e86] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e87]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e88] [cursor=pointer]
+      - link "SQL 6 queries in 9.74ms" [ref=e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e90]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e91] [cursor=pointer]
+      - link "Static files 8 files used" [ref=e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e93]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e94] [cursor=pointer]
+      - link "Templates learner_interface/dashboard.html" [ref=e95] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e96]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e97] [cursor=pointer]
+      - link "Alerts" [ref=e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e99]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e100] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e102]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e103] [cursor=pointer]
+      - link "Signals 97 receivers of 15 signals" [ref=e104] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e105]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e106] [cursor=pointer]
+      - link "Community" [ref=e107] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e108]:
+      - checkbox "Enable for next and successive requests" [ref=e109] [cursor=pointer]
+      - generic [ref=e110]: Intercept redirects
+    - listitem [ref=e111]:
+      - checkbox "Enable for next and successive requests" [ref=e112] [cursor=pointer]
+      - generic [ref=e113]: Profiling
