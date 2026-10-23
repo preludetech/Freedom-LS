@@ -107,6 +107,7 @@ from freedom_ls.educator_interface.quick_views import (
 )
 from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
+    CohortNeedsAttentionPanel,
     CohortReportStack,
     cohort_members_csv_response,
 )
@@ -910,12 +911,6 @@ class CohortCourseCompletionPanel(Panel):
             for registration in registrations
         ]
         return context
-
-
-class CohortNeedsAttentionPanel(Panel):
-    title = "Needs attention"
-    template_name = "educator_interface/panels/cohort_needs_attention.html"
-    refresh_events = (COHORT_CHANGED,)
 
 
 class CohortEducatorsPanel(Panel):

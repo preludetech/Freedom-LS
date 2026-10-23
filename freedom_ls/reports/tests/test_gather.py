@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -37,6 +38,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     Learner,
 )
+from freedom_ls.learner_management.queries import cohort_counts
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
@@ -69,7 +71,9 @@ from freedom_ls.reports.gather import (
     _unique_abbreviations,
     _wordmark_size_class,
     build_confusion_block,
+    build_progress_data,
     build_wrong_answers_by_learner_quiz,
+    gather_cohort_progress,
     gather_cohort_report_data,
     tally_quiz_answers,
 )
@@ -86,6 +90,7 @@ from freedom_ls.reports.report_data import (
     AtRiskFlag,
     LearnerDetail,
     LearnerRow,
+    LearnerSummary,
     QuizColumn,
     SelectedOption,
 )
@@ -2582,19 +2587,13 @@ class TestCompletionStatistics:
         assert _completion_statistics([]) == CompletionStats(0, 0, 0)
 
     def test_the_median_of_an_even_number_of_learners_is_rounded(self) -> None:
-        details = [_a_detail(completion=value) for value in (10, 20, 30, 45)]
-
-        assert _completion_statistics(details).median_completion == 25
+        assert _completion_statistics([10, 20, 30, 45]).median_completion == 25
 
     def test_not_started_counts_only_zero_percent_learners(self) -> None:
-        details = [_a_detail(completion=value) for value in (0, 0, 1, 100)]
-
-        assert _completion_statistics(details).not_started_count == 2
+        assert _completion_statistics([0, 0, 1, 100]).not_started_count == 2
 
     def test_complete_counts_only_fully_finished_learners(self) -> None:
-        details = [_a_detail(completion=value) for value in (0, 99, 100, 100)]
-
-        assert _completion_statistics(details).complete_count == 2
+        assert _completion_statistics([0, 99, 100, 100]).complete_count == 2
 
 
 @pytest.mark.parametrize(
@@ -2608,3 +2607,148 @@ class TestCompletionStatistics:
 def test_quiz_numbers_survive_abbreviation_intact(title: str, expected: str) -> None:
     """A dropped digit would both lose the number and invite column collisions."""
     assert _abbreviate_quiz_title(title) == expected
+
+
+NOW = "2026-03-01T12:00:00+00:00"
+
+
+@pytest.fixture
+def seeded_cohort(mock_site_context) -> Cohort:
+    """Ada finished both topics yesterday, Bo one ten days ago, Cy none."""
+    course = CourseFactory()
+    first, second = TopicFactory(), TopicFactory()
+    _attach(course, first, order=0)
+    _attach(course, second, order=1)
+    cohort: Cohort = CohortFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    ada = UserFactory(first_name="Ada", last_name="Able")
+    bo = UserFactory(first_name="Bo", last_name="Baker")
+    cy = UserFactory(first_name="Cy", last_name="Cook")
+    for user in (ada, bo, cy):
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+    ada_record = course_progress_record(course, ada)
+    bo_record = course_progress_record(course, bo)
+    course_progress_record(course, cy)
+    now = datetime.fromisoformat(NOW)
+    yesterday = now - timedelta(days=1)
+    topic_progress(ada_record, first, complete_time=yesterday)
+    topic_progress(ada_record, second, complete_time=yesterday)
+    topic_progress(bo_record, first, complete_time=now - timedelta(days=10))
+    return cohort
+
+
+@pytest.mark.django_db
+class TestGatherCohortProgress:
+    def test_the_cohort_figures_are_literal_for_a_seeded_cohort(
+        self, seeded_cohort, mock_site_context
+    ):
+        with time_machine.travel(NOW, tick=False):
+            data = gather_cohort_progress(str(seeded_cohort.pk), mock_site_context.pk)
+
+        assert (
+            data.cohort_size,
+            data.mean_completion,
+            data.median_completion,
+            data.not_started_count,
+            data.complete_count,
+        ) == (3, 50, 50, 1, 1)
+
+    def test_each_learner_summary_matches_the_full_gathers_learner_detail(
+        self, seeded_cohort, mock_site_context
+    ):
+        with time_machine.travel(NOW, tick=False):
+            progress = gather_cohort_progress(
+                str(seeded_cohort.pk), mock_site_context.pk
+            )
+            report = gather_cohort_report_data(
+                str(seeded_cohort.pk), mock_site_context.pk
+            )
+
+        assert progress.learners == [
+            LearnerSummary(
+                learner_id=detail.learner_id,
+                full_name=detail.full_name,
+                sort_key=detail.sort_key,
+                completion_percentage=detail.completion_percentage,
+                last_completed_title=detail.last_completed_title,
+                last_completed_at=detail.last_completed_at,
+                flags=detail.flags,
+            )
+            for detail in report.learners
+        ]
+
+    def test_one_learners_completion_and_flags_are_literal(
+        self, seeded_cohort, mock_site_context
+    ):
+        with time_machine.travel(NOW, tick=False):
+            data = gather_cohort_progress(str(seeded_cohort.pk), mock_site_context.pk)
+
+        bo = data.learners[1]
+        assert (bo.full_name, bo.completion_percentage) == ("Bo Baker", 50)
+        assert [flag.rule_id for flag in bo.flags] == ["inactive"]
+
+    def test_the_attention_list_holds_the_flagged_learners_least_complete_first(
+        self, seeded_cohort, mock_site_context
+    ):
+        with time_machine.travel(NOW, tick=False):
+            data = gather_cohort_progress(str(seeded_cohort.pk), mock_site_context.pk)
+
+        assert [learner.full_name for learner in data.attention_list.learners] == [
+            "Cy Cook",
+            "Bo Baker",
+        ]
+
+    def test_the_progress_gather_runs_fewer_queries_than_the_full_gather(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        cohort_id = _build_cohort_with_quiz(learner_count=3, question_count=3)
+
+        with django_assert_max_num_queries(GATHER_QUERY_BOUND - 4):
+            gather_cohort_progress(cohort_id, mock_site_context.pk)
+
+    def test_a_removed_learner_is_not_gathered(self, seeded_cohort, mock_site_context):
+        Learner.objects.filter(user__last_name="Cook").update(is_active=False)
+
+        data = gather_cohort_progress(str(seeded_cohort.pk), mock_site_context.pk)
+
+        assert [learner.full_name for learner in data.learners] == [
+            "Ada Able",
+            "Bo Baker",
+        ]
+
+    def test_the_full_gathers_cohort_size_is_the_active_count_the_header_shows(
+        self, seeded_cohort, mock_site_context
+    ):
+        report = gather_cohort_report_data(str(seeded_cohort.pk), mock_site_context.pk)
+
+        assert report.cohort_size == 3
+        assert report.cohort_size == cohort_counts(seeded_cohort).learners
+
+
+class TestBuildProgressData:
+    def test_an_empty_cohort_has_no_mean(self) -> None:
+        data = build_progress_data(LEARNER_ID, "Empty", JAN_1, [])
+
+        assert (data.mean_completion, data.cohort_size, data.median_completion) == (
+            None,
+            0,
+            0,
+        )
+
+    def test_the_status_counts_follow_the_progress_status_boundaries(self) -> None:
+        summaries = [
+            LearnerSummary(
+                learner_id=LEARNER_ID,
+                full_name="A Learner",
+                sort_key=("Learner", "A"),
+                completion_percentage=value,
+                last_completed_title=None,
+                last_completed_at=None,
+                flags=[],
+            )
+            for value in (0, 1, 99, 100)
+        ]
+
+        data = build_progress_data(LEARNER_ID, "Boundaries", JAN_1, summaries)
+
+        assert (data.not_started_count, data.complete_count) == (1, 1)

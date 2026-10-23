@@ -17,6 +17,7 @@ about what "now" was.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -24,17 +25,26 @@ from typing import Protocol
 class QuizResultLike(Protocol):
     """The subset of a per-quiz outcome the base rules read."""
 
-    completed_at: datetime | None
-    passed: bool | None
+    @property
+    def completed_at(self) -> datetime | None: ...
+    @property
+    def passed(self) -> bool | None: ...
 
 
 class LearnerDetailLike(Protocol):
-    """The subset of a per-learner report row the base rules read."""
+    """The subset of a per-learner report row the base rules read.
 
-    has_any_progress: bool
-    last_completed_at: datetime | None
-    report_generated_at: datetime
-    quiz_results: list[QuizResultLike]
+    Read-only properties, so a frozen dataclass satisfies it.
+    """
+
+    @property
+    def has_any_progress(self) -> bool: ...
+    @property
+    def last_completed_at(self) -> datetime | None: ...
+    @property
+    def report_generated_at(self) -> datetime: ...
+    @property
+    def quiz_results(self) -> Sequence[QuizResultLike]: ...
 
 
 class AtRiskRule(Protocol):

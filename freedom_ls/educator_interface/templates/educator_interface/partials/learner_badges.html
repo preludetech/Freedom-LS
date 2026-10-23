@@ -1,0 +1,16 @@
+{% load educator_tags %}
+{% comment %}
+A learner's progress status badge, then one badge per at-risk flag with the
+flag's reason beside it. Required context: completion_percentage, flags. Every
+surface that shows a learner includes this, so the status and the flags read
+the same wherever the learner appears.
+{% endcomment %}
+{% progress_status_badge completion_percentage as status_badge %}
+<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+    <c-panel-status-badge :tone="status_badge.tone" :label="status_badge.label" />
+    {% for flag in flags %}
+        {% flag_badge flag as badge %}
+        <c-panel-status-badge :tone="badge.tone" :label="badge.label" />
+        <span class="text-muted">{{ flag.reason }}</span>
+    {% endfor %}
+</div>

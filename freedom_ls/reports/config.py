@@ -70,6 +70,7 @@ class ReportsConfig(AppSettings):
     REPORTS_STORAGE_ALIAS: str
     REPORTS_MAX_LEARNERS: int
     REPORTS_MAX_QUIZ_COLUMNS: int
+    REPORTS_SCREEN_CACHE_SECONDS: int
     REPORTS_FONT_FACES: list[dict[str, str]]
     REPORTS_FONT_DISPLAY: str
     REPORTS_FONT_BODY: str
@@ -87,6 +88,10 @@ class ReportsConfig(AppSettings):
         # the report's own body face — a deployment that changes the page size,
         # the fonts or the Completion column width can raise or lower it.
         "REPORTS_MAX_QUIZ_COLUMNS": Setting(default=10),
+        # The lifetime of an on-screen gather: a freshness budget, not a product
+        # rule. A longer value spares the database on busy pages; a shorter one
+        # shows new progress sooner.
+        "REPORTS_SCREEN_CACHE_SECONDS": Setting(default=300),
         "REPORTS_FONT_FACES": Setting(default=DEFAULT_REPORT_FONT_FACES),
         "REPORTS_FONT_DISPLAY": Setting(default='"Inter", "DejaVu Sans", sans-serif'),
         "REPORTS_FONT_BODY": Setting(

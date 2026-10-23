@@ -44,6 +44,7 @@ from freedom_ls.reports.gather import (
     CompletedItem,
     ConfusionBlock,
     CourseSection,
+    LearnerDetail,
     LearnerRow,
     QuizAttempt,
     QuizColumn,
@@ -908,7 +909,9 @@ class TestAtAGlance:
         assert "Sam Lee" in html
 
     def test_cap_disclosure_shown_when_capped(self) -> None:
-        attention = AttentionList(learners=[], shown=12, total=18)
+        attention: AttentionList[LearnerDetail] = AttentionList(
+            learners=[], shown=12, total=18
+        )
         data = cohort_report_data(attention_list=attention)
 
         html = render_to_string(
@@ -919,7 +922,9 @@ class TestAtAGlance:
         assert "18" in html
 
     def test_no_disclosure_when_not_capped(self) -> None:
-        attention = AttentionList(learners=[], shown=0, total=0)
+        attention: AttentionList[LearnerDetail] = AttentionList(
+            learners=[], shown=0, total=0
+        )
         data = cohort_report_data(attention_list=attention)
 
         html = render_to_string(

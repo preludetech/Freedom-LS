@@ -239,6 +239,37 @@ class TestLoadRoster:
             roster = load_roster(cohort, mock_site_context.pk)
             [user.display_name for user in roster.learners_by_id.values()]
 
+    def test_a_removed_learner_is_absent_from_the_roster(self, mock_site_context):
+        cohort = CohortFactory()
+        kept = CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(
+                user=UserFactory(),
+                organisation=cohort.organisation,
+                is_active=False,
+            ),
+        )
+
+        roster = load_roster(cohort, mock_site_context.pk)
+
+        assert roster.learner_ids == [kept.learner_id]
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_a_removed_learner_does_not_count_toward_the_limit(self, mock_site_context):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(
+                user=UserFactory(),
+                organisation=cohort.organisation,
+                is_active=False,
+            ),
+        )
+
+        assert len(load_roster(cohort, mock_site_context.pk).learner_ids) == 1
+
 
 class TestLoadActiveMemberships:
     def test_a_removed_learner_is_excluded(self, mock_site_context):

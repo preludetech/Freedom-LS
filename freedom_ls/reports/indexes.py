@@ -190,12 +190,12 @@ def load_registrations(cohort: Cohort, site_id: int) -> list[CohortCourseRegistr
 
 
 def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
-    """The cohort's members in report order, refusing a cohort too large to render."""
-    memberships = list(
-        CohortMembership.objects.filter(cohort=cohort, site_id=site_id).select_related(
-            "learner__user"
-        )
-    )
+    """The cohort's active members in report order, refusing a cohort too large to render.
+
+    Removed learners are gone before the size check, so they do not count toward
+    REPORTS_MAX_LEARNERS.
+    """
+    memberships = list(load_active_memberships(cohort, site_id))
     learners_by_id: dict[UUID, User] = {
         m.learner_id: m.learner.user for m in memberships
     }

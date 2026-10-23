@@ -24,6 +24,9 @@ Attributes:
   action_href   The action's target; the action only renders when both this
                 and action_label are given (default none).
 
+The default slot holds extra content under the subject and reason, such as
+badges (default none).
+
 Below md the whole row is the tap target for href (the subject link
 stretches over it via ::after), the action hides and a decorative "next"
 icon trails, so the DOM still holds only the one link to href.
@@ -38,6 +41,7 @@ icon trails, so the DOM still holds only the one link to href.
     <div class="min-w-0 grow">
         <a href="{{ href }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
         {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
+        {{ slot }}
     </div>
     {% if badge_label %}<c-panel-status-badge :tone="badge_tone" :label="badge_label" />{% endif %}
     {% if action_label and action_href %}

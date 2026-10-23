@@ -23,9 +23,13 @@ from freedom_ls.learner_management.queries import cohort_educators, learner_stat
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, PanelStack
+from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.indexes import learner_sort_key, load_active_memberships
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.report_data import AtRiskFlag, ReportTooLargeError
+from freedom_ls.reports.screen_cache import cached_cohort_progress
 from freedom_ls.reports.services import latest_cohort_reports, request_cohort_report
+from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
 if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
@@ -35,6 +39,26 @@ REPORT_POLL_SECONDS = 3
 #: An in-flight report older than this is assumed stuck, and the page stops polling for it.
 IN_FLIGHT_STALL = timedelta(minutes=10)
 DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
+#: The query parameter that turns a lazy panel's skeleton into its body.
+LOADED_PARAM = "loaded"
+
+PROGRESS_STATUS_TONES = {
+    ProgressStatus.NOT_STARTED: "muted",
+    ProgressStatus.IN_PROGRESS: "info",
+    ProgressStatus.COMPLETE: "success",
+}
+
+
+def progress_status_badge(completion_percentage: int) -> StatusBadge:
+    """The badge for a learner's progress status, from a recomputed completion."""
+    status = progress_status(completion_percentage)
+    return StatusBadge(tone=PROGRESS_STATUS_TONES[status], label=status.label)
+
+
+def flag_badge(flag: AtRiskFlag) -> StatusBadge:
+    """The badge for an at-risk flag."""
+    # A rule's severity is already a role token name, so it is the tone.
+    return StatusBadge(tone=flag.severity, label=flag.label)
 
 
 def cohort_members_csv_response(cohort: Cohort) -> HttpResponse:
@@ -166,3 +190,54 @@ class CohortReportStack(PanelStack):
     title = "Report"
     refresh_events = (COHORT_CHANGED,)
     children = {"downloads": CohortReportDownloadsPanel}
+
+
+class LazyBodyPanel(Panel):
+    """A panel whose body costs a gather: the first render is a skeleton that fetches the body.
+
+    get_loaded_context runs only on the fetch that carries loaded=1. It may
+    raise ReportTooLargeError; the region then shows the message instead of a body.
+    """
+
+    template_name = "educator_interface/panels/lazy_panel.html"
+    skeleton_shape = "text"
+    skeleton_lines = 3
+
+    @property
+    def is_loaded(self) -> bool:
+        return self.request.GET.get(LOADED_PARAM) == "1"
+
+    def get_loaded_context(self) -> dict[str, object]:
+        return {}
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context.update(
+            is_loaded=self.is_loaded,
+            loaded_url=f"{self.ctx.base_url}?{LOADED_PARAM}=1",
+            skeleton_shape=self.skeleton_shape,
+            skeleton_lines=self.skeleton_lines,
+        )
+        if self.is_loaded:
+            try:
+                context.update(self.get_loaded_context())
+            except ReportTooLargeError as error:
+                context["too_large_message"] = str(error)
+        return context
+
+
+class CohortNeedsAttentionPanel(LazyBodyPanel):
+    model = Cohort
+    title = "Needs attention"
+    refresh_events = (COHORT_CHANGED,)
+    skeleton_shape = "row"
+    region_template_name = (
+        "educator_interface/panels/cohort_needs_attention_region.html"
+    )
+
+    def get_loaded_context(self) -> dict[str, object]:
+        return {
+            "attention": cached_cohort_progress(
+                cast(Cohort, self.instance)
+            ).attention_list
+        }

@@ -1,0 +1,18 @@
+{% extends "educator_interface/panels/_lazy_region.html" %}
+{% load panel_tags %}
+
+{% block loaded_body %}
+    {% if attention.learners %}
+        <c-panel-attention-list>
+            {% for learner in attention.learners %}
+                {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
+                <c-panel-attention-row :subject="learner.full_name" :href="learner_url" icon="warning">
+                    {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
+                </c-panel-attention-row>
+            {% endfor %}
+        </c-panel-attention-list>
+        {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="learners flagged" %}
+    {% else %}
+        <c-panel-empty-state message="Nobody needs attention right now" />
+    {% endif %}
+{% endblock loaded_body %}

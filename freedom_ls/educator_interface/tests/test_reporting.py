@@ -16,10 +16,15 @@ import time_machine
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.educator_interface.reporting import (
+    PROGRESS_STATUS_TONES,
+    flag_badge,
+    progress_status_badge,
+)
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
@@ -28,6 +33,8 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.report_data import AtRiskFlag
+from freedom_ls.reports.statuses import ProgressStatus
 from freedom_ls.reports.tests.test_views import (
     _role_config_granting_view_cohort_only,
 )
@@ -486,3 +493,139 @@ class TestCohortReportDownload:
             )
 
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestProgressBadges:
+    def test_the_three_statuses_map_to_muted_info_and_success(self) -> None:
+        assert [PROGRESS_STATUS_TONES[status] for status in ProgressStatus] == [
+            "muted",
+            "info",
+            "success",
+        ]
+
+    def test_a_completion_percentage_becomes_its_status_badge(self) -> None:
+        badge = progress_status_badge(50)
+
+        assert (badge.tone, badge.label) == ("info", "In progress")
+
+    def test_a_flag_badge_is_toned_by_the_flags_severity(self) -> None:
+        flag = AtRiskFlag(
+            rule_id="inactive",
+            label="No activity recently",
+            reason="No activity recorded in over 7 days.",
+            severity="warning",
+        )
+
+        badge = flag_badge(flag)
+
+        assert (badge.tone, badge.label) == ("warning", "No activity recently")
+
+
+def _attention_url(organisation_slug: str, cohort_pk: object) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "path_string": f"cohorts/{cohort_pk}/__tabs/overview/__panels/attention",
+        },
+    )
+
+
+def _attention_region(
+    client: Client, url: str, *, loaded: bool = True
+) -> lxml.html.HtmlElement:
+    """The attention region as the htmx fetch the skeleton makes returns it."""
+    page = lxml.html.fromstring(client.get(url).content.decode())
+    region_id = page.cssselect("[data-panel='attention'] div[id^='panel-']")[0].get(
+        "id"
+    )
+    response = client.get(
+        f"{url}?loaded=1" if loaded else url,
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET=region_id,
+    )
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+@pytest.mark.django_db
+class TestNeedsAttentionCard:
+    def test_the_first_render_is_a_busy_skeleton_with_a_load_trigger(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client,
+            _attention_url(cohort.organisation.slug, cohort.pk),
+            loaded=False,
+        )
+
+        assert region.get("aria-busy") == "true"
+        assert len(region.cssselect("[hx-trigger='load']")) == 1
+
+    def test_the_loaded_region_lists_a_flagged_learner_with_badges_reason_and_link(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        membership = CohortMembershipFactory(
+            cohort=cohort,
+            learner__user=UserFactory(first_name="Cy", last_name="Cook"),
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        (row,) = region.cssselect("li")
+        assert [a.text_content() for a in row.cssselect("a")] == ["Cy Cook"]
+        assert (
+            row.cssselect("a")[0]
+            .get("href")
+            .endswith(f"/learners/{membership.learner_id}")
+        )
+        text = " ".join(row.text_content().split())
+        assert "Not started" in text
+        assert "No recorded activity" in text
+        assert "Has not started any course item." in text
+        assert region.get("aria-busy") is None
+
+    def test_a_cohort_with_nobody_flagged_says_so(self, logged_in_client):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert "Nobody needs attention right now" in region.text_content()
+
+    def test_a_removed_learner_is_not_listed(self, logged_in_client):
+        cohort = CohortFactory()
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(organisation=cohort.organisation, is_active=False),
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert region.cssselect("li") == []
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_a_cohort_over_the_limit_shows_the_error_message(self, logged_in_client):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        assert "exceeding the configured limit of 1" in region.text_content()

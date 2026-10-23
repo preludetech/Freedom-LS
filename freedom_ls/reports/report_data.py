@@ -10,7 +10,9 @@ pulling in the query layer.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Protocol
 from uuid import UUID
 
 ATTENTION_LIST_MAX = 12
@@ -196,9 +198,31 @@ class ConfusionBlock:
     total: int
 
 
+class FlaggedLearnerLike(Protocol):
+    """What the attention list reads off a learner row, whichever gather built it."""
+
+    @property
+    def completion_percentage(self) -> int: ...
+    @property
+    def flags(self) -> Sequence[AtRiskFlag]: ...
+
+
 @dataclasses.dataclass(frozen=True)
-class AttentionList:
-    learners: list[LearnerDetail]
+class LearnerSummary:
+    """One learner's progress figures and flags, without the report-only detail."""
+
+    learner_id: UUID
+    full_name: str
+    sort_key: tuple[str, str]
+    completion_percentage: int
+    last_completed_title: str | None
+    last_completed_at: datetime | None
+    flags: list[AtRiskFlag]
+
+
+@dataclasses.dataclass(frozen=True)
+class AttentionList[LearnerT: FlaggedLearnerLike]:
+    learners: list[LearnerT]
     shown: int
     total: int
 
@@ -257,8 +281,24 @@ class CohortReportData:
     requested_by_name: str
     courses: list[CourseSection]
     learners: list[LearnerDetail]
-    attention_list: AttentionList
+    attention_list: AttentionList[LearnerDetail]
     cohort_size: int
+    median_completion: int
+    not_started_count: int
+    complete_count: int
+
+
+@dataclasses.dataclass(frozen=True)
+class CohortProgressData:
+    """The cohort's progress figures and at-risk flags, without the answer data."""
+
+    cohort_id: UUID
+    cohort_name: str
+    generated_at: datetime
+    learners: list[LearnerSummary]
+    attention_list: AttentionList[LearnerSummary]
+    cohort_size: int
+    mean_completion: int | None
     median_completion: int
     not_started_count: int
     complete_count: int

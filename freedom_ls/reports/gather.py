@@ -15,7 +15,6 @@ import dataclasses
 import statistics
 from collections import defaultdict
 from datetime import datetime
-from typing import cast
 from uuid import UUID
 
 from django.utils import timezone
@@ -28,7 +27,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
 )
-from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
 from freedom_ls.reports.at_risk import AT_RISK_RULES, LearnerDetailLike
 from freedom_ls.reports.config import config
 from freedom_ls.reports.indexes import (
@@ -59,12 +58,15 @@ from freedom_ls.reports.report_data import (
     MIN_RESPONDENTS_FOR_PERCENTAGE,
     AtRiskFlag,
     AttentionList,
+    CohortProgressData,
     CohortReportData,
     CompletedItem,
     ConfusionBlock,
     CourseSection,
+    FlaggedLearnerLike,
     LearnerDetail,
     LearnerRow,
+    LearnerSummary,
     OrganisationBrand,
     QuizAttempt,
     QuizColumn,
@@ -77,6 +79,7 @@ from freedom_ls.reports.report_data import (
     SummaryTable,
     WrongAnswer,
 )
+from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
 # The report contract, re-exported for the callers that have always imported it
 # from this module. Naming them in __all__ is what stops ruff removing the
@@ -87,12 +90,14 @@ __all__ = [
     "MIN_RESPONDENTS_FOR_PERCENTAGE",
     "AtRiskFlag",
     "AttentionList",
+    "CohortProgressData",
     "CohortReportData",
     "CompletedItem",
     "ConfusionBlock",
     "CourseSection",
     "LearnerDetail",
     "LearnerRow",
+    "LearnerSummary",
     "OrganisationBrand",
     "QuizAttempt",
     "QuizColumn",
@@ -104,6 +109,8 @@ __all__ = [
     "SummaryRow",
     "SummaryTable",
     "WrongAnswer",
+    "build_progress_data",
+    "gather_cohort_progress",
     "gather_cohort_report_data",
 ]
 
@@ -627,18 +634,13 @@ def _build_course_section(
     )
 
 
-def _evaluate_at_risk_flags(detail: LearnerDetail) -> list[AtRiskFlag]:
+def _evaluate_at_risk_flags(detail: LearnerDetailLike) -> list[AtRiskFlag]:
     """Every at-risk rule's verdict on one learner, from a single registry pass.
 
     Flags are evaluated exactly once per learner, here. The attention list
     filters and sorts these same LearnerDetail objects — it never re-evaluates,
     so a learner's flags read identically everywhere in the report.
     """
-    # LearnerDetailLike is a structural stand-in (freedom_ls/reports/at_risk.py);
-    # LearnerDetail satisfies it in practice but mypy can't confirm list
-    # invariance and frozen-dataclass read-only attributes against a
-    # Protocol declared with plain mutable fields, hence the cast.
-    detail_for_rules = cast("LearnerDetailLike", detail)
     return [
         AtRiskFlag(
             rule_id=rule.id,
@@ -647,7 +649,7 @@ def _evaluate_at_risk_flags(detail: LearnerDetail) -> list[AtRiskFlag]:
             severity=rule.severity,
         )
         for rule in AT_RISK_RULES
-        for reason in [rule.evaluate(detail_for_rules)]
+        for reason in [rule.evaluate(detail)]
         if reason is not None
     ]
 
@@ -705,11 +707,13 @@ def _build_learner_detail(
     return dataclasses.replace(detail, flags=_evaluate_at_risk_flags(detail))
 
 
-def _build_attention_list(learner_details: list[LearnerDetail]) -> AttentionList:
-    """The flagged learners the report leads with, least-complete first."""
+def _build_attention_list[LearnerT: FlaggedLearnerLike](
+    learners: list[LearnerT],
+) -> AttentionList[LearnerT]:
+    """The flagged learners a report leads with, least-complete first."""
     flagged = sorted(
-        (detail for detail in learner_details if detail.flags),
-        key=lambda detail: detail.completion_percentage,
+        (learner for learner in learners if learner.flags),
+        key=lambda learner: learner.completion_percentage,
     )
     shown_flagged = flagged[:ATTENTION_LIST_MAX]
     return AttentionList(
@@ -717,14 +721,100 @@ def _build_attention_list(learner_details: list[LearnerDetail]) -> AttentionList
     )
 
 
-def _completion_statistics(learner_details: list[LearnerDetail]) -> CompletionStats:
-    completion_values = [detail.completion_percentage for detail in learner_details]
+def _completion_statistics(completion_values: list[int]) -> CompletionStats:
+    """Median and the two status counts, from one list of recomputed completions."""
     return CompletionStats(
         median_completion=round(statistics.median(completion_values))
         if completion_values
         else 0,
-        not_started_count=sum(1 for value in completion_values if value == 0),
-        complete_count=sum(1 for value in completion_values if value == 100),
+        not_started_count=sum(
+            1
+            for value in completion_values
+            if progress_status(value) is ProgressStatus.NOT_STARTED
+        ),
+        complete_count=sum(
+            1
+            for value in completion_values
+            if progress_status(value) is ProgressStatus.COMPLETE
+        ),
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class ProgressCore:
+    """What both gathers load before they diverge."""
+
+    cohort: Cohort
+    registrations: list[CohortCourseRegistration]
+    roster: CohortRoster
+    catalogue: CourseCatalogue
+    progress: ProgressIndex
+
+
+def _load_progress_core(cohort_id: str, site_id: int) -> ProgressCore:
+    cohort = load_cohort(cohort_id, site_id)
+    registrations = load_registrations(cohort, site_id)
+    # Before the per-course traversals in the catalogue, so an oversized
+    # cohort is refused without paying for them.
+    roster = load_roster(cohort, site_id)
+    catalogue = build_course_catalogue(registrations)
+    progress = load_progress_index(
+        site_id, registrations, roster.learner_ids, catalogue
+    )
+    return ProgressCore(cohort, registrations, roster, catalogue, progress)
+
+
+def _summarise(detail: LearnerDetail) -> LearnerSummary:
+    return LearnerSummary(
+        learner_id=detail.learner_id,
+        full_name=detail.full_name,
+        sort_key=detail.sort_key,
+        completion_percentage=detail.completion_percentage,
+        last_completed_title=detail.last_completed_title,
+        last_completed_at=detail.last_completed_at,
+        flags=detail.flags,
+    )
+
+
+def gather_cohort_progress(cohort_id: str, site_id: int) -> CohortProgressData:
+    """The cohort's progress figures and at-risk flags, without the answer loaders.
+
+    An empty wrong-answer map yields the same completion, last item and flags
+    as the full gather, so the two agree on every figure this one returns.
+    """
+    now = timezone.now()
+    core = _load_progress_core(cohort_id, site_id)
+    summaries = [
+        _summarise(
+            _build_learner_detail(
+                learner_id, core.roster, core.catalogue, core.progress, {}, now
+            )
+        )
+        for learner_id in core.roster.learner_ids
+    ]
+    return build_progress_data(core.cohort.pk, core.cohort.name, now, summaries)
+
+
+def build_progress_data(
+    cohort_id: UUID,
+    cohort_name: str,
+    generated_at: datetime,
+    summaries: list[LearnerSummary],
+) -> CohortProgressData:
+    """Every figure derived from the learner rows, so a reader that drops rows rebuilds them here."""
+    completions = [summary.completion_percentage for summary in summaries]
+    stats = _completion_statistics(completions)
+    return CohortProgressData(
+        cohort_id=cohort_id,
+        cohort_name=cohort_name,
+        generated_at=generated_at,
+        learners=summaries,
+        attention_list=_build_attention_list(summaries),
+        cohort_size=len(summaries),
+        mean_completion=round(statistics.fmean(completions)) if completions else None,
+        median_completion=stats.median_completion,
+        not_started_count=stats.not_started_count,
+        complete_count=stats.complete_count,
     )
 
 
@@ -741,16 +831,9 @@ def gather_cohort_report_data(
     """
     now = timezone.now()
 
-    cohort = load_cohort(cohort_id, site_id)
-    registrations = load_registrations(cohort, site_id)
-    # Before the per-course traversals in the catalogue below, so an oversized
-    # cohort is refused without paying for them.
-    roster = load_roster(cohort, site_id)
-    catalogue = build_course_catalogue(registrations)
-
-    progress = load_progress_index(
-        site_id, registrations, roster.learner_ids, catalogue
-    )
+    core = _load_progress_core(cohort_id, site_id)
+    cohort, registrations, roster = core.cohort, core.registrations, core.roster
+    catalogue, progress = core.catalogue, core.progress
     first_attempt_ids = load_first_attempt_ids(
         site_id, registrations, roster.learner_ids, catalogue.quiz_form_ids
     )
@@ -794,7 +877,9 @@ def gather_cohort_report_data(
         )
         for learner_id in roster.learner_ids
     ]
-    stats = _completion_statistics(learner_details)
+    stats = _completion_statistics(
+        [detail.completion_percentage for detail in learner_details]
+    )
 
     return CohortReportData(
         cohort_name=cohort.name,

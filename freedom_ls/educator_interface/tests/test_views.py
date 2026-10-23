@@ -863,13 +863,17 @@ def test_course_completion_leaves_out_an_inactive_registration(
 
 
 @pytest.mark.django_db
-def test_needs_attention_card_renders_its_placeholder(staff_client: Client):
+def test_needs_attention_card_renders_a_skeleton_that_fetches_its_body(
+    staff_client: Client,
+):
     cohort = CohortFactory(organisation=OrganisationFactory())
 
     document = _cohort_page(staff_client, cohort)
 
     (card,) = document.cssselect("section[data-panel='attention']")
-    assert "Nothing needs attention yet." in card.text_content()
+    (region,) = card.cssselect("div[aria-busy='true']")
+    (fetch,) = region.cssselect("[hx-trigger='load']")
+    assert fetch.get("hx-get").endswith("/__panels/attention?loaded=1")
 
 
 @pytest.mark.django_db
