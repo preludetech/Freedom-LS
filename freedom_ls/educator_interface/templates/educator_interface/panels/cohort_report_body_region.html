@@ -52,7 +52,7 @@ with incorrect answers), refresh_url.
                     {% else %}
                         {% for table in section.summary_tables %}
                             {% if table.continued %}<p class="mt-4 mb-1 text-sm text-muted">{{ section.title }} (continued)</p>{% endif %}
-                            <div class="overflow-x-auto">
+                            <div class="relative overflow-x-auto">
                                 <table class="w-full text-sm">
                                     <thead>
                                         <tr class="border-b border-border text-left">
@@ -117,7 +117,7 @@ with incorrect answers), refresh_url.
             <h3 id="report-confusions-title" class="text-lg font-semibold font-display">Quiz confusions across the cohort</h3>
             {% for card in confusions %}
                 <c-panel-card :title="card.quiz.title" heading_level="4">
-                    <div class="overflow-x-auto">
+                    <div class="relative overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="border-b border-border text-left">
