@@ -1,0 +1,156 @@
+{% extends "educator_interface/panels/_lazy_region.html" %}
+{% load panel_tags educator_tags %}
+
+{% comment %}
+The Report tab body: the PDF's sections in the PDF's order, from the same
+gathered data. Per-learner detail and wrong answers are left to the PDF.
+Required context when loaded: data (CohortReportData), confusions (the quizzes
+with incorrect answers), refresh_url.
+{% endcomment %}
+
+{% block loaded_body %}
+    <div class="space-y-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-muted">Figures as of {{ data.generated_at|date:"j M Y, H:i" }}</p>
+            <c-button type="button" variant="ghost" hx-get="{{ refresh_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Refresh</c-button>
+        </div>
+
+        <section aria-labelledby="report-glance-title" class="space-y-3">
+            <h3 id="report-glance-title" class="text-lg font-semibold font-display">Cohort at a glance</h3>
+            <c-panel-stat-row variant="inline">
+                <c-panel-stat-tile variant="inline" label="Learners in cohort" :value="data.cohort_size" />
+                <c-panel-stat-tile variant="inline" label="Median completion" value="{{ data.median_completion }}%" />
+                <c-panel-stat-tile variant="inline" label="Not started" :value="data.not_started_count" />
+                <c-panel-stat-tile variant="inline" label="Completed everything" :value="data.complete_count" />
+            </c-panel-stat-row>
+        </section>
+
+        <section aria-labelledby="report-attention-title" class="space-y-3">
+            <h3 id="report-attention-title" class="text-lg font-semibold font-display">Learners needing attention</h3>
+            {% if data.attention_list.learners %}
+                <c-panel-attention-list>
+                    {% for learner in data.attention_list.learners %}
+                        {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
+                        <c-panel-attention-row :subject="learner.full_name" :href="learner_url" icon="warning">
+                            {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
+                        </c-panel-attention-row>
+                    {% endfor %}
+                </c-panel-attention-list>
+                {% include "reports/partials/cap_disclosure.html" with shown=data.attention_list.shown total=data.attention_list.total noun="learners flagged" %}
+            {% else %}
+                <c-panel-empty-state message="No learners currently flagged." />
+            {% endif %}
+        </section>
+
+        <section aria-labelledby="report-summary-title" class="space-y-3">
+            <h3 id="report-summary-title" class="text-lg font-semibold font-display">Summary of learner progress</h3>
+            {% for section in data.courses %}
+                <c-panel-card :title="section.title" heading_level="4">
+                    {% if not section.is_active %}<p class="mb-2 text-sm text-muted">(inactive registration)</p>{% endif %}
+                    {% if not section.learner_rows %}
+                        <c-panel-empty-state message="This cohort has no learners." />
+                    {% else %}
+                        {% for table in section.summary_tables %}
+                            {% if table.continued %}<p class="mt-4 mb-1 text-sm text-muted">{{ section.title }} (continued)</p>{% endif %}
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-border text-left">
+                                            <th scope="col" class="sticky left-0 bg-surface py-2 pr-4 font-medium">Learner</th>
+                                            {% if not table.continued %}
+                                                <th scope="col" class="px-2 py-2 font-medium">Status</th>
+                                                <th scope="col" class="px-2 py-2 font-medium">Completion</th>
+                                                <th scope="col" class="px-2 py-2 font-medium">Last item completed</th>
+                                                <th scope="col" class="px-2 py-2 font-medium">When</th>
+                                            {% endif %}
+                                            {% for quiz in table.quizzes %}
+                                                <th scope="col" class="px-2 py-2 font-medium">{{ quiz.abbreviation }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-border">
+                                        {% for row in table.rows %}
+                                            {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
+                                            <tr>
+                                                <th scope="row" class="sticky left-0 bg-surface py-2 pr-4 text-left font-medium whitespace-nowrap"><a href="{{ learner_url }}">{{ row.full_name }}</a></th>
+                                                {% if not table.continued %}
+                                                    <td class="px-2 py-2">
+                                                        {% progress_status_badge row.completion_percentage as status_badge %}
+                                                        <c-panel-status-badge :tone="status_badge.tone" :label="status_badge.label" />
+                                                    </td>
+                                                    <td class="min-w-40 px-2 py-2">
+                                                        <c-panel-progress-bar :percentage="row.completion_percentage" label="{{ row.full_name }} completion" />
+                                                        <span class="text-xs text-muted">{{ row.completed_item_count }} of {{ row.total_item_count }} items</span>
+                                                    </td>
+                                                    <td class="px-2 py-2">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
+                                                    <td class="px-2 py-2 whitespace-nowrap">{% if row.last_completed_at %}{{ row.last_completed_at|date:"j M Y" }}{% else %}—{% endif %}</td>
+                                                {% endif %}
+                                                {% for result in row.cells %}
+                                                    <td class="px-2 py-2 whitespace-nowrap">
+                                                        {% if result is None %}
+                                                            <span aria-hidden="true" class="text-muted">—</span><span class="sr-only">Not attempted</span>
+                                                        {% else %}
+                                                            <span class="tabular-nums">{% if result.latest_percentage is not None %}{{ result.latest_percentage }}%{% elif result.latest_score is not None and result.latest_max_score is not None %}{{ result.latest_score }}/{{ result.latest_max_score }}{% endif %}</span>
+                                                            {% if result.passed is True %}<c-panel-status-badge tone="success" label="Passed" />{% elif result.passed is False %}<c-panel-status-badge tone="error" label="Failed" />{% endif %}
+                                                            <span class="text-muted">×{{ result.attempt_count }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if table.quizzes %}
+                                <p class="mt-2 text-xs text-muted">{% for quiz in table.quizzes %}{{ quiz.abbreviation }} = {{ quiz.title }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+                            {% endif %}
+                        {% endfor %}
+                        <p class="mt-2 text-xs text-muted">Score is the latest attempt · ×n is the number of attempts · quiz columns follow course order.</p>
+                    {% endif %}
+                </c-panel-card>
+            {% empty %}
+                <c-panel-empty-state message="There are no course registrations to summarise." />
+            {% endfor %}
+        </section>
+
+        <section aria-labelledby="report-confusions-title" class="space-y-3">
+            <h3 id="report-confusions-title" class="text-lg font-semibold font-display">Quiz confusions across the cohort</h3>
+            {% for card in confusions %}
+                <c-panel-card :title="card.quiz.title" heading_level="4">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-border text-left">
+                                    <th scope="col" class="py-2 pr-2 font-medium">Q</th>
+                                    <th scope="col" class="px-2 py-2 font-medium">Question and correct answer</th>
+                                    <th scope="col" class="px-2 py-2 font-medium">Incorrect answers chosen</th>
+                                    <th scope="col" class="px-2 py-2 font-medium">Got it wrong</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                {% for question in card.block.questions %}
+                                    <tr class="align-top">
+                                        <td class="py-2 pr-2 whitespace-nowrap">Q{{ question.question_number }}</td>
+                                        <td class="px-2 py-2">
+                                            {{ question.question_text }}
+                                            <div class="mt-1 flex flex-wrap gap-1">{% for text in question.correct_option_texts %}<c-chip variant="success" size="xs">{{ text }}</c-chip>{% endfor %}</div>
+                                        </td>
+                                        <td class="px-2 py-2">
+                                            <div class="flex flex-wrap gap-1">{% for text, count in question.distractors %}<c-chip variant="error" size="xs">{{ text }} ×{{ count }}</c-chip>{% endfor %}</div>
+                                        </td>
+                                        <td class="px-2 py-2">
+                                            {% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} learners{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} learners{% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% include "reports/partials/cap_disclosure.html" with shown=card.block.shown total=card.block.total noun="questions with at least one incorrect answer" %}
+                </c-panel-card>
+            {% empty %}
+                <c-panel-empty-state message="No quiz in this report has any incorrect answers to analyse." />
+            {% endfor %}
+        </section>
+    </div>
+{% endblock loaded_body %}

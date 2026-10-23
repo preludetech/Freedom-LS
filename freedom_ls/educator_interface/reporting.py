@@ -41,9 +41,15 @@ from freedom_ls.reports.report_data import (
     ATTENTION_LIST_MAX,
     AtRiskFlag,
     CohortProgressData,
+    CohortReportData,
+    ConfusionBlock,
+    QuizColumn,
     ReportTooLargeError,
 )
-from freedom_ls.reports.screen_cache import cached_cohort_progress
+from freedom_ls.reports.screen_cache import (
+    cached_cohort_progress,
+    cached_cohort_report,
+)
 from freedom_ls.reports.services import latest_cohort_reports, request_cohort_report
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
@@ -202,12 +208,6 @@ def _pdf_url(url_kwargs: dict[str, str], ready: GeneratedReport | None) -> str:
     )
 
 
-class CohortReportStack(PanelStack):
-    title = "Report"
-    refresh_events = (COHORT_CHANGED,)
-    children = {"downloads": CohortReportDownloadsPanel}
-
-
 class LazyBodyPanel(Panel):
     """A panel whose body costs a gather: the first render is a skeleton that fetches the body.
 
@@ -257,6 +257,52 @@ class CohortNeedsAttentionPanel(LazyBodyPanel):
                 cast(Cohort, self.instance)
             ).attention_list
         }
+
+
+REFRESH_PARAM = "refresh"
+
+
+@dataclasses.dataclass(frozen=True)
+class QuizConfusionCard:
+    quiz: QuizColumn
+    block: ConfusionBlock
+
+
+def _quiz_confusions(data: CohortReportData) -> list[QuizConfusionCard]:
+    """The quizzes with at least one incorrect answer, in course and quiz order."""
+    return [
+        QuizConfusionCard(quiz=quiz, block=section.confusions_by_quiz[quiz.form_id])
+        for section in data.courses
+        for quiz in section.quizzes
+        if quiz.form_id in section.confusions_by_quiz
+        and section.confusions_by_quiz[quiz.form_id].total
+    ]
+
+
+class CohortReportBodyPanel(LazyBodyPanel):
+    model = Cohort
+    title = "Cohort report"
+    refresh_events = (COHORT_CHANGED,)
+    region_template_name = "educator_interface/panels/cohort_report_body_region.html"
+    skeleton_lines = 8
+
+    def get_loaded_context(self) -> dict[str, object]:
+        refresh = self.request.GET.get(REFRESH_PARAM) == "1"
+        data = cached_cohort_report(cast(Cohort, self.instance), refresh=refresh)
+        return {
+            "data": data,
+            "confusions": _quiz_confusions(data),
+            "refresh_url": f"{self.ctx.base_url}?{LOADED_PARAM}=1&{REFRESH_PARAM}=1",
+        }
+
+
+class CohortReportStack(PanelStack):
+    title = "Report"
+    refresh_events = (COHORT_CHANGED,)
+    children = {
+        "downloads": CohortReportDownloadsPanel,
+        "body": CohortReportBodyPanel,
+    }
 
 
 @dataclasses.dataclass(frozen=True)

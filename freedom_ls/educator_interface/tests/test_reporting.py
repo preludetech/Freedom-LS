@@ -5,37 +5,62 @@ from __future__ import annotations
 import csv
 import io
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from email.message import Message
 from pathlib import Path
 from typing import cast
+from uuid import uuid4
 
 import lxml.html
 import pytest
 import time_machine
 
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.educator_interface.reporting import (
     PROGRESS_STATUS_TONES,
     flag_badge,
     progress_status_badge,
 )
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Cohort, CohortMembership
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
+from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.reports.report_data import AtRiskFlag
+from freedom_ls.reports.report_data import (
+    MIN_RESPONDENTS_FOR_PERCENTAGE,
+    AtRiskFlag,
+    ConfusionBlock,
+    QuizColumn,
+    QuizConfusion,
+    SummaryTable,
+)
+from freedom_ls.reports.screen_cache import _cache_key
 from freedom_ls.reports.statuses import ProgressStatus
+from freedom_ls.reports.tests.helpers import topic_progress
+from freedom_ls.reports.tests.report_data_builders import (
+    cohort_report_data,
+    course_section,
+)
 from freedom_ls.reports.tests.test_views import (
     _role_config_granting_view_cohort_only,
 )
@@ -632,6 +657,254 @@ class TestNeedsAttentionCard:
         assert "exceeding the configured limit of 1" in region.text_content()
 
 
+def _body_url(organisation_slug: str, cohort_pk: object) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation_slug,
+            "path_string": f"cohorts/{cohort_pk}/__tabs/report/__panels/body",
+        },
+    )
+
+
+def _body_region(
+    client: Client, url: str, *, query: str = "loaded=1"
+) -> lxml.html.HtmlElement:
+    """The report body region as the htmx fetch the skeleton makes returns it."""
+    page = lxml.html.fromstring(client.get(url).content.decode())
+    region_id = page.cssselect("[data-panel='body'] div[id^='panel-']")[0].get("id")
+    response = client.get(
+        f"{url}?{query}", HTTP_HX_REQUEST="true", HTTP_HX_TARGET=region_id
+    )
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _seeded_report_cohort() -> Cohort:
+    """Two members: Ada finished the only topic, Bo has not started."""
+    course = CourseFactory()
+    topic = TopicFactory()
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    cohort: Cohort = CohortFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    for first_name, last_name in (("Ada", "Able"), ("Bo", "Baker")):
+        user = UserFactory(first_name=first_name, last_name=last_name)
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+        record = course_progress_record(course, user)
+        if first_name == "Ada":
+            topic_progress(record, topic, complete_time=timezone.now())
+    return cohort
+
+
+def _at_a_glance(region: lxml.html.HtmlElement) -> dict[str, str]:
+    return {
+        dl.cssselect("dt")[0].text_content().strip(): dl.cssselect("dd")[0]
+        .text_content()
+        .strip()
+        for dl in region.cssselect("dl")
+    }
+
+
+def _seed_report_cache(cohort: Cohort, quiz_confusion: QuizConfusion) -> None:
+    quiz = QuizColumn(
+        form_id=uuid4(), title="Orbit Quiz", abbreviation="OQ", pass_percentage=50
+    )
+    block = ConfusionBlock(questions=[quiz_confusion], shown=1, total=1)
+    section = course_section(
+        title="Astronomy",
+        quizzes=[quiz],
+        summary_tables=[SummaryTable(quizzes=[quiz], rows=[], continued=False)],
+        confusions_by_quiz={quiz.form_id: block},
+    )
+    cache.set(
+        _cache_key(cohort.site_id, cohort.pk, "report"),
+        cohort_report_data(courses=[section]),
+    )
+
+
+def _confusion(**overrides: object) -> QuizConfusion:
+    defaults: dict[str, object] = {
+        "question_number": 1,
+        "question_text": "What is an orbit?",
+        "respondent_count": 12,
+        "wrong_count": 8,
+        "show_percentage": True,
+        "wrong_percentage": 67,
+        "distractors": [("A straight line", 5)],
+        "correct_option_texts": ["A closed path around a body"],
+    }
+    defaults.update(overrides)
+    return QuizConfusion(**defaults)
+
+
+@pytest.mark.django_db
+class TestCohortReportBody:
+    @pytest.fixture(autouse=True)
+    def _empty_cache(self):
+        cache.clear()
+        yield
+        cache.clear()
+
+    def test_the_first_render_is_a_busy_skeleton_with_a_load_trigger(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(
+            client, _body_url(cohort.organisation.slug, cohort.pk), query="x=1"
+        )
+
+        assert region.get("aria-busy") == "true"
+        assert len(region.cssselect("[hx-trigger='load']")) == 1
+
+    @time_machine.travel(datetime(2026, 3, 15, 10, 30, tzinfo=UTC), tick=False)
+    def test_the_at_a_glance_figures_equal_the_gather_and_the_seeded_literals(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        gathered = gather_cohort_report_data(str(cohort.pk), cohort.site_id)
+        assert _at_a_glance(region) == {
+            "Learners in cohort": str(gathered.cohort_size),
+            "Median completion": f"{gathered.median_completion}%",
+            "Not started": str(gathered.not_started_count),
+            "Completed everything": str(gathered.complete_count),
+        }
+        assert _at_a_glance(region) == {
+            "Learners in cohort": "2",
+            "Median completion": "50%",
+            "Not started": "1",
+            "Completed everything": "1",
+        }
+        assert "Figures as of 15 Mar 2026, 10:30" in region.text_content()
+
+    def test_a_learner_name_in_a_summary_row_links_to_the_learner_page(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        membership = CohortMembership.objects.get(
+            cohort=cohort, learner__user__first_name="Ada"
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        (link,) = region.cssselect("tbody a")[:1]
+        assert link.text_content() == "Ada Able"
+        assert link.get("href").endswith(f"/learners/{membership.learner_id}")
+
+    def test_the_summary_rows_carry_status_completion_and_the_items_count(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        first_row = " ".join(region.cssselect("tbody tr")[0].text_content().split())
+        assert "Ada Able" in first_row
+        assert "Complete" in first_row
+        assert "1 of 1 items" in first_row
+
+    def test_refresh_replaces_a_stale_cache_entry_with_fresh_figures(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _body_url(cohort.organisation.slug, cohort.pk)
+        cache.set(
+            _cache_key(cohort.site_id, cohort.pk, "report"),
+            cohort_report_data(cohort_size=0, median_completion=99),
+        )
+
+        stale = _body_region(client, url)
+        fresh = _body_region(client, url, query="loaded=1&refresh=1")
+
+        assert _at_a_glance(stale)["Median completion"] == "99%"
+        assert _at_a_glance(fresh)["Median completion"] == "50%"
+
+    def test_the_refresh_control_asks_for_a_regather_into_the_same_region(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        (button,) = region.cssselect("button[hx-get]")
+        assert button.get("hx-get").endswith("?loaded=1&refresh=1")
+        assert button.get("hx-target") == f"#{region.get('id')}"
+        assert button.get("hx-swap") == "outerHTML"
+
+    def test_a_quiz_with_enough_respondents_shows_a_percentage(self, logged_in_client):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(cohort, _confusion())
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        text = " ".join(region.text_content().split())
+        assert "67% of 12 learners" in text
+        assert "A straight line \u00d75" in text
+        assert "A closed path around a body" in text
+
+    def test_a_quiz_with_few_respondents_shows_counts_not_a_percentage(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(
+            cohort,
+            _confusion(
+                respondent_count=MIN_RESPONDENTS_FOR_PERCENTAGE - 1,
+                wrong_count=3,
+                show_percentage=False,
+                wrong_percentage=None,
+            ),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        text = " ".join(region.text_content().split())
+        assert "3 of 9 learners" in text
+        assert "%" not in text.split("Got it wrong")[-1]
+
+    def test_a_cohort_without_incorrect_answers_says_so(self, logged_in_client):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert (
+            "No quiz in this report has any incorrect answers to analyse."
+            in region.text_content()
+        )
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_a_cohort_over_the_limit_shows_the_message_and_no_tables(
+        self, logged_in_client
+    ):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert "exceeding the configured limit of 1" in region.text_content()
+        assert region.cssselect("table") == []
+
+    def test_the_body_never_shows_wrong_answer_text(self, logged_in_client):
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert "Wrong answers" not in region.text_content()
+
+
 _NEW_REPORTING_FILES = [
     "reporting.py",
     "templates/educator_interface/panels/dashboard.html",
@@ -641,6 +914,7 @@ _NEW_REPORTING_FILES = [
     "templates/educator_interface/panels/cohort_needs_attention_region.html",
     "templates/educator_interface/panels/cohort_report_downloads.html",
     "templates/educator_interface/panels/cohort_report_downloads_region.html",
+    "templates/educator_interface/panels/cohort_report_body_region.html",
     "templates/educator_interface/partials/learner_badges.html",
 ]
 

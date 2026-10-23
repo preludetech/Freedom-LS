@@ -24,7 +24,11 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.reports.report_data import ReportTooLargeError
-from freedom_ls.reports.screen_cache import _cache_key, cached_cohort_progress
+from freedom_ls.reports.screen_cache import (
+    _cache_key,
+    cached_cohort_progress,
+    cached_cohort_report,
+)
 from freedom_ls.reports.tests.helpers import topic_progress
 
 
@@ -131,3 +135,51 @@ def test_two_sites_with_the_same_cohort_pk_never_share_a_key() -> None:
     assert _cache_key(1, cohort_id, "progress") != _cache_key(
         other_site.pk, cohort_id, "progress"
     )
+
+
+@pytest.mark.django_db
+class TestCachedCohortReport:
+    def test_a_learner_removed_after_caching_leaves_every_figure_on_the_next_read(
+        self, cohort
+    ):
+        before = cached_cohort_report(cohort)
+        Learner.objects.filter(user__last_name="Able").update(is_active=False)
+
+        after = cached_cohort_report(cohort)
+
+        (course,) = after.courses
+        (table,) = course.summary_tables
+        assert [learner.full_name for learner in before.learners] == [
+            "Learner Able",
+            "Learner Baker",
+        ]
+        assert [learner.full_name for learner in after.learners] == ["Learner Baker"]
+        assert [row.full_name for row in course.learner_rows] == ["Learner Baker"]
+        assert [row.full_name for row in table.rows] == ["Learner Baker"]
+        assert [learner.full_name for learner in after.attention_list.learners] == [
+            "Learner Baker"
+        ]
+        assert (after.cohort_size, after.complete_count, after.not_started_count) == (
+            1,
+            0,
+            1,
+        )
+
+    def test_the_confusion_blocks_are_left_as_gathered_when_a_learner_is_trimmed(
+        self, cohort
+    ):
+        before = cached_cohort_report(cohort)
+        Learner.objects.filter(user__last_name="Able").update(is_active=False)
+
+        after = cached_cohort_report(cohort)
+
+        assert (
+            after.courses[0].confusions_by_quiz == before.courses[0].confusions_by_quiz
+        )
+
+    def test_refresh_gathers_again(self, cohort):
+        cached_cohort_report(cohort)
+        Learner.objects.filter(user__last_name="Able").update(is_active=False)
+        Learner.objects.filter(user__last_name="Baker").update(is_active=False)
+
+        assert cached_cohort_report(cohort, refresh=True).cohort_size == 0
