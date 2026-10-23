@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-10-23_
 
 ## Summary
 
@@ -172,6 +172,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
+| `REPORTS_SCREEN_CACHE_SECONDS` | How long the educator interface's on-screen [reporting](./educator-interface.md#reporting) figures are kept before being recalculated; defaults to five minutes. Longer eases database load on busy pages, shorter shows new progress sooner. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
 | `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |
 | `REPORTS_FONT_BODY` | Font stack for the report's body text. |
