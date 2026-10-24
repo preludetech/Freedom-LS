@@ -8,8 +8,9 @@ from unfold.admin import ModelAdmin, TabularInline
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import models
+from django.db.models import BaseConstraint, Model
 from django.forms import BaseInlineFormSet
 from django.http import HttpRequest
 from django.utils.html import format_html, format_html_join
@@ -39,6 +40,7 @@ from freedom_ls.deadlines.resolver import (
 from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
@@ -50,6 +52,26 @@ class CollectionItemChoiceField(forms.ModelChoiceField):
         if child is None:
             return str(obj.pk)
         return f"{child.title} ({child.file_path})"
+
+
+class DeadlineOverrideForm(ConstraintValidationFormMixin):
+    """Checks the one-override-per-target constraints while cleaning and words a clash for
+    an admin, not as a constraint name. The clash belongs to the row, not to one field."""
+
+    def _error_key(self, constraint: BaseConstraint) -> str:
+        return NON_FIELD_ERRORS
+
+    def _reworded(
+        self,
+        model_class: type[Model],
+        constraint: BaseConstraint,
+        error: ValidationError,
+    ) -> ValidationError:
+        if self.instance.collection_item_id is None:
+            return ValidationError(
+                "The course time limit already has an override here.", code="unique"
+            )
+        return ValidationError("This item already has an override here.", code="unique")
 
 
 class DeadlineOverrideFormSet(BaseInlineFormSet):
@@ -105,6 +127,7 @@ class DeadlineOverrideInline(TabularInline):
     models carry a course, so the parent's course needs no subclass hook."""
 
     extra = 0
+    form = DeadlineOverrideForm
     formset = DeadlineOverrideFormSet
     fields = [
         "collection_item",

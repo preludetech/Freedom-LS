@@ -412,3 +412,84 @@ def test_effective_deadlines_says_so_when_there_are_none(
     record, _ = _record_with_item()
 
     assert "No deadlines." in _progress_page(staff_client, record).content.decode()
+
+
+READABLE_DUPLICATE = "already has an override here"
+
+
+def _learner_post(client: Client, record: CourseProgress, row: dict[str, str]):
+    """Post the course progress page with one new learner override row."""
+    page = _progress_page(client, record)
+    form = page.context["adminform"].form
+    payload = {
+        name: str(value) for name, value in form.initial.items() if value is not None
+    }
+    for inline in page.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
+    payload["deadline_overrides-TOTAL_FORMS"] = "1"
+    payload["deadline_overrides-0-course_progress"] = str(record.pk)
+    for name, value in row.items():
+        payload[f"deadline_overrides-0-{name}"] = value
+    return client.post(reverse(PROGRESS_CHANGE_URL_NAME, args=[record.pk]), payload)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_item", [True, False], ids=["item", "time_limit"])
+def test_a_second_cohort_override_for_the_same_target_reads_plainly(
+    staff_client, mock_site_context, with_item: bool
+) -> None:
+    """A duplicate row used to show 'Constraint “unique_cohort_override_per_item” is violated.'"""
+    registration, item = _registration_with_item()
+    target = item if with_item else None
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration, collection_item=target
+    )
+
+    response = _post(
+        staff_client,
+        registration,
+        [
+            {
+                "collection_item": str(item.pk) if with_item else "",
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": "3",
+            }
+        ],
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert READABLE_DUPLICATE in content
+    assert "unique_cohort" not in content
+    assert CohortDeadlineOverride.objects.count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_item", [True, False], ids=["item", "time_limit"])
+def test_a_second_learner_override_for_the_same_target_reads_plainly(
+    staff_client, mock_site_context, with_item: bool
+) -> None:
+    """A duplicate row used to show 'Constraint “unique_learner_override_per_item” is violated.'"""
+    record, item = _record_with_item()
+    target = item if with_item else None
+    LearnerDeadlineOverrideFactory(course_progress=record, collection_item=target)
+
+    response = _learner_post(
+        staff_client,
+        record,
+        {
+            "collection_item": str(item.pk) if with_item else "",
+            "kind": DeadlineKind.RELATIVE,
+            "due_days_after_registration": "3",
+        },
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert READABLE_DUPLICATE in content
+    assert "unique_learner" not in content
+    assert LearnerDeadlineOverride.objects.count() == 1
