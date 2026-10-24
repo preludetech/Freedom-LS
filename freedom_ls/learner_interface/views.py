@@ -44,7 +44,13 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.deadlines.resolver import course_deadlines, is_overdue
+from freedom_ls.deadlines.resolver import (
+    NO_DEADLINE,
+    CourseDeadlines,
+    course_deadlines,
+    course_deadlines_for,
+    is_overdue,
+)
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
@@ -69,7 +75,10 @@ from freedom_ls.learner_progress.attempts import (
     get_or_create_incomplete,
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
-from freedom_ls.learner_progress.queries import course_progress_for
+from freedom_ls.learner_progress.queries import (
+    course_progress_by_course_for,
+    course_progress_for,
+)
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -83,6 +92,7 @@ from .dashboard_sections import (
 )
 from .utils import (
     BLOCKED,
+    COMPLETE,
     IN_PROGRESS,
     READY,
     UNRESOLVED,
@@ -105,7 +115,47 @@ from .utils import (
 )
 
 
-def _annotate_next_up(course: Course, user, *, can_access_content: bool) -> None:
+@dataclass(frozen=True)
+class CardDeadlineLine:
+    """What the card's one deadline line says, in the order the template checks it."""
+
+    time_limit_end: datetime | None
+    time_limit_overdue: bool
+    overdue_count: int
+    next_due_at: datetime | None
+
+
+def _card_deadline_line(
+    flat: list[dict], course_deadlines: CourseDeadlines | None, now: datetime
+) -> CardDeadlineLine:
+    # Only leaf rows carry due_at; a completed leaf neither counts as overdue nor sets the
+    # next due date. An in-progress course is never complete, so the time limit's overdue
+    # check takes completed=False.
+    leaves = [row for row in flat if "due_at" in row]
+    open_due_dates = [
+        row["due_at"] for row in leaves if row["due_at"] and row["status"] != COMPLETE
+    ]
+    time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
+    upcoming = [due_at for due_at in open_due_dates if due_at > now]
+    if time_limit.due_at is not None and time_limit.due_at > now:
+        upcoming.append(time_limit.due_at)
+    return CardDeadlineLine(
+        time_limit_end=time_limit.due_at,
+        time_limit_overdue=is_overdue(time_limit, False, now),
+        overdue_count=sum(1 for row in leaves if row["is_overdue"]),
+        next_due_at=min(upcoming, default=None),
+    )
+
+
+def _annotate_next_up(
+    course: Course,
+    user,
+    *,
+    can_access_content: bool,
+    course_progress: CourseProgress | None,
+    course_deadlines: CourseDeadlines | None,
+    now: datetime,
+) -> None:
     """Pick the first IN_PROGRESS child (then READY) and stamp it on the course.
 
     Walks at most two levels of ``get_course_index`` (top-level children plus
@@ -115,9 +165,18 @@ def _annotate_next_up(course: Course, user, *, can_access_content: bool) -> None
 
     ``can_access_content`` is passed through from the dashboard's per-course
     backend decision so that get_course_index is not called with a stale value.
+
+    ``course_progress`` and ``course_deadlines`` are the resolved record and its
+    deadlines, handed on so neither is resolved again per course. The same walk
+    stamps the card's deadline line.
     """
     children = get_course_index(
-        user=user, course=course, can_access_content=can_access_content
+        user=user,
+        course=course,
+        can_access_content=can_access_content,
+        course_progress=course_progress,
+        course_deadlines=course_deadlines,
+        now=now,
     )
     flat = []
     for c in children:
@@ -132,6 +191,11 @@ def _annotate_next_up(course: Course, user, *, can_access_content: bool) -> None
     )
     setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
+    line = _card_deadline_line(flat, course_deadlines, now)
+    setattr(course, "time_limit_end", line.time_limit_end)  # noqa: B010
+    setattr(course, "time_limit_overdue", line.time_limit_overdue)  # noqa: B010
+    setattr(course, "overdue_count", line.overdue_count)  # noqa: B010
+    setattr(course, "next_due_at", line.next_due_at)  # noqa: B010
 
 
 def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
@@ -211,12 +275,15 @@ def _visible_recommendations(
 def _annotate_registered_courses(
     courses: list[Course], user, backend: CourseAccessBackend
 ) -> None:
-    """Stamp registration status, listing status and the next-up item onto each course.
+    """Stamp registration status, listing status, the next-up item and the deadline line.
 
     ``get_current_courses`` already excludes completed courses and stamps
     ``progress_percentage``, so the listing status here is only ever registered
     (0%) or in_progress (>0%).
     """
+    records = course_progress_by_course_for(user, courses)
+    deadlines_by_record = course_deadlines_for(records.values())
+    now = timezone.now()
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
         setattr(  # noqa: B010
@@ -233,10 +300,14 @@ def _annotate_registered_courses(
         # backend (e.g. subscription-gated) could revoke access without a
         # separate check.
         course_decision = backend.get_access(user=user, course=course)
+        record = records.get(course.pk)
         _annotate_next_up(
             course,
             user,
             can_access_content=course_decision.can_access_content,
+            course_progress=record,
+            course_deadlines=(deadlines_by_record.get(record.pk) if record else None),
+            now=now,
         )
 
 
@@ -602,7 +673,7 @@ def _section_page_response(
         return render(
             request,
             "learner_interface/partials/course_list.html#section-page-response",
-            {"section": section},
+            {"section": section, **_time_zone_context(request)},
         )
     response = render(
         request,
@@ -612,6 +683,14 @@ def _section_page_response(
     response["HX-Retarget"] = f"#{section.wrapper_id}"
     response["HX-Reswap"] = "outerHTML" if section.renders_when_empty else "delete"
     return response
+
+
+def _time_zone_context(request: HttpRequest) -> dict[str, bool]:
+    """Whether the cards' dates carry the site's zone label for this viewer."""
+    return {
+        "show_time_zone_to_learners": request.user.is_authenticated
+        and shows_time_zone_to_learners(cast(Site, get_cached_site(request)))
+    }
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
@@ -643,6 +722,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         "sections": _dashboard_sections(request, inputs),
         "dashboard_panels": dashboard_panels,
         "has_history": bool(inputs.completed_courses),
+        **_time_zone_context(request),
     }
     return render(request, "learner_interface/dashboard.html", context)
 

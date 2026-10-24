@@ -1,3 +1,4 @@
+{% load deadline_tags %}
 {% comment %}
 The single dashboard course card. Renders any course state from one template,
 branching on course.listing_status (CourseListingStatus StrEnum) so there is no
@@ -22,7 +23,8 @@ status duplicate.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-access_badge, current_price) and user.
+time_limit_overdue, time_limit_end, overdue_count, next_due_at, access_badge,
+current_price), user and show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
@@ -59,6 +61,17 @@ access_badge, current_price) and user.
         <p class="text-sm text-muted">
             Next up: {{ course.next_up_title }}
         </p>
+    {% endif %}
+
+    {% if course.time_limit_overdue %}
+        <p class="flex items-center gap-2 text-sm text-muted">
+            <c-panel-status-badge tone="error" label="Overdue" />
+            <span>Time limit ended {% local_time course.time_limit_end %}</span>
+        </p>
+    {% elif course.overdue_count %}
+        <p><c-panel-status-badge tone="error" label="{{ course.overdue_count }} overdue" /></p>
+    {% elif course.next_due_at %}
+        <p class="text-sm text-muted">Next due {% local_time course.next_due_at %}</p>
     {% endif %}
 
     <div class="flex justify-end mt-auto">
