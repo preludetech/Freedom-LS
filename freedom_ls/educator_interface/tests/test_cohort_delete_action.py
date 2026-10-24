@@ -17,17 +17,20 @@ from __future__ import annotations
 import html
 import json
 from collections.abc import Callable
+from unittest import mock
 
 import lxml.html
 import pytest
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
+from django.db.models import ProtectedError
 from django.http import Http404
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
@@ -315,3 +318,96 @@ def test_a_delete_of_a_cohort_already_deleted_answers_the_unavailable_fragment(
 
     with pytest.raises(Http404):
         action.handle_submit(ctx)
+
+
+@pytest.mark.django_db
+def test_deleting_a_cohort_writes_an_entry_that_keeps_its_name(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Gone soon")
+    cohort_pk = cohort.pk
+    actor = UserFactory(superuser=True)
+    client = logged_in_client(actor)
+
+    client.delete(_delete_url(client, cohort))
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor, entry.organisation) == (
+        "cohort.deleted",
+        actor,
+        organisation,
+    )
+    assert entry.target_label == "Gone soon"
+    assert entry.target_object_id == str(cohort_pk)
+    assert not Cohort.objects.filter(pk=cohort_pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_deleted_cohort_shows_by_name_in_the_organisation_audit_log(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Vanished group")
+    client = logged_in_client(UserFactory(superuser=True))
+    client.delete(_delete_url(client, cohort))
+
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": "audit-log",
+            },
+        )
+    )
+
+    assert "Vanished group" in html.unescape(response.content.decode())
+
+
+@pytest.mark.django_db
+def test_a_blocked_delete_writes_no_entry(
+    cohort_with_granted_progress: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    client = logged_in_client(UserFactory(superuser=True))
+
+    client.delete(_delete_url(client, cohort_with_granted_progress))
+
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+def test_a_protected_error_on_delete_answers_422_and_leaves_no_entry(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+    blocker = LearnerFactory(organisation=organisation)
+
+    with mock.patch.object(
+        Cohort, "delete", side_effect=ProtectedError("protected", {blocker})
+    ):
+        response = client.delete(url)
+
+    assert response.status_code == 422
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+def test_an_admin_of_another_organisation_gets_a_404_on_the_delete(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    outsider = UserFactory(staff=True)
+    assign_object_role(outsider, OrganisationFactory(), "organisation_admin")
+    client = logged_in_client(outsider)
+
+    response = client.delete(_delete_url(client, cohort))
+
+    assert response.status_code == 404
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+    assert not AuditLogEntry.unscoped.exists()

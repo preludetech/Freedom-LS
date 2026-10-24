@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.core.paginator import Page
+from django.db import transaction
 from django.db.models import (
     Count,
     F,
@@ -34,7 +35,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import subject_key
+from freedom_ls.audit_log.writer import record_entry, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -1120,6 +1121,19 @@ class CreateCohortAction(CreateInstanceAction):
 
     def get_success_url(self, instance: Model) -> str:
         return _interface_path(self._organisation, f"cohorts/{instance.pk}")
+
+    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+        with transaction.atomic():
+            response = super().form_valid(request, form)
+            cohort = cast(Cohort, form.instance)
+            record_entry(
+                action="cohort.created",
+                actor=cast(User, request.user),
+                target=cohort,
+                target_label=cohort.name,
+                organisation=self._organisation,
+            )
+        return response
 
 
 class CohortConfig(OrganisationSectionConfig, ListViewConfig):

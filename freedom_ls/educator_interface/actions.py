@@ -8,7 +8,7 @@ from uuid import UUID
 
 from django import forms
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Model, ProtectedError, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -25,6 +25,8 @@ from freedom_ls.accounts.account_setup import (
     send_account_setup_email,
 )
 from freedom_ls.accounts.config import config as accounts_config
+from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -124,7 +126,6 @@ from freedom_ls.role_based_permissions.exceptions import (
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
-    from freedom_ls.accounts.models import User
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
@@ -227,6 +228,22 @@ class RequiresActiveCohortMixin(PanelAction):
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
     """Edit, offered only while the cohort is active."""
 
+    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+        old_name = str(form.initial["name"])
+        with transaction.atomic():
+            response = super().form_valid(request, form)
+            if "name" in form.changed_data:
+                cohort = cast(Cohort, form.instance)
+                record_entry(
+                    action="cohort.renamed",
+                    actor=cast("User", request.user),
+                    target=cohort,
+                    target_label=cohort.name,
+                    organisation=cohort.organisation,
+                    details={"old": old_name, "new": cohort.name},
+                )
+        return response
+
 
 class EditLearnerNameAction(EditAction):
     """Edit the learner's first and last name, which live on their user."""
@@ -252,6 +269,24 @@ class EditLearnerNameAction(EditAction):
     def event_instance(self, form: forms.ModelForm) -> Model:
         return self._learner
 
+    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+        # The form has already bound the new names onto the user, so the old
+        # display name has to come from the stored row.
+        user = cast("User", form.instance)
+        old_name = User._base_manager.get(pk=user.pk).display_name
+        with transaction.atomic():
+            response = super().form_valid(request, form)
+            if {"first_name", "last_name"} & set(form.changed_data):
+                record_entry(
+                    action="learner.renamed",
+                    actor=cast("User", request.user),
+                    target=self._learner,
+                    target_label=user.display_name,
+                    organisation=self._learner.organisation,
+                    details={"old": old_name, "new": user.display_name},
+                )
+        return response
+
 
 class CohortStateAction(PanelAction):
     """Moves a cohort to `target_state`, after confirmation."""
@@ -273,7 +308,17 @@ class CohortStateAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         cohort = cast(Cohort, ctx.instance)
         cohort.is_active = self.target_state
-        cohort.save(update_fields=["is_active", "updated_at"])
+        with transaction.atomic():
+            cohort.save(update_fields=["is_active", "updated_at"])
+            record_entry(
+                action="cohort.reactivated"
+                if self.target_state
+                else "cohort.deactivated",
+                actor=cast("User", ctx.request.user),
+                target=cohort,
+                target_label=cohort.name,
+                organisation=cohort.organisation,
+            )
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
         return navigation_response(ctx.page_url)
@@ -337,19 +382,52 @@ class DeleteEmptyCohortAction(DeleteAction):
             # delete either lands first and is refused here, or waits and then
             # fails on the missing cohort. A cohort another request deleted
             # while this one waited is a 404, which the action route answers
-            # with its "unavailable" fragment.
+            # with its "unavailable" fragment. The action route authorised
+            # ctx.instance before this ran; the re-read only takes the lock.
             cohort = get_object_or_404(
                 Cohort.objects.select_for_update(), pk=cast(Cohort, ctx.instance).pk
             )
             reason = cohort_not_empty_sentence(cohort)
             if reason:
-                html = render_to_string(
-                    self.template_name,
-                    self._blocked_context(ctx, cohort, reason),
-                    request=ctx.request,
-                )
-                return HttpResponse(html, status=422)
-            return super().handle_submit(ctx)
+                return self._blocked_response(ctx, cohort, reason)
+            events = self.get_success_events(cohort)
+            protected: ProtectedError | None = None
+            # Written first because the entry reads the pk, which delete()
+            # clears.
+            record_entry(
+                action="cohort.deleted",
+                actor=cast("User", ctx.request.user),
+                target=cohort,
+                target_label=cohort.name,
+                organisation=cohort.organisation,
+            )
+            try:
+                cohort.delete()
+            except ProtectedError as error:
+                # The entry above must not outlive a delete that did not happen.
+                # The refusal is rendered after the block because a transaction
+                # marked for rollback cannot run queries.
+                transaction.set_rollback(True)
+                protected = error
+        if protected is not None:
+            return self._blocked_response(
+                ctx, cohort, self.get_blocked_reason(cohort, protected)
+            )
+        if self.success_url:
+            return navigation_response(self.success_url)
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+        return response
+
+    def _blocked_response(
+        self, ctx: PanelContext, cohort: Cohort, reason: str
+    ) -> HttpResponse:
+        html = render_to_string(
+            self.template_name,
+            self._blocked_context(ctx, cohort, reason),
+            request=ctx.request,
+        )
+        return HttpResponse(html, status=422)
 
 
 class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
@@ -479,7 +557,15 @@ class ResendSetupEmailAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         try:
-            resend_account_setup_email(learner.user, learner.organisation.name)
+            with transaction.atomic():
+                resend_account_setup_email(learner.user, learner.organisation.name)
+                record_entry(
+                    action="learner.setup_email_resent",
+                    actor=cast("User", ctx.request.user),
+                    target=learner,
+                    target_label=learner.user.display_name,
+                    organisation=learner.organisation,
+                )
         except SetupEmailRecentlySent:
             return render(
                 ctx.request,

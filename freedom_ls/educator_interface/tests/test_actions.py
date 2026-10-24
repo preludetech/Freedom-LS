@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import cast
 
 import lxml.html
@@ -12,6 +13,7 @@ from allauth.account.models import EmailAddress
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
+from django.db import transaction
 from django.test import Client
 from django.urls import reverse
 
@@ -64,6 +66,7 @@ from freedom_ls.role_based_permissions.exceptions import (
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
 
 
@@ -4979,3 +4982,239 @@ def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
 
     entry = AuditLogEntry.unscoped.get()
     assert (entry.action, entry.actor) == ("cohort_registration.unregistered", actor)
+
+
+# cohort lifecycle, learner rename and setup email audit entries
+
+
+@pytest.mark.django_db
+def test_renaming_a_cohort_writes_an_entry_with_the_old_and_new_name(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Old name"))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _cohort_url(organisation, cohort, "/__actions/edit"),
+        {"name": "New name"},
+    )
+
+    assert_entry(
+        action="cohort.renamed",
+        actor=actor,
+        target=cohort,
+        target_label="New name",
+        organisation=organisation,
+        details={"old": "Old name", "new": "New name"},
+    )
+
+
+@pytest.mark.django_db
+def test_saving_a_cohort_under_its_own_name_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Same"))
+
+    response = _post(
+        staff_client,
+        _cohort_url(organisation, cohort, "/__actions/edit"),
+        {"name": "Same"},
+    )
+
+    assert response.status_code == 204
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+def test_renaming_a_learner_writes_an_entry_with_the_old_and_new_name(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _edit_name_url(organisation, learner),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    assert_entry(
+        action="learner.renamed",
+        actor=actor,
+        target=learner,
+        target_label="Grace Hopper",
+        organisation=organisation,
+        details={"old": "Ada Lovelace", "new": "Grace Hopper"},
+    )
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_under_their_own_name_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+
+    response = _post(
+        staff_client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "Ada", "last_name": "Lovelace"},
+    )
+
+    assert response.status_code == 204
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("action_name", "code", "start_active"),
+    [
+        ("deactivate", "cohort.deactivated", True),
+        ("reactivate", "cohort.reactivated", False),
+    ],
+)
+def test_changing_a_cohorts_state_writes_an_entry(
+    mock_site_context, logged_in_client, action_name: str, code: str, start_active: bool
+):
+    organisation = OrganisationFactory()
+    cohort = cast(
+        Cohort,
+        CohortFactory(
+            organisation=organisation, name="Evening", is_active=start_active
+        ),
+    )
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _cohort_url(organisation, cohort, f"/__actions/{action_name}"),
+    )
+
+    assert_entry(
+        action=code,
+        actor=actor,
+        target=cohort,
+        target_label="Evening",
+        organisation=organisation,
+    )
+
+
+@pytest.mark.django_db
+def test_a_stale_state_change_on_an_inactive_cohort_writes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
+
+    response = _post(
+        staff_client, _cohort_url(organisation, cohort, "/__actions/deactivate")
+    )
+
+    assert response.status_code == 422
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_resending_a_setup_email_writes_an_entry(
+    mock_site_context, logged_in_client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    actor = UserFactory(superuser=True)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(logged_in_client(actor), _resend_url(organisation, learner))
+
+    assert_entry(
+        action="learner.setup_email_resent",
+        actor=actor,
+        target=learner,
+        target_label=learner.user.display_name,
+        organisation=organisation,
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_refused_resend_writes_nothing(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    set_up = LearnerFactory(organisation=organisation)
+    recent = _pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(staff_client, _resend_url(organisation, recent))
+    entries_before = AuditLogEntry.unscoped.count()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        too_soon = _post(staff_client, _resend_url(organisation, recent))
+        already = _post(staff_client, _resend_url(organisation, set_up))
+
+    assert (too_soon.status_code, already.status_code) == (422, 422)
+    assert AuditLogEntry.unscoped.count() == entries_before
+
+
+class _RolledBackError(Exception):
+    pass
+
+
+def _rename_cohort_request(organisation: Organisation) -> tuple[str, dict[str, str]]:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Before"))
+    return _cohort_url(organisation, cohort, "/__actions/edit"), {"name": "After"}
+
+
+def _rename_learner_request(organisation: Organisation) -> tuple[str, dict[str, str]]:
+    return _edit_name_url(organisation, _named_learner(organisation)), {
+        "first_name": "Grace",
+        "last_name": "Hopper",
+    }
+
+
+def _deactivate_cohort_request(
+    organisation: Organisation,
+) -> tuple[str, dict[str, str]]:
+    cohort = CohortFactory(organisation=organisation)
+    return _cohort_url(organisation, cohort, "/__actions/deactivate"), {}
+
+
+def _resend_request(organisation: Organisation) -> tuple[str, dict[str, str]]:
+    return _resend_url(organisation, _pending_learner(organisation)), {}
+
+
+def _create_cohort_request(organisation: Organisation) -> tuple[str, dict[str, str]]:
+    return _interface_url(organisation.slug, "cohorts/__actions/create_cohort"), {
+        "name": "Fresh"
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+@pytest.mark.parametrize(
+    "build_request",
+    [
+        _create_cohort_request,
+        _rename_cohort_request,
+        _rename_learner_request,
+        _deactivate_cohort_request,
+        _resend_request,
+    ],
+)
+def test_a_failure_after_the_write_leaves_no_entry(
+    staff_client: Client,
+    build_request: Callable[[Organisation], tuple[str, dict[str, str]]],
+) -> None:
+    organisation = OrganisationFactory()
+    url, data = build_request(organisation)
+
+    def post_then_fail() -> None:
+        with transaction.atomic():
+            response = _post(staff_client, url, data)
+            assert response.status_code in (204, 200)
+            assert AuditLogEntry.unscoped.exists()
+            raise _RolledBackError
+
+    with pytest.raises(_RolledBackError):
+        post_then_fail()
+
+    assert not AuditLogEntry.unscoped.exists()

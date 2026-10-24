@@ -28,6 +28,7 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.views import CohortConfig, CreateCohortAction
@@ -38,6 +39,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.audit_assertions import assert_entry
 
 
 def _ctx(request: HttpRequest) -> PanelContext:
@@ -352,3 +354,38 @@ def test_creating_a_cohort_named_after_an_inactive_sibling_answers_422_with_the_
 
     assert response.status_code == 422
     assert "Another cohort already has this name." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_creating_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    actor = UserFactory(superuser=True)
+
+    logged_in_client(actor).post(
+        _create_url(organisation), {"name": "Fresh"}, HTTP_HX_REQUEST="true"
+    )
+
+    assert_entry(
+        action="cohort.created",
+        actor=actor,
+        target=Cohort.objects.get(name="Fresh"),
+        target_label="Fresh",
+        organisation=organisation,
+    )
+
+
+@pytest.mark.django_db
+def test_a_rejected_cohort_name_writes_no_entry(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Taken")
+
+    response = logged_in_client(UserFactory(superuser=True)).post(
+        _create_url(organisation), {"name": "Taken"}, HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 422
+    assert not AuditLogEntry.unscoped.exists()

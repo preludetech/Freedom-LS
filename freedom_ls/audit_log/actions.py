@@ -43,6 +43,10 @@ def _describe_move(entry: AuditLogEntry) -> str:
     return f"From {entry.details.get('source', '')} to {entry.details.get('destination', '')}"
 
 
+def _describe_rename(entry: AuditLogEntry) -> str:
+    return f"From {entry.details.get('old', '')} to {entry.details.get('new', '')}"
+
+
 def _describe_learner_added(entry: AuditLogEntry) -> str:
     text = _ADDED_OUTCOMES.get(str(entry.details.get("outcome", "")), "")
     cohort = entry.details.get("cohort")
@@ -56,7 +60,7 @@ SUMMARY_ACTIONS = frozenset({"bulk_action.completed", "import.committed"})
 
 FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("learner.added", "Learner added", _describe_learner_added),
-    AuditAction("learner.renamed", "Learner renamed"),
+    AuditAction("learner.renamed", "Learner renamed", _describe_rename),
     AuditAction("learner.deactivated", "Learner deactivated"),
     AuditAction("learner.reactivated", "Learner reactivated"),
     AuditAction("learner.setup_email_resent", "Setup email resent"),
@@ -71,7 +75,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "registration.unregistered", "Unregistered from course", _describe_course
     ),
     AuditAction("cohort.created", "Cohort created"),
-    AuditAction("cohort.renamed", "Cohort renamed"),
+    AuditAction("cohort.renamed", "Cohort renamed", _describe_rename),
     AuditAction("cohort.deactivated", "Cohort deactivated"),
     AuditAction("cohort.reactivated", "Cohort reactivated"),
     AuditAction("cohort.deleted", "Cohort deleted"),
