@@ -15,6 +15,7 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.site_aware_models.admin_exports import FormulaSafeCSV
+from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.models import SiteTimeZoneConfig
 
 with contextlib.suppress(NotRegistered):
@@ -73,8 +74,17 @@ class GuardedSiteAwareModelAdmin(ModelAdmin, GuardedModelAdmin):
     Media = SiteAwareModelAdmin.Media
 
 
+class SiteTimeZoneConfigAdminForm(ConstraintValidationFormMixin):
+    """Checks the one-row-per-site constraint while cleaning, not at the database."""
+
+    class Meta:
+        model = SiteTimeZoneConfig
+        fields = ["time_zone", "show_time_zone_to_learners"]
+
+
 @admin.register(SiteTimeZoneConfig)
 class SiteTimeZoneConfigAdmin(SiteAwareModelAdmin):
+    form = SiteTimeZoneConfigAdminForm
     list_display = ["time_zone", "show_time_zone_to_learners"]
     fields = ["time_zone", "show_time_zone_to_learners"]
 
