@@ -3,26 +3,8 @@
 import factory
 from allauth.account.models import EmailAddress
 
-from django.contrib.sites.models import Site
-
 from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy, User
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
-
-
-class SiteFactory(factory.django.DjangoModelFactory):
-    """Factory for django.contrib.sites.models.Site.
-
-    NOT a SiteAwareFactory — Site is the site dimension, not a site-aware model.
-    The Site this factory creates is the kind of object you might pass into
-    `mock_site_context`, not one created under it.
-    """
-
-    class Meta:
-        model = Site
-        django_get_or_create = ("name",)  # avoid UniqueConstraint clashes across tests
-
-    name = factory.Sequence(lambda n: f"TestSite{n}")
-    domain = factory.LazyAttribute(lambda obj: f"{obj.name.lower()}.example.com")
 
 
 class UserFactory(SiteAwareFactory):

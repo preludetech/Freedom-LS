@@ -2,9 +2,9 @@
 
 import pytest
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Topic
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
 

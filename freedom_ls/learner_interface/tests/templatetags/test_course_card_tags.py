@@ -11,7 +11,6 @@ import pytest
 from django.test import override_settings
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import CourseVisibility, Topic
 from freedom_ls.course_access.loader import get_course_access_backend
@@ -20,6 +19,7 @@ from freedom_ls.learner_interface.templatetags.course_card_tags import (
     get_course_by_path,
 )
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 APPLICATION_BACKEND = (
     "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"

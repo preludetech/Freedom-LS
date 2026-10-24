@@ -32,8 +32,9 @@ from freedom_ls.accounts.account_setup import (
     send_account_setup_email,
 )
 from freedom_ls.accounts.config import config
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 def _pending_user() -> User:

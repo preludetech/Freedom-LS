@@ -18,7 +18,6 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError
 from django.test import override_settings
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import CourseCategoryFactory
 from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME
 from freedom_ls.content_engine.images import ImageEncodeDecision, ImageEncodeStatus
@@ -47,6 +46,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form, FormPage
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     photographic_jpeg_bytes,

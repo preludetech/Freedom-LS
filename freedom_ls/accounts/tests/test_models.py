@@ -9,10 +9,10 @@ from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.factories import (
     LegalConsentFactory,
-    SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 

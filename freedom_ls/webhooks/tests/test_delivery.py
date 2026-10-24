@@ -8,7 +8,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.webhooks.delivery import (
     MAX_ATTEMPTS,
     _increment_failure_count_and_check_breaker,

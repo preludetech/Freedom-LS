@@ -13,7 +13,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.forms import modelform_factory
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import (
     Organisation,
@@ -21,6 +21,7 @@ from freedom_ls.organisations.models import (
     organisation_logo_upload_to,
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 def _jpeg_upload(name: str) -> SimpleUploadedFile:

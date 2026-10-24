@@ -10,7 +10,7 @@ import time_machine
 from django.test import override_settings
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -109,6 +109,7 @@ from freedom_ls.reports.tests.gather_input_builders import (
     attempted,
 )
 from freedom_ls.reports.tests.helpers import form_progress, topic_progress
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 # Organisation.name allows 150 characters, and this is one of exactly that
 # length, so both the wordmark and the footer budget have to cut it.

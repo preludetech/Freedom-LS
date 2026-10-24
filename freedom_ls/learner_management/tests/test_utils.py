@@ -17,7 +17,7 @@ import pytest
 
 from django.contrib.auth.models import AnonymousUser
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
@@ -43,6 +43,7 @@ from freedom_ls.learner_management.utils import (
     unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
 
 

@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.test import override_settings
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -27,6 +27,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
 from freedom_ls.tests.site_context import site_context
 

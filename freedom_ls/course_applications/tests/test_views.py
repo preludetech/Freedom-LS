@@ -30,7 +30,6 @@ from django.utils.html import escape, strip_tags
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import (
     EmailAddressFactory,
-    SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
@@ -38,6 +37,7 @@ from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.images import png_bytes
 from freedom_ls.tests.site_context import site_context

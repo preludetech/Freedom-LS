@@ -16,7 +16,7 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.config import config
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -62,6 +62,7 @@ from freedom_ls.role_based_permissions.exceptions import (
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:

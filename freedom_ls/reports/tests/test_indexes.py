@@ -17,7 +17,7 @@ from django.core.files.base import ContentFile
 from django.test import override_settings
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     ActivityFactory,
     ContentCollectionItemFactory,
@@ -71,6 +71,7 @@ from freedom_ls.reports.indexes import (
     resolve_site_name,
 )
 from freedom_ls.reports.tests.helpers import form_progress, topic_progress
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     gif_bytes,

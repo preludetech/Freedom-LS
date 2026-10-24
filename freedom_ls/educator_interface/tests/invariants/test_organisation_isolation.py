@@ -27,7 +27,7 @@ import pytest
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.views import (
@@ -49,6 +49,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)

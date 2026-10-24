@@ -16,7 +16,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import (
-    SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
@@ -39,6 +38,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 # Tests for the all_courses view at the context level.

@@ -13,7 +13,6 @@ from django.template.loader import render_to_string
 from django.test import override_settings
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import (
     ArticleFactory,
     FileFactory,
@@ -21,6 +20,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Article, ArticleVisibility, Topic
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 requires_blog = pytest.mark.skipif(

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -24,6 +23,7 @@ from freedom_ls.learner_progress.utils import (
     move_progress_preview,
     plan_progress_carry,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _thread_locals
 
 # Tests for ensure_course_progress_record and the cohort fan-out.
