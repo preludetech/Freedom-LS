@@ -1,6 +1,7 @@
 ---
 categories:
   - reference-demo
+time_limit_days: 90
 content_type: COURSE
 description: This course demonstrates how content can be organised into parts (chapters/modules).
 subtitle: Demonstrating course organisation with parts

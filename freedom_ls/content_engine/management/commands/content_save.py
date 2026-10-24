@@ -23,6 +23,10 @@ from django.db import transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
+from freedom_ls.content_base.schema import (
+    DUE_DATE_FIELD_NAMES,
+    BaseBaseContentModel,
+)
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
 from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
@@ -354,9 +358,17 @@ def markdown_translate(markdown_content):
     return markdown_content
 
 
+def due_date_columns(schema: BaseBaseContentModel | None) -> dict[str, object]:
+    """The three due columns a child file sets, None for each the file does not carry.
+    Writing None on every sync is what lets an author remove a due date."""
+    return {name: getattr(schema, name, None) for name in DUE_DATE_FIELD_NAMES}
+
+
 def save_topic(item, site, base_path):
     """Save a Topic to the database."""
-    return save_with_uuid(Topic, item, site, base_path)
+    return save_with_uuid(
+        Topic, item, site, base_path, exclude_fields=DUE_DATE_FIELD_NAMES
+    )
 
 
 def save_activity(item, site, base_path):
@@ -591,7 +603,9 @@ def save_course_part(item, site, base_path):
 
 def save_form(item, site, base_path):
     """Save a Form to the database."""
-    return save_with_uuid(Form, item, site, base_path)
+    return save_with_uuid(
+        Form, item, site, base_path, exclude_fields=DUE_DATE_FIELD_NAMES
+    )
 
 
 def save_form_page(item, form, site, base_path, order=0):
@@ -875,6 +889,8 @@ def save_content_to_db(path, site_name):
 
     # Mapping of file paths to saved content objects for collection children resolution
     content_by_path = {}
+    # The parsed file behind each child, for the due date columns on its collection items.
+    schema_by_path: dict[Path, BaseBaseContentModel] = {}
 
     # Save CourseCategories, ahead of Courses so a course's categories/
     # dashboard_category resolve against rows that already exist.
@@ -886,12 +902,14 @@ def save_content_to_db(path, site_name):
     for item in grouped.get(SchemaContentType.TOPIC, []):
         topic = save_topic(item, site, path)
         content_by_path[content_key(item.file_path)] = topic
+        schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Topic: {topic.title}")
 
     # Save Activities
     for item in grouped.get(SchemaContentType.ACTIVITY, []):
         activity = save_activity(item, site, path)
         content_by_path[content_key(item.file_path)] = activity
+        schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Activity: {activity.title}")
 
     # Save Articles. They are not added to content_by_path: an article is never
@@ -920,6 +938,7 @@ def save_content_to_db(path, site_name):
         form = save_form(item, site, path)
         forms_by_dir[item.file_path.parent] = form
         content_by_path[content_key(item.file_path)] = form
+        schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Form: {form.title}")
 
     # Group form pages by file
@@ -1106,6 +1125,7 @@ def save_content_to_db(path, site_name):
                     defaults={
                         "order": order,
                         "overrides": overrides,
+                        **due_date_columns(schema_by_path.get(child_path)),
                     },
                 )
                 logger.info(

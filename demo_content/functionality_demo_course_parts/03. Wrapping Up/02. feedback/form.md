@@ -1,4 +1,5 @@
 ---
+due_days_after_registration: 30
 content_type: FORM
 strategy: CATEGORY_VALUE_SUM
 title: Course Feedback

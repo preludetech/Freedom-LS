@@ -1,4 +1,5 @@
 ---
+due_days_after_registration: 21
 content_type: FORM
 quiz_pass_percentage: 80
 quiz_show_incorrect: true

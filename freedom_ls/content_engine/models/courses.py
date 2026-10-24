@@ -221,6 +221,7 @@ class Course(MarkdownContent, TitledContent):
     )
     table_of_contents_in_development = models.BooleanField(default=False)
     estimated_duration = models.DurationField(null=True, blank=True)
+    time_limit_days = models.PositiveIntegerField(null=True, blank=True)
     price_kind = models.CharField(
         max_length=20,
         blank=True,
@@ -542,6 +543,9 @@ class ContentCollectionItem(SiteAwareModel, TimestampedModel):
         blank=True,
         help_text=_("Optional overrides as key-value pairs"),
     )
+    due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
+    due_days_after_registration = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["order"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import re
 import tempfile
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
@@ -2756,3 +2756,171 @@ def test_reimport_replaces_the_stored_tags_with_the_files_own(
     reimported = _import(path, site)
 
     assert reimported.tags == ["python", "advanced"]
+
+
+# ---------------------------------------------------------------------------
+# Due date defaults and the course time limit
+# ---------------------------------------------------------------------------
+
+_TIMED_TOPIC_UUID = "20000000-0000-0000-0000-000000000021"
+_PART_A_UUID = "20000000-0000-0000-0000-000000000022"
+_PART_B_UUID = "20000000-0000-0000-0000-000000000023"
+
+
+def _write_timed_course(course_dir: Path, topic_front_matter: str) -> None:
+    """A course with two parts that both place the same topic file."""
+    course_dir.mkdir()
+    shared = course_dir / "shared.md"
+    shared.write_text(f"""---
+content_type: TOPIC
+title: Shared topic
+uuid: {_TIMED_TOPIC_UUID}
+{topic_front_matter}---
+
+Body
+""")
+    (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Timed course
+uuid: {COURSE_UUID}
+time_limit_days: 60
+children:
+  - path: part-a/part.yaml
+  - path: part-b/part.yaml
+---
+""")
+    for name, part_uuid in (("part-a", _PART_A_UUID), ("part-b", _PART_B_UUID)):
+        part_dir = course_dir / name
+        part_dir.mkdir()
+        (part_dir / "part.yaml").write_text(f"""---
+content_type: COURSE_PART
+title: {name}
+uuid: {part_uuid}
+children:
+  - path: ../shared.md
+""")
+
+
+def _shared_topic_items() -> list[ContentCollectionItem]:
+    topic = Topic.objects.get(id=_TIMED_TOPIC_UUID)
+    return list(ContentCollectionItem.objects.filter(child_id=topic.id))
+
+
+@pytest.mark.django_db
+def test_due_columns_land_on_every_collection_item_of_a_file(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_timed_course(
+            course_dir, 'due_days_after_registration: 14\ndue_time: "17:00"\n'
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        items = _shared_topic_items()
+        assert len(items) == 2
+        for item in items:
+            assert item.due_days_after_registration == 14
+            assert item.due_time == time(17, 0)
+            assert item.due_date is None
+
+
+@pytest.mark.django_db
+def test_removing_the_due_fields_clears_the_columns_on_the_next_sync(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_timed_course(course_dir, "due_date: 2026-03-14\n")
+        save_content_to_db(course_dir, site.name)
+        assert {item.due_date for item in _shared_topic_items()} == {date(2026, 3, 14)}
+
+        _write_timed_course_topic_only(course_dir, "")
+        save_content_to_db(course_dir, site.name)
+
+        for item in _shared_topic_items():
+            assert item.due_date is None
+            assert item.due_time is None
+            assert item.due_days_after_registration is None
+
+
+def _write_timed_course_topic_only(course_dir: Path, topic_front_matter: str) -> None:
+    (course_dir / "shared.md").write_text(f"""---
+content_type: TOPIC
+title: Shared topic
+uuid: {_TIMED_TOPIC_UUID}
+{topic_front_matter}---
+
+Body
+""")
+
+
+@pytest.mark.django_db
+def test_a_form_file_sets_its_collection_item_columns(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed_form"
+        course_dir.mkdir()
+        form_dir = course_dir / "1. survey"
+        form_dir.mkdir()
+        (form_dir / "form.md").write_text("""---
+content_type: FORM
+strategy: UNSCORED
+title: Survey
+uuid: 20000000-0000-0000-0000-000000000031
+due_days_after_registration: 30
+---
+""")
+        (form_dir / "1. page.yaml").write_text("""---
+content_type: FORM_PAGE
+title: Page
+uuid: 20000000-0000-0000-0000-000000000032
+---
+question: Name?
+type: short_text
+uuid: 20000000-0000-0000-0000-000000000033
+""")
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Survey course
+uuid: {COURSE_UUID}
+---
+""")
+
+        save_content_to_db(course_dir, site.name)
+
+        form = Form.objects.get(title="Survey")
+        (item,) = ContentCollectionItem.objects.filter(child_id=form.id)
+        assert item.due_days_after_registration == 30
+
+
+@pytest.mark.django_db
+def test_time_limit_days_saves_and_an_absent_key_leaves_it_null(
+    make_temp_file, mock_site_context
+) -> None:
+    timed = _save(
+        make_temp_file,
+        mock_site_context,
+        "---\ncontent_type: COURSE\ntitle: Timed\ntime_limit_days: 90\n---\n",
+    )
+    untimed = _save(
+        make_temp_file,
+        mock_site_context,
+        "---\ncontent_type: COURSE\ntitle: Untimed\n---\n",
+    )
+
+    assert timed.time_limit_days == 90
+    assert untimed.time_limit_days is None
+
+
+@pytest.mark.django_db
+def test_a_topic_file_with_due_fields_saves_without_a_topic_column(
+    make_temp_file, mock_site_context
+) -> None:
+    temp_file = make_temp_file(
+        ".md",
+        "---\ncontent_type: TOPIC\ntitle: Dated\ndue_date: 2026-03-14\n---\n\nBody\n",
+    )
+    (item,) = parse_single_file(temp_file)
+
+    topic = save_topic(item, mock_site_context, temp_file.parent)
+
+    assert topic.title == "Dated"
