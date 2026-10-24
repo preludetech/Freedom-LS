@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import re
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import cast
 
@@ -28,7 +29,11 @@ from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
-from freedom_ls.learner_interface.tests.helpers import form_attempt, topic_completion
+from freedom_ls.learner_interface.tests.helpers import (
+    form_attempt,
+    set_due_date,
+    topic_completion,
+)
 from freedom_ls.learner_interface.utils import (
     BLOCKED,
     COMPLETE,
@@ -42,7 +47,9 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -1412,3 +1419,148 @@ def test_course_part_row_announces_in_progress_over_completed_children(
     assert re.search(r"In progress.*Core Concepts", button_text)
     assert "Not started" not in button_text
     assert outline.count(">Completed<") == 3
+
+
+# --- Due dates and overdue on the table of contents ---
+
+
+@pytest.fixture
+def due_topic_course(mock_site_context):
+    """A course holding one topic, a registered learner and the learner's logged-in client."""
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+    return course, topic, user, client
+
+
+def _detail_html(client: Client, course: Course) -> str:
+    response = client.get(
+        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    )
+    assert response.status_code == 200
+    return response.content.decode()
+
+
+@pytest.mark.django_db
+def test_toc_shows_a_relative_due_date_in_the_site_zone(due_topic_course):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_days_after_registration=14)
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+
+    html = _detail_html(client, course)
+
+    assert "15 Mar 2026, 23:59 SAST" in html
+    assert "Due" in html
+
+
+@pytest.mark.django_db
+def test_toc_marks_a_past_due_topic_overdue(due_topic_course):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+
+    assert "Overdue" in html
+    assert "1 Jan 2020" in html
+
+
+@pytest.mark.django_db
+def test_toc_shows_neither_due_nor_overdue_once_the_topic_is_complete(
+    due_topic_course,
+):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    topic_completion(course, user, topic, complete_time=timezone.now())
+
+    html = _detail_html(client, course)
+
+    assert "Overdue" not in html
+    assert "1 Jan 2020" not in html
+
+
+@pytest.mark.django_db
+def test_toc_shows_a_future_due_date_without_the_overdue_badge(due_topic_course):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+
+    assert "1 Jan 2999" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_toc_shows_a_learner_registered_after_a_fixed_date_overdue_at_once(
+    due_topic_course,
+):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2026, 3, 20))
+    course_progress_record(
+        course, user, created_at=datetime(2026, 4, 1, 10, 0, tzinfo=UTC)
+    )
+
+    assert "Overdue" in _detail_html(client, course)
+
+
+@pytest.mark.django_db
+def test_toc_shows_a_part_row_neither_a_date_nor_the_overdue_badge(mock_site_context):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    topic = TopicFactory()
+    part.items.create(child=topic, order=0)
+    user = UserFactory()
+    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    )
+
+    (part_row,) = response.context["children"]
+    assert part_row["type"] == "COURSE_PART"
+    assert "due_at" not in part_row
+    assert part_row["children"][0]["due_at"] is not None
+    assert "1 Jan 2999" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_toc_shows_an_unregistered_visitor_no_dates(due_topic_course):
+    course, topic, _user, _client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+
+    html = _detail_html(Client(), course)
+
+    assert "Overdue" not in html
+    assert "1 Jan 2020" not in html
+
+
+@pytest.mark.django_db
+def test_detail_page_query_count_does_not_grow_with_items(
+    mock_site_context, django_assert_max_num_queries
+):
+    course = CourseFactory()
+    for order in range(60):
+        course.items.create(child=TopicFactory(), order=order)
+    user = UserFactory()
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+    with django_assert_max_num_queries(29):
+        response = client.get(url)
+
+    assert response.status_code == 200

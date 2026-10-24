@@ -10,7 +10,7 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
 )
-from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -109,6 +109,18 @@ def form_attempt(
         **{f"form_progress__{name}": value for name, value in kwargs.items()},
     ).form_progress
     return attempt
+
+
+def set_due_date(
+    course: Course, child: Form | Topic, **columns: object
+) -> ContentCollectionItem:
+    """Write deadline columns (``due_date``, ``due_time``, ``due_days_after_registration``)
+    onto the collection item placing `child` in `course`."""
+    collection_item = collection_item_for(course, child)
+    for name, value in columns.items():
+        setattr(collection_item, name, value)
+    collection_item.save()
+    return collection_item
 
 
 def topic_completion(

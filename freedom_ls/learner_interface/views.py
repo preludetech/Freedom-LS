@@ -43,6 +43,7 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
+from freedom_ls.deadlines.resolver import course_deadlines
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
@@ -160,17 +161,17 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
     )
 
 
-def _detail_cta_label(course: Course, user: User) -> str:
+def _detail_cta_label(progress: CourseProgress | None) -> str:
     """Progress-aware CTA label for a registered learner on the course detail page.
 
-    Reads the resolved record — does not scan TopicProgress/FormProgress. Only
-    call this for registered learners; unregistered paths use decision.cta_label.
+    Reads the resolved record the caller passes — does not scan
+    TopicProgress/FormProgress. Only call this for registered learners;
+    unregistered paths use decision.cta_label.
 
     "Start course" is keyed on the percentage, never on the row existing: a
     record is minted by the registration, so a learner who has never opened the
     course still has one.
     """
-    progress = course_progress_for(user, course)
     if progress is None or progress.completed_time is None:
         if progress is not None and progress.progress_percentage > 0:
             return "Continue"
@@ -715,8 +716,20 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     # get_course_index is anonymous-safe (it fetches user-scoped progress
     # only behind its own is_authenticated / can_access_content guards).
+    # Only a registered learner has a record to resolve deadlines against.
+    course_progress = (
+        course_progress_for(cast("User", request.user), course)
+        if is_registered
+        else None
+    )
     children = get_course_index(
-        user=request.user, course=course, can_access_content=decision.can_access_content
+        user=request.user,
+        course=course,
+        can_access_content=decision.can_access_content,
+        course_progress=course_progress,
+        course_deadlines=(
+            course_deadlines(course_progress) if course_progress is not None else None
+        ),
     )
     start_url: str | None
     cta_label: str | None
@@ -727,8 +740,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         start_url = _detail_start_url(
             course, is_registered=True, has_items=bool(children)
         )
-        # is_registered implies an authenticated User, so the cast is safe here.
-        cta_label = _detail_cta_label(course, cast("User", request.user))
+        cta_label = _detail_cta_label(course_progress)
     else:
         # Not-registered: use the backend's acquisition affordance (e.g. "Enrol for free"
         # for free courses, "Apply now" for application-gated courses). May be None for
@@ -996,6 +1008,9 @@ def view_course_item(request, course_slug, index):
         current_index=index,
         can_access_content=True,
         course_progress=course_progress,
+        course_deadlines=(
+            course_deadlines(course_progress) if course_progress is not None else None
+        ),
     )
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
@@ -1161,7 +1176,16 @@ def _player_chrome_context(
         # before reaching here, so the learner is confirmed to have content
         # access at this point.
         course_index = get_course_index(
-            user=user, course=course, current_index=index, can_access_content=True
+            user=user,
+            course=course,
+            current_index=index,
+            can_access_content=True,
+            course_progress=course_progress,
+            course_deadlines=(
+                course_deadlines(course_progress)
+                if course_progress is not None
+                else None
+            ),
         )
 
     return {
