@@ -207,13 +207,13 @@ class DeadlineOverrideInline(TabularInline):
 
     @admin.display(description="Content default")
     def content_default(self, obj: DeadlineOverride) -> str:
-        if not obj.pk:
+        if obj._state.adding:
             return ""
         return _value_text(content_default_for(obj), obj)
 
     @admin.display(description="Effective")
     def effective_value(self, obj: DeadlineOverride) -> str:
-        if not obj.pk:
+        if obj._state.adding:
             return ""
         layers = [
             DeadlineLayer(
@@ -228,7 +228,7 @@ class DeadlineOverrideInline(TabularInline):
 
     @admin.display(description="Default changed")
     def default_changed_note(self, obj: DeadlineOverride) -> str:
-        if not obj.pk:
+        if obj._state.adding:
             return ""
         beneath = canonical_beneath(obj)
         if obj.replaced_value == beneath:

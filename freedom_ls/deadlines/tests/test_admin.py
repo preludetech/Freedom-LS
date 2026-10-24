@@ -279,6 +279,36 @@ def test_the_note_appears_after_the_content_default_changes(
     ) in body
 
 
+@pytest.mark.django_db
+def test_a_refused_new_row_has_no_note(staff_client, mock_site_context) -> None:
+    """A refused new row used to read 'Default has changed since this override was set
+    (was nothing, now fixed:2024-01-31)', though it was never saved."""
+    registration, item = _registration_with_item()
+    item.due_date = "2024-01-31"
+    item.save()
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=item,
+        replaced_value="fixed:2024-01-31",
+    )
+
+    response = _post(
+        staff_client,
+        registration,
+        [
+            {
+                "collection_item": str(item.pk),
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": "3",
+            }
+        ],
+    )
+
+    content = response.content.decode()
+    assert READABLE_DUPLICATE in content
+    assert "Default has changed" not in content
+
+
 def test_site_zone_text_names_the_zone() -> None:
     from datetime import datetime
     from zoneinfo import ZoneInfo

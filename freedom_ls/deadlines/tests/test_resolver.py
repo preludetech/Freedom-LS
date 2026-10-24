@@ -408,12 +408,19 @@ def test_registration_date_is_read_in_the_site_zone(mock_site_context):
     assert registration_date_of(record, ZoneInfo("UTC")) == date(2026, 3, 1)
 
 
+def _warm_process_caches(record: CourseProgress) -> None:
+    """Resolve once so the Site and ContentType caches are filled. They outlive a test, so
+    without this a query budget would depend on which test ran first."""
+    course_deadlines(record)
+
+
 @pytest.mark.django_db
 def test_course_deadlines_cost_the_same_on_a_small_and_a_large_course(
     mock_site_context, django_assert_max_num_queries
 ):
     small = course_progress_record(_course_with_topics(6), UserFactory())
     large = course_progress_record(_course_with_topics(60), UserFactory())
+    _warm_process_caches(small)
 
     with django_assert_max_num_queries(5):
         assert len(course_deadlines(small).items) == 6
@@ -428,6 +435,7 @@ def test_course_deadlines_for_many_records_costs_the_same_as_for_one(
     records = [
         course_progress_record(_course_with_topics(4), UserFactory()) for _ in range(3)
     ]
+    _warm_process_caches(records[0])
 
     with django_assert_max_num_queries(5):
         result = course_deadlines_for(records)

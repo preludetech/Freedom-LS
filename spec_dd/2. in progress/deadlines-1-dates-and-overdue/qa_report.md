@@ -109,8 +109,8 @@ Manifestations: 4.3 (desktop).
 | B1 | **FIXED** (commit: 10b2038a) — Player sidebar squeezes dated item titles to zero width |
 | B2 | **FIXED** (commit: bfbac976) — Adding a second site time zone row returns HTTP 500 |
 | B3 | **FIXED** (commit: 993014eb) — Duplicate deadline override shows the raw constraint name |
-| B4 | **UNRESOLVED** — Refused unsaved override row claims the default has changed (reason: fix budget exhausted this run) |
-| — | **UNRESOLVED** — full run after the fixes left tests failing (reason: `freedom_ls/deadlines/tests/test_resolver.py::test_course_deadlines_cost_the_same_on_a_small_and_a_large_course`, 6 queries against a budget of 5. The extra queries are the uncached `django_site` and `django_content_type` lookups, so the result depends on test order: it passed in the pre-QA full run and fails when run alone. None of the three fixes touch the resolver.) |
+| B4 | **FIXED** — Refused unsaved override row claims the default has changed (the UUID pk is set before save, so the read-only columns now check `_state.adding`) |
+| — | **FIXED** — order-dependent query budgets in `test_resolver.py` (both budget tests now resolve once before measuring, so the Site and ContentType caches are warm). Full run: 9088 passed. |
 
 Re-verification after each fix, against the live auto-reloaded server:
 
