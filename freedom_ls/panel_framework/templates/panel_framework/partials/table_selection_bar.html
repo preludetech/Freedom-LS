@@ -1,6 +1,6 @@
 {% comment %}
-The selection bar: the result count and one submit button per permitted bulk
-action, hidden until a row is checked, sharing its footer row with the
+The selection bar: the result count and the first two permitted bulk actions as buttons
+and any others under a "More actions" menu, hidden until a row is checked, sharing its footer row with the
 pagination — which stays visible regardless of selection. Fixed to the
 bottom of the viewport below md, where the bar would otherwise scroll out of
 reach below a long card list.
@@ -33,10 +33,10 @@ reach below a long card list.
         </span>
         <span x-ref="excluded" hidden></span>
         <div x-show="hasSelection" class="flex flex-wrap items-center gap-4">
-            {% for entry in bulk_actions %}
-                {% querystring request.GET as qs %}
+            {% querystring request.GET as qs %}
+            {% for entry in bulk_actions|slice:":2" %}
                 <c-button type="submit"
-                          variant="secondary"
+                          variant="{{ entry.action.variant }}"
                           formaction="{{ entry.url }}{{ qs }}"
                           hx-post="{{ entry.url }}{{ qs }}"
                           hx-target="#app-modal-body"
@@ -44,6 +44,32 @@ reach below a long card list.
                     {{ entry.action.label }}
                 </c-button>
             {% endfor %}
+            {% with more=bulk_actions|slice:"2:" %}
+                {% if more %}
+                    <c-dropdown-menu trigger="More actions" aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
+                        {% for entry in more %}
+                            <c-button dropdown="true"
+                                      type="submit"
+                                      formaction="{{ entry.url }}{{ qs }}"
+                                      hx-post="{{ entry.url }}{{ qs }}"
+                                      hx-target="#app-modal-body"
+                                      hx-swap="innerHTML">
+                                {{ entry.action.label }}
+                            </c-button>
+                        {% endfor %}
+                    </c-dropdown-menu>
+                    {% comment %}The menu opens through Alpine, so without JavaScript its actions are plain buttons.{% endcomment %}
+                    <noscript>
+                        {% for entry in more %}
+                            <c-button type="submit"
+                                      variant="{{ entry.action.variant }}"
+                                      formaction="{{ entry.url }}{{ qs }}">
+                                {{ entry.action.label }}
+                            </c-button>
+                        {% endfor %}
+                    </noscript>
+                {% endif %}
+            {% endwith %}
         </div>
     </div>
     <c-pagination :page_obj="page_obj"

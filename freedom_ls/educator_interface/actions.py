@@ -12,7 +12,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction
 from django.db.models import Model, QuerySet
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -39,6 +39,7 @@ from freedom_ls.educator_interface.events import (
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
     AddMemberForm,
+    BulkTargetPickerForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
@@ -79,6 +80,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
     CHANGE_LEARNER,
+    DELETE_COHORTMEMBERSHIP,
     MEMBER_ROLES,
     CourseNotOpenError,
     can_on_any,
@@ -2371,12 +2373,175 @@ class EducatorBulkAction(BulkAction):
         return run_bulk_action(str(run.pk), site_id)
 
 
-class LearnerStateBulkAction(EducatorBulkAction):
-    """Moves learners to `target_state`; learners already there are skipped."""
+class LearnerBulkAction(EducatorBulkAction):
+    """A bulk action over the rows of the learners table."""
 
     table_key = "learners"
-    capability = CHANGE_LEARNER
     noun_model = Learner
+
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset.select_related("user")
+
+    def row_label(self, obj: Model) -> str:
+        return cast(Learner, obj).user.display_name
+
+
+class CohortMembershipBulkAction(LearnerBulkAction):
+    """Adds learners to, or removes them from, the one cohort the educator
+    picks. `member_ids` holds the selected learners already in that cohort,
+    read once per classification so previewing costs a fixed number of queries
+    however many learners are selected."""
+
+    form_class = BulkTargetPickerForm
+    # The services refuse an inactive cohort, or one from another
+    # organisation, with a ValueError; a cohort deactivated between the
+    # confirmation and the run fails each learner instead of aborting the run.
+    failure_exceptions = (ValueError,)
+    member_ids: frozenset[object] = frozenset()
+
+    def get_form(
+        self, request: HttpRequest, data: QueryDict | None
+    ) -> BulkTargetPickerForm:
+        scoped = cast("OrganisationScopedRequest", request)
+        cohorts = cohorts_visible_to(
+            scoped.user, scoped.organisation, capability=self.capability
+        ).filter(is_active=True)
+        return BulkTargetPickerForm(
+            data, field_name="cohort", queryset=cohorts, label="Cohort"
+        )
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        organisation: Organisation,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        cohort = cast(Cohort | None, cleaned_data.get("cohort"))
+        return (
+            queryset
+            if cohort and can(user, self.capability, cohort)
+            else queryset.none()
+        )
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.member_ids = frozenset(
+            CohortMembership.objects.filter(
+                cohort=cleaned_data["cohort"], learner__in=queryset
+            ).values_list("learner_id", flat=True)
+        )
+        return super().classify_all(user, queryset, cleaned_data)
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        return cast(Cohort, cleaned_data["cohort"])
+
+    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
+        return {"cohort": str(cast(Cohort, cleaned_data["cohort"]).pk)}
+
+    def resolve_target(
+        self, organisation: Organisation, target: dict[str, str]
+    ) -> dict[str, object]:
+        # Scoped to the organisation, so a saved target can never reach
+        # another one's cohort.
+        return {
+            "cohort": get_object_or_404(
+                Cohort._base_manager.filter(organisation=organisation),
+                pk=target["cohort"],
+            )
+        }
+
+
+@register_bulk_action
+class AddToCohortBulkAction(CohortMembershipBulkAction):
+    label = "Add to cohort"
+    action_name = "add_to_cohort"
+    capability = ADD_COHORTMEMBERSHIP
+    unchanged_reason = "already in the cohort"
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return self.unchanged_reason if obj.pk in self.member_ids else None
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return add_to_cohort(cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        cohort = cast(Cohort, cleaned_data["cohort"])
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=f"{count_noun(Learner, count)} will be added to {cohort.name}.",
+            skips=wording.skips,
+        )
+
+
+@register_bulk_action
+class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
+    label = "Remove from cohort"
+    action_name = "remove_from_cohort"
+    capability = DELETE_COHORTMEMBERSHIP
+    unchanged_reason = "not a member"
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return None if obj.pk in self.member_ids else self.unchanged_reason
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return remove_from_cohort(
+            cast(Learner, obj), cast(Cohort, cleaned_data["cohort"])
+        )
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        cohort = cast(Cohort, cleaned_data["cohort"])
+        changed_keys = [
+            key
+            for key, outcome in (classified or {}).items()
+            if outcome.status == "changed"
+        ]
+        lost = {
+            course.pk: course.title
+            for learner in queryset.filter(pk__in=changed_keys)
+            for course in courses_losing_access(learner, cohort)
+        }
+        consequences = (
+            [f"They lose access to: {join_prose(sorted(lost.values()))}."]
+            if lost
+            else []
+        )
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Learner, len(changed_keys))} will be removed "
+                f"from {cohort.name}."
+            ),
+            skips=wording.skips,
+            consequences=consequences,
+        )
+
+
+class LearnerStateBulkAction(LearnerBulkAction):
+    """Moves learners to `target_state`; learners already there are skipped."""
+
+    capability = CHANGE_LEARNER
     target_state: bool
 
     def permitted(
@@ -2392,9 +2557,6 @@ class LearnerStateBulkAction(EducatorBulkAction):
             )
         )
 
-    def with_related(self, queryset: QuerySet) -> QuerySet:
-        return queryset.select_related("user")
-
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         if cast(Learner, obj).is_active == self.target_state:
             return self.unchanged_reason
@@ -2402,9 +2564,6 @@ class LearnerStateBulkAction(EducatorBulkAction):
 
     def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
         return cast(Learner, obj).organisation
-
-    def row_label(self, obj: Model) -> str:
-        return cast(Learner, obj).user.display_name
 
 
 @register_bulk_action

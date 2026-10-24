@@ -6,6 +6,7 @@ from dataclasses import dataclass, field, replace
 from typing import Protocol
 from urllib.parse import urlsplit
 
+from django import forms
 from django.core.exceptions import (
     ImproperlyConfigured,
     PermissionDenied,
@@ -617,6 +618,7 @@ class _BulkConfirmation:
     notice: str = ""
     expected_count: int = 0
     confirm_disabled: bool = False
+    form: forms.Form | None = None
 
     def context(self) -> dict[str, object]:
         return {
@@ -630,6 +632,7 @@ class _BulkConfirmation:
             "notice": self.notice,
             "expected_count": self.expected_count,
             "confirm_disabled": self.confirm_disabled,
+            "form": self.form,
         }
 
 
@@ -773,9 +776,41 @@ def _handle_bulk_action(
     if confirmed and expected_count is None:
         return error_response(selection, count, "The request was not valid")
 
+    picker = action.get_form(
+        request, request.POST if form.cleaned_data["refresh"] or confirmed else None
+    )
+    cleaned_data: dict[str, object] = {}
+    if picker is not None:
+        if picker.is_bound and picker.is_valid():
+            cleaned_data = picker.cleaned_data
+        else:
+            # Without a valid choice there is nothing to preview. An unbound
+            # picker is the first view of the dialog, so it is not an error;
+            # a bound one that failed is.
+            return _confirmation_response(
+                request,
+                _BulkConfirmation(
+                    count=count,
+                    noun=noun,
+                    action=action,
+                    action_url=action_url,
+                    selection=selection,
+                    error="",
+                    status=422 if picker.is_bound else 200,
+                    wording=ConfirmationWording(
+                        sentence=f"{count_noun(queryset.model, count)} selected."
+                    ),
+                    expected_count=count,
+                    confirm_disabled=True,
+                    form=picker,
+                ),
+            )
+
     in_background = action.runs_in_background(count)
     classified: dict[str, BulkOutcome] | None = (
-        None if in_background else action.classify_all(request.user, queryset, {})
+        None
+        if in_background
+        else action.classify_all(request.user, queryset, cleaned_data)
     )
     changed_count = (
         count
@@ -785,7 +820,7 @@ def _handle_bulk_action(
     wording = (
         _background_wording(queryset, count)
         if in_background
-        else action.confirmation_wording(request, queryset, classified, {})
+        else action.confirmation_wording(request, queryset, classified, cleaned_data)
     )
     confirmation = _BulkConfirmation(
         count=count,
@@ -798,6 +833,7 @@ def _handle_bulk_action(
         wording=wording,
         expected_count=count,
         confirm_disabled=changed_count == 0,
+        form=picker,
     )
 
     if not confirmed:
@@ -815,7 +851,7 @@ def _handle_bulk_action(
         return _confirmation_response(request, replace(confirmation, status=422))
 
     selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
-    outcome = action.execute(request, queryset, {})
+    outcome = action.execute(request, queryset, cleaned_data)
     if isinstance(outcome, BackgroundRun):
         return _background_response(request, outcome)
     headline = f"{count_noun(queryset.model, outcome.changed)} changed."

@@ -1,0 +1,28 @@
+{% comment %}
+The form an action asks to be filled in before it can run, such as a target
+picker. Choosing a value re-posts the dialog with refresh=1, so the
+confirmation below it shows what the chosen target would change. Without
+JavaScript the button does the same. Context: form, action_url, selection.
+{% endcomment %}
+{% querystring request.GET as qs %}
+<form method="post"
+      action="{{ action_url }}{{ qs }}"
+      class="mb-4 space-y-2"
+      hx-post="{{ action_url }}{{ qs }}"
+      hx-trigger="change"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-vals='{"refresh": "1"}'>
+    {% csrf_token %}
+    {% include "panel_framework/partials/bulk_selection_inputs.html" %}
+    {% for field in form %}
+        <label for="{{ field.id_for_label }}" class="block text-sm font-medium">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}
+            <p class="text-sm text-error">{{ error }}</p>
+        {% endfor %}
+    {% endfor %}
+    <noscript>
+        <button type="submit" name="refresh" value="1" class="btn btn-secondary">Show what changes</button>
+    </noscript>
+</form>

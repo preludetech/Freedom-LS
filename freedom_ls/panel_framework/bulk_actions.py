@@ -13,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Model, QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 
 from freedom_ls.panel_framework.context import PanelContext
 
@@ -163,6 +163,18 @@ class BulkAction:
     #: Exception types `apply` may turn into a failed outcome. Any other
     #: exception propagates: a failure the action did not name is a bug.
     failure_exceptions: tuple[type[Exception], ...] = ()
+    #: A form the educator fills in before the action can run, such as a
+    #: target picker. Its cleaned data becomes `cleaned_data` everywhere else.
+    form_class: type[forms.Form] | None = None
+
+    def get_form(
+        self, request: HttpRequest, data: QueryDict | None
+    ) -> forms.Form | None:
+        """The action's own form, bound to `data` or unbound when None; None
+        when the action takes no input."""
+        if self.form_class is None:
+            return None
+        return self.form_class(data)
 
     def has_permission(self, request: HttpRequest) -> bool:
         return True

@@ -1,0 +1,11 @@
+{% comment %}
+The hidden inputs that carry a bulk action's selection from one request to the
+next. Context: selection.
+{% endcomment %}
+<input type="hidden" name="mode" value="{{ selection.mode }}">
+{% for key in selection.keys %}
+    <input type="hidden" name="keys" value="{{ key }}">
+{% endfor %}
+{% for key in selection.excluded %}
+    <input type="hidden" name="excluded" value="{{ key }}">
+{% endfor %}
