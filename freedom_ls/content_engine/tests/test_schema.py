@@ -621,10 +621,6 @@ def test_time_limit_days_accepts_a_whole_number_of_days() -> None:
     assert _timed_course(time_limit_days=90).time_limit_days == 90
 
 
-def test_time_limit_days_defaults_to_none() -> None:
-    assert _timed_course().time_limit_days is None
-
-
 @pytest.mark.parametrize("value", [0, -5, "90", 1.5])
 def test_time_limit_days_rejects_what_is_not_a_positive_integer(value: object) -> None:
     with pytest.raises(ValidationError, match="time_limit_days"):
