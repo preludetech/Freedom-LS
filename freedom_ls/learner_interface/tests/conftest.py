@@ -6,6 +6,10 @@ import pytest
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.learner_progress.tests.quiz_fixtures import (
+    course_with_scored_quiz,
+    sit_quiz,
+)
 
 
 @pytest.fixture
