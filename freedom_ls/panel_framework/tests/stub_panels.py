@@ -206,6 +206,39 @@ class StubBulkAction(BulkAction):
         return BulkOutcome("changed")
 
 
+class StubClassifyingBulkAction(StubBulkAction):
+    """Skips rows that are already inactive, so a confirmation has both
+    changed and skipped counts to show."""
+
+    label = "Mark processed (classified)"
+    action_name = "stub_classifying_bulk"
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        return {
+            str(obj.pk): (
+                BulkOutcome("changed")
+                if obj.is_active
+                else BulkOutcome("skipped", "already processed")
+            )
+            for obj in queryset
+        }
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        if not obj.is_active:
+            return BulkOutcome("skipped", "already processed")
+        return super().apply(user, obj, cleaned_data)
+
+
 class StubForbiddenBulkAction(BulkAction):
     label = "Forbidden bulk action"
     action_name = "stub_forbidden_bulk"
@@ -221,7 +254,11 @@ class StubDataTablePanel(DataTablePanel):
     refresh_events = ("itemChanged",)
 
     def get_bulk_actions(self) -> list[BulkAction]:
-        return [StubBulkAction(), StubForbiddenBulkAction()]
+        return [
+            StubBulkAction(),
+            StubClassifyingBulkAction(),
+            StubForbiddenBulkAction(),
+        ]
 
 
 class StubChildDataTable(DataTable):

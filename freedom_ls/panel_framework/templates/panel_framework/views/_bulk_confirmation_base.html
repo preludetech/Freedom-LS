@@ -5,8 +5,8 @@
 {% endblock page_header %}
 
 {% block main %}
-    {% include "panel_framework/partials/bulk_confirmation_message.html" with error=main.error count=main.count noun=main.noun only %}
-    {% include "panel_framework/partials/bulk_confirmation_form.html" with error=main.error action_url=main.action_url selection=main.selection action=main.action %}
+    {% include "panel_framework/partials/bulk_confirmation_message.html" with error=main.error notice=main.notice wording=main.wording count=main.count noun=main.noun only %}
+    {% include "panel_framework/partials/bulk_confirmation_form.html" with error=main.error action_url=main.action_url selection=main.selection action=main.action expected_count=main.expected_count confirm_disabled=main.confirm_disabled %}
     {% querystring request.GET as qs %}
     <a href="{{ main.page_url }}{{ qs }}">Cancel</a>
 {% endblock main %}
