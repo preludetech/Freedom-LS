@@ -16,8 +16,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: refused unsaved deadline override row shows 'Default has changed since this override was set (was nothing, …)' (TDD: failing test first, then fix)
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/deadlines/tests/test_resolver.py::test_course_deadlines_cost_the_same_on_a_small_and_a_large_course (6 queries vs budget 5; cold Site/ContentType cache makes it order-dependent)
 
 ## 4. Documentation and pull request
 
