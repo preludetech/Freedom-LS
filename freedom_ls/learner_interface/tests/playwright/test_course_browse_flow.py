@@ -394,6 +394,32 @@ def test_due_date_reads_in_the_browser_time_zone(
     expect(due).to_have_text("Mar 15, 2999, 05:59 PM EDT")
 
 
+def test_overdue_dated_row_keeps_its_title_visible_in_the_desktop_sidebar(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """An overdue row's badge and due date used to squeeze its title to zero width."""
+    page = logged_in_page
+    course = CourseFactory(title="Overdue Course", slug="overdue-course")
+    topic = TopicFactory(title="Welcome to the Course", slug="overdue-topic")
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    set_due_date(course, topic, due_date=date(2000, 1, 1))
+
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(_item_url(live_server, course, 1))
+
+    outline = page.get_by_role("navigation", name="Course outline")
+    expect(outline.get_by_text("Overdue", exact=True)).to_be_visible()
+    # The clipping box, not the text inside it: an overflowing text node still
+    # reports its full width while the box that hides it is zero wide.
+    title_box = outline.locator("span.truncate", has_text="Welcome to the Course")
+    assert _box(title_box)["width"] > 0
+
+
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
     live_server,
     logged_in_page: Page,

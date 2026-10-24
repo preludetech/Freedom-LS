@@ -95,8 +95,8 @@
                             class="list-none ml-6 mt-1 space-y-1">
                             {% if child.children %}
                                 {% for part_child in child.children %}
-                                    <li class="flex items-center justify-between gap-2 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
-                                        <div class="flex items-center gap-1 flex-1 min-w-0">
+                                    <li class="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                                        <div class="flex items-center gap-1 flex-[1_1_8rem] min-w-0">
                                             {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter text_size="text-xs" counter_width="w-8" %}
                                                 {% partial content-row-inner %}
                                             {% endwith %}
@@ -117,8 +117,8 @@
                     </li>
                 {% else %}
                     {% comment %} Regular content item (Topic, Form, Course). {% endcomment %}
-                    <li class="flex items-center justify-between gap-2 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <li class="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                        <div class="flex items-center gap-2 flex-[1_1_8rem] min-w-0">
                             {% with parent_counter=forloop.counter text_size="text-sm" counter_width="w-5" %}
                                 {% partial content-row-inner %}
                             {% endwith %}
