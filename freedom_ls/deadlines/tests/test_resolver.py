@@ -16,7 +16,10 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    LearnerDeadlineOverrideFactory,
+)
 from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
@@ -589,3 +592,89 @@ def test_override_rows_do_not_change_the_query_count(
         result = course_deadlines(record)
 
     assert len(result.items) == 5
+
+
+# --- learner override layer ---
+
+
+@pytest.mark.django_db
+def test_the_learner_layer_beats_the_cohort_layer_and_the_content_default(
+    mock_site_context,
+):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        due_days_after_registration=3,
+    )
+    LearnerDeadlineOverrideFactory(
+        course_progress=record, collection_item=item, due_days_after_registration=1
+    )
+    type(record).objects.filter(pk=record.pk).update(
+        created_at=datetime(2026, 3, 2, 12, 0, tzinfo=UTC)
+    )
+    record.refresh_from_db()
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.source == DeadlineSource.LEARNER
+    assert resolved.due_at is not None
+    assert resolved.due_at.date() == date(2026, 3, 3)
+
+
+@pytest.mark.django_db
+def test_a_none_override_at_the_learner_layer_removes_the_date(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        collection_item=item,
+        kind=DeadlineKind.NONE,
+        due_days_after_registration=None,
+    )
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.due_at is None
+    assert resolved.source == DeadlineSource.LEARNER
+
+
+@pytest.mark.django_db
+def test_a_learner_time_limit_override_beats_the_course_time_limit(mock_site_context):
+    record, _ = _cohort_record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    LearnerDeadlineOverrideFactory(
+        course_progress=record, due_days_after_registration=5
+    )
+
+    assert course_deadlines(record).time_limit.source == DeadlineSource.LEARNER
+
+
+@pytest.mark.django_db
+def test_each_record_of_a_learner_resolves_its_own_overrides(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    _, individual_record = _cohort_and_individual_records(record.course)
+    LearnerDeadlineOverrideFactory(
+        course_progress=individual_record,
+        collection_item=item,
+        due_days_after_registration=1,
+    )
+
+    resolved = course_deadlines_for([record, individual_record])
+
+    assert resolved[record.pk].items[item.pk].source == DeadlineSource.CONTENT
+    assert (
+        resolved[individual_record.pk].items[item.pk].source == DeadlineSource.LEARNER
+    )
+
+
+@pytest.mark.django_db
+def test_another_sites_learner_override_rows_are_not_read(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    LearnerDeadlineOverrideFactory(
+        site=SiteFactory(),
+        course_progress=record,
+        collection_item=item,
+        due_days_after_registration=1,
+    )
+
+    assert course_deadlines(record).items[item.pk].source == DeadlineSource.CONTENT

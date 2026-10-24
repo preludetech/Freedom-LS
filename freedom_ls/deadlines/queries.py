@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from freedom_ls.deadlines.models import CohortDeadlineOverride
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    LearnerDeadlineOverride,
+)
 from freedom_ls.deadlines.resolver import (
     DeadlineLayer,
     DeadlineSource,
@@ -11,7 +14,9 @@ from freedom_ls.deadlines.resolver import (
 )
 
 
-def content_default_for(row: CohortDeadlineOverride) -> DeadlineValue | None:
+def content_default_for(
+    row: CohortDeadlineOverride | LearnerDeadlineOverride,
+) -> DeadlineValue | None:
     """What the content says for the row's item, or the course time limit for a time-limit row."""
     item = row.collection_item
     if item is not None:
@@ -22,13 +27,36 @@ def content_default_for(row: CohortDeadlineOverride) -> DeadlineValue | None:
     return time_limit_value(course.time_limit_days) if course is not None else None
 
 
-def layers_beneath(row: CohortDeadlineOverride) -> list[DeadlineLayer]:
-    """The layers under this row, most specific first. A cohort row sits directly on the
-    content default."""
-    return [DeadlineLayer(DeadlineSource.CONTENT, content_default_for(row), None)]
+def layers_beneath(
+    row: CohortDeadlineOverride | LearnerDeadlineOverride,
+) -> list[DeadlineLayer]:
+    """The layers under this row, most specific first: the cohort row for a learner row whose
+    record came through a cohort registration, then the content default."""
+    layers: list[DeadlineLayer] = []
+    if isinstance(row, LearnerDeadlineOverride):
+        cohort_registration_id = row.course_progress.cohort_registration_id
+        if cohort_registration_id is not None:
+            cohort_row: CohortDeadlineOverride | None = (
+                CohortDeadlineOverride.objects.filter(
+                    cohort_registration_id=cohort_registration_id,
+                    collection_item_id=row.collection_item_id,
+                ).first()
+            )
+            if cohort_row is not None:
+                layers.append(
+                    DeadlineLayer(
+                        DeadlineSource.COHORT_REGISTRATION,
+                        cohort_row.value(),
+                        cohort_row.replaced_value,
+                    )
+                )
+    layers.append(DeadlineLayer(DeadlineSource.CONTENT, content_default_for(row), None))
+    return layers
 
 
-def canonical_beneath(row: CohortDeadlineOverride) -> str:
+def canonical_beneath(
+    row: CohortDeadlineOverride | LearnerDeadlineOverride,
+) -> str:
     """The string replaced_value stores: the first value beneath, or '' when there is none."""
     for layer in layers_beneath(row):
         if layer.value is not None:

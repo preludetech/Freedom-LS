@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import cast
 
-from unfold.admin import TabularInline
+from unfold.admin import ModelAdmin, TabularInline
 
 from django import forms
 from django.contrib import admin
@@ -12,12 +12,15 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.forms import BaseInlineFormSet
 from django.http import HttpRequest
+from django.utils.html import format_html, format_html_join
+from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
+    LearnerDeadlineOverride,
     course_viewable_collection_items,
 )
 from freedom_ls.deadlines.queries import (
@@ -29,10 +32,16 @@ from freedom_ls.deadlines.resolver import (
     DeadlineLayer,
     DeadlineSource,
     DeadlineValue,
+    ResolvedDeadline,
+    course_deadlines,
     due_instant,
 )
 from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
+from freedom_ls.learner_progress.admin import CourseProgressAdmin
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.time_zones import site_time_zone
+
+DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
 
 
 class CollectionItemChoiceField(forms.ModelChoiceField):
@@ -49,26 +58,22 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
 
     set_by: User
 
-    def save_new(
-        self, form: forms.ModelForm, commit: bool = True
-    ) -> CohortDeadlineOverride:
-        instance = cast(CohortDeadlineOverride, super().save_new(form, commit=False))
+    def save_new(self, form: forms.ModelForm, commit: bool = True) -> DeadlineOverride:
+        instance = cast(DeadlineOverride, super().save_new(form, commit=False))
         return self._stamped(instance, commit)
 
     def save_existing(
         self,
         form: forms.ModelForm,
-        obj: CohortDeadlineOverride,
+        obj: DeadlineOverride,
         commit: bool = True,
-    ) -> CohortDeadlineOverride:
+    ) -> DeadlineOverride:
         instance = cast(
-            CohortDeadlineOverride, super().save_existing(form, obj, commit=False)
+            DeadlineOverride, super().save_existing(form, obj, commit=False)
         )
         return self._stamped(instance, commit)
 
-    def _stamped(
-        self, instance: CohortDeadlineOverride, commit: bool
-    ) -> CohortDeadlineOverride:
+    def _stamped(self, instance: DeadlineOverride, commit: bool) -> DeadlineOverride:
         instance.set_by = self.set_by
         instance.replaced_value = canonical_beneath(instance)
         if commit:
@@ -81,7 +86,7 @@ def site_zone_text(instant: datetime) -> str:
     return f"{instant:%-d %b %Y, %H:%M} {instant.tzname()}"
 
 
-def _value_text(value: DeadlineValue | None, obj: CohortDeadlineOverride) -> str:
+def _value_text(value: DeadlineValue | None, obj: DeadlineOverride) -> str:
     """A value as the admin shows it: a fixed date in the site zone, a relative one as its
     offset, since no learner's registration date applies to a cohort-wide row."""
     if value is None:
@@ -178,13 +183,13 @@ class DeadlineOverrideInline(TabularInline):
         return field
 
     @admin.display(description="Content default")
-    def content_default(self, obj: CohortDeadlineOverride) -> str:
+    def content_default(self, obj: DeadlineOverride) -> str:
         if not obj.pk:
             return ""
         return _value_text(content_default_for(obj), obj)
 
     @admin.display(description="Effective")
-    def effective_value(self, obj: CohortDeadlineOverride) -> str:
+    def effective_value(self, obj: DeadlineOverride) -> str:
         if not obj.pk:
             return ""
         layers = [
@@ -199,7 +204,7 @@ class DeadlineOverrideInline(TabularInline):
         return _value_text(winner, obj)
 
     @admin.display(description="Default changed")
-    def default_changed_note(self, obj: CohortDeadlineOverride) -> str:
+    def default_changed_note(self, obj: DeadlineOverride) -> str:
         if not obj.pk:
             return ""
         beneath = canonical_beneath(obj)
@@ -211,8 +216,49 @@ class DeadlineOverrideInline(TabularInline):
         )
 
 
+SOURCE_LABELS: dict[DeadlineSource, str] = {
+    DeadlineSource.CONTENT: "Content default",
+    DeadlineSource.COHORT_REGISTRATION: "Cohort override",
+    DeadlineSource.LEARNER: "Learner override",
+}
+
+
 class CohortDeadlineOverrideInline(DeadlineOverrideInline):
     model = CohortDeadlineOverride
+
+
+class LearnerDeadlineOverrideInline(DeadlineOverrideInline):
+    model = LearnerDeadlineOverride
+
+
+def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, str]:
+    source = SOURCE_LABELS[resolved.source] if resolved.source is not None else ""
+    return (label, site_zone_text(resolved.due_at) if resolved.due_at else "", source)
+
+
+@admin.display(description="Effective deadlines")
+def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> SafeString:
+    """Every collection item with a deadline, its due instant in the site zone and its source,
+    then the time limit end; one line each, built from the same resolver the learner sees.
+    Titles are author text, so every line goes through format_html."""
+    if record._state.adding:
+        return format_html("{}", "")
+    deadlines = course_deadlines(record)
+    lines: list[tuple[str, str, str]] = []
+    for item in course_viewable_collection_items(record.course):
+        resolved = deadlines.items.get(item.pk)
+        if resolved is None or resolved.due_at is None:
+            continue
+        title = item.child.title if item.child is not None else str(item.pk)
+        lines.append(_deadline_line(title, resolved))
+    if deadlines.time_limit.due_at is not None:
+        lines.append(_deadline_line("Course time limit end", deadlines.time_limit))
+    if not lines:
+        return format_html("<p>{}</p>", "No deadlines.")
+    return format_html(
+        "<ul>{}</ul>",
+        format_html_join("", "<li>{}: {} ({})</li>", lines),
+    )
 
 
 # This change page belongs to an app below this one in docs/app_structure.md, so the override
@@ -221,3 +267,25 @@ CohortCourseRegistrationAdmin.inlines = [
     *CohortCourseRegistrationAdmin.inlines,
     CohortDeadlineOverrideInline,
 ]
+
+
+# CourseProgressAdmin's change page likewise belongs to a lower app; the inline, the read-only
+# field and its fieldset are added from here. Each seam adds rather than replaces.
+CourseProgressAdmin.inlines = [
+    *CourseProgressAdmin.inlines,
+    LearnerDeadlineOverrideInline,
+]
+setattr(CourseProgressAdmin, "effective_deadlines", effective_deadlines)  # noqa: B010
+setattr(  # noqa: B010
+    CourseProgressAdmin,
+    "readonly_fields",
+    (*CourseProgressAdmin.readonly_fields, "effective_deadlines"),
+)
+setattr(  # noqa: B010
+    CourseProgressAdmin,
+    "fieldsets",
+    (
+        *CourseProgressAdmin.fieldsets,
+        ("Deadlines", {"fields": ("effective_deadlines",)}),
+    ),
+)

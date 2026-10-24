@@ -9,10 +9,19 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.admin import site_zone_text
-from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
-from freedom_ls.deadlines.models import CohortDeadlineOverride, DeadlineKind
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    LearnerDeadlineOverrideFactory,
+)
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    DeadlineKind,
+    LearnerDeadlineOverride,
+)
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohortcourseregistration_change"
@@ -277,3 +286,129 @@ def test_site_zone_text_names_the_zone() -> None:
     instant = datetime(2026, 3, 14, 17, 0, tzinfo=ZoneInfo("Africa/Johannesburg"))
 
     assert site_zone_text(instant) == "14 Mar 2026, 17:00 SAST"
+
+
+PROGRESS_CHANGE_URL_NAME = "admin:freedom_ls_learner_progress_courseprogress_change"
+
+
+def _record_with_item() -> tuple[CourseProgress, ContentCollectionItem]:
+    course: Course = CourseFactory()
+    topic = TopicFactory(title="Reading")
+    course.items.create(child=topic, order=0)
+    record: CourseProgress = CourseProgressFactory(course=course)
+    return record, collection_item_for(course, topic)
+
+
+def _progress_page(client: Client, record: CourseProgress):
+    return client.get(reverse(PROGRESS_CHANGE_URL_NAME, args=[record.pk]))
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_has_the_learner_override_inline(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+
+    response = _progress_page(staff_client, record)
+
+    assert response.status_code == 200
+    inline_models = {
+        inline.formset.model for inline in response.context["inline_admin_formsets"]
+    }
+    assert LearnerDeadlineOverride in inline_models
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_stamps_a_new_learner_row(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_item()
+    item.due_days_after_registration = 14
+    item.save()
+    page = _progress_page(staff_client, record)
+    formset = next(
+        inline.formset
+        for inline in page.context["inline_admin_formsets"]
+        if inline.formset.prefix == "deadline_overrides"
+    )
+    # Reuse the rendered form's initial data so unrelated fields post unchanged.
+    form = page.context["adminform"].form
+    payload = {
+        name: ("" if value is None else str(value))
+        for name, value in form.initial.items()
+        if value is not None
+    }
+    for field_name in ("topic_progress", "form_attempts"):
+        payload.setdefault(f"{field_name}-TOTAL_FORMS", "0")
+    for inline in page.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
+    payload["deadline_overrides-TOTAL_FORMS"] = "1"
+    payload["deadline_overrides-0-course_progress"] = str(record.pk)
+    payload["deadline_overrides-0-collection_item"] = str(item.pk)
+    payload["deadline_overrides-0-kind"] = DeadlineKind.RELATIVE
+    payload["deadline_overrides-0-due_days_after_registration"] = "3"
+    assert formset.prefix == "deadline_overrides"
+
+    response = staff_client.post(
+        reverse(PROGRESS_CHANGE_URL_NAME, args=[record.pk]), payload
+    )
+
+    assert response.status_code == 302
+    override = LearnerDeadlineOverride.objects.get()
+    assert override.set_by is not None
+    assert override.replaced_value == "relative:14"
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_lists_items_sources_and_the_time_limit_end(
+    staff_client, mock_site_context
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        collection_item=item,
+        kind=DeadlineKind.FIXED,
+        due_date="2026-03-14",
+        due_time="17:00",
+        due_days_after_registration=None,
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Effective deadlines" in body
+    assert "Reading: 14 Mar 2026, 17:00 SAST (Learner override)" in body
+    assert "Course time limit end: " in body
+    assert "(Content default)" in body
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_escapes_an_author_title(
+    staff_client, mock_site_context
+) -> None:
+    record, item = _record_with_item()
+    assert item.child is not None
+    type(item.child).objects.filter(pk=item.child.pk).update(
+        title="<script>alert(1)</script>"
+    )
+    item.due_days_after_registration = 5
+    item.save()
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "<script>alert(1)</script>" not in body
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;: " in body
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_says_so_when_there_are_none(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+
+    assert "No deadlines." in _progress_page(staff_client, record).content.decode()
