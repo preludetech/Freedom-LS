@@ -737,14 +737,11 @@ def _handle_bulk_action(
         )
 
     selection = parse_selection(request)
-    if selection.mode != "keys":
-        return error_response(selection, 0, "Not supported yet")
-
     queryset = resolve_selection(panel, request, selection)
     count = queryset.count()
     if count == 0:
         return error_response(selection, count, "Nothing selected")
-    if count > action.max_rows:
+    if selection.mode == "keys" and count > action.max_rows:
         message = f"{count} selected; the limit is {action.max_rows}"
         return error_response(selection, count, message)
 

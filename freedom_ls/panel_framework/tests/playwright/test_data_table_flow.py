@@ -179,7 +179,7 @@ def test_data_table_interaction(
     # Sorting clears the selection.
     expect(page.get_by_text(f"{PAGE_SIZE} selected", exact=False)).to_be_visible()
     page.get_by_role("link", name="Name").click()
-    expect(page.get_by_text("selected", exact=False)).to_be_hidden()
+    expect(page.get_by_text(" selected · showing", exact=False)).to_be_hidden()
     expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
         0
     )
@@ -315,6 +315,79 @@ def test_data_table_interaction(
                 "el => el.getBoundingClientRect().width"
             )
             assert icon_width == 16
+
+
+def test_select_all_matching_spans_every_page(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    matching = 2 * PAGE_SIZE + 3
+    for i in range(matching):
+        make_stub(name=f"pick-{i:02d}")
+    for i in range(4):
+        make_stub(name=f"other-{i}")
+    filtered_url = f"{live_server.url}{_LIST_PATH}?stubs-q=pick"
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(filtered_url)
+
+    # The status region exists before anything is ticked.
+    status = page.locator("#stubs-table").get_by_role("status")
+    expect(status).to_have_count(1)
+    row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
+    expect(row_checkboxes).to_have_count(PAGE_SIZE)
+    select_all_matching = page.get_by_role(
+        "button", name=f"Select all {matching} matching"
+    )
+    expect(select_all_matching).to_be_hidden()
+
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    expect(
+        page.get_by_text(f"All {PAGE_SIZE} on this page are selected.")
+    ).to_be_visible()
+    select_all_matching.click()
+    expect(status).to_contain_text(f"{matching} selected")
+    expect(page.get_by_text(f"All {matching} matching are selected.")).to_be_visible()
+
+    # Unticking one row leaves every other matching row selected.
+    row_checkboxes.first.uncheck()
+    expect(status).to_contain_text(f"{matching - 1} selected")
+
+    page.get_by_role("button", name="Mark processed").click()
+    modal = page.locator("#app-modal")
+    expect(
+        modal.get_by_text(f"This will affect {matching - 1} stub models.")
+    ).to_be_visible()
+    modal.get_by_role("button", name="Mark processed").click()
+    expect(modal.get_by_text(f"{matching - 1} stub models changed.")).to_be_visible()
+    assert StubModel.objects.filter(is_active=False).count() == matching - 1
+    assert StubModel.objects.get(name="pick-00").is_active
+    assert not StubModel.objects.filter(
+        name__startswith="other", is_active=False
+    ).exists()
+
+    # Sorting swaps the table and clears the selection.
+    page.goto(filtered_url)
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    select_all_matching.click()
+    expect(status).to_contain_text(f"{matching} selected")
+    page.get_by_role("link", name="Name").click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+    expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
+        0
+    )
+
+    # Clear selection returns to ticking rows one by one.
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    select_all_matching.click()
+    page.get_by_role("button", name="Clear selection").click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(filtered_url)
+        assert_no_horizontal_overflow(page)
 
 
 def test_filter_sheet_is_visible_with_javascript_off(

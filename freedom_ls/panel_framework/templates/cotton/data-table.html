@@ -31,7 +31,7 @@
     <div tabindex="-1" data-table-anchor></div>
     {% include "panel_framework/partials/table_toolbar.html" %}
 
-    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys">{% endif %}
+    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">{% endif %}
 
     {% if bulk_actions %}
         {% comment %}
