@@ -23,7 +23,7 @@ from freedom_ls.deadlines.factories import (
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
-from freedom_ls.deadlines.tests.course_files import (
+from freedom_ls.deadlines.tests.helpers import (
     write_course,
     write_part,
     write_topic,
