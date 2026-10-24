@@ -33,6 +33,7 @@ from freedom_ls.learner_management.utils import (
     ensure_learner,
     fire_webhook_event_on_commit,
     learner_webhook_payload,
+    record_cohort_entry,
 )
 from freedom_ls.organisations.models import Organisation
 
@@ -114,6 +115,47 @@ def reactivate_learner(
     return _change_learner_state(
         learner, True, "learner.reactivated", "learner.reactivated", actor, reason
     )
+
+
+def _set_cohort_active(
+    cohort: Cohort, is_active: bool, actor: User | None, reason: str
+) -> bool:
+    """Flip `Cohort.is_active` and record the change, in one transaction;
+    False, writing nothing, when the cohort was already in that state.
+
+    Works on `_base_manager` under a row lock, as `_set_learner_active` does:
+    this also runs from a task, where no ambient site exists for the
+    site-aware manager to read. The lock also stops two overlapping calls
+    each writing an entry for the one change.
+    """
+    with transaction.atomic():
+        locked = Cohort._base_manager.select_for_update().get(pk=cohort.pk)
+        if locked.is_active == is_active:
+            return False
+        locked.is_active = is_active
+        locked.save(update_fields=["is_active", "updated_at"])
+        cohort.is_active = is_active
+        record_cohort_entry(
+            locked,
+            "cohort.reactivated" if is_active else "cohort.deactivated",
+            actor,
+            reason=reason,
+        )
+    return True
+
+
+def deactivate_cohort(
+    cohort: Cohort, *, actor: User | None = None, reason: str = ""
+) -> bool:
+    """Stop the cohort's registrations giving access. Memberships and
+    progress are kept."""
+    return _set_cohort_active(cohort, False, actor, reason)
+
+
+def reactivate_cohort(
+    cohort: Cohort, *, actor: User | None = None, reason: str = ""
+) -> bool:
+    return _set_cohort_active(cohort, True, actor, reason)
 
 
 def _check_cohort(learner: Learner, cohort: Cohort) -> None:

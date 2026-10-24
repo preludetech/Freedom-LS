@@ -26,9 +26,11 @@ from freedom_ls.learner_management.learner_actions import (
     LearnerEntry,
     add_learners,
     add_to_cohort,
+    deactivate_cohort,
     deactivate_learner,
     deactivate_registration,
     move_between_cohorts,
+    reactivate_cohort,
     reactivate_learner,
     register_for_course,
     remove_from_cohort,
@@ -527,6 +529,49 @@ class TestSelfRegisterAudit:
 
         assert not Learner.objects.filter(user=user).exists()
         assert AuditLogEntry.unscoped.count() == 0
+
+
+@pytest.mark.django_db
+class TestCohortState:
+    def test_deactivating_an_active_cohort_reports_a_change(self, mock_site_context):
+        cohort = CohortFactory(is_active=True)
+
+        changed = deactivate_cohort(cohort)
+
+        assert (changed, Cohort.objects.get(pk=cohort.pk).is_active) == (True, False)
+
+    def test_deactivating_updates_the_passed_cohort(self, mock_site_context):
+        cohort = CohortFactory(is_active=True)
+
+        deactivate_cohort(cohort)
+
+        assert cohort.is_active is False
+
+    def test_deactivating_an_inactive_cohort_reports_no_change(self, mock_site_context):
+        cohort = CohortFactory(is_active=False)
+
+        assert deactivate_cohort(cohort) is False
+
+    def test_reactivating_an_inactive_cohort_reports_a_change(self, mock_site_context):
+        cohort = CohortFactory(is_active=False)
+
+        changed = reactivate_cohort(cohort)
+
+        assert (changed, Cohort.objects.get(pk=cohort.pk).is_active) == (True, True)
+
+    def test_reactivating_an_active_cohort_reports_no_change(self, mock_site_context):
+        cohort = CohortFactory(is_active=True)
+
+        assert reactivate_cohort(cohort) is False
+
+    def test_a_stale_copy_does_not_overwrite_a_concurrent_change(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(is_active=True)
+        stale = Cohort.objects.get(pk=cohort.pk)
+        deactivate_cohort(cohort)
+
+        assert deactivate_cohort(stale) is False
 
 
 @pytest.mark.django_db

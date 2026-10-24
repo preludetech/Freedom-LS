@@ -441,13 +441,12 @@ class TestRegisterCohortForCourse:
         cohort = CohortFactory()
         course = CourseFactory()
 
-        registration = register_cohort_for_course(cohort, course)
+        changed = register_cohort_for_course(cohort, course)
 
-        assert (registration.cohort, registration.course, registration.is_active) == (
-            cohort,
-            course,
-            True,
+        registration = CohortCourseRegistration.objects.get(
+            cohort=cohort, course=course
         )
+        assert (changed, registration.is_active) == (True, True)
 
     def test_registering_again_after_unregistering_reuses_the_row(
         self, mock_site_context
@@ -455,11 +454,34 @@ class TestRegisterCohortForCourse:
         registration = CohortCourseRegistrationFactory()
         deactivate_cohort_registration(registration)
 
-        again = register_cohort_for_course(registration.cohort, registration.course)
+        changed = register_cohort_for_course(registration.cohort, registration.course)
 
-        assert again.pk == registration.pk
-        assert again.is_active is True
+        registration.refresh_from_db()
+        assert (changed, registration.is_active) == (True, True)
         assert CohortCourseRegistration.objects.count() == 1
+
+    def test_registering_an_already_registered_pair_reports_no_change(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory()
+
+        changed = register_cohort_for_course(registration.cohort, registration.course)
+
+        assert changed is False
+
+    def test_unregistering_an_active_registration_reports_a_change(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory()
+
+        assert deactivate_cohort_registration(registration) is True
+
+    def test_unregistering_an_inactive_registration_reports_no_change(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+
+        assert deactivate_cohort_registration(registration) is False
 
     def test_unregistering_deactivates_the_registration(self, mock_site_context):
         registration = CohortCourseRegistrationFactory()

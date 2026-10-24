@@ -4011,3 +4011,25 @@ def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_unde
         "Unregister from course",
         "Resend setup email",
     ]
+
+
+@pytest.mark.django_db
+def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_state_actions_under_more(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation)
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > div > button[formaction]") == [
+        "Register for course",
+        "Unregister from course",
+    ]
+    assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]

@@ -66,6 +66,13 @@ VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+CHANGE_COHORT = "freedom_ls_learner_management.change_cohort"
+ADD_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_cohortcourseregistration"
+)
+CHANGE_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_cohortcourseregistration"
+)
 ADD_LEARNERCOURSEREGISTRATION = (
     "freedom_ls_learner_management.add_learnercourseregistration"
 )
