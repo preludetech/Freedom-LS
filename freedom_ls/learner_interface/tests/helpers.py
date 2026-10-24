@@ -12,8 +12,11 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
-from freedom_ls.deadlines.models import CohortDeadlineOverride
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    LearnerDeadlineOverrideFactory,
+)
+from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -171,5 +174,15 @@ def cohort_override(
         cohort_registration=record.cohort_registration,
         collection_item=collection_item,
         **fields,
+    )
+    return override
+
+
+def learner_override(
+    record: CourseProgress, collection_item: ContentCollectionItem, **fields: object
+) -> LearnerDeadlineOverride:
+    """A deadline override on `record` itself."""
+    override: LearnerDeadlineOverride = LearnerDeadlineOverrideFactory(
+        course_progress=record, collection_item=collection_item, **fields
     )
     return override

@@ -34,6 +34,7 @@ from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
     form_attempt,
+    learner_override,
     learner_with_two_grants,
     set_due_date,
     topic_completion,
@@ -1732,3 +1733,46 @@ def test_toc_individual_registration_ignores_the_cohort_override(overridden_cour
 
     assert "1 Jan 2020" in html
     assert "Overdue" in html
+
+
+# --- Learner deadline overrides on the table of contents ---
+
+
+@pytest.mark.django_db
+def test_toc_learner_override_beats_the_cohort_override_and_the_default(
+    overridden_course,
+):
+    course, item, record, client, _ = overridden_course
+    cohort_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2030, 1, 1),
+        due_days_after_registration=None,
+    )
+    learner_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2999, 1, 1),
+        due_days_after_registration=None,
+    )
+
+    html = _detail_html(client, course)
+
+    assert "1 Jan 2999" in html
+    assert "1 Jan 2030" not in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_toc_learner_none_override_removes_the_date(overridden_course):
+    course, item, record, client, _ = overridden_course
+    learner_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _detail_html(client, course)
+
+    assert "1 Jan 2020" not in html
+    assert "Overdue" not in html

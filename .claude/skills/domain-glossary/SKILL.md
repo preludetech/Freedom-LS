@@ -47,8 +47,7 @@ Two accessors sit on top of it and they are **not** the same thing, which is the
   (`Topic` / `Form` / `CoursePart` objects), with the `ContentCollectionItem` discarded.
 
 So bare **"item"** is already ambiguous in this codebase: `Course.items` means rows,
-`viewable_items()` means children, and `content_item` on the deadline models means the resolved
-`Topic`/`Form`. Do not add a third sense. When you need to be unambiguous, say **collection item**
+`viewable_items()` means children. Do not add a third sense. When you need to be unambiguous, say **collection item**
 for the row and **child** for the resolved object.
 
 ---
@@ -64,7 +63,14 @@ for the row and **child** for the resolved object.
 | `CohortCourseRegistration` | `:133` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
 | `Cohort` | `:32` | A group of learners, owned by an organisation. |
 | `CohortMembership` | `:84` | One learner's membership of a cohort, keyed `(learner, cohort)` (`:91`). **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` (`:96`) enforces that the learner and the cohort share an organisation. |
-| `CohortDeadline`, `LearnerDeadline`, `LearnerCohortDeadlineOverride` | `:159`, `:205`, `:251` | Deadlines. Each carries a `content_item` generic FK to the `Topic`/`Form`. |
+| `CohortDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for every learner registered for a course through one cohort. Keyed `(cohort_registration, collection_item)`; a null `collection_item` overrides the course time limit. Records `set_by` and `replaced_value`. |
+| `LearnerDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for one learner's `CourseProgress`. Beats a `CohortDeadlineOverride` and the content default. A cohort move mints a new `CourseProgress`, so the old record's overrides stay behind. |
+| `SiteTimeZoneConfig` | `freedom_ls/site_aware_models/models.py` | One row per site naming the time zone its dates are read in, and whether learners see the zone. No row means the default zone. |
+| **registration date** | `CourseProgress.created_at` | The date a relative deadline counts from, read in the site time zone. |
+| **content default** | `ContentCollectionItem.due_date` / `due_time` / `due_days_after_registration`, `Course.time_limit_days` | The deadline the course author set. The lowest layer. |
+| **deadline override** | `CohortDeadlineOverride`, `LearnerDeadlineOverride` | A deadline an admin set over the content default. Never `ContentCollectionItem.overrides`. |
+| **time limit end** | `course_deadlines(record).time_limit` | When the course time limit runs out for one learner: registration date plus `time_limit_days`, at the end of that day. |
+| **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
 | `is_registered_for_course` | `learner_management/utils.py:16` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
 | `ensure_learner` | `learner_management/utils.py:51` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |
@@ -76,8 +82,7 @@ for the row and **child** for the resolved object.
 person belongs to this organisation*, and it is the thing enrolment hangs off. A person studying
 through two client organisations has **two `Learner` rows and one `User`**.
 
-- **Enrolment is per-`Learner`.** `LearnerCourseRegistration`, `CohortMembership` and both deadline
-  models point at `Learner`. An enrolment with no organisation cannot be represented — that is the
+- **Enrolment is per-`Learner`.** `LearnerCourseRegistration` and `CohortMembership` point at `Learner`. An enrolment with no organisation cannot be represented — that is the
   point of the model.
 - **Progress is per-`Learner`, keyed on the granting registration.** `CourseProgress` carries a
   `learner` FK plus exactly one of `learner_registration` / `cohort_registration` — the registration
@@ -189,8 +194,7 @@ learning system not LMS, foundation not platform.
 **The word is *learner*.** That is settled, in prose and in code alike.
 
 The codebase has caught up. `learner-terminology-rename` moved the three apps to `learner_management`,
-`learner_progress` and `learner_interface`, renamed their app labels, turned `StudentDeadline` into
-`LearnerDeadline`, and reset those apps' migration history to a single `0001_initial` each. There is no
+`learner_progress` and `learner_interface`, renamed their app labels, and reset those apps' migration history to a single `0001_initial` each. There is no
 `student_*` namespace left to match.
 
 - **Never introduce a `student_*` name** — not an app, module, class, field, function, template, URL

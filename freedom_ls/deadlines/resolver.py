@@ -11,7 +11,11 @@ from zoneinfo import ZoneInfo
 from django.contrib.contenttypes.models import ContentType
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
-from freedom_ls.deadlines.models import CohortDeadlineOverride, DeadlineKind
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    DeadlineKind,
+    LearnerDeadlineOverride,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.time_zones import site_time_zone
 
@@ -262,7 +266,12 @@ def course_deadlines_for(
             }
         )
     }
-    learner_rows: LayerRows = {}
+    learner_rows: LayerRows = {
+        (row.course_progress_id, row.collection_item_id): row
+        for row in LearnerDeadlineOverride.objects.filter(
+            course_progress_id__in=[record.pk for record in records]
+        )
+    }
 
     result: dict[UUID, CourseDeadlines] = {}
     for record in records:

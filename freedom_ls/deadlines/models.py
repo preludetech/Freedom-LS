@@ -10,6 +10,7 @@ from django.db.models import Q
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 if TYPE_CHECKING:
@@ -112,6 +113,84 @@ class CohortDeadlineOverride(SiteAwareModel, TimestampedModel):
     def course(self) -> Course | None:
         # The parent is unset while the admin add page is still being validated.
         return self.cohort_registration.course if self.cohort_registration_id else None
+
+    def value(self) -> DeadlineValue:
+        from freedom_ls.deadlines.resolver import DeadlineValue
+
+        return DeadlineValue(
+            DeadlineKind(self.kind),
+            self.due_date,
+            self.due_time,
+            self.due_days_after_registration,
+        )
+
+    def clean(self) -> None:
+        course = self.course
+        if course is None:
+            return
+        _validate_deadline_override(
+            self.kind,
+            self.due_date,
+            self.due_time,
+            self.due_days_after_registration,
+            self.collection_item,
+            course,
+        )
+
+
+class LearnerDeadlineOverride(SiteAwareModel, TimestampedModel):
+    """A deadline set for one learner's progress on a course. It beats a cohort override and
+    the content default."""
+
+    course_progress = models.ForeignKey(
+        CourseProgress,
+        on_delete=models.CASCADE,
+        related_name="deadline_overrides",
+    )
+    collection_item = models.ForeignKey(
+        ContentCollectionItem,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    kind = models.CharField(max_length=8, choices=DeadlineKind.choices)
+    due_date = models.DateField(
+        null=True, blank=True, help_text="Read in the site's time zone."
+    )
+    due_time = models.TimeField(null=True, blank=True)
+    due_days_after_registration = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="days after registration"
+    )
+    replaced_value = models.CharField(max_length=64, blank=True)
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    reason = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["course_progress", "collection_item"],
+                condition=Q(collection_item__isnull=False),
+                name="unique_learner_override_per_item",
+            ),
+            models.UniqueConstraint(
+                fields=["course_progress"],
+                condition=Q(collection_item__isnull=True),
+                name="unique_learner_time_limit_override",
+            ),
+        ]
+        verbose_name = "deadline override"
+
+    @property
+    def course(self) -> Course | None:
+        # The parent is unset while the admin add page is still being validated.
+        return self.course_progress.course if self.course_progress_id else None
 
     def value(self) -> DeadlineValue:
         from freedom_ls.deadlines.resolver import DeadlineValue

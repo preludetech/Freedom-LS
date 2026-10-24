@@ -6,15 +6,26 @@ import pytest
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
-from freedom_ls.deadlines.models import CohortDeadlineOverride, DeadlineKind
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    LearnerDeadlineOverrideFactory,
+)
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    DeadlineKind,
+    LearnerDeadlineOverride,
+)
 from freedom_ls.deadlines.queries import (
     canonical_beneath,
     content_default_for,
     layers_beneath,
 )
 from freedom_ls.deadlines.resolver import DeadlineLayer, DeadlineSource, DeadlineValue
-from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
+)
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 
 
 def _item_override(**item_columns: object) -> CohortDeadlineOverride:
@@ -108,3 +119,86 @@ def test_canonical_beneath_a_time_limit_row_is_empty_when_no_time_limit_is_set(
     mock_site_context,
 ):
     assert canonical_beneath(_time_limit_override(None)) == ""
+
+
+def _learner_override(*, on_cohort: bool) -> tuple[LearnerDeadlineOverride, object]:
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    item = collection_item_for(course, topic)
+    item.due_days_after_registration = 14
+    item.save()
+    registration = CohortCourseRegistrationFactory(course=course)
+    record = CourseProgressFactory(
+        course=course,
+        cohort_registration=registration if on_cohort else None,
+        learner_registration=None
+        if on_cohort
+        else LearnerCourseRegistrationFactory(course=course),
+    )
+    override: LearnerDeadlineOverride = LearnerDeadlineOverrideFactory(
+        course_progress=record, collection_item=item
+    )
+    return override, registration
+
+
+@pytest.mark.django_db
+def test_layers_beneath_a_learner_row_on_a_cohort_record_has_the_cohort_row_first(
+    mock_site_context,
+):
+    override, registration = _learner_override(on_cohort=True)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=override.collection_item,
+        due_days_after_registration=5,
+        replaced_value="relative:14",
+    )
+
+    assert layers_beneath(override) == [
+        DeadlineLayer(
+            DeadlineSource.COHORT_REGISTRATION,
+            DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=5),
+            "relative:14",
+        ),
+        DeadlineLayer(
+            DeadlineSource.CONTENT,
+            DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14),
+            None,
+        ),
+    ]
+
+
+@pytest.mark.django_db
+def test_layers_beneath_a_learner_row_on_a_cohort_record_without_a_cohort_row(
+    mock_site_context,
+):
+    override, _ = _learner_override(on_cohort=True)
+
+    assert [layer.source for layer in layers_beneath(override)] == [
+        DeadlineSource.CONTENT
+    ]
+
+
+@pytest.mark.django_db
+def test_layers_beneath_a_learner_row_on_an_individual_record_is_the_content_default(
+    mock_site_context,
+):
+    override, _ = _learner_override(on_cohort=False)
+
+    assert [layer.source for layer in layers_beneath(override)] == [
+        DeadlineSource.CONTENT
+    ]
+
+
+@pytest.mark.django_db
+def test_canonical_beneath_a_learner_row_is_the_cohort_value_when_there_is_one(
+    mock_site_context,
+):
+    override, registration = _learner_override(on_cohort=True)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=override.collection_item,
+        due_days_after_registration=5,
+    )
+
+    assert canonical_beneath(override) == "relative:5"

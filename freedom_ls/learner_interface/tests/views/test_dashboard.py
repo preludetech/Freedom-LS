@@ -26,6 +26,7 @@ from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.learner_interface.dashboard_sections import section_page_href
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
+    learner_override,
     learner_with_two_grants,
     rendered_section,
     section_by_slug,
@@ -1679,3 +1680,48 @@ def test_card_individual_registration_ignores_the_cohort_override(overridden_car
     )
 
     assert "1 overdue" in _dashboard_html(individual_client)
+
+
+# --- Learner deadline overrides on the dashboard card ---
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_learner_override_beats_the_cohort_override_and_the_default(
+    overridden_card,
+):
+    item, record, client, _ = overridden_card
+    cohort_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2030, 1, 1),
+        due_days_after_registration=None,
+    )
+    learner_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2999, 1, 1),
+        due_days_after_registration=None,
+    )
+
+    html = _dashboard_html(client)
+
+    assert "1 Jan 2999" in html
+    assert "1 Jan 2030" not in html
+    assert "1 overdue" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_learner_none_override_removes_the_date(overridden_card):
+    item, record, client, _ = overridden_card
+    learner_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _dashboard_html(client)
+
+    assert "1 overdue" not in html
+    assert "Next due" not in html
