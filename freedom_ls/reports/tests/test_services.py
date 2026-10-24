@@ -71,6 +71,36 @@ class TestRequestCohortReport:
         assert request_cohort_report(cohort, UserFactory()) is None
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
 
+    def test_fails_a_stalled_report_and_starts_a_fresh_one(self) -> None:
+        cohort = CohortFactory()
+        with time_machine.travel("2026-01-01 10:00", tick=False):
+            stalled = GeneratedReportFactory(
+                cohort=cohort, status=GeneratedReport.STATUS_RUNNING
+            )
+
+        with time_machine.travel("2026-01-01 10:11", tick=False):
+            fresh = request_cohort_report(cohort, UserFactory())
+
+        stalled.refresh_from_db()
+        assert fresh is not None
+        assert fresh.status == GeneratedReport.STATUS_PENDING
+        assert (stalled.status, stalled.error_message) == (
+            GeneratedReport.STATUS_FAILED,
+            "Report generation did not finish.",
+        )
+        assert stalled.finished_at is not None
+
+    def test_a_report_inside_the_stall_window_still_blocks_a_new_one(self) -> None:
+        cohort = CohortFactory()
+        with time_machine.travel("2026-01-01 10:00", tick=False):
+            GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_PENDING)
+
+        with time_machine.travel("2026-01-01 10:09", tick=False):
+            result = request_cohort_report(cohort, UserFactory())
+
+        assert result is None
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
+
     def test_returns_none_when_the_insert_loses_the_race(self) -> None:
         cohort = CohortFactory()
 

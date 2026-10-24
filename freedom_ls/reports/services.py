@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404
 from django.tasks import default_task_backend
+from django.utils import timezone
 from django.utils.text import slugify
 
 from freedom_ls.accounts.models import User
@@ -15,6 +17,35 @@ from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tasks import _generate_cohort_report_task
 
 IN_FLIGHT_STATUSES = (GeneratedReport.STATUS_PENDING, GeneratedReport.STATUS_RUNNING)
+#: An in-flight report older than this is assumed stuck: the page stops polling
+#: for it, and the next request to generate marks it failed and starts afresh.
+IN_FLIGHT_STALL = timedelta(minutes=10)
+STALLED_MESSAGE = "Report generation did not finish."
+
+
+def is_stalled(report: GeneratedReport | None, now: datetime) -> bool:
+    """Whether an in-flight report is older than the stall window."""
+    return report is not None and now - report.requested_at > IN_FLIGHT_STALL
+
+
+def fail_stalled_reports(cohort: Cohort, now: datetime) -> int:
+    """Mark the cohort's stalled in-flight reports failed; returns how many.
+
+    The task's own `finally` records a failure when the gather or render
+    raises. Nothing on the row can see a worker that was killed mid-run, so
+    the row would stay in flight for good and, through the one-in-flight
+    constraint, block every later report for the cohort. The stall window is
+    the only evidence there is.
+    """
+    return GeneratedReport.objects.filter(
+        cohort=cohort,
+        status__in=IN_FLIGHT_STATUSES,
+        requested_at__lt=now - IN_FLIGHT_STALL,
+    ).update(
+        status=GeneratedReport.STATUS_FAILED,
+        error_message=STALLED_MESSAGE,
+        finished_at=now,
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -38,7 +69,12 @@ def has_inflight_report(cohort: Cohort) -> bool:
 
 
 def request_cohort_report(cohort: Cohort, user: User) -> GeneratedReport | None:
-    """Start a report for the cohort, or return None when one is already being generated."""
+    """Start a report for the cohort, or return None when one is already being generated.
+
+    A stalled report is failed first, so asking again after a stall is what
+    gets the cohort a fresh one.
+    """
+    fail_stalled_reports(cohort, timezone.now())
     if has_inflight_report(cohort):
         return None
     try:

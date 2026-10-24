@@ -267,6 +267,28 @@ class TestReportTab:
         assert not region.cssselect("[hx-trigger]")
         assert "This is taking longer than expected." in region.text_content()
         assert region.cssselect("a[hx-get]")
+        assert "Try again" in region.text_content()
+        assert region.cssselect("form[hx-post]")
+
+    def test_generating_after_a_stall_fails_the_stuck_report_and_starts_another(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        stalled = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_RUNNING
+        )
+        client = logged_in_client(_org_admin(cohort.organisation))
+        url = _downloads_url(cohort.organisation.slug, cohort.pk)
+
+        with time_machine.travel(stalled.requested_at + timedelta(minutes=11)):
+            response = _generate(client, url)
+
+        stalled.refresh_from_db()
+        region = lxml.html.fromstring(response.content.decode())
+        assert stalled.status == GeneratedReport.STATUS_FAILED
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 2
+        assert "A report is being generated" in region.text_content()
+        assert region.cssselect("[hx-trigger]")
 
     def test_a_ready_region_links_to_the_download_and_does_not_poll(
         self, logged_in_client
@@ -830,6 +852,27 @@ class TestLearnerCoursesPanel:
         assert "via Visible group" in text
         assert "Secret Course" not in text
         assert "Hidden group" not in text
+
+    def test_the_course_cards_are_ordered_by_title_whatever_the_registration_kind(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Zoology")
+        )
+        cohort = CohortFactory(organisation=learner.organisation)
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+        CohortCourseRegistrationFactory(
+            cohort=cohort, course=CourseFactory(title="Algebra")
+        )
+
+        text = _courses_panel(
+            logged_in_client(_org_admin(learner.organisation)),
+            learner.organisation.slug,
+            learner,
+        )
+
+        assert text.index("Algebra") < text.index("Zoology")
 
     def test_the_course_cards_list_shows_no_list_markers(self, logged_in_client):
         """The theme bullets bare lists, so each course card had a stray marker."""

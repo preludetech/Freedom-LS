@@ -262,8 +262,16 @@ def _chunk_quiz_columns(
 
 
 def _completion_percentage(completed_count: int, total_count: int) -> int:
-    """Whole-percent completion, and 0 rather than a division error for an empty course."""
-    return round(completed_count / total_count * 100) if total_count else 0
+    """Whole-percent completion, and 0 rather than a division error for an empty course.
+
+    Every progress status is read off this number, so rounding never crosses a
+    status boundary: 199 of 200 is 99, not 100, and 1 of 201 is 1, not 0.
+    """
+    if not total_count or completed_count <= 0:
+        return 0
+    if completed_count >= total_count:
+        return 100
+    return min(99, max(1, round(completed_count / total_count * 100)))
 
 
 def _completion_counts(
@@ -291,12 +299,13 @@ def _latest_completion(
 
     Never CourseProgress.last_accessed_item — that tracks last viewed, not
     last completed.
+
+    A failed quiz sitting counts here though it does not in _completion_counts:
+    this answers when the learner was last active, which the inactivity rule
+    reads, and sitting a quiz is activity whatever the verdict.
     """
     best_title: str | None = None
     best_at: datetime | None = None
-    completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
-        learner_id, set()
-    )
     for item in items:
         if isinstance(item, Topic):
             at = progress.topics.complete_time.get((learner_id, item.id))
@@ -304,7 +313,7 @@ def _latest_completion(
             key = (learner_id, item.id)
             at = (
                 progress.forms.latest_by_learner_form[key].completed_time
-                if item.id in completed_form_ids
+                if progress.forms.completed_attempts_by_learner_form.get(key)
                 else None
             )
         if at is not None and (best_at is None or at > best_at):
@@ -932,6 +941,7 @@ class CourseRiskInput:
     """One course's view of a learner, in the shape the at-risk rules read."""
 
     has_any_progress: bool
+    completed_item_count: int
     total_item_count: int
     last_completed_at: datetime | None
     report_generated_at: datetime
@@ -1008,7 +1018,7 @@ def _build_course_detail(
         has_any_progress = record_id in progress.learner_ids_with_any_progress
     completion = _completion_percentage(completed_count, total_count)
     risk_input = CourseRiskInput(
-        has_any_progress, total_count, last_at, now, quiz_results
+        has_any_progress, completed_count, total_count, last_at, now, quiz_results
     )
     return LearnerCourseDetail(
         course_id=registration.course_id,

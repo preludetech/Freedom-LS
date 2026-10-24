@@ -37,7 +37,7 @@ The audience is internal educators and staff, so the report uses learners' real 
 
 ## At-Risk Flags
 
-Three rules run against every learner: **no recorded activity at all**, **failed their latest quiz attempt** (a quiz with no pass mark yields no verdict, so it cannot trigger this), and **inactive for a number of days** since their last completion. A learner can trip several and shows every reason.
+Three rules run against every learner: **no recorded activity at all**, **failed their latest quiz attempt** (a quiz with no pass mark yields no verdict, so it cannot trigger this), and **inactive for a number of days** since their last completion, a quiz sitting counting whatever its verdict, unless they have finished everything. A learner can trip several and shows every reason.
 
 Both the at-a-glance attention list and the learner's own section render from one evaluation, so a name spotted on the front page shows identical flags when you turn to their page.
 

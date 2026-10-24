@@ -40,6 +40,8 @@ class LearnerDetailLike(Protocol):
     @property
     def has_any_progress(self) -> bool: ...
     @property
+    def completed_item_count(self) -> int: ...
+    @property
     def total_item_count(self) -> int: ...
     @property
     def last_completed_at(self) -> datetime | None: ...
@@ -113,6 +115,10 @@ class InactiveForDaysRule:
         # A learner with no completions at all is NoRecordedActivityRule's
         # concern, not this one.
         if learner.last_completed_at is None:
+            return None
+        # Finishing everything ends the activity rather than lapsing it, so a
+        # complete learner is never inactive however long ago they finished.
+        if learner.completed_item_count >= learner.total_item_count:
             return None
         elapsed = learner.report_generated_at - learner.last_completed_at
         if elapsed <= timedelta(days=self.days):

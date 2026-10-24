@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -55,7 +55,11 @@ from freedom_ls.reports.screen_cache import (
     cached_cohort_progress,
     cached_cohort_report,
 )
-from freedom_ls.reports.services import latest_cohort_reports, request_cohort_report
+from freedom_ls.reports.services import (
+    is_stalled,
+    latest_cohort_reports,
+    request_cohort_report,
+)
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
 if TYPE_CHECKING:
@@ -63,8 +67,6 @@ if TYPE_CHECKING:
 
 #: How often the downloads region asks again while a report is being generated.
 REPORT_POLL_SECONDS = 3
-#: An in-flight report older than this is assumed stuck, and the page stops polling for it.
-IN_FLIGHT_STALL = timedelta(minutes=10)
 DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
 #: The query parameter that turns a lazy panel's skeleton into its body.
 LOADED_PARAM = "loaded"
@@ -86,11 +88,6 @@ def flag_badge(flag: AtRiskFlag) -> StatusBadge:
     """The badge for an at-risk flag."""
     # A rule's severity is already a role token name, so it is the tone.
     return StatusBadge(tone=flag.severity, label=flag.label)
-
-
-def is_stalled(report: GeneratedReport | None, now: datetime) -> bool:
-    """An in-flight report older than the stall window, which stops the page polling for it."""
-    return report is not None and now - report.requested_at > IN_FLIGHT_STALL
 
 
 def render_region(panel: Panel) -> HttpResponse:
@@ -491,7 +488,10 @@ class LearnerCoursesPanel(Panel):
         request = cast("OrganisationScopedRequest", self.request)
         registrations = [
             entry.registration
-            for entry in visible_registrations_with_progress(learner, request)
+            for entry in sorted(
+                visible_registrations_with_progress(learner, request),
+                key=lambda entry: entry.course.title,
+            )
         ]
         context = super().get_context_data()
         context["details"] = gather_learner_course_details(

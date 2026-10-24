@@ -31,6 +31,7 @@ class _Learner:
     """
 
     has_any_progress: bool = True
+    completed_item_count: int = 0
     total_item_count: int = 5
     last_completed_at: datetime | None = None
     report_generated_at: datetime = field(default_factory=timezone.now)
@@ -137,6 +138,22 @@ class TestInactiveForDaysRule:
         reason = InactiveForDaysRule(days=7).evaluate(learner)
 
         assert reason == "No activity recorded in over 7 days."
+
+    def test_silent_once_everything_is_complete(self) -> None:
+        with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+            last_completed_at = timezone.now()
+        with time_machine.travel("2026-01-31T00:00:00Z", tick=False):
+            now = timezone.now()
+        learner = _Learner(
+            completed_item_count=5,
+            total_item_count=5,
+            last_completed_at=last_completed_at,
+            report_generated_at=now,
+        )
+
+        reason = InactiveForDaysRule(days=7).evaluate(learner)
+
+        assert reason is None
 
     def test_threshold_is_a_constructor_parameter(self) -> None:
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):

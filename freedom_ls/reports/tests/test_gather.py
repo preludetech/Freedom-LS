@@ -1686,6 +1686,15 @@ class TestCompletionPercentage:
     def test_a_course_with_no_items_is_zero_rather_than_a_division_error(self) -> None:
         assert _completion_percentage(0, 0) == 0
 
+    def test_every_item_done_is_exactly_one_hundred(self) -> None:
+        assert _completion_percentage(3, 3) == 100
+
+    def test_one_item_short_never_rounds_up_to_complete(self) -> None:
+        assert _completion_percentage(199, 200) == 99
+
+    def test_one_item_done_never_rounds_down_to_not_started(self) -> None:
+        assert _completion_percentage(1, 201) == 1
+
 
 class TestCompletionCounts:
     def test_the_total_counts_every_item_whether_completed_or_not(self) -> None:
@@ -1760,9 +1769,9 @@ class TestLatestCompletion:
 
         assert _latest_completion([quiz], LEARNER_ID, progress) == (None, None)
 
-    def test_a_quiz_whose_latest_sitting_failed_is_not_the_last_completion(
-        self,
-    ) -> None:
+    def test_a_failed_quiz_sitting_is_still_the_last_activity(self) -> None:
+        """Sitting a quiz is activity whatever the verdict, so a failed sitting
+        today is never read as a week of silence."""
         topic = a_topic("Stars")
         quiz = a_quiz("Astronomy Quiz", pass_percentage=50)
         failed = an_attempt(
@@ -1772,8 +1781,8 @@ class TestLatestCompletion:
         progress.topics.complete_time[(LEARNER_ID, topic.id)] = JAN_1
 
         assert _latest_completion([topic, quiz], LEARNER_ID, progress) == (
-            "Stars",
-            JAN_1,
+            "Astronomy Quiz",
+            JAN_2,
         )
 
     def test_a_learner_with_no_completions_has_no_title_and_no_time(self) -> None:
