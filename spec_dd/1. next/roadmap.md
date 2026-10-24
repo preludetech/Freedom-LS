@@ -48,7 +48,6 @@ run, so it is twelve.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 8 | `educator-interface-8-bulk-operations` | CSV import as a page flow with a preview and per-row outcome labels. Multi-select bulk actions on the learner and cohort tables. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration` | in progress |
-| 10 | `educator-interface-10-reporting-dashboards` | Organisation dashboard as a base view, the cohort report on screen from the existing gathered data, a learner drill-down that replaces the deleted matrix, PDF generation and download from the interface, roster CSV. | `educator-interface-2-panel-framework-tables`, `educator-interface-4-panel-framework-components` | in progress |
 | 11 | `educator-interface-11-audit-log` | An append-only audit log recorded by the role utilities and every action in specs 6 to 9, shown per organisation, learner and cohort. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration`, `educator-interface-9-educator-administration` | in progress |
 | 12 | `educator-interface-12-docs-and-polish` | Product doc and an `fls-dev` skill for the panel framework, the educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
 
