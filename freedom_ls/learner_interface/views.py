@@ -72,6 +72,7 @@ from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
+from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 
 from .dashboard_sections import (
     BuiltInSection,
@@ -818,6 +819,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "includes_assessments": includes_assessments,
             "meta_description": meta_description,
             "json_ld": json_ld,
+            "show_time_zone_to_learners": is_registered
+            and shows_time_zone_to_learners(cast(Site, get_cached_site(request))),
         },
     )
 
@@ -1068,7 +1071,7 @@ def view_course_item(request, course_slug, index):
     # Reuse the viewable_items already resolved above so the chrome helper does
     # not re-traverse the course a second time.
     player_context = _player_chrome_context(
-        request.user,
+        request,
         course,
         current_item,
         index,
@@ -1129,7 +1132,7 @@ def _ensure_player_course_progress(
 
 
 def _player_chrome_context(
-    user,
+    request: HttpRequest,
     course: Course,
     current_item: Topic | Form,
     index: int,
@@ -1145,6 +1148,7 @@ def _player_chrome_context(
     callers that have not let them default. Passing ``course_progress=None``
     means "there is no record", and is not the same as leaving it out.
     """
+    user = request.user
     if viewable_items is None:
         viewable_items = course.viewable_items()
     if isinstance(course_progress, Unresolved):
@@ -1199,6 +1203,9 @@ def _player_chrome_context(
         "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
+        "show_time_zone_to_learners": shows_time_zone_to_learners(
+            cast(Site, get_cached_site(request))
+        ),
     }
 
 
@@ -1419,7 +1426,7 @@ def _render_form_fill_page(
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(
-            request.user, course, form, index, course_progress=course_progress
+            request, course, form, index, course_progress=course_progress
         ),
         **answered_counts(form, form_progress, current.questions),
         # URLs the exit dialog acts on.
@@ -1612,7 +1619,7 @@ def course_form_complete(request, course_slug, index):
         "retry_url": retry_url,
         # Player chrome (outline panel + breadcrumb).
         **_player_chrome_context(
-            request.user, course, form, index, course_progress=course_progress
+            request, course, form, index, course_progress=course_progress
         ),
     }
 

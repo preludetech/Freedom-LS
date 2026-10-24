@@ -10,6 +10,7 @@ real widths.
 from __future__ import annotations
 
 import io
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -33,9 +34,10 @@ from freedom_ls.content_engine.models import Course, PriceKind
 from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
-from freedom_ls.learner_interface.tests.helpers import topic_completion
+from freedom_ls.learner_interface.tests.helpers import set_due_date, topic_completion
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -362,6 +364,34 @@ def test_learner_browses_a_course(
         boxes = [_box(cells.nth(i)) for i in range(cells.count())]
         assert len(boxes) >= 2
         assert len({round(box["x"] + box["width"]) for box in boxes}) == 1
+
+
+@pytest.mark.browser_context_args(timezone_id="America/New_York", locale="en-US")
+def test_due_date_reads_in_the_browser_time_zone(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    zone_config = SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    course = CourseFactory(title="Dated Course", slug="dated-course")
+    topic = TopicFactory(title="Dated Topic", slug="dated-topic")
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    # 23:59 on 15 March in Johannesburg is 21:59 UTC, 17:59 in New York (EDT).
+    set_due_date(course, topic, due_date=date(2999, 3, 15))
+    due = page.get_by_role("navigation", name="Course outline").locator("time")
+
+    # The site zone is Johannesburg; the browser's own zone wins, unlabelled.
+    page.goto(_item_url(live_server, course, 1))
+    expect(due).to_have_text("Mar 15, 2999, 05:59 PM")
+
+    zone_config.show_time_zone_to_learners = True
+    zone_config.save()
+    page.reload()
+    expect(due).to_have_text("Mar 15, 2999, 05:59 PM EDT")
 
 
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(

@@ -85,6 +85,7 @@ from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 # Tests for view_course_item with nested course structure.
 
@@ -3912,6 +3913,18 @@ def test_sidebar_shows_due_and_overdue_for_a_past_due_topic(due_course):
 
     assert "Overdue" in html
     assert "1 Jan 2020" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("show_label", [True, False])
+def test_sidebar_data_show_zone_follows_the_site_setting(due_course, show_label):
+    SiteTimeZoneConfigFactory(show_time_zone_to_learners=show_label)
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert f'data-show-zone="{str(show_label).lower()}"' in html
 
 
 @pytest.mark.django_db
