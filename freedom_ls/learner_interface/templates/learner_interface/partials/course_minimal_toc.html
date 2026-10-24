@@ -1,4 +1,13 @@
-{% load course_storage_keys %}
+{% load course_storage_keys deadline_tags %}
+
+{% partialdef due-date %}
+    {% if child.due_at and child.status != "COMPLETE" %}
+        {% if child.is_overdue %}
+            <c-panel-status-badge tone="error" label="Overdue" />
+        {% endif %}
+        <span class="text-xs text-muted whitespace-nowrap">Due {% local_time child.due_at %}</span>
+    {% endif %}
+{% endpartialdef %}
 
 {% partialdef content-icon %}
     {% comment %} Type icon, coloured by status; status also announced via sr-only text. {% endcomment %}
@@ -92,7 +101,11 @@
                                                 {% partial content-row-inner %}
                                             {% endwith %}
                                         </div>
-                                        <div class="flex items-center gap-2 shrink-0"></div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            {% with child=part_child %}
+                                                {% partial due-date %}
+                                            {% endwith %}
+                                        </div>
                                     </li>
                                 {% endfor %}
                             {% else %}
@@ -110,7 +123,9 @@
                                 {% partial content-row-inner %}
                             {% endwith %}
                         </div>
-                        <div class="flex items-center gap-2 shrink-0"></div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            {% partial due-date %}
+                        </div>
                     </li>
                 {% endif %}
             {% endfor %}

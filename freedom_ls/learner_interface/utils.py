@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from django.db.models import QuerySet
 from django.http import Http404
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -15,6 +16,7 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
+from freedom_ls.deadlines.resolver import CourseDeadlines, is_overdue
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
@@ -460,6 +462,8 @@ def get_course_index(
     *,
     can_access_content: bool,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
+    course_deadlines: CourseDeadlines | None = None,
+    now: datetime | None = None,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -473,6 +477,10 @@ def get_course_index(
     has already resolved one passes it so the request does not resolve it
     twice; passing ``None`` means "there is no record", which is not the same
     as leaving it out.
+
+    ``course_deadlines`` is the learner's resolved deadlines for the course; each
+    item row carries its ``due_at`` and ``is_overdue`` against ``now`` (defaulting
+    to the current time). Without it no row carries a date.
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
@@ -492,6 +500,7 @@ def get_course_index(
             course_progress, course.viewable_collection_items()
         )
 
+    now = now or timezone.now()
     children = []
     next_status = READY  # First item starts as READY
     global_index = (
@@ -508,6 +517,8 @@ def get_course_index(
             topic_progress_map,
             form_placement_map,
             current_index=current_index,
+            course_deadlines=course_deadlines,
+            now=now,
         )
         children.append(child_dict)
         global_index += items_added
@@ -537,6 +548,32 @@ def current_entry_status(course_index: list[dict]) -> str | None:
     return None
 
 
+class DeadlineKeys(TypedDict):
+    collection_item_id: uuid.UUID
+    due_at: datetime | None
+    is_overdue: bool
+
+
+def _deadline_keys(
+    collection_item: ContentCollectionItem,
+    status: str,
+    course_deadlines: CourseDeadlines | None,
+    now: datetime,
+) -> DeadlineKeys:
+    """The due instant and overdue flag for one row. A completed row is never overdue, and a
+    caller that resolved no deadlines gets None and False."""
+    keys = DeadlineKeys(
+        collection_item_id=collection_item.pk, due_at=None, is_overdue=False
+    )
+    resolved = (
+        course_deadlines.items.get(collection_item.pk) if course_deadlines else None
+    )
+    if resolved is not None:
+        keys["due_at"] = resolved.due_at
+        keys["is_overdue"] = is_overdue(resolved, status == COMPLETE, now)
+    return keys
+
+
 def create_child_dict_with_flattened_index(
     collection_item: ContentCollectionItem,
     course: Course,
@@ -546,6 +583,8 @@ def create_child_dict_with_flattened_index(
     topic_progress_map: dict[uuid.UUID, TopicProgress],
     form_placement_map: dict[uuid.UUID, FormPlacementProgress],
     current_index: int | None = None,
+    course_deadlines: CourseDeadlines | None = None,
+    now: datetime | None = None,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -560,6 +599,7 @@ def create_child_dict_with_flattened_index(
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
+    now = now or timezone.now()
     content_item = cast("Topic | Form | CoursePart", collection_item.child)
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
@@ -602,6 +642,7 @@ def create_child_dict_with_flattened_index(
                 "url": child_url if child_status != BLOCKED else None,
                 "status": child_status,
                 "is_current": current_index == part_child_index,
+                **_deadline_keys(part_item, child_status, course_deadlines, now),
             }
             part_children_dicts.append(part_child_dict)
             items_added += 1
@@ -650,6 +691,7 @@ def create_child_dict_with_flattened_index(
             "type": content_item.content_type,
             "children": part_children_dicts,
             "contains_current": any(c.get("is_current") for c in part_children_dicts),
+            "collection_item_id": collection_item.pk,
         }
 
         # Update next_status based on the last child's processing
@@ -676,6 +718,7 @@ def create_child_dict_with_flattened_index(
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "is_current": current_index == start_index + 1,
+            **_deadline_keys(collection_item, status, course_deadlines, now),
         }
 
     return child_dict, next_status, items_added

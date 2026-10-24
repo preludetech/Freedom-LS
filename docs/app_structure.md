@@ -22,6 +22,7 @@ flowchart TB
     course_applications
     course_interest
     course_recommendations
+    deadlines
     deployment
     dev_tools
     educator_interface
@@ -85,6 +86,9 @@ flowchart TB
     course_recommendations --> accounts
     course_recommendations --> content_engine
     course_recommendations --> site_aware_models
+    deadlines --> content_engine
+    deadlines --> learner_progress
+    deadlines --> site_aware_models
     deployment --> base
     deployment --> content_engine
     deployment --> organisations
@@ -123,11 +127,13 @@ flowchart TB
     learner_interface --> course_access
     learner_interface --> course_interest
     learner_interface --> course_recommendations
+    learner_interface --> deadlines
     learner_interface --> form_engine
     learner_interface --> icons
     learner_interface --> learner_management
     learner_interface --> learner_progress
     learner_interface --> organisations
+    learner_interface --> panel_framework
     learner_interface --> site_aware_models
     learner_interface --> webhooks
     learner_management --> accounts
@@ -216,6 +222,7 @@ flowchart TB
     course_access -.-> course_applications
     course_applications -.-> learner_progress
     course_interest -.-> learner_management
+    deadlines -.-> accounts
     dev_tools -.-> course_applications
     dev_tools -.-> registration_rules
     educator_interface -.-> course_interest
@@ -261,6 +268,7 @@ flowchart TB
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, site_aware_models | — |
+| deadlines | content_engine, learner_progress, site_aware_models | accounts |
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications, registration_rules |
 | educator_interface | accounts, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
@@ -269,7 +277,7 @@ flowchart TB
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
-| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
+| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, icons, learner_management, learner_progress, organisations, panel_framework, site_aware_models, webhooks | course_applications, markdown_rendering |
 | learner_management | accounts, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |

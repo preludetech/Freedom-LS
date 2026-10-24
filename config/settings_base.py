@@ -123,6 +123,7 @@ INSTALLED_APPS = [
     "freedom_ls.hr_attributes",
     "freedom_ls.registration_rules",
     "freedom_ls.learner_progress",
+    "freedom_ls.deadlines",
     "freedom_ls.site_aware_models",
     "freedom_ls.panel_framework",
     "freedom_ls.educator_interface",

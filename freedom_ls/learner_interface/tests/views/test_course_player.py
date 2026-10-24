@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import re
+from datetime import date
 from unittest.mock import patch
 
 import lxml.html
@@ -46,6 +47,7 @@ from freedom_ls.form_engine.models import (
 from freedom_ls.learner_interface.tests.helpers import (
     form_attempt,
     learner_with_two_grants,
+    set_due_date,
     topic_completion,
 )
 from freedom_ls.learner_interface.utils import (
@@ -3619,7 +3621,7 @@ def test_a_registered_learner_who_never_opened_the_course_is_offered_start(
 
     assert record.progress_percentage == 0
     assert record.started_at is None
-    assert _detail_cta_label(course, user) == "Start course"
+    assert _detail_cta_label(record) == "Start course"
 
 
 @pytest.mark.django_db
@@ -3630,7 +3632,7 @@ def test_the_cta_reads_the_resolved_records_progress(mock_site_context):
     individual_record.progress_percentage = 60
     individual_record.save(update_fields=["progress_percentage"])
 
-    assert _detail_cta_label(course, user) == "Start course"
+    assert _detail_cta_label(course_progress_for(user, course)) == "Start course"
 
 
 # --- the completion page's Started row ----------------------------------------
@@ -3871,3 +3873,87 @@ class TestCourseOrganisationChip:
         document = lxml.html.fromstring(response.content)
         assert not document.cssselect("#course-organisation-chip")
         assert "Renamed Away From The Site" not in response.content.decode()
+
+
+# --- Due dates and overdue in the player sidebar ---
+
+
+def _player_html(client: Client, course: Course, index: int = 1) -> str:
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": index},
+        )
+    )
+    assert response.status_code == 200
+    return response.content.decode()
+
+
+@pytest.fixture
+def due_course(mock_site_context):
+    """A course of two topics, a registered learner and the learner's logged-in client."""
+    course = CourseFactory()
+    first, second = TopicFactory(), TopicFactory()
+    course.items.create(child=first, order=0)
+    course.items.create(child=second, order=1)
+    user = UserFactory()
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+    return course, first, second, user, client
+
+
+@pytest.mark.django_db
+def test_sidebar_shows_due_and_overdue_for_a_past_due_topic(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert "Overdue" in html
+    assert "1 Jan 2020" in html
+
+
+@pytest.mark.django_db
+def test_sidebar_clears_due_and_overdue_when_the_topic_is_completed(due_course):
+    course, first, _second, user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    topic_completion(course, user, first, complete_time=timezone.now())
+
+    html = _player_html(client, course, index=2)
+
+    assert "Overdue" not in html
+    assert "1 Jan 2020" not in html
+
+
+@pytest.mark.django_db
+def test_sidebar_shows_a_future_due_date_without_the_overdue_badge(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert "1 Jan 2999" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_player_page_query_count_with_deadlines_does_not_grow_with_items(
+    mock_site_context, django_assert_max_num_queries
+):
+    course = CourseFactory()
+    for order in range(60):
+        course.items.create(child=TopicFactory(), order=order)
+    user = UserFactory()
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    with django_assert_max_num_queries(46):
+        response = client.get(url)
+
+    assert response.status_code == 200
