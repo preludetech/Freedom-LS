@@ -13,8 +13,10 @@ import pytest
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.core.cache import cache
+from django.db import connection
 from django.http import HttpResponse
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -210,7 +212,7 @@ def test_the_attention_tile_counts_every_flagged_learner_beyond_the_list_cap(
 
 @pytest.fixture
 def shared_learner(mock_site_context: Site):
-    """One learner in two cohorts: 100% but inactive for 10 days in one, 0% in the other."""
+    """One learner in two cohorts: 50% but inactive for 10 days in one, 0% in the other."""
     organisation: Organisation = OrganisationFactory()
     course_a, course_b = _course_with_topic(), _course_with_topic()
     cohort_a = CohortFactory(organisation=organisation, name="First")
@@ -220,6 +222,8 @@ def shared_learner(mock_site_context: Site):
     (learner,) = _members(cohort_a, ["Shared"])
     CohortMembershipFactory(cohort=cohort_b, learner=learner)
     _finish_topic(course_a, learner, days_ago=10)
+    # A second topic keeps the learner short of complete, so the lapse still counts.
+    course_a.items.create(child=TopicFactory(), order=1)
     return organisation, [cohort_a, cohort_b]
 
 
@@ -231,7 +235,7 @@ def test_a_learner_in_two_cohorts_counts_once_at_the_mean_of_their_completions(
 
     figures = gathered_figures(cohorts)
 
-    assert figures.average_progress == 50
+    assert figures.average_progress == 25
     assert figures.attention_count == 1
     assert [len(row.cohorts) for row in figures.attention_rows] == [2]
     assert figures.attention_rows[0].lowest_completion == 0
@@ -247,6 +251,7 @@ def test_attention_rows_order_by_lowest_completion_then_sort_key(
     zero_progress = _members(cohort, ["Baker", "Able"])
     (finished,) = _members(cohort, ["Aaron"])
     _finish_topic(course, finished, days_ago=10)
+    course.items.create(child=TopicFactory(), order=1)
 
     figures = gathered_figures([cohort])
 
@@ -308,6 +313,47 @@ def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
         "Big has 3 learners, over the report limit of 2, and is not included"
         in loaded.content.decode()
     )
+
+
+@pytest.mark.django_db
+@override_settings(REPORTS_MAX_LEARNERS=1)
+def test_no_figures_date_is_shown_when_every_cohort_is_over_the_limit(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    _members(_registered_cohort(organisation, name="Big"), ["A", "B"])
+
+    loaded = _load_region(logged_in_client(user), organisation).content.decode()
+
+    assert "Figures as of" not in loaded
+    assert (
+        "Big has 2 learners, over the report limit of 1, and is not included" in loaded
+    )
+
+
+def _loaded_query_count(client: Client, organisation: Organisation) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        _load_region(client, organisation)
+    return len(queries.captured_queries)
+
+
+@pytest.mark.django_db
+def test_a_warm_load_costs_the_same_queries_however_many_cohorts_there_are(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    client = logged_in_client(user)
+    _members(_registered_cohort(organisation, name="Alpha"), ["A"])
+    _load_region(client, organisation)
+    with_one = _loaded_query_count(client, organisation)
+
+    for name in ("Bravo", "Charlie", "Delta"):
+        _members(_registered_cohort(organisation, name=name), ["A"])
+    _load_region(client, organisation)
+
+    assert _loaded_query_count(client, organisation) == with_one
 
 
 @pytest.mark.django_db

@@ -41,7 +41,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
             </c-panel-stat-row>
 
             {% if is_loaded %}
-                <p class="text-sm text-muted">Figures as of {{ figures.figures_as_of|date:"j M Y, H:i" }}</p>
+                {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of {{ figures.figures_as_of|date:"j M Y, H:i" }}</p>{% endif %}
                 {% for excluded in figures.excluded %}
                     <p class="text-sm text-warning">{{ excluded.cohort.name }} has {{ excluded.learner_count }} learners, over the report limit of {{ max_learners }}, and is not included</p>
                 {% endfor %}

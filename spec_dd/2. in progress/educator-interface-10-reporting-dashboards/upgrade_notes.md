@@ -58,8 +58,10 @@ completed items and quiz attempts.
 
 - `REPORTS_SCREEN_CACHE_SECONDS` (default `300`) sets how long the gathers behind the on-screen
   panels are cached. These gathers are stored in Django's `default` cache, keyed by site and
-  cohort. Learners removed from a cohort drop out on the next read; other changes show once the
-  entry expires. With a per-process cache such as `LocMemCache`, each worker keeps its own copy.
+  cohort. A change to a cohort's membership or course registrations drops its entries at once,
+  and learners deactivated in the organisation drop out on the next read; progress itself shows
+  once the entry expires. With a per-process cache such as `LocMemCache`, each worker keeps its
+  own copy, and an entry dropped in one worker stays in the others until it expires.
 - One new URL in the `educator_interface` namespace, `cohort_report_download`. It checks the
   organisation and cohort the same way the cohort page does and requires
   `freedom_ls_learner_management.download_cohort_report` on the cohort.

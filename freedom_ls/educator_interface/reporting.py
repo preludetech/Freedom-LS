@@ -6,6 +6,7 @@ import dataclasses
 import statistics
 from collections import defaultdict
 from datetime import datetime
+from functools import cached_property
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -53,6 +54,7 @@ from freedom_ls.reports.report_data import (
 )
 from freedom_ls.reports.screen_cache import (
     cached_cohort_progress,
+    cached_cohort_progress_many,
     cached_cohort_report,
 )
 from freedom_ls.reports.services import (
@@ -339,24 +341,29 @@ def visible_active_cohorts(request: OrganisationScopedRequest) -> QuerySet[Cohor
     )
 
 
-def inline_figures(cohorts: QuerySet[Cohort]) -> InlineFigures:
+def inline_figures(cohorts: list[Cohort]) -> InlineFigures:
     learners = CohortMembership.objects.filter(
         cohort__in=cohorts, learner__is_active=True
     ).aggregate(n=Count("learner_id", distinct=True))["n"]
-    return InlineFigures(learner_count=learners, cohort_count=cohorts.count())
+    return InlineFigures(learner_count=learners, cohort_count=len(cohorts))
 
 
 def _gather_visible(
     cohorts: list[Cohort],
 ) -> tuple[list[CohortGather], list[ExcludedCohort]]:
-    gathers: list[CohortGather] = []
-    excluded: list[ExcludedCohort] = []
-    for cohort in cohorts:
-        try:
-            gathers.append((cohort, cached_cohort_progress(cohort)))
-        except ReportTooLargeError:
-            excluded.append(ExcludedCohort(cohort, cohort_learner_count(cohort)))
-    return gathers, excluded
+    gathers = cached_cohort_progress_many(cohorts)
+    return (
+        [
+            (cohort, gathers.gathered[cohort.pk])
+            for cohort in cohorts
+            if cohort.pk in gathers.gathered
+        ],
+        [
+            ExcludedCohort(cohort, cohort_learner_count(cohort))
+            for cohort in cohorts
+            if cohort.pk in gathers.refused
+        ],
+    )
 
 
 def _average_progress(gathers: list[CohortGather]) -> int | None:
@@ -447,12 +454,17 @@ class DashboardPanel(LazyBodyPanel):
     region_template_name = "educator_interface/panels/dashboard_region.html"
     skeleton_shape = "row"
 
-    def _cohorts(self) -> QuerySet[Cohort]:
-        return visible_active_cohorts(cast("OrganisationScopedRequest", self.request))
+    @cached_property
+    def visible_cohorts(self) -> list[Cohort]:
+        # Evaluated once per request: the empty check, the inline tiles and the
+        # gathered figures all read the same list.
+        return list(
+            visible_active_cohorts(cast("OrganisationScopedRequest", self.request))
+        )
 
     def get_context_data(self) -> dict[str, object]:
         request = cast("OrganisationScopedRequest", self.request)
-        cohorts = self._cohorts()
+        cohorts = self.visible_cohorts
         context = super().get_context_data()
         context.update(
             cohorts=cohorts,
@@ -468,7 +480,7 @@ class DashboardPanel(LazyBodyPanel):
         return context
 
     def get_loaded_context(self) -> dict[str, object]:
-        return {"figures": gathered_figures(list(self._cohorts()))}
+        return {"figures": gathered_figures(self.visible_cohorts)}
 
 
 class LearnerCoursesPanel(Panel):

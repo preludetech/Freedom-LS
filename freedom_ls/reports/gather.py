@@ -100,6 +100,7 @@ __all__ = [
     "MIN_RESPONDENTS_FOR_PERCENTAGE",
     "AtRiskFlag",
     "AttentionList",
+    "CohortFigures",
     "CohortProgressData",
     "CohortReportData",
     "CompletedItem",
@@ -121,6 +122,7 @@ __all__ = [
     "SummaryTable",
     "WrongAnswer",
     "build_progress_data",
+    "cohort_figures",
     "gather_cohort_progress",
     "gather_cohort_report_data",
     "gather_learner_course_details",
@@ -153,7 +155,15 @@ class QuizTallies:
 
 
 @dataclasses.dataclass(frozen=True)
-class CompletionStats:
+class CohortFigures[LearnerT: FlaggedLearnerLike]:
+    """Every figure derived from a cohort's learner rows.
+
+    Built in one place so a reader that drops rows -- the screen cache, once a
+    learner has left -- rebuilds exactly what the gather built.
+    """
+
+    attention_list: AttentionList[LearnerT]
+    cohort_size: int
     median_completion: int
     not_started_count: int
     complete_count: int
@@ -748,20 +758,23 @@ def _build_attention_list[LearnerT: FlaggedLearnerLike](
     )
 
 
-def _completion_statistics(completion_values: list[int]) -> CompletionStats:
-    """Median and the two status counts, from one list of recomputed completions."""
-    return CompletionStats(
-        median_completion=round(statistics.median(completion_values))
-        if completion_values
-        else 0,
+def cohort_figures[LearnerT: FlaggedLearnerLike](
+    learners: list[LearnerT],
+) -> CohortFigures[LearnerT]:
+    """The attention list, size, median and status counts of one set of learner rows."""
+    completions = [learner.completion_percentage for learner in learners]
+    return CohortFigures(
+        attention_list=_build_attention_list(learners),
+        cohort_size=len(learners),
+        median_completion=round(statistics.median(completions)) if completions else 0,
         not_started_count=sum(
             1
-            for value in completion_values
+            for value in completions
             if progress_status(value) is ProgressStatus.NOT_STARTED
         ),
         complete_count=sum(
             1
-            for value in completion_values
+            for value in completions
             if progress_status(value) is ProgressStatus.COMPLETE
         ),
     )
@@ -830,23 +843,27 @@ def build_progress_data(
 ) -> CohortProgressData:
     """Every figure derived from the learner rows, so a reader that drops rows rebuilds them here."""
     completions = [summary.completion_percentage for summary in summaries]
-    stats = _completion_statistics(completions)
+    figures = cohort_figures(summaries)
     return CohortProgressData(
         cohort_id=cohort_id,
         cohort_name=cohort_name,
         generated_at=generated_at,
         learners=summaries,
-        attention_list=_build_attention_list(summaries),
-        cohort_size=len(summaries),
+        attention_list=figures.attention_list,
+        cohort_size=figures.cohort_size,
         mean_completion=round(statistics.fmean(completions)) if completions else None,
-        median_completion=stats.median_completion,
-        not_started_count=stats.not_started_count,
-        complete_count=stats.complete_count,
+        median_completion=figures.median_completion,
+        not_started_count=figures.not_started_count,
+        complete_count=figures.complete_count,
     )
 
 
 def gather_cohort_report_data(
-    cohort_id: str, site_id: int, *, requested_by_name: str = ""
+    cohort_id: str,
+    site_id: int,
+    *,
+    requested_by_name: str = "",
+    pdf_detail: bool = True,
 ) -> CohortReportData:
     """Assemble one cohort's report data with a fixed number of batched queries.
 
@@ -855,6 +872,11 @@ def gather_cohort_report_data(
     built from a batched queryset. Each loader below runs once, in this order,
     so the query total is fixed by the cohort's course structure and never by
     how many learners or questions it has.
+
+    `pdf_detail=False` leaves out the two things only the PDF draws: the
+    organisation logo (a storage read and a base64 encode that would otherwise
+    sit in every cached copy) and each learner's wrong-answer detail. Every
+    figure, row and confusion block is the same either way.
     """
     now = timezone.now()
 
@@ -880,8 +902,8 @@ def gather_cohort_report_data(
     )
 
     tallies = tally_quiz_answers(sat, progress.forms, first_attempt_ids)
-    wrong_answers_by_learner_quiz = build_wrong_answers_by_learner_quiz(
-        tallies, questions
+    wrong_answers_by_learner_quiz = (
+        build_wrong_answers_by_learner_quiz(tallies, questions) if pdf_detail else {}
     )
     confusions_by_quiz = build_confusions_by_quiz(
         catalogue.quiz_form_ids, questions, tallies, distractors_by_question
@@ -904,16 +926,16 @@ def gather_cohort_report_data(
         )
         for learner_id in roster.learner_ids
     ]
-    stats = _completion_statistics(
-        [detail.completion_percentage for detail in learner_details]
-    )
+    figures = cohort_figures(learner_details)
 
     return CohortReportData(
         cohort_name=cohort.name,
         footer_cohort_name=_truncate_to_budget(cohort.name, FOOTER_COHORT_MAX_CHARS),
         organisation=OrganisationBrand(
             name=cohort.organisation.name,
-            logo_data_uri=load_organisation_logo_data_uri(cohort.organisation),
+            logo_data_uri=load_organisation_logo_data_uri(cohort.organisation)
+            if pdf_detail
+            else None,
             wordmark_size_class=_wordmark_size_class(cohort.organisation.name),
             wordmark_name=_truncate_to_budget(
                 cohort.organisation.name, WORDMARK_CONDENSED_MAX_CHARS
@@ -928,11 +950,11 @@ def gather_cohort_report_data(
         requested_by_name=requested_by_name,
         courses=course_sections,
         learners=learner_details,
-        attention_list=_build_attention_list(learner_details),
-        cohort_size=len(roster.learner_ids),
-        median_completion=stats.median_completion,
-        not_started_count=stats.not_started_count,
-        complete_count=stats.complete_count,
+        attention_list=figures.attention_list,
+        cohort_size=figures.cohort_size,
+        median_completion=figures.median_completion,
+        not_started_count=figures.not_started_count,
+        complete_count=figures.complete_count,
     )
 
 

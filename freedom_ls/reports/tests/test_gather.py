@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
@@ -53,7 +54,7 @@ from freedom_ls.reports.gather import (
     FOOTER_ORGANISATION_MAX_CHARS,
     WORDMARK_CONDENSED_MAX_CHARS,
     WORDMARK_FULL_MAX_CHARS,
-    CompletionStats,
+    CohortFigures,
     QuizTallies,
     _abbreviate_quiz_title,
     _build_attention_list,
@@ -64,7 +65,6 @@ from freedom_ls.reports.gather import (
     _completed_items,
     _completion_counts,
     _completion_percentage,
-    _completion_statistics,
     _evaluate_at_risk_flags,
     _latest_completion,
     _quiz_result_for,
@@ -75,6 +75,7 @@ from freedom_ls.reports.gather import (
     build_confusion_block,
     build_progress_data,
     build_wrong_answers_by_learner_quiz,
+    cohort_figures,
     gather_cohort_progress,
     gather_cohort_report_data,
     gather_learner_course_details,
@@ -263,6 +264,59 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
 
     assert len(data.learners) == 1
     assert data.learners[0].has_any_progress is True
+
+
+@pytest.mark.django_db
+def test_the_screen_gather_leaves_out_only_the_logo_and_the_wrong_answers(
+    mock_site_context,
+):
+    course = CourseFactory()
+    quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    _attach(course, quiz, order=0)
+    question = FormQuestionFactory(
+        form_page=FormPageFactory(form=quiz, order=0),
+        type=QuestionType.CHECKBOXES,
+        order=0,
+    )
+    QuestionOptionFactory(question=question, text="Mars", correct=True, order=0)
+    wrong_option = QuestionOptionFactory(
+        question=question, text="Sun", correct=False, order=1
+    )
+    cohort, record = _one_learner_cohort(course)
+    attempt = form_progress(
+        record, quiz, completed_time=timezone.now(), scores={"score": 0, "max_score": 1}
+    )
+    QuestionAnswerFactory(
+        form_progress=attempt, question=question
+    ).selected_options.add(wrong_option)
+
+    full = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+    with patch("freedom_ls.reports.gather.load_organisation_logo_data_uri") as logo:
+        screen = gather_cohort_report_data(
+            str(cohort.id), mock_site_context.pk, pdf_detail=False
+        )
+
+    logo.assert_not_called()
+    assert screen.organisation.logo_data_uri is None
+    assert full.learners[0].wrong_answers
+    assert screen.learners[0].wrong_answers == []
+    assert (
+        screen.cohort_size,
+        screen.median_completion,
+        screen.not_started_count,
+        screen.complete_count,
+        [learner.flags for learner in screen.attention_list.learners],
+        screen.courses[0].confusions_by_quiz,
+        screen.courses[0].summary_tables,
+    ) == (
+        full.cohort_size,
+        full.median_completion,
+        full.not_started_count,
+        full.complete_count,
+        [learner.flags for learner in full.attention_list.learners],
+        full.courses[0].confusions_by_quiz,
+        full.courses[0].summary_tables,
+    )
 
 
 @pytest.mark.django_db
@@ -2624,18 +2678,41 @@ class TestBuildAttentionList:
         assert listed.total == 15
 
 
-class TestCompletionStatistics:
+class TestCohortFigures:
+    @staticmethod
+    def _of(*completions: int) -> CohortFigures[LearnerDetail]:
+        return cohort_figures([_a_detail(completion=value) for value in completions])
+
     def test_a_cohort_with_no_learners_reports_zeroes(self) -> None:
-        assert _completion_statistics([]) == CompletionStats(0, 0, 0)
+        figures: CohortFigures[LearnerDetail] = cohort_figures([])
+
+        assert (
+            figures.cohort_size,
+            figures.median_completion,
+            figures.not_started_count,
+            figures.complete_count,
+            figures.attention_list.total,
+        ) == (0, 0, 0, 0, 0)
 
     def test_the_median_of_an_even_number_of_learners_is_rounded(self) -> None:
-        assert _completion_statistics([10, 20, 30, 45]).median_completion == 25
+        assert self._of(10, 20, 30, 45).median_completion == 25
 
     def test_not_started_counts_only_zero_percent_learners(self) -> None:
-        assert _completion_statistics([0, 0, 1, 100]).not_started_count == 2
+        assert self._of(0, 0, 1, 100).not_started_count == 2
 
     def test_complete_counts_only_fully_finished_learners(self) -> None:
-        assert _completion_statistics([0, 99, 100, 100]).complete_count == 2
+        assert self._of(0, 99, 100, 100).complete_count == 2
+
+    def test_the_size_and_attention_list_come_from_the_same_rows(self) -> None:
+        flag = AtRiskFlag(
+            rule_id="no_activity", label="No activity", reason="none", severity="error"
+        )
+        figures = cohort_figures(
+            [_a_detail(completion=10, flags=[flag]), _a_detail(completion=50)]
+        )
+
+        assert figures.cohort_size == 2
+        assert figures.attention_list.total == 1
 
 
 @pytest.mark.parametrize(
