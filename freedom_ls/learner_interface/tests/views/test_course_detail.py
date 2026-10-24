@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import cast
 
 import pytest
+import time_machine
 from django_cotton.compiler_regex import CottonCompiler
 
 from django.template import Context, Template
@@ -1565,6 +1566,86 @@ def test_toc_shows_an_unregistered_visitor_no_dates(due_topic_course):
 
     assert "Overdue" not in html
     assert "1 Jan 2020" not in html
+
+
+# --- Course time limit on the stats strip ---
+
+
+@pytest.fixture
+def time_limit_course(due_topic_course):
+    """A 90-day time limit course and a learner registered on 1 Mar 2026."""
+    course, _topic, user, client = due_topic_course
+    course.time_limit_days = 90
+    course.save()
+    record = course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    return course, record, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_course_detail_shows_finish_by_for_a_future_time_limit(time_limit_course):
+    course, _record, client = time_limit_course
+
+    html = _detail_html(client, course)
+
+    assert "Finish by" in html
+    assert "30 May 2026" in html
+    assert "Time limit ended" not in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_course_detail_shows_time_limit_ended_and_overdue_once_passed(
+    time_limit_course,
+):
+    course, _record, client = time_limit_course
+
+    html = _detail_html(client, course)
+
+    assert "Time limit ended" in html
+    assert "30 May 2026" in html
+    assert "Overdue" in html
+    assert "Finish by" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_course_detail_shows_finish_by_once_passed_and_complete(time_limit_course):
+    course, record, client = time_limit_course
+    record.completed_time = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    record.save()
+
+    html = _detail_html(client, course)
+
+    assert "Finish by" in html
+    assert "Time limit ended" not in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_course_detail_shows_no_time_limit_cell_without_a_time_limit(
+    due_topic_course,
+):
+    course, _topic, user, client = due_topic_course
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+
+    assert "Finish by" not in html
+    assert "Time limit ended" not in html
+
+
+@pytest.mark.django_db
+def test_course_detail_shows_a_visitor_no_time_limit_cell(mock_site_context):
+    course = CourseFactory(time_limit_days=90)
+
+    html = _detail_html(Client(), course)
+
+    assert "Finish by" not in html
+    assert "Time limit ended" not in html
 
 
 @pytest.mark.django_db
