@@ -146,7 +146,7 @@ def latest_registration(user: User, course: Course) -> LearnerCourseRegistration
     through a removed one would resolve to whichever was registered later,
     and the record keying their work could land under the removed Learner.
     Filtering instead would cut a removed learner off from their own
-    deadlines, which the individual branch deliberately still reaches.
+    registration, which the individual branch deliberately still reaches.
     """
     from freedom_ls.learner_management.models import LearnerCourseRegistration
 

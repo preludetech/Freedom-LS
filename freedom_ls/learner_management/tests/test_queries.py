@@ -224,7 +224,7 @@ class TestLatestRegistration:
     ):
         """is_active is a tiebreak, not a filter: a removed learner still
         resolves to their own registration, which is what keeps their own
-        deadlines reachable."""
+        registration resolvable."""
         user = UserFactory()
         course = CourseFactory()
         registration = _make_registration(user, course, is_active=True)

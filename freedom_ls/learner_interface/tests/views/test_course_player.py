@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import re
-from datetime import timedelta
 from unittest.mock import patch
 
 import lxml.html
@@ -50,7 +49,6 @@ from freedom_ls.learner_interface.tests.helpers import (
     topic_completion,
 )
 from freedom_ls.learner_interface.utils import (
-    BLOCKED,
     CourseListingStatus,
     current_entry_status,
     get_completed_courses,
@@ -64,11 +62,9 @@ from freedom_ls.learner_interface.utils import (
 from freedom_ls.learner_interface.views import _detail_cta_label
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
-    CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
-    LearnerDeadlineFactory,
 )
 from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.attempts import get_or_create_incomplete
@@ -3232,44 +3228,6 @@ def test_a_completed_attempt_in_another_course_is_not_this_courses_history(
     assert list(response.context["completed_form_progress"]) == []
 
 
-@pytest.mark.django_db
-def test_a_deadline_lock_ignores_a_completion_in_another_course(
-    mock_site_context, client, settings
-):
-    """A hard deadline locks the item here even though the topic is done elsewhere."""
-    settings.DEADLINES_ACTIVE = True
-    topic = TopicFactory(title="Shared Topic")
-    course: Course = CourseFactory()
-    other_course: Course = CourseFactory()
-    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    ContentCollectionItemFactory(
-        collection_object=other_course, child_object=topic, order=0
-    )
-    user = UserFactory()
-    record = course_progress_record(course, user)
-    other_record = course_progress_record(other_course, user)
-    TopicProgressFactory(
-        course_progress=other_record,
-        collection_item=collection_item_for(other_course, topic),
-        topic=topic,
-        complete_time=timezone.now(),
-    )
-    LearnerDeadlineFactory(
-        learner_course_registration=record.learner_registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=True,
-    )
-    client.force_login(user)
-
-    response = client.get(_item_url(course, 1))
-
-    assert response.status_code == 302
-    assert response["Location"] == reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
-    )
-
-
 # Every learner-facing figure is read off the resolved course progress record.
 #
 # These read paths fail silently: pointed at the wrong record they render a
@@ -3788,189 +3746,6 @@ def _setup_cohort_registration(user, course):
     cohort = CohortFactory(name="Test Cohort")
     CohortMembershipFactory(learner__user=user, cohort=cohort)
     return CohortCourseRegistrationFactory(cohort=cohort, course=course)
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=True)
-def test_course_index_includes_deadline_data(mock_site_context):
-    """get_course_index includes deadline info in child dicts."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-    deadline_dt = timezone.now() + timedelta(days=7)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=deadline_dt,
-    )
-
-    children = get_course_index(user=user, course=course, can_access_content=True)
-
-    assert len(children) == 1
-    assert "deadlines" in children[0]
-    assert len(children[0]["deadlines"]) == 1
-    assert children[0]["deadlines"][0]["deadline"] == deadline_dt
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=True)
-def test_expired_hard_deadline_locks_incomplete_item(mock_site_context):
-    """Expired hard deadline + incomplete item = BLOCKED with no URL."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=True,
-    )
-
-    children = get_course_index(user=user, course=course, can_access_content=True)
-
-    assert children[0]["status"] == BLOCKED
-    assert children[0]["url"] is None
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=True)
-def test_soft_deadline_does_not_lock(mock_site_context):
-    """Soft deadlines never change the access status."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=False,
-    )
-
-    children = get_course_index(user=user, course=course, can_access_content=True)
-
-    # First item should be READY, not BLOCKED
-    assert children[0]["status"] != BLOCKED
-
-
-@pytest.mark.django_db
-def test_no_deadlines_no_deadline_key(mock_site_context):
-    """When no deadlines exist, child dicts have empty deadlines list."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    _setup_cohort_registration(user, course)
-
-    children = get_course_index(user=user, course=course, can_access_content=True)
-
-    assert children[0]["deadlines"] == []
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=True)
-def test_view_course_item_redirects_if_locked(client, mock_site_context):
-    """A deadline-locked item redirects to the loop-free detail page.
-
-    Not to course_home (now a resume redirector), which would loop straight
-    back to the same locked item.
-    """
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=True,
-    )
-
-    client.force_login(user)
-    url = reverse(
-        "learner_interface:view_course_item",
-        kwargs={"course_slug": course.slug, "index": 1},
-    )
-    response = client.get(url)
-
-    assert response.status_code == 302
-    assert response.url == reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
-    )
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=False)
-def test_get_course_index_skips_deadlines_when_inactive(mock_site_context):
-    """When DEADLINES_ACTIVE=False, deadlines list is empty and item is not BLOCKED."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=True,
-    )
-
-    children = get_course_index(user=user, course=course, can_access_content=True)
-
-    assert children[0]["deadlines"] == []
-    assert children[0]["status"] != BLOCKED
-
-
-@pytest.mark.django_db
-@override_settings(DEADLINES_ACTIVE=False)
-def test_view_course_item_skips_lock_check_when_deadlines_inactive(
-    client, mock_site_context
-):
-    """When DEADLINES_ACTIVE=False, expired hard deadline does not redirect."""
-    course: Course = CourseFactory(title="Test Course", slug="test-course")
-    topic = TopicFactory(title="Test Topic", slug="test-topic")
-    user = UserFactory()
-    course.items.create(child=topic, order=0)
-
-    registration = _setup_cohort_registration(user, course)
-
-    CohortDeadlineFactory(
-        cohort_course_registration=registration,
-        content_item=topic,
-        deadline=timezone.now() - timedelta(days=1),
-        is_hard_deadline=True,
-    )
-
-    client.force_login(user)
-    url = reverse(
-        "learner_interface:view_course_item",
-        kwargs={"course_slug": course.slug, "index": 1},
-    )
-    response = client.get(url)
-
-    assert response.status_code == 200
-    # The whole point of this test is that the user is *not* redirected and
-    # the locked topic is still served. Strengthen by asserting the topic is
-    # actually rendered, not just that some 200 response came back.
-    assert response.context["topic"] == topic
-    assert topic.title in response.content.decode()
 
 
 # The co-branding chip the resolved organisation feeds into the course

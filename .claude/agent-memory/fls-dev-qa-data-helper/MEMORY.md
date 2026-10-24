@@ -18,7 +18,6 @@
 - [reference_registration_completion_scenario_command.md](reference_registration_completion_scenario_command.md) — qa_create_registration_completion_scenario: free+gated courses + complete learner + SiteSignupPolicy w/ DB-backed QAProfileCompletionForm (gates new signups, seeded learner stays complete)
 - [reference_webhook_qa_setup.md](reference_webhook_qa_setup.md) — Webhooks browser QA: reuse access-types free/gated courses + fresh unenrolled webhook_qa_learner for course.registered / apply flows
 - [reference_organisation_scenarios_command.md](reference_organisation_scenarios_command.md) — qa_create_organisation_scenarios: 3 orgs + 4 cohorts + 7 personas for Organisations QA; assign_object_role needs a thread-local site + SITE_ID in a command; unregistered learners can never reach the player, so the player's "no organisation / no logo chip" branch is unreachable in the browser (QA §7.6)
-- [reference_learner_visible_deadlines.md](reference_learner_visible_deadlines.md) — Deadlines render ONLY in the course TOC partial (course detail + player sidebar), never on the dashboard; use a course-level CohortDeadline so badges show without expanding CourseParts; qa_create_soft_deadline defaults to -7 days (overdue)
 - [reference_multiselect_quiz_scoring_command.md](reference_multiselect_quiz_scoring_command.md) — qa_create_multiselect_quiz_scoring: dedicated learner + checkbox quiz (pass%=50) + NULL-pass-% quiz; `checkboxes` not `checkbox`; force_login/axes + start_form gotchas
 - [reference_report_fixture_commands.md](reference_report_fixture_commands.md) — qa_create_report_fixtures/_course/_cohort: the eleven-fixture cohort-progress-report QA matrix (incl. blank-answer-cohort for "Not answered"), scored attempts, at-risk flag mix, and the auto-timestamp / CourseProgress-site gotchas
 - [reference_quiz_progression_block_command.md](reference_quiz_progression_block_command.md) — qa_create_quiz_progression_block: 3-item course (topic/checkbox-quiz@80%/topic) proving a FAILED quiz blocks the next item; URL-level unlock is NOT enforced
@@ -28,7 +27,6 @@
 - [reference_qa_command_site_arg_styles.md](reference_qa_command_site_arg_styles.md) — Which qa_ commands take SITE_NAME positionally vs --site-name, plus the required-option / cohort-membership prerequisites that make them exit 2
 - [reference_educator_cohort_visibility_grants.md](reference_educator_cohort_visibility_grants.md) — cohorts_visible_to needs a guardian view_cohort grant; large/empty cohort commands grant none, so assign_perm after running them
 - [reference_demodev_s1_fixture_collisions.md](reference_demodev_s1_fixture_collisions.md) — demodev_s1@email.com is shared by 4 commands that overwrite each other; run order and how to repair
-- [reference_learner_deadline_admin_fixtures.md](reference_learner_deadline_admin_fixtures.md) — qa_create_learner_deadlines; the three deadline models are not interchangeable; LearnerDeadlineAdmin.search_fields has no email
 - [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
 - [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: form_engine + learner_progress tree on a 2nd Site (default Demo) for admin site-scoping QA; explicit site= on every factory call, Learner site comes from its Organisation, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
 - [reference_form_engine_branch_qa_baseline.md](reference_form_engine_branch_qa_baseline.md) — The whole-DB "documented starting state" recipe for the form_engine-extraction QA pass; reset-then-recalculate ordering; CourseProgress.course (not .collection)
@@ -47,7 +45,6 @@
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
 - [reference_detaching_a_cohort_membership.md](reference_detaching_a_cohort_membership.md) — Deleting ONE CohortMembership to make grant resolution fall through to the individual registration; nothing FKs to CohortMembership (no cascade, no ProtectedError); there is deliberately no post_delete, so the cohort-granted CourseProgress SURVIVES
 - [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
-- [reference_half_nulled_deadline_contenttype.md](reference_half_nulled_deadline_contenttype.md) — qa_create_half_nulled_deadlines: making `content_type IS NULL` + `object_id` populated deadline rows; ContentCollectionItem.child_type is CASCADE so deleting the Topic ContentType strips every topic out of every course — use the zero-instance Activity ContentType as the decoy target instead
 - [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration; also secondary EmailAddress rows on a KEPT user (no cascade, EmailConfirmation always 0); the security-guard hook fails with an EMPTY error and matches its denylist anywhere in the command
 - [reference_organisation_admin_summary_counts.md](reference_organisation_admin_summary_counts.md) — Organisation change-page learner-count summary (ngettext 0/1/N): it lives in learner_management/admin.py via ORGANISATION_SUMMARIES, counts inactive learners too, and how to seed an exact-1 org + render the wording headlessly
 - [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
@@ -301,28 +298,6 @@ registration (Python-level, not a DB constraint), while item-level rows are capp
 `freedom_ls/content_engine/models` is a PACKAGE (`courses.py`/`topics.py`/`files.py`) — import
 from `freedom_ls.content_engine.models`, and `ContentCollectionItem`'s GenericFK fields are
 `collection_type`/`collection_id` and `child_type`/`child_id` (not `*_content_type`/`*_object_id`).
-
-The **"delete a ContentType to half-null a GenericFK" data-integrity fixture** arrived once
-(test 5.3, final_pre_deploy_db_structure_cleanup, Aug 2026). Never delete the ContentType the
-QA plan names: `ContentCollectionItem.child_type`/`collection_type` are **CASCADE**, so the
-Topic ContentType takes 21 course items with it and destroys every TOC. Seed the deadlines
-against the zero-instance `content_engine.activity` ContentType instead — 4 unheld permissions
-is the entire blast radius. `qa_create_half_nulled_deadlines` wraps it, and its
-`_describe_holders()` helper sizes any ContentType deletion. See
-[[reference_half_nulled_deadline_contenttype]]. Generalise the habit: before ANY delete of a
-shared lookup row, walk `apps.get_models()` for FKs to it and print `on_delete.__name__` —
-"expected SET_NULL" in a QA plan only ever describes the rows the plan is thinking about.
-
-The **"delete the genuine course-level deadline so the half-nulled one is isolated"** ask
-arrived once (test 5.3, final_pre_deploy_db_structure_cleanup, Aug 2026) as the sequel to the
-half-nulling fixture. All three deadline `clean()` methods filter on `content_type__isnull=True`
-**alone**, ignoring `object_id`, so a genuine both-NULL row on the same registration blocks the
-half-nulled row for an unrelated reason and masks the behaviour under test. Nothing FKs to
-`CohortDeadline` / `LearnerDeadline` / `LearnerCohortDeadlineOverride` and they have no delete
-signals, so each delete is exactly 1 row with zero cascade. Guard the delete with
-`assert row.content_type_id is None and row.object_id is None` — genuine and half-nulled rows
-have **identical `__str__`** ("... - Whole course"), so only `object_id` tells them apart. See
-[[reference_half_nulled_deadline_contenttype]].
 
 The **"clear a CourseInterest row so the express-interest flow can be re-walked"** ask arrived
 once (bug-interested-login-405, Sep 2026). `CourseInterest` (app label

@@ -21,16 +21,13 @@ from django.urls.resolvers import ResolverMatch
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.admin import (
-    SCOPE_TO_MEMBERS_OF_COHORT,
     SCOPE_TO_ORGANISATION_OF_COHORT,
     CohortMembershipInline,
     LearnerAdmin,
-    LearnerCohortDeadlineOverrideInline,
     OrganisationLearnerInline,
     organisation_learner_search_link,
 )
 from freedom_ls.learner_management.factories import (
-    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
@@ -38,10 +35,8 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
-    CohortCourseRegistration,
     CohortMembership,
     Learner,
-    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -51,9 +46,6 @@ ADD_URL_NAME = "admin:freedom_ls_learner_management_learner_add"
 AUTOCOMPLETE_URL_NAME = "admin:autocomplete"
 COHORT_CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohort_change"
 LEARNER_CHANGELIST_URL_NAME = "admin:freedom_ls_learner_management_learner_changelist"
-REGISTRATION_CHANGE_URL_NAME = (
-    "admin:freedom_ls_learner_management_cohortcourseregistration_change"
-)
 
 
 def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
@@ -64,19 +56,6 @@ def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
         func=lambda *args, **kwargs: None,
         args=(),
         kwargs={} if cohort is None else {"object_id": str(cohort.pk)},
-    )
-    return request
-
-
-def _request_for_cohort_course_registration(
-    registration: CohortCourseRegistration,
-) -> HttpRequest:
-    """An admin request whose resolver match names ``registration``."""
-    request = RequestFactory().get("/")
-    request.resolver_match = ResolverMatch(
-        func=lambda *args, **kwargs: None,
-        args=(),
-        kwargs={"object_id": str(registration.pk)},
     )
     return request
 
@@ -401,72 +380,6 @@ class TestCohortChangePageDropdown:
         )
 
 
-def _override_learner_field(
-    request: HttpRequest,
-) -> ModelChoiceField[Learner]:
-    """The deadline-override inline's learner form field on ``request``."""
-    inline = LearnerCohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
-    return cast(
-        "ModelChoiceField[Learner]",
-        inline.formfield_for_foreignkey(
-            LearnerCohortDeadlineOverride._meta.get_field("learner"), request
-        ),
-    )
-
-
-@pytest.mark.django_db
-class TestDeadlineOverrideLearnerDropdown:
-    """LearnerCohortDeadlineOverride.clean() requires the learner to be a member of
-    the registration's cohort, so the dropdown offers exactly those."""
-
-    def test_it_omits_a_learner_who_is_not_in_the_cohort(self, staff_client) -> None:
-        organisation = OrganisationFactory()
-        cohort = CohortFactory(organisation=organisation, name="Cohort A")
-        registration = CohortCourseRegistrationFactory(cohort=cohort)
-        member = CohortMembershipFactory(cohort=cohort).learner
-        non_member = LearnerFactory(organisation=organisation)
-        url, params = _autocomplete_request(
-            _override_learner_field(
-                _request_for_cohort_course_registration(registration)
-            ),
-            LearnerCohortDeadlineOverride,
-        )
-
-        offered = _offered_ids(staff_client, url, params)
-
-        assert str(member.pk) in offered
-        assert str(non_member.pk) not in offered
-
-    def test_the_rendered_dropdown_url_names_the_cohorts_scope(
-        self, staff_client
-    ) -> None:
-        cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
-        registration = CohortCourseRegistrationFactory(cohort=cohort)
-
-        response = staff_client.get(
-            reverse(REGISTRATION_CHANGE_URL_NAME, args=[registration.pk])
-        )
-
-        assert f"{SCOPE_TO_MEMBERS_OF_COHORT}={cohort.pk}" in response.content.decode()
-
-    def test_the_field_queryset_matches_what_the_dropdown_offers(
-        self, mock_site_context
-    ) -> None:
-        """The widget scopes the options; this queryset is what validates the
-        learner that comes back. They must agree."""
-        organisation = OrganisationFactory()
-        cohort = CohortFactory(organisation=organisation, name="Cohort A")
-        registration = CohortCourseRegistrationFactory(cohort=cohort)
-        member = CohortMembershipFactory(cohort=cohort).learner
-        LearnerFactory(organisation=organisation)
-
-        field = _override_learner_field(
-            _request_for_cohort_course_registration(registration)
-        )
-
-        assert list(field.queryset) == [member]
-
-
 def _cohort_change_payload(
     cohort: Cohort, membership: CohortMembership
 ) -> dict[str, str]:
@@ -486,30 +399,6 @@ def _cohort_change_payload(
         "course_registrations-INITIAL_FORMS": "0",
         "course_registrations-MIN_NUM_FORMS": "0",
         "course_registrations-MAX_NUM_FORMS": "1000",
-    }
-
-
-def _registration_change_payload(
-    registration: CohortCourseRegistration, learner: Learner
-) -> dict[str, str]:
-    """The registration change form with one new deadline-override row for
-    ``learner``."""
-    return {
-        "cohort": str(registration.cohort_id),
-        "course": str(registration.course_id),
-        "is_active": "on",
-        "cohortdeadline_set-TOTAL_FORMS": "0",
-        "cohortdeadline_set-INITIAL_FORMS": "0",
-        "cohortdeadline_set-MIN_NUM_FORMS": "0",
-        "cohortdeadline_set-MAX_NUM_FORMS": "1000",
-        "deadline_overrides-TOTAL_FORMS": "1",
-        "deadline_overrides-INITIAL_FORMS": "0",
-        "deadline_overrides-MIN_NUM_FORMS": "0",
-        "deadline_overrides-MAX_NUM_FORMS": "1000",
-        "deadline_overrides-0-learner": str(learner.pk),
-        "deadline_overrides-0-deadline_0": "2030-01-01",
-        "deadline_overrides-0-deadline_1": "12:00:00",
-        "deadline_overrides-0-is_hard_deadline": "on",
     }
 
 
@@ -546,29 +435,6 @@ class TestCohortChangePageWithARemovedLearner:
 
         cohort.refresh_from_db()
         assert cohort.name == "Renamed Cohort"
-
-
-@pytest.mark.django_db
-class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
-    """Narrowing the inline's queryset means an out-of-cohort learner now fails
-    field validation, leaving cleaned_data without one. clean() must survive
-    that and let the field error surface -- which used to crash."""
-
-    def test_it_is_a_validation_error_not_a_crash(self, staff_client) -> None:
-        organisation = OrganisationFactory()
-        cohort = CohortFactory(organisation=organisation, name="Cohort A")
-        registration = CohortCourseRegistrationFactory(cohort=cohort)
-        non_member = LearnerFactory(organisation=organisation)
-
-        response = staff_client.post(
-            reverse(REGISTRATION_CHANGE_URL_NAME, args=[registration.pk]),
-            _registration_change_payload(registration, non_member),
-        )
-
-        assert response.status_code == 200
-        assert not LearnerCohortDeadlineOverride.objects.filter(
-            learner=non_member
-        ).exists()
 
 
 ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"

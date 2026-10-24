@@ -26,7 +26,6 @@ Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's co
 - Factory import: `from freedom_ls.accounts.factories import UserFactory`.
 - HTMX tests: `learner_interface:initiate_course_access`, `learner_interface:view_course_item` (GET to view, POST with `mark_complete` to complete), `educator_interface:cohort_create`, with `TopicFactory`, `UserCourseRegistrationFactory`, `CourseFactory`, `id="progress-bar"`, and `enrolled` / `course_id` trigger payloads.
 - Auth-bypass example: `from freedom_ls.educator_interface.views import cohort_detail`, using `educator_interface:cohort_detail` and `cohort_pk`.
-- time-machine example: `CohortFactory(deadline_at=...)` / `cohort.is_overdue()`.
 
 ## Markers
 

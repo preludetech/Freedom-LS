@@ -55,8 +55,6 @@ from freedom_ls.form_engine.page_flow import (
 )
 from freedom_ls.form_engine.paging import answered_counts, resume_page_number
 from freedom_ls.form_engine.queries import count_form_questions
-from freedom_ls.learner_management.config import config
-from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_management.queries import (
     learner_for_course,
@@ -715,7 +713,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     decision = get_course_access_backend().get_access_for_request(
         request=request, course=course
     )
-    # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
+    # get_course_index is anonymous-safe (it fetches user-scoped progress
     # only behind its own is_authenticated / can_access_content guards).
     children = get_course_index(
         user=request.user, course=course, can_access_content=decision.can_access_content
@@ -989,19 +987,6 @@ def view_course_item(request, course_slug, index):
     # the course, which is why no backfill is needed.
     course_progress = _ensure_player_course_progress(request.user, course)
 
-    # Check if item is locked by a hard deadline
-    if config.DEADLINES_ACTIVE and request.user.is_authenticated:
-        is_completed = _is_content_item_completed(
-            current_collection_item, course_progress
-        )
-        if is_item_locked_by_deadline(
-            request.user, course, current_item, is_completed=is_completed
-        ):
-            # Redirect to the loop-free detail page. course_home is now a
-            # resume redirector, so redirecting a locked item there would loop
-            # straight back to the same locked item.
-            return redirect("learner_interface:course_detail", course_slug=course_slug)
-
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
@@ -1022,8 +1007,8 @@ def view_course_item(request, course_slug, index):
 
     # Record this collection item as the resume target. This is the single
     # write point for both topics and forms, so resume no longer depends on
-    # per-item progress timestamps. The deadline-locked and sequential-unlock
-    # branches return above, so a locked item is never recorded.
+    # per-item progress timestamps. The sequential-unlock
+    # branch returns above, so a locked item is never recorded.
     #
     # last_accessed_time is written here rather than by auto_now, so a
     # background percentage recalculation never looks like a visit. started_at
@@ -1503,7 +1488,7 @@ def course_form_complete(request, course_slug, index):
         return no_access
     # No sequential-unlock gate here, deliberately: this page only reads back a
     # sitting the learner already made, and a learner is always entitled to the
-    # score they earned — including after a deadline has closed the quiz itself.
+    # score they earned — including after the quiz itself has been withheld.
     # Fetch the collection items once and reuse them (they are not cached); the
     # view also needs the list length below for is_last_item.
     viewable_collection_items = course.viewable_collection_items()
@@ -1773,23 +1758,3 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
-
-
-def _is_content_item_completed(
-    collection_item: ContentCollectionItem, course_progress: CourseProgress | None
-) -> bool:
-    """Whether this placement is complete within this course progress record.
-
-    Scoped to the record as well as the placement because it decides whether a
-    hard deadline locks the item: the same topic completed in another course,
-    or under another registration, must not unlock this one.
-    """
-    if course_progress is None:
-        return False
-    if isinstance(collection_item.child, Topic):
-        return TopicProgress.objects.filter(
-            course_progress=course_progress,
-            collection_item=collection_item,
-            complete_time__isnull=False,
-        ).exists()
-    return completed_attempts(course_progress, collection_item).exists()

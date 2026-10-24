@@ -26,7 +26,7 @@ When creating a new factory for a site-aware model, import `SiteAwareFactory` fr
 
 - **SubFactory:** `UserCourseRegistrationFactory` / `CourseFactory`.
 - **RelatedFactory:** `CohortFactory(SiteAwareFactory)` with `"freedom_ls.learner_management.factories.CohortMembershipFactory"`.
-- **GenericFK:** `CohortDeadlineFactory(SiteAwareFactory)` with `CohortDeadline` / `content_item` / `TopicFactory`.
+- **GenericFK:** `ObjectRoleAssignmentFactory(SiteAwareFactory)` with `ObjectRoleAssignment` / `target_object`.
 - **ContentCollectionItem (dual GenericFK):**
 
   ```python

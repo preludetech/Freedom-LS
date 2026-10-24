@@ -56,7 +56,7 @@ rows, a panel with no instance of the model, a flow with no user/cohort/course).
 shape you need: entity counts, relationships, which Site, which fixtures. It owns the factory
 conventions — do not hand-roll ORM scripts. Wait for it to confirm, then re-attempt the test.
 
-**Blocking data** — a past hard deadline, an orphaned join row, a stray role grant, a password an
+**Blocking data** — a stale registration, an orphaned join row, a stray role grant, a password an
 earlier run changed. Clear it, cheapest option first. Rungs 2 and 3 run the commands configured under
 `## QA Dev Data` in `.claude/fls-dev/config.md`. Read that section before you need it and substitute
 the literal values it gives.
