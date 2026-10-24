@@ -7,9 +7,8 @@ import pytest
 import time_machine
 
 from django.conf import settings
-from django.contrib.sites.models import Site
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
@@ -381,7 +380,7 @@ def test_the_site_zone_drives_the_resolved_instant(mock_site_context):
 
 @pytest.mark.django_db
 def test_another_sites_zone_is_not_read(mock_site_context):
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
     SiteTimeZoneConfigFactory(site=other_site, time_zone="Pacific/Auckland")
     course = CourseFactory(time_limit_days=1)
     record = course_progress_record(
@@ -485,13 +484,16 @@ def test_the_cohort_layer_beats_the_content_default(mock_site_context):
         due_days_after_registration=3,
     )
 
+    type(record).objects.filter(pk=record.pk).update(
+        created_at=datetime(2026, 3, 2, 12, 0, tzinfo=UTC)
+    )
+    record.refresh_from_db()
+
     resolved = course_deadlines(record).items[item.pk]
 
     assert resolved.source == DeadlineSource.COHORT_REGISTRATION
     assert resolved.due_at is not None
-    assert resolved.due_at.date() == record.created_at.astimezone(
-        ZoneInfo(settings.TIME_ZONE)
-    ).date() + timedelta(days=3)
+    assert resolved.due_at.date() == date(2026, 3, 5)
 
 
 @pytest.mark.django_db
@@ -544,7 +546,7 @@ def test_a_learner_on_an_individual_registration_has_no_cohort_layer(
 @pytest.mark.django_db
 def test_another_sites_override_rows_are_not_read(mock_site_context):
     record, item = _cohort_record_with_item(due_days_after_registration=14)
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
     CohortDeadlineOverrideFactory(
         site=other_site,
         cohort_registration=record.cohort_registration,
@@ -557,10 +559,7 @@ def test_another_sites_override_rows_are_not_read(mock_site_context):
     assert resolved.source == DeadlineSource.CONTENT
 
 
-@pytest.mark.django_db
-def test_override_rows_do_not_change_the_query_count(
-    mock_site_context, django_assert_max_num_queries
-):
+def _record_with_an_override_on_each_of_five_items() -> CourseProgress:
     record, _ = _cohort_record_with_item(due_days_after_registration=14)
     for index in range(4):
         topic = TopicFactory()
@@ -572,6 +571,19 @@ def test_override_rows_do_not_change_the_query_count(
             cohort_registration=record.cohort_registration,
             collection_item=collection_item,
         )
+    return record
+
+
+@pytest.fixture
+def record_with_five_overridden_items(mock_site_context) -> CourseProgress:
+    return _record_with_an_override_on_each_of_five_items()
+
+
+@pytest.mark.django_db
+def test_override_rows_do_not_change_the_query_count(
+    record_with_five_overridden_items, django_assert_max_num_queries
+):
+    record = record_with_five_overridden_items
 
     with django_assert_max_num_queries(6):
         result = course_deadlines(record)

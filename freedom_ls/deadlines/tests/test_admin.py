@@ -207,16 +207,15 @@ def test_an_item_of_another_course_is_refused(staff_client, mock_site_context) -
 
 
 @pytest.mark.django_db
-def test_a_malformed_object_id_is_the_admins_404(
+def test_a_malformed_object_id_redirects_to_the_admin_index(
     staff_client, mock_site_context
 ) -> None:
     response = staff_client.get(
         reverse(CHANGE_URL_NAME, args=["not-a-uuid"]), follow=False
     )
 
-    assert response.status_code in (302, 404)
-    if response.status_code == 302:
-        assert response.url == reverse("admin:index")
+    assert response.status_code == 302
+    assert response.url == reverse("admin:index")
 
 
 @pytest.mark.django_db
