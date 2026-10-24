@@ -672,9 +672,18 @@ def _result_response(
     )
     response = HttpResponse(html)
     response["HX-Trigger"] = build_hx_trigger(
-        dict.fromkeys(panel.refresh_events, changed_keys)
+        dict.fromkeys(_table_refresh_events(panel), changed_keys)
     )
     return response
+
+
+def _table_refresh_events(panel: DataTablePanel) -> tuple[str, ...]:
+    """The events that refresh `panel`'s table. A list page's table is
+    refreshed by its section's events rather than the panel's own."""
+    config = panel.ctx.config
+    if issubclass(config, ListViewConfig):
+        return config.refresh_events
+    return panel.refresh_events
 
 
 def _result_context(

@@ -8,6 +8,7 @@ latest_registration, learner_for_course and the organisation-scoping helpers.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import cast
 
@@ -38,12 +39,16 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
+    CHANGE_LEARNER,
     DELETE_COHORTMEMBERSHIP,
+    VIEW_COHORT,
+    VIEW_LEARNER,
     CohortCounts,
     LearnerStatus,
     ResolvedRegistration,
     active_organisation_admins,
     all_cohorts_visible_to,
+    can_on_any,
     can_view_cohort,
     cohort_counts,
     cohort_course_count,
@@ -65,6 +70,7 @@ from freedom_ls.learner_management.queries import (
     learner_for_course,
     learner_status,
     learner_status_q,
+    learners_permitted_for,
     learners_visible_to,
     members_keeping_access,
     members_of,
@@ -83,6 +89,8 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
+    build_world,
+    custom_role_config,
     educator_names,
     educator_pairs,
     visible_pairs,
@@ -2273,3 +2281,77 @@ class TestOwnOrganisationForCourse:
         LearnerFactory(user=user, organisation=organisation, is_active=False)
 
         assert own_organisation_for_course(user, course) is None
+
+
+@pytest.mark.django_db
+class TestLearnersPermittedFor:
+    """`can_on_any` and `learners_permitted_for` answer for the whole
+    organisation or for the cohorts that grant the capability."""
+
+    @pytest.fixture
+    def manager_world(self, mock_site_context: Site, settings) -> Iterator[World]:
+        manager = Role(
+            display_name="Cohort learner manager",
+            permissions=frozenset({VIEW_COHORT, VIEW_LEARNER, CHANGE_LEARNER}),
+            assignment_scope=SCOPE_OBJECT,
+        )
+        with custom_role_config(
+            mock_site_context, settings, extra_roles={"cohort_learner_manager": manager}
+        ):
+            yield build_world(mock_site_context)
+
+    def test_an_organisation_admin_may_change_every_learner_including_removed_ones(
+        self, manager_world: World
+    ):
+        o1 = manager_world.organisations["o1"]
+        admin = manager_world.role_holders["o1_admin"]
+
+        assert can_on_any(admin, o1, CHANGE_LEARNER) is True
+        assert set(learners_permitted_for(admin, o1, CHANGE_LEARNER)) == set(
+            Learner.objects.filter(organisation=o1)
+        )
+
+    def test_a_cohort_admin_holds_no_change_learner_anywhere(
+        self, manager_world: World
+    ):
+        o1 = manager_world.organisations["o1"]
+        admin = manager_world.role_holders["c1_admin"]
+
+        assert can_on_any(admin, o1, CHANGE_LEARNER) is False
+        assert not learners_permitted_for(admin, o1, CHANGE_LEARNER).exists()
+
+    def test_a_cohort_grant_reaches_only_that_cohorts_members(
+        self, manager_world: World
+    ):
+        o1 = manager_world.organisations["o1"]
+        c1 = manager_world.cohorts["c1"]
+        educator = UserFactory()
+        assign_object_role(educator, c1, "cohort_learner_manager")
+
+        permitted = learners_permitted_for(educator, o1, CHANGE_LEARNER)
+
+        assert can_on_any(educator, o1, CHANGE_LEARNER) is True
+        assert set(permitted) == {
+            manager_world.learners["in_c1"],
+            manager_world.learners["in_c1_and_c2"],
+            manager_world.learners["inactive_in_c1"],
+        }
+
+    def test_a_learner_in_two_granted_cohorts_is_listed_once(
+        self, manager_world: World
+    ):
+        o1 = manager_world.organisations["o1"]
+        educator = UserFactory()
+        for cohort in (manager_world.cohorts["c1"], manager_world.cohorts["c2"]):
+            assign_object_role(educator, cohort, "cohort_learner_manager")
+
+        permitted = list(learners_permitted_for(educator, o1, CHANGE_LEARNER))
+
+        assert permitted.count(manager_world.learners["in_c1_and_c2"]) == 1
+
+    def test_a_user_with_no_role_may_change_nobody(self, manager_world: World):
+        o1 = manager_world.organisations["o1"]
+        nobody = manager_world.role_holders["no_role"]
+
+        assert can_on_any(nobody, o1, CHANGE_LEARNER) is False
+        assert not learners_permitted_for(nobody, o1, CHANGE_LEARNER).exists()

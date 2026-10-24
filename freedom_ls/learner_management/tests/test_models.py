@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
@@ -18,11 +18,13 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
+    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
+    RunStatus,
 )
 from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
 from freedom_ls.learner_management.utils import is_registered_for_course
@@ -545,3 +547,40 @@ class TestRegistrationOrganisationCheck:
         registration = LearnerCourseRegistration(course=CourseFactory())
 
         registration.clean()
+
+
+class TestBulkActionRun:
+    def test_a_run_takes_its_site_from_the_ambient_site(self, mock_site_context):
+        run = BulkActionRun.objects.create(
+            organisation=OrganisationFactory(),
+            requested_by=UserFactory(),
+            table_key="learners",
+            action_name="deactivate",
+        )
+
+        assert run.site == mock_site_context
+
+    def test_the_default_manager_hides_another_sites_runs(self, mock_site_context):
+        BulkActionRun._base_manager.create(
+            site=SiteFactory(),
+            organisation=OrganisationFactory(),
+            requested_by=UserFactory(),
+            table_key="learners",
+            action_name="deactivate",
+        )
+
+        assert not BulkActionRun.objects.exists()
+
+    def test_a_new_run_is_queued_with_no_progress(self, mock_site_context):
+        run = BulkActionRun.objects.create(
+            organisation=OrganisationFactory(),
+            requested_by=UserFactory(),
+            table_key="learners",
+            action_name="deactivate",
+        )
+
+        assert (run.status, run.processed_count, run.result) == (
+            RunStatus.QUEUED,
+            0,
+            None,
+        )

@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
 
 from django import forms
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
@@ -63,23 +65,28 @@ from freedom_ls.learner_management.learner_actions import (
     remove_from_cohort,
 )
 from freedom_ls.learner_management.models import (
+    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
     OrganisationMember,
+    RunStatus,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
+    CHANGE_LEARNER,
     MEMBER_ROLES,
     CourseNotOpenError,
+    can_on_any,
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
     cohorts_visible_to,
     courses_gaining_access,
     courses_losing_access,
+    learners_permitted_for,
     learners_visible_to,
     member_assignments,
     members_keeping_access,
@@ -119,6 +126,14 @@ from freedom_ls.panel_framework.actions import (
     form_fragment_context,
     join_prose,
     navigation_response,
+)
+from freedom_ls.panel_framework.bulk_actions import (
+    BackgroundRun,
+    BulkAction,
+    BulkOutcome,
+    BulkResult,
+    ConfirmationWording,
+    count_outcomes,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -2176,3 +2191,263 @@ class ReactivateMemberAction(MemberStateAction):
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
         return member_changed_response(user)
+
+
+BULK_ACTIONS: dict[tuple[str, str], type[EducatorBulkAction]] = {}
+
+
+def register_bulk_action[ActionT: type[EducatorBulkAction]](cls: ActionT) -> ActionT:
+    """Class decorator: file the action under its table and name, in
+    registration order, which is the order the action bar lists them."""
+    BULK_ACTIONS[(cls.table_key, cls.action_name)] = cls
+    return cls
+
+
+def bulk_action_for(table_key: str, action_name: str) -> EducatorBulkAction:
+    return BULK_ACTIONS[(table_key, action_name)]()
+
+
+def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
+    return [
+        action_class()
+        for (key, _name), action_class in BULK_ACTIONS.items()
+        if key == table_key
+    ]
+
+
+class EducatorBulkAction(BulkAction):
+    """A bulk action over the rows of an educator-interface table.
+
+    Each object is checked, previewed and changed with the same capability,
+    scope and service its single-object action uses. Subclasses fill in the
+    hooks; the defaults suit an action with no target picker.
+    """
+
+    table_key: str
+    capability: str
+    noun_model: type[Model]
+    #: The skip reason when the service reports nothing changed.
+    unchanged_reason: str = ""
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        scoped = cast("OrganisationScopedRequest", request)
+        return can_on_any(scoped.user, scoped.organisation, self.capability)
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        organisation: Organisation,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        """`queryset` narrowed to the objects the user may act on."""
+        raise NotImplementedError
+
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        """The reason this permitted object would be skipped, from its
+        current state; None when it would change."""
+        return None
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        """What the single-object action asks `can` about before acting."""
+        raise NotImplementedError
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        """Call the service; False when it reports nothing changed."""
+        raise NotImplementedError
+
+    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
+        """The picker's choice as JSON, stored on the run."""
+        return {}
+
+    def resolve_target(
+        self, organisation: Organisation, target: dict[str, str]
+    ) -> dict[str, object]:
+        """Rebuild `cleaned_data` from the stored target."""
+        return {}
+
+    def objects_for_keys(self, organisation: Organisation, keys: list[str]) -> QuerySet:
+        return self.noun_model._base_manager.filter(
+            organisation=organisation, pk__in=keys
+        )
+
+    def not_permitted_reason(self) -> str:
+        return (
+            f"{self.noun_model._meta.verbose_name_plural} "
+            "you don't have permission to change"
+        )
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        # The table's rows all sit in the one organisation the request is
+        # scoped to, so it can be read back off them.
+        organisation = Organisation.objects.filter(
+            pk__in=queryset.values("organisation_id")
+        ).first()
+        if organisation is None:
+            return {}
+        permitted_ids = set(
+            self.permitted(user, organisation, queryset, cleaned_data).values_list(
+                "pk", flat=True
+            )
+        )
+        outcomes: dict[str, BulkOutcome] = {}
+        for obj in self.with_related(queryset):
+            if obj.pk not in permitted_ids:
+                outcomes[str(obj.pk)] = BulkOutcome(
+                    "skipped", self.not_permitted_reason()
+                )
+            elif (reason := self.skip_reason(obj, cleaned_data)) is not None:
+                outcomes[str(obj.pk)] = BulkOutcome("skipped", reason)
+            else:
+                outcomes[str(obj.pk)] = BulkOutcome("changed")
+        return outcomes
+
+    def changed_count(self, classified: dict[str, BulkOutcome] | None) -> int:
+        counts = count_outcomes(classified or {})
+        return sum(item.count for item in counts if item.status == "changed")
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        if not can(user, self.capability, self.scope_object(obj, cleaned_data)):
+            return BulkOutcome("skipped", self.not_permitted_reason())
+        if self.perform(obj, cleaned_data):
+            return BulkOutcome("changed")
+        # The service said nothing changed, so the reason the preview gave
+        # applies here too.
+        return BulkOutcome("skipped", self.unchanged_reason)
+
+    def execute(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> BulkResult | BackgroundRun:
+        # Imported here because bulk_runs looks actions up in this module.
+        from freedom_ls.educator_interface.bulk_runs import run_bulk_action
+
+        scoped = cast("OrganisationScopedRequest", request)
+        run = BulkActionRun.objects.create(
+            organisation=scoped.organisation,
+            requested_by=cast("User", request.user),
+            table_key=self.table_key,
+            action_name=self.action_name,
+            target=self.target_json(cleaned_data),
+            keys=[str(pk) for pk in queryset.values_list("pk", flat=True)],
+            status=RunStatus.QUEUED,
+        )
+        return run_bulk_action(str(run.pk), scoped.organisation.site_id)
+
+
+class LearnerStateBulkAction(EducatorBulkAction):
+    """Moves learners to `target_state`; learners already there are skipped."""
+
+    table_key = "learners"
+    capability = CHANGE_LEARNER
+    noun_model = Learner
+    target_state: bool
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        organisation: Organisation,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        return queryset.filter(
+            pk__in=learners_permitted_for(user, organisation, self.capability).values(
+                "pk"
+            )
+        )
+
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset.select_related("user")
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        if cast(Learner, obj).is_active == self.target_state:
+            return self.unchanged_reason
+        return None
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        return cast(Learner, obj).organisation
+
+    def row_label(self, obj: Model) -> str:
+        return cast(Learner, obj).user.display_name
+
+
+@register_bulk_action
+class DeactivateLearnersBulkAction(LearnerStateBulkAction):
+    label = "Deactivate"
+    action_name = "deactivate"
+    variant = "destructive"
+    target_state = False
+    unchanged_reason = "already inactive"
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return deactivate_learner(cast(Learner, obj))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        count = self.changed_count(classified)
+        verb = "loses" if count == 1 else "lose"
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Learner, count)} {verb} access to this "
+                "organisation's courses."
+            ),
+            skips=wording.skips,
+            consequences=[
+                "Their cohorts, registrations and progress are kept and "
+                "return when you reactivate them."
+            ],
+        )
+
+
+@register_bulk_action
+class ReactivateLearnersBulkAction(LearnerStateBulkAction):
+    label = "Reactivate"
+    action_name = "reactivate"
+    target_state = True
+    unchanged_reason = "already active"
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return reactivate_learner(cast(Learner, obj))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        count = self.changed_count(classified)
+        possessive = "learner's" if count == 1 else "learners'"
+        return ConfirmationWording(
+            sentence=(
+                f"{count} {possessive} access returns through their existing "
+                "cohorts and registrations."
+            ),
+            skips=wording.skips,
+        )
