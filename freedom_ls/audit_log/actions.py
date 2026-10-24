@@ -24,18 +24,41 @@ class AuditAction:
     describe: Callable[[AuditLogEntry], str] | None = None
 
 
+_ADDED_OUTCOMES = {
+    "created": "Account created and setup email sent",
+    "joined": "Joined the organisation",
+    "reactivated": "Reactivated",
+}
+
+
+def _describe_cohort(entry: AuditLogEntry) -> str:
+    return str(entry.details.get("cohort", ""))
+
+
+def _describe_move(entry: AuditLogEntry) -> str:
+    return f"From {entry.details.get('source', '')} to {entry.details.get('destination', '')}"
+
+
+def _describe_learner_added(entry: AuditLogEntry) -> str:
+    text = _ADDED_OUTCOMES.get(str(entry.details.get("outcome", "")), "")
+    cohort = entry.details.get("cohort")
+    if cohort:
+        text = f"{text}, added to {cohort}" if text else f"Added to {cohort}"
+    return text
+
+
 #: Actions that summarise a bulk run rather than change one object.
 SUMMARY_ACTIONS = frozenset({"bulk_action.completed", "import.committed"})
 
 FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
-    AuditAction("learner.added", "Learner added"),
+    AuditAction("learner.added", "Learner added", _describe_learner_added),
     AuditAction("learner.renamed", "Learner renamed"),
     AuditAction("learner.deactivated", "Learner deactivated"),
     AuditAction("learner.reactivated", "Learner reactivated"),
     AuditAction("learner.setup_email_resent", "Setup email resent"),
-    AuditAction("cohort_membership.added", "Added to cohort"),
-    AuditAction("cohort_membership.removed", "Removed from cohort"),
-    AuditAction("cohort_membership.moved", "Moved between cohorts"),
+    AuditAction("cohort_membership.added", "Added to cohort", _describe_cohort),
+    AuditAction("cohort_membership.removed", "Removed from cohort", _describe_cohort),
+    AuditAction("cohort_membership.moved", "Moved between cohorts", _describe_move),
     AuditAction("registration.added", "Registered for course"),
     AuditAction("registration.reregistered", "Re-registered for course"),
     AuditAction("registration.unregistered", "Unregistered from course"),

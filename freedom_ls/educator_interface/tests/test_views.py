@@ -58,6 +58,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.learner_actions import move_between_cohorts
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -3387,3 +3388,19 @@ def test_the_new_message_action_is_absent_when_messaging_is_off(
     response = msg_client_for(educator).get(_new_message_url(organisation))
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    source = CohortFactory(organisation=organisation, name="Alpha")
+    destination = CohortFactory(organisation=organisation, name="Beta")
+    CohortMembershipFactory(learner=learner, cohort=source)
+    move_between_cohorts(learner, source, destination, actor=UserFactory())
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [(row[2], row[3]) for row in rows] == [
+        ("Moved between cohorts", "From Alpha to Beta")
+    ]

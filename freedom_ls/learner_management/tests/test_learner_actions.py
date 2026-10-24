@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.db import transaction
@@ -17,6 +19,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.learner_actions import (
+    AddLearnerResult,
     AddOutcome,
     CohortOutcome,
     LearnerEntry,
@@ -30,12 +33,14 @@ from freedom_ls.learner_management.learner_actions import (
     unregister_from_course,
 )
 from freedom_ls.learner_management.models import (
+    Cohort,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import CourseNotOpenError
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
@@ -107,6 +112,230 @@ class TestLearnerStateAudit:
 
         entry = AuditLogEntry.unscoped.get()
         assert (entry.actor, entry.actor_label) == (None, "")
+
+
+def _added_learner(results: list[AddLearnerResult]) -> Learner:
+    learner = results[0].learner
+    assert learner is not None
+    return learner
+
+
+def _cohort(organisation: Organisation) -> Cohort:
+    return cast(Cohort, CohortFactory(organisation=organisation))
+
+
+@pytest.mark.django_db
+class TestMembershipAudit:
+    def test_adding_to_a_cohort_writes_an_entry_naming_the_cohort(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        cohort = _cohort(learner.organisation)
+        actor = UserFactory()
+
+        add_to_cohort(learner, cohort, actor=actor, reason="Term start")
+
+        assert_entry(
+            action="cohort_membership.added",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            subjects=[cohort],
+            details={"cohort": cohort.name},
+            reason="Term start",
+        )
+
+    def test_adding_to_a_cohort_the_learner_is_in_writes_nothing(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        cohort = _cohort(learner.organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+
+        add_to_cohort(learner, cohort, actor=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_removing_from_a_cohort_writes_an_entry_naming_the_cohort(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        cohort = _cohort(learner.organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        actor = UserFactory()
+
+        remove_from_cohort(learner, cohort, actor=actor)
+
+        assert_entry(
+            action="cohort_membership.removed",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            subjects=[cohort],
+            details={"cohort": cohort.name},
+        )
+
+    def test_removing_from_a_cohort_the_learner_is_not_in_writes_nothing(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        cohort = _cohort(learner.organisation)
+
+        remove_from_cohort(learner, cohort, actor=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_move_writes_one_entry_naming_both_cohorts(self, mock_site_context):
+        learner = LearnerFactory()
+        source = _cohort(learner.organisation)
+        destination = _cohort(learner.organisation)
+        CohortMembershipFactory(learner=learner, cohort=source)
+        actor = UserFactory()
+
+        move_id = move_between_cohorts(learner, source, destination, actor=actor)
+
+        assert_entry(
+            action="cohort_membership.moved",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            subjects=[source, destination],
+            details={
+                "source": source.name,
+                "destination": destination.name,
+                "move_id": move_id,
+            },
+        )
+
+    def test_a_refused_move_writes_nothing(self, mock_site_context):
+        learner = LearnerFactory()
+        source = _cohort(learner.organisation)
+        destination = _cohort(learner.organisation)
+
+        with pytest.raises(ValueError, match="not a member"):
+            move_between_cohorts(learner, source, destination, actor=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_adding_a_new_address_writes_learner_added_with_the_outcome(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        actor = UserFactory()
+
+        learner = _added_learner(
+            add_learners(organisation, [LearnerEntry("new@example.com")], actor=actor)
+        )
+
+        assert_entry(
+            action="learner.added",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=organisation,
+            details={"outcome": "created"},
+        )
+
+    def test_adding_to_a_cohort_names_it_on_the_learner_added_entry(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        cohort = _cohort(organisation)
+
+        learner = _added_learner(
+            add_learners(
+                organisation,
+                [LearnerEntry("new@example.com")],
+                cohort,
+                actor=UserFactory(),
+            )
+        )
+
+        assert_entry(
+            action="learner.added",
+            actor=AuditLogEntry.unscoped.get().actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=organisation,
+            subjects=[cohort],
+            details={"outcome": "created", "cohort": cohort.name},
+        )
+
+    def test_reactivating_a_learner_into_a_cohort_writes_exactly_one_entry(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation, is_active=False)
+        cohort = _cohort(organisation)
+
+        add_learners(
+            organisation,
+            [LearnerEntry(learner.user.email)],
+            cohort,
+            actor=UserFactory(),
+        )
+
+        entry = AuditLogEntry.unscoped.get()
+        assert (entry.action, entry.details) == (
+            "learner.added",
+            {"outcome": "reactivated", "cohort": cohort.name},
+        )
+
+    def test_an_already_active_learner_newly_in_the_cohort_writes_a_membership_entry(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = _cohort(organisation)
+
+        add_learners(
+            organisation,
+            [LearnerEntry(learner.user.email)],
+            cohort,
+            actor=UserFactory(),
+        )
+
+        entry = AuditLogEntry.unscoped.get()
+        assert (entry.action, entry.details) == (
+            "cohort_membership.added",
+            {"cohort": cohort.name},
+        )
+
+    def test_an_already_active_learner_already_in_the_cohort_writes_nothing(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = _cohort(organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+
+        add_learners(organisation, [LearnerEntry(learner.user.email)], cohort)
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_rollback_after_each_function_leaves_no_entry(self, mock_site_context):
+        organisation = OrganisationFactory()
+        member = LearnerFactory(organisation=organisation)
+        outsider = LearnerFactory(organisation=organisation)
+        source = _cohort(organisation)
+        destination = _cohort(organisation)
+        CohortMembershipFactory(learner=member, cohort=source)
+
+        def run_then_fail() -> None:
+            with transaction.atomic():
+                add_to_cohort(outsider, source, actor=UserFactory())
+                remove_from_cohort(member, source, actor=UserFactory())
+                move_between_cohorts(outsider, source, destination, actor=UserFactory())
+                add_learners(organisation, [LearnerEntry("new@example.com")])
+                raise RuntimeError("rolled back")
+
+        with pytest.raises(RuntimeError, match="rolled back"):
+            run_then_fail()
+
+        assert AuditLogEntry.unscoped.count() == 0
 
 
 @pytest.mark.django_db

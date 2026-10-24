@@ -3,13 +3,14 @@ no request, webhook events on commit only when something changed."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
-from django.db.models import TextChoices
+from django.db.models import Model, TextChoices
 
 from freedom_ls.accounts.account_setup import (
     EmailInUseOnAnotherSite,
@@ -17,6 +18,7 @@ from freedom_ls.accounts.account_setup import (
     send_account_setup_email,
 )
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.types import JSONValue
 from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.models import (
@@ -56,6 +58,26 @@ def _set_learner_active(learner: Learner, is_active: bool, event_type: str) -> b
     return True
 
 
+def _record_learner_entry(
+    learner: Learner,
+    action: str,
+    actor: User | None,
+    reason: str,
+    subjects: Iterable[Model] = (),
+    details: Mapping[str, JSONValue] | None = None,
+) -> None:
+    record_entry(
+        action=action,
+        actor=actor,
+        target=learner,
+        target_label=learner.user.display_name,
+        organisation=learner.organisation,
+        subjects=subjects,
+        reason=reason,
+        details=details,
+    )
+
+
 def _change_learner_state(
     learner: Learner,
     is_active: bool,
@@ -69,14 +91,7 @@ def _change_learner_state(
     with transaction.atomic():
         if not _set_learner_active(learner, is_active, event_type=event_type):
             return False
-        record_entry(
-            action=action,
-            actor=actor,
-            target=learner,
-            target_label=learner.user.display_name,
-            organisation=learner.organisation,
-            reason=reason,
-        )
+        _record_learner_entry(learner, action, actor, reason)
     return True
 
 
@@ -109,7 +124,9 @@ def _cohort_payload(cohort: Cohort, move_id: str | None = None) -> dict[str, obj
     return {"cohort_id": str(cohort.pk), "cohort_name": cohort.name, "move_id": move_id}
 
 
-def remove_from_cohort(learner: Learner, cohort: Cohort) -> bool:
+def remove_from_cohort(
+    learner: Learner, cohort: Cohort, *, actor: User | None = None, reason: str = ""
+) -> bool:
     """Take the learner out of an active cohort of their organisation; False
     when they were not a member. Course progress records are kept."""
     _check_cohort(learner, cohort)
@@ -119,13 +136,20 @@ def remove_from_cohort(learner: Learner, cohort: Cohort) -> bool:
         ).delete()
         if deleted:
             _fire("cohort.member_removed", learner, _cohort_payload(cohort))
+            _record_learner_entry(
+                learner,
+                "cohort_membership.removed",
+                actor,
+                reason,
+                subjects=[cohort],
+                details={"cohort": cohort.name},
+            )
     return bool(deleted)
 
 
-def add_to_cohort(learner: Learner, cohort: Cohort) -> bool:
-    """Make the learner a member of an active cohort of their organisation;
-    False when they already were. Registrations the cohort holds start giving
-    them access through the membership's own signals."""
+def _add_membership(learner: Learner, cohort: Cohort) -> bool:
+    """Make the learner a member and fire the webhook; False when they
+    already were. Writes no audit entry: callers decide what the change is."""
     _check_cohort(learner, cohort)
     with transaction.atomic():
         _, created = CohortMembership._base_manager.get_or_create(
@@ -136,7 +160,34 @@ def add_to_cohort(learner: Learner, cohort: Cohort) -> bool:
     return created
 
 
-def move_between_cohorts(learner: Learner, source: Cohort, destination: Cohort) -> str:
+def add_to_cohort(
+    learner: Learner, cohort: Cohort, *, actor: User | None = None, reason: str = ""
+) -> bool:
+    """Make the learner a member of an active cohort of their organisation;
+    False when they already were. Registrations the cohort holds start giving
+    them access through the membership's own signals."""
+    with transaction.atomic():
+        created = _add_membership(learner, cohort)
+        if created:
+            _record_learner_entry(
+                learner,
+                "cohort_membership.added",
+                actor,
+                reason,
+                subjects=[cohort],
+                details={"cohort": cohort.name},
+            )
+    return created
+
+
+def move_between_cohorts(
+    learner: Learner,
+    source: Cohort,
+    destination: Cohort,
+    *,
+    actor: User | None = None,
+    reason: str = "",
+) -> str:
     """Move the learner from one active cohort to another of their
     organisation in one transaction, and return the `move_id` that ties the
     removed and added events together. Raises ValueError, changing nothing,
@@ -170,6 +221,18 @@ def move_between_cohorts(learner: Learner, source: Cohort, destination: Cohort) 
         )
         _fire("cohort.member_removed", learner, _cohort_payload(source, move_id))
         _fire("cohort.member_added", learner, _cohort_payload(destination, move_id))
+        _record_learner_entry(
+            learner,
+            "cohort_membership.moved",
+            actor,
+            reason,
+            subjects=[source, destination],
+            details={
+                "source": source.name,
+                "destination": destination.name,
+                "move_id": move_id,
+            },
+        )
     return move_id
 
 
@@ -240,7 +303,11 @@ class AddLearnerResult:
 
 
 def _add_one(
-    organisation: Organisation, entry: LearnerEntry, cohort: Cohort | None
+    organisation: Organisation,
+    entry: LearnerEntry,
+    cohort: Cohort | None,
+    actor: User | None,
+    reason: str,
 ) -> AddLearnerResult:
     email = entry.email.strip()
     try:
@@ -270,8 +337,29 @@ def _add_one(
 
     cohort_outcome = None
     if cohort is not None:
-        added = add_to_cohort(learner, cohort)
+        added = _add_membership(learner, cohort)
         cohort_outcome = CohortOutcome.ADDED if added else CohortOutcome.ALREADY_MEMBER
+    # One entry whatever changed: a learner who is new or newly active here is
+    # "added", with the cohort named when they joined it too; one already
+    # active here changed only if they joined the cohort.
+    joined_cohort = cohort if cohort_outcome == CohortOutcome.ADDED else None
+    cohort_subjects = [joined_cohort] if joined_cohort else []
+    if outcome != AddOutcome.ALREADY_LEARNER:
+        details: dict[str, JSONValue] = {"outcome": outcome.value}
+        if joined_cohort:
+            details["cohort"] = joined_cohort.name
+        _record_learner_entry(
+            learner, "learner.added", actor, reason, cohort_subjects, details
+        )
+    elif joined_cohort:
+        _record_learner_entry(
+            learner,
+            "cohort_membership.added",
+            actor,
+            reason,
+            cohort_subjects,
+            {"cohort": joined_cohort.name},
+        )
     return AddLearnerResult(email, outcome, learner, cohort_outcome)
 
 
@@ -279,6 +367,9 @@ def add_learners(
     organisation: Organisation,
     entries: list[LearnerEntry],
     cohort: Cohort | None = None,
+    *,
+    actor: User | None = None,
+    reason: str = "",
 ) -> list[AddLearnerResult]:
     """Make each address a learner of the organisation, creating a pending
     account where none exists, and put them in the cohort when one is given.
@@ -297,5 +388,5 @@ def add_learners(
             if key in seen:
                 continue
             seen.add(key)
-            results.append(_add_one(organisation, entry, cohort))
+            results.append(_add_one(organisation, entry, cohort, actor, reason))
     return results

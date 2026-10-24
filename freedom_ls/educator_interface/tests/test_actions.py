@@ -2125,7 +2125,7 @@ def test_a_member_leaving_mid_move_answers_422_with_the_reason(
     learner, source = _membership(organisation)
     destination = CohortFactory(organisation=organisation)
 
-    def leave_then_refuse(*args: object) -> str:
+    def leave_then_refuse(*args: object, **kwargs: object) -> str:
         CohortMembership.objects.filter(learner=learner, cohort=source).delete()
         raise ValueError("The learner is not a member of the source cohort.")
 
@@ -4785,3 +4785,102 @@ def test_deactivating_a_learner_writes_an_entry_by_the_logged_in_user(
 
     entry = AuditLogEntry.unscoped.get()
     assert (entry.action, entry.actor) == ("learner.deactivated", actor)
+
+
+# membership audit entries
+
+
+@pytest.mark.django_db
+def test_adding_a_learner_to_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.added", actor)
+
+
+@pytest.mark.django_db
+def test_removing_a_learner_from_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.removed", actor)
+
+
+@pytest.mark.django_db
+def test_moving_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = cast(Cohort, CohortFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.moved", actor)
+
+
+@pytest.mark.django_db
+def test_adding_existing_learners_writes_one_entry_per_learner(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    first = cast(Learner, LearnerFactory(organisation=organisation))
+    second = cast(Learner, LearnerFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    logged_in_client(actor).post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [str(first.pk), str(second.pk)]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    entries = AuditLogEntry.unscoped.all()
+    assert {(e.action, e.actor, e.target_object_id) for e in entries} == {
+        ("cohort_membership.added", actor, str(first.pk)),
+        ("cohort_membership.added", actor, str(second.pk)),
+    }
+
+
+@pytest.mark.django_db
+def test_adding_learners_by_email_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _add_learners_list_url(organisation),
+        {"entries": "new@example.com"},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("learner.added", actor)

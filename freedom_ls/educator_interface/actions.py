@@ -767,7 +767,7 @@ class MembershipAction(PanelAction):
     renders_in_footer = False
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
-    def perform(self, learner: Learner, cohort: Cohort) -> bool:
+    def perform(self, learner: Learner, cohort: Cohort, actor: User) -> bool:
         raise NotImplementedError
 
     def _cohort(self, ctx: PanelContext) -> Cohort:
@@ -807,7 +807,7 @@ class MembershipAction(PanelAction):
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
             return inactive_cohort_response(ctx.request, cohort)
-        self.perform(learner, cohort)
+        self.perform(learner, cohort, cast("User", ctx.request.user))
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
 
@@ -818,8 +818,8 @@ class RemoveFromCohortAction(MembershipAction):
     capability = "freedom_ls_learner_management.delete_cohortmembership"
     template_name = "educator_interface/modal/remove_from_cohort_confirmation.html"
 
-    def perform(self, learner: Learner, cohort: Cohort) -> bool:
-        return remove_from_cohort(learner, cohort)
+    def perform(self, learner: Learner, cohort: Cohort, actor: User) -> bool:
+        return remove_from_cohort(learner, cohort, actor=actor)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, cohort = self._pair(ctx)
@@ -931,7 +931,9 @@ class MoveToCohortAction(MembershipAction):
             if not cohort.is_active:
                 return inactive_cohort_response(ctx.request, cohort)
         try:
-            move_between_cohorts(learner, source, destination)
+            move_between_cohorts(
+                learner, source, destination, actor=cast("User", ctx.request.user)
+            )
         except ValueError as error:
             return self._refusal(ctx, str(error))
         ids = [str(learner.pk), str(source.pk), str(destination.pk)]
@@ -1030,7 +1032,7 @@ class AddToCohortAction(PanelAction):
         if not cohort.is_active:
             return inactive_cohort_response(ctx.request, cohort)
         learner = cast(Learner, ctx.instance)
-        add_to_cohort(learner, cohort)
+        add_to_cohort(learner, cohort, actor=cast("User", ctx.request.user))
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
 
 
@@ -1094,7 +1096,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
         learners = form.cleaned_data["learners"]
         with transaction.atomic():
             for learner in learners:
-                add_to_cohort(learner, cohort)
+                add_to_cohort(learner, cohort, actor=cast("User", ctx.request.user))
         return _membership_changed_response(
             [str(learner.pk) for learner in learners], [str(cohort.pk)]
         )
@@ -1177,7 +1179,12 @@ class AddLearnersAction(PanelAction):
         cohort = cast(Cohort | None, form.cleaned_data["cohort"]) or preset
         organisation = cast("OrganisationScopedRequest", ctx.request).organisation
         try:
-            results = add_learners(organisation, form.cleaned_data["entries"], cohort)
+            results = add_learners(
+                organisation,
+                form.cleaned_data["entries"],
+                cohort,
+                actor=cast("User", ctx.request.user),
+            )
         except ValueError:
             return inactive_cohort_response(ctx.request, cast(Cohort, cohort))
         html = render_to_string(
