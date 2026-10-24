@@ -12,7 +12,7 @@ from django.contrib.sites.models import Site
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
@@ -26,6 +26,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 # -- Task 5.1: visibility column + interest count -----------------------
 

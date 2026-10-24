@@ -44,10 +44,6 @@ type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["freedom_ls.blog.tests"]
 forbidden_modules = ["freedom_ls.accounts", "freedom_ls.comms", "freedom_ls.content_base", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.learner_management", "freedom_ls.learner_progress", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.organisations", "freedom_ls.panel_framework", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.registration_rules", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.site_aware_models", "freedom_ls.tiktok_pixel", "freedom_ls.webhooks", "freedom_ls.xapi_learning_record_store"]
-ignore_imports = [
-    # allowance: the user-model app's factories
-    "freedom_ls.blog.tests.test_views -> freedom_ls.accounts.factories",
-]
 
 [[tool.importlinter.contracts]]
 id = "comms"
@@ -84,13 +80,6 @@ type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["freedom_ls.content_engine.factories", "freedom_ls.content_engine.tests"]
 forbidden_modules = ["freedom_ls.accounts", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.learner_interface", "freedom_ls.learner_management", "freedom_ls.learner_progress", "freedom_ls.mail", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.organisations", "freedom_ls.panel_framework", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.registration_rules", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.webhooks", "freedom_ls.xapi_learning_record_store"]
-ignore_imports = [
-    # allowance: the user-model app's factories
-    "freedom_ls.content_engine.tests.management.commands.test_content_save -> freedom_ls.accounts.factories",
-    "freedom_ls.content_engine.tests.models.test_articles -> freedom_ls.accounts.factories",
-    "freedom_ls.content_engine.tests.models.test_courses -> freedom_ls.accounts.factories",
-    "freedom_ls.content_engine.tests.templatetags.test_content_tags -> freedom_ls.accounts.factories",
-]
 
 [[tool.importlinter.contracts]]
 id = "course_access"
@@ -309,7 +298,6 @@ ignore_imports = [
     # allowance: the user-model app's factories
     "freedom_ls.organisations.tests.test_admin -> freedom_ls.accounts.factories",
     "freedom_ls.organisations.tests.test_models -> freedom_ls.accounts.factories",
-    "freedom_ls.organisations.tests.test_signals -> freedom_ls.accounts.factories",
     # baseline
     "freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.utils",
 ]
@@ -349,8 +337,6 @@ ignore_imports = [
     # allowance: the user-model app's factories
     "freedom_ls.registration_rules.tests.playwright.test_rule_preview_flow -> freedom_ls.accounts.factories",
     "freedom_ls.registration_rules.tests.test_admin -> freedom_ls.accounts.factories",
-    "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.accounts.factories",
-    "freedom_ls.registration_rules.tests.test_tasks -> freedom_ls.accounts.factories",
     # baseline
     "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.comms.models",
     "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.webhooks.models",
@@ -398,7 +384,6 @@ ignore_imports = [
     # allowance: the user-model app's factories
     "freedom_ls.site_aware_models.tests.test_admin -> freedom_ls.accounts.factories",
     "freedom_ls.site_aware_models.tests.test_models -> freedom_ls.accounts.factories",
-    "freedom_ls.site_aware_models.tests.test_slugs -> freedom_ls.accounts.factories",
     # baseline
     "freedom_ls.site_aware_models.tests.test_admin -> freedom_ls.learner_management.models",
     "freedom_ls.site_aware_models.tests.test_admin_filters -> freedom_ls.learner_progress.factories",
@@ -435,7 +420,5 @@ source_modules = ["freedom_ls.webhooks.factories", "freedom_ls.webhooks.tests"]
 forbidden_modules = ["freedom_ls.accounts", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_base", "freedom_ls.content_engine", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.learner_management", "freedom_ls.learner_progress", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.organisations", "freedom_ls.panel_framework", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.registration_rules", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.xapi_learning_record_store"]
 ignore_imports = [
     # allowance: the user-model app's factories
-    "freedom_ls.webhooks.tests.test_delivery -> freedom_ls.accounts.factories",
-    "freedom_ls.webhooks.tests.test_events -> freedom_ls.accounts.factories",
     "freedom_ls.webhooks.tests.test_views -> freedom_ls.accounts.factories",
 ]

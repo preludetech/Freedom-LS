@@ -19,7 +19,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
@@ -92,6 +92,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     remove_object_role,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:

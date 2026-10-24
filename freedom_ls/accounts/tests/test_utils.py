@@ -8,12 +8,13 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
-from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
 from freedom_ls.accounts.utils import (
     get_client_ip,
     get_signup_policy_for_request,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 

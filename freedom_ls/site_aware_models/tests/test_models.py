@@ -11,10 +11,10 @@ from django.core.exceptions import ValidationError
 from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.factories import (
-    SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import (
     SiteResolutionError,
     UnknownSite,

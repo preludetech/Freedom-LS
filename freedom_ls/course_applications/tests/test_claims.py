@@ -18,8 +18,9 @@ from django.db import IntegrityError, connection
 from django.test import RequestFactory
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import EmailAddressFactory, SiteFactory, UserFactory
+from freedom_ls.accounts.factories import EmailAddressFactory, UserFactory
 from freedom_ls.accounts.models import LegalConsent, User
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.site_context import site_context
 

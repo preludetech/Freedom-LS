@@ -12,7 +12,7 @@ import pytest
 from django.db import connection
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import (
     ConversationFactory,
@@ -56,6 +56,7 @@ from freedom_ls.comms.models import (
     Message,
     Notification,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _thread_locals
 
 

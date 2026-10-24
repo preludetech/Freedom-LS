@@ -13,7 +13,7 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.comms.factories import (
     ConversationFactory,
@@ -22,6 +22,7 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import mark_notifications_read, raise_notification
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 @pytest.mark.django_db

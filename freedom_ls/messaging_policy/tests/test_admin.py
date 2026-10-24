@@ -14,7 +14,6 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -44,6 +43,7 @@ from freedom_ls.messaging_policy.models import (
     SiteMessagingConfig,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 pytestmark = pytest.mark.django_db
 

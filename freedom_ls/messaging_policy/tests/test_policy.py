@@ -19,7 +19,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingRefusal
@@ -64,6 +64,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     remove_object_role,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 pytestmark = pytest.mark.django_db
 

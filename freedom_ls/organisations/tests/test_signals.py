@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.signals import (
     ensure_default_organisations_after_migrate,
 )
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 
 @pytest.mark.django_db

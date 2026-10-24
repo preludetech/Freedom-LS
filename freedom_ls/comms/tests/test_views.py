@@ -12,7 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.factories import (
     ConversationFactory,
     CourseFactory,
@@ -21,6 +21,7 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.messaging import mark_conversation_read, unread_conversation_count
 from freedom_ls.comms.models import Notification
+from freedom_ls.site_aware_models.factories import SiteFactory
 
 BADGE_URL_NAME = "comms:notification_badge"
 PANEL_URL_NAME = "comms:notification_panel"

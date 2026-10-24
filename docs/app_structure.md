@@ -210,13 +210,11 @@ flowchart TB
     base -.-> content_engine
     base -.-> organisations
     base -.-> role_based_permissions
-    blog -.-> accounts
     comms -.-> content_engine
     comms -.-> learner_management
     comms -.-> organisations
     comms -.-> role_based_permissions
     content_base -.-> content_engine
-    content_engine -.-> accounts
     course_access -.-> course_applications
     course_applications -.-> learner_progress
     course_interest -.-> learner_management
@@ -257,10 +255,10 @@ flowchart TB
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
 | base | learner_management | accounts, content_engine, organisations, role_based_permissions |
-| blog | base, content_engine | accounts |
+| blog | base, content_engine | — |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
-| content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |
+| content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | — |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
