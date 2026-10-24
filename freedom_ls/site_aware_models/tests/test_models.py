@@ -8,18 +8,21 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.factories import (
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.site_aware_models.models import (
     SiteResolutionError,
     UnknownSite,
     _thread_locals,
     get_cached_site,
     site_of,
+    validate_time_zone,
 )
 from freedom_ls.tests.factories import SiteFactory
 
@@ -229,3 +232,34 @@ def test_site_of_a_site_aware_object_is_the_site_it_belongs_to() -> None:
     policy = SiteSignupPolicyFactory(site=site)
 
     assert site_of(policy) == site
+
+
+@pytest.mark.parametrize("name", ["Africa/Johannesburg", "UTC", "America/New_York"])
+def test_validate_time_zone_accepts_iana_names(name: str) -> None:
+    validate_time_zone(name)
+
+
+@pytest.mark.parametrize("name", ["Mars/Olympus", "", "../etc/passwd"])
+def test_validate_time_zone_rejects_other_names(name: str) -> None:
+    with pytest.raises(ValidationError, match="Not an IANA time zone name"):
+        validate_time_zone(name)
+
+
+@pytest.mark.django_db
+def test_site_time_zone_config_allows_one_row_per_site(mock_site_context: Site) -> None:
+    SiteTimeZoneConfigFactory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+
+
+@pytest.mark.django_db
+def test_site_time_zone_config_rejects_unknown_zone_on_full_clean(
+    mock_site_context: Site,
+) -> None:
+    config = SiteTimeZoneConfigFactory.build(time_zone="Mars/Olympus")
+
+    with pytest.raises(ValidationError) as error:
+        config.full_clean(exclude=["site"])
+
+    assert "time_zone" in error.value.message_dict

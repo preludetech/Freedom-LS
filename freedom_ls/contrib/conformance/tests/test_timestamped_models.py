@@ -55,6 +55,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_messaging_policy.SiteMessagingConfig",
         "freedom_ls_organisations.Organisation",
         "freedom_ls_registration_rules.RegistrationRule",
+        "freedom_ls_site_aware_models.SiteTimeZoneConfig",
     }
 )
 

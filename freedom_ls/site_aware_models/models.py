@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import uuid
 from threading import local
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.exceptions import DisallowedHost
+from django.core.exceptions import DisallowedHost, ValidationError
 from django.db import models
 from django.http import HttpRequest
 
@@ -182,3 +183,34 @@ class TimestampedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+def validate_time_zone(value: str) -> None:
+    """Only a name the zoneinfo database knows can convert a due date to an instant."""
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValidationError(
+            "Not an IANA time zone name, e.g. Africa/Johannesburg."
+        ) from exc
+
+
+class SiteTimeZoneConfig(SiteAwareModel, TimestampedModel):
+    """The zone a site's authored dates are read in. No row means settings.TIME_ZONE."""
+
+    time_zone = models.CharField(max_length=64, validators=[validate_time_zone])
+    show_time_zone_to_learners = models.BooleanField(
+        default=False,
+        help_text="Label every learner-facing date with its time zone.",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site"], name="unique_time_zone_config_per_site"
+            ),
+        ]
+        verbose_name = "site time zone"
+
+    def __str__(self) -> str:
+        return f"{self.site.domain}: {self.time_zone}"

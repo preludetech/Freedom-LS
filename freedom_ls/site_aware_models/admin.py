@@ -15,6 +15,7 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.site_aware_models.admin_exports import FormulaSafeCSV
+from freedom_ls.site_aware_models.models import SiteTimeZoneConfig
 
 with contextlib.suppress(NotRegistered):
     admin.site.unregister(Site)
@@ -70,6 +71,12 @@ class GuardedSiteAwareModelAdmin(ModelAdmin, GuardedModelAdmin):
 
     exclude = ["site"]
     Media = SiteAwareModelAdmin.Media
+
+
+@admin.register(SiteTimeZoneConfig)
+class SiteTimeZoneConfigAdmin(SiteAwareModelAdmin):
+    list_display = ["time_zone", "show_time_zone_to_learners"]
+    fields = ["time_zone", "show_time_zone_to_learners"]
 
 
 def admin_page_context(
