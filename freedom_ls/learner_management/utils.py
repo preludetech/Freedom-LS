@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, cast
 
 from django.db import transaction
 
+from freedom_ls.audit_log.writer import record_entry
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
     from django.contrib.sites.models import Site
@@ -156,8 +158,22 @@ def announce_cohort_registration_change(registration: CohortCourseRegistration) 
     )
 
 
+def _record_cohort_registration_entry(
+    cohort: Cohort, action: str, course: Course, actor: User | None, reason: str
+) -> None:
+    record_entry(
+        action=action,
+        actor=actor,
+        target=cohort,
+        target_label=cohort.name,
+        organisation=cohort.organisation,
+        reason=reason,
+        details={"course": course.title},
+    )
+
+
 def register_cohort_for_course(
-    cohort: Cohort, course: Course
+    cohort: Cohort, course: Course, *, actor: User | None = None, reason: str = ""
 ) -> CohortCourseRegistration:
     """Register, or re-register, the cohort for the course.
 
@@ -169,26 +185,49 @@ def register_cohort_for_course(
     from freedom_ls.learner_management.queries import require_course_open_to
 
     require_course_open_to(course, cohort.organisation)
-    # _base_manager with an explicit site, as ensure_learner does: the
-    # site-aware manager only fills site from an ambient request, and this
-    # runs from commands and tests as well as views.
-    registration, created = CohortCourseRegistration._base_manager.get_or_create(
-        site=cohort.site, cohort=cohort, course=course
-    )
-    reactivated = not created and not registration.is_active
-    if reactivated:
-        registration.is_active = True
-        registration.save(update_fields=["is_active"])
-    if created or reactivated:
-        announce_cohort_registration_change(registration)
+    with transaction.atomic():
+        # _base_manager with an explicit site, as ensure_learner does: the
+        # site-aware manager only fills site from an ambient request, and this
+        # runs from commands and tests as well as views.
+        registration, created = CohortCourseRegistration._base_manager.get_or_create(
+            site=cohort.site, cohort=cohort, course=course
+        )
+        reactivated = not created and not registration.is_active
+        if reactivated:
+            registration.is_active = True
+            registration.save(update_fields=["is_active"])
+        if created or reactivated:
+            announce_cohort_registration_change(registration)
+            _record_cohort_registration_entry(
+                cohort,
+                "cohort_registration.added"
+                if created
+                else "cohort_registration.reregistered",
+                course,
+                actor,
+                reason,
+            )
     return registration
 
 
-def unregister_cohort_from_course(registration: CohortCourseRegistration) -> None:
+def unregister_cohort_from_course(
+    registration: CohortCourseRegistration,
+    *,
+    actor: User | None = None,
+    reason: str = "",
+) -> None:
     """Withdraw the registration. Reversible: the row and every course
     progress record it minted stay."""
-    was_active = registration.is_active
-    registration.is_active = False
-    registration.save(update_fields=["is_active"])
-    if was_active:
-        announce_cohort_registration_change(registration)
+    with transaction.atomic():
+        was_active = registration.is_active
+        registration.is_active = False
+        registration.save(update_fields=["is_active"])
+        if was_active:
+            announce_cohort_registration_change(registration)
+            _record_cohort_registration_entry(
+                registration.cohort,
+                "cohort_registration.unregistered",
+                registration.course,
+                actor,
+                reason,
+            )

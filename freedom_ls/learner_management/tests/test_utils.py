@@ -16,9 +16,11 @@ from typing import cast
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.db import transaction
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
@@ -46,6 +48,7 @@ from freedom_ls.learner_management.utils import (
     unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
 
@@ -479,3 +482,93 @@ class TestRegisterCohortForCourseOrganisationCheck:
             register_cohort_for_course(cohort, course)
 
         assert not cohort.course_registrations.exists()
+
+
+@pytest.mark.django_db
+class TestCohortRegistrationAudit:
+    def test_registering_writes_cohort_registration_added_naming_the_course(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory(title="Algebra")
+        actor = UserFactory()
+
+        register_cohort_for_course(cohort, course, actor=actor)
+
+        assert_entry(
+            action="cohort_registration.added",
+            actor=actor,
+            target=cohort,
+            target_label=cohort.name,
+            organisation=cohort.organisation,
+            details={"course": "Algebra"},
+        )
+
+    def test_registering_again_after_unregistering_writes_reregistered(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+        actor = UserFactory()
+
+        register_cohort_for_course(
+            registration.cohort, registration.course, actor=actor
+        )
+
+        assert_entry(
+            action="cohort_registration.reregistered",
+            actor=actor,
+            target=registration.cohort,
+            target_label=registration.cohort.name,
+            organisation=registration.cohort.organisation,
+            details={"course": registration.course.title},
+        )
+
+    def test_registering_an_active_registration_writes_nothing(self, mock_site_context):
+        registration = CohortCourseRegistrationFactory(is_active=True)
+
+        register_cohort_for_course(
+            registration.cohort, registration.course, actor=UserFactory()
+        )
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_unregistering_writes_cohort_registration_unregistered(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=True)
+        actor = UserFactory()
+
+        unregister_cohort_from_course(registration, actor=actor)
+
+        assert_entry(
+            action="cohort_registration.unregistered",
+            actor=actor,
+            target=registration.cohort,
+            target_label=registration.cohort.name,
+            organisation=registration.cohort.organisation,
+            details={"course": registration.course.title},
+        )
+
+    def test_unregistering_an_inactive_registration_writes_nothing(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+
+        unregister_cohort_from_course(registration, actor=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_rollback_after_each_function_leaves_no_entry(self, mock_site_context):
+        registered = CohortCourseRegistrationFactory(is_active=True)
+        cohort = registered.cohort
+
+        def run_then_fail() -> None:
+            with transaction.atomic():
+                register_cohort_for_course(cohort, CourseFactory(), actor=UserFactory())
+                unregister_cohort_from_course(registered, actor=UserFactory())
+                raise RuntimeError("rolled back")
+
+        with pytest.raises(RuntimeError, match="rolled back"):
+            run_then_fail()
+
+        assert AuditLogEntry.unscoped.count() == 0

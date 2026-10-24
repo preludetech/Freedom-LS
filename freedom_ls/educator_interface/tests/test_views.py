@@ -61,6 +61,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.learner_actions import (
     add_to_cohort,
     move_between_cohorts,
+    register_for_course,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -70,6 +71,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
+from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -3488,3 +3490,29 @@ def test_a_cohort_viewer_gets_no_cohort_history_tab_and_a_404_on_its_url(
 
     hrefs = [a.get("href").rsplit("/", 1)[-1] for a in document.cssselect("nav a")]
     assert ("history" in hrefs, response.status_code) == (False, 404)
+
+
+@pytest.mark.django_db
+def test_a_cohort_registration_shows_on_the_cohort_history_tab(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    register_cohort_for_course(cohort, CourseFactory(title="Algebra"))
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
+    )
+
+    rows = _history_rows(document)
+    assert [(row[2], row[3]) for row in rows] == [
+        ("Cohort registered for course", "Algebra")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    register_for_course(learner, CourseFactory(title="Algebra"))
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [(row[2], row[3]) for row in rows] == [("Registered for course", "Algebra")]

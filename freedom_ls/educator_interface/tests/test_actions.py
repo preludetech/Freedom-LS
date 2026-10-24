@@ -4884,3 +4884,98 @@ def test_adding_learners_by_email_writes_an_entry_by_the_logged_in_user(
 
     entry = AuditLogEntry.unscoped.get()
     assert (entry.action, entry.actor) == ("learner.added", actor)
+
+
+# registration audit entries
+
+
+@pytest.mark.django_db
+def test_registering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_register_url(organisation, learner),
+        {"course": str(CourseFactory().pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.added", actor)
+
+
+@pytest.mark.django_db
+def test_reregistering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.reregistered", actor)
+
+
+@pytest.mark.django_db
+def test_unregistering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_unregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.unregistered", actor)
+
+
+@pytest.mark.django_db
+def test_registering_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _register_url(organisation, cohort),
+        {"course": str(CourseFactory().pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_registration.added", actor)
+
+
+@pytest.mark.django_db
+def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(registration.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_registration.unregistered", actor)

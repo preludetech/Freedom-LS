@@ -339,6 +339,96 @@ class TestMembershipAudit:
 
 
 @pytest.mark.django_db
+class TestRegistrationAudit:
+    def test_registering_writes_registration_added_naming_the_course(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory(title="Algebra")
+        actor = UserFactory()
+
+        register_for_course(learner, course, actor=actor)
+
+        assert_entry(
+            action="registration.added",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            details={"course": "Algebra"},
+        )
+
+    def test_reactivating_a_registration_writes_registration_reregistered(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+        actor = UserFactory()
+
+        register_for_course(registration.learner, registration.course, actor=actor)
+
+        assert_entry(
+            action="registration.reregistered",
+            actor=actor,
+            target=registration.learner,
+            target_label=registration.learner.user.display_name,
+            organisation=registration.learner.organisation,
+            details={"course": registration.course.title},
+        )
+
+    def test_registering_when_already_registered_writes_nothing(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+
+        register_for_course(
+            registration.learner, registration.course, actor=UserFactory()
+        )
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_unregistering_writes_registration_unregistered(self, mock_site_context):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+        actor = UserFactory()
+
+        unregister_from_course(registration.learner, registration.course, actor=actor)
+
+        assert_entry(
+            action="registration.unregistered",
+            actor=actor,
+            target=registration.learner,
+            target_label=registration.learner.user.display_name,
+            organisation=registration.learner.organisation,
+            details={"course": registration.course.title},
+        )
+
+    def test_unregistering_without_an_active_registration_writes_nothing(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+
+        unregister_from_course(
+            registration.learner, registration.course, actor=UserFactory()
+        )
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_rollback_after_each_function_leaves_no_entry(self, mock_site_context):
+        learner = LearnerFactory()
+        registered = LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+
+        def run_then_fail() -> None:
+            with transaction.atomic():
+                register_for_course(learner, CourseFactory(), actor=UserFactory())
+                unregister_from_course(learner, registered.course, actor=UserFactory())
+                raise RuntimeError("rolled back")
+
+        with pytest.raises(RuntimeError, match="rolled back"):
+            run_then_fail()
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+
+@pytest.mark.django_db
 class TestDeactivateLearner:
     def test_sets_the_learner_inactive_and_returns_true(self, mock_site_context):
         learner = LearnerFactory(is_active=True)

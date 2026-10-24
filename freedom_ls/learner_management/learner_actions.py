@@ -236,7 +236,9 @@ def move_between_cohorts(
     return move_id
 
 
-def register_for_course(learner: Learner, course: Course) -> bool:
+def register_for_course(
+    learner: Learner, course: Course, *, actor: User | None = None, reason: str = ""
+) -> bool:
     """Give the learner an individual registration for the course,
     reactivating an inactive one; False when an active one already exists.
     `course.registered` comes from the registration's `post_save` receiver.
@@ -252,10 +254,19 @@ def register_for_course(learner: Learner, course: Course) -> bool:
         if not created:
             registration.is_active = True
             registration.save(update_fields=["is_active"])
+        _record_learner_entry(
+            learner,
+            "registration.added" if created else "registration.reregistered",
+            actor,
+            reason,
+            details={"course": course.title},
+        )
     return True
 
 
-def unregister_from_course(learner: Learner, course: Course) -> bool:
+def unregister_from_course(
+    learner: Learner, course: Course, *, actor: User | None = None, reason: str = ""
+) -> bool:
     """Deactivate the learner's individual registration for the course; False
     when they hold no active one. Course progress records are kept.
     `course.unregistered` comes from the registration's `post_save` receiver."""
@@ -267,6 +278,13 @@ def unregister_from_course(learner: Learner, course: Course) -> bool:
             return False
         registration.is_active = False
         registration.save(update_fields=["is_active"])
+        _record_learner_entry(
+            learner,
+            "registration.unregistered",
+            actor,
+            reason,
+            details={"course": course.title},
+        )
     return True
 
 

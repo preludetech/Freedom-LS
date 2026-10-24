@@ -386,7 +386,11 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         return CohortCourseRegistrationForm(data, cohort=self._cohort)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        register_cohort_for_course(self._cohort, form.cleaned_data["course"])
+        register_cohort_for_course(
+            self._cohort,
+            form.cleaned_data["course"],
+            actor=cast("User", request.user),
+        )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(self._page_url)
@@ -543,7 +547,9 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
         return context
 
     def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
-        unregister_cohort_from_course(self._registration(ctx))
+        unregister_cohort_from_course(
+            self._registration(ctx), actor=cast("User", ctx.request.user)
+        )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(ctx.page_url)
@@ -594,7 +600,11 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         return LearnerCourseRegistrationForm(data, learner=self._learner)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        register_for_course(self._learner, form.cleaned_data["course"])
+        register_for_course(
+            self._learner,
+            form.cleaned_data["course"],
+            actor=cast("User", request.user),
+        )
         return _registration_changed_response(self._learner)
 
 
@@ -654,7 +664,11 @@ class UnregisterLearnerFromCourseAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        unregister_from_course(learner, self._registration(ctx).course)
+        unregister_from_course(
+            learner,
+            self._registration(ctx).course,
+            actor=cast("User", ctx.request.user),
+        )
         return _registration_changed_response(learner)
 
 
@@ -698,7 +712,11 @@ class ReregisterLearnerForCourseAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         try:
-            register_for_course(learner, self._registration(ctx).course)
+            register_for_course(
+                learner,
+                self._registration(ctx).course,
+                actor=cast("User", ctx.request.user),
+            )
         except CourseNotOpenError as error:
             # The course may have gained organisations since the registration
             # was made, leaving it closed to this learner's organisation.
