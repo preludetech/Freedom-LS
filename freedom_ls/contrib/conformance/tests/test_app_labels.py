@@ -8,12 +8,10 @@ connection; it only reads the populated app registry.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from pathlib import Path
 
 import pytest
 
 from django.apps import AppConfig, apps
-from django.conf import settings
 
 import freedom_ls
 
@@ -62,42 +60,6 @@ def test_allowlisted_app_config_without_prefix_is_not_flagged() -> None:
     config = AppConfig("freedom_ls.icons", freedom_ls)
 
     assert config not in _offending_apps([config], UNPREFIXED_LABEL_ALLOWLIST)
-
-
-# Renamed in an earlier pass (UserCohortDeadlineOverride -> LearnerCohortDeadlineOverride,
-# unique_user_cohort_override_per_item -> unique_learner_cohort_override_per_item). Migration
-# files legitimately keep the old names as RenameModel/RemoveConstraint arguments, which is
-# why they're excluded here; everything else in the tree should read the new names only.
-_STALE_NAMES = ("UserCohortDeadlineOverride", "unique_user_cohort_override_per_item")
-_SCAN_DIRS = ("freedom_ls", "demo_content", "config", "docs")
-_SCAN_SUFFIXES = (".py", ".html", ".md")
-
-
-def _files_with_stale_names(base_dir: Path) -> list[Path]:
-    this_file = Path(__file__).resolve()
-    hits = []
-    for scan_dir in _SCAN_DIRS:
-        for path in (base_dir / scan_dir).rglob("*"):
-            if "migrations" in path.parts or "__pycache__" in path.parts:
-                continue
-            if path.suffix not in _SCAN_SUFFIXES or not path.is_file():
-                continue
-            if path.resolve() == this_file:
-                continue
-            text = path.read_text(encoding="utf-8")
-            if any(name in text for name in _STALE_NAMES):
-                hits.append(path)
-    return hits
-
-
-def test_pre_rename_deadline_override_name_is_gone_from_the_tree() -> None:
-    hits = _files_with_stale_names(Path(settings.BASE_DIR))
-    assert not hits, (
-        f"Found the pre-rename name in: {[str(path) for path in hits]}. "
-        "UserCohortDeadlineOverride and unique_user_cohort_override_per_item "
-        "were renamed; migrations are exempt since RenameModel/RemoveConstraint "
-        "legitimately keep the old name as an argument."
-    )
 
 
 class _PrefixedLabelOnlyConfig(AppConfig):

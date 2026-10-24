@@ -1,14 +1,11 @@
 """Factories for learner_management models."""
 
-from datetime import timedelta
 from typing import cast
 
 import factory
 
-from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
 from django.db.models.signals import pre_delete
-from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -16,12 +13,9 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
-    CohortDeadline,
     CohortMembership,
     Learner,
-    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
-    LearnerDeadline,
     OrganisationMember,
 )
 from freedom_ls.learner_management.signals import delete_cohort_role_rows
@@ -122,97 +116,6 @@ class CohortCourseRegistrationFactory(SiteAwareFactory):
     cohort = factory.SubFactory(CohortFactory)
     course = factory.SubFactory(CourseFactory)
     is_active = True
-
-
-class CohortDeadlineFactory(SiteAwareFactory):
-    """Factory for creating CohortDeadline instances.
-
-    Pass ``content_item=<model instance>`` to set the GenericFK fields.
-    When omitted, content_type and object_id default to None (course-level deadline).
-    """
-
-    class Meta:
-        model = CohortDeadline
-        exclude = ["content_item"]
-
-    class Params:
-        content_item = None
-
-    cohort_course_registration = factory.SubFactory(CohortCourseRegistrationFactory)
-    deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
-    is_hard_deadline = False
-
-    content_type = factory.LazyAttribute(
-        lambda obj: (
-            ContentType.objects.get_for_model(obj.content_item)
-            if obj.content_item
-            else None
-        )
-    )
-    object_id = factory.LazyAttribute(
-        lambda obj: obj.content_item.pk if obj.content_item else None
-    )
-
-
-class LearnerDeadlineFactory(SiteAwareFactory):
-    """Factory for creating LearnerDeadline instances.
-
-    Pass ``content_item=<model instance>`` to set the GenericFK fields.
-    When omitted, content_type and object_id default to None (course-level deadline).
-    """
-
-    class Meta:
-        model = LearnerDeadline
-        exclude = ["content_item"]
-
-    class Params:
-        content_item = None
-
-    learner_course_registration = factory.SubFactory(LearnerCourseRegistrationFactory)
-    deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
-    is_hard_deadline = False
-
-    content_type = factory.LazyAttribute(
-        lambda obj: (
-            ContentType.objects.get_for_model(obj.content_item)
-            if obj.content_item
-            else None
-        )
-    )
-    object_id = factory.LazyAttribute(
-        lambda obj: obj.content_item.pk if obj.content_item else None
-    )
-
-
-class LearnerCohortDeadlineOverrideFactory(SiteAwareFactory):
-    """Factory for creating LearnerCohortDeadlineOverride instances.
-
-    Pass ``content_item=<model instance>`` to set the GenericFK fields.
-    When omitted, content_type and object_id default to None (course-level override).
-    """
-
-    class Meta:
-        model = LearnerCohortDeadlineOverride
-        exclude = ["content_item"]
-
-    class Params:
-        content_item = None
-
-    cohort_course_registration = factory.SubFactory(CohortCourseRegistrationFactory)
-    learner = factory.SubFactory(LearnerFactory)
-    deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
-    is_hard_deadline = False
-
-    content_type = factory.LazyAttribute(
-        lambda obj: (
-            ContentType.objects.get_for_model(obj.content_item)
-            if obj.content_item
-            else None
-        )
-    )
-    object_id = factory.LazyAttribute(
-        lambda obj: obj.content_item.pk if obj.content_item else None
-    )
 
 
 def delete_cohort_leaving_role_rows(cohort: Cohort) -> None:

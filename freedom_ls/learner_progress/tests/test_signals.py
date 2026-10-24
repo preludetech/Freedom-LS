@@ -590,10 +590,6 @@ class TestCourseRegisteredNotification:
                     "learner": str(learner.pk),
                     "course": str(course.pk),
                     "is_active": "on",
-                    "deadlines-TOTAL_FORMS": "0",
-                    "deadlines-INITIAL_FORMS": "0",
-                    "deadlines-MIN_NUM_FORMS": "0",
-                    "deadlines-MAX_NUM_FORMS": "1000",
                 },
             )
 

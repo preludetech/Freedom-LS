@@ -76,18 +76,6 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_learner_management.delete_organisationmember": "Can delete organisation member",
     "freedom_ls_learner_management.bulk_manage_learners": "Can bulk manage learners",
     "freedom_ls_learner_management.download_cohort_report": "Can download cohort report",
-    # "freedom_ls_learner_management.view_cohortdeadline": "Can view cohort deadline",
-    # "freedom_ls_learner_management.add_cohortdeadline": "Can add cohort deadline",
-    # "freedom_ls_learner_management.change_cohortdeadline": "Can change cohort deadline",
-    # "freedom_ls_learner_management.delete_cohortdeadline": "Can delete cohort deadline",
-    # "freedom_ls_learner_management.view_learnerdeadline": "Can view learner deadline",
-    # "freedom_ls_learner_management.add_learnerdeadline": "Can add learner deadline",
-    # "freedom_ls_learner_management.change_learnerdeadline": "Can change learner deadline",
-    # "freedom_ls_learner_management.delete_learnerdeadline": "Can delete learner deadline",
-    # "freedom_ls_learner_management.view_learnercohortdeadlineoverride": "Can view learner cohort deadline override",
-    # "freedom_ls_learner_management.add_learnercohortdeadlineoverride": "Can add learner cohort deadline override",
-    # "freedom_ls_learner_management.change_learnercohortdeadlineoverride": "Can change learner cohort deadline override",
-    # "freedom_ls_learner_management.delete_learnercohortdeadlineoverride": "Can delete learner cohort deadline override",
     # --- role_based_permissions app (label: freedom_ls_role_based_permissions) ---
     # ACTIVE — used in the checked assignment utilities
     "freedom_ls_role_based_permissions.assign_site_admin": "Can grant or remove the site_admin role",

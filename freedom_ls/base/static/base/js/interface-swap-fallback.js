@@ -1,5 +1,5 @@
 // If a boosted course-player navigation resolves to a page without the player
-// shell (e.g. a deadline-lock redirect to course detail, or a session-expiry
+// shell (e.g. a redirect to course detail when an item is locked, or a session-expiry
 // redirect to login), htmx would have nothing to select for #interface-main and
 // would swap empty content. Fall back to a full navigation so the user lands on
 // the real page instead of a blank swap. htmx events bubble to document, so

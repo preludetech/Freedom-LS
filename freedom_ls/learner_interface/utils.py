@@ -5,11 +5,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from django.http import Http404
 from django.urls import reverse
-from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -19,11 +17,6 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
-from freedom_ls.learner_management.config import config
-from freedom_ls.learner_management.deadline_utils import (
-    EffectiveDeadline,
-    get_course_deadlines,
-)
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
@@ -79,7 +72,7 @@ def derive_part_status(child_statuses: list[str]) -> str:
     where "in progress" only says work remains.
 
     "Under way" needs a child that can actually be opened. Once everything
-    left is blocked -- a hard deadline that has expired, say -- the part is
+    left is blocked -- an item the access backend withholds, say -- the part is
     blocked too, however much of it is already finished: a part cannot report
     work in flight over rows the learner has no way back into.
 
@@ -481,16 +474,8 @@ def get_course_index(
     twice; passing ``None`` means "there is no record", which is not the same
     as leaving it out.
 
-    Returns a list of dictionaries with title, status, url, type, deadlines, and optionally children.
+    Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
-    # Look up deadlines
-    deadlines_map: dict[
-        tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
-    ] = {}
-    if user.is_authenticated and config.DEADLINES_ACTIVE:
-        # is_authenticated guard above guarantees a real User here.
-        deadlines_map = get_course_deadlines(cast("User", user), course)
-
     # Bulk-fetch per-item progress once (two queries) instead of one per item.
     # Only needed when the learner can access content: users without access get
     # forced-BLOCKED rows and get_content_status is never called.
@@ -522,7 +507,6 @@ def get_course_index(
             can_access_content,
             topic_progress_map,
             form_placement_map,
-            deadlines_map=deadlines_map,
             current_index=current_index,
         )
         children.append(child_dict)
@@ -553,52 +537,6 @@ def current_entry_status(course_index: list[dict]) -> str | None:
     return None
 
 
-def _get_deadlines_for_item(
-    content_item: Topic | Form | CoursePart,
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]],
-) -> list[dict]:
-    """Get deadline display dicts for a content item from the pre-fetched deadlines map."""
-    if not deadlines_map:
-        return []
-
-    ct = ContentType.objects.get_for_model(content_item)
-    key = (ct.id, content_item.pk)
-    effective_deadlines = deadlines_map.get(key, [])
-
-    # Fall back to course-level deadlines if no item-level ones
-    if not effective_deadlines:
-        effective_deadlines = deadlines_map.get((None, None), [])
-
-    return [
-        {
-            "deadline": d.deadline,
-            "is_hard_deadline": d.is_hard_deadline,
-            "is_expired": d.deadline <= timezone.now(),
-            "source": d.source,
-        }
-        for d in effective_deadlines
-    ]
-
-
-def _apply_deadline_locking(
-    child_dict: dict,
-    deadlines: list[dict],
-) -> None:
-    """Apply hard deadline locking to a child dict if needed."""
-    if child_dict["status"] == COMPLETE:
-        return
-
-    hard_deadlines = [d for d in deadlines if d["is_hard_deadline"]]
-    if not hard_deadlines:
-        return
-
-    # Most permissive (latest) hard deadline governs access
-    most_permissive = max(hard_deadlines, key=lambda d: d["deadline"])
-    if most_permissive["is_expired"]:
-        child_dict["status"] = BLOCKED
-        child_dict["url"] = None
-
-
 def create_child_dict_with_flattened_index(
     collection_item: ContentCollectionItem,
     course: Course,
@@ -607,8 +545,6 @@ def create_child_dict_with_flattened_index(
     can_access_content: bool,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
     form_placement_map: dict[uuid.UUID, FormPlacementProgress],
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
-    | None = None,
     current_index: int | None = None,
 ) -> tuple[dict, str, int]:
     """
@@ -624,8 +560,6 @@ def create_child_dict_with_flattened_index(
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
-    if deadlines_map is None:
-        deadlines_map = {}
     content_item = cast("Topic | Form | CoursePart", collection_item.child)
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
@@ -662,16 +596,13 @@ def create_child_dict_with_flattened_index(
                 child_url = ""
 
             part_child_index = start_index + items_added + 1
-            part_child_deadlines = _get_deadlines_for_item(part_child, deadlines_map)
             part_child_dict = {
                 "title": part_child.title,
                 "type": part_child.content_type,
                 "url": child_url if child_status != BLOCKED else None,
                 "status": child_status,
-                "deadlines": part_child_deadlines,
                 "is_current": current_index == part_child_index,
             }
-            _apply_deadline_locking(part_child_dict, part_child_deadlines)
             part_children_dicts.append(part_child_dict)
             items_added += 1
 
@@ -691,7 +622,7 @@ def create_child_dict_with_flattened_index(
             # the first child still needing a re-sit, then the first child once
             # everything is complete. BLOCKED children are never routed to, since
             # they carry no url of their own -- which is what a part whose first
-            # child is hard-deadline-locked would otherwise link to.
+            # child is withheld would otherwise link to.
             in_progress_child = next(
                 (c for c in part_children_dicts if c["status"] == IN_PROGRESS), None
             )
@@ -712,20 +643,14 @@ def create_child_dict_with_flattened_index(
             elif status == COMPLETE:
                 url = part_children_dicts[0]["url"]
 
-        # CoursePart-level deadlines (from the CoursePart itself)
-        part_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
-
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url or None,
             "type": content_item.content_type,
             "children": part_children_dicts,
-            "deadlines": part_deadlines,
             "contains_current": any(c.get("is_current") for c in part_children_dicts),
         }
-
-        _apply_deadline_locking(child_dict, part_deadlines)
 
         # Update next_status based on the last child's processing
         next_status = part_next_status
@@ -745,18 +670,13 @@ def create_child_dict_with_flattened_index(
             status = BLOCKED
             url = ""
 
-        item_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
-
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
-            "deadlines": item_deadlines,
             "is_current": current_index == start_index + 1,
         }
-
-        _apply_deadline_locking(child_dict, item_deadlines)
 
     return child_dict, next_status, items_added
 

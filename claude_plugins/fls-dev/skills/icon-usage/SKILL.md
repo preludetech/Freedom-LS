@@ -26,7 +26,7 @@ The full list is `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, 
 
 ## Sizing
 
-- `size-3`: inside badges, deadlines
+- `size-3`: inside badges
 - `size-4`: lists, small UI elements
 - `size-5`: buttons, most UI (the default)
 - `size-6`: emphasis, e.g. modal close buttons

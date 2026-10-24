@@ -1,24 +1,5 @@
 {% load course_storage_keys %}
 
-{% partialdef deadline-badges %}
-    {% if child.deadlines %}
-        {% for dl in child.deadlines %}
-            {% if dl.is_hard_deadline %}
-                <span class="text-xs text-error whitespace-nowrap" title="{{ dl.source }}">
-                    <c-icon name="deadline" class="size-3" />
-                    {{ dl.deadline|date:"d M" }}
-                </span>
-            {% else %}
-                <span class="text-xs text-warning whitespace-nowrap"
-                      title="{{ dl.source }}">
-                    <c-icon name="deadline" class="size-3" />
-                    {{ dl.deadline|date:"d M" }}
-                </span>
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-{% endpartialdef %}
-
 {% partialdef content-icon %}
     {% comment %} Type icon, coloured by status; status also announced via sr-only text. {% endcomment %}
     <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
@@ -86,7 +67,6 @@
                                 {% endwith %}
                             </span>
                             <span class="flex items-center gap-2 shrink-0">
-                                {% partial deadline-badges %}
                                 {% comment %} Decorative chevron: state is conveyed by
                                 aria-expanded, so it is hidden from AT. {% endcomment %}
                                 <span class="text-muted shrink-0 text-sm" aria-hidden="true">
@@ -112,11 +92,7 @@
                                                 {% partial content-row-inner %}
                                             {% endwith %}
                                         </div>
-                                        <div class="flex items-center gap-2 shrink-0">
-                                            {% with child=part_child %}
-                                                {% partial deadline-badges %}
-                                            {% endwith %}
-                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0"></div>
                                     </li>
                                 {% endfor %}
                             {% else %}
@@ -134,9 +110,7 @@
                                 {% partial content-row-inner %}
                             {% endwith %}
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            {% partial deadline-badges %}
-                        </div>
+                        <div class="flex items-center gap-2 shrink-0"></div>
                     </li>
                 {% endif %}
             {% endfor %}
