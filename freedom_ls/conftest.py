@@ -15,9 +15,15 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 
-# Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
-# tests can consume them without importing the fixtures module directly.
-from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
+# Playwright tests in every app's tests/playwright/ directory, and downstream projects
+# that star-import this module, reach these fixtures through the root conftest. Naming
+# them keeps the module's own imports (User, expect, Page, ...) from travelling too.
+from freedom_ls.tests.playwright_fixtures import (
+    logged_in_page,
+    logged_in_user,
+    playwright,
+    reset_local_storage,
+)
 from freedom_ls.tests.site_context import site_context
 from freedom_ls.tests.storages import (
     PathlessFileSystemStorage,
@@ -256,11 +262,6 @@ def live_server_site(live_server, site):
     site.domain = parsed_url.netloc
     site.save()
     return site
-
-
-# ``logged_in_page`` is now defined in
-# ``freedom_ls.tests.playwright_fixtures`` and re-exported via the
-# wildcard import at the top of this module.
 
 
 @pytest.fixture
