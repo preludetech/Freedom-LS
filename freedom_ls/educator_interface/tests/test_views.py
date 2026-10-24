@@ -8,6 +8,7 @@ import json
 import uuid
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import cast
 from uuid import uuid4
 
@@ -42,6 +43,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.educator_interface.bulk_runs import run_bulk_action
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
@@ -66,11 +68,13 @@ from freedom_ls.learner_management.learner_actions import (
     register_for_course,
 )
 from freedom_ls.learner_management.models import (
+    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     OrganisationMember,
+    RunStatus,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
 from freedom_ls.learner_management.utils import register_cohort_for_course
@@ -3853,3 +3857,127 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
         response = staff_client.get(_audit_log_url(organisation))
 
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
+
+
+# bulk run result page
+
+
+def _run_for(user: User, organisation: Organisation, **fields: object):
+    return BulkActionRun.objects.create(
+        organisation=organisation,
+        requested_by=user,
+        table_key="learners",
+        action_name="deactivate",
+        keys=[str(LearnerFactory(organisation=organisation).pk) for _ in range(2)],
+        **fields,
+    )
+
+
+def _run_url(organisation: Organisation, run: BulkActionRun, name: str) -> str:
+    return reverse(
+        f"educator_interface:{name}",
+        kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+    )
+
+
+@pytest.fixture
+def run_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+    organisation = OrganisationFactory()
+    requester = cast(User, UserFactory(superuser=True))
+    return SimpleNamespace(
+        organisation=organisation,
+        requester=requester,
+        client=logged_in_client(requester),
+        run=_run_for(requester, organisation),
+    )
+
+
+@pytest.mark.django_db
+def test_a_queued_run_page_polls_its_status_fragment(run_world: SimpleNamespace):
+    page = _get_document(
+        run_world.client,
+        _run_url(run_world.organisation, run_world.run, "bulk_action_run"),
+    )
+
+    (status,) = page.cssselect("#run-status")
+    assert status.get("role") == "status"
+    assert status.get("hx-get") == _run_url(
+        run_world.organisation, run_world.run, "bulk_action_run_status"
+    )
+    assert status.get("hx-trigger") == "every 2s"
+    assert page.cssselect("#run-status progress")
+
+
+@pytest.mark.django_db
+def test_a_finished_run_fragment_stops_polling_and_shows_the_summary(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+
+    response = run_world.client.get(
+        _run_url(run_world.organisation, run_world.run, "bulk_action_run_status"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    (status,) = lxml.html.fromstring(response.content.decode()).cssselect("#run-status")
+    assert status.get("hx-trigger") is None
+    assert "2 learners changed." in status.text_content()
+    (back,) = status.cssselect("a")
+    assert back.get("href") == _interface_url(run_world.organisation.slug, "learners")
+
+
+@pytest.mark.django_db
+def test_a_failed_run_fragment_says_where_it_stopped(run_world: SimpleNamespace):
+    run_world.run.status = RunStatus.FAILED
+    run_world.run.processed_count = 1
+    run_world.run.error_message = "Unexpected error."
+    run_world.run.save()
+
+    response = run_world.client.get(
+        _run_url(run_world.organisation, run_world.run, "bulk_action_run_status"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    text = " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+    assert "Stopped after 1 of 2 learners." in text
+    assert "Unexpected error." in text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+def test_a_run_is_a_404_for_another_user_of_the_organisation(
+    run_world: SimpleNamespace, logged_in_client, name: str
+):
+    other = cast(User, UserFactory(superuser=True))
+
+    response = logged_in_client(other).get(
+        _run_url(run_world.organisation, run_world.run, name)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+def test_a_run_is_a_404_through_another_organisations_slug(
+    run_world: SimpleNamespace, name: str
+):
+    elsewhere = OrganisationFactory()
+
+    response = run_world.client.get(_run_url(elsewhere, run_world.run, name))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_run_page_renders_inside_the_interface_shell(run_world: SimpleNamespace):
+    page = _get_document(
+        run_world.client,
+        _run_url(run_world.organisation, run_world.run, "bulk_action_run"),
+    )
+
+    assert page.cssselect("#organisation-switcher")
+    assert page.cssselect("#main-content h1")
+    assert page.cssselect("nav a[aria-current='page']")

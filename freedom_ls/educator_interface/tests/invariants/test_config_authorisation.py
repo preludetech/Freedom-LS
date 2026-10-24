@@ -36,7 +36,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import BulkActionRun, Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -189,3 +189,29 @@ def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
 
     assert paths == ["no-instance-pages"]
     assert Cohort.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+def test_a_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client, name: str
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+    run = BulkActionRun.objects.create(
+        organisation=organisation,
+        requested_by=requester,
+        table_key="learners",
+        action_name="deactivate",
+    )
+
+    response = logged_in_client(requester).get(
+        reverse(
+            f"educator_interface:{name}",
+            kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+        )
+    )
+
+    assert response.status_code == 404

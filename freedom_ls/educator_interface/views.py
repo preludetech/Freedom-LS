@@ -82,6 +82,7 @@ from freedom_ls.educator_interface.actions import (
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
+    bulk_action_for,
     bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
@@ -125,6 +126,7 @@ from freedom_ls.educator_interface.reporting import (
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
+    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
@@ -154,9 +156,10 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
+    count_noun,
     navigation_response,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction, BulkResult
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
@@ -180,6 +183,8 @@ from freedom_ls.panel_framework.views import (
     NavGroup,
     SectionConfigBase,
     StatusBadge,
+    build_breadcrumbs,
+    build_menu_items,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -1962,11 +1967,11 @@ def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpR
     return HttpResponse(badge_count(unread) if unread else "")
 
 
-@login_required
-def interface(
-    request: HttpRequest, organisation_slug: str, path_string: str = ""
-) -> HttpResponse | StreamingHttpResponse:
-    """Resolve and authorise the organisation named in the URL, once.
+def scope_request(
+    request: HttpRequest, organisation_slug: str
+) -> OrganisationScopedRequest:
+    """Resolve and authorise the organisation named in the URL, and set the
+    attributes the shell and the panels read off the request.
 
     Selecting an organisation is an authorisation decision, not a filter:
     unlike Site, which is derived from the request host and cannot be
@@ -1980,7 +1985,6 @@ def interface(
     scoped_request.accessible_organisations = list(
         organisations_accessible_to(request.user)
     )
-    scoped_request.path_string = path_string
     # Rendered into the same OOB bundle panel_framework already assembles
     # for breadcrumbs/sidebar/title/announcer (panel_framework/views.py) —
     # on every navigation, not only a switch, because the switcher's
@@ -1990,6 +1994,130 @@ def interface(
     scoped_request.panel_extra_oob = [
         "educator_interface/partials/organisation_switcher.html"
     ]
+    return scoped_request
+
+
+def standalone_page_context(
+    request: OrganisationScopedRequest, heading: str, section: str
+) -> dict[str, object]:
+    """The shell context for a page outside the panel framework: the menu
+    with `section` marked and the breadcrumbs for it, built the way
+    `panel_framework_view` builds them."""
+    extra_url_kwargs = request.panel_url_kwargs
+    url_name = "educator_interface:interface"
+    # The switcher links to the same path in another organisation; a run or
+    # import belongs to one organisation, so the other lands on the section.
+    request.path_string = section
+    return {
+        "menu_groups": build_menu_items(
+            interface_config,
+            url_name,
+            request,
+            active_section=section,
+            extra_url_kwargs=extra_url_kwargs,
+        ),
+        "breadcrumbs": build_breadcrumbs(
+            [section],
+            sections_by_url_name(interface_config),
+            url_name,
+            extra_url_kwargs=extra_url_kwargs,
+        ),
+        "heading": heading,
+    }
+
+
+def _requested_record_or_404(
+    queryset: QuerySet[BulkActionRun],
+    request: HttpRequest,
+    organisation: Organisation,
+    pk: str,
+) -> BulkActionRun:
+    """The record only its requester may see. Anyone else, and a record of
+    another organisation, gets the 404 a missing one does."""
+    return get_object_or_404(
+        queryset.filter(
+            organisation=organisation, requested_by=cast(User, request.user)
+        ),
+        pk=pk,
+    )
+
+
+def _run_status_context(
+    scoped: OrganisationScopedRequest, run: BulkActionRun
+) -> dict[str, object]:
+    """What `partials/run_status.html` renders for a bulk run."""
+    action = bulk_action_for(run.table_key, run.action_name)
+    model = action.noun_model
+    total = len(run.keys)
+    result = BulkResult.from_json(run.result) if run.result else None
+    slug = scoped.organisation.slug
+    kwargs = {"organisation_slug": slug, "run_id": run.pk}
+    return {
+        "run": run,
+        "noun": str(model._meta.verbose_name_plural),
+        "total": total,
+        "percentage": run.processed_count * 100 // total if total else 100,
+        "result": result,
+        "headline": (f"{count_noun(model, result.changed)} changed." if result else ""),
+        "other_counts": (
+            [item for item in result.counts if item.status != "changed"]
+            if result
+            else []
+        ),
+        "result_template": "panel_framework/partials/bulk_result_body.html",
+        "status_url": reverse(
+            "educator_interface:bulk_action_run_status", kwargs=kwargs
+        ),
+        "back_url": reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": slug, "path_string": run.table_key},
+        ),
+    }
+
+
+@login_required
+def bulk_action_run(
+    request: HttpRequest, organisation_slug: str, run_id: str
+) -> HttpResponse:
+    """A bulk run's result page: progress while it runs, the summary after."""
+    scoped = scope_request(request, organisation_slug)
+    run = _requested_record_or_404(
+        BulkActionRun.objects.all(), request, scoped.organisation, run_id
+    )
+    status = _run_status_context(scoped, run)
+    context = standalone_page_context(
+        scoped,
+        heading=bulk_action_for(run.table_key, run.action_name).label,
+        section=run.table_key,
+    )
+    context.update(status)
+    return render(request, "educator_interface/bulk_action_run.html", context)
+
+
+@login_required_htmx_to("educator_interface:root")
+def partial_bulk_action_run_status(
+    request: HttpRequest, organisation_slug: str, run_id: str
+) -> HttpResponse:
+    """The polled fragment of `bulk_action_run`."""
+    scoped = scope_request(request, organisation_slug)
+    run = _requested_record_or_404(
+        BulkActionRun.objects.all(), request, scoped.organisation, run_id
+    )
+    return render(
+        request,
+        "educator_interface/partials/run_status.html",
+        _run_status_context(scoped, run),
+    )
+
+
+@login_required
+def interface(
+    request: HttpRequest, organisation_slug: str, path_string: str = ""
+) -> HttpResponse | StreamingHttpResponse:
+    """Serve the panel framework for the organisation named in the URL."""
+    scoped_request = scope_request(request, organisation_slug)
+    organisation = scoped_request.organisation
+    scoped_request.path_string = path_string
     # Guarded so the session store is only written when the value actually
     # changes — an unconditional assignment would mark the session dirty on
     # every educator page load.

@@ -175,6 +175,12 @@ class BulkAction:
     ) -> BulkOutcome:
         raise NotImplementedError
 
+    def runs_in_background(self, count: int) -> bool:
+        """Whether `execute` hands a run over `count` objects to a task. The
+        confirmation then skips `classify_all`, whose cost grows with the
+        selection, and shows only the total."""
+        return False
+
     def classify_all(
         self,
         user: AbstractBaseUser | AnonymousUser,

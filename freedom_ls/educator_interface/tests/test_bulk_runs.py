@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import cast
 
 import pytest
@@ -14,6 +15,7 @@ from freedom_ls.educator_interface.bulk_runs import (
     NO_LONGER_EXISTS,
     run_bulk_action,
 )
+from freedom_ls.educator_interface.tasks import _run_bulk_action_task
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import BulkActionRun, Learner, RunStatus
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -90,3 +92,34 @@ def test_a_run_of_another_site_is_not_found(mock_site_context: Site):
 
     with pytest.raises(Http404):
         run_bulk_action(str(run.pk), mock_site_context.pk + 1000)
+
+
+def test_the_task_takes_only_the_run_id_and_the_site_id():
+    parameters = inspect.signature(_run_bulk_action_task.func).parameters
+
+    assert {name: p.annotation for name, p in parameters.items()} == {
+        "run_id": "str",
+        "site_id": "int",
+    }
+
+
+def test_a_requester_who_lost_the_grant_skips_every_object_and_the_run_is_done(
+    mock_site_context: Site,
+):
+    learner = _learner()
+    run = _run_over(learner)
+    run.requested_by = UserFactory(staff=True)
+    run.save(update_fields=["requested_by"])
+
+    result = run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    learner.refresh_from_db()
+    run.refresh_from_db()
+    assert (result.changed, learner.is_active, run.status) == (
+        0,
+        True,
+        RunStatus.DONE,
+    )
+    assert [item.reason for item in result.counts] == [
+        "learners you don't have permission to change"
+    ]

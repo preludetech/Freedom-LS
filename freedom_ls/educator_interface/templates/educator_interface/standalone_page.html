@@ -1,0 +1,20 @@
+{% extends "educator_interface/_shell.html" %}
+
+{% comment %}
+A page of the educator interface that sits outside the panel framework's
+dispatch (a background run's result, an import). The shell around it is the
+one a panel page gets, and #main-content has the same header band and canvas
+as panel_framework/views/_main_base.html, so a page filling in
+`standalone_main` looks like any other. That template cannot be extended here
+because this one already extends the shell.
+{% endcomment %}
+{% block shell_main %}
+    <div id="main-content" class="flex flex-1 flex-col" tabindex="-1">
+        <div class="panel-surface border-b border-border px-4 pt-4 pb-5 sm:px-6 lg:px-8">
+            <c-panel-page-header title="{{ heading }}" panel_toggle="true" />
+        </div>
+        <div class="panel-canvas flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            {% block standalone_main %}{% endblock standalone_main %}
+        </div>
+    </div>
+{% endblock shell_main %}

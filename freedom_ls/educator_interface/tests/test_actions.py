@@ -5708,3 +5708,92 @@ def test_bulk_deactivate_fires_one_event_per_changed_learner_and_none_for_skippe
     assert sorted(fired, key=str) == sorted(
         [("learner.deactivated", learner.pk) for learner in active], key=str
     )
+
+
+# bulk actions above the background threshold
+
+
+def _task_rows():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path__endswith="_run_bulk_action_task")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_background(
+    staff_client: Client, settings
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(
+        staff_client, organisation, "deactivate", [*learners, inactive]
+    )
+
+    text = _bulk_text(response)
+    assert "This will affect 3 learners." in text
+    assert "background" in text
+    assert "already inactive" not in text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_redirects_to_the_run(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    run = BulkActionRun.objects.get()
+    assert response.status_code == 204
+    assert response["HX-Redirect"] == reverse(
+        "educator_interface:bulk_action_run",
+        kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+    )
+    assert run.status == RunStatus.QUEUED
+    assert _task_rows().count() == 1
+    assert Learner.objects.filter(is_active=False).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_without_javascript_answers_303(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = staff_client.post(
+        _learners_bulk_url(organisation, "deactivate"),
+        {
+            "keys": [str(learner.pk) for learner in learners],
+            "confirmed": "on",
+            "expected_count": "3",
+        },
+    )
+
+    run = BulkActionRun.objects.get()
+    assert response.status_code == 303
+    assert response["Location"] == reverse(
+        "educator_interface:bulk_action_run",
+        kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_at_the_threshold_still_runs_inline(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 3
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    assert response.status_code == 200
+    assert _task_rows().count() == 0
+    assert Learner.objects.filter(is_active=False).count() == 3

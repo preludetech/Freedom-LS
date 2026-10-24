@@ -335,3 +335,13 @@ def legal_repo_mock(mock_legal_blobs):
         docs=(("terms", terms), ("privacy", privacy)),
     )
     return mock_legal_blobs
+
+
+@pytest.fixture
+def database_task_backend(settings) -> None:
+    """Switch TASKS to the real database backend, so an enqueued task is a
+    `DBTaskResult` row. The test settings default to the immediate backend,
+    which runs a task inline and makes `prune_db_task_results` always raise
+    `CommandError`. A test that reads the queue across commits also needs
+    `transaction=True`."""
+    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}

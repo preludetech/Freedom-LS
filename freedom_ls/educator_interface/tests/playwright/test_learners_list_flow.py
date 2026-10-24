@@ -7,12 +7,13 @@ and that the list behind it refreshes to show the new learner.
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page, Response, expect
+from playwright.sync_api import Browser, Page, Response, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.factories import LearnerFactory
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.playwright_helpers import (
@@ -71,3 +72,42 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+def test_bulk_deactivate_with_javascript_off_shows_the_result_page(
+    browser: Browser,
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    learners = [LearnerFactory(organisation=organisation) for _ in range(2)]
+    # The session cookie carries the login into a context with scripting off.
+    context = browser.new_context(java_script_enabled=False)
+    context.add_cookies(educator_logged_in_page.context.cookies())
+    page = context.new_page()
+
+    try:
+        page.goto(interface_url(live_server, organisation.slug, "learners"))
+        rows = page.locator("#learners-table tbody input[name='keys']")
+        rows.nth(0).check()
+        rows.nth(1).check()
+        page.get_by_role("button", name="Deactivate", exact=True).first.click()
+        page.get_by_role("button", name="Deactivate", exact=True).last.click()
+
+        expect(page.get_by_text("2 learners changed.")).to_be_visible()
+        page.get_by_role("link", name="Back to learners").click()
+        expect(page).to_have_url(
+            interface_url(live_server, organisation.slug, "learners")
+        )
+    finally:
+        context.close()
+
+    assert not any(
+        learner.is_active
+        for learner in Learner.objects.filter(
+            pk__in=[learner.pk for learner in learners]
+        )
+    )
