@@ -97,6 +97,14 @@ def test_canonical_beneath_a_time_limit_row_is_the_time_limit(mock_site_context)
 
 
 @pytest.mark.django_db
-def test_canonical_beneath_is_empty_when_nothing_is_beneath(mock_site_context):
+def test_canonical_beneath_an_item_row_is_empty_when_nothing_is_beneath(
+    mock_site_context,
+):
     assert canonical_beneath(_item_override()) == ""
+
+
+@pytest.mark.django_db
+def test_canonical_beneath_a_time_limit_row_is_empty_when_no_time_limit_is_set(
+    mock_site_context,
+):
     assert canonical_beneath(_time_limit_override(None)) == ""
