@@ -651,7 +651,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
 | `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | next | |
 | `user-profile-upgrades` | Redesign the user profile page and add phone number and date of birth, some possibly required at signup. | `phone-number-form-field` | next | |
-| `anon-application-improvements` | Anonymous applicants get the email check after the first application page, and see an unfinished application on the dashboard. | none | in progress | |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
