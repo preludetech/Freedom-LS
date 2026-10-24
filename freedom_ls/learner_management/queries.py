@@ -67,6 +67,12 @@ VIEW_CONVERSATION = "freedom_ls_comms.view_conversation"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+ADD_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_learnercourseregistration"
+)
+CHANGE_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_learnercourseregistration"
+)
 BULK_MANAGE_LEARNERS = "freedom_ls_learner_management.bulk_manage_learners"
 
 
@@ -499,7 +505,7 @@ def courses_visible_to(
     )
 
 
-def _registerable_courses(organisation: Organisation) -> QuerySet[Course]:
+def registerable_courses(organisation: Organisation) -> QuerySet[Course]:
     """Published and hidden courses open to the organisation, by title;
     coming-soon courses cannot be registered for."""
     return (
@@ -513,7 +519,7 @@ def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
     """Registerable courses open to the cohort's organisation that the cohort
     holds no active registration for. A course with an inactive registration
     is offered, and registering it reactivates that row."""
-    return _registerable_courses(cohort.organisation).exclude(
+    return registerable_courses(cohort.organisation).exclude(
         cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
     )
 
@@ -522,7 +528,7 @@ def registerable_courses_for_learner(learner: Learner) -> QuerySet[Course]:
     """Registerable courses open to the learner's organisation that the learner
     holds no active individual registration for. A course with an inactive
     registration is offered."""
-    return _registerable_courses(learner.organisation).exclude(
+    return registerable_courses(learner.organisation).exclude(
         learner_registrations__in=learner.learnercourseregistration_set.filter(
             is_active=True
         )
