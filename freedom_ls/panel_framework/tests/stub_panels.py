@@ -23,6 +23,8 @@ from typing import ClassVar, cast
 
 from django import forms
 from django.apps import apps
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import Field, Model, QuerySet
 from django.http import HttpRequest, QueryDict
 from django.shortcuts import get_object_or_404
@@ -32,7 +34,7 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     PanelAction,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction, BulkOutcome
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import (
     BooleanFilter,
@@ -194,8 +196,14 @@ class StubBulkAction(BulkAction):
     label = "Mark processed"
     action_name = "stub_bulk"
 
-    def execute(self, request: HttpRequest, queryset: QuerySet) -> None:
-        queryset.update(is_active=False)
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        type(obj)._default_manager.filter(pk=obj.pk).update(is_active=False)
+        return BulkOutcome("changed")
 
 
 class StubForbiddenBulkAction(BulkAction):

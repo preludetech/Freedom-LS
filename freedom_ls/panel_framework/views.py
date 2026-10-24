@@ -28,14 +28,21 @@ from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
 from freedom_ls.base.csv_safety import UTF8_BOM
-from freedom_ls.panel_framework.actions import PanelAction, denied_response
+from freedom_ls.panel_framework.actions import (
+    PanelAction,
+    count_noun,
+    denied_response,
+)
 from freedom_ls.panel_framework.bulk_actions import (
+    BackgroundRun,
     BulkAction,
+    BulkResult,
     Selection,
     parse_selection,
     resolve_selection,
 )
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
@@ -605,72 +612,151 @@ class _BulkConfirmation:
     status: int
 
 
+@dataclass(frozen=True)
+class _BulkResultPage:
+    """A confirmed bulk action's result for a JavaScript-off request,
+    rendered as a full interface page. `page_url` is the table's page with
+    the request's query string, so the link back keeps its state."""
+
+    action: BulkAction
+    result: BulkResult
+    noun: str
+    headline: str
+    page_url: str
+
+
+def _result_response(
+    request: HttpRequest,
+    panel: DataTablePanel,
+    action: BulkAction,
+    result: BulkResult,
+    noun: str,
+    headline: str,
+    changed_keys: list[str],
+) -> HttpResponse | _BulkResultPage:
+    """The summary of a finished run.
+
+    Over htmx it replaces the confirmation in the modal and fires the
+    panel's refresh events, so the table updates behind the summary. Without
+    JavaScript it is a page of its own.
+    """
+    if request.headers.get("HX-Request") != "true":
+        return _BulkResultPage(
+            action, result, noun, headline, _history_url(panel, request)
+        )
+    html = render_to_string(
+        action.result_template_name,
+        _result_context(action, result, noun, headline),
+        request=request,
+    )
+    response = HttpResponse(html)
+    response["HX-Trigger"] = build_hx_trigger(
+        dict.fromkeys(panel.refresh_events, changed_keys)
+    )
+    return response
+
+
+def _result_context(
+    action: BulkAction, result: BulkResult, noun: str, headline: str
+) -> dict[str, object]:
+    return {
+        "action": action,
+        "result": result,
+        "noun": noun,
+        "headline": headline,
+        "other_counts": [item for item in result.counts if item.status != "changed"],
+    }
+
+
+def _background_response(request: HttpRequest, run: BackgroundRun) -> HttpResponse:
+    if request.headers.get("HX-Request") == "true":
+        response = HttpResponse(status=204)
+        response["HX-Redirect"] = run.result_url
+        return response
+    return HttpResponseRedirect(run.result_url, status=303)
+
+
+def _confirmation_response(
+    request: HttpRequest,
+    action: BulkAction,
+    action_url: str,
+    noun: str,
+    selection: Selection,
+    count: int,
+    error: str,
+    status: int,
+) -> HttpResponse | _BulkConfirmation:
+    """The confirmation or error state: an htmx fragment, or a
+    `_BulkConfirmation` for the page-level render."""
+    if request.headers.get("HX-Request") == "true":
+        html = render_to_string(
+            action.confirm_template_name,
+            {
+                "action": action,
+                "action_url": action_url,
+                "selection": selection,
+                "count": count,
+                "noun": noun,
+                "error": error,
+            },
+            request=request,
+        )
+        return HttpResponse(html, status=status)
+    return _BulkConfirmation(count, noun, action, action_url, selection, error, status)
+
+
 def _handle_bulk_action(
     request: HttpRequest, action: BulkAction, ctx: PanelContext, panel: DataTablePanel
-) -> HttpResponse | _BulkConfirmation:
+) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
     """Permission, selection, resolution, confirmation and execution for one
     bulk-action POST.
 
     An htmx request always gets an HTML fragment back. A plain request gets
-    one too once confirmed and executed; until then it gets a
-    `_BulkConfirmation`, since the confirmation step must render with the
-    page's own chrome rather than as a bare fragment.
+    a `_BulkConfirmation` or `_BulkResultPage` instead, since both must
+    render with the page's own chrome rather than as a bare fragment.
     """
     if not action.has_permission(request):
         return HttpResponse(status=403)
 
-    is_htmx = request.headers.get("HX-Request") == "true"
     action_url = action.get_action_url(ctx)
     noun = str(panel.get_queryset(request).model._meta.verbose_name_plural)
 
-    def _confirm(
-        selection: Selection, count: int, error: str, status: int
-    ) -> HttpResponse | _BulkConfirmation:
-        if is_htmx:
-            html = render_to_string(
-                action.confirm_template_name,
-                {
-                    "action": action,
-                    "action_url": action_url,
-                    "selection": selection,
-                    "count": count,
-                    "noun": noun,
-                    "error": error,
-                },
-                request=request,
-            )
-            return HttpResponse(html, status=status)
-        return _BulkConfirmation(
-            count, noun, action, action_url, selection, error, status
-        )
-
     selection = parse_selection(request)
     if selection.mode != "keys":
-        return _confirm(selection, 0, "Not supported yet", 422)
+        return _confirmation_response(
+            request, action, action_url, noun, selection, 0, "Not supported yet", 422
+        )
 
     queryset = resolve_selection(panel, request, selection)
     count = queryset.count()
     if count == 0:
-        return _confirm(selection, count, "Nothing selected", 422)
+        return _confirmation_response(
+            request, action, action_url, noun, selection, count, "Nothing selected", 422
+        )
     if count > action.max_rows:
         message = f"{count} selected; the limit is {action.max_rows}"
-        return _confirm(selection, count, message, 422)
+        return _confirmation_response(
+            request, action, action_url, noun, selection, count, message, 422
+        )
 
     if request.POST.get("confirmed") != "1":
-        return _confirm(selection, count, "", 200)
+        return _confirmation_response(
+            request, action, action_url, noun, selection, count, "", 200
+        )
 
-    action.execute(request, queryset)
-    redirect_url = _history_url(panel, request)
-    if is_htmx:
-        response = HttpResponse(status=204)
-        response["HX-Redirect"] = redirect_url
-        return response
-    return HttpResponseRedirect(redirect_url, status=303)
+    selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
+    outcome = action.execute(request, queryset, {})
+    if isinstance(outcome, BackgroundRun):
+        return _background_response(request, outcome)
+    headline = f"{count_noun(queryset.model, outcome.changed)} changed."
+    return _result_response(
+        request, panel, action, outcome, noun, headline, selected_keys
+    )
 
 
 def _handle_action(
     request: HttpRequest, resolved: _ResolvedAction, panel: Panel | None = None
-) -> HttpResponse | _BulkConfirmation:
+) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
     """Check permission, then submit (POST, DELETE) or render (GET) the action.
 
     A BulkAction runs the confirm-then-act flow instead, over `panel` — the
@@ -1103,7 +1189,7 @@ def panel_framework_view(
         section_url = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
-        result: HttpResponse | _BulkConfirmation | None = None
+        result: HttpResponse | _BulkConfirmation | _BulkResultPage | None = None
         try:
             resolved = _resolve_path(parts, sections, request, section_url)
             if resolved.quick_view:
@@ -1131,24 +1217,33 @@ def panel_framework_view(
                 )
             raise
         if result is not None:
-            if not isinstance(result, _BulkConfirmation):
+            if not isinstance(result, _BulkConfirmation | _BulkResultPage):
                 return _vary_on_htmx(result)
             # A JavaScript-off bulk-action POST: render its message and
             # confirm form as this page's main content, with the page's own
             # chrome (menu, breadcrumbs) built the same way as any other
             # request below, rather than as a bare fragment.
-            main_template_name = "panel_framework/views/bulk_confirmation.html"
-            main = {
-                "action": result.action,
-                "action_url": result.action_url,
-                "count": result.count,
-                "noun": result.noun,
-                "selection": result.selection,
-                "error": result.error,
-                "page_url": resolved.panel.ctx.page_url,
-            }
             heading = result.action.label
-            bulk_status = result.status
+            if isinstance(result, _BulkResultPage):
+                main_template_name = "panel_framework/views/bulk_result.html"
+                main = {
+                    **_result_context(
+                        result.action, result.result, result.noun, result.headline
+                    ),
+                    "page_url": result.page_url,
+                }
+            else:
+                main_template_name = "panel_framework/views/bulk_confirmation.html"
+                main = {
+                    "action": result.action,
+                    "action_url": result.action_url,
+                    "count": result.count,
+                    "noun": result.noun,
+                    "selection": result.selection,
+                    "error": result.error,
+                    "page_url": resolved.panel.ctx.page_url,
+                }
+                bulk_status = result.status
         else:
             main_template_name, main, heading = _main_for(request, resolved)
 

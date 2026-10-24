@@ -4,15 +4,29 @@ off."""
 
 from __future__ import annotations
 
+import json
+
 import lxml.html
 import pytest
 
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.bulk_actions import Selection, resolve_selection
+from freedom_ls.panel_framework.bulk_actions import (
+    FAILED_REASON,
+    BackgroundRun,
+    BulkAction,
+    BulkCount,
+    BulkOutcome,
+    BulkResult,
+    BulkResultEntry,
+    Selection,
+    resolve_selection,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.views import (
     SectionConfigBase,
@@ -155,47 +169,216 @@ def test_over_max_rows_is_rejected_with_422(mock_site_context: Site) -> None:
     assert "3 selected; the limit is 2" in response.content.decode()
 
 
-def test_confirmation_count_matches_execution(mock_site_context: Site) -> None:
+def test_confirmed_htmx_post_returns_result_summary(mock_site_context: Site) -> None:
     stubs = [make_stub(name=f"row-{i}") for i in range(3)]
     keys = [str(stub.pk) for stub in stubs]
 
     confirm_response = fetch(
-        _action_path(stubs[0].pk), method="post", data={"mode": "keys", "keys": keys}
+        _action_path(stubs[0].pk),
+        method="post",
+        data={"mode": "keys", "keys": keys},
+        htmx=True,
     )
-    assert confirm_response.status_code == 200
     assert "This will affect 3 stub models." in confirm_response.content.decode()
 
     execute_response = fetch(
         _action_path(stubs[0].pk),
         method="post",
         data={"mode": "keys", "keys": keys, "confirmed": "1"},
+        htmx=True,
     )
 
-    assert execute_response.status_code == 303
+    content = execute_response.content.decode()
+    assert execute_response.status_code == 200
+    assert "<html" not in content.lower()
+    assert "3 stub models changed." in content
     assert not StubModel.objects.filter(is_active=True).exists()
+    trigger = json.loads(execute_response["HX-Trigger"])
+    assert sorted(trigger["itemChanged"]["ids"]) == sorted(keys)
 
 
-def test_redirect_keeps_table_state(mock_site_context: Site) -> None:
+def test_confirmed_plain_post_returns_result_page_with_back_link(
+    mock_site_context: Site,
+) -> None:
     stub = make_stub(name="row-x")
     path = _action_path(stub.pk)
-    expected_location = f"/test-panel/framework/{_panel_path(stub.pk)}?stub-sort=name"
+    request = RequestFactory().post(
+        f"/test-panel/framework/{path}?stub-sort=name",
+        {"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"},
+    )
+    request.user = make_staff_user()
+
+    response = call_view(request, path)
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "<html" in content.lower()
+    assert "1 stub model changed." in content
+    document = lxml.html.fromstring(content)
+    (back,) = [
+        a for a in document.cssselect("a") if a.text_content().startswith("Back to")
+    ]
+    expected = f"/test-panel/framework/{_panel_path(stub.pk)}?stub-sort=name"
+    assert back.get("href") == expected
+
+
+def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> None:
+    class _SkippingBulkAction(StubBulkAction):
+        def apply(
+            self,
+            user: AbstractBaseUser | AnonymousUser,
+            obj: Model,
+            cleaned_data: dict[str, object],
+        ) -> BulkOutcome:
+            return BulkOutcome("skipped", "already processed")
+
+    stubs = [make_stub(name=f"row-{i}") for i in range(2)]
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_bulk",
+        {
+            "mode": "keys",
+            "keys": [str(stub.pk) for stub in stubs],
+            "confirmed": "1",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+    request.user = make_staff_user()
+    panel = StubDataTablePanel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+            page_url="/stubs",
+        )
+    )
+
+    response = _handle_action(
+        request, _ResolvedAction(_SkippingBulkAction(), panel.ctx), panel
+    )
+
+    assert isinstance(response, HttpResponse)
+    content = response.content.decode()
+    assert "0 stub models changed." in content
+    assert "2 already processed" in content
+    assert "row-0: already processed" in content
+
+
+class _PartlyFailingBulkAction(StubBulkAction):
+    """Raises on the row named "boom"."""
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        outcome = super().apply(user, obj, cleaned_data)
+        if obj.name == "boom":
+            raise ValueError("secret detail")
+        return outcome
+
+
+def _run_partly_failing(action: BulkAction, stubs: list[StubModel]) -> BulkResult:
+    request = RequestFactory().post("/stubs")
+    request.user = make_staff_user()
+    queryset = StubModel.objects.filter(pk__in=[stub.pk for stub in stubs]).order_by(
+        "pk"
+    )
+    result = action.execute(request, queryset, {})
+    assert isinstance(result, BulkResult)
+    return result
+
+
+def test_declared_failure_exception_becomes_failed_entry(
+    mock_site_context: Site,
+) -> None:
+    class _Action(_PartlyFailingBulkAction):
+        failure_exceptions = (ValueError,)
+
+    stubs = [make_stub(name="ok"), make_stub(name="boom")]
+
+    result = _run_partly_failing(_Action(), stubs)
+
+    assert result.changed == 1
+    assert [(e.row_label, e.status, e.reason) for e in result.entries] == [
+        ("boom", "failed", FAILED_REASON)
+    ]
+    assert "secret detail" not in str(result.to_json())
+
+
+def test_undeclared_exception_propagates(mock_site_context: Site) -> None:
+    stubs = [make_stub(name="boom")]
+
+    with pytest.raises(ValueError, match="secret detail"):
+        _run_partly_failing(_PartlyFailingBulkAction(), stubs)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_each_apply_runs_in_its_own_transaction(mock_site_context: Site) -> None:
+    class _Action(_PartlyFailingBulkAction):
+        failure_exceptions = (ValueError,)
+
+    stubs = [make_stub(name="a"), make_stub(name="b"), make_stub(name="boom")]
+
+    _run_partly_failing(_Action(), stubs)
+
+    inactive = set(
+        StubModel.objects.filter(is_active=False).values_list("name", flat=True)
+    )
+    assert inactive == {"a", "b"}
+
+
+def test_bulk_result_round_trips_through_json() -> None:
+    result = BulkResult(
+        counts=[BulkCount("changed", "", 2), BulkCount("skipped", "already", 1)],
+        entries=[BulkResultEntry("7", "row", "skipped", "already")],
+        left_out=3,
+    )
+
+    assert BulkResult.from_json(json.loads(json.dumps(result.to_json()))) == result
+
+
+def test_confirmed_post_redirects_to_result_url_for_background_run(
+    mock_site_context: Site,
+) -> None:
+    class _BackgroundAction(StubBulkAction):
+        def execute(
+            self,
+            request: HttpRequest,
+            queryset: QuerySet,
+            cleaned_data: dict[str, object],
+        ) -> BackgroundRun:
+            return BackgroundRun("/runs/1")
+
+    stub = make_stub(name="row-x")
     data = {"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"}
+    responses = []
+    for headers in ({}, {"HTTP_HX_REQUEST": "true"}):
+        request = RequestFactory().post("/stubs/__actions/stub_bulk", data, **headers)
+        request.user = make_staff_user()
+        panel = StubDataTablePanel(
+            PanelContext(
+                request=request,
+                instance=None,
+                base_url="/stubs",
+                name="",
+                config=SectionConfigBase,
+                page_url="/stubs",
+            )
+        )
+        responses.append(
+            _handle_action(
+                request, _ResolvedAction(_BackgroundAction(), panel.ctx), panel
+            )
+        )
 
-    plain_request = RequestFactory().post(
-        f"/test-panel/framework/{path}?stub-sort=name", data
-    )
-    plain_request.user = make_staff_user()
-    plain_response = call_view(plain_request, path)
-    assert plain_response.status_code == 303
-    assert plain_response["Location"] == expected_location
-
-    htmx_request = RequestFactory().post(
-        f"/test-panel/framework/{path}?stub-sort=name", data, HTTP_HX_REQUEST="true"
-    )
-    htmx_request.user = make_staff_user()
-    htmx_response = call_view(htmx_request, path)
-    assert htmx_response.status_code == 204
-    assert htmx_response["HX-Redirect"] == expected_location
+    plain, htmx = responses
+    assert isinstance(plain, HttpResponse)
+    assert isinstance(htmx, HttpResponse)
+    assert (plain.status_code, plain["Location"]) == (303, "/runs/1")
+    assert (htmx.status_code, htmx["HX-Redirect"]) == (204, "/runs/1")
 
 
 @pytest.mark.parametrize("htmx", [True, False])
