@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from django.contrib.contenttypes.models import ContentType
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
-from freedom_ls.deadlines.models import DeadlineKind
+from freedom_ls.deadlines.models import CohortDeadlineOverride, DeadlineKind
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.time_zones import site_time_zone
 
@@ -143,7 +143,8 @@ class CourseDeadlines:
 class DeadlineOverrideRow(Protocol):
     """What the layer builder reads from a deadline override row."""
 
-    replaced_value: str | None
+    @property
+    def replaced_value(self) -> str: ...
 
     def value(self) -> DeadlineValue | None: ...
 
@@ -159,7 +160,7 @@ class _CourseDefaults:
     time_limit: DeadlineValue | None
 
 
-def _time_limit_value(days: int | None) -> DeadlineValue | None:
+def time_limit_value(days: int | None) -> DeadlineValue | None:
     if days is None:
         return None
     return DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=days)
@@ -192,7 +193,7 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
 
     defaults = {
         course_id: _CourseDefaults(
-            items={}, time_limit=_time_limit_value(time_limit_days.get(course_id))
+            items={}, time_limit=time_limit_value(time_limit_days.get(course_id))
         )
         for course_id in course_ids
     }
@@ -251,7 +252,16 @@ def course_deadlines_for(
         return {}
     tz = site_time_zone(records[0].site)
     defaults = _defaults_by_course({record.course_id for record in records})
-    cohort_rows: LayerRows = {}
+    cohort_rows: LayerRows = {
+        (row.cohort_registration_id, row.collection_item_id): row
+        for row in CohortDeadlineOverride.objects.filter(
+            cohort_registration_id__in={
+                record.cohort_registration_id
+                for record in records
+                if record.cohort_registration_id
+            }
+        )
+    }
     learner_rows: LayerRows = {}
 
     result: dict[UUID, CourseDeadlines] = {}

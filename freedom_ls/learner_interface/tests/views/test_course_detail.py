@@ -28,10 +28,13 @@ from freedom_ls.content_engine.models import Course, CoursePart, CourseVisibilit
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
+from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.tests.helpers import (
+    cohort_override,
     form_attempt,
+    learner_with_two_grants,
     set_due_date,
     topic_completion,
 )
@@ -1667,3 +1670,65 @@ def test_detail_page_query_count_does_not_grow_with_items(
         response = client.get(url)
 
     assert response.status_code == 200
+
+
+# --- Cohort deadline overrides on the table of contents ---
+
+
+@pytest.fixture
+def overridden_course(due_topic_course):
+    """A course whose one topic is due in 2020, a cohort learner's client and an individual
+    learner's client."""
+    course, topic, _user, _client = due_topic_course
+    item = set_due_date(course, topic, due_date=date(2020, 1, 1))
+    cohort_user, cohort_record, _ = learner_with_two_grants(course)
+    cohort_client = Client()
+    cohort_client.force_login(cohort_user)
+    individual_user = UserFactory()
+    course_progress_record(course, individual_user)
+    individual_client = Client()
+    individual_client.force_login(individual_user)
+    return course, item, cohort_record, cohort_client, individual_client
+
+
+@pytest.mark.django_db
+def test_toc_cohort_override_beats_the_content_default(overridden_course):
+    course, item, record, client, _ = overridden_course
+    cohort_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2999, 1, 1),
+        due_days_after_registration=None,
+    )
+
+    html = _detail_html(client, course)
+
+    assert "1 Jan 2999" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_toc_none_override_removes_the_date(overridden_course):
+    course, item, record, client, _ = overridden_course
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _detail_html(client, course)
+
+    assert "1 Jan 2020" not in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_toc_individual_registration_ignores_the_cohort_override(overridden_course):
+    course, item, record, _, individual_client = overridden_course
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _detail_html(individual_client, course)
+
+    assert "1 Jan 2020" in html
+    assert "Overdue" in html
