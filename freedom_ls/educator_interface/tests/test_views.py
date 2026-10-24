@@ -58,7 +58,10 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.learner_actions import move_between_cohorts
+from freedom_ls.learner_management.learner_actions import (
+    add_to_cohort,
+    move_between_cohorts,
+)
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -92,7 +95,7 @@ def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
 
 
 @pytest.mark.django_db
-def test_cohort_detail_page_has_overview_learners_courses_report_and_settings_tabs(
+def test_cohort_detail_page_has_overview_learners_courses_report_settings_and_history_tabs(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -114,6 +117,7 @@ def test_cohort_detail_page_has_overview_learners_courses_report_and_settings_ta
         "courses",
         "report",
         "settings",
+        "history",
     ]
     assert links[0].get("aria-current") == "page"
     assert links[1].get("aria-current") is None
@@ -3404,3 +3408,83 @@ def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Cl
     assert [(row[2], row[3]) for row in rows] == [
         ("Moved between cohorts", "From Alpha to Beta")
     ]
+
+
+def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
+    return _get_document(
+        client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
+    )
+
+
+@pytest.mark.django_db
+def test_a_move_shows_on_both_cohorts_and_the_learner_history_tabs(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    source = CohortFactory(organisation=organisation, name="Alpha")
+    destination = CohortFactory(organisation=organisation, name="Beta")
+    CohortMembershipFactory(learner=learner, cohort=source)
+    move_between_cohorts(learner, source, destination, actor=UserFactory())
+
+    shown = [
+        _history_rows(_cohort_history_tab(staff_client, source)),
+        _history_rows(_cohort_history_tab(staff_client, destination)),
+        _history_rows(_learner_page(staff_client, learner, "history")),
+    ]
+
+    assert [[(row[2], row[3]) for row in rows] for rows in shown] == [
+        [("Moved between cohorts", "From Alpha to Beta")]
+    ] * 3
+
+
+@pytest.mark.django_db
+def test_an_add_shows_on_the_cohort_history_tab_and_not_on_another_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, name="Alpha")
+    other = CohortFactory(organisation=organisation, name="Beta")
+    add_to_cohort(learner, cohort, actor=UserFactory())
+
+    rows = _history_rows(_cohort_history_tab(staff_client, cohort))
+    other_page = _cohort_history_tab(staff_client, other)
+
+    assert ([row[3] for row in rows], "Alpha" in _region_text(other_page)) == (
+        ["Alpha"],
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_the_cohort_history_tab_renders_its_empty_state(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    response = staff_client.get(
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history")
+    )
+
+    template_names = [t.name for t in response.templates]
+    assert "educator_interface/partials/audit_history_empty.html" in template_names
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewer_gets_no_cohort_history_tab_and_a_404_on_its_url(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    viewer = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+    client = logged_in_client(viewer)
+
+    document = _cohort_page(client, cohort)
+    response = client.get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/history")
+    )
+
+    hrefs = [a.get("href").rsplit("/", 1)[-1] for a in document.cssselect("nav a")]
+    assert ("history" in hrefs, response.status_code) == (False, 404)

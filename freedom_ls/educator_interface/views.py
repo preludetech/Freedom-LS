@@ -1046,6 +1046,12 @@ class CohortOverviewStack(PanelStack):
     }
 
 
+class CohortHistoryPanel(HistoryPanel):
+    model = Cohort
+    refresh_events = (COHORT_CHANGED,)
+    empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
+
+
 class CohortTabSet(TabSet):
     title = "Cohort sections"
     children = {
@@ -1054,6 +1060,7 @@ class CohortTabSet(TabSet):
         "courses": CohortCoursesPanel,
         "report": CohortReportStack,
         "settings": CohortSettingsPanel,
+        "history": CohortHistoryPanel,
     }
 
 
