@@ -1,0 +1,12 @@
+{% comment %}
+The Audit log table's empty state. Renders with the table's own context: a
+filter in play means nothing matches, otherwise nothing has been recorded yet.
+{% endcomment %}
+{% load panel_tags %}
+{% if any_filter_set %}
+    {% querystring request.GET clear_changes as qs %}
+    <p>No entries match these filters.</p>
+    <a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" class="text-primary underline">Clear filters</a>
+{% else %}
+    <p>Nothing has been recorded for this organisation yet.</p>
+{% endif %}

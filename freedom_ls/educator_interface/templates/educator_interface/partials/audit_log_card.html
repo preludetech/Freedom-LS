@@ -1,0 +1,20 @@
+{% comment %}
+One Audit log entry as a card below md: what happened and to whom on the
+first line, then the remaining columns labelled. Every value is user-derived
+text, so nothing here is marked safe.
+{% endcomment %}
+<div class="min-w-0 font-bold break-words">{{ object.label }} {{ object.target_label }}</div>
+<dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">
+    <div class="contents">
+        <dt class="text-muted">When</dt>
+        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_when.html" %}</dd>
+    </div>
+    <div class="contents">
+        <dt class="text-muted">Who</dt>
+        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</dd>
+    </div>
+    <div class="contents">
+        <dt class="text-muted">Details</dt>
+        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_details.html" %}</dd>
+    </div>
+</dl>

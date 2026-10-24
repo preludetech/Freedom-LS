@@ -3516,3 +3516,125 @@ def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: C
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
     assert [(row[2], row[3]) for row in rows] == [("Registered for course", "Algebra")]
+
+
+def _audit_log_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "audit-log")
+
+
+def _audit_log_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+    return [
+        [cell.text_content().strip() for cell in row.cssselect("td")]
+        for row in document.cssselect("tbody tr")
+    ]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_lists_only_the_request_organisations_entries(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    other = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Ours", actor_label="Ada")
+    AuditLogEntryFactory(target=other, target_label="Theirs", actor_label="Bob")
+
+    rows = _audit_log_rows(_get_document(staff_client, _audit_log_url(organisation)))
+
+    assert [row[3] for row in rows] == ["Ours"]
+
+
+@pytest.mark.django_db
+def test_a_site_admin_sees_each_organisations_own_entries(staff_client: Client):
+    first = OrganisationFactory()
+    second = OrganisationFactory()
+    AuditLogEntryFactory(target=first, target_label="First entry")
+    AuditLogEntryFactory(target=second, target_label="Second entry")
+
+    first_rows = _audit_log_rows(_get_document(staff_client, _audit_log_url(first)))
+    second_rows = _audit_log_rows(_get_document(staff_client, _audit_log_url(second)))
+
+    assert ([r[3] for r in first_rows], [r[3] for r in second_rows]) == (
+        ["First entry"],
+        ["Second entry"],
+    )
+
+
+@pytest.mark.django_db
+def test_an_admin_of_another_organisation_gets_a_404_on_the_audit_log(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    grantor = LearnerFactory(user__superuser=True).user
+    admin = LearnerFactory(user__staff=True, organisation=other_organisation).user
+    assign_role(grantor, admin, "organisation_admin", other_organisation)
+
+    response = logged_in_client(admin).get(_audit_log_url(organisation))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_a_404_on_the_audit_log_and_no_menu_entry(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    client = logged_in_client(educator)
+
+    page = _get_document(client, _interface_url(organisation.slug, "cohorts"))
+    response = client.get(_audit_log_url(organisation))
+    nested = client.get(_interface_url(organisation.slug, "audit-log/anything"))
+
+    (nav,) = page.cssselect("#sidebar-nav")
+    labels = [a.text_content().strip() for a in nav.cssselect("a")]
+    assert ("Audit log" in labels, response.status_code, nested.status_code) == (
+        False,
+        404,
+        404,
+    )
+
+
+@pytest.mark.django_db
+def test_the_audit_log_target_column_reads_the_target_label(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="Spring cohort",
+        actor_label="Ada Admin",
+        reason="because",
+    )
+
+    document = _get_document(staff_client, _audit_log_url(organisation))
+
+    headers = [th.text_content().strip() for th in document.cssselect("thead th")]
+    (row,) = _audit_log_rows(document)
+    assert headers == ["When", "Who", "What", "Target", "Details"]
+    assert row[1:4] == ["Ada Admin", "Cohort created", "Spring cohort"]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_renders_its_empty_state(staff_client: Client):
+    organisation = OrganisationFactory()
+
+    response = staff_client.get(_audit_log_url(organisation))
+
+    template_names = [t.name for t in response.templates]
+    assert "educator_interface/partials/audit_log_empty.html" in template_names
+
+
+@pytest.mark.django_db
+def test_the_audit_log_escapes_a_target_label_in_the_table_and_the_card(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="<b>bold</b>")
+
+    html = staff_client.get(_audit_log_url(organisation)).content.decode()
+
+    assert "&lt;b&gt;bold&lt;/b&gt;" in html
+    assert "<b>bold</b>" not in html
+    assert html.count("&lt;b&gt;bold&lt;/b&gt;") >= 2

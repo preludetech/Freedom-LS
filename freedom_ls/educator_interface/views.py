@@ -1765,12 +1765,39 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
         }
 
 
+class OrganisationAuditLogTable(AuditLogEntryTable):
+    empty_state_template = "educator_interface/partials/audit_log_empty.html"
+    card_template = "educator_interface/partials/audit_log_card.html"
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        when, who, what, details = AuditLogEntryTable.get_columns()
+        target = Column(
+            header="Target",
+            template="cotton/data-table-cells/text.html",
+            attr="target_label",
+        )
+        return [when, who, what, target, details]
+
+
+class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):
+    url_name = "audit-log"
+    menu_label = "Audit log"
+    icon = "notes"
+    model = AuditLogEntry
+    list_view = OrganisationAuditLogTable
+    table_key = "audit_log"
+    view_capability = "freedom_ls_audit_log.view_auditlogentry"
+    # Entries are rows in a log, never pages of their own, so there is nothing to authorise per row.
+    check_access_exempt_reason = "audit log entries have no instance pages"
+
+
 interface_config = [
     NavGroup(
         "Teaching",
         [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig, MessagesConfig],
     ),
-    NavGroup("Administration", [MemberConfig]),
+    NavGroup("Administration", [MemberConfig, AuditLogConfig]),
 ]
 
 
