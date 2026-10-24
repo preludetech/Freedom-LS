@@ -11,7 +11,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http import (
     Http404,
     HttpRequest,
@@ -721,6 +721,17 @@ def _confirmation_response(
     return confirmation
 
 
+def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
+    """The confirmation for a run too large to preview: the total, and where
+    the skips will be reported."""
+    return ConfirmationWording(
+        sentence=f"This will affect {count_noun(queryset.model, count)}.",
+        consequences=[
+            "It runs in the background. Anything skipped is reported in the result."
+        ],
+    )
+
+
 def _handle_bulk_action(
     request: HttpRequest, action: BulkAction, ctx: PanelContext, panel: DataTablePanel
 ) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
@@ -762,13 +773,19 @@ def _handle_bulk_action(
     if confirmed and expected_count is None:
         return error_response(selection, count, "The request was not valid")
 
-    classified: dict[str, BulkOutcome] | None = action.classify_all(
-        request.user, queryset, {}
+    in_background = action.runs_in_background(count)
+    classified: dict[str, BulkOutcome] | None = (
+        None if in_background else action.classify_all(request.user, queryset, {})
     )
     changed_count = (
         count
         if classified is None
         else sum(1 for item in classified.values() if item.status == "changed")
+    )
+    wording = (
+        _background_wording(queryset, count)
+        if in_background
+        else action.confirmation_wording(request, queryset, classified, {})
     )
     confirmation = _BulkConfirmation(
         count=count,
@@ -778,7 +795,7 @@ def _handle_bulk_action(
         selection=selection,
         error="",
         status=200,
-        wording=action.confirmation_wording(request, queryset, classified, {}),
+        wording=wording,
         expected_count=count,
         confirm_disabled=changed_count == 0,
     )
@@ -1119,7 +1136,7 @@ def _respond(
     )
 
 
-def _build_menu_items(
+def build_menu_items(
     config: list[NavGroup],
     url_name: str,
     request: HttpRequest,
@@ -1169,7 +1186,7 @@ def _build_menu_items(
     return groups
 
 
-def _build_breadcrumbs(
+def build_breadcrumbs(
     parts: list[str],
     sections: dict[str, SectionConfig],
     url_name: str,
@@ -1296,7 +1313,7 @@ def panel_framework_view(
             main_template_name, main, heading = _main_for(request, resolved)
 
     page_context: dict[str, object] = {
-        "menu_groups": _build_menu_items(
+        "menu_groups": build_menu_items(
             config,
             url_name,
             request,
@@ -1305,7 +1322,7 @@ def panel_framework_view(
             extra_url_kwargs=extra_url_kwargs,
         ),
         "heading": heading,
-        "breadcrumbs": _build_breadcrumbs(
+        "breadcrumbs": build_breadcrumbs(
             parts,
             sections,
             url_name,

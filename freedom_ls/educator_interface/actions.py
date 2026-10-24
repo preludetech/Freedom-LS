@@ -15,6 +15,7 @@ from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.account_setup import (
@@ -53,6 +54,7 @@ from freedom_ls.educator_interface.members import (
     current_role_entries,
 )
 from freedom_ls.learner_management.capabilities import can
+from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
@@ -2274,6 +2276,9 @@ class EducatorBulkAction(BulkAction):
             organisation=organisation, pk__in=keys
         )
 
+    def runs_in_background(self, count: int) -> bool:
+        return count > learner_management_config.BULK_BACKGROUND_THRESHOLD
+
     def not_permitted_reason(self) -> str:
         return (
             f"{self.noun_model._meta.verbose_name_plural} "
@@ -2334,8 +2339,10 @@ class EducatorBulkAction(BulkAction):
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> BulkResult | BackgroundRun:
-        # Imported here because bulk_runs looks actions up in this module.
+        # Imported here because bulk_runs looks actions up in this module, and
+        # tasks imports bulk_runs.
         from freedom_ls.educator_interface.bulk_runs import run_bulk_action
+        from freedom_ls.educator_interface.tasks import _run_bulk_action_task
 
         scoped = cast("OrganisationScopedRequest", request)
         run = BulkActionRun.objects.create(
@@ -2347,7 +2354,21 @@ class EducatorBulkAction(BulkAction):
             keys=[str(pk) for pk in queryset.values_list("pk", flat=True)],
             status=RunStatus.QUEUED,
         )
-        return run_bulk_action(str(run.pk), scoped.organisation.site_id)
+        site_id = scoped.organisation.site_id
+        if self.runs_in_background(len(run.keys)):
+            # A worker, not this request, does the work; the run record is
+            # already queued.
+            _run_bulk_action_task.enqueue(str(run.pk), site_id)
+            return BackgroundRun(
+                result_url=reverse(
+                    "educator_interface:bulk_action_run",
+                    kwargs={
+                        "organisation_slug": scoped.organisation.slug,
+                        "run_id": run.pk,
+                    },
+                )
+            )
+        return run_bulk_action(str(run.pk), site_id)
 
 
 class LearnerStateBulkAction(EducatorBulkAction):

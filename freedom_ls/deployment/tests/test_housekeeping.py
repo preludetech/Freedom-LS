@@ -46,18 +46,6 @@ def _heartbeat_path_under_tmp(
     settings.HOUSEKEEPING_HEARTBEAT_PATH = str(tmp_path / "heartbeat")
 
 
-@pytest.fixture
-def database_task_backend(settings: pytest_django.fixtures.SettingsWrapper) -> None:
-    """Switch TASKS to the real database backend.
-
-    The test settings default TASKS to ImmediateBackend, under which
-    prune_db_task_results always raises CommandError regardless of the data
-    present. Tests that need a clean sweep take this fixture; the tests that
-    exercise that failure path deliberately don't.
-    """
-    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
-
-
 def _create_task_result(
     *,
     status: str = TaskResultStatus.READY,

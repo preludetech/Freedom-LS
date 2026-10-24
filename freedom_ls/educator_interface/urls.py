@@ -18,6 +18,16 @@ urlpatterns = [
         views.partial_oversight_thread_older,
         name="oversight_thread_older",
     ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/bulk-runs/(?P<run_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$",
+        views.bulk_action_run,
+        name="bulk_action_run",
+    ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/bulk-runs/(?P<run_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$",
+        views.partial_bulk_action_run_status,
+        name="bulk_action_run_status",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation
