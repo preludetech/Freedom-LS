@@ -4004,4 +4004,10 @@ def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_unde
         "Add to cohort",
         "Remove from cohort",
     ]
-    assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
+    assert labels("[role='menu'] button[formaction]") == [
+        "Deactivate",
+        "Reactivate",
+        "Register for course",
+        "Unregister from course",
+        "Resend setup email",
+    ]

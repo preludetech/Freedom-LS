@@ -25,11 +25,13 @@ from freedom_ls.accounts.account_setup import (
     is_pending,
     lookup_user,
     match_or_create_user,
+    pending_user_q,
     resend_account_setup_email,
     send_account_setup_email,
 )
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.accounts.models import User, display_name_for
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -79,7 +81,9 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
+    ADD_LEARNERCOURSEREGISTRATION,
     CHANGE_LEARNER,
+    CHANGE_LEARNERCOURSEREGISTRATION,
     DELETE_COHORTMEMBERSHIP,
     MEMBER_ROLES,
     CourseNotOpenError,
@@ -96,6 +100,7 @@ from freedom_ls.learner_management.queries import (
     members_keeping_access,
     members_of,
     other_grants_for,
+    registerable_courses,
 )
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
@@ -2385,6 +2390,19 @@ class LearnerBulkAction(EducatorBulkAction):
     def row_label(self, obj: Model) -> str:
         return cast(Learner, obj).user.display_name
 
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        organisation: Organisation,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        return queryset.filter(
+            pk__in=learners_permitted_for(user, organisation, self.capability).values(
+                "pk"
+            )
+        )
+
 
 class CohortMembershipBulkAction(LearnerBulkAction):
     """Adds learners to, or removes them from, the one cohort the educator
@@ -2544,19 +2562,6 @@ class LearnerStateBulkAction(LearnerBulkAction):
     capability = CHANGE_LEARNER
     target_state: bool
 
-    def permitted(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> QuerySet:
-        return queryset.filter(
-            pk__in=learners_permitted_for(user, organisation, self.capability).values(
-                "pk"
-            )
-        )
-
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         if cast(Learner, obj).is_active == self.target_state:
             return self.unchanged_reason
@@ -2629,5 +2634,203 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
                 f"{count} {possessive} access returns through their existing "
                 "cohorts and registrations."
             ),
+            skips=wording.skips,
+        )
+
+
+class CourseRegistrationBulkAction(LearnerBulkAction):
+    """Registers learners for, or unregisters them from, the one course the
+    educator picks. `registered_ids` holds the selected learners with an
+    active individual registration for it, read once per classification so
+    previewing costs a fixed number of queries however many are selected."""
+
+    form_class = BulkTargetPickerForm
+    registered_ids: frozenset[object] = frozenset()
+
+    def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
+        return BulkTargetPickerForm(
+            data,
+            field_name="course",
+            queryset=registerable_courses(
+                cast("OrganisationScopedRequest", request).organisation
+            ),
+            label="Course",
+        )
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.registered_ids = frozenset(
+            LearnerCourseRegistration.objects.filter(
+                course=cleaned_data["course"], learner__in=queryset, is_active=True
+            ).values_list("learner_id", flat=True)
+        )
+        return super().classify_all(user, queryset, cleaned_data)
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        return obj
+
+    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
+        return {"course": str(cast(Course, cleaned_data["course"]).pk)}
+
+    def resolve_target(
+        self, organisation: Organisation, target: dict[str, str]
+    ) -> dict[str, object]:
+        return {
+            "course": get_object_or_404(
+                registerable_courses(organisation), pk=target["course"]
+            )
+        }
+
+
+@register_bulk_action
+class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
+    label = "Register for course"
+    action_name = "register_for_course"
+    capability = ADD_LEARNERCOURSEREGISTRATION
+    unchanged_reason = "already registered individually"
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return self.unchanged_reason if obj.pk in self.registered_ids else None
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return register_for_course(
+            cast(Learner, obj), cast(Course, cleaned_data["course"])
+        )
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        course = cast(Course, cleaned_data["course"])
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Learner, count)} will be registered for {course.title}."
+            ),
+            skips=wording.skips,
+        )
+
+
+@register_bulk_action
+class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
+    label = "Unregister from course"
+    action_name = "unregister_from_course"
+    variant = "destructive"
+    capability = CHANGE_LEARNERCOURSEREGISTRATION
+    unchanged_reason = "no individual registration"
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return None if obj.pk in self.registered_ids else self.unchanged_reason
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return deactivate_registration(
+            cast(Learner, obj), cast(Course, cleaned_data["course"])
+        )
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        course = cast(Course, cleaned_data["course"])
+        changed_keys = [
+            key
+            for key, outcome in (classified or {}).items()
+            if outcome.status == "changed"
+        ]
+        keeping = sum(
+            1
+            for learner in queryset.filter(pk__in=changed_keys)
+            if other_grants_for(learner, course)
+        )
+        verb = "keeps" if keeping == 1 else "keep"
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Learner, len(changed_keys))} will be "
+                f"unregistered from {course.title}."
+            ),
+            skips=wording.skips,
+            consequences=(
+                [f"{keeping} {verb} access through a cohort."] if keeping else []
+            ),
+        )
+
+
+@register_bulk_action
+class ResendSetupEmailBulkAction(LearnerBulkAction):
+    label = "Resend setup email"
+    action_name = "resend_setup_email"
+    capability = CHANGE_LEARNER
+    unchanged_reason = "account already set up"
+    pending_ids: frozenset[object] = frozenset()
+
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset.select_related("user", "organisation")
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.pending_ids = frozenset(
+            queryset.filter(pending_user_q("user__")).values_list("pk", flat=True)
+        )
+        return super().classify_all(user, queryset, cleaned_data)
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return None if obj.pk in self.pending_ids else self.unchanged_reason
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        return obj
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        learner = cast(Learner, obj)
+        resend_account_setup_email(learner.user, learner.organisation.name)
+        return True
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        # Both refusals leave the learner as they were, so they are skips
+        # with their own reasons rather than failures.
+        try:
+            return super().apply(user, obj, cleaned_data)
+        except AccountAlreadySetUp:
+            return BulkOutcome("skipped", self.unchanged_reason)
+        except SetupEmailRecentlySent:
+            return BulkOutcome("skipped", "setup email sent recently")
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=f"{count_noun(Learner, count)} will be sent a setup email.",
             skips=wording.skips,
         )

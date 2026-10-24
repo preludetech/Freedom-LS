@@ -30,6 +30,7 @@ from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
     AddToCohortBulkAction,
     DeactivateLearnersBulkAction,
+    RegisterForCourseBulkAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -6109,3 +6110,255 @@ def test_bulk_confirm_at_the_threshold_still_runs_inline(
     assert response.status_code == 200
     assert _task_rows().count() == 0
     assert Learner.objects.filter(is_active=False).count() == 3
+
+
+# bulk course registration and setup email actions
+
+
+def _course_option_values(response) -> set[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("select[name='course'] option")
+        if option.get("value")
+    }
+
+
+def _bulk_pending_learner(organisation: Organisation) -> Learner:
+    user = UserFactory(last_login=None)
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    return _bulk_learner(organisation=organisation, user=user)
+
+
+@pytest.mark.django_db
+def test_the_register_picker_offers_only_registerable_courses(staff_client: Client):
+    organisation = OrganisationFactory()
+    published = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+    CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "register_for_course", [learner])
+
+    assert response.status_code == 200
+    assert _course_option_values(response) == {str(published.pk)}
+
+
+@pytest.mark.django_db
+def test_bulk_register_confirmation_counts_changes_and_skips(staff_client: Client):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    registered = _bulk_learner(organisation=organisation)
+    fresh = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "register_for_course",
+        [registered, fresh],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert response.status_code == 200
+    assert "1 learner will be registered for Algebra." in text
+    assert "1 is already registered individually and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_register_without_a_course_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(
+        staff_client, organisation, "register_for_course", [learner], refresh="1"
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_bulk_register_registers_only_learners_without_an_active_registration(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    fresh = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_confirm_with(
+        staff_client,
+        organisation,
+        "register_for_course",
+        [registered, fresh],
+        course=str(course.pk),
+    )
+
+    assert "1 learner changed." in _bulk_text(response)
+    assert LearnerCourseRegistration.objects.filter(
+        learner=fresh, course=course, is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_register_records_one_course_registered_event_per_changed_learner(
+    staff_client: Client,
+    django_capture_on_commit_callbacks,
+    mocker: MockerFixture,
+):
+    fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    fresh = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm_with(
+            staff_client,
+            organisation,
+            "register_for_course",
+            [registered, *fresh],
+            course=str(course.pk),
+        )
+
+    fired = [call.args[1]["user_id"] for call in fire.call_args_list]
+    assert sorted(fired) == sorted(learner.user_id for learner in fresh)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_registers_only_learners_in_their_own_cohorts(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, cohort)
+    mine = _bulk_learner(organisation=organisation)
+    theirs = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=mine)
+    course = CourseFactory()
+
+    outcomes = RegisterForCourseBulkAction().classify_all(
+        educator,
+        Learner.objects.filter(pk__in=[mine.pk, theirs.pk]),
+        {"course": course},
+    )
+
+    assert outcomes == {
+        str(mine.pk): BulkOutcome("changed"),
+        str(theirs.pk): BulkOutcome(
+            "skipped", "learners you don't have permission to change"
+        ),
+    }
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    keeps = _bulk_learner(organisation=organisation)
+    loses = _bulk_learner(organisation=organisation)
+    unregistered = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=keeps)
+    for learner in (keeps, loses):
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "unregister_from_course",
+        [keeps, loses, unregistered],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert "2 learners will be unregistered from Algebra." in text
+    assert "1 keeps access through a cohort." in text
+    assert "1 is no individual registration and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_deactivates_individual_registrations(staff_client: Client):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    other = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_confirm_with(
+        staff_client,
+        organisation,
+        "unregister_from_course",
+        [registered, other],
+        course=str(course.pk),
+    )
+
+    assert "1 learner changed." in _bulk_text(response)
+    assert not LearnerCourseRegistration.objects.get(
+        learner=registered, course=course
+    ).is_active
+
+
+@pytest.mark.django_db
+def test_bulk_resend_confirmation_skips_learners_who_set_up_their_account(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(
+        staff_client, organisation, "resend_setup_email", [pending, done]
+    )
+
+    text = _bulk_text(response)
+    assert "1 learner will be sent a setup email." in text
+    assert "1 is account already set up and will be skipped." in text
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_sends_one_email_per_pending_learner(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    pending = [_bulk_pending_learner(organisation) for _ in range(2)]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", pending
+        )
+
+    assert "2 learners changed." in _bulk_text(response)
+    assert len(mail.outbox) == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    recent = _bulk_pending_learner(organisation)
+    fresh = _bulk_pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm(staff_client, organisation, "resend_setup_email", [recent])
+    mail.outbox.clear()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", [recent, fresh]
+        )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert "1 setup email sent recently" in text
+    assert len(mail.outbox) == 1
