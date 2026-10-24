@@ -199,7 +199,8 @@ def test_data_table_interaction(
     page.get_by_role("button", name="Mark processed").click()
     expect(modal).to_be_visible()
     modal.get_by_role("button", name="Mark processed").click()
-    expect(page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
+    expect(modal.get_by_text("2 stub models changed.")).to_be_visible()
+    modal.get_by_role("button", name="Close", exact=True).first.click()
     expect(modal).to_be_hidden()
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))
     assert active_by_name["row-00"] is False
@@ -355,6 +356,8 @@ def test_bulk_action_posts_with_javascript_off(
         ).to_be_visible()
 
         no_js_page.get_by_role("button", name="Mark processed").click()
+        expect(no_js_page.get_by_text("2 stub models changed.")).to_be_visible()
+        no_js_page.get_by_role("link", name="Back to stub models").click()
         expect(no_js_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
 
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))

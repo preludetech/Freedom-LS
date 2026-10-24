@@ -1,0 +1,18 @@
+<p>{{ headline }}</p>
+{% if other_counts %}
+    <ul class="mt-2 list-disc pl-5 text-sm">
+        {% for item in other_counts %}
+            <li>{{ item.count }} {{ item.reason }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% if result.entries %}
+    <ul class="mt-2 text-sm">
+        {% for entry in result.entries %}
+            <li>{{ entry.row_label }}: {{ entry.reason }}</li>
+        {% endfor %}
+    </ul>
+    {% if result.left_out %}
+        <p class="mt-1 text-sm">and {{ result.left_out }} more</p>
+    {% endif %}
+{% endif %}

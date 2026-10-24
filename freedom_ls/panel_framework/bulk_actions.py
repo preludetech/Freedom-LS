@@ -3,17 +3,109 @@ the action that runs once over the rows it resolves to."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
+from typing import TYPE_CHECKING, Literal, cast
 
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
-from django.db.models import QuerySet
+from django.db import transaction
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 
 from freedom_ls.panel_framework.context import PanelContext
 
 if TYPE_CHECKING:
     from freedom_ls.panel_framework.panels import DataTablePanel
+
+
+Status = Literal["changed", "skipped", "failed"]
+
+RESULT_ENTRY_LIMIT = 500
+FAILED_REASON = "could not be changed"
+
+
+@dataclass(frozen=True)
+class BulkOutcome:
+    """What `BulkAction.apply` did to one object."""
+
+    status: Status
+    reason: str = ""  # empty for "changed"
+
+
+@dataclass(frozen=True)
+class BulkCount:
+    """How many objects ended in one (status, reason) pair."""
+
+    status: Status
+    reason: str
+    count: int
+
+
+@dataclass(frozen=True)
+class BulkResultEntry:
+    """One skipped or failed object, named so the reader can find it."""
+
+    key: str
+    row_label: str
+    status: Literal["skipped", "failed"]
+    reason: str
+
+
+@dataclass(frozen=True)
+class BulkResult:
+    """What a bulk run did, in a form that survives a JSON round trip.
+
+    `counts` has one item per distinct (status, reason), in the order the
+    pairs first appeared. `entries` names at most RESULT_ENTRY_LIMIT skipped
+    or failed objects; `left_out` counts those beyond the limit, so the
+    stored result stays a bounded size however large the run was.
+    """
+
+    counts: list[BulkCount]
+    entries: list[BulkResultEntry]
+    left_out: int
+
+    @property
+    def changed(self) -> int:
+        return sum(item.count for item in self.counts if item.status == "changed")
+
+    def to_json(self) -> dict[str, object]:
+        return asdict(self)
+
+    @classmethod
+    def from_json(cls, data: dict[str, object]) -> BulkResult:
+        counts = cast(list[dict[str, object]], data["counts"])
+        entries = cast(list[dict[str, object]], data["entries"])
+        return cls(
+            counts=[
+                BulkCount(
+                    status=cast(Status, item["status"]),
+                    reason=str(item["reason"]),
+                    count=cast(int, item["count"]),
+                )
+                for item in counts
+            ],
+            entries=[
+                BulkResultEntry(
+                    key=str(item["key"]),
+                    row_label=str(item["row_label"]),
+                    status=cast(Literal["skipped", "failed"], item["status"]),
+                    reason=str(item["reason"]),
+                )
+                for item in entries
+            ],
+            left_out=cast(int, data["left_out"]),
+        )
+
+
+@dataclass(frozen=True)
+class BackgroundRun:
+    """Returned by `execute` when the work continues out of the request; the
+    reader follows `result_url` to watch it."""
+
+    result_url: str
 
 
 class BulkAction:
@@ -27,17 +119,85 @@ class BulkAction:
 
     label: str = ""
     action_name: str = ""
+    variant: str = "secondary"
     max_rows: int = 500
     confirm_template_name: str = "panel_framework/partials/bulk_confirmation.html"
+    result_template_name: str = "panel_framework/partials/bulk_result.html"
+    #: Exception types `apply` may turn into a failed outcome. Any other
+    #: exception propagates: a failure the action did not name is a bug.
+    failure_exceptions: tuple[type[Exception], ...] = ()
 
     def has_permission(self, request: HttpRequest) -> bool:
         return True
 
-    def execute(self, request: HttpRequest, queryset: QuerySet) -> None:
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
         raise NotImplementedError
+
+    def row_label(self, obj: Model) -> str:
+        return str(obj)
+
+    def execute(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> BulkResult | BackgroundRun:
+        return run_apply(self, request.user, queryset, cleaned_data)
 
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
+
+
+def run_apply(
+    action: BulkAction,
+    user: AbstractBaseUser | AnonymousUser,
+    queryset: QuerySet,
+    cleaned_data: dict[str, object],
+    on_progress: Callable[[int], None] | None = None,
+) -> BulkResult:
+    """Apply `action` to each object in `queryset`, each in its own
+    transaction, so one failure leaves the objects before it changed.
+
+    A module function rather than a method so a background task can call it
+    without a request.
+    """
+    tallies: dict[tuple[Status, str], int] = {}
+    entries: list[BulkResultEntry] = []
+    left_out = 0
+    for processed, obj in enumerate(queryset.iterator(chunk_size=200), start=1):
+        try:
+            with transaction.atomic():
+                outcome = action.apply(user, obj, cleaned_data)
+        except action.failure_exceptions:
+            # A fixed reason: exception text is for developers and never
+            # reaches the page.
+            outcome = BulkOutcome("failed", FAILED_REASON)
+        pair = (outcome.status, outcome.reason)
+        tallies[pair] = tallies.get(pair, 0) + 1
+        if outcome.status != "changed":
+            if len(entries) < RESULT_ENTRY_LIMIT:
+                entries.append(
+                    BulkResultEntry(
+                        key=str(obj.pk),
+                        row_label=action.row_label(obj),
+                        status=outcome.status,
+                        reason=outcome.reason,
+                    )
+                )
+            else:
+                left_out += 1
+        if on_progress and processed % 50 == 0:
+            on_progress(processed)
+    counts = [
+        BulkCount(status=status, reason=reason, count=count)
+        for (status, reason), count in tallies.items()
+    ]
+    return BulkResult(counts=counts, entries=entries, left_out=left_out)
 
 
 @dataclass(frozen=True)

@@ -12,6 +12,6 @@
             <input type="hidden" name="keys" value="{{ key }}">
         {% endfor %}
         <input type="hidden" name="confirmed" value="1">
-        <c-button type="submit" variant="primary" loading="true">{{ action.label }}</c-button>
+        <c-button type="submit" variant="{{ action.variant }}" loading="true">{{ action.label }}</c-button>
     </form>
 {% endif %}
