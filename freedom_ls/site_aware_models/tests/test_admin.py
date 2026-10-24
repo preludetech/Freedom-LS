@@ -14,6 +14,7 @@ from freedom_ls.site_aware_models.admin import (
     GuardedSiteAwareModelAdmin,
     admin_change_link,
 )
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.site_aware_models.models import SiteTimeZoneConfig
 
 
@@ -118,3 +119,18 @@ class TestSiteTimeZoneConfigAdmin:
         assert response.status_code == 200
         assert "Not an IANA time zone name" in response.content.decode()
         assert not SiteTimeZoneConfig._base_manager.exists()
+
+    def test_add_page_refuses_a_second_row_for_the_same_site(
+        self, staff_client, mock_site_context: Site
+    ) -> None:
+        """A second add for a site that has a row used to raise an IntegrityError 500."""
+        SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+
+        response = staff_client.post(
+            reverse("admin:freedom_ls_site_aware_models_sitetimezoneconfig_add"),
+            {"time_zone": "Europe/London"},
+        )
+
+        assert response.status_code == 200
+        assert "already exists" in response.content.decode()
+        assert SiteTimeZoneConfig._base_manager.count() == 1
