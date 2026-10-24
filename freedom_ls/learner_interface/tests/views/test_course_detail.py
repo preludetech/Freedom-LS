@@ -1460,6 +1460,28 @@ def test_toc_shows_a_relative_due_date_in_the_site_zone(due_topic_course):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("show_label", [True, False])
+def test_toc_data_show_zone_follows_the_site_setting(due_topic_course, show_label):
+    SiteTimeZoneConfigFactory(show_time_zone_to_learners=show_label)
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+
+    assert f'data-show-zone="{str(show_label).lower()}"' in html
+
+
+@pytest.mark.django_db
+def test_toc_data_show_zone_is_false_when_the_site_has_no_row(due_topic_course):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    course_progress_record(course, user)
+
+    assert 'data-show-zone="false"' in _detail_html(client, course)
+
+
+@pytest.mark.django_db
 def test_toc_marks_a_past_due_topic_overdue(due_topic_course):
     course, topic, user, client = due_topic_course
     set_due_date(course, topic, due_date=date(2020, 1, 1))
