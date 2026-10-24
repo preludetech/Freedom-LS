@@ -1277,6 +1277,105 @@ def _copy_demo_content(tmp_path: Path) -> Path:
     return content
 
 
+# ---------------------------------------------------------------------------
+# due dates and the course time limit
+# ---------------------------------------------------------------------------
+
+
+def write_topic_with_front_matter(directory: Path, extra: str) -> Path:
+    path = directory / "01. intro.md"
+    path.write_text(
+        f"---\ncontent_type: TOPIC\ntitle: Intro\n{extra}---\n\nBody\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_form_with_front_matter(directory: Path, extra: str) -> Path:
+    path = directory / "form.md"
+    path.write_text(
+        f"---\ncontent_type: FORM\ntitle: Quiz\nstrategy: UNSCORED\n{extra}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_topic_with_a_due_date_and_time_validates(tmp_path: Path) -> None:
+    result = run_validator(
+        write_topic_with_front_matter(
+            tmp_path, 'due_date: 2026-03-14\ndue_time: "17:00"\n'
+        )
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_form_with_due_days_after_registration_validates(tmp_path: Path) -> None:
+    result = run_validator(
+        write_form_with_front_matter(tmp_path, "due_days_after_registration: 21\n")
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_course_with_a_time_limit_validates(tmp_path: Path) -> None:
+    path = tmp_path / "course.md"
+    path.write_text(
+        "---\ncontent_type: COURSE\ntitle: Timed\ntime_limit_days: 90\n---\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("extra", "message"),
+    [
+        ("due_date: 2026-03-14 00:00:00\n", "without a time"),
+        ("due_time: 17:00\ndue_days_after_registration: 1\n", "quoted 24-hour time"),
+        ('due_time: "17:00"\n', "due_time needs"),
+        (
+            "due_date: 2026-03-14\ndue_days_after_registration: 3\n",
+            "set due_date or due_days_after_registration, not both",
+        ),
+        ("due_days_after_registration: -1\n", "due_days_after_registration"),
+        ('due_days_after_registration: "14"\n', "due_days_after_registration"),
+    ],
+)
+def test_topic_with_an_invalid_due_field_fails_naming_the_field(
+    tmp_path: Path, extra: str, message: str
+) -> None:
+    result = run_validator(write_topic_with_front_matter(tmp_path, extra))
+
+    assert result.returncode != 0
+    assert message in result.stdout + result.stderr
+
+
+def test_form_with_an_invalid_due_field_fails(tmp_path: Path) -> None:
+    result = run_validator(
+        write_form_with_front_matter(tmp_path, "due_days_after_registration: -2\n")
+    )
+
+    assert result.returncode != 0
+    assert "due_days_after_registration" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("value", ["0", '"90"'])
+def test_course_with_an_invalid_time_limit_fails(tmp_path: Path, value: str) -> None:
+    path = tmp_path / "course.md"
+    path.write_text(
+        f"---\ncontent_type: COURSE\ntitle: Timed\ntime_limit_days: {value}\n---\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(path)
+
+    assert result.returncode != 0
+    assert "time_limit_days" in result.stdout + result.stderr
+
+
 @pytest.mark.fls_internal
 def test_the_shipped_demo_content_passes(tmp_path: Path) -> None:
     content = _copy_demo_content(tmp_path)

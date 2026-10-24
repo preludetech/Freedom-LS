@@ -152,7 +152,16 @@ class ContentCollectionItemInline(GenericTabularInline):
     ct_field = "collection_type"
     ct_fk_field = "collection_id"
     extra = 1
-    fields = ("child_type", "child_id", "order", "overrides")
+    fields = (
+        "child_type",
+        "child_id",
+        "order",
+        "overrides",
+        "due_date",
+        "due_time",
+        "due_days_after_registration",
+    )
+    readonly_fields = ("due_date", "due_time", "due_days_after_registration")
     ordering = ("order",)
     can_delete = False
 
@@ -236,6 +245,7 @@ class ContentCollectionItemAdmin(SiteAwareModelAdmin):
     list_filter = ("collection_type", "child_type")
     search_fields = ("collection_type__model", "child_type__model")
     ordering = ("collection_type", "collection_id", "order")
+    readonly_fields = ("due_date", "due_time", "due_days_after_registration")
 
     def has_delete_permission(
         self, request: HttpRequest, obj: ContentCollectionItem | None = None

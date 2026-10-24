@@ -25,6 +25,7 @@ from freedom_ls.content_base.schema import (
     BaseBaseContentModel,
     BaseContentModel,
     ContentType,
+    DueDateFields,
     MarkdownContentModel,
 )
 from freedom_ls.content_engine.prices import price_errors
@@ -91,7 +92,12 @@ class CourseVisibility(StrEnum):
     HIDDEN = "hidden"
 
 
-class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
+class Topic(
+    BaseContentModel,
+    MarkdownContentModel,
+    DueDateFields,
+    content_type=ContentType.TOPIC,
+):
     pass
 
 
@@ -407,6 +413,12 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     estimated_duration: timedelta | None = Field(
         None,
         description="Estimated time to complete",
+    )
+    time_limit_days: int | None = Field(
+        None,
+        ge=1,
+        strict=True,
+        description="Days after the registration date the whole course is due",
     )
     # Any is correct here: access_config is an opaque, backend-owned JSON blob whose
     # keys are unknown to the schema layer — mirrors the existing `meta: dict[str, Any]`.

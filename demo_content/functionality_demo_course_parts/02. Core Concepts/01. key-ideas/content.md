@@ -1,4 +1,6 @@
 ---
+due_days_after_registration: 14
+due_time: "17:00"
 content_type: TOPIC
 title: Key Ideas
 uuid: bc4c9f84-01a3-4edd-b376-cbc9df2b12a4

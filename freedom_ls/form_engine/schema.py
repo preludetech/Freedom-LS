@@ -6,6 +6,7 @@ from freedom_ls.content_base.schema import (
     BaseBaseContentModel,
     BaseContentModel,
     ContentType,
+    DueDateFields,
     MarkdownContentModel,
 )
 from freedom_ls.form_engine.typed_answers import question_bounds_error
@@ -36,7 +37,12 @@ class FormStrategy(StrEnum):
     UNSCORED = "UNSCORED"
 
 
-class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
+class Form(
+    BaseContentModel,
+    MarkdownContentModel,
+    DueDateFields,
+    content_type=ContentType.FORM,
+):
     """
     A form file will be in a directory containing all the different form pages. Ensure that there are form pages in the directory.
 

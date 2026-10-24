@@ -1,4 +1,5 @@
 ---
+due_days_after_registration: 7
 content_type: TOPIC
 title: What to Expect
 uuid: bf056825-d56f-4407-a6a2-4442ef4f2938

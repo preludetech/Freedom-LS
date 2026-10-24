@@ -172,7 +172,68 @@ class MarkdownContentModel(BaseModel):
     content: str | None = Field(None, description="Markdown content body")
 
 
-class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
+_DUE_TIME = re.compile(r"\d{2}:\d{2}")
+
+
+class DueDateFields(BaseModel):
+    """The deadline a child file carries: a fixed date, or days after the learner's registration
+    date, either with an optional time of day. Pure pydantic so the offline validator shares it."""
+
+    due_date: date | None = Field(None, description="Fixed due date (YAML date)")
+    due_time: time | None = Field(None, description='Time of day, 24-hour "HH:MM"')
+    due_days_after_registration: int | None = Field(
+        None, ge=0, strict=True, description="Days after the registration date"
+    )
+
+    @field_validator("due_date", mode="before")
+    @classmethod
+    def _due_date_is_a_date(cls, value: object) -> object:
+        # PyYAML parses `2026-03-14 00:00:00` as a datetime and pydantic's lax date would
+        # accept it; a due date never carries a time of its own, that is what due_time is for.
+        if value is not None and type(value) is not date:
+            raise ValueError(
+                "due_date must be a date such as 2026-03-14, without a time"
+            )
+        return value
+
+    @field_validator("due_time", mode="before")
+    @classmethod
+    def _due_time_is_quoted(cls, value: object) -> object:
+        # An unquoted 17:00 is a YAML sexagesimal integer (1020), which pydantic would read
+        # as seconds after midnight. Only the quoted string says what the author meant.
+        if value is not None and not (
+            isinstance(value, str) and _DUE_TIME.fullmatch(value)
+        ):
+            raise ValueError('due_time must be a quoted 24-hour time such as "17:00"')
+        return value
+
+    @model_validator(mode="after")
+    def _one_kind_of_due_date(self) -> "DueDateFields":
+        file_path = getattr(self, "file_path", None)
+        if self.due_date is not None and self.due_days_after_registration is not None:
+            raise ValueError(
+                f"{file_path}: set due_date or due_days_after_registration, not both"
+            )
+        if (
+            self.due_time is not None
+            and self.due_date is None
+            and self.due_days_after_registration is None
+        ):
+            raise ValueError(
+                f"{file_path}: due_time needs due_date or due_days_after_registration"
+            )
+        return self
+
+
+DUE_DATE_FIELD_NAMES = frozenset(DueDateFields.model_fields)
+
+
+class Topic(
+    BaseContentModel,
+    MarkdownContentModel,
+    DueDateFields,
+    content_type=ContentType.TOPIC,
+):
     pass
 
 
@@ -635,6 +696,12 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         None,
         description="Estimated time to complete",
     )
+    time_limit_days: int | None = Field(
+        None,
+        ge=1,
+        strict=True,
+        description="Days after the registration date the whole course is due",
+    )
     # Any is correct here: access_config is an opaque, backend-owned JSON blob whose
     # keys are unknown to the schema layer — mirrors the existing `meta: dict[str, Any]`.
     access_config: dict[str, Any] | None = Field(
@@ -755,7 +822,12 @@ class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
     # content: Optional[str] = Field(None, description="Markdown content body")
 
 
-class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
+class Form(
+    BaseContentModel,
+    MarkdownContentModel,
+    DueDateFields,
+    content_type=ContentType.FORM,
+):
     """
     A form file will be in a directory containing all the different form pages. Ensure that there are form pages in the directory.
 
