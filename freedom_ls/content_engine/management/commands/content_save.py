@@ -46,6 +46,7 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Course as CourseSchema
+from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
     get_all_files,
@@ -1018,6 +1019,8 @@ def save_content_to_db(path, site_name):
             collection.save(update_fields=["application_form"])
 
     # Process collection children
+    written: list[ContentCollectionItem] = []
+    created: list[ContentCollectionItem] = []
     for collection, schema_item in collections_data:
         if schema_item.content_type == SchemaContentType.COURSE:
             # A replace, not a merge: a slug dropped from `categories` and
@@ -1116,7 +1119,7 @@ def save_content_to_db(path, site_name):
                 )
 
                 # Create or update the ContentCollectionItem
-                ContentCollectionItem.objects.update_or_create(
+                row, was_created = ContentCollectionItem.objects.update_or_create(
                     site=site,
                     collection_type=collection_content_type,
                     collection_id=collection.id,
@@ -1128,6 +1131,9 @@ def save_content_to_db(path, site_name):
                         **due_date_columns(schema_by_path.get(child_path)),
                     },
                 )
+                written.append(row)
+                if was_created:
+                    created.append(row)
                 logger.info(
                     f"Added {child_content.__class__.__name__} '{child_content.title}' "
                     f"to {collection.__class__.__name__} '{collection.title}' (order={order})"
@@ -1139,6 +1145,10 @@ def save_content_to_db(path, site_name):
                     f"Collection '{collection.title}' names a child at "
                     f"{child_path} that was not loaded"
                 )
+
+    collection_items_synced.send(
+        sender=ContentCollectionItem, site=site, created=created, written=written
+    )
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
