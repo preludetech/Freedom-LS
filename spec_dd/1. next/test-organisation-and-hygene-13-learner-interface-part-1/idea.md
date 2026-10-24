@@ -80,9 +80,11 @@ runner UI that spec 14 owns.
 - This spec owns both of the app's rule-2 edges (`course_applications`, `role_based_permissions`),
   because both happen to live in files this spec owns. A grep in this idea's research pass confirmed
   that spec 14's files carry neither edge.
-- Spec 4 decides the root conftest's Playwright wildcard re-export scope and where
-  `course_with_scored_quiz`/`sit_quiz` live; this spec follows that decision as given, not revisits
-  it. Today those two fixtures are used only by this spec's files
+- The root conftest imports the Playwright fixtures by name and keeps them global.
+  `course_with_scored_quiz` and `sit_quiz` live in
+  `freedom_ls/learner_progress/tests/quiz_fixtures.py`, and `learner_interface/tests/conftest.py`
+  already imports them by name, so this spec keeps that import when it cleans the conftest. Those
+  two fixtures are used only by this spec's files
   (`test_outline_agrees_with_progress.py`, `test_player_progress_scoping.py`,
   `test_sequential_item_unlock.py`, `test_course_finish_requires_passing.py`), not spec 14's.
 - Spec 12 may move `accounts`' integration tests (e.g. `test_deferred_login.py`) into

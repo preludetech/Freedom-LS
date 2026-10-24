@@ -298,7 +298,7 @@ External edge: 15 needs `educator-interface-12-docs-and-polish`.
 
 - **Spec 1 runs alone and first.** Every other spec cites its rules.
 - **Specs 2 and 3 run in parallel** after 1. 2 changes `claude_plugins/sdd/`. 3 changes `generate_app_map.py`, `pyproject.toml`, `.pre-commit-config.yaml` and the CI workflow. Whichever lands second makes the `implement_plan` review run the checks.
-- **Spec 4 after 3.** It is the first spec to delete baseline lines, and it edits `freedom_ls/conftest.py` and moves `SiteFactory`, which every app's tests load.
+- **Spec 4 after 3.** It edits `freedom_ls/conftest.py` and moves `SiteFactory`, which every app's tests load. It deletes no baseline lines.
 - **Specs 5 to 13 run in parallel** after 4. Each touches only its own apps' `tests/` directories and its own baseline lines. Every cleanup edits the same two baseline files, so each rebases its own lines.
 - Cautions where a cleanup meets other work. 12 may move `accounts` integration tests into another app's tests, so it rebases against whichever spec owns that app. 8 and `educator-interface-7-learner-administration` both change `learner_management`'s tests. 11 and `educator-interface-10-reporting-dashboards` both work in `reports`. 9 meets `compliance-form-randomization` and `form-engine-branch-logic` in `form_engine`. Move test files in their own commit so the rename survives the rebase.
 - **14 after 13** (one shared conftest). **15 after the educator interface rebuild.**
@@ -337,7 +337,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 |---|---|---|
 | How a test grants a role when its app does not depend on `role_based_permissions` at runtime: an intrinsic dependency, a runtime edge the graph misses, or a local fixture. | 1 | 5, 8, 11, 13, 15 |
 | How the rule 2 check and `docs/app_structure.md` learn the string-label relation edges and the `UserFactory` allowance. Resolved: `generate_app_map.py` detects string-label and user-model relations directly, a hand-written `declared_edges.toml` entry covers what detection can't see, and each generated contract carries an `accounts.factories` import allowance where that app's tests use it. | 3 | 6, 9, 12 |
-| Keep the root conftest's Playwright wildcard re-export or scope it to Playwright directories; where `course_with_scored_quiz` and `sit_quiz` live. | 4 | 13, 14 |
+| Keep the root conftest's Playwright wildcard re-export or scope it to Playwright directories; where `course_with_scored_quiz` and `sit_quiz` live. Resolved: the root conftest imports the four Playwright fixtures by name and keeps them global; the quiz fixtures live in `learner_progress/tests/quiz_fixtures.py`, and each consuming app's `tests/conftest.py` imports them by name. | 4 | 13, 14 |
 | Which app receives `accounts`' integration tests such as `test_deferred_login.py`. Only `qa_helpers` depends on every app it touches. | 12 | 13, 14 |
 | Where the `content_engine` demo-content and KaTeX test files go. | 10 | none |
 | Whether the rebuilt `educator_interface` calls `role_based_permissions` from its own code. | 15 | none |
