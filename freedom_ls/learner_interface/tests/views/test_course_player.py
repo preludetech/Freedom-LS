@@ -31,6 +31,7 @@ from freedom_ls.course_access.backends import (
     FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -45,6 +46,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
 )
 from freedom_ls.learner_interface.tests.helpers import (
+    cohort_override,
     form_attempt,
     learner_with_two_grants,
     set_due_date,
@@ -3970,3 +3972,63 @@ def test_player_page_query_count_with_deadlines_does_not_grow_with_items(
         response = client.get(url)
 
     assert response.status_code == 200
+
+
+# --- Cohort deadline overrides in the player sidebar ---
+
+
+@pytest.fixture
+def overridden_player(due_course):
+    """A two-topic course whose second topic is due in 2020, with a cohort learner's client
+    and an individual learner's client."""
+    course, _first, second, _user, individual_client = due_course
+    item = set_due_date(course, second, due_date=date(2020, 1, 1))
+    cohort_user, cohort_record, _ = learner_with_two_grants(course)
+    cohort_client = Client()
+    cohort_client.force_login(cohort_user)
+    return course, item, cohort_record, cohort_client, individual_client
+
+
+@pytest.mark.django_db
+def test_sidebar_cohort_override_beats_the_content_default(overridden_player):
+    course, item, record, client, _ = overridden_player
+    cohort_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2999, 1, 1),
+        due_days_after_registration=None,
+    )
+
+    html = _player_html(client, course)
+
+    assert "1 Jan 2999" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_sidebar_none_override_removes_the_date(overridden_player):
+    course, item, record, client, _ = overridden_player
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _player_html(client, course)
+
+    assert "1 Jan 2020" not in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_sidebar_individual_registration_ignores_the_cohort_override(
+    overridden_player,
+):
+    course, item, record, _, individual_client = overridden_player
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _player_html(individual_client, course)
+
+    assert "1 Jan 2020" in html
+    assert "Overdue" in html

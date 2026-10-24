@@ -22,8 +22,11 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.learner_interface.dashboard_sections import section_page_href
 from freedom_ls.learner_interface.tests.helpers import (
+    cohort_override,
+    learner_with_two_grants,
     rendered_section,
     section_by_slug,
     set_due_date,
@@ -1620,3 +1623,59 @@ def test_card_still_names_the_next_up_topic(deadline_card):
     _course, topics, _user, _record, client = deadline_card
 
     assert f"Next up: {topics[0].title}" in " ".join(_dashboard_html(client).split())
+
+
+# --- Cohort deadline overrides on the dashboard card ---
+
+
+@pytest.fixture
+def overridden_card(deadline_card, logged_in_client):
+    """The deadline card course with its first topic due in 2020, plus a cohort learner."""
+    course, topics, _user, _record, individual_client = deadline_card
+    item = set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+    cohort_user, cohort_record, _ = learner_with_two_grants(course)
+    return item, cohort_record, logged_in_client(cohort_user), individual_client
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_cohort_override_beats_the_content_default(overridden_card):
+    item, record, client, _ = overridden_card
+    cohort_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2999, 1, 1),
+        due_days_after_registration=None,
+    )
+
+    html = _dashboard_html(client)
+
+    assert "Next due" in html
+    assert "1 Jan 2999" in html
+    assert "1 overdue" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_none_override_removes_the_date(overridden_card):
+    item, record, client, _ = overridden_card
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    html = _dashboard_html(client)
+
+    assert "1 overdue" not in html
+    assert "Next due" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_individual_registration_ignores_the_cohort_override(overridden_card):
+    item, record, _, individual_client = overridden_card
+    cohort_override(
+        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
+    )
+
+    assert "1 overdue" in _dashboard_html(individual_client)

@@ -12,6 +12,8 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
+from freedom_ls.deadlines.models import CohortDeadlineOverride
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -159,3 +161,15 @@ def learner_with_two_grants(
         learner, course, individual_registration
     )
     return user, cohort_record, individual_record
+
+
+def cohort_override(
+    record: CourseProgress, collection_item: ContentCollectionItem, **fields: object
+) -> CohortDeadlineOverride:
+    """A deadline override on the cohort registration that granted `record`."""
+    override: CohortDeadlineOverride = CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=collection_item,
+        **fields,
+    )
+    return override

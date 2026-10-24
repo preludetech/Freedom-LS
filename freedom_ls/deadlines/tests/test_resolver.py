@@ -15,8 +15,9 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.factories import CohortDeadlineOverrideFactory
 from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
@@ -31,6 +32,14 @@ from freedom_ls.deadlines.resolver import (
     registration_date_of,
     resolve_deadline,
 )
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerFactory,
+)
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
@@ -427,3 +436,144 @@ def test_course_deadlines_for_many_records_costs_the_same_as_for_one(
 @pytest.mark.django_db
 def test_course_deadlines_for_no_records_is_empty(mock_site_context):
     assert course_deadlines_for([]) == {}
+
+
+# --- cohort override layer ---
+
+
+def _cohort_and_individual_records(
+    course: Course,
+) -> tuple[CourseProgress, CourseProgress]:
+    """One learner's records for `course`: one under a cohort registration, one under an
+    individual registration."""
+    cohort = CohortFactory()
+    learner = LearnerFactory(organisation=cohort.organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    cohort_record: CourseProgress = CourseProgressFactory(
+        learner=learner,
+        course=course,
+        cohort_registration=registration,
+        learner_registration=None,
+    )
+    individual_record: CourseProgress = CourseProgressFactory(
+        learner=learner, course=course
+    )
+    return cohort_record, individual_record
+
+
+def _cohort_record_with_item(
+    **item_columns: object,
+) -> tuple[CourseProgress, ContentCollectionItem]:
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    item = collection_item_for(course, topic)
+    for name, value in item_columns.items():
+        setattr(item, name, value)
+    item.save()
+    cohort_record, _ = _cohort_and_individual_records(course)
+    return cohort_record, item
+
+
+@pytest.mark.django_db
+def test_the_cohort_layer_beats_the_content_default(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        due_days_after_registration=3,
+    )
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.source == DeadlineSource.COHORT_REGISTRATION
+    assert resolved.due_at is not None
+    assert resolved.due_at.date() == record.created_at.astimezone(
+        ZoneInfo(settings.TIME_ZONE)
+    ).date() + timedelta(days=3)
+
+
+@pytest.mark.django_db
+def test_a_none_override_at_the_cohort_layer_removes_the_date(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        kind=DeadlineKind.NONE,
+        due_days_after_registration=None,
+    )
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.due_at is None
+    assert resolved.source == DeadlineSource.COHORT_REGISTRATION
+
+
+@pytest.mark.django_db
+def test_a_time_limit_override_beats_the_course_time_limit(mock_site_context):
+    record, _ = _cohort_record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        due_days_after_registration=5,
+    )
+
+    resolved = course_deadlines(record).time_limit
+
+    assert resolved.source == DeadlineSource.COHORT_REGISTRATION
+
+
+@pytest.mark.django_db
+def test_a_learner_on_an_individual_registration_has_no_cohort_layer(
+    mock_site_context,
+):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    _, individual_record = _cohort_and_individual_records(record.course)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        due_days_after_registration=3,
+    )
+
+    resolved = course_deadlines(individual_record).items[item.pk]
+
+    assert resolved.source == DeadlineSource.CONTENT
+
+
+@pytest.mark.django_db
+def test_another_sites_override_rows_are_not_read(mock_site_context):
+    record, item = _cohort_record_with_item(due_days_after_registration=14)
+    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    CohortDeadlineOverrideFactory(
+        site=other_site,
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        due_days_after_registration=3,
+    )
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.source == DeadlineSource.CONTENT
+
+
+@pytest.mark.django_db
+def test_override_rows_do_not_change_the_query_count(
+    mock_site_context, django_assert_max_num_queries
+):
+    record, _ = _cohort_record_with_item(due_days_after_registration=14)
+    for index in range(4):
+        topic = TopicFactory()
+        record.course.items.create(child=topic, order=index + 1)
+    for collection_item in Course.objects.get(
+        pk=record.course_id
+    ).viewable_collection_items():
+        CohortDeadlineOverrideFactory(
+            cohort_registration=record.cohort_registration,
+            collection_item=collection_item,
+        )
+
+    with django_assert_max_num_queries(6):
+        result = course_deadlines(record)
+
+    assert len(result.items) == 5

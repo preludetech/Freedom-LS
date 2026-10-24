@@ -37,6 +37,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_content_engine.File",
         "freedom_ls_content_engine.Topic",
         "freedom_ls_course_applications.AnonymousApplicant",
+        "freedom_ls_deadlines.CohortDeadlineOverride",
         "freedom_ls_form_engine.Form",
         "freedom_ls_form_engine.FormContent",
         "freedom_ls_form_engine.FormPage",
