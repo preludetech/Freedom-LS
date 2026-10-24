@@ -4,20 +4,31 @@ from __future__ import annotations
 
 import datetime
 import re
+from datetime import UTC
 
 import pytest
+import time_machine
 
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseCategoryFactory, CourseFactory
+from freedom_ls.content_engine.factories import (
+    CourseCategoryFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_interface.dashboard_sections import section_page_href
-from freedom_ls.learner_interface.tests.helpers import rendered_section, section_by_slug
+from freedom_ls.learner_interface.tests.helpers import (
+    rendered_section,
+    section_by_slug,
+    set_due_date,
+    topic_completion,
+)
 from freedom_ls.learner_interface.utils import (
     get_completed_courses,
     get_current_courses,
@@ -29,6 +40,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 # Tests for the learner dashboard view.
 #
@@ -1412,3 +1424,199 @@ def test_category_section_query_count_does_not_grow_with_categories_per_course(
 
     with django_assert_max_num_queries(CATEGORY_SECTION_MAX_QUERIES):
         client.get(dashboard_url)
+
+
+# --- Deadline line on the In progress cards ---
+
+
+@pytest.fixture
+def deadline_card(mock_site_context, logged_in_client):
+    """A course with two topics, a learner registered on 1 Mar 2026 and their client."""
+    course = CourseFactory()
+    topics = [TopicFactory(), TopicFactory()]
+    for order, topic in enumerate(topics):
+        course.items.create(child=topic, order=order)
+    user = UserFactory()
+    record = course_progress_record(
+        course, user, created_at=datetime.datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    return course, topics, user, record, logged_in_client(user)
+
+
+def _dashboard_html(client: Client) -> str:
+    response = client.get(reverse("learner_interface:dashboard"))
+    assert response.status_code == 200
+    return response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_time_limit_ended_ahead_of_overdue_topics(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert "Time limit ended" in html
+    assert "31 Mar 2026" in html
+    assert "Overdue" in html
+    assert "1 overdue" not in html
+    assert "Next due" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_the_overdue_count_ahead_of_the_next_due_date(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2999, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert "1 overdue" in html
+    assert "Next due" not in html
+    assert "Time limit ended" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_counts_every_overdue_topic(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    for topic in topics:
+        set_due_date(course, topic, due_date=datetime.date(2020, 1, 1))
+
+    assert "2 overdue" in _dashboard_html(client)
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_the_earliest_next_due_date_across_topics_and_time_limit(
+    deadline_card,
+):
+    course, topics, _user, _record, client = deadline_card
+    course.time_limit_days = 90
+    course.save()
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2998, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert "Next due" in html
+    assert "30 May 2026" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_the_next_due_date_when_nothing_is_overdue(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert "Next due" in html
+    assert "1 Jan 2999" in html
+    assert "overdue" not in html.lower()
+
+
+@pytest.mark.django_db
+def test_card_shows_no_deadline_line_without_deadlines(deadline_card):
+    _course, _topics, _user, _record, client = deadline_card
+
+    html = _dashboard_html(client)
+
+    assert "Next due" not in html
+    assert "overdue" not in html.lower()
+
+
+@pytest.mark.django_db
+def test_card_neither_counts_nor_dates_a_completed_topic(deadline_card):
+    course, topics, user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
+
+    html = _dashboard_html(client)
+
+    assert "overdue" not in html.lower()
+    assert "1 Jan 2020" not in html
+
+
+@pytest.mark.django_db
+def test_card_ignores_the_due_date_of_a_completed_topic_for_next_due(deadline_card):
+    course, topics, user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2999, 6, 1))
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
+
+    html = _dashboard_html(client)
+
+    assert "1 Jun 2999" in html
+    assert "1 Jan 2999" not in html
+
+
+@pytest.mark.django_db
+def test_card_counts_a_fixed_past_date_for_a_learner_registered_today(
+    deadline_card,
+):
+    course, topics, _user, record, client = deadline_card
+    record.created_at = timezone.now()
+    record.save()
+    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+
+    assert "1 overdue" in _dashboard_html(client)
+
+
+@pytest.mark.django_db
+def test_card_deadline_line_sits_below_next_up_and_outside_the_eyebrow(
+    deadline_card,
+):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert html.index("Next up:") < html.index("Next due")
+    assert html.count("Next due") == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("show_label", [True, False])
+def test_card_dates_follow_the_site_zone_label_setting(deadline_card, show_label):
+    SiteTimeZoneConfigFactory(show_time_zone_to_learners=show_label)
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+
+    html = _dashboard_html(client)
+
+    assert f'data-show-zone="{str(show_label).lower()}"' in html
+
+
+@pytest.mark.django_db
+def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
+    mock_site_context, django_assert_max_num_queries, logged_in_client
+):
+    dashboard_url = reverse("learner_interface:dashboard")
+    user = UserFactory()
+    for _ in range(10):
+        course = CourseFactory(time_limit_days=30)
+        topic = TopicFactory()
+        course.items.create(child=topic, order=0)
+        set_due_date(course, topic, due_date=datetime.date(2020, 1, 1))
+        course_progress_record(course, user)
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(IN_PROGRESS_MAX_QUERIES):
+        response = client.get(dashboard_url)
+
+    card_count = len(rendered_section(response, "in-progress").courses)
+    assert card_count > 1
+    assert response.content.decode().count("1 overdue") == card_count
+
+
+@pytest.mark.django_db
+def test_card_still_names_the_next_up_topic(deadline_card):
+    _course, topics, _user, _record, client = deadline_card
+
+    assert f"Next up: {topics[0].title}" in " ".join(_dashboard_html(client).split())
