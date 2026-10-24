@@ -21,6 +21,22 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
+class BulkTargetPickerForm(forms.Form):
+    """Picks the one target a bulk action applies to, from every target the
+    user may act on in the organisation. `field_name` is "cohort" or "course"."""
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        field_name: str,
+        queryset: QuerySet,
+        label: str,
+    ) -> None:
+        super().__init__(data)
+        self.fields[field_name] = forms.ModelChoiceField(queryset=queryset, label=label)
+
+
 class CohortForm(ConstraintValidationFormMixin):
     """Form for a cohort's editable fields.
 

@@ -1980,7 +1980,7 @@ def scope_request(
     403 would confirm the slug is real and let an attacker enumerate a
     Site's organisation names.
     """
-    organisation = _attach_organisation(request, organisation_slug)
+    _attach_organisation(request, organisation_slug)
     scoped_request = cast(OrganisationScopedRequest, request)
     scoped_request.accessible_organisations = list(
         organisations_accessible_to(request.user)

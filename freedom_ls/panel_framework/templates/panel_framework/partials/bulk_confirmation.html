@@ -1,11 +1,12 @@
 {% comment %}
 The modal fragment a bulk action's htmx POST returns, loaded into the shared
 #app-modal. Context: action, action_url, selection, count, noun, error, notice,
-wording, expected_count, confirm_disabled.
+wording, expected_count, confirm_disabled, form (the action's own form, if any).
 {% endcomment %}
 <c-modal-header>{{ action.label }}</c-modal-header>
 
 <div class="px-6 py-4">
+{% if form %}{% include "panel_framework/partials/bulk_picker.html" %}{% endif %}
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
 </div>
 

@@ -3981,3 +3981,27 @@ def test_the_run_page_renders_inside_the_interface_shell(run_world: SimpleNamesp
     assert page.cssselect("#organisation-switcher")
     assert page.cssselect("#main-content h1")
     assert page.cssselect("nav a[aria-current='page']")
+
+
+@pytest.mark.django_db
+def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_under_more(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    LearnerFactory(organisation=organisation)
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, "learners")
+    )
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > div > button[formaction]") == [
+        "Add to cohort",
+        "Remove from cohort",
+    ]
+    assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
