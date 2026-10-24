@@ -338,7 +338,10 @@ def test_quick_view_and_learners_list_layout_across_viewports(
         header_box = _box(page.locator("header.header"))
         create_button = page.get_by_role("button", name="Create Cohort")
         create_box = _box(create_button)
-        table_box = _box(table)
+        # The select-all checkbox widens the table past the room left of the
+        # drawer, so the table scrolls inside its wrapper, which is what must
+        # end before the drawer.
+        table_box = _box(table.locator("xpath=.."))
         assert drawer_box["y"] >= header_box["y"] + header_box["height"] - 1
         assert create_box["x"] + create_box["width"] <= drawer_box["x"]
         assert table_box["x"] + table_box["width"] <= drawer_box["x"]

@@ -61,9 +61,11 @@ from freedom_ls.learner_management.config import config as learner_management_co
 from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
+    deactivate_cohort,
     deactivate_learner,
     deactivate_registration,
     move_between_cohorts,
+    reactivate_cohort,
     reactivate_learner,
     record_learner_entry,
     register_for_course,
@@ -80,8 +82,11 @@ from freedom_ls.learner_management.models import (
     RunStatus,
 )
 from freedom_ls.learner_management.queries import (
+    ADD_COHORTCOURSEREGISTRATION,
     ADD_COHORTMEMBERSHIP,
     ADD_LEARNERCOURSEREGISTRATION,
+    CHANGE_COHORT,
+    CHANGE_COHORTCOURSEREGISTRATION,
     CHANGE_LEARNER,
     CHANGE_LEARNERCOURSEREGISTRATION,
     DELETE_COHORTMEMBERSHIP,
@@ -351,6 +356,9 @@ class CohortStateAction(PanelAction):
     capability = "freedom_ls_learner_management.change_cohort"
     target_state: bool
 
+    def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
+        raise NotImplementedError
+
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
         context = super().get_context_data(ctx)
@@ -365,24 +373,11 @@ class CohortStateAction(PanelAction):
         raise NotImplementedError
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        with transaction.atomic():
-            # ctx.instance may be stale: two overlapping submits would each
-            # see the old state and each write an entry for the one change.
-            # The action route authorised ctx.instance; the re-read only
-            # takes the lock.
-            cohort = get_object_or_404(
-                Cohort.objects.select_for_update(), pk=cast(Cohort, ctx.instance).pk
-            )
-            if cohort.is_active == self.target_state:
-                return self.refuse_unchanged(ctx, cohort)
-            cohort.is_active = self.target_state
-            cohort.save(update_fields=["is_active", "updated_at"])
-            record_cohort_entry(
-                cohort,
-                "cohort.reactivated" if self.target_state else "cohort.deactivated",
-                cast("User", ctx.request.user),
-                reason=ctx.reason,
-            )
+        cohort = cast(Cohort, ctx.instance)
+        if not self.perform(
+            cohort, actor=cast("User", ctx.request.user), reason=ctx.reason
+        ):
+            return self.refuse_unchanged(ctx, cohort)
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
         return navigation_response(ctx.page_url)
@@ -394,6 +389,9 @@ class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortState
     target_state = False
     template_name = "educator_interface/modal/deactivate_confirmation.html"
 
+    def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
+        return deactivate_cohort(cohort, actor=actor, reason=reason)
+
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
         return inactive_cohort_response(ctx.request, cohort)
 
@@ -403,6 +401,9 @@ class ReactivateCohortAction(CohortStateAction):
     action_name = "reactivate"
     target_state = True
     template_name = "educator_interface/modal/reactivate_confirmation.html"
+
+    def perform(self, cohort: Cohort, *, actor: User, reason: str) -> bool:
+        return reactivate_cohort(cohort, actor=actor, reason=reason)
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return not cast(Cohort, ctx.instance).is_active
@@ -2832,5 +2833,244 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
         count = self.changed_count(classified)
         return ConfirmationWording(
             sentence=f"{count_noun(Learner, count)} will be sent a setup email.",
+            skips=wording.skips,
+        )
+
+
+class CohortBulkAction(EducatorBulkAction):
+    """A bulk action over the rows of the cohorts table."""
+
+    table_key = "cohorts"
+    noun_model = Cohort
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        organisation: Organisation,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        return queryset.filter(
+            pk__in=cohorts_visible_to(
+                user, organisation, capability=self.capability
+            ).values("pk")
+        )
+
+    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
+        return obj
+
+
+class CohortCourseBulkAction(CohortBulkAction):
+    """Registers cohorts for, or unregisters them from, the one course the
+    educator picks. `registered_ids` holds the selected cohorts with an active
+    registration for it, read once per classification so previewing costs a
+    fixed number of queries however many cohorts are selected."""
+
+    form_class = BulkTargetPickerForm
+    # An inactive cohort is skipped in the preview; one deactivated between
+    # the confirmation and the run fails instead of aborting the run.
+    failure_exceptions = (ValueError,)
+    registered_ids: frozenset[object] = frozenset()
+
+    def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
+        return BulkTargetPickerForm(
+            data, field_name="course", queryset=registerable_courses(), label="Course"
+        )
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.registered_ids = frozenset(
+            CohortCourseRegistration.objects.filter(
+                course=cleaned_data["course"], cohort__in=queryset, is_active=True
+            ).values_list("cohort_id", flat=True)
+        )
+        return super().classify_all(user, queryset, cleaned_data)
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        if not cast(Cohort, obj).is_active:
+            return "an inactive cohort"
+        return self.state_skip_reason(obj.pk in self.registered_ids)
+
+    def state_skip_reason(self, is_registered: bool) -> str | None:
+        """The skip reason for an active cohort, given whether it holds an
+        active registration for the course."""
+        raise NotImplementedError
+
+    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
+        return {"course": str(cast(Course, cleaned_data["course"]).pk)}
+
+    def resolve_target(
+        self, organisation: Organisation, target: dict[str, str]
+    ) -> dict[str, object]:
+        return {
+            "course": get_object_or_404(registerable_courses(), pk=target["course"])
+        }
+
+
+@register_bulk_action
+class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
+    label = "Register for course"
+    action_name = "register"
+    capability = ADD_COHORTCOURSEREGISTRATION
+    unchanged_reason = "already registered"
+
+    def state_skip_reason(self, is_registered: bool) -> str | None:
+        return self.unchanged_reason if is_registered else None
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        cohort = cast(Cohort, obj)
+        if not cohort.is_active:
+            raise ValueError("The cohort is inactive.")
+        return register_cohort_for_course(cohort, cast(Course, cleaned_data["course"]))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        course = cast(Course, cleaned_data["course"])
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Cohort, count)} will be registered for {course.title}."
+            ),
+            skips=wording.skips,
+        )
+
+
+@register_bulk_action
+class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
+    label = "Unregister from course"
+    action_name = "unregister"
+    variant = "destructive"
+    capability = CHANGE_COHORTCOURSEREGISTRATION
+    unchanged_reason = "not registered"
+
+    def state_skip_reason(self, is_registered: bool) -> str | None:
+        return None if is_registered else self.unchanged_reason
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        cohort = cast(Cohort, obj)
+        if not cohort.is_active:
+            raise ValueError("The cohort is inactive.")
+        registration = (
+            CohortCourseRegistration._base_manager.filter(
+                cohort=cohort,
+                course=cast(Course, cleaned_data["course"]),
+                is_active=True,
+            )
+            .select_related("cohort", "course")
+            .first()
+        )
+        if registration is None:
+            return False
+        return deactivate_cohort_registration(registration)
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        course = cast(Course, cleaned_data["course"])
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Cohort, count)} will be unregistered from {course.title}."
+            ),
+            skips=wording.skips,
+            consequences=[
+                "Learners in these cohorts lose access to the course unless "
+                "they have another registration for it."
+            ],
+        )
+
+
+class CohortStateBulkAction(CohortBulkAction):
+    """Moves cohorts to `target_state`; cohorts already there are skipped."""
+
+    capability = CHANGE_COHORT
+    target_state: bool
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        if cast(Cohort, obj).is_active == self.target_state:
+            return self.unchanged_reason
+        return None
+
+
+@register_bulk_action
+class DeactivateCohortsBulkAction(CohortStateBulkAction):
+    label = "Deactivate"
+    action_name = "deactivate"
+    variant = "destructive"
+    target_state = False
+    unchanged_reason = "already inactive"
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return deactivate_cohort(cast(Cohort, obj))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=f"{count_noun(Cohort, count)} will be deactivated.",
+            skips=wording.skips,
+            consequences=[
+                "Learners stay in their cohorts and keep their progress.",
+                "While a cohort is inactive, its registrations stop giving "
+                "access to its courses. Learners with another registration "
+                "for a course keep access to it.",
+                "You can reactivate a cohort at any time.",
+            ],
+        )
+
+
+@register_bulk_action
+class ReactivateCohortsBulkAction(CohortStateBulkAction):
+    label = "Reactivate"
+    action_name = "reactivate"
+    target_state = True
+    unchanged_reason = "already active"
+
+    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+        return reactivate_cohort(cast(Cohort, obj))
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        count = self.changed_count(classified)
+        return ConfirmationWording(
+            sentence=(
+                f"{count_noun(Cohort, count)} will give access to "
+                f"{'its' if count == 1 else 'their'} courses again."
+            ),
             skips=wording.skips,
         )

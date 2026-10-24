@@ -401,6 +401,10 @@ class CohortDataTable(DataTable):
             ),
         ]
 
+    @staticmethod
+    def get_row_label(row: Model) -> str:
+        return cast(Cohort, row).name
+
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         return [
