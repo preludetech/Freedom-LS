@@ -101,6 +101,172 @@ def test_malformed_keys_are_dropped(mock_site_context: Site) -> None:
     assert list(queryset) == [kept]
 
 
+def _stub_panel(request: HttpRequest) -> StubDataTablePanel:
+    return StubDataTablePanel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+        )
+    )
+
+
+def test_all_matching_resolves_through_the_tables_search(
+    mock_site_context: Site,
+) -> None:
+    hit = make_stub(name="needle-1")
+    make_stub(name="hay-1")
+    request = RequestFactory().post("/stubs?stub-q=needle")
+
+    queryset = resolve_selection(
+        _stub_panel(request), request, Selection(mode="all_matching")
+    )
+
+    assert list(queryset) == [hit]
+
+
+def test_all_matching_resolves_through_the_tables_filters(
+    mock_site_context: Site,
+) -> None:
+    active = make_stub(name="a", is_active=True)
+    make_stub(name="b", is_active=False)
+    request = RequestFactory().post("/stubs?stub-active=1")
+
+    queryset = resolve_selection(
+        _stub_panel(request), request, Selection(mode="all_matching")
+    )
+
+    assert list(queryset) == [active]
+
+
+def test_all_matching_honours_excluded_keys(mock_site_context: Site) -> None:
+    kept = make_stub(name="a")
+    dropped = make_stub(name="b")
+    request = RequestFactory().post("/stubs")
+
+    queryset = resolve_selection(
+        _stub_panel(request),
+        request,
+        Selection(mode="all_matching", excluded=[str(dropped.pk), "not-an-int"]),
+    )
+
+    assert list(queryset) == [kept]
+
+
+def test_all_matching_never_leaves_the_panels_scope(mock_site_context: Site) -> None:
+    kept = make_stub(name="keep-me")
+    make_stub(name="drop-me")
+    request = RequestFactory().post("/stubs")
+    panel = _NarrowedTablePanel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+        )
+    )
+
+    queryset = resolve_selection(panel, request, Selection(mode="all_matching"))
+
+    assert list(queryset) == [kept]
+
+
+def test_all_matching_has_no_row_cap(mock_site_context: Site) -> None:
+    class _LowLimitBulkAction(StubBulkAction):
+        max_rows = 2
+
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_bulk", {"mode": "all_matching"}, HTTP_HX_REQUEST="true"
+    )
+    request.user = make_staff_user()
+    panel = _stub_panel(request)
+
+    response = _handle_action(
+        request, _ResolvedAction(_LowLimitBulkAction(), panel.ctx), panel
+    )
+
+    assert isinstance(response, HttpResponse)
+    assert response.status_code == 200
+    assert f"This will affect {len(stubs)} stub models." in response.content.decode()
+
+
+def test_all_matching_confirm_form_carries_mode_and_excluded(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+
+    response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={"mode": "all_matching", "excluded": [str(stubs[2].pk)]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (mode,) = document.cssselect("input[name='mode']")
+    assert mode.get("value") == "all_matching"
+    excluded = [i.get("value") for i in document.cssselect("input[name='excluded']")]
+    assert excluded == [str(stubs[2].pk)]
+    assert not document.cssselect("input[name='keys']")
+    assert "This will affect 2 stub models." in response.content.decode()
+
+
+def test_all_matching_confirmed_post_changes_only_unexcluded_rows(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+
+    response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={
+            "mode": "all_matching",
+            "excluded": [str(stubs[2].pk)],
+            "confirmed": "1",
+            "expected_count": "2",
+        },
+        htmx=True,
+    )
+
+    assert response.status_code == 200
+    assert list(StubModel.objects.filter(is_active=True)) == [stubs[2]]
+
+
+def test_all_matching_expected_count_mismatch_is_422(mock_site_context: Site) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+
+    response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={"mode": "all_matching", "confirmed": "1", "expected_count": "2"},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert StubModel.objects.filter(is_active=True).count() == 3
+
+
+def test_selection_bar_renders_counts_and_a_live_region(
+    mock_site_context: Site,
+) -> None:
+    for i in range(3):
+        make_stub(name=f"row-{i}")
+
+    html = fetch(_panel_path(StubModel.objects.first().pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (bar,) = document.cssselect("[data-total-count]")
+    assert bar.get("data-total-count") == "3"
+    assert bar.get("data-page-count") == "3"
+    assert document.cssselect("[role='status']")
+    assert document.cssselect("input[name='mode'][x-ref='modeInput']")
+    assert document.cssselect("[x-ref='excluded']")
+
+
 # -- the confirm-then-act flow, through the resolved URL -------------------
 
 
@@ -123,17 +289,6 @@ def test_zero_rows_is_rejected_with_422(mock_site_context: Site) -> None:
 
     assert response.status_code == 422
     assert "Nothing selected" in response.content.decode()
-
-
-def test_all_matching_mode_is_422(mock_site_context: Site) -> None:
-    stub = make_stub(name="row-x")
-
-    response = fetch(
-        _action_path(stub.pk), method="post", data={"mode": "all_matching"}
-    )
-
-    assert response.status_code == 422
-    assert "Not supported yet" in response.content.decode()
 
 
 def test_over_max_rows_is_rejected_with_422(mock_site_context: Site) -> None:
@@ -442,13 +597,11 @@ def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> N
 def test_plain_post_error_is_full_page_422(mock_site_context: Site) -> None:
     stub = make_stub(name="row-x")
 
-    response = fetch(
-        _action_path(stub.pk), method="post", data={"mode": "all_matching"}
-    )
+    response = fetch(_action_path(stub.pk), method="post", data={"mode": "keys"})
 
     content = response.content.decode()
     assert response.status_code == 422
-    assert "Not supported yet" in content
+    assert "Nothing selected" in content
     assert "<html" in content.lower()
 
 

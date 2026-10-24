@@ -630,9 +630,38 @@ document.addEventListener("alpine:init", () => {
     // root, so `this.$el` inside update() would be the checkbox itself.
     Alpine.data("tableSelection", () => ({
         count: 0,
+        // "keys" submits the ticked rows; "all_matching" submits every row
+        // the table's filters match, minus the keys in `excluded`.
+        mode: "keys",
+        excluded: [],
+        total: 0,
+        page: 0,
+        allChecked: false,
+
+        init() {
+            const bar = this.$el.querySelector("[data-total-count]");
+            this.total = Number(bar.dataset.totalCount);
+            this.page = Number(bar.dataset.pageCount);
+        },
 
         get hasSelection() {
             return this.count > 0;
+        },
+
+        get allOnPageSelected() {
+            return this.allChecked;
+        },
+
+        get showPagePrompt() {
+            return (
+                this.mode === "keys" &&
+                this.allOnPageSelected &&
+                this.total > this.page
+            );
+        },
+
+        get showMatchingPrompt() {
+            return this.mode === "all_matching" && this.hasSelection;
         },
 
         // Below md every row has two checkboxes — one in the desktop <table>,
@@ -654,12 +683,65 @@ document.addEventListener("alpine:init", () => {
             const form = event.target.closest("form");
             const rowBoxes = this._visibleRowBoxes(form);
             const checkedBoxes = rowBoxes.filter((box) => box.checked);
-            this.count = checkedBoxes.length;
             const allChecked =
                 rowBoxes.length > 0 && checkedBoxes.length === rowBoxes.length;
+            this.allChecked = allChecked;
+            if (this.mode === "all_matching") {
+                // Only this page's rows can change; keys excluded from other
+                // pages stay excluded.
+                const pageKeys = rowBoxes.map((box) => box.value);
+                const unchecked = rowBoxes
+                    .filter((box) => !box.checked)
+                    .map((box) => box.value);
+                this.excluded = this.excluded
+                    .filter((key) => !pageKeys.includes(key))
+                    .concat(unchecked);
+                this._syncExcludedInputs();
+                this.count = this.total - this.excluded.length;
+            } else {
+                this.count = checkedBoxes.length;
+            }
             form.querySelectorAll("[data-select-all]").forEach((box) => {
                 box.checked = allChecked;
-                box.indeterminate = this.count > 0 && !allChecked;
+                box.indeterminate = checkedBoxes.length > 0 && !allChecked;
+            });
+        },
+
+        _syncExcludedInputs() {
+            const inputs = this.excluded.map((key) => {
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "excluded";
+                input.value = key;
+                return input;
+            });
+            this.$refs.excluded.replaceChildren(...inputs);
+        },
+
+        _setMode(mode) {
+            this.mode = mode;
+            this.$refs.modeInput.value = mode;
+        },
+
+        selectAllMatching() {
+            this._setMode("all_matching");
+            this.excluded = [];
+            this._syncExcludedInputs();
+            this.count = this.total;
+        },
+
+        clearSelection() {
+            this._setMode("keys");
+            this.excluded = [];
+            this._syncExcludedInputs();
+            this._visibleRowBoxes(this.$el).forEach((box) => {
+                box.checked = false;
+            });
+            this.count = 0;
+            this.allChecked = false;
+            this.$el.querySelectorAll("[data-select-all]").forEach((box) => {
+                box.checked = false;
+                box.indeterminate = false;
             });
         },
 

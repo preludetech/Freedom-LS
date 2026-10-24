@@ -7,9 +7,12 @@
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']">
         {% csrf_token %}
-        <input type="hidden" name="mode" value="keys">
+        <input type="hidden" name="mode" value="{{ selection.mode }}">
         {% for key in selection.keys %}
             <input type="hidden" name="keys" value="{{ key }}">
+        {% endfor %}
+        {% for key in selection.excluded %}
+            <input type="hidden" name="excluded" value="{{ key }}">
         {% endfor %}
         <input type="hidden" name="expected_count" value="{{ expected_count }}">
         <input type="hidden" name="confirmed" value="1">

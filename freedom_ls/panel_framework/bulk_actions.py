@@ -273,15 +273,12 @@ def run_apply(
 class Selection:
     """The rows a bulk-action request names.
 
-    Only "keys" mode is resolved today: "all_matching" (every row the
-    table's current search, filters and sort would return, across every
-    page) has no resolver yet, so a request naming it is answered 422
-    rather than guessed at.
+    "keys" names rows one by one. "all_matching" names every row the table's
+    current search and filters match, across every page, minus `excluded`.
     """
 
     mode: Literal["keys", "all_matching"]
     keys: list[str] = field(default_factory=list)
-    query_string: str = ""
     excluded: list[str] = field(default_factory=list)
 
 
@@ -298,7 +295,6 @@ def parse_selection(request: HttpRequest) -> Selection:
     return Selection(
         mode=mode,
         keys=request.POST.getlist("keys"),
-        query_string=request.POST.get("query_string", ""),
         excluded=request.POST.getlist("excluded"),
     )
 
@@ -308,18 +304,27 @@ def resolve_selection(
 ) -> QuerySet:
     """The rows `selection` names, scoped to `panel`.
 
-    Keys mode only; the view has already answered 422 for any other mode. A
-    key the model's primary-key field can't parse, or one outside the
+    A key the model's primary-key field can't parse, or one outside the
     panel's own scope, drops out silently rather than raising: it reaches
     here straight from a form submission that may be stale or tampered with,
     and handlers must never see the raw keys or payload themselves.
     """
+
+    def parsed(keys: list[str]) -> list[object]:
+        pk_field = panel.get_queryset(request).model._meta.pk
+        values: list[object] = []
+        for key in keys:
+            try:
+                values.append(pk_field.to_python(key))
+            except ValidationError:
+                continue
+        return values
+
+    if selection.mode == "all_matching":
+        # The bar put the table's own state into the action URL's query
+        # string, so narrow() reads it from request.GET exactly as a render
+        # or export would.
+        _query, rows = panel.narrow(request)
+        return rows.exclude(pk__in=parsed(selection.excluded))
     scoped = panel.get_queryset(request)
-    pk_field = scoped.model._meta.pk
-    parsed: list[object] = []
-    for key in selection.keys:
-        try:
-            parsed.append(pk_field.to_python(key))
-        except ValidationError:
-            continue
-    return scoped.filter(pk__in=parsed)
+    return scoped.filter(pk__in=parsed(selection.keys))

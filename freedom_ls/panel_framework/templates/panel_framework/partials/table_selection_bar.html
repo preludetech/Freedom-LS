@@ -5,23 +5,46 @@ pagination — which stays visible regardless of selection. Fixed to the
 bottom of the viewport below md, where the bar would otherwise scroll out of
 reach below a long card list.
 {% endcomment %}
-<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:static md:border-0 md:bg-transparent md:px-6 md:py-3">
-    <div aria-live="polite" x-show="hasSelection" class="flex flex-wrap items-center gap-4">
-        <span class="text-sm">
-            <span x-text="count"></span> selected
-            · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
+<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:static md:border-0 md:bg-transparent md:px-6 md:py-3"
+     data-page-count="{{ page_obj|length }}"
+     data-total-count="{{ page_obj.paginator.count }}">
+    <div class="flex flex-wrap items-center gap-4">
+        {% comment %}
+        The status element is always rendered; only its text is toggled, so
+        assistive technology has a live region to watch before the count changes.
+        {% endcomment %}
+        <span role="status" class="text-sm">
+            <span x-show="hasSelection">
+                <span x-text="count"></span> selected
+                · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
+            </span>
         </span>
-        {% for entry in bulk_actions %}
-            {% querystring request.GET as qs %}
-            <c-button type="submit"
-                      variant="secondary"
-                      formaction="{{ entry.url }}{{ qs }}"
-                      hx-post="{{ entry.url }}{{ qs }}"
-                      hx-target="#app-modal-body"
-                      hx-swap="innerHTML">
-                {{ entry.action.label }}
-            </c-button>
-        {% endfor %}
+        <span x-show="showPagePrompt" x-cloak x-transition class="text-sm">
+            All {{ page_obj|length }} on this page are selected.
+            <button type="button" class="font-medium text-primary underline" x-on:click="selectAllMatching">
+                Select all {{ page_obj.paginator.count }} matching
+            </button>
+        </span>
+        <span x-show="showMatchingPrompt" x-cloak x-transition class="text-sm">
+            All <span x-text="count"></span> matching are selected.
+            <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection">
+                Clear selection
+            </button>
+        </span>
+        <span x-ref="excluded" hidden></span>
+        <div x-show="hasSelection" class="flex flex-wrap items-center gap-4">
+            {% for entry in bulk_actions %}
+                {% querystring request.GET as qs %}
+                <c-button type="submit"
+                          variant="secondary"
+                          formaction="{{ entry.url }}{{ qs }}"
+                          hx-post="{{ entry.url }}{{ qs }}"
+                          hx-target="#app-modal-body"
+                          hx-swap="innerHTML">
+                    {{ entry.action.label }}
+                </c-button>
+            {% endfor %}
+        </div>
     </div>
     <c-pagination :page_obj="page_obj"
                   :base_url="base_url"
