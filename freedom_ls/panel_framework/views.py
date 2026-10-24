@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 from urllib.parse import urlsplit
 
@@ -36,7 +36,10 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.bulk_actions import (
     BackgroundRun,
     BulkAction,
+    BulkConfirmForm,
+    BulkOutcome,
     BulkResult,
+    ConfirmationWording,
     Selection,
     parse_selection,
     resolve_selection,
@@ -610,6 +613,24 @@ class _BulkConfirmation:
     selection: Selection
     error: str
     status: int
+    wording: ConfirmationWording | None = None
+    notice: str = ""
+    expected_count: int = 0
+    confirm_disabled: bool = False
+
+    def context(self) -> dict[str, object]:
+        return {
+            "action": self.action,
+            "action_url": self.action_url,
+            "selection": self.selection,
+            "count": self.count,
+            "noun": self.noun,
+            "error": self.error,
+            "wording": self.wording,
+            "notice": self.notice,
+            "expected_count": self.expected_count,
+            "confirm_disabled": self.confirm_disabled,
+        }
 
 
 @dataclass(frozen=True)
@@ -677,32 +698,18 @@ def _background_response(request: HttpRequest, run: BackgroundRun) -> HttpRespon
 
 
 def _confirmation_response(
-    request: HttpRequest,
-    action: BulkAction,
-    action_url: str,
-    noun: str,
-    selection: Selection,
-    count: int,
-    error: str,
-    status: int,
+    request: HttpRequest, confirmation: _BulkConfirmation
 ) -> HttpResponse | _BulkConfirmation:
-    """The confirmation or error state: an htmx fragment, or a
-    `_BulkConfirmation` for the page-level render."""
+    """The confirmation or error state: an htmx fragment, or the
+    `_BulkConfirmation` itself for the page-level render."""
     if request.headers.get("HX-Request") == "true":
         html = render_to_string(
-            action.confirm_template_name,
-            {
-                "action": action,
-                "action_url": action_url,
-                "selection": selection,
-                "count": count,
-                "noun": noun,
-                "error": error,
-            },
+            confirmation.action.confirm_template_name,
+            confirmation.context(),
             request=request,
         )
-        return HttpResponse(html, status=status)
-    return _BulkConfirmation(count, noun, action, action_url, selection, error, status)
+        return HttpResponse(html, status=confirmation.status)
+    return confirmation
 
 
 def _handle_bulk_action(
@@ -721,28 +728,68 @@ def _handle_bulk_action(
     action_url = action.get_action_url(ctx)
     noun = str(panel.get_queryset(request).model._meta.verbose_name_plural)
 
+    def error_response(
+        selection: Selection, count: int, error: str
+    ) -> HttpResponse | _BulkConfirmation:
+        return _confirmation_response(
+            request,
+            _BulkConfirmation(count, noun, action, action_url, selection, error, 422),
+        )
+
     selection = parse_selection(request)
     if selection.mode != "keys":
-        return _confirmation_response(
-            request, action, action_url, noun, selection, 0, "Not supported yet", 422
-        )
+        return error_response(selection, 0, "Not supported yet")
 
     queryset = resolve_selection(panel, request, selection)
     count = queryset.count()
     if count == 0:
-        return _confirmation_response(
-            request, action, action_url, noun, selection, count, "Nothing selected", 422
-        )
+        return error_response(selection, count, "Nothing selected")
     if count > action.max_rows:
         message = f"{count} selected; the limit is {action.max_rows}"
-        return _confirmation_response(
-            request, action, action_url, noun, selection, count, message, 422
-        )
+        return error_response(selection, count, message)
 
-    if request.POST.get("confirmed") != "1":
+    form = BulkConfirmForm(request.POST)
+    if not form.is_valid():
+        return error_response(selection, count, "The request was not valid")
+    confirmed = bool(form.cleaned_data["confirmed"])
+    expected_count = form.cleaned_data["expected_count"]
+    if confirmed and expected_count is None:
+        return error_response(selection, count, "The request was not valid")
+
+    classified: dict[str, BulkOutcome] | None = action.classify_all(
+        request.user, queryset, {}
+    )
+    changed_count = (
+        count
+        if classified is None
+        else sum(1 for item in classified.values() if item.status == "changed")
+    )
+    confirmation = _BulkConfirmation(
+        count=count,
+        noun=noun,
+        action=action,
+        action_url=action_url,
+        selection=selection,
+        error="",
+        status=200,
+        wording=action.confirmation_wording(request, queryset, classified, {}),
+        expected_count=count,
+        confirm_disabled=changed_count == 0,
+    )
+
+    if not confirmed:
+        return _confirmation_response(request, confirmation)
+    if expected_count != count:
         return _confirmation_response(
-            request, action, action_url, noun, selection, count, "", 200
+            request,
+            replace(
+                confirmation,
+                status=422,
+                notice="The selection changed since you opened this.",
+            ),
         )
+    if changed_count == 0:
+        return _confirmation_response(request, replace(confirmation, status=422))
 
     selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
     outcome = action.execute(request, queryset, {})
@@ -1235,12 +1282,7 @@ def panel_framework_view(
             else:
                 main_template_name = "panel_framework/views/bulk_confirmation.html"
                 main = {
-                    "action": result.action,
-                    "action_url": result.action_url,
-                    "count": result.count,
-                    "noun": result.noun,
-                    "selection": result.selection,
-                    "error": result.error,
+                    **result.context(),
                     "page_url": resolved.panel.ctx.page_url,
                 }
                 bulk_status = result.status

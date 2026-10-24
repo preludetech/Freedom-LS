@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Literal, cast
 
+from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
@@ -41,6 +42,42 @@ class BulkCount:
     status: Status
     reason: str
     count: int
+
+
+@dataclass(frozen=True)
+class ConfirmationWording:
+    """What a confirmation says before anything runs.
+
+    Each skip reason is a predicate that follows "is" or "are" ("already
+    processed", "already in the cohort"), so one template renders both the
+    confirmation line "3 are already processed and will be skipped." and the
+    result line "3 already processed".
+    """
+
+    sentence: str
+    skips: list[BulkCount] = field(default_factory=list)
+    consequences: list[str] = field(default_factory=list)
+
+
+class BulkConfirmForm(forms.Form):
+    """The framework's own fields on a bulk-action POST."""
+
+    expected_count = forms.IntegerField(min_value=0, required=False)
+    confirmed = forms.BooleanField(required=False)
+    refresh = forms.BooleanField(required=False)
+
+
+def count_outcomes(outcomes: dict[str, BulkOutcome]) -> list[BulkCount]:
+    """Tally outcomes into one count per distinct (status, reason), in the
+    order the pairs first appear."""
+    tallies: dict[tuple[Status, str], int] = {}
+    for outcome in outcomes.values():
+        pair = (outcome.status, outcome.reason)
+        tallies[pair] = tallies.get(pair, 0) + 1
+    return [
+        BulkCount(status=status, reason=reason, count=count)
+        for (status, reason), count in tallies.items()
+    ]
 
 
 @dataclass(frozen=True)
@@ -137,6 +174,38 @@ class BulkAction:
         cleaned_data: dict[str, object],
     ) -> BulkOutcome:
         raise NotImplementedError
+
+    def classify_all(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        """What `apply` would do to each row, keyed by `str(pk)`, without
+        changing anything. None means the action does not predict, and the
+        confirmation shows the plain count."""
+        return None
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        """The confirmation sentence and one skip line per skip reason."""
+        model = queryset.model
+        if classified is None:
+            count = queryset.count()
+            skips: list[BulkCount] = []
+        else:
+            counts = count_outcomes(classified)
+            count = sum(item.count for item in counts if item.status == "changed")
+            skips = [item for item in counts if item.status != "changed"]
+        return ConfirmationWording(
+            sentence=f"This will affect {count} {model._meta.verbose_name_plural}.",
+            skips=skips,
+        )
 
     def row_label(self, obj: Model) -> str:
         return str(obj)

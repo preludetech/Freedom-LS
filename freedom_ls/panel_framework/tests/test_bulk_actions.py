@@ -184,7 +184,7 @@ def test_confirmed_htmx_post_returns_result_summary(mock_site_context: Site) -> 
     execute_response = fetch(
         _action_path(stubs[0].pk),
         method="post",
-        data={"mode": "keys", "keys": keys, "confirmed": "1"},
+        data={"mode": "keys", "keys": keys, "confirmed": "1", "expected_count": "3"},
         htmx=True,
     )
 
@@ -204,7 +204,12 @@ def test_confirmed_plain_post_returns_result_page_with_back_link(
     path = _action_path(stub.pk)
     request = RequestFactory().post(
         f"/test-panel/framework/{path}?stub-sort=name",
-        {"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"},
+        {
+            "mode": "keys",
+            "keys": [str(stub.pk)],
+            "confirmed": "1",
+            "expected_count": "1",
+        },
     )
     request.user = make_staff_user()
 
@@ -239,6 +244,7 @@ def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> N
             "mode": "keys",
             "keys": [str(stub.pk) for stub in stubs],
             "confirmed": "1",
+            "expected_count": "2",
         },
         HTTP_HX_REQUEST="true",
     )
@@ -353,7 +359,12 @@ def test_confirmed_post_redirects_to_result_url_for_background_run(
             return BackgroundRun("/runs/1")
 
     stub = make_stub(name="row-x")
-    data = {"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"}
+    data = {
+        "mode": "keys",
+        "keys": [str(stub.pk)],
+        "confirmed": "1",
+        "expected_count": "1",
+    }
     responses = []
     for headers in ({}, {"HTTP_HX_REQUEST": "true"}):
         request = RequestFactory().post("/stubs/__actions/stub_bulk", data, **headers)
@@ -455,6 +466,177 @@ def test_htmx_post_renders_modal_confirmation(mock_site_context: Site) -> None:
     assert response.status_code == 200
     assert "<html" not in content.lower()
     assert "This will affect 1 stub models." in content
+
+
+# -- classification, skip counts and the guarded confirm --------------------
+
+
+def _classified_post(
+    stubs: list[StubModel], **extra: object
+) -> tuple[str, dict[str, object]]:
+    path = _action_path(stubs[0].pk, "stub_classifying_bulk")
+    data: dict[str, object] = {
+        "mode": "keys",
+        "keys": [str(stub.pk) for stub in stubs],
+        **extra,
+    }
+    return path, data
+
+
+def test_confirmation_shows_changed_and_skipped_counts(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}", is_active=i >= 2) for i in range(5)]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "This will affect 3 stub models." in content
+    assert "2 are already processed and will be skipped." in content
+
+
+def test_confirmation_uses_singular_verb_for_one_skip(mock_site_context: Site) -> None:
+    stubs = [make_stub(name="row-a", is_active=False), make_stub(name="row-b")]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    assert "1 is already processed and will be skipped." in response.content.decode()
+
+
+def test_confirm_is_disabled_when_nothing_would_change(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}", is_active=False) for i in range(2)]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (submit,) = document.cssselect("form button[type='submit']")
+    assert submit.get("disabled") is not None
+    assert "2 are already processed and will be skipped." in response.content.decode()
+
+
+def test_confirm_is_enabled_when_something_would_change(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name="row-a"), make_stub(name="row-b", is_active=False)]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (submit,) = document.cssselect("form button[type='submit']")
+    assert submit.get("disabled") is None
+
+
+def test_confirmation_carries_expected_count_to_the_confirm_form(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+
+    response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={"mode": "keys", "keys": [str(stub.pk) for stub in stubs]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (field,) = document.cssselect("input[name='expected_count']")
+    assert field.get("value") == "3"
+
+
+def test_confirmed_post_without_expected_count_is_422(mock_site_context: Site) -> None:
+    stub = make_stub(name="row-x")
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"},
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert StubModel.objects.filter(is_active=True).exists()
+
+
+def test_confirmed_post_with_non_integer_expected_count_is_422(
+    mock_site_context: Site,
+) -> None:
+    stub = make_stub(name="row-x")
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={
+            "mode": "keys",
+            "keys": [str(stub.pk)],
+            "confirmed": "1",
+            "expected_count": "many",
+        },
+        htmx=True,
+    )
+
+    assert response.status_code == 422
+    assert StubModel.objects.filter(is_active=True).exists()
+
+
+def test_expected_count_mismatch_is_422_and_changes_nothing(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+    path, data = _classified_post(stubs, confirmed="1", expected_count="2")
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    content = response.content.decode()
+    assert response.status_code == 422
+    assert "The selection changed since you opened this." in content
+    assert "This will affect 3 stub models." in content
+    document = lxml.html.fromstring(content)
+    (field,) = document.cssselect("input[name='expected_count']")
+    assert field.get("value") == "3"
+    assert StubModel.objects.filter(is_active=True).count() == 3
+
+
+def test_confirmed_post_with_matching_expected_count_runs(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+    path, data = _classified_post(stubs, confirmed="1", expected_count="3")
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    assert response.status_code == 200
+    assert "3 stub models changed." in response.content.decode()
+    assert not StubModel.objects.filter(is_active=True).exists()
+
+
+def test_confirmed_post_that_would_change_nothing_is_422(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}", is_active=False) for i in range(2)]
+    path, data = _classified_post(stubs, confirmed="1", expected_count="2")
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    assert response.status_code == 422
+    assert "changed" not in response.content.decode().split("skipped.")[-1]
+
+
+def test_plain_post_confirmation_shows_skip_counts(mock_site_context: Site) -> None:
+    stubs = [make_stub(name="row-a"), make_stub(name="row-b", is_active=False)]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data)
+
+    content = response.content.decode()
+    assert "<html" in content.lower()
+    assert "1 is already processed and will be skipped." in content
 
 
 # -- rendering ---------------------------------------------------------
