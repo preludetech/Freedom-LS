@@ -2,6 +2,7 @@
 
 {% load static %}
 {% load course_icon_tags %}
+{% load deadline_tags %}
 {% load fls_base_filters %}
 
 {% block extra_alpine_components %}
@@ -24,7 +25,8 @@
     Reads stat_icon / stat_label / stat_value from the surrounding context —
     call it inside a {% templatetag openblock %} with … {% templatetag closeblock %}.
     Pass stat_price instead of stat_value to render a <c-course-price> in the
-    value slot rather than plain text.{% endcomment %}
+    value slot rather than plain text, or stat_time to render a date and time in
+    the viewer's zone. stat_overdue adds an Overdue badge beside the label.{% endcomment %}
     {% partialdef stat-card %}
         {% comment %}Below md the cells stack, and each spans the strip so the dividers
         line up. From md the cells sit side by side at w-48, except the price
@@ -35,10 +37,13 @@
             <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-wider opacity-70 text-white">
                     {{ stat_label }}
+                    {% if stat_overdue %}<c-panel-status-badge tone="error" label="Overdue" />{% endif %}
                 </p>
                 <p class="font-semibold leading-tight text-white">
                     {% if stat_price %}
                         <c-course-price :price="stat_price" variant="compact" />
+                    {% elif stat_time %}
+                        {% local_time stat_time %}
                     {% else %}
                         {{ stat_value }}
                     {% endif %}
@@ -119,6 +124,11 @@
                                     {% endwith %}
                                 {% endif %}
                             {% endwith %}
+                            {% if time_limit_end %}
+                                {% with stat_icon="deadline" stat_label=time_limit_label stat_time=time_limit_end stat_overdue=time_limit_overdue %}
+                                    {% partial stat-card %}
+                                {% endwith %}
+                            {% endif %}
                             {% with stat_price=course.current_price %}
                                 {% if stat_price %}
                                     {% with stat_icon="price" stat_label="Price" %}

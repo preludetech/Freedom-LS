@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
@@ -43,7 +44,7 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.deadlines.resolver import course_deadlines
+from freedom_ls.deadlines.resolver import course_deadlines, is_overdue
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
@@ -723,15 +724,27 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         if is_registered
         else None
     )
+    deadlines = (
+        course_deadlines(course_progress) if course_progress is not None else None
+    )
     children = get_course_index(
         user=request.user,
         course=course,
         can_access_content=decision.can_access_content,
         course_progress=course_progress,
-        course_deadlines=(
-            course_deadlines(course_progress) if course_progress is not None else None
-        ),
+        course_deadlines=deadlines,
     )
+    time_limit_end: datetime | None = None
+    time_limit_overdue = False
+    time_limit_label = ""
+    if course_progress is not None and deadlines is not None:
+        time_limit_end = deadlines.time_limit.due_at
+        time_limit_overdue = is_overdue(
+            deadlines.time_limit,
+            course_progress.completed_time is not None,
+            timezone.now(),
+        )
+        time_limit_label = "Time limit ended" if time_limit_overdue else "Finish by"
     start_url: str | None
     cta_label: str | None
     if is_registered:
@@ -819,6 +832,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "includes_assessments": includes_assessments,
             "meta_description": meta_description,
             "json_ld": json_ld,
+            "time_limit_end": time_limit_end,
+            "time_limit_overdue": time_limit_overdue,
+            "time_limit_label": time_limit_label,
             "show_time_zone_to_learners": is_registered
             and shows_time_zone_to_learners(cast(Site, get_cached_site(request))),
         },
