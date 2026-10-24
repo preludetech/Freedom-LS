@@ -43,11 +43,10 @@ its own once spec 13 has landed.
 - This spec does not own either of `learner_interface`'s rule-2 edges (`course_applications`,
   `role_based_permissions`). Both sit in spec 13's files. This spec's grep check confirms neither
   edge is present in its own file set before it starts.
-- Spec 4 decides the root conftest's Playwright wildcard re-export scope and where
-  `course_with_scored_quiz`/`sit_quiz` live. This spec follows that decision as given. Today this
-  spec's files use neither fixture; only spec 13's course-player tests use them. So spec 4's
-  decision affects this spec only if it changes the fixtures' import path in a way every consumer
-  must follow.
+- The root conftest imports the Playwright fixtures by name and keeps them global.
+  `course_with_scored_quiz` and `sit_quiz` live in
+  `freedom_ls/learner_progress/tests/quiz_fixtures.py`. None of this spec's files use either
+  fixture; only spec 13's course-player tests do, so the move needs nothing from this spec.
 - Spec 12 may move `accounts`' integration tests into `learner_interface`. Those tests
   (`test_deferred_login.py` and similar) are registration/listing concerns, not form-runner or
   quiz-runner ones, so they are expected to land in spec 13's scope, not this spec's; this spec
