@@ -5,7 +5,7 @@ import factory
 from django.contrib.sites.models import Site
 from django.db import models as django_models
 
-from freedom_ls.site_aware_models.models import _thread_locals
+from freedom_ls.site_aware_models.models import SiteTimeZoneConfig, _thread_locals
 
 
 def _get_current_site() -> Site | None:
@@ -46,3 +46,12 @@ class SiteAwareFactory(factory.django.DjangoModelFactory):
         obj = model_class(*args, **kwargs)
         obj.save()
         return obj
+
+
+class SiteTimeZoneConfigFactory(SiteAwareFactory):
+    """Factory for SiteTimeZoneConfig, under the current `mock_site_context` site."""
+
+    class Meta:
+        model = SiteTimeZoneConfig
+
+    time_zone = "UTC"

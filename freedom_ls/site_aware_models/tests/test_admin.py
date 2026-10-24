@@ -14,6 +14,7 @@ from freedom_ls.site_aware_models.admin import (
     GuardedSiteAwareModelAdmin,
     admin_change_link,
 )
+from freedom_ls.site_aware_models.models import SiteTimeZoneConfig
 
 
 @pytest.fixture
@@ -89,3 +90,31 @@ class TestAdminChangeLink:
         link = admin_change_link(request, Site.objects.get_current())
 
         assert "<a " not in link
+
+
+@pytest.mark.django_db
+class TestSiteTimeZoneConfigAdmin:
+    def test_add_page_saves_a_row_for_the_current_site(
+        self, staff_client, mock_site_context: Site
+    ) -> None:
+        response = staff_client.post(
+            reverse("admin:freedom_ls_site_aware_models_sitetimezoneconfig_add"),
+            {"time_zone": "Africa/Johannesburg", "show_time_zone_to_learners": "on"},
+        )
+
+        assert response.status_code == 302
+        row = SiteTimeZoneConfig._base_manager.get(site=mock_site_context)
+        assert row.time_zone == "Africa/Johannesburg"
+        assert row.show_time_zone_to_learners is True
+
+    def test_add_page_refuses_an_unknown_zone(
+        self, staff_client, mock_site_context: Site
+    ) -> None:
+        response = staff_client.post(
+            reverse("admin:freedom_ls_site_aware_models_sitetimezoneconfig_add"),
+            {"time_zone": "Mars/Olympus"},
+        )
+
+        assert response.status_code == 200
+        assert "Not an IANA time zone name" in response.content.decode()
+        assert not SiteTimeZoneConfig._base_manager.exists()
