@@ -4984,9 +4984,6 @@ def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
     assert (entry.action, entry.actor) == ("cohort_registration.unregistered", actor)
 
 
-# cohort lifecycle, learner rename and setup email audit entries
-
-
 @pytest.mark.django_db
 def test_renaming_a_cohort_writes_an_entry_with_the_old_and_new_name(
     mock_site_context, logged_in_client
