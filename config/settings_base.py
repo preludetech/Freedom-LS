@@ -119,6 +119,7 @@ INSTALLED_APPS = [
     "freedom_ls.accounts",
     "freedom_ls.referral_tracking",
     "freedom_ls.organisations",
+    "freedom_ls.audit_log",
     "freedom_ls.learner_management",
     "freedom_ls.hr_attributes",
     "freedom_ls.registration_rules",

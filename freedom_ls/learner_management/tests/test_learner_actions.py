@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import pytest
 
+from django.db import transaction
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.learner_management.factories import (
@@ -33,8 +36,77 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import CourseNotOpenError
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
+
+
+@pytest.mark.django_db
+class TestLearnerStateAudit:
+    def test_deactivating_writes_one_entry_with_actor_organisation_and_label(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory(is_active=True)
+        actor = UserFactory()
+
+        deactivate_learner(learner, actor=actor)
+
+        assert_entry(
+            action="learner.deactivated",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+        )
+
+    def test_deactivating_an_inactive_learner_writes_nothing(self, mock_site_context):
+        learner = LearnerFactory(is_active=False)
+
+        deactivate_learner(learner, actor=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_reactivating_writes_a_learner_reactivated_entry(self, mock_site_context):
+        learner = LearnerFactory(is_active=False)
+        actor = UserFactory()
+
+        reactivate_learner(learner, actor=actor)
+
+        assert_entry(
+            action="learner.reactivated",
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+        )
+
+    def test_the_reason_is_stored_on_the_entry(self, mock_site_context):
+        learner = LearnerFactory(is_active=True)
+
+        deactivate_learner(learner, actor=UserFactory(), reason=" Left ")
+
+        assert AuditLogEntry.unscoped.get().reason == "Left"
+
+    def test_a_rollback_after_the_call_leaves_no_entry(self, mock_site_context):
+        learner = LearnerFactory(is_active=True)
+
+        def deactivate_then_fail() -> None:
+            with transaction.atomic():
+                deactivate_learner(learner, actor=UserFactory())
+                raise RuntimeError("rolled back")
+
+        with pytest.raises(RuntimeError, match="rolled back"):
+            deactivate_then_fail()
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_no_actor_writes_a_system_entry(self, mock_site_context):
+        learner = LearnerFactory(is_active=True)
+
+        deactivate_learner(learner)
+
+        entry = AuditLogEntry.unscoped.get()
+        assert (entry.actor, entry.actor_label) == (None, "")
 
 
 @pytest.mark.django_db

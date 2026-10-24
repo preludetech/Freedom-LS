@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any
+
+from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.indexes import GinIndex
+from django.db import models
+from django.db.models import Index
+from django.utils import timezone
+from django.utils.functional import cached_property
+
+from freedom_ls.audit_log.actions import AuditAction, get_audit_action
+from freedom_ls.audit_log.exceptions import AppendOnlyError
+from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
+
+
+class AuditLogEntryQuerySet(models.QuerySet["AuditLogEntry"]):
+    """`create()` and `bulk_create()` work; every call that would change or
+    remove existing rows raises, except the nulling of `actor` on user deletion."""
+
+    def update(self, **kwargs: object) -> int:
+        # Deleting a user nulls `actor` through this method (the deletion
+        # collector's SET_NULL), so exactly that update must pass. The
+        # `actor_label` column keeps the entry readable afterwards.
+        if kwargs != {"actor": None}:
+            raise AppendOnlyError()
+        return super().update(**kwargs)
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise AppendOnlyError()
+
+    def bulk_update(
+        self,
+        objs: Iterable[AuditLogEntry],
+        fields: Iterable[str],
+        batch_size: int | None = None,
+    ) -> int:
+        raise AppendOnlyError()
+
+
+class AuditLogEntry(SiteAwareModel):
+    """One audited change: who did what to which object, and when.
+
+    The `*_label` fields keep reading correctly after the actor or the target
+    is gone.
+    """
+
+    created_at = models.DateTimeField(default=timezone.now)
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation",
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    actor_label = models.CharField(max_length=255, blank=True)
+    action = models.CharField(max_length=100)
+    target_content_type = models.ForeignKey(
+        ContentType, on_delete=models.PROTECT, related_name="+"
+    )
+    target_object_id = models.CharField(max_length=255)
+    target = GenericForeignKey("target_content_type", "target_object_id")
+    target_label = models.CharField(max_length=255)
+    subjects = ArrayField(models.CharField(max_length=300))
+    reason = models.CharField(max_length=500, blank=True)
+    details = models.JSONField(default=dict, blank=True)
+    run_id = models.UUIDField(null=True, blank=True)
+
+    objects = SiteAwareManager.from_queryset(AuditLogEntryQuerySet)()
+    unscoped = AuditLogEntryQuerySet.as_manager()
+
+    class Meta:
+        # Django's own internals read through the base manager; naming the
+        # unscoped one makes them carry the append-only guards too.
+        base_manager_name = "unscoped"
+        ordering = ("-created_at", "-id")
+        indexes = [
+            Index(fields=["organisation", "-created_at"]),
+            Index(fields=["run_id"]),
+            GinIndex(fields=["subjects"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.action}: {self.target_label}"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise AppendOnlyError()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise AppendOnlyError()
+
+    @cached_property
+    def audit_action(self) -> AuditAction:
+        return get_audit_action(self.action)
+
+    @property
+    def label(self) -> str:
+        return self.audit_action.label
+
+    @property
+    def description(self) -> str:
+        describe = self.audit_action.describe
+        return describe(self) if describe else ""

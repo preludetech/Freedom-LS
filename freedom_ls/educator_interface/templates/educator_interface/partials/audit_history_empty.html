@@ -1,0 +1,5 @@
+{% comment %}
+The History table's empty state. Renders with the table's own context, where
+`panel` is the bound history panel and carries the message for its subject.
+{% endcomment %}
+<c-panel-empty-state :message="panel.empty_message" />

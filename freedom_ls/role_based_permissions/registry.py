@@ -104,6 +104,8 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_form_engine.add_questionanswer": "Can add question answer",
     # "freedom_ls_form_engine.change_questionanswer": "Can change question answer",
     # "freedom_ls_form_engine.delete_questionanswer": "Can delete question answer",
+    # --- audit_log app (label: freedom_ls_audit_log) ---
+    "freedom_ls_audit_log.view_auditlogentry": "Can view the audit log",
     # =========================================================================
     # Custom permissions (FUTURE — add via model Meta.permissions when needed)
     # These are for capabilities that don't map to standard CRUD operations.

@@ -33,6 +33,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -726,11 +728,64 @@ class LearnerCoursesStack(PanelStack):
     children = {"courses": LearnerCoursesPanel}
 
 
-class LearnerHistoryPanel(Panel):
-    model = Learner
+class AuditLogEntryTable(DataTable):
+    page_size = 25
+    empty_state_template = "educator_interface/partials/audit_history_empty.html"
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        return AuditLogEntry.objects.filter(organisation=organisation).select_related(
+            "site"
+        )
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="When",
+                template="educator_interface/data-table-cells/audit_when.html",
+            ),
+            Column(
+                header="Who",
+                template="educator_interface/data-table-cells/audit_who.html",
+            ),
+            Column(
+                header="What",
+                template="educator_interface/data-table-cells/audit_what.html",
+                card="primary",
+            ),
+            Column(
+                header="Details",
+                template="educator_interface/data-table-cells/audit_details.html",
+            ),
+        ]
+
+
+class HistoryPanel(DataTablePanel):
+    """The History tab of one learner or cohort: every entry whose subjects name it."""
+
     title = "History"
-    template_name = "educator_interface/panels/learner_history.html"
+    data_table = AuditLogEntryTable
+    table_key = "history"
+    capability = "freedom_ls_audit_log.view_auditlogentry"
+    empty_message: str
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        return (
+            super()
+            .get_queryset(request)
+            .filter(subjects__contains=[subject_key(cast(Model, self.instance))])
+        )
+
+
+class LearnerHistoryPanel(HistoryPanel):
+    model = Learner
     refresh_events = (LEARNER_CHANGED,)
+    empty_message = (
+        "No history for this learner yet. Actions such as moving or "
+        "deactivating them are recorded here."
+    )
 
 
 class LearnerTabSet(TabSet):

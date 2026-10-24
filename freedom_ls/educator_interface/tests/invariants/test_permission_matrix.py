@@ -66,6 +66,7 @@ RELATIONS_FOR_KIND: dict[str, tuple[str, ...]] = {
 }
 
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
+VIEW_AUDITLOGENTRY = "freedom_ls_audit_log.view_auditlogentry"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 ADD_COHORT = "freedom_ls_learner_management.add_cohort"
@@ -127,6 +128,27 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": {("learner", OWN)},
+    },
+    VIEW_AUDITLOGENTRY: {
+        "site_admin": {
+            ("organisation", OWN),
+            ("organisation", OTHER_ORGANISATION),
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {
+            ("organisation", OWN),
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+        },
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
     },
     ADD_COHORT: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
@@ -319,6 +341,7 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     VIEW_ORGANISATION: ("organisation",),
     VIEW_COHORT: ("cohort",),
     VIEW_LEARNER: ("learner",),
+    VIEW_AUDITLOGENTRY: ("organisation", "cohort", "learner"),
     ADD_COHORT: ("organisation",),
     CHANGE_COHORT: ("cohort",),
     DELETE_COHORT: ("cohort",),

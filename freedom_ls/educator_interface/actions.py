@@ -400,7 +400,7 @@ class LearnerStateAction(PanelAction):
     capability = "freedom_ls_learner_management.change_learner"
     target_state: bool
 
-    def perform(self, learner: Learner) -> bool:
+    def perform(self, learner: Learner, actor: User) -> bool:
         raise NotImplementedError
 
     def is_offered(self, ctx: PanelContext) -> bool:
@@ -417,7 +417,7 @@ class LearnerStateAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        if not self.perform(learner):
+        if not self.perform(learner, cast("User", ctx.request.user)):
             return render(
                 ctx.request,
                 "educator_interface/modal/learner_already_in_state.html",
@@ -435,8 +435,8 @@ class DeactivateLearnerAction(LearnerStateAction):
     target_state = False
     template_name = "educator_interface/modal/deactivate_learner_confirmation.html"
 
-    def perform(self, learner: Learner) -> bool:
-        return deactivate_learner(learner)
+    def perform(self, learner: Learner, actor: User) -> bool:
+        return deactivate_learner(learner, actor=actor)
 
 
 class ReactivateLearnerAction(LearnerStateAction):
@@ -445,8 +445,8 @@ class ReactivateLearnerAction(LearnerStateAction):
     target_state = True
     template_name = "educator_interface/modal/reactivate_learner_confirmation.html"
 
-    def perform(self, learner: Learner) -> bool:
-        return reactivate_learner(learner)
+    def perform(self, learner: Learner, actor: User) -> bool:
+        return reactivate_learner(learner, actor=actor)
 
 
 def learner_state_actions() -> list[PanelAction]:

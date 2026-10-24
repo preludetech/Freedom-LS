@@ -16,6 +16,8 @@ from freedom_ls.accounts.account_setup import (
     match_or_create_user,
     send_account_setup_email,
 )
+from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -54,14 +56,46 @@ def _set_learner_active(learner: Learner, is_active: bool, event_type: str) -> b
     return True
 
 
-def deactivate_learner(learner: Learner) -> bool:
+def _change_learner_state(
+    learner: Learner,
+    is_active: bool,
+    action: str,
+    event_type: str,
+    actor: User | None,
+    reason: str,
+) -> bool:
+    """Flip `Learner.is_active` and record `action`, in one transaction;
+    False, writing nothing, when the learner was already in that state."""
+    with transaction.atomic():
+        if not _set_learner_active(learner, is_active, event_type=event_type):
+            return False
+        record_entry(
+            action=action,
+            actor=actor,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            reason=reason,
+        )
+    return True
+
+
+def deactivate_learner(
+    learner: Learner, *, actor: User | None = None, reason: str = ""
+) -> bool:
     """Remove the learner's access. Registrations, memberships and course
     progress records are kept."""
-    return _set_learner_active(learner, False, "learner.deactivated")
+    return _change_learner_state(
+        learner, False, "learner.deactivated", "learner.deactivated", actor, reason
+    )
 
 
-def reactivate_learner(learner: Learner) -> bool:
-    return _set_learner_active(learner, True, "learner.reactivated")
+def reactivate_learner(
+    learner: Learner, *, actor: User | None = None, reason: str = ""
+) -> bool:
+    return _change_learner_state(
+        learner, True, "learner.reactivated", "learner.reactivated", actor, reason
+    )
 
 
 def _check_cohort(learner: Learner, cohort: Cohort) -> None:
@@ -227,7 +261,7 @@ def _add_one(
         learner = ensure_learner(user, organisation)
         outcome = AddOutcome.CREATED if account_created else AddOutcome.JOINED
         _fire("learner.added", learner, {"account_created": account_created})
-    elif reactivate_learner(existing):
+    elif _set_learner_active(existing, True, event_type="learner.reactivated"):
         learner, outcome = existing, AddOutcome.REACTIVATED
     else:
         learner, outcome = existing, AddOutcome.ALREADY_LEARNER

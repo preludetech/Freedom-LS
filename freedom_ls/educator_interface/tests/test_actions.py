@@ -18,6 +18,7 @@ from django.urls import reverse
 from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
@@ -4761,3 +4762,26 @@ def test_the_cohort_dialog_does_not_tell_an_organisation_admin_about_rank(
     text = _text(_cohort_overview_lookup(admin_client, organisation, cohort))
 
     assert "You can only give roles at or below your own." not in text
+
+
+@pytest.mark.django_db
+def test_deactivating_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"learners/{learner.pk}/__actions/deactivate",
+            },
+        ),
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("learner.deactivated", actor)

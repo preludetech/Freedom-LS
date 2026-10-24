@@ -7,7 +7,7 @@ import io
 import json
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
 
@@ -25,6 +25,8 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.factories import AuditLogEntryFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
     SendResult,
@@ -71,6 +73,8 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
+
+QUERY_BUDGET = 60
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -1379,9 +1383,179 @@ def test_the_courses_tab_says_nothing_completed_for_a_registration_without_activ
 def test_the_history_tab_renders_its_empty_state(staff_client: Client):
     learner = LearnerFactory(organisation=OrganisationFactory())
 
-    document = _learner_page(staff_client, learner, "history")
+    response = staff_client.get(
+        _interface_url(
+            learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+        )
+    )
 
-    assert "Nothing has been recorded" in _region_text(document)
+    template_names = [t.name for t in response.templates]
+    assert "educator_interface/partials/audit_history_empty.html" in template_names
+
+
+def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
+    return cast(
+        AuditLogEntry,
+        AuditLogEntryFactory(
+            target=learner,
+            organisation=learner.organisation,
+            action="learner.deactivated",
+            **overrides,
+        ),
+    )
+
+
+def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+    return [
+        [cell.text_content().strip() for cell in row.cssselect("td")]
+        for row in document.cssselect("[data-tab-set] tbody tr")
+    ]
+
+
+@pytest.mark.django_db
+def test_the_history_tab_lists_entries_naming_the_learner_only(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    other = LearnerFactory(organisation=organisation)
+    _history_entry(learner, actor_label="Ada Admin")
+    _history_entry(other, actor_label="Someone Else")
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [(row[1], row[2]) for row in rows] == [("Ada Admin", "Learner deactivated")]
+
+
+@pytest.mark.django_db
+def test_the_history_tab_lists_the_newest_entry_first(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    now = timezone.now()
+    _history_entry(learner, reason="older", created_at=now - timedelta(hours=1))
+    _history_entry(learner, reason="newer", created_at=now)
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [row[3] for row in rows] == ["newer", "older"]
+
+
+@pytest.mark.django_db
+def test_the_history_tab_pages_stably_when_entries_share_a_timestamp(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    when = timezone.now()
+    for number in range(26):
+        _history_entry(learner, reason=f"entry {number}", created_at=when)
+
+    first = _history_rows(_learner_page(staff_client, learner, "history"))
+    second_page = staff_client.get(
+        _interface_url(
+            learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+        ),
+        {"history-page": 2},
+    )
+    second = _history_rows(lxml.html.fromstring(second_page.content.decode()))
+
+    reasons = [row[3] for row in first + second]
+    assert (len(first), len(second), len(set(reasons))) == (25, 1, 26)
+
+
+@pytest.mark.django_db
+def test_the_history_tab_names_the_system_when_there_is_no_actor(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, actor_label="")
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert rows[0][1] == "System"
+
+
+@pytest.mark.django_db
+def test_the_history_tab_escapes_user_derived_text(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, actor_label="<b>actor</b>", reason="<b>why</b>")
+
+    response = staff_client.get(
+        _interface_url(
+            learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+        )
+    )
+
+    content = response.content.decode()
+    assert "&lt;b&gt;actor&lt;/b&gt;" in content
+    assert "&lt;b&gt;why&lt;/b&gt;" in content
+    assert "<b>actor</b>" not in content
+
+
+@pytest.mark.django_db
+def test_the_history_tab_shows_the_code_of_an_unregistered_action(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    AuditLogEntryFactory(
+        target=learner, organisation=learner.organisation, action="widget.exploded"
+    )
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert rows[0][2] == "widget.exploded"
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_no_history_tab_and_a_404_on_its_url(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    client = logged_in_client(educator)
+
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"learners/{learner.pk}")
+    )
+    response = client.get(
+        _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/history")
+    )
+
+    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
+    hrefs = [a.get("href").rsplit("/", 1)[-1] for a in nav.cssselect("a")]
+    assert ("history" in hrefs, response.status_code) == (False, 404)
+
+
+@pytest.mark.django_db
+def test_an_admin_of_another_organisation_gets_a_404_on_the_history_tab(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    other_organisation = OrganisationFactory()
+    grantor = LearnerFactory(user__superuser=True).user
+    admin = LearnerFactory(user__staff=True, organisation=other_organisation).user
+    assign_role(grantor, admin, "organisation_admin", other_organisation)
+
+    response = logged_in_client(admin).get(
+        _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/history")
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_history_tab_renders_within_a_query_budget(
+    staff_client: Client, django_assert_max_num_queries
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    for number in range(25):
+        _history_entry(learner, reason=f"entry {number}")
+    url = _interface_url(
+        learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+    )
+
+    with django_assert_max_num_queries(QUERY_BUDGET):
+        staff_client.get(url)
 
 
 @pytest.mark.django_db
