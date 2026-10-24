@@ -82,6 +82,7 @@ from freedom_ls.educator_interface.actions import (
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
+    bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
@@ -155,6 +156,7 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
     navigation_response,
 )
+from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
@@ -255,7 +257,7 @@ class OrganisationSectionConfig(SectionConfigBase):
 # Data Tables
 # top level filters (searchable dropdown)
 #   use HTMX to only reload that one panel
-# Checkboxes and bulk actions (eg. Delete, add to cohort, remove from cohort)
+# Bulk delete
 # Export as csv
 #
 # instance edit
@@ -1167,6 +1169,10 @@ class CohortConfig(OrganisationSectionConfig, ListViewConfig):
         return [CreateCohortAction()]
 
     @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return list(bulk_actions_for_table(cls.table_key))
+
+    @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
@@ -1191,6 +1197,10 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [AddLearnersAction()]
+
+    @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return list(bulk_actions_for_table(cls.table_key))
 
     @classmethod
     def get_instance_label(cls, instance: Model) -> str:

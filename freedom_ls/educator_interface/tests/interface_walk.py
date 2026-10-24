@@ -2,7 +2,7 @@
 
 `test_config_authorisation.py` uses the path strings it enumerates for its
 404 sweep. `test_permission_matrix.py` uses the actions and their contexts to
-check that every capability an action declares is covered by the matrix.
+check that every capability an action or bulk action declares is covered by the matrix.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from freedom_ls.comms.factories import ConversationFactory
 from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.actions import EducatorBulkAction
 from freedom_ls.educator_interface.views import interface_config
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import Cohort, Learner
@@ -54,7 +55,15 @@ class WalkedAction(NamedTuple):
     ctx: PanelContext
 
 
-type Walked = WalkedPanel | WalkedAction
+class WalkedBulkAction(NamedTuple):
+    """A path this walk reached that submits a bulk action on a list."""
+
+    path: str
+    action: EducatorBulkAction
+    ctx: PanelContext
+
+
+type Walked = WalkedPanel | WalkedAction | WalkedBulkAction
 
 
 def _seed_instance(
@@ -153,6 +162,14 @@ def walk_interface(organisation: Organisation) -> list[Walked]:
                     f"{url_name}/__actions/{action.action_name}", action, table.ctx
                 )
                 for action in section.get_actions(request)
+            )
+            walked.extend(
+                WalkedBulkAction(
+                    f"{url_name}/__actions/{action.action_name}",
+                    cast(EducatorBulkAction, action),
+                    table.ctx,
+                )
+                for action in section.get_bulk_actions(request)
             )
             if section.instance_view is None:
                 continue

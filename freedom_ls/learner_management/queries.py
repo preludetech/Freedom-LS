@@ -24,6 +24,7 @@ from freedom_ls.learner_management.capabilities import (
     _granted_cohorts,
     _granted_organisations,
     _site_grants,
+    can,
     roles_granting,
 )
 from freedom_ls.learner_management.models import (
@@ -64,6 +65,8 @@ VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
+CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+BULK_MANAGE_LEARNERS = "freedom_ls_learner_management.bulk_manage_learners"
 
 
 class ResolvedRegistration(NamedTuple):
@@ -757,6 +760,28 @@ def learners_visible_to(
 
     roles = roles_granting(VIEW_LEARNER, organisation.site)
     return within.filter(visible_learners_expression(user, roles, organisation.site))
+
+
+def can_on_any(user: RequestUser, organisation: Organisation, capability: str) -> bool:
+    """Whether `capability` holds for the organisation or for at least one of
+    its cohorts, the test for offering an action that acts on many learners."""
+    return (
+        can(user, capability, organisation)
+        or cohorts_visible_to(user, organisation, capability=capability).exists()
+    )
+
+
+def learners_permitted_for(
+    user: RequestUser, organisation: Organisation, capability: str
+) -> QuerySet[Learner]:
+    """Learners the user may apply `capability` to: every visible learner for
+    an organisation-level grant, otherwise the members of the cohorts that
+    grant it."""
+    visible = learners_visible_to(user, organisation, include_removed=True)
+    if can(user, capability, organisation):
+        return visible
+    cohorts = cohorts_visible_to(user, organisation, capability=capability)
+    return visible.filter(cohortmembership__cohort__in=cohorts).distinct()
 
 
 def educators_of(
