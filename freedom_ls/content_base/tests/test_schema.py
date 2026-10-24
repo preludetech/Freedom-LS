@@ -12,7 +12,6 @@ import pytest
 from pydantic import ValidationError
 
 from freedom_ls.content_base.schema import (
-    DUE_DATE_FIELD_NAMES,
     SCHEMAS,
     ContentType,
     DueDateFields,
@@ -27,14 +26,6 @@ class _DueFile(DueDateFields):
     """DueDateFields plus the file_path its error messages name."""
 
     file_path: str = "topics/intro.md"
-
-
-def test_due_date_field_names_are_the_three_authored_fields() -> None:
-    assert {
-        "due_date",
-        "due_time",
-        "due_days_after_registration",
-    } == DUE_DATE_FIELD_NAMES
 
 
 @pytest.mark.parametrize(

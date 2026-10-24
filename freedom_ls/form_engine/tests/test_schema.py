@@ -40,20 +40,6 @@ def test_form_carries_due_days_after_registration():
     assert form.due_days_after_registration == 21
 
 
-def test_form_refuses_a_due_date_together_with_due_days():
-    with pytest.raises(ValidationError, match="not both"):
-        Form.model_validate(
-            {
-                "content_type": "FORM",
-                "file_path": "forms/application/form.md",
-                "title": "Application form",
-                "strategy": "UNSCORED",
-                "due_date": date(2026, 3, 14),
-                "due_days_after_registration": 21,
-            }
-        )
-
-
 def test_file_upload_question_validates():
     question = FormQuestion.model_validate(
         {
