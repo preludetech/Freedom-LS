@@ -3638,3 +3638,61 @@ def test_the_audit_log_escapes_a_target_label_in_the_table_and_the_card(
     assert "&lt;b&gt;bold&lt;/b&gt;" in html
     assert "<b>bold</b>" not in html
     assert html.count("&lt;b&gt;bold&lt;/b&gt;") >= 2
+
+
+@pytest.mark.django_db
+def test_the_audit_log_filters_narrow_by_who_what_and_when(staff_client: Client):
+    organisation = OrganisationFactory()
+    ada = UserFactory(first_name="Ada", last_name="Admin")
+    AuditLogEntryFactory(
+        target=organisation, actor=ada, action="cohort.created", target_label="Match"
+    )
+    AuditLogEntryFactory(
+        target=organisation,
+        actor=ada,
+        action="role.granted",
+        target_label="Wrong action",
+    )
+    AuditLogEntryFactory(
+        target=organisation,
+        actor=None,
+        action="cohort.created",
+        target_label="Wrong actor",
+    )
+
+    document = _get_document(
+        staff_client,
+        f"{_audit_log_url(organisation)}?audit_log-who={ada.pk}&audit_log-what=cohort.created&audit_log-when=today",
+    )
+
+    assert [row[3] for row in _audit_log_rows(document)] == ["Match"]
+
+
+@pytest.mark.django_db
+def test_a_tampered_filter_value_renders_the_unfiltered_list(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="One")
+    AuditLogEntryFactory(target=organisation, target_label="Two")
+
+    document = _get_document(
+        staff_client,
+        f"{_audit_log_url(organisation)}?audit_log-who=not-a-user&audit_log-what=bogus.code&audit_log-when=forever",
+    )
+
+    assert len(_audit_log_rows(document)) == 2
+
+
+@pytest.mark.django_db
+def test_the_filtered_audit_log_empty_state_offers_a_clear_link(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, action="cohort.created")
+
+    response = staff_client.get(
+        f"{_audit_log_url(organisation)}?audit_log-what=role.granted"
+    )
+
+    html = response.content.decode()
+    template_names = [t.name for t in response.templates]
+    assert "educator_interface/partials/audit_log_empty.html" in template_names
+    assert "No entries match these filters." in html
+    assert "Clear filters" in html

@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import pytest
+import time_machine
 
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.audit_log.factories import AuditLogEntryFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.filters import (
+    AuditActionFilter,
+    AuditActorFilter,
+    AuditPeriodFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
@@ -433,3 +440,159 @@ def test_the_role_choices_carry_the_display_names(members_request):
         ("cohort_admin", "Cohort admin"),
         ("cohort_viewer", "Cohort viewer"),
     ]
+
+
+@pytest.fixture
+def audit_request(site_aware_request: RequestFactory):
+    organisation = OrganisationFactory()
+    request = site_aware_request.get("/")
+    request.user = UserFactory(superuser=True)
+    request.organisation = organisation
+    return request, organisation
+
+
+def _entry_pks(request, filter_, values: list[str]) -> set:
+    queryset = AuditLogEntry.objects.filter(organisation=request.organisation)
+    return set(filter_.apply(request, queryset, values).values_list("pk", flat=True))
+
+
+@pytest.mark.django_db
+def test_actor_choices_are_system_then_this_organisations_actors_by_name(audit_request):
+    request, organisation = audit_request
+    zed = UserFactory(first_name="Zed", last_name="Last")
+    ada = UserFactory(first_name="Ada", last_name="First")
+    AuditLogEntryFactory(target=organisation, actor=zed)
+    AuditLogEntryFactory(target=organisation, actor=ada)
+    AuditLogEntryFactory(target=organisation, actor=ada)
+    AuditLogEntryFactory(actor=UserFactory(first_name="Other"))
+
+    choices = AuditActorFilter().get_choices(request)
+
+    assert choices == [
+        ("system", "System"),
+        (str(ada.pk), "Ada First"),
+        (str(zed.pk), "Zed Last"),
+    ]
+
+
+@pytest.mark.django_db
+def test_an_actor_filter_value_outside_this_organisation_is_dropped(audit_request):
+    request, organisation = audit_request
+    ada = UserFactory()
+    AuditLogEntryFactory(target=organisation, actor=ada)
+    outsider = AuditLogEntryFactory(actor=UserFactory()).actor
+
+    kept = AuditActorFilter().validate(
+        [str(ada.pk), str(outsider.pk), "nonsense"], request
+    )
+
+    assert kept == [str(ada.pk)]
+
+
+@pytest.mark.django_db
+def test_the_actor_filter_selects_one_value_at_a_time():
+    assert AuditActorFilter().toggled(["system"], "42") == ["42"]
+
+
+@pytest.mark.django_db
+def test_system_matches_entries_with_no_actor_and_no_stored_name(audit_request):
+    request, organisation = audit_request
+    ada = UserFactory()
+    system = AuditLogEntryFactory(target=organisation, actor=None, actor_label="")
+    AuditLogEntryFactory(target=organisation, actor=ada, actor_label="Ada")
+    AuditLogEntryFactory(target=organisation, actor=None, actor_label="Deleted Dan")
+
+    assert _entry_pks(request, AuditActorFilter(), ["system"]) == {system.pk}
+
+
+@pytest.mark.django_db
+def test_a_user_value_matches_only_that_actors_entries(audit_request):
+    request, organisation = audit_request
+    ada = UserFactory()
+    mine = AuditLogEntryFactory(target=organisation, actor=ada)
+    AuditLogEntryFactory(target=organisation, actor=UserFactory())
+    AuditLogEntryFactory(target=organisation, actor=None)
+
+    assert _entry_pks(request, AuditActorFilter(), [str(ada.pk)]) == {mine.pk}
+
+
+@pytest.mark.django_db
+def test_the_action_filter_narrows_by_code(audit_request):
+    request, organisation = audit_request
+    created = AuditLogEntryFactory(target=organisation, action="cohort.created")
+    AuditLogEntryFactory(target=organisation, action="role.granted")
+
+    assert _entry_pks(request, AuditActionFilter(), ["cohort.created"]) == {created.pk}
+
+
+@pytest.mark.django_db
+def test_the_action_choices_are_the_registered_actions_with_labels(audit_request):
+    request, _ = audit_request
+
+    choices = dict(AuditActionFilter().get_choices(request))
+
+    assert choices["cohort.created"] == "Cohort created"
+    assert AuditActionFilter().validate(["cohort.created", "nope"], request) == [
+        "cohort.created"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_period_filter_offers_five_presets_and_no_default():
+    period = AuditPeriodFilter()
+
+    assert [value for value, _ in period.choices] == [
+        "today",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+    ]
+    assert period.default == ()
+    assert period.toggled(["7d"], "30d") == ["30d"]
+
+
+def _entry_at(organisation, moment: datetime) -> AuditLogEntry:
+    with time_machine.travel(moment, tick=False):
+        return cast(AuditLogEntry, AuditLogEntryFactory(target=organisation))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("preset", "days_back"),
+    [("today", 0), ("7d", 7), ("30d", 30), ("90d", 90), ("12m", 365)],
+)
+def test_each_period_preset_starts_that_many_days_before_local_midnight(
+    audit_request, preset: str, days_back: int
+):
+    request, organisation = audit_request
+    now = datetime(2026, 10, 24, 15, 30, tzinfo=UTC)
+    inside = _entry_at(
+        organisation,
+        datetime(2026, 10, 24, 0, 0, tzinfo=UTC) - timedelta(days=days_back),
+    )
+    _entry_at(
+        organisation,
+        datetime(2026, 10, 23, 23, 59, 59, tzinfo=UTC) - timedelta(days=days_back),
+    )
+
+    with time_machine.travel(now, tick=False):
+        result = _entry_pks(request, AuditPeriodFilter(), [preset])
+
+    assert result == {inside.pk}
+
+
+@pytest.mark.django_db
+def test_the_period_midnight_is_midnight_in_the_project_time_zone(
+    audit_request, settings
+):
+    settings.TIME_ZONE = "Africa/Johannesburg"
+    request, organisation = audit_request
+    # Johannesburg is UTC+2, so local midnight on the 24th is 22:00 UTC on the 23rd.
+    before = _entry_at(organisation, datetime(2026, 10, 23, 21, 59, tzinfo=UTC))
+    after = _entry_at(organisation, datetime(2026, 10, 23, 22, 0, tzinfo=UTC))
+
+    with time_machine.travel(datetime(2026, 10, 24, 10, 0, tzinfo=UTC), tick=False):
+        result = _entry_pks(request, AuditPeriodFilter(), ["today"])
+
+    assert (before.pk in result, after.pk in result) == (False, True)

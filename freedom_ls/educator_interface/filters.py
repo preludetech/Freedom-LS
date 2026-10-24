@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from functools import reduce
 from operator import or_
 from typing import TYPE_CHECKING, cast
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest
+from django.utils import timezone
 
+from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.actions import audit_actions
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
@@ -31,7 +36,6 @@ from freedom_ls.panel_framework.filters import (
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
-    from freedom_ls.accounts.models import User
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
@@ -175,3 +179,86 @@ class MemberRoleFilter(ChoiceFilter):
             .filter(role__in=values)
             .values("user_id")
         )
+
+
+class AuditActorFilter(TableFilter):
+    """Narrows audit entries to one actor, or to the system.
+
+    Choices are the users who acted on the request's organisation. An entry
+    whose actor was deleted keeps only a stored name, so it matches "System"
+    no more than it matches any user.
+    """
+
+    SYSTEM = "system"
+    widget = "select"
+
+    def __init__(self) -> None:
+        super().__init__("who", "Who", lookup="")
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        scoped = cast("OrganisationScopedRequest", request)
+        actors = User.objects.filter(
+            pk__in=AuditLogEntry.objects.filter(
+                organisation=scoped.organisation, actor__isnull=False
+            ).values("actor_id")
+        ).order_by("first_name", "last_name", "email")
+        return [
+            (self.SYSTEM, "System"),
+            *((str(actor.pk), actor.display_name) for actor in actors),
+        ]
+
+    def toggled(self, values: list[str], value: str) -> list[str]:
+        return [value]
+
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
+        condition = Q(actor_id__in=[v for v in values if v != self.SYSTEM])
+        if self.SYSTEM in values:
+            condition |= Q(actor__isnull=True, actor_label="")
+        return queryset.filter(condition)
+
+
+class AuditActionFilter(ChoiceFilter):
+    """Narrows audit entries to the chosen actions, offering every registered
+    action."""
+
+    def __init__(self) -> None:
+        super().__init__("what", "What", lookup="action")
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        return [(code, action.label) for code, action in audit_actions().items()]
+
+
+class AuditPeriodFilter(ChoiceFilter):
+    """Narrows audit entries to those made since a preset point, counted back
+    from local midnight in the project's time zone."""
+
+    widget = "select"
+    DAYS_BACK = {"today": 0, "7d": 7, "30d": 30, "90d": 90, "12m": 365}
+
+    def __init__(self) -> None:
+        super().__init__(
+            "when",
+            "When",
+            lookup="created_at",
+            choices=[
+                ("today", "Today"),
+                ("7d", "Last 7 days"),
+                ("30d", "Last 30 days"),
+                ("90d", "Last 90 days"),
+                ("12m", "Last 12 months"),
+            ],
+        )
+
+    def toggled(self, values: list[str], value: str) -> list[str]:
+        return [value]
+
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
+        midnight = timezone.localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        start = midnight - timedelta(days=self.DAYS_BACK[values[0]])
+        return queryset.filter(created_at__gte=start)

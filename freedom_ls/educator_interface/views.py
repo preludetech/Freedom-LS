@@ -91,6 +91,9 @@ from freedom_ls.educator_interface.events import (
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
+    AuditActionFilter,
+    AuditActorFilter,
+    AuditPeriodFilter,
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
@@ -1778,6 +1781,10 @@ class OrganisationAuditLogTable(AuditLogEntryTable):
             attr="target_label",
         )
         return [when, who, what, target, details]
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
 
 
 class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):
