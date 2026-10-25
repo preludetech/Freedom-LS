@@ -41,7 +41,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] Make the bulk confirmation sentences imperative in educator_interface/actions.py (TDD: tests updated first and seen failing) and reword spec R1.3 to match
 - [x] Rewrite QA plan's 'Stale selections' bullet and step 6.12 to match spec R1.4 (keys mode skips a changed row; a count change gives the 422)
 - [x] Add a no-JS test for confirming a picker bulk action, and add the picker steps to QA plan step 6.13
-- [ ] Re-run QA steps 6.12 and 6.13 (picker, JS off) against the updated QA plan
+- [x] Re-run QA steps 6.12 and 6.13 (picker, JS off) against the updated QA plan
 
 ## 4. Documentation and pull request
 
