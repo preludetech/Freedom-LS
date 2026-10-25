@@ -13,6 +13,7 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 `/sdd:roadmap`; `/sdd:start` and `/sdd:finish_worktree` keep it current between syncs.
 
 - `cookie-banner`
+- `corporate-job-course-recommendations-4-educator-interface-screens`
 - `deadlines-2-consequence-policy`
 - `deadlines-8-per-placement-dates`
 - `failed-login-follow-up`
@@ -380,7 +381,6 @@ recommend, then the educator-interface screens and a CSV import.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 3 | `corporate-job-course-recommendations-3-recommend-outcome` | The `recommend` outcome: `RecommendedCourse` gains provenance and uniqueness, rules create and retract recommendations, every registration path clears one. | `corporate-job-course-recommendations-2-registration-rules` | in progress |
 | 4 | `corporate-job-course-recommendations-4-educator-interface-screens` | Educator-interface screens for the attribute lists, a learner's attributes, registration rules and their preview. | `corporate-job-course-recommendations-3-recommend-outcome`, `educator-interface-7-learner-administration` | next |
 | 5 | `corporate-job-course-recommendations-5-attribute-csv-import` | Import learners' HR attributes by CSV through the bulk import flow, with a preview, then one rule evaluation per import. | `corporate-job-course-recommendations-2-registration-rules`, `educator-interface-8-bulk-operations` | next |
 
