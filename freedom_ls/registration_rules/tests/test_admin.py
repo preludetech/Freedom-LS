@@ -1756,3 +1756,20 @@ def test_the_changelist_costs_a_bounded_number_of_queries_however_many_rows(
         response = staff_client.get(reverse(RECOMMENDED_CHANGELIST))
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_the_recommend_preview_says_who_is_recommended_on_the_course(
+    staff_client, recommend_rule, department
+):
+    # Arrange
+    _learner_in(recommend_rule.organisation, department=department)
+
+    # Act
+    response = _post_change(
+        staff_client, recommend_rule, is_enabled=True, departments=[department.pk]
+    )
+
+    # Assert
+    page = " ".join(response.content.decode().split())
+    assert f"changes who is recommended on {recommend_rule.course}." in page
