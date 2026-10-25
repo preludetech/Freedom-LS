@@ -13,6 +13,7 @@ Regenerate this file whenever the graph changes: `/app_map`.
 ```mermaid
 flowchart TB
     accounts
+    audit_log
     base
     blog
     comms
@@ -54,6 +55,10 @@ flowchart TB
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    audit_log --> accounts
+    audit_log --> base
+    audit_log --> organisations
+    audit_log --> site_aware_models
     base --> learner_management
     blog --> base
     blog --> content_engine
@@ -106,6 +111,7 @@ flowchart TB
     dev_tools --> learner_progress
     dev_tools --> organisations
     educator_interface --> accounts
+    educator_interface --> audit_log
     educator_interface --> comms
     educator_interface --> content_engine
     educator_interface --> learner_management
@@ -141,6 +147,7 @@ flowchart TB
     learner_interface --> site_aware_models
     learner_interface --> webhooks
     learner_management --> accounts
+    learner_management --> audit_log
     learner_management --> content_engine
     learner_management --> organisations
     learner_management --> role_based_permissions
@@ -266,6 +273,7 @@ flowchart TB
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
+| audit_log | accounts, base, organisations, site_aware_models | — |
 | base | learner_management | accounts, content_engine, organisations, role_based_permissions |
 | blog | base, content_engine | — |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
@@ -278,14 +286,14 @@ flowchart TB
 | deadlines | accounts, content_engine, learner_management, learner_progress, site_aware_models | — |
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications, registration_rules |
-| educator_interface | accounts, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
+| educator_interface | accounts, audit_log, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
 | form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
 | learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
-| learner_management | accounts, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
+| learner_management | accounts, audit_log, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
