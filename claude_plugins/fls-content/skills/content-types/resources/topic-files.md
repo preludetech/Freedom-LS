@@ -18,9 +18,31 @@ directory-with-`content.md` form is preferred.
 | `title` | `str` | Yes | Rendered as the page H1 by the template |
 | `subtitle` | `str` | No | Optional subtitle shown beneath the title |
 | `description` | `str` | No | Optional description (not in body) |
+| `due_date` | date | No | Fixed due date as a YAML date, e.g. `2026-03-14`. A date with a time (`2026-03-14 00:00:00`) is rejected. Not allowed together with `due_days_after_registration`. |
+| `due_days_after_registration` | `int` (>= 0) | No | Due this many days after the learner registers for the course. Not allowed together with `due_date`. |
+| `due_time` | `str` | No | Time of day the item falls due, a **quoted** 24-hour `"HH:MM"` such as `"17:00"`. Needs `due_date` or `due_days_after_registration`. Without it the item is due at the end of that day. |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata for downstream use |
+
+### Due dates
+
+A topic can carry a due date, set with **one** of `due_date` or `due_days_after_registration`, plus an
+optional `due_time`. Write these in the topic's own `content.md` frontmatter, not in the course's
+`children:` list. `due_time` must be quoted: YAML reads an unquoted `17:00` as a number, and it is
+rejected. With no `due_time` the item is due at the end of the day. Remove the fields and re-run
+`content_save` to remove the due date.
+
+```yaml
+---
+content_type: TOPIC
+title: Key ideas
+due_days_after_registration: 14
+due_time: "17:00"
+---
+```
+
+Due dates apply to TOPIC and FORM files only, not to ACTIVITY, ARTICLE or `course.md`.
 
 ### Heading rule (load-bearing)
 

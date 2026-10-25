@@ -21,7 +21,13 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
 | `content` | `str` | No | Optional markdown intro body |
+| `due_date` | date | No | Fixed due date as a YAML date, e.g. `2026-03-14` (no time). Not allowed together with `due_days_after_registration`. |
+| `due_days_after_registration` | `int` (>= 0) | No | Due this many days after the learner registers for the course. Not allowed together with `due_date`. |
+| `due_time` | `str` | No | Quoted 24-hour `"HH:MM"`. Needs `due_date` or `due_days_after_registration`. Without it the form is due at the end of that day. |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+
+Due-date fields follow the same rules as on a topic (see `topic-files.md`, "Due dates"). Write them in
+`form.md`, not in the course's `children:` list.
 
 ### QUIZ example
 

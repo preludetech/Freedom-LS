@@ -26,6 +26,7 @@ A course can contain COURSE_PARTs, but they are not required. Course parts are l
 | `visibility` | `published`, `coming_soon`, or `hidden` | No | Course visibility lifecycle state. Defaults to `published` when omitted. |
 | `table_of_contents_in_development` | `bool` | No | Hide the course's table-of-contents surfaces (Lessons stat card, the lesson-count line in "This course includes", and the "Course content" section) while the course is still being built. Defaults to `false`. Independent of `visibility`. See [Table of contents in development](#table-of-contents-in-development) below. |
 | `estimated_duration` | `str` | No | Duration string e.g. `"1:30:00"` (HH:MM:SS) |
+| `time_limit_days` | `int` (>= 1) | No | Days after the learner registers by which the whole course is due; the last day counts in full. A course takes no `due_date` or `due_time`; due dates for individual topics and forms go in those files (see `topic-files.md`, "Due dates"). |
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
 | `content` | `str` | No | Optional markdown intro body |
 | `access_config` | `dict` | No | How learners get access to the course. See [Course access configuration](#course-access-configuration) below. Absent → `free`. |
