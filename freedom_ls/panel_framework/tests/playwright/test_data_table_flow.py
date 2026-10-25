@@ -344,6 +344,31 @@ def test_more_actions_menu_stays_inside_the_viewport(
         )
 
 
+def test_selection_bar_actions_fieldset_draws_no_box(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The fieldset wrapping the bulk-action buttons picked up the global
+    fieldset border and padding, boxing the buttons and, on a phone, making
+    the fixed selection bar cover a large part of the screen."""
+    make_stub(name="row-00")
+    page.set_viewport_size(_PHONE_VIEWPORT)
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+    page.locator("#stubs-table input[name='keys']:visible").first.check()
+
+    actions = page.locator("[data-total-count] fieldset")
+    expect(actions).to_be_visible()
+    box_styles = actions.evaluate(
+        """el => {
+            const s = getComputedStyle(el);
+            return [s.borderTopWidth, s.paddingTop, s.paddingLeft, s.borderTopLeftRadius];
+        }"""
+    )
+    assert box_styles == ["0px", "0px", "0px", "0px"]
+
+
 def test_select_all_matching_spans_every_page(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
