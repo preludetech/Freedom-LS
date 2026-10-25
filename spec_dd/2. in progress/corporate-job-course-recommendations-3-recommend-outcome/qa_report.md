@@ -110,7 +110,7 @@ Screenshots:
 |---|---|
 | B1 | **FIXED** (commit: 526c8a974) — Recommend preview's lead sentence is missing 'on' |
 | B2 | **FIXED** (commit: 75a6333dd) — Registration-rule links in admin read-only fields are not styled as links |
-| B3 | **UNRESOLVED** — Delete confirmation lists 'RuleRecommendation object (uuid)' (reason: choosing the label is a data-exposure decision; the rule name would reach delete confirmations, which §11.3 hides from staff without rule permissions) |
+| B3 | **FIXED** (commit: 618efcd15) — Delete confirmation lists 'RuleRecommendation object (uuid)'; now the rule name for staff who may view rules, 'Registration rule' otherwise |
 
 ## General notes
 
