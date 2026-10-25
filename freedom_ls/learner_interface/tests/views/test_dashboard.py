@@ -4,22 +4,29 @@ from __future__ import annotations
 
 import datetime
 import re
+from dataclasses import replace
 from datetime import UTC
 
 import pytest
 import time_machine
 
+from django.contrib.auth.models import AnonymousUser
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     CourseCategoryFactory,
     CourseFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access.backends import (
+    CourseAccessDecision,
+    FreeOnlyCourseAccessBackend,
+)
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.deadlines.models import DeadlineKind
@@ -1566,6 +1573,36 @@ def test_card_ignores_a_completed_topics_missed_deadline(deadline_card):
 
     assert "Missed deadline" not in text
     assert "1 Jan 2020" not in text
+
+
+class ContentWithheldBackend(FreeOnlyCourseAccessBackend):
+    """The free backend with content access withdrawn from everyone, as a downstream
+    subscription backend would do for a lapsed learner."""
+
+    def get_access(
+        self, *, user: User | AnonymousUser, course: Course
+    ) -> CourseAccessDecision:
+        return replace(
+            super().get_access(user=user, course=course), can_access_content=False
+        )
+
+
+@pytest.mark.django_db
+def test_card_shows_no_deadline_line_when_content_access_is_withheld(deadline_card):
+    """Without content access the index carries no progress, so a finished topic would
+    otherwise read as missed."""
+    course, topics, user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
+
+    with override_settings(COURSE_ACCESS_BACKEND=f"{__name__}.ContentWithheldBackend"):
+        get_course_access_backend.cache_clear()
+        text = _dashboard_text(client)
+
+    assert "Missed deadline" not in text
+    assert "Next deadline" not in text
 
 
 @pytest.mark.django_db

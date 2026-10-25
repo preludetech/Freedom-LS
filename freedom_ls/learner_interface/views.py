@@ -317,7 +317,8 @@ def _annotate_registered_courses(
         )
         # Pass can_access_content from the backend decision so a future
         # backend (e.g. subscription-gated) could revoke access without a
-        # separate check.
+        # separate check. Without content access the index carries no
+        # progress, so a finished item would read as missed: no deadlines then.
         course_decision = backend.get_access(user=user, course=course)
         record = records.get(course.pk)
         _annotate_next_up(
@@ -325,7 +326,11 @@ def _annotate_registered_courses(
             user,
             can_access_content=course_decision.can_access_content,
             course_progress=record,
-            course_deadlines=(deadlines_by_record.get(record.pk) if record else None),
+            course_deadlines=(
+                deadlines_by_record.get(record.pk)
+                if record is not None and course_decision.can_access_content
+                else None
+            ),
             now=now,
         )
 
