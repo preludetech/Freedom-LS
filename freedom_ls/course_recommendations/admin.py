@@ -10,6 +10,6 @@ class RecommendedCourseAdmin(SiteAwareModelAdmin):
     form = RecommendedCourseAdminForm
     list_display = ["user", "course", "created_at"]
     search_fields = ["user__email", "course__title"]
-    list_filter = ["created_at"]
+    list_filter: list[str | type[admin.SimpleListFilter]] = ["created_at"]
     readonly_fields = ["created_at"]
     exclude = ["site"]

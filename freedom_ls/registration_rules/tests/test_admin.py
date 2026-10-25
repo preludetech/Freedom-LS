@@ -1508,3 +1508,251 @@ def test_the_outcome_filter_narrows_the_changelist(staff_client, mock_site_conte
 
     # Assert
     assert list(response.context["cl"].result_list) == [recommend]
+
+
+RECOMMENDED_CHANGELIST = (
+    "admin:freedom_ls_course_recommendations_recommendedcourse_changelist"
+)
+RECOMMENDED_CHANGE = "admin:freedom_ls_course_recommendations_recommendedcourse_change"
+RECOMMENDED_DELETE = "admin:freedom_ls_course_recommendations_recommendedcourse_delete"
+DELETE_WARNING = "comes back on the rule's next evaluation"
+
+
+@pytest.fixture
+def rule_viewer_client(mock_site_context, logged_in_client):
+    """A staff user who may view recommendations and rules."""
+    user = UserFactory(staff=True)
+    user.user_permissions.set(
+        Permission.objects.filter(
+            codename__in=[
+                "view_recommendedcourse",
+                "change_recommendedcourse",
+                "view_registrationrule",
+            ]
+        )
+    )
+    return logged_in_client(user)
+
+
+@pytest.fixture
+def recommendations_only_client(mock_site_context, logged_in_client):
+    """A staff user who may view recommendations but not rules."""
+    user = UserFactory(staff=True)
+    user.user_permissions.set(
+        Permission.objects.filter(
+            codename__in=["view_recommendedcourse", "change_recommendedcourse"]
+        )
+    )
+    return logged_in_client(user)
+
+
+def _made_by_column(response) -> list[str]:
+    cl = response.context["cl"]
+    column = next(
+        item
+        for item in cl.list_display
+        if getattr(item, "short_description", "") == "Made by"
+    )
+    return [column(row) for row in cl.result_list]
+
+
+@pytest.mark.django_db
+def test_made_by_names_the_rules_for_a_user_who_may_view_rules(rule_viewer_client):
+    # Arrange
+    made = RuleRecommendationFactory(rule__name="Alpha")
+    RuleRecommendationFactory(recommendation=made.recommendation, rule__name="Beta")
+
+    # Act
+    response = rule_viewer_client.get(reverse(RECOMMENDED_CHANGELIST))
+
+    # Assert
+    assert _made_by_column(response) == ["Alpha, Beta"]
+
+
+@pytest.mark.django_db
+def test_made_by_says_staff_for_a_row_no_rule_made(rule_viewer_client):
+    # Arrange
+    RecommendedCourseFactory()
+
+    # Act
+    response = rule_viewer_client.get(reverse(RECOMMENDED_CHANGELIST))
+
+    # Assert
+    assert _made_by_column(response) == ["Staff"]
+
+
+@pytest.mark.django_db
+def test_made_by_hides_rule_names_from_a_user_who_may_not_view_rules(
+    recommendations_only_client,
+):
+    # Arrange
+    RuleRecommendationFactory(rule__name="Secret rule")
+
+    # Act
+    response = recommendations_only_client.get(reverse(RECOMMENDED_CHANGELIST))
+
+    # Assert
+    assert _made_by_column(response) == ["Registration rule"]
+    assert "Secret rule" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_change_page_links_each_rule_for_a_user_who_may_view_rules(
+    rule_viewer_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory(rule__name="Alpha")
+
+    # Act
+    response = rule_viewer_client.get(
+        reverse(RECOMMENDED_CHANGE, args=[made.recommendation.pk])
+    )
+
+    # Assert
+    assert (
+        f'<a href="{reverse(RULE_CHANGE, args=[made.rule.pk])}">Alpha</a>'
+        in response.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_the_change_page_shows_no_rule_name_or_link_without_view_permission(
+    recommendations_only_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory(rule__name="Secret rule")
+
+    # Act
+    response = recommendations_only_client.get(
+        reverse(RECOMMENDED_CHANGE, args=[made.recommendation.pk])
+    )
+
+    # Assert
+    content = response.content.decode()
+    assert "Registration rule" in content
+    assert "Secret rule" not in content
+    assert reverse(RULE_CHANGE, args=[made.rule.pk]) not in content
+
+
+@pytest.mark.django_db
+def test_the_change_page_shows_no_rules_for_a_staff_made_row(rule_viewer_client):
+    # Arrange
+    row = RecommendedCourseFactory()
+
+    # Act
+    response = rule_viewer_client.get(reverse(RECOMMENDED_CHANGE, args=[row.pk]))
+
+    # Assert
+    field = next(
+        item
+        for item in response.context["adminform"].readonly_fields
+        if getattr(item, "short_description", "") == "Registration rules"
+    )
+    assert field(row) == ""
+
+
+@pytest.mark.django_db
+def test_the_made_by_filter_narrows_each_way(staff_client, mock_site_context):
+    # Arrange
+    rule_made = RuleRecommendationFactory().recommendation
+    staff_made = RecommendedCourseFactory()
+
+    # Act
+    by_rule = staff_client.get(reverse(RECOMMENDED_CHANGELIST), {"made_by": "rule"})
+    by_staff = staff_client.get(reverse(RECOMMENDED_CHANGELIST), {"made_by": "staff"})
+
+    # Assert
+    assert list(by_rule.context["cl"].result_list) == [rule_made]
+    assert list(by_staff.context["cl"].result_list) == [staff_made]
+
+
+@pytest.mark.django_db
+def test_the_delete_page_warns_for_a_rule_made_recommendation(staff_client):
+    # Arrange
+    made = RuleRecommendationFactory().recommendation
+
+    # Act
+    response = staff_client.get(reverse(RECOMMENDED_DELETE, args=[made.pk]))
+
+    # Assert
+    assert DELETE_WARNING in str(next(iter(response.context["messages"])))
+
+
+@pytest.mark.django_db
+def test_the_delete_page_does_not_warn_for_a_staff_made_recommendation(staff_client):
+    # Arrange
+    row = RecommendedCourseFactory()
+
+    # Act
+    response = staff_client.get(reverse(RECOMMENDED_DELETE, args=[row.pk]))
+
+    # Assert
+    assert list(response.context["messages"]) == []
+
+
+@pytest.mark.django_db
+def test_bulk_delete_confirmation_warns_when_any_selected_row_is_rule_made(
+    staff_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory().recommendation
+    staff_made = RecommendedCourseFactory()
+
+    # Act
+    response = staff_client.post(
+        reverse(RECOMMENDED_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [str(made.pk), str(staff_made.pk)],
+        },
+    )
+
+    # Assert
+    assert DELETE_WARNING in str(next(iter(response.context["messages"])))
+
+
+@pytest.mark.django_db
+def test_bulk_delete_confirmation_does_not_warn_for_staff_made_rows(staff_client):
+    # Arrange
+    row = RecommendedCourseFactory()
+
+    # Act
+    response = staff_client.post(
+        reverse(RECOMMENDED_CHANGELIST),
+        {"action": "delete_selected", "_selected_action": [str(row.pk)]},
+    )
+
+    # Assert
+    assert list(response.context["messages"]) == []
+
+
+@pytest.mark.django_db
+def test_the_warning_is_not_shown_after_the_delete_itself(staff_client):
+    # Arrange
+    made = RuleRecommendationFactory().recommendation
+
+    # Act
+    response = staff_client.post(
+        reverse(RECOMMENDED_DELETE, args=[made.pk]), {"post": "yes"}, follow=True
+    )
+
+    # Assert
+    assert not RecommendedCourse.objects.filter(pk=made.pk).exists()
+    assert DELETE_WARNING not in "".join(
+        str(message) for message in response.context["messages"]
+    )
+
+
+@pytest.mark.django_db
+def test_the_changelist_costs_a_bounded_number_of_queries_however_many_rows(
+    staff_client, mock_site_context, django_assert_max_num_queries
+):
+    # Arrange
+    RuleRecommendationFactory.create_batch(8)
+    staff_client.get(reverse(RECOMMENDED_CHANGELIST))
+
+    # Act / Assert
+    with django_assert_max_num_queries(20):
+        response = staff_client.get(reverse(RECOMMENDED_CHANGELIST))
+
+    assert response.status_code == 200

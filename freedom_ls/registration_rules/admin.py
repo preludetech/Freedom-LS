@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from uuid import UUID
 
 from unfold.admin import StackedInline
@@ -23,10 +23,11 @@ from django.forms import ModelForm, ModelMultipleChoiceField, all_valid
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.course_recommendations.admin import RecommendedCourseAdmin
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.admin import ListEntryAdmin
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
@@ -630,4 +631,180 @@ def _list_entry_deleted_objects_naming_rules(
 # Wired from here for the same reason as the registration admin above.
 setattr(  # noqa: B010 - the function binds as a method of the admin class
     ListEntryAdmin, "get_deleted_objects", _list_entry_deleted_objects_naming_rules
+)
+
+
+_VIEW_RULE = "freedom_ls_registration_rules.view_registrationrule"
+
+
+def _rules_of(obj: RecommendedCourse) -> list[RegistrationRule]:
+    return sorted(
+        (
+            rule_recommendation.rule
+            for rule_recommendation in obj.rule_recommendations.all()
+        ),
+        key=lambda rule: rule.name,
+    )
+
+
+def registration_rules_display(
+    can_view_rules: bool,
+) -> Callable[[RecommendedCourse], str | SafeString]:
+    """The read-only "Registration rules" field, bound to one request's permission.
+
+    Named and linked only for someone allowed to view rules: a rule may belong
+    to an organisation this person may not see. Bound per request because the
+    admin instance is shared by every request, so nothing per user may live on it.
+    """
+
+    @admin.display(description="Registration rules")
+    def registration_rules(obj: RecommendedCourse) -> str | SafeString:
+        rules = _rules_of(obj)
+        if not rules:
+            return ""
+        if not can_view_rules:
+            return "Registration rule"
+        return format_html_join(
+            ", ",
+            '<a href="{}">{}</a>',
+            (
+                (
+                    reverse(
+                        "admin:freedom_ls_registration_rules_registrationrule_change",
+                        args=[rule.pk],
+                    ),
+                    rule.name,
+                )
+                for rule in rules
+            ),
+        )
+
+    return registration_rules
+
+
+def made_by_display(can_view_rules: bool) -> Callable[[RecommendedCourse], str]:
+    """The "Made by" column, bound to one request's permission for the same reason."""
+
+    @admin.display(description="Made by")
+    def made_by(obj: RecommendedCourse) -> str:
+        rules = _rules_of(obj)
+        if not rules:
+            return "Staff"
+        if not can_view_rules:
+            return "Registration rule"
+        return ", ".join(rule.name for rule in rules)
+
+    return made_by
+
+
+class MadeByFilter(admin.SimpleListFilter):
+    title = "Made by"
+    parameter_name = "made_by"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin
+    ) -> list[tuple[str, str]]:
+        return [("rule", "Registration rule"), ("staff", "Staff")]
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[RecommendedCourse]
+    ) -> QuerySet[RecommendedCourse]:
+        # _base_manager: the filter must see every rule's rows whatever the ambient site.
+        rule_made = Exists(
+            RuleRecommendation._base_manager.filter(recommendation=OuterRef("pk"))
+        )
+        if self.value() == "rule":
+            return queryset.filter(rule_made)
+        if self.value() == "staff":
+            return queryset.exclude(rule_made)
+        return queryset
+
+
+# One callable per permission value, built once: the admin matches a read-only
+# field against the fieldsets by identity, so a fresh callable per call would
+# never be recognised as read-only.
+_MADE_BY = {can_view: made_by_display(can_view) for can_view in (True, False)}
+_REGISTRATION_RULES = {
+    can_view: registration_rules_display(can_view) for can_view in (True, False)
+}
+
+_recommended_list_display = RecommendedCourseAdmin.get_list_display
+_recommended_readonly_fields = RecommendedCourseAdmin.get_readonly_fields
+_recommended_queryset = RecommendedCourseAdmin.get_queryset
+_recommended_deleted_objects = RecommendedCourseAdmin.get_deleted_objects
+
+
+def _recommended_list_display_with_made_by(
+    self: RecommendedCourseAdmin, request: HttpRequest
+) -> Sequence[str | Callable[[RecommendedCourse], str]]:
+    return [
+        *_recommended_list_display(self, request),
+        _MADE_BY[request.user.has_perm(_VIEW_RULE)],
+    ]
+
+
+def _recommended_readonly_fields_with_rules(
+    self: RecommendedCourseAdmin,
+    request: HttpRequest,
+    obj: RecommendedCourse | None = None,
+) -> Sequence[str | Callable[[RecommendedCourse], str | SafeString]]:
+    return [
+        *_recommended_readonly_fields(self, request, obj),
+        _REGISTRATION_RULES[request.user.has_perm(_VIEW_RULE)],
+    ]
+
+
+def _recommended_queryset_with_rules(
+    self: RecommendedCourseAdmin, request: HttpRequest
+) -> QuerySet[RecommendedCourse]:
+    stock: QuerySet[RecommendedCourse] = _recommended_queryset(self, request)
+    return stock.prefetch_related("rule_recommendations__rule")
+
+
+def _recommended_deleted_objects_warning_of_rules(
+    self: RecommendedCourseAdmin,
+    objs: Iterable[RecommendedCourse],
+    request: HttpRequest,
+) -> tuple[list[str], dict[str, int], set[str], list[str]]:
+    """The stock delete confirmation, warning when a rule made a selected row.
+
+    Django also calls this while performing the delete (a POST carrying
+    "post"); the warning belongs on the confirmation page only.
+    """
+    rows = list(objs)
+    confirming = request.method == "GET" or "post" not in request.POST
+    if (
+        confirming
+        and RuleRecommendation._base_manager.filter(recommendation__in=rows).exists()
+    ):
+        messages.warning(
+            request,
+            "A recommendation a registration rule made comes back on the rule's "
+            "next evaluation while the user still matches. Disable or change the "
+            "rule instead.",
+        )
+    stock: tuple[list[str], dict[str, int], set[str], list[str]] = (
+        _recommended_deleted_objects(self, rows, request)
+    )
+    return stock
+
+
+# Wired from here for the same reason as the registration admin above:
+# course_recommendations must stay installable without this app.
+RecommendedCourseAdmin.list_filter = [*RecommendedCourseAdmin.list_filter, MadeByFilter]
+setattr(  # noqa: B010 - the function binds as a method of the admin class
+    RecommendedCourseAdmin, "get_list_display", _recommended_list_display_with_made_by
+)
+setattr(  # noqa: B010
+    RecommendedCourseAdmin,
+    "get_readonly_fields",
+    _recommended_readonly_fields_with_rules,
+)
+setattr(  # noqa: B010
+    RecommendedCourseAdmin, "get_queryset", _recommended_queryset_with_rules
+)
+setattr(  # noqa: B010
+    RecommendedCourseAdmin,
+    "get_deleted_objects",
+    _recommended_deleted_objects_warning_of_rules,
 )
