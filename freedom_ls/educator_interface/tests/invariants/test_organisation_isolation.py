@@ -160,7 +160,7 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
-    @pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+    @pytest.mark.parametrize("name", ["bulk_action_run_status"])
     def test_a_bulk_run_of_organisation_b_404s_through_organisation_as_slug(
         self, isolation: SimpleNamespace, name: str
     ) -> None:

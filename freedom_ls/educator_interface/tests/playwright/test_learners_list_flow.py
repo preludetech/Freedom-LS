@@ -7,7 +7,7 @@ and that the list behind it refreshes to show the new learner.
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Browser, Page, Response, expect
+from playwright.sync_api import Browser, Page, Response, Route, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -138,6 +138,83 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     header_checkbox.check()
     main.get_by_role("button", name="More actions").click()
     expect(main.get_by_role("menuitem", name="Deactivate")).to_be_visible()
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)
+
+
+def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+    settings,
+) -> None:
+    settings.BULK_BACKGROUND_THRESHOLD = 1
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    learners = [LearnerFactory(organisation=organisation) for _ in range(2)]
+    # Tasks run inline under test, so the run is over before the first poll.
+    # Holding the poll at 204 is what shows the in-progress state.
+    finished = False
+
+    def status(route: Route) -> None:
+        if finished:
+            route.continue_()
+        else:
+            route.fulfill(status=204)
+
+    page.route("**/bulk-runs/*/status/", status)
+    # The CSP build of Alpine reports an unsupported directive expression
+    # only as a page error.
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+    learners_url = interface_url(live_server, organisation.slug, "learners")
+    page.goto(learners_url)
+    modal = page.locator("#app-modal")
+    main = page.locator("#main-content")
+    table = page.locator("#learners-table")
+
+    table.locator("thead").get_by_label("Select all on this page").check()
+    main.get_by_role("button", name="More actions").click()
+    main.get_by_role("menuitem", name="Deactivate").click()
+    expect(
+        modal.get_by_text("You'll get a notification when it finishes.")
+    ).to_be_visible()
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(page).to_have_url(learners_url)
+    expect(main.get_by_text("Deactivate is running…")).to_be_visible()
+    expect(main.get_by_role("button", name="More actions")).to_be_disabled()
+    expect(
+        main.get_by_role("button", name="Add to cohort", exact=True)
+    ).to_be_disabled()
+    expect(
+        main.get_by_role("button", name="More actions").locator("svg.animate-spin")
+    ).to_be_visible()
+    checkboxes = table.locator("input[name='keys'], input[data-select-all]")
+    # A header and a mobile "select all", and a table and a card box per row.
+    expect(checkboxes).to_have_count(2 + 2 * len(learners))
+    for checkbox in checkboxes.all():
+        expect(checkbox).to_be_disabled()
+
+    finished = True
+
+    expect(modal.get_by_text("2 learners changed.")).to_be_visible()
+    # The default Status filter hides removed learners, so the refreshed
+    # table has no rows left to select.
+    expect(table.locator("input[name='keys']")).to_have_count(0)
+    modal.get_by_text("Close", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(main.get_by_text("Deactivate is running…")).to_be_hidden()
+    for checkbox in checkboxes.all():
+        expect(checkbox).to_be_enabled()
+    assert not Learner.objects.filter(
+        pk__in=[learner.pk for learner in learners], is_active=True
+    ).exists()
+    assert page_errors == []
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)

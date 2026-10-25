@@ -7,6 +7,7 @@ from typing import Protocol
 from urllib.parse import urlsplit
 
 from django import forms
+from django.contrib import messages
 from django.core.exceptions import (
     ImproperlyConfigured,
     PermissionDenied,
@@ -47,7 +48,7 @@ from freedom_ls.panel_framework.bulk_actions import (
     resolve_selection,
 )
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_trigger
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
@@ -669,15 +670,33 @@ def _result_response(
         return _BulkResultPage(
             action, result, noun, headline, _history_url(panel, request)
         )
+    return bulk_result_fragment(
+        request,
+        action,
+        result,
+        noun,
+        headline,
+        dict.fromkeys(_table_refresh_events(panel), changed_keys),
+    )
+
+
+def bulk_result_fragment(
+    request: HttpRequest,
+    action: BulkAction,
+    result: BulkResult,
+    noun: str,
+    headline: str,
+    refresh: dict[str, list[str]],
+) -> HttpResponse:
+    """The result modal fragment, firing `refresh` so the table updates
+    behind it. A background run's status poll answers with this too."""
     html = render_to_string(
         action.result_template_name,
         _result_context(action, result, noun, headline),
         request=request,
     )
     response = HttpResponse(html)
-    response["HX-Trigger"] = build_hx_trigger(
-        dict.fromkeys(_table_refresh_events(panel), changed_keys)
-    )
+    response["HX-Trigger"] = build_hx_trigger(refresh)
     return response
 
 
@@ -702,12 +721,33 @@ def _result_context(
     }
 
 
-def _background_response(request: HttpRequest, run: BackgroundRun) -> HttpResponse:
+def _background_response(
+    request: HttpRequest, panel: DataTablePanel, action: BulkAction, run: BackgroundRun
+) -> HttpResponse:
+    """The reader stays on the table. Over htmx the modal closes and the
+    table's selection component polls `run.status_url` until the result
+    arrives; without JavaScript the table page reloads with a flash."""
     if request.headers.get("HX-Request") == "true":
         response = HttpResponse(status=204)
-        response["HX-Redirect"] = run.result_url
+        response["HX-Trigger"] = build_hx_trigger(
+            {},
+            close_modal=True,
+            signals={
+                BULK_RUN_STARTED_EVENT: {
+                    "region": panel.region_id,
+                    "action": action.action_name,
+                    "label": action.label,
+                    "status_url": run.status_url,
+                }
+            },
+        )
         return response
-    return HttpResponseRedirect(run.result_url, status=303)
+    messages.info(
+        request,
+        f"{action.label} is running in the background. "
+        "You'll get a notification when it finishes.",
+    )
+    return HttpResponseRedirect(_history_url(panel, request), status=303)
 
 
 def _confirmation_response(
@@ -731,7 +771,7 @@ def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
     return ConfirmationWording(
         sentence=f"This will affect {count_noun(queryset.model, count)}.",
         consequences=[
-            "It runs in the background. Anything skipped is reported in the result."
+            "It runs in the background. You'll get a notification when it finishes."
         ],
     )
 
@@ -854,7 +894,7 @@ def _handle_bulk_action(
     selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
     outcome = action.execute(request, queryset, cleaned_data)
     if isinstance(outcome, BackgroundRun):
-        return _background_response(request, outcome)
+        return _background_response(request, panel, action, outcome)
     headline = f"{count_noun(queryset.model, outcome.changed)} changed."
     return _result_response(
         request, panel, action, outcome, noun, headline, selected_keys

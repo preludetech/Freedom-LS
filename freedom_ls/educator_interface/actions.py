@@ -2413,8 +2413,8 @@ class EducatorBulkAction(BulkAction):
             # already queued.
             _run_bulk_action_task.enqueue(str(run.pk), site_id)
             return BackgroundRun(
-                result_url=reverse(
-                    "educator_interface:bulk_action_run",
+                status_url=reverse(
+                    "educator_interface:bulk_action_run_status",
                     kwargs={
                         "organisation_slug": scoped.organisation.slug,
                         "run_id": run.pk,

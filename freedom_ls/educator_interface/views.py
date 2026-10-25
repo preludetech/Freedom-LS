@@ -62,6 +62,7 @@ from freedom_ls.comms.messaging_views import (
     unreachable_recipient_response,
 )
 from freedom_ls.comms.models import Conversation
+from freedom_ls.comms.notify import mark_notifications_read
 from freedom_ls.comms.templatetags.comms_tags import badge_count
 from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
@@ -185,6 +186,7 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.bulk_actions import BulkAction, BulkResult
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
@@ -209,6 +211,7 @@ from freedom_ls.panel_framework.views import (
     StatusBadge,
     build_breadcrumbs,
     build_menu_items,
+    bulk_result_fragment,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -2071,72 +2074,57 @@ def _requested_record_or_404[RecordT: (BulkActionRun, LearnerImport)](
     )
 
 
-def _run_status_context(
-    scoped: OrganisationScopedRequest, run: BulkActionRun
-) -> dict[str, object]:
-    """What `partials/run_status.html` renders for a bulk run."""
-    action = bulk_action_for(run.table_key, run.action_name)
-    model = action.noun_model
-    total = len(run.keys)
-    result = BulkResult.from_json(run.result) if run.result else None
-    slug = scoped.organisation.slug
-    kwargs = {"organisation_slug": slug, "run_id": run.pk}
-    return {
-        "run": run,
-        "noun": str(model._meta.verbose_name_plural),
-        "total": total,
-        "percentage": run.processed_count * 100 // total if total else 100,
-        "result": result,
-        "headline": (f"{count_noun(model, result.changed)} changed." if result else ""),
-        "other_counts": (
-            [item for item in result.counts if item.status != "changed"]
-            if result
-            else []
-        ),
-        "result_template": "panel_framework/partials/bulk_result_body.html",
-        "status_url": reverse(
-            "educator_interface:bulk_action_run_status", kwargs=kwargs
-        ),
-        "back_url": reverse(
-            "educator_interface:interface",
-            kwargs={"organisation_slug": slug, "path_string": run.table_key},
-        ),
-    }
-
-
-@login_required
-def bulk_action_run(
-    request: HttpRequest, organisation_slug: str, run_id: str
-) -> HttpResponse:
-    """A bulk run's result page: progress while it runs, the summary after."""
-    scoped = scope_request(request, organisation_slug)
-    run = _requested_record_or_404(
-        BulkActionRun.objects.all(), request, scoped.organisation, run_id
-    )
-    status = _run_status_context(scoped, run)
-    context = standalone_page_context(
-        scoped,
-        heading=bulk_action_for(run.table_key, run.action_name).label,
-        section=run.table_key,
-    )
-    context.update(status)
-    return render(request, "educator_interface/bulk_action_run.html", context)
+def _list_refresh_events(table_key: str) -> tuple[str, ...]:
+    """The events that refresh the list page whose table is `table_key`."""
+    for section in sections_by_url_name(interface_config).values():
+        if issubclass(section, ListViewConfig) and section.table_key == table_key:
+            return section.refresh_events
+    return ()
 
 
 @login_required_htmx_to("educator_interface:root")
 def partial_bulk_action_run_status(
     request: HttpRequest, organisation_slug: str, run_id: str
 ) -> HttpResponse:
-    """The polled fragment of `bulk_action_run`."""
+    """Polled by the table a background run was started from: 204 while it
+    runs, then the result modal, which refreshes the table behind it. The
+    requester has now seen the outcome, so its notification is marked read."""
     scoped = scope_request(request, organisation_slug)
     run = _requested_record_or_404(
         BulkActionRun.objects.all(), request, scoped.organisation, run_id
     )
-    return render(
-        request,
-        "educator_interface/partials/run_status.html",
-        _run_status_context(scoped, run),
+    if run.status in (RunStatus.QUEUED, RunStatus.RUNNING):
+        return HttpResponse(status=204)
+    mark_notifications_read(
+        user=cast(User, request.user),
+        target=run,
+        site_id=scoped.organisation.site_id,
     )
+    action = bulk_action_for(run.table_key, run.action_name)
+    model = action.noun_model
+    noun = str(model._meta.verbose_name_plural)
+    # Not the run's keys: a background run can cover thousands of rows,
+    # too many for a header, and only a quick view reads the ids.
+    refresh: dict[str, list[str]] = {
+        event: [] for event in _list_refresh_events(run.table_key)
+    }
+    if run.status == RunStatus.DONE and run.result is not None:
+        result = BulkResult.from_json(run.result)
+        return bulk_result_fragment(
+            request,
+            action,
+            result,
+            noun,
+            f"{count_noun(model, result.changed)} changed.",
+            refresh,
+        )
+    response = render(
+        request,
+        "educator_interface/modal/bulk_run_stopped.html",
+        {"action": action, "run": run, "total": len(run.keys), "noun": noun},
+    )
+    response["HX-Trigger"] = build_hx_trigger(refresh)
+    return response
 
 
 def _see_other(url: str) -> HttpResponseRedirect:

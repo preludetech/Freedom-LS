@@ -6055,7 +6055,7 @@ def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_
 
 
 @pytest.mark.django_db(transaction=True)
-def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_redirects_to_the_run(
+def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_keeps_the_reader_on_the_table(
     staff_client: Client, settings, database_task_backend: None
 ):
     settings.BULK_BACKGROUND_THRESHOLD = 2
@@ -6065,18 +6065,22 @@ def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_redirects_to_the
     response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
 
     run = BulkActionRun.objects.get()
+    trigger = json.loads(response["HX-Trigger"])
     assert response.status_code == 204
-    assert response["HX-Redirect"] == reverse(
-        "educator_interface:bulk_action_run",
+    assert "HX-Redirect" not in response
+    assert "closeModal" in trigger
+    assert trigger["bulkRunStarted"]["status_url"] == reverse(
+        "educator_interface:bulk_action_run_status",
         kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
     )
+    assert trigger["bulkRunStarted"]["action"] == "deactivate"
     assert run.status == RunStatus.QUEUED
     assert _task_rows().count() == 1
     assert Learner.objects.filter(is_active=False).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)
-def test_bulk_confirm_above_the_threshold_without_javascript_answers_303(
+def test_bulk_confirm_above_the_threshold_without_javascript_returns_to_the_list(
     staff_client: Client, settings, database_task_backend: None
 ):
     settings.BULK_BACKGROUND_THRESHOLD = 2
@@ -6090,14 +6094,22 @@ def test_bulk_confirm_above_the_threshold_without_javascript_answers_303(
             "confirmed": "on",
             "expected_count": "3",
         },
+        follow=True,
     )
 
-    run = BulkActionRun.objects.get()
-    assert response.status_code == 303
-    assert response["Location"] == reverse(
-        "educator_interface:bulk_action_run",
-        kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
-    )
+    assert response.redirect_chain == [
+        (
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "learners",
+                },
+            ),
+            303,
+        )
+    ]
+    assert "Deactivate is running in the background." in response.content.decode()
 
 
 @pytest.mark.django_db(transaction=True)

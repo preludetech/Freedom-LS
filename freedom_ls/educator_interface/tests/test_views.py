@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import lxml.html
@@ -32,7 +32,11 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
-from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    MessageFactory,
+    NotificationFactory,
+)
 from freedom_ls.comms.messaging import (
     SendResult,
     inbox_for,
@@ -46,7 +50,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface.bulk_runs import run_bulk_action
-from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.learner_import import (
     create_learner_import,
     run_learner_import,
@@ -94,6 +98,9 @@ from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 QUERY_BUDGET = 60
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -3866,7 +3873,7 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
 
 
-# bulk run result page
+# bulk run status, polled by the table a background run was started from
 
 
 def _run_for(user: User, organisation: Organisation, **fields: object):
@@ -3880,9 +3887,9 @@ def _run_for(user: User, organisation: Organisation, **fields: object):
     )
 
 
-def _run_url(organisation: Organisation, run: BulkActionRun, name: str) -> str:
+def _run_status_url(organisation: Organisation, run: BulkActionRun) -> str:
     return reverse(
-        f"educator_interface:{name}",
+        "educator_interface:bulk_action_run_status",
         kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
     )
 
@@ -3899,95 +3906,114 @@ def run_world(logged_in_client: Callable[[User], Client], mock_site_context: Sit
     )
 
 
-@pytest.mark.django_db
-def test_a_queued_run_page_polls_its_status_fragment(run_world: SimpleNamespace):
-    page = _get_document(
-        run_world.client,
-        _run_url(run_world.organisation, run_world.run, "bulk_action_run"),
+def _poll(world: SimpleNamespace) -> _MonkeyPatchedWSGIResponse:
+    client: Client = world.client
+    return client.get(
+        _run_status_url(world.organisation, world.run), HTTP_HX_REQUEST="true"
     )
-
-    (status,) = page.cssselect("#run-status")
-    assert status.get("role") == "status"
-    assert status.get("hx-get") == _run_url(
-        run_world.organisation, run_world.run, "bulk_action_run_status"
-    )
-    assert status.get("hx-trigger") == "every 2s"
-    assert page.cssselect("#run-status progress")
 
 
 @pytest.mark.django_db
-def test_a_finished_run_fragment_stops_polling_and_shows_the_summary(
+@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.RUNNING])
+def test_an_unfinished_run_answers_204(run_world: SimpleNamespace, status: str):
+    run_world.run.status = status
+    run_world.run.save()
+
+    response = _poll(run_world)
+
+    assert (response.status_code, response.content) == (204, b"")
+
+
+@pytest.mark.django_db
+def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
     run_world: SimpleNamespace, mock_site_context: Site
 ):
     run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
 
-    response = run_world.client.get(
-        _run_url(run_world.organisation, run_world.run, "bulk_action_run_status"),
-        HTTP_HX_REQUEST="true",
-    )
+    response = _poll(run_world)
 
-    (status,) = lxml.html.fromstring(response.content.decode()).cssselect("#run-status")
-    assert status.get("hx-trigger") is None
-    assert "2 learners changed." in status.text_content()
-    (back,) = status.cssselect("a")
-    assert back.get("href") == _interface_url(run_world.organisation.slug, "learners")
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 200
+    assert "2 learners changed." in document.text_content()
+    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
 
 
 @pytest.mark.django_db
-def test_a_failed_run_fragment_says_where_it_stopped(run_world: SimpleNamespace):
+def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
+    run_world: SimpleNamespace,
+):
     run_world.run.status = RunStatus.FAILED
     run_world.run.processed_count = 1
     run_world.run.error_message = "Unexpected error."
     run_world.run.save()
 
-    response = run_world.client.get(
-        _run_url(run_world.organisation, run_world.run, "bulk_action_run_status"),
-        HTTP_HX_REQUEST="true",
-    )
+    response = _poll(run_world)
 
     text = " ".join(
         lxml.html.fromstring(response.content.decode()).text_content().split()
     )
     assert "Stopped after 1 of 2 learners." in text
     assert "Unexpected error." in text
+    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+def test_a_finished_run_marks_its_notification_read(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "Deactivate finished: 2 learners changed."},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is not None
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_leaves_its_notification_unread(
+    run_world: SimpleNamespace,
+):
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "s"},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is None
+
+
+@pytest.mark.django_db
 def test_a_run_is_a_404_for_another_user_of_the_organisation(
-    run_world: SimpleNamespace, logged_in_client, name: str
+    run_world: SimpleNamespace, logged_in_client
 ):
     other = cast(User, UserFactory(superuser=True))
 
     response = logged_in_client(other).get(
-        _run_url(run_world.organisation, run_world.run, name)
+        _run_status_url(run_world.organisation, run_world.run)
     )
 
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
 def test_a_run_is_a_404_through_another_organisations_slug(
-    run_world: SimpleNamespace, name: str
+    run_world: SimpleNamespace,
 ):
     elsewhere = OrganisationFactory()
 
-    response = run_world.client.get(_run_url(elsewhere, run_world.run, name))
+    response = run_world.client.get(_run_status_url(elsewhere, run_world.run))
 
     assert response.status_code == 404
-
-
-@pytest.mark.django_db
-def test_the_run_page_renders_inside_the_interface_shell(run_world: SimpleNamespace):
-    page = _get_document(
-        run_world.client,
-        _run_url(run_world.organisation, run_world.run, "bulk_action_run"),
-    )
-
-    assert page.cssselect("#organisation-switcher")
-    assert page.cssselect("#main-content h1")
-    assert page.cssselect("nav a[aria-current='page']")
 
 
 @pytest.mark.django_db
@@ -4007,7 +4033,7 @@ def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_unde
             for element in document.cssselect(selector)
         ]
 
-    assert labels("div[data-total-count] > div > div > button[formaction]") == [
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
         "Add to cohort",
         "Remove from cohort",
     ]
@@ -4035,7 +4061,7 @@ def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_stat
             for element in document.cssselect(selector)
         ]
 
-    assert labels("div[data-total-count] > div > div > button[formaction]") == [
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
         "Register for course",
         "Unregister from course",
     ]

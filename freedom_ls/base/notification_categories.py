@@ -53,4 +53,11 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         url_builder="freedom_ls.comms.notification_urls.conversation_url",
         rollup=True,
     ),
+    NotificationCategory(
+        key="bulk_action.finished",
+        label=_("Bulk action"),
+        icon="check_all",
+        message=_("%(summary)s"),
+        url_builder="freedom_ls.educator_interface.notification_urls.bulk_run_table_url",
+    ),
 ]
