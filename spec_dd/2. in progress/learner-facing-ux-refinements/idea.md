@@ -49,4 +49,14 @@ Add a "Home" or "Dashboard" button
 
 # My Applications section on dashboard
 
-This is ugly and needs to be re-designed
+This is ugly and needs to be re-designed. I have registered designs.
+
+- No need for an "all applications" page or anything like that. We'll just show them on the dashboard
+- No highlighted application cards, keep them simple. We are just restyling existing functionality
+- Allow paging
+
+# Resources
+
+- `spec_dd/2. in progress/learner-facing-ux-refinements/design.md`: the Claude Design design for
+  the My Applications section of the dashboard (the desktop strip and its states, and the phone
+  dashboard list), a visual reference only. Read it as that file says.
