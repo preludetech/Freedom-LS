@@ -2876,9 +2876,24 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             request, queryset, classified, cleaned_data
         )
         count = self.changed_count(classified)
+        # "account already set up" names its own subject, so it cannot follow
+        # the "N is/are" the skip lines put in front of a reason.
+        set_up = sum(
+            skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
+        )
         return ConfirmationWording(
             sentence=f"{count_noun(Learner, count)} will be sent a setup email.",
-            skips=wording.skips,
+            skips=[
+                skip for skip in wording.skips if skip.reason != self.unchanged_reason
+            ],
+            consequences=(
+                [
+                    f"{count_phrase(set_up, 'account is', 'accounts are')} "
+                    "already set up and will be skipped."
+                ]
+                if set_up
+                else []
+            ),
         )
 
 
