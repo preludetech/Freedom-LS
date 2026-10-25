@@ -175,10 +175,10 @@ Manifestations:
 
 - **FIXED** (commit: 165908f9) — B1: 'More actions' menu opens off-screen below the selection bar. Re-verified at 375, 768 and 1920 widths: every item inside the viewport and clickable; the Status filter dropdown still opens downward. ![](screenshots/page-fixed-more-actions-375.png) ![](screenshots/page-2026-10-25T07-00-57-825Z.png)
 - **FIXED** (commit: cfe26575) — B2: Cohort import preview shows the ignored cohort column instead of the target cohort. Re-verified: both rows read "Cohort A" in the table and the mobile cards; a plain import still shows the file's cohort. ![](screenshots/page-fixed-cohort-import-preview.png)
-- **UNRESOLVED** — B3: Resend setup email skip line reads '1 is account already set up' (reason: fix budget exhausted this run)
+- **FIXED** (commit: 8f9a6b90) — B3: Resend setup email skip line reads '1 is account already set up'. The confirmation now reads "1 account is already set up and will be skipped." ("2 accounts are ..." in the plural); it sits under the skip list as its own line, because the framework's skip lines take a reason that follows "is/are".
 - **FIXED** (commit: b917e9cd) — B4: Cohort bulk register reports an inactive cohort as a failure, not a skip. Re-verified: result now reads "2 cohorts changed. | 1 an inactive cohort | Cohort Old: an inactive cohort". ![](screenshots/page-fixed-inactive-cohort-skip.png)
-- **UNRESOLVED** — B5: Import stepper labels run together ('1. Upload2. Preview3. Result') (reason: fix budget exhausted this run)
-- **UNRESOLVED** — B6: Bad-header error names only the first header problem (reason: product decision — the spec sentence can be read as "reject on any problem" or "report every problem"; whether one message should list unknown, repeated and missing headers together needs a human call)
+- **FIXED** (commit: bc086292) — B5: Import stepper labels run together ('1. Upload2. Preview3. Result'). The stepper reads "1. Upload  2. Preview  3. Result" with no list markers, and the preview's count links lost their stray bullets. Re-verified on the upload page. ![](screenshots/page-fixed-badhead.png)
+- **FIXED** (commit: dd676db0) — B6: Bad-header error names only the first header problem. Decision: one message lists every unknown, repeated and missing header, then the accepted columns; the spec now says so. Re-ran 2.badhead: 422 "Unknown column(s): e-mail, name. Missing required column(s): email. Accepted columns: email, first_name, last_name, cohort." PASS. ![](screenshots/page-fixed-badhead.png)
 
 The B4 fixer's commit was blocked by mypy errors in the untracked seeding command; this run renamed a loop variable there to clear them and committed the staged fix.
 
