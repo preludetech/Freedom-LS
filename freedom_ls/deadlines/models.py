@@ -23,11 +23,6 @@ class DeadlineKind(models.TextChoices):
     NONE = "none", "No deadline"
 
 
-def course_viewable_collection_items(course: Course) -> list[ContentCollectionItem]:
-    """The rows a deadline can attach to: the course's own and its parts', in order."""
-    return course.viewable_collection_items()
-
-
 def _validate_deadline_override(
     kind: str,
     due_date: date | None,
@@ -61,7 +56,7 @@ def _validate_deadline_override(
             )
         if due_time is not None:
             errors["due_time"] = "The course time limit ends at the end of its day."
-    elif collection_item not in course_viewable_collection_items(course):
+    elif collection_item not in course.viewable_collection_items():
         errors["collection_item"] = "Pick an item of this course."
     if errors:
         raise ValidationError(errors)

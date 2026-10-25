@@ -23,7 +23,6 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
     LearnerDeadlineOverride,
-    course_viewable_collection_items,
 )
 from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
 from freedom_ls.deadlines.resolver import (
@@ -228,7 +227,7 @@ class DeadlineOverrideInline(TabularInline):
         course = self.parent_course(request)
         items = (
             ContentCollectionItem.objects.filter(
-                pk__in=[i.pk for i in course_viewable_collection_items(course)]
+                pk__in=[i.pk for i in course.viewable_collection_items()]
             ).prefetch_related("child")
             if course is not None
             else ContentCollectionItem.objects.none()
@@ -327,7 +326,7 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
         return format_html("{}", "")
     deadlines = course_deadlines(record)
     lines: list[tuple[str, str, str]] = []
-    for item in course_viewable_collection_items(record.course):
+    for item in record.course.viewable_collection_items():
         resolved = deadlines.items.get(item.pk)
         if resolved is None or resolved.due_at is None:
             continue

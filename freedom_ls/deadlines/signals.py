@@ -14,11 +14,7 @@ from django.dispatch import receiver
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
 from freedom_ls.content_engine.signals import collection_items_synced
-from freedom_ls.deadlines.models import (
-    CohortDeadlineOverride,
-    LearnerDeadlineOverride,
-    course_viewable_collection_items,
-)
+from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
 
 
 @receiver(collection_items_synced)
@@ -50,7 +46,7 @@ def carry_over_deadline_overrides(
     for new_row in written:
         for course in courses.placing(new_row):
             if course.pk not in items_by_course:
-                items_by_course[course.pk] = course_viewable_collection_items(course)
+                items_by_course[course.pk] = course.viewable_collection_items()
             stale = [
                 row
                 for row in items_by_course[course.pk]
