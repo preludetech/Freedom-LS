@@ -950,6 +950,72 @@ def test_page_one_renders_three_and_reports_the_position(four_available_courses)
     assert available.position_text == "1 to 3 of 4"
 
 
+def _fragment(client: Client, slug: str, **params: str) -> str:
+    response = client.get(
+        reverse("learner_interface:dashboard"),
+        params,
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET=f"section-page-{slug}",
+    )
+    return response.content.decode()
+
+
+@pytest.mark.django_db
+def test_each_section_renders_the_card_grid_and_the_row_list_with_the_same_courses(
+    four_available_courses,
+):
+    body = _fragment(Client(), "available")
+
+    assert body.count('data-testid="section-card-grid"') == 1
+    assert body.count('data-testid="section-row-list"') == 1
+    for course in four_available_courses[:3]:
+        assert len(re.findall(rf">\s*{course.title}\s*</a>", body)) == 2
+
+
+@pytest.mark.django_db
+def test_browse_all_courses_renders_once_per_layout(
+    mock_site_context, logged_in_client
+):
+    CourseFactory(
+        title="Not Yet Course",
+        slug="not-yet-course",
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user, course=CourseFactory(title="Mine", slug="mine")
+    )
+    client = logged_in_client(user)
+
+    assert _fragment(client, "coming-soon").count("Browse all courses") == 2
+    assert _fragment(client, "in-progress").count("Browse all courses") == 0
+
+
+@pytest.mark.django_db
+def test_an_in_progress_row_resumes_at_the_next_item(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory(title="Course A", slug="course-a")
+    first = TopicFactory(title="Opening topic", slug="opening", content="content")
+    second = TopicFactory(title="Second topic", slug="second", content="content")
+    course.items.create(child=first, order=0)
+    course.items.create(child=second, order=1)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    topic_completion(course, user, first, complete_time=timezone.now())
+    client = logged_in_client(user)
+
+    body = _fragment(client, "in-progress")
+
+    row_list = body.split('data-testid="section-row-list"')[1]
+    item_url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    assert f'href="{item_url}"' in row_list
+    assert "Next up: Second topic" in row_list
+
+
 @pytest.mark.django_db
 def test_page_two_renders_the_fourth_course(four_available_courses):
     response = Client().get(

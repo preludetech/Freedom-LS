@@ -591,3 +591,59 @@ def test_learner_browses_a_grid_of_article_and_course_cards(
                 kwargs={"course_slug": "alpha-course"},
             )
         )
+
+
+def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    page = logged_in_page
+    for letter in "ABCD":
+        CourseFactory(
+            title=f"Free Course {letter}",
+            slug=f"free-course-{letter.lower()}",
+            access_config={"access_type": "free"},
+        )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    section = page.locator("#section-page-available")
+    heading = page.get_by_role("heading", name="Available courses")
+
+    for width in (375, 768):
+        page.set_viewport_size({"width": width, "height": 900})
+        page.goto(dashboard_url)
+        rows = section.get_by_test_id("section-row-list")
+        expect(rows).to_be_visible()
+        expect(section.get_by_test_id("section-card-grid")).to_be_hidden()
+        pager = _box(section.get_by_role("navigation"))
+        first_row = _box(rows.locator("li").first)
+        assert pager["y"] + pager["height"] <= first_row["y"]
+        browse_all = rows.get_by_role("link", name="Browse all courses")
+        expect(browse_all).to_be_visible()
+        link_box = _box(browse_all)
+        section_box = _box(page.locator("#section-page-available").locator(".."))
+        link_centre = link_box["x"] + link_box["width"] / 2
+        assert abs(link_centre - (section_box["x"] + section_box["width"] / 2)) <= 4
+
+    page.set_viewport_size({"width": 375, "height": 900})
+    page.goto(dashboard_url)
+    expect(
+        section.get_by_test_id("section-row-list").get_by_text("Free Course D")
+    ).to_have_count(0)
+    section.get_by_role("link", name="Next page").click()
+    expect(
+        section.get_by_test_id("section-row-list").get_by_role(
+            "link", name="Free Course D"
+        )
+    ).to_be_visible()
+    expect(heading).to_be_visible()
+
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(dashboard_url)
+    expect(section.get_by_test_id("section-card-grid")).to_be_visible()
+    expect(section.get_by_test_id("section-row-list")).to_be_hidden()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(dashboard_url)
+        assert_no_horizontal_overflow(page)

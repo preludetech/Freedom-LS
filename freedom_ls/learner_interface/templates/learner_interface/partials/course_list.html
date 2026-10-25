@@ -1,8 +1,11 @@
 {% comment %}
 Dashboard course-list sections. Every section is driven by one `section`
-(DashboardSection) and lays out a grid of course_card.html — the single card
-template, which branches internally on course.listing_status. No per-status
-dispatch or leaf templates here.
+(DashboardSection). Each renders the card grid (course_card.html) for wide
+screens and the row list (course_row.html) for narrow ones, both inside the
+swap boundary. A card and a row differ in structure, so both are in the markup
+and `display: none` hides one; that also keeps the hidden copy out of the
+accessibility tree. Both templates branch internally on
+course.listing_status, so there is no per-status dispatch here.
 
 `section-page` is the htmx swap boundary. It sits below the <h2>, so the
 heading survives the swap as a focus target and heading order cannot break.
@@ -17,39 +20,51 @@ heading survives the swap as a focus target and heading order cannot break.
 {% endpartialdef %}
 
 {% partialdef course-grid %}
-    <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
+    <div class="col-span-full hidden lg:grid lg:grid-cols-3 lg:gap-10"
+         data-testid="section-card-grid">
         {% for course in courses %}
             {% include "learner_interface/partials/course_card.html" %}
         {% endfor %}
     </div>
 {% endpartialdef %}
 
+{% partialdef browse-all-courses %}
+    {% if section.browse_all_url %}
+        <c-button href="{{ section.browse_all_url }}"
+                  variant="link"
+                  size="small"
+                  icon_right="next"
+                  class="whitespace-nowrap {{ browse_all_class }}">
+            Browse all courses
+        </c-button>
+    {% endif %}
+{% endpartialdef %}
+
 {% comment %}
 `contents` so the two children below take their own places in the section's
-outer grid: the controls beside the heading, the card grid across both columns.
+outer grid: the controls beside the heading from `lg`, and the card grid or
+row list across the full width.
 {% endcomment %}
 {% partialdef section-page %}
     <div id="{{ section.swap_id }}" class="contents">
-        <div class="flex items-center gap-4 justify-self-end">
+        <div class="col-span-full flex items-center justify-between gap-4 lg:col-span-1 lg:justify-self-end">
             <span class="text-sm text-muted tabular-nums">{{ section.position_text }}</span>
-            <c-section-pagination :page_obj="section.page_obj"
-                                         target_id="{{ section.swap_id }}"
-                                         page_param_name="{{ section.page_param_name }}"
-                                         nav_label="{{ section.nav_label }}" />
-            {% if section.browse_all_url %}
-                <c-button href="{{ section.browse_all_url }}"
-                          variant="link"
-                          size="small"
-                          icon_right="next"
-                          class="whitespace-nowrap">
-                    Browse all courses
-                </c-button>
-            {% endif %}
+            <div class="flex items-center gap-4">
+                <c-section-pagination :page_obj="section.page_obj"
+                                      target_id="{{ section.swap_id }}"
+                                      page_param_name="{{ section.page_param_name }}"
+                                      nav_label="{{ section.nav_label }}" />
+                {% with browse_all_class="hidden lg:inline-flex" %}
+                    {% partial browse-all-courses %}
+                {% endwith %}
+            </div>
         </div>
-        <div class="sm:col-span-2">
-            {% with courses=section.courses %}
-                {% partial course-grid %}
-            {% endwith %}
+        {% with courses=section.courses %}
+            {% partial course-grid %}
+        {% endwith %}
+        <div class="col-span-full space-y-4 lg:hidden" data-testid="section-row-list">
+            {% include "learner_interface/partials/course_row_list.html#course-rows" with courses=section.courses %}
+            <div class="text-center">{% partial browse-all-courses %}</div>
         </div>
     </div>
 {% endpartialdef %}
@@ -90,7 +105,7 @@ any other section is deleted, as a reload would show.
 {% partialdef course-section %}
     <div id="{{ section.wrapper_id }}"
          x-data="courseSectionPagination"
-         class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-4 items-start">
+         class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-x-4 gap-y-4 items-start">
         <div>
             {% partial section-heading %}
             {% if section.description %}
