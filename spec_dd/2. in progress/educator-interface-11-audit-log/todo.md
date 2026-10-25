@@ -16,8 +16,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide whether a cohort's History should name the learner or member each row is about (today two 'Added to cohort / Cohort A' rows are identical; see qa_report.md B3), then update the spec and build it if so (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
