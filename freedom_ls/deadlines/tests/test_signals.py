@@ -9,6 +9,8 @@ import pytest
 
 from django.contrib.sites.models import Site
 from django.core.management import call_command
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.models import (
@@ -23,6 +25,7 @@ from freedom_ls.deadlines.factories import (
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
+from freedom_ls.deadlines.signals import carry_over_deadline_overrides
 from freedom_ls.deadlines.tests.helpers import (
     write_course,
     write_part,
@@ -206,3 +209,30 @@ def test_a_receiver_that_raises_rolls_the_move_back(site, mock_site_context, tmp
 
     assert _item_of(cohort_override) == old_row.pk
     assert _item_of(learner_override) == old_row.pk
+
+
+def _receiver_query_count(root: Path, site: Site, topic_count: int) -> int:
+    """The receiver's own queries for a first load of one course, one part, N topics."""
+    write_course(root)
+    part = write_part(root, PART_A)
+    for index in range(topic_count):
+        write_topic(part, f"topic-{index}")
+    _load(root, site)
+    rows = list(ContentCollectionItem._base_manager.filter(site=site))
+    with CaptureQueriesContext(connection) as queries:
+        carry_over_deadline_overrides(
+            sender=ContentCollectionItem, site=site, created=rows, written=rows
+        )
+    return len(queries)
+
+
+@pytest.mark.django_db
+def test_a_first_loads_carry_over_cost_does_not_grow_with_the_rows(
+    site, mock_site_context, tmp_path
+):
+    """Every row of a first load is new, and the receiver used to look its course up and
+    rebuild the whole item tree once per row."""
+    small = _receiver_query_count(tmp_path / "small", site, topic_count=3)
+    large = _receiver_query_count(tmp_path / "large", site, topic_count=9)
+
+    assert small == large

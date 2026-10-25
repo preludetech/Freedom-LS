@@ -6,6 +6,8 @@ is never connected, and fails silently rather than loudly.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.dispatch import receiver
@@ -34,54 +36,72 @@ def carry_over_deadline_overrides(
     at it would otherwise stop applying. Only the unambiguous case moves: exactly one other row
     for the same child in the same course that this load did not write. A file with two
     collection items on purpose has both rows written, and a child with two stale rows is left
-    for a person.
+    for a person. A part placed in several courses is looked at in each of them.
+
+    A first load creates every row, so the courses and their item trees are read once per load
+    rather than once per created row.
     """
     written_ids = {row.pk for row in written}
+    courses = _CoursesOfCollections(site)
+    items_by_course: dict[UUID, list[ContentCollectionItem]] = {}
     for new_row in created:
-        course = _course_of_collection_item(new_row, site)
-        if course is None:
-            continue
-        stale = [
-            row
-            for row in course_viewable_collection_items(course)
-            if row.pk != new_row.pk
-            and row.pk not in written_ids
-            and row.site_id == site.pk
-            and (row.child_type_id, row.child_id)
-            == (new_row.child_type_id, new_row.child_id)
-        ]
-        if len(stale) != 1:
-            continue
-        for model in (CohortDeadlineOverride, LearnerDeadlineOverride):
-            model._base_manager.filter(site=site, collection_item=stale[0]).update(
-                collection_item=new_row
-            )
+        for course in courses.placing(new_row):
+            if course.pk not in items_by_course:
+                items_by_course[course.pk] = course_viewable_collection_items(course)
+            stale = [
+                row
+                for row in items_by_course[course.pk]
+                if row.pk != new_row.pk
+                and row.pk not in written_ids
+                and row.site_id == site.pk
+                and (row.child_type_id, row.child_id)
+                == (new_row.child_type_id, new_row.child_id)
+            ]
+            if len(stale) != 1:
+                continue
+            for model in (CohortDeadlineOverride, LearnerDeadlineOverride):
+                model._base_manager.filter(site=site, collection_item=stale[0]).update(
+                    collection_item=new_row
+                )
 
 
-def _course_of_collection_item(row: ContentCollectionItem, site: Site) -> Course | None:
-    """The course a row sits in: its collection when that is a course, else the course that
-    places its part.
+class _CoursesOfCollections:
+    """The courses each collection sits in, read once per collection for one load.
 
     Read through _base_manager with the load's site, because a load runs with no request; a
-    fresh instance each time, so the memoised item tree is this load's.
+    fresh Course instance per load, so the memoised item tree is this load's.
     """
-    course_type = DjangoContentType.objects.get_for_model(Course)
-    part_type = DjangoContentType.objects.get_for_model(CoursePart)
-    collection_id = row.collection_id
-    if row.collection_type_id == part_type.pk:
-        placement = (
-            ContentCollectionItem._base_manager.filter(
-                site=site,
-                collection_type=course_type,
-                child_type=part_type,
-                child_id=collection_id,
+
+    def __init__(self, site: Site) -> None:
+        self.site = site
+        self.course_type = DjangoContentType.objects.get_for_model(Course)
+        self.part_type = DjangoContentType.objects.get_for_model(CoursePart)
+        self._courses: dict[tuple[int, UUID], list[Course]] = {}
+
+    def placing(self, row: ContentCollectionItem) -> list[Course]:
+        """The courses a row sits in: its collection when that is a course, else every course
+        that places its part."""
+        key = (row.collection_type_id, row.collection_id)
+        if key not in self._courses:
+            self._courses[key] = self._read(row)
+        return self._courses[key]
+
+    def _read(self, row: ContentCollectionItem) -> list[Course]:
+        if row.collection_type_id == self.course_type.pk:
+            course_ids = [row.collection_id]
+        elif row.collection_type_id == self.part_type.pk:
+            course_ids = list(
+                ContentCollectionItem._base_manager.filter(
+                    site=self.site,
+                    collection_type=self.course_type,
+                    child_type=self.part_type,
+                    child_id=row.collection_id,
+                ).values_list("collection_id", flat=True)
             )
-            .order_by("pk")
-            .first()
+        else:
+            return []
+        return list(
+            Course._base_manager.filter(site=self.site, pk__in=course_ids).order_by(
+                "pk"
+            )
         )
-        if placement is None:
-            return None
-        collection_id = placement.collection_id
-    elif row.collection_type_id != course_type.pk:
-        return None
-    return Course._base_manager.filter(site=site, pk=collection_id).first()

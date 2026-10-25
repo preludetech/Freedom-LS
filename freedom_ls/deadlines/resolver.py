@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -153,7 +154,8 @@ def time_limit_value(days: int | None) -> DeadlineValue | None:
 def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
     """Three queries whatever the number of courses or rows: the course-level rows, the
     part-level rows beneath them, and the courses' time limits. Rows whose child is a part are
-    containers, not items, so they carry no value."""
+    containers, not items, so they carry no value. A part placed in several of the courses
+    has its rows in each of them."""
     course_type = ContentType.objects.get_for_model(Course)
     part_type = ContentType.objects.get_for_model(CoursePart)
     top_rows = list(
@@ -161,14 +163,13 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
             collection_type=course_type, collection_id__in=course_ids
         )
     )
-    course_of_part = {
-        row.child_id: row.collection_id
-        for row in top_rows
-        if row.child_type_id == part_type.pk
-    }
+    courses_of_part: dict[UUID, list[UUID]] = defaultdict(list)
+    for row in top_rows:
+        if row.child_type_id == part_type.pk:
+            courses_of_part[row.child_id].append(row.collection_id)
     part_rows = list(
         ContentCollectionItem.objects.filter(
-            collection_type=part_type, collection_id__in=course_of_part
+            collection_type=part_type, collection_id__in=courses_of_part
         )
     )
     time_limit_days = dict(
@@ -184,14 +185,16 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
     for row in top_rows + part_rows:
         if row.child_type_id == part_type.pk:
             continue
-        course_id = (
-            row.collection_id
+        placed_in = (
+            [row.collection_id]
             if row.collection_type_id == course_type.pk
-            else course_of_part[row.collection_id]
+            else courses_of_part[row.collection_id]
         )
-        defaults[course_id].items[row.pk] = DeadlineValue.from_columns(
+        value = DeadlineValue.from_columns(
             row.due_date, row.due_time, row.due_days_after_registration
         )
+        for course_id in placed_in:
+            defaults[course_id].items[row.pk] = value
     return defaults
 
 

@@ -267,6 +267,27 @@ def test_course_deadlines_keys_every_viewable_row_and_no_part_row(mock_site_cont
 
 
 @pytest.mark.django_db
+def test_a_part_placed_in_two_courses_resolves_its_rows_in_both(mock_site_context):
+    """The part's item rows belong to the part, so a learner on both courses used to see
+    the dates in only one of them: the resolver credited the part to a single course."""
+    shared_part = CoursePartFactory()
+    topic = TopicFactory()
+    row = shared_part.items.create(child=topic, order=0, due_days_after_registration=7)
+    course_a = CourseFactory()
+    course_b = CourseFactory()
+    course_a.items.create(child=shared_part, order=0)
+    course_b.items.create(child=shared_part, order=0)
+    user = UserFactory()
+    record_a = course_progress_record(course_a, user)
+    record_b = course_progress_record(course_b, user)
+
+    deadlines = course_deadlines_for([record_a, record_b])
+
+    assert deadlines[record_a.pk].items[row.pk].due_at is not None
+    assert deadlines[record_b.pk].items[row.pk].due_at is not None
+
+
+@pytest.mark.django_db
 def test_course_deadlines_resolves_content_defaults_from_the_registration_date(
     mock_site_context,
 ):
