@@ -17,7 +17,6 @@ Organisations shipped as a grouping layer between a site and its cohorts and reg
 
 - **No delete or merge** — an organisation cannot be removed or combined with another once created, and a learner's association with one can only be deactivated, never deleted.
 - **No nested organisations** — the structure is flat, with no parent/child relationship.
-- **No roster management in the educator interface** — associating a learner with an organisation, or marking one removed, is done in the Django admin only; there is no add-, remove-, or suspend-learner action there, and no "show removed learners" filter.
 - **Bulk and CSV tools are learner-only** — learners can be added to an organisation by CSV import, and deactivated or reactivated in bulk, but an import cannot update existing learners' details, create cohorts or map columns, and there is no bulk delete or bulk cohort move.
 - **No cross-organisation view** — nothing shows one person's associations across every organisation they study with, though a person can hold several.
 - **No notification when a learner is removed** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
