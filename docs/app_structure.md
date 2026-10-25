@@ -74,6 +74,7 @@ flowchart TB
     course_access --> content_engine
     course_access --> learner_management
     course_applications --> accounts
+    course_applications --> base
     course_applications --> content_engine
     course_applications --> course_access
     course_applications --> form_engine
@@ -270,7 +271,7 @@ flowchart TB
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, organisations, site_aware_models | — |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
-| course_applications | accounts, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
+| course_applications | accounts, base, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |
 | deadlines | accounts, content_engine, learner_management, learner_progress, site_aware_models | — |

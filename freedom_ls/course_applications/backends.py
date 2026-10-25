@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from django.core.paginator import Page, Paginator
 from django.urls import reverse
 
+from freedom_ls.base.pagination import clamped_page, position_text
 from freedom_ls.course_access.backends import (
     AccessBadge,
     CourseAccessDecision,
@@ -42,6 +44,14 @@ if TYPE_CHECKING:
 # applications backend, and core (course_access, learner_interface) never
 # references this string.
 APPLICATION_GATED = "application_gated"
+
+# The dashboard panel shows this many applications at a time. The page lives in
+# its own query parameter so paging it leaves every course section's page alone,
+# and the swap id is what the pager targets and what the server reads back from
+# HX-Target to tell a swap of this panel from any other request.
+APPLICATIONS_PAGE_SIZE = 3
+APPLICATIONS_PAGE_PARAM = "page_applications"
+APPLICATIONS_SWAP_ID = "applications-page"
 
 
 class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
@@ -237,7 +247,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     def get_dashboard_contributions(
         self, *, user: RequestUser
     ) -> list[DashboardContribution]:
-        """Return in-flight-application panel if the learner has any applications.
+        """Page one of the learner's applications: with no request there is no page to read.
 
         learner_interface renders each contribution generically via render_to_string
         and never reads context keys — it never imports course_applications.
@@ -245,42 +255,61 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         from freedom_ls.course_applications.queries import get_active_applications
 
         # Materialise once to avoid a second DB hit when the template iterates.
-        return self._applications_panel(list(get_active_applications(user)))
+        applications = list(get_active_applications(user))
+        page = Paginator(applications, APPLICATIONS_PAGE_SIZE).get_page(1)
+        return self._applications_panel(page, announce_page=False)
 
     def get_dashboard_contributions_for_request(
         self, *, request: HttpRequest
     ) -> list[DashboardContribution]:
-        """The signed-in user's applications, or the drafts an anonymous session holds.
+        """The signed-in user's applications, or the drafts an anonymous session holds, paged.
 
         A visitor sees only what their browser can still act on: a submitted
         application waits for the claim link, so it is not listed here.
         """
         if request.user.is_authenticated:
-            return self.get_dashboard_contributions(user=request.user)
-        from freedom_ls.course_applications.anonymous_session import (
-            owned_applications,
-        )
+            from freedom_ls.course_applications.queries import get_active_applications
 
-        # An empty session map makes this an `IN ()` filter, which Django
-        # answers without a query.
-        drafts = list(
-            owned_applications(request)
-            .filter(
-                form_progress__isnull=False, form_progress__completed_time__isnull=True
+            applications = list(get_active_applications(request.user))
+        else:
+            from freedom_ls.course_applications.anonymous_session import (
+                owned_applications,
             )
-            .select_related("course", "form_progress")
-            .order_by("-created_at")
+
+            # An empty session map makes this an `IN ()` filter, which Django
+            # answers without a query.
+            applications = list(
+                owned_applications(request)
+                .filter(
+                    form_progress__isnull=False,
+                    form_progress__completed_time__isnull=True,
+                )
+                .select_related("course", "form_progress")
+                .order_by("-created_at", "pk")
+            )
+        page = clamped_page(
+            request, APPLICATIONS_PAGE_PARAM, applications, APPLICATIONS_PAGE_SIZE
         )
-        return self._applications_panel(drafts)
+        # Only a swap of the panel's own page is announced: a whole-page load
+        # already puts the heading and the position text in front of the reader.
+        announce_page = request.headers.get("HX-Target") == APPLICATIONS_SWAP_ID
+        return self._applications_panel(page, announce_page=announce_page)
 
     def _applications_panel(
-        self, applications: list[CourseApplication]
+        self, page: Page[CourseApplication], *, announce_page: bool
     ) -> list[DashboardContribution]:
-        if not applications:
+        if page.paginator.count == 0:
             return []
         return [
             DashboardContribution(
                 template_name="course_applications/partials/dashboard_applications.html",
-                context={"applications": applications},
+                context={
+                    "applications": list(page.object_list),
+                    "applications_page": page,
+                    "position_text": position_text(page),
+                    "announce_page": announce_page,
+                    "swap_id": APPLICATIONS_SWAP_ID,
+                    "page_param_name": APPLICATIONS_PAGE_PARAM,
+                },
             )
         ]

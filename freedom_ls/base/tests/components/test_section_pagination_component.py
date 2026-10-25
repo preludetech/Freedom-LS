@@ -18,10 +18,17 @@ _TEMPLATE = (
 )
 
 
-def _render(query: dict[str, str] | None = None) -> str:
+_TEMPLATE_WITH_SELECT = _TEMPLATE.replace(
+    " />", ' hx_select="#swap-x" hx_select_oob="#status-x" />'
+)
+
+
+def _render(
+    query: dict[str, str] | None = None, source: str = _TEMPLATE, page: int = 1
+) -> str:
     request = RequestFactory().get("/dashboard/", query or {})
-    page_obj = Paginator(list(range(7)), 3).page(1)
-    template = Template(_cotton_compiler.process(_TEMPLATE))
+    page_obj = Paginator(list(range(7)), 3).page(page)
+    template = Template(_cotton_compiler.process(source))
     return template.render(Context({"request": request, "page_obj": page_obj}))
 
 
@@ -64,3 +71,21 @@ def test_a_reflected_query_value_is_encoded_never_raw():
     assert "utm=a%22%3Cb" in next_control
     assert 'a"<b' not in next_control
     assert "a<b" not in next_control
+
+
+def test_a_pager_with_select_props_carries_them_on_every_live_control():
+    html = _render(source=_TEMPLATE_WITH_SELECT, page=2)
+
+    for direction in ("previous", "next"):
+        control = _control(html, direction)
+        assert 'hx-select="#swap-x"' in control
+        assert 'hx-select-oob="#status-x"' in control
+
+
+def test_a_pager_without_select_props_carries_neither_attribute():
+    html = _render(page=2)
+
+    for direction in ("previous", "next"):
+        control = _control(html, direction)
+        assert "hx-select" not in control
+        assert "hx-select-oob" not in control

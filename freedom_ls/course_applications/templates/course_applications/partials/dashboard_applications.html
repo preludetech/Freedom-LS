@@ -6,43 +6,66 @@ reads context keys and never imports course_applications.
 
 The status link resumes a draft at the page the applicant left, so the same
 URL serves both rows.
-{% endcomment %}
-<section class="space-y-3">
-    <h2 class="text-lg font-semibold">Your applications</h2>
 
-    <ul class="space-y-2 list-none ml-0">
-        {% for app in applications %}
-            <li class="flex flex-col gap-2 rounded-lg border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                {% if app.is_submitted %}
-                    <div class="flex items-center gap-3">
-                        <span class="text-primary" aria-hidden="true">
-                            <c-icon name="in_progress" class="size-4" />
-                        </span>
-                        <a href="{% url 'course_applications:status' pk=app.pk %}"
-                           class="font-medium hover:underline">
-                            {{ app.course.title }}
-                        </a>
-                    </div>
-                    <span class="text-sm text-muted">Pending review</span>
-                {% else %}
-                    <div class="space-y-1">
-                        <div class="flex flex-wrap items-center gap-3">
+Paging: the pager's links fetch the dashboard URL itself, so the response is
+the whole page. hx-select keeps only this panel's page out of it and
+hx-select-oob refreshes the status region that announces the new position.
+The heading sits outside the swap boundary so it survives a swap and can take
+focus. Focus restoration comes from the courseSectionPagination component the
+dashboard page loads.
+{% endcomment %}
+<section x-data="courseSectionPagination"
+         class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-3 items-center">
+    <h2 tabindex="-1" class="text-base sm:text-lg lg:text-xl font-semibold">Your applications</h2>
+
+    <div id="{{ swap_id }}" class="contents">
+        <div class="flex items-center justify-between gap-4 sm:justify-self-end">
+            <span class="text-sm text-muted tabular-nums">{{ position_text }}</span>
+            <c-section-pagination :page_obj="applications_page"
+                                  target_id="{{ swap_id }}"
+                                  page_param_name="{{ page_param_name }}"
+                                  nav_label="Your applications pages"
+                                  hx_select="#{{ swap_id }}"
+                                  hx_select_oob="#applications-status" />
+        </div>
+        <ul class="sm:col-span-2 space-y-2 list-none ml-0">
+            {% for app in applications %}
+                <li class="flex flex-col gap-2 rounded-lg border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    {% if app.is_submitted %}
+                        <div class="flex items-center gap-3">
+                            <span class="text-primary" aria-hidden="true">
+                                <c-icon name="in_progress" class="size-4" />
+                            </span>
                             <a href="{% url 'course_applications:status' pk=app.pk %}"
                                class="font-medium hover:underline">
                                 {{ app.course.title }}
                             </a>
-                            <c-chip variant="warning" size="xs">Incomplete</c-chip>
                         </div>
-                        <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
-                    </div>
-                    <c-button href="{% url 'course_applications:status' pk=app.pk %}"
-                              size="small"
-                              icon_right="next"
-                              class="shrink-0">
-                        Continue application<span class="sr-only"> for {{ app.course.title }}</span>
-                    </c-button>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+                        <span class="text-sm text-muted">Pending review</span>
+                    {% else %}
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <a href="{% url 'course_applications:status' pk=app.pk %}"
+                                   class="font-medium hover:underline">
+                                    {{ app.course.title }}
+                                </a>
+                                <c-chip variant="warning" size="xs">Incomplete</c-chip>
+                            </div>
+                            <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
+                        </div>
+                        <c-button href="{% url 'course_applications:status' pk=app.pk %}"
+                                  size="small"
+                                  icon_right="next"
+                                  class="shrink-0">
+                            Continue application<span class="sr-only"> for {{ app.course.title }}</span>
+                        </c-button>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div id="applications-status" role="status" aria-atomic="true" class="sr-only">
+        {% if announce_page %}Your applications: showing {{ position_text }}{% endif %}
+    </div>
 </section>
