@@ -35,7 +35,7 @@ The learner dashboard serves as the home page at `/`. Its content branches on wh
 **Authenticated learners** see the personalised greeting, then the discovery sections above alongside their own:
 
 - **In progress** — courses the learner has started but not completed, ordered by recent activity, with courses they have merely been registered for behind those.
-- **Recommended courses** — courses an administrator has surfaced for the learner.
+- **Recommended courses** — courses an administrator or a [registration rule](./registration-rules.md) has surfaced for the learner. A course drops off this list once the learner is registered for it, however that happens.
 - **Learning history** — courses the learner has finished, most recently completed first.
 
 Each category chosen for the dashboard gets a section of its own, headed by its title and description, in the order the site declared. A published course appears in exactly one section however many categories it carries. A coming-soon course is the exception: where its category is one the site shows on the dashboard, it appears both in that category's section and in **Coming soon**; where it has no category, or its category isn't shown, it appears only in Coming soon and never in Available courses. A category whose courses are all coming soon therefore gets a section of its own — one with nothing in it a learner can start yet — and it leads the page if the site's declared order puts it first. A learner has no control over any of this — no section can be hidden, reordered, or collapsed — and a section's "Browse all" link goes to the full catalogue, which cannot yet filter down to one category's courses.

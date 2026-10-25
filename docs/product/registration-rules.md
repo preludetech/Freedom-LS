@@ -1,6 +1,6 @@
 # Registration Rules
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -9,13 +9,16 @@ _Last updated: 2026-10-22_
 - **Every change that affects who is registered shows a preview first, and nothing is saved until the administrator confirms.** Built.
 - **A learner who stops matching is retracted, never deleted**, so their progress is kept. Built.
 - **Every registration a rule made records which rule made it.** Built.
+- **A rule can recommend its course instead of registering for it.** Matching learners see the course under Recommended courses on their dashboard, see [learner experience](./learner-experience.md). Built.
 - **Rules run in the background.** They only apply while a task worker is running. See [deployment](./deployment.md#background-tasks). Built.
-- **The app is optional** and needs the [HR attributes](./hr-attributes.md) app. A project that leaves it out sees no change. Built.
-- **Rules that recommend a course, educator-interface screens and CSV import.** Not built.
+- **The app is optional** and needs the [HR attributes](./hr-attributes.md) and course recommendations apps. A project that leaves it out sees no change. Built.
+- **Educator-interface screens and CSV import.** Not built.
 
 ## How a Rule Works
 
 A rule belongs to one organisation and one course. It is created in two steps in the admin: a name, organisation and course first, then the conditions on its change page. The rule starts disabled. Organisation and course cannot be changed afterwards; to change either, disable the rule and make a new one.
+
+A rule's outcome is chosen when it is created and fixed afterwards: Register registers matching learners, and Recommend recommends the course to them instead, leaving them free to register themselves or be registered by staff. A learner already registered for the course is not recommended it.
 
 A learner matches when, for each attribute the rule constrains, they hold any one of the chosen entries. Across attributes all must match. There is no way to exclude a group or to match on one attribute or another. Attribute matching is the only kind of rule that ships; a project can add its own kinds, see [configuration and extension](./configuration-and-extension.md#settings-reference).
 
@@ -35,6 +38,8 @@ The preview is a forecast made at that moment, not a promise: learners can chang
 
 Their registration is deactivated, not deleted, so progress is kept, and they are reactivated on the same registration if they match again. A learner who has started the course is never retracted. If another enabled rule still matches them, the registration passes to that rule. Retraction and reactivation fire the corresponding webhooks, and reactivation sends no second notification.
 
+A recommendation a rule made is removed when its learner stops matching and when the rule is disabled; it stays while the organisation's switch is off. A rule-made recommendation that staff delete by hand comes back on the rule's next run while the learner still matches. A recommendation an administrator made is never touched by a rule.
+
 ## Rule-made Registrations in the Admin
 
 A registration's admin page shows the rule that made it, or the name of a rule since deleted. If staff deactivate or reactivate such a registration, or the learner registers themselves, it is detached from the rule and rules leave it alone from then on.
@@ -47,7 +52,6 @@ Nothing needs setting. A project can add its own rule kinds through an optional 
 
 ## Not Built
 
-- Rules that recommend a course instead of registering for it. See the [roadmap](./roadmap.md#registration-rules).
 - Educator-interface screens for rules, and CSV import of attributes.
 - Rules that register cohorts, and other kinds of rule out of the box.
 - Exclusion conditions, and OR across attributes.
