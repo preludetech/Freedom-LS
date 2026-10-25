@@ -19,6 +19,34 @@
                 <p>Added {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</p>
             {% endif %}
         </div>
+        {% if error_rows %}
+            <div class="mt-4 overflow-x-auto">
+                <table data-error-rows class="w-full text-left text-sm">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="px-2 py-2">Line</th>
+                            <th scope="col" class="px-2 py-2">Email</th>
+                            <th scope="col" class="px-2 py-2">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in error_rows %}
+                            <tr class="border-t border-border">
+                                <td class="px-2 py-2">{{ item.row.line_number }}</td>
+                                <td class="px-2 py-2 break-words">{{ item.row.email }}</td>
+                                <td class="px-2 py-2 break-words">{{ item.reason }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2">
+                <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" data-error-download>Download the {{ error_count }} error row{{ error_count|pluralize }}</c-button>
+            </p>
+        {% endif %}
+        {% if learner_import.status == "done" or learner_import.status == "failed" %}
+            <p class="mt-4 text-sm">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
+        {% endif %}
         <p class="mt-4 space-x-4">
             <a href="{{ learners_url }}">Back to learners</a>
             <a href="{{ upload_url }}">Import another file</a>

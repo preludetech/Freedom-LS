@@ -1,6 +1,7 @@
 {% comment %}
 The modal fragment a FormPanelAction's GET returns. Context: form,
-field_error_count, form_title, form_url, submit_buttons. empty_message, when
+field_error_count, form_title, form_url, submit_buttons, and optionally
+import_url, a link offered beside the errors. empty_message, when
 set, replaces the form with that sentence and a Close button.
 {% endcomment %}
 {% if empty_message %}
@@ -28,6 +29,7 @@ set, replaces the form with that sentence and a Close button.
             <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
         {% endif %}
         {{ form.non_field_errors }}
+        {% if import_url %}<p class="mt-2"><a href="{{ import_url }}">Import a file instead</a></p>{% endif %}
     </div>
 {% endif %}
 

@@ -218,7 +218,9 @@ def test_a_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+@pytest.mark.parametrize(
+    "name", ["learner_import_preview", "learner_import_result", "learner_import_errors"]
+)
 def test_a_learner_import_route_404s_for_a_user_with_no_access_to_the_organisation(
     mock_site_context, logged_in_client, name: str
 ):
@@ -244,8 +246,9 @@ def test_a_learner_import_route_404s_for_a_user_with_no_access_to_the_organisati
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import", "learner_import_template"])
 def test_the_learner_import_upload_route_404s_for_a_user_with_no_access_to_the_organisation(
-    mock_site_context, logged_in_client
+    mock_site_context, logged_in_client, name: str
 ):
     organisation = OrganisationFactory()
     other_organisation = OrganisationFactory()
@@ -254,7 +257,7 @@ def test_the_learner_import_upload_route_404s_for_a_user_with_no_access_to_the_o
 
     response = logged_in_client(requester).get(
         reverse(
-            "educator_interface:learner_import",
+            f"educator_interface:{name}",
             kwargs={"organisation_slug": organisation.slug},
         )
     )

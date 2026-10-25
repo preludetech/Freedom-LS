@@ -6668,3 +6668,50 @@ def test_bulk_cohort_unregister_deactivates_the_active_registration(
     assert [call.args[0] for call in fire.call_args_list] == [
         "cohort.course_unregistered"
     ]
+
+
+@pytest.mark.django_db
+def test_the_add_learners_cap_message_links_to_the_import_page(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+    lines = "\n".join(f"person{n}@example.com" for n in range(51))
+
+    response = logged_in_client(educator).post(
+        _add_learners_list_url(organisation),
+        {"entries": lines},
+        HTTP_HX_REQUEST="true",
+    )
+
+    import_url = reverse(
+        "educator_interface:learner_import",
+        kwargs={"organisation_slug": organisation.slug},
+    )
+    assert (
+        response.status_code,
+        f'href="{import_url}"' in response.content.decode(),
+    ) == (
+        422,
+        True,
+    )
+
+
+@pytest.mark.django_db
+def test_an_add_learners_error_that_is_not_the_cap_carries_no_import_link(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+
+    response = logged_in_client(educator).post(
+        _add_learners_list_url(organisation),
+        {"entries": ""},
+        HTTP_HX_REQUEST="true",
+    )
+
+    import_url = reverse(
+        "educator_interface:learner_import",
+        kwargs={"organisation_slug": organisation.slug},
+    )
+    assert import_url not in response.content.decode()

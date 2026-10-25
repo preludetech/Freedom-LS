@@ -2,11 +2,18 @@
 
 {% block standalone_main %}
     {% include "educator_interface/partials/import_stepper.html" with step=2 %}
-    <c-panel-card title="{{ learner_import.file_name }}" description="{{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}">
-        <ul class="flex flex-wrap gap-x-6 gap-y-1">
+    <c-panel-card title="Preview">
+        <p class="flex flex-wrap items-center gap-3">
+            <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
+            <a href="{{ upload_url }}">Upload a different file</a>
+        </p>
+        <ul class="mt-4 flex flex-wrap gap-x-6 gap-y-1">
             {% for item in label_counts %}
-                <li>{{ item.name }}: {{ item.count }}</li>
+                <li>
+                    <a href="{{ preview_url }}?label={{ item.label }}" data-label-filter{% if item.label == label %} aria-current="true" class="font-semibold"{% endif %}>{{ item.name }}: {{ item.count }}</a>
+                </li>
             {% endfor %}
+            {% if label %}<li><a href="{{ preview_url }}">Show all rows</a></li>{% endif %}
         </ul>
         <ul class="mt-4 list-disc pl-5 text-sm">
             <li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>
@@ -15,6 +22,9 @@
         </ul>
         {% if error_count %}
             <p class="mt-4">{{ error_count }} row{{ error_count|pluralize }} with errors will not be added.</p>
+            <p class="mt-2">
+                <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" data-error-download>Download the {{ error_count }} error row{{ error_count|pluralize }}</c-button>
+            </p>
         {% endif %}
         {% if add_count %}
             <form method="post" class="mt-4">
@@ -26,7 +36,7 @@
         {% endif %}
     </c-panel-card>
     <c-panel-card title="Rows" flush="true">
-        <div class="overflow-x-auto">
+        <div class="hidden overflow-x-auto md:block">
             <table class="w-full text-left text-sm">
                 <thead>
                     <tr>
@@ -40,7 +50,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in rows %}
+                    {% for row in page_obj %}
                         <tr class="border-t border-border">
                             <td class="px-4 py-2">{{ row.line_number }}</td>
                             <td class="px-4 py-2">{{ row.email }}</td>
@@ -54,5 +64,47 @@
                 </tbody>
             </table>
         </div>
+        {% comment %}
+        Below md the table is hidden and each row is a card, laid out like the
+        data table's cards: the email on top, the other values labelled below.
+        {% endcomment %}
+        <ul data-row-cards class="list-none ml-0 space-y-0 divide-y divide-border md:hidden">
+            {% for row in page_obj %}
+                <li class="px-4 py-3 sm:px-6">
+                    <p class="min-w-0 break-words font-bold">{{ row.email }}</p>
+                    <dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">
+                        <dt class="text-muted">Line</dt>
+                        <dd>{{ row.line_number }}</dd>
+                        <dt class="text-muted">Label</dt>
+                        <dd>{{ row.get_preview_label_display }}</dd>
+                        {% if row.preview_reason %}
+                            <dt class="text-muted">Reason</dt>
+                            <dd class="min-w-0 break-words">{{ row.preview_reason }}</dd>
+                        {% endif %}
+                        {% if row.first_name or row.last_name %}
+                            <dt class="text-muted">Name</dt>
+                            <dd class="min-w-0 break-words">{{ row.first_name }} {{ row.last_name }}</dd>
+                        {% endif %}
+                        {% if row.cohort_name %}
+                            <dt class="text-muted">Cohort</dt>
+                            <dd class="min-w-0 break-words">{{ row.cohort_name }}</dd>
+                        {% endif %}
+                    </dl>
+                </li>
+            {% endfor %}
+        </ul>
+        {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="Rows pages" class="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+                <span class="text-sm text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <span class="flex gap-2">
+                    {% if page_obj.has_previous %}
+                        <a rel="prev" href="{% querystring page=page_obj.previous_page_number %}" class="btn btn-secondary btn-sm min-h-11 md:min-h-0">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a rel="next" href="{% querystring page=page_obj.next_page_number %}" class="btn btn-secondary btn-sm min-h-11 md:min-h-0">Next</a>
+                    {% endif %}
+                </span>
+            </nav>
+        {% endif %}
     </c-panel-card>
 {% endblock standalone_main %}

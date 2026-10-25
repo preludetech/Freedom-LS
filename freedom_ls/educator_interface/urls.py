@@ -39,6 +39,16 @@ urlpatterns = [
         name="learner_import_preview",
     ),
     re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/template\.csv$",
+        views.learner_import_template,
+        name="learner_import_template",
+    ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/errors\.csv$",
+        views.learner_import_errors,
+        name="learner_import_errors",
+    ),
+    re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/result/$",
         views.learner_import_result,
         name="learner_import_result",
