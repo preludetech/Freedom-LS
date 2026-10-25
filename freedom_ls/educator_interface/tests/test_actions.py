@@ -29,9 +29,11 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
     AddToCohortBulkAction,
+    CohortCourseBulkAction,
     DeactivateLearnersBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
+    UnregisterCohortFromCourseBulkAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -77,7 +79,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.panel_framework.bulk_actions import BulkOutcome, BulkResult
+from freedom_ls.panel_framework.bulk_actions import BulkOutcome, BulkResult, run_apply
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -6614,6 +6616,32 @@ def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site
             "skipped", "cohorts you don't have permission to change"
         ),
     }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action_class",
+    [RegisterCohortForCourseBulkAction, UnregisterCohortFromCourseBulkAction],
+)
+def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
+    mock_site_context: Site, action_class: type[CohortCourseBulkAction]
+):
+    """An inactive cohort was reported as "could not be changed" at the end of
+    the run, though the confirmation had promised to skip it."""
+    organisation = OrganisationFactory()
+    inactive = _bulk_cohort(organisation, is_active=False)
+    educator = _cohort_admin_on(organisation, inactive)
+
+    result = run_apply(
+        action_class(),
+        educator,
+        Cohort._base_manager.filter(pk=inactive.pk),
+        {"course": CourseFactory()},
+    )
+
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", "an inactive cohort")
+    ]
 
 
 @pytest.mark.django_db

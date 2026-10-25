@@ -2912,9 +2912,10 @@ class CohortCourseBulkAction(CohortBulkAction):
     fixed number of queries however many cohorts are selected."""
 
     form_class = BulkTargetPickerForm
-    # An inactive cohort is skipped in the preview; one deactivated between
-    # the confirmation and the run fails instead of aborting the run.
+    # An inactive cohort is skipped; one deactivated after `apply` checked it
+    # and before the service ran fails instead of aborting the run.
     failure_exceptions = (ValueError,)
+    inactive_reason = "an inactive cohort"
     registered_ids: frozenset[object] = frozenset()
 
     def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
@@ -2937,8 +2938,18 @@ class CohortCourseBulkAction(CohortBulkAction):
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         if not cast(Cohort, obj).is_active:
-            return "an inactive cohort"
+            return self.inactive_reason
         return self.state_skip_reason(obj.pk in self.registered_ids)
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        if not cast(Cohort, obj).is_active:
+            return BulkOutcome("skipped", self.inactive_reason)
+        return super().apply(user, obj, cleaned_data)
 
     def state_skip_reason(self, is_registered: bool) -> str | None:
         """The skip reason for an active cohort, given whether it holds an
