@@ -242,6 +242,18 @@ class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
             )
         ]
 
+    def clean(self) -> None:
+        super().clean()
+        if not _relations_are_set(self, "learner", "course"):
+            return
+        from freedom_ls.learner_management.queries import (
+            COURSE_NOT_OPEN_MESSAGE,
+            is_course_open_to_organisation,
+        )
+
+        if not is_course_open_to_organisation(self.course, self.learner.organisation):
+            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
+
     def __str__(self):
         return f"{self.learner} - {self.course}"
 
@@ -267,6 +279,18 @@ class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
                 name="unique_cohort_course_registration",
             )
         ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not _relations_are_set(self, "cohort", "course"):
+            return
+        from freedom_ls.learner_management.queries import (
+            COURSE_NOT_OPEN_MESSAGE,
+            is_course_open_to_organisation,
+        )
+
+        if not is_course_open_to_organisation(self.course, self.cohort.organisation):
+            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
 
     def __str__(self):
         return f"{self.cohort} - {self.course}"

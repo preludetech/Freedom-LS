@@ -65,6 +65,20 @@ class RegistrationRule(SiteAwareModel, TimestampedModel):
     def __str__(self) -> str:
         return self.name
 
+    def clean(self) -> None:
+        super().clean()
+        if not (self.course_id and self.organisation_id):
+            return
+        # Lazy import: learner_management's models import this app's neighbours
+        # at load time, and queries imports those models.
+        from freedom_ls.learner_management.queries import (
+            COURSE_NOT_OPEN_MESSAGE,
+            is_course_open_to_organisation,
+        )
+
+        if not is_course_open_to_organisation(self.course, self.organisation):
+            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
+
 
 class RuleRegistration(SiteAwareModel):
     """The rule that made a registration. Exists only for rows a rule created.

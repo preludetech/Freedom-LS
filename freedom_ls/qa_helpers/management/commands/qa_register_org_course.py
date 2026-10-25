@@ -1,6 +1,7 @@
 """Register an existing user for a course *through a named Organisation*.
 
-A Course has no Organisation FK of its own. The organisation a learner is
+A Course has no single owning Organisation: it may be open to several, and
+most are open to every organisation. The organisation a learner is
 studying a course through is resolved by
 ``learner_management.queries.organisation_for_learner_course``:
 

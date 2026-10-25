@@ -7,7 +7,7 @@ from typing import cast
 
 from django.contrib.auth.models import AnonymousUser
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
@@ -17,6 +17,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
 type AudienceCase = tuple[User | AnonymousUser, Course]

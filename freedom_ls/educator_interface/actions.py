@@ -696,7 +696,14 @@ class ReregisterLearnerForCourseAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        register_for_course(learner, self._registration(ctx).course)
+        try:
+            register_for_course(learner, self._registration(ctx).course)
+        except ValueError as error:
+            # The course may have gained organisations since the registration
+            # was made, leaving it closed to this learner's organisation.
+            context = self.get_context_data(ctx)
+            context["refusal"] = str(error)
+            return render(ctx.request, self.template_name, context, status=422)
         return _registration_changed_response(learner)
 
 

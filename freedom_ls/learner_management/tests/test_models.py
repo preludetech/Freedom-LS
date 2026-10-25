@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -23,6 +24,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
 from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -437,3 +439,47 @@ def test_cohort_registration_loaded_from_the_database_carries_loaded_is_active(
     loaded = CohortCourseRegistration.objects.get(pk=registration.pk)
 
     assert loaded.loaded_is_active is False
+
+
+@pytest.mark.django_db
+class TestRegistrationOrganisationCheck:
+    def test_an_individual_registration_in_a_closed_organisation_is_refused(
+        self, mock_site_context
+    ):
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        registration = LearnerCourseRegistration(
+            learner=LearnerFactory(), course=course
+        )
+
+        with pytest.raises(ValidationError) as error:
+            registration.full_clean(exclude=["site"])
+
+        assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]
+
+    def test_a_cohort_registration_in_a_closed_organisation_is_refused(
+        self, mock_site_context
+    ):
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        registration = CohortCourseRegistration(cohort=CohortFactory(), course=course)
+
+        with pytest.raises(ValidationError) as error:
+            registration.full_clean(exclude=["site"])
+
+        assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]
+
+    def test_a_registration_in_an_open_organisation_is_accepted(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(learner.organisation)
+        registration = LearnerCourseRegistration(learner=learner, course=course)
+
+        registration.full_clean(exclude=["site"])
+
+    def test_clean_does_not_raise_when_the_learner_is_unset(self, mock_site_context):
+        registration = LearnerCourseRegistration(course=CourseFactory())
+
+        registration.clean()

@@ -29,7 +29,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.views import (
     CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
@@ -421,8 +421,8 @@ class TestCrossOrganisationIsolation:
     def test_course_detail_cohort_registrations_never_show_organisation_bs_cohort(
         self, isolation: SimpleNamespace
     ) -> None:
-        """Courses are shared across organisations; the cohorts registered for
-        one are not."""
+        """Most courses are shared across organisations; the cohorts registered
+        for one are not."""
         CohortCourseRegistrationFactory(
             cohort=isolation.cohort_a, course=isolation.course_a
         )
@@ -440,6 +440,23 @@ class TestCrossOrganisationIsolation:
         content = response.content.decode()
         assert isolation.cohort_a.name in content
         assert isolation.cohort_b.name not in content
+
+    def test_an_organisation_course_of_b_is_absent_from_as_list(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        course = CourseFactory(
+            title="Organisation Course Of B",
+            audience=CourseAudience.ORGANISATION_LEARNERS,
+        )
+        course.organisations.add(isolation.organisation_b)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "courses")
+        )
+
+        assert response.status_code == 200
+        assert isolation.course_a.title in response.content.decode()
+        assert course.title not in response.content.decode()
 
     def test_hidden_course_registered_only_in_organisation_b_is_absent_from_as_list(
         self, isolation: SimpleNamespace

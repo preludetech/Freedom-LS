@@ -20,7 +20,7 @@ from django.contrib.auth.models import AnonymousUser
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -461,3 +461,18 @@ class TestRegisterCohortForCourse:
 
         registration.refresh_from_db()
         assert registration.is_active is False
+
+
+@pytest.mark.django_db
+class TestRegisterCohortForCourseOrganisationCheck:
+    def test_a_course_closed_to_the_cohorts_organisation_is_refused(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+
+        with pytest.raises(ValueError, match="not open to the organisation"):
+            register_cohort_for_course(cohort, course)
+
+        assert not cohort.course_registrations.exists()

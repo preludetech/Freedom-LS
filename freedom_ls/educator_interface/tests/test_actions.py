@@ -19,7 +19,7 @@ from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
     cohort_not_empty_sentence,
     grantable_roles_for,
@@ -47,6 +47,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     OrganisationMember,
 )
+from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
 from freedom_ls.learner_management.role_assignment import (
     GrantableRole,
     assign_role,
@@ -417,6 +418,25 @@ def test_register_post_creates_the_registration(staff_client: Client):
     )
 
     assert cohort.course_registrations.filter(course=course, is_active=True).exists()
+
+
+@pytest.mark.django_db
+def test_register_post_for_a_course_closed_to_the_organisation_answers_422(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0)
+    course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+    course.organisations.add(OrganisationFactory())
+
+    response = _post(
+        staff_client,
+        _register_url(organisation, cohort),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 422
+    assert not cohort.course_registrations.exists()
 
 
 @pytest.mark.django_db
@@ -2453,6 +2473,29 @@ def test_reregister_post_reactivates_the_registration_with_both_events(
     assert (response.status_code, registration.is_active) == (204, True)
     assert trigger[REGISTRATION_CHANGED] == {"ids": [str(learner.pk)]}
     assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+
+
+@pytest.mark.django_db
+def test_reregister_post_on_a_course_that_gained_another_organisation_answers_422(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    course = registration.course
+    course.audience = CourseAudience.ORGANISATION_LEARNERS
+    course.save()
+    course.organisations.add(OrganisationFactory())
+
+    response = _post(
+        staff_client,
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert (response.status_code, registration.is_active) == (422, False)
+    assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
 
 
 @pytest.mark.django_db

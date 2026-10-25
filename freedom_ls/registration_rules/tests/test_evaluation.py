@@ -13,6 +13,8 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.comms.models import Notification
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.factories import (
@@ -41,6 +43,7 @@ if app_not_installed("freedom_ls.registration_rules"):
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.registration_rules.evaluation import (
     EvaluationResult,
+    RuleChanges,
     apply_recommendation_changes,
     apply_rule_changes,
     classify_recommendation_changes,
@@ -1819,3 +1822,24 @@ def test_a_user_registered_after_the_classifying_read_is_not_recommended(
     # Assert
     assert result.recommended == ()
     assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_rule_registers_nobody_once_its_course_is_closed_to_the_organisation(
+    mock_site_context,
+):
+    # Arrange
+    organisation = OrganisationFactory()
+    course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+    course.organisations.add(organisation)
+    rule = RegistrationRuleFactory(organisation=organisation, course=course)
+    learner = LearnerFactory(organisation=organisation)
+    changes = RuleChanges(register=(learner.pk,))
+    course.organisations.set([OrganisationFactory()])
+
+    # Act
+    result = apply_rule_changes(rule, changes)
+
+    # Assert
+    assert result.registered == ()
+    assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()

@@ -22,7 +22,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -54,9 +54,11 @@ from freedom_ls.learner_management.queries import (
     colleagues_of,
     courses_gaining_access,
     courses_losing_access,
+    courses_visible_to,
     educators_of,
     holds_registration_for_any_expression,
     in_audience_expression,
+    is_course_open_to_organisation,
     is_in_audience,
     is_registered_for_course_expression,
     latest_registration,
@@ -66,6 +68,7 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     members_keeping_access,
     members_of,
+    open_to_organisation_expression,
     organisation_for_learner_course,
     organisations_accessible_to,
     other_grants_for,
@@ -2092,3 +2095,115 @@ def test_registered_course_pairs_narrow_to_the_given_courses(mock_site_context) 
     )
 
     assert pairs == {(learner.user_id, wanted.course_id)}
+
+
+def _course_open_to(*organisations: Organisation, audience: CourseAudience) -> Course:
+    course = cast(Course, CourseFactory(audience=audience))
+    course.organisations.add(*organisations)
+    return course
+
+
+@pytest.mark.django_db
+class TestOpenToOrganisation:
+    @pytest.fixture
+    def organisation(self, mock_site_context: Site) -> Organisation:
+        return cast(Organisation, OrganisationFactory())
+
+    def test_a_course_of_no_organisation_is_open(
+        self, organisation: Organisation
+    ) -> None:
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+
+        assert is_course_open_to_organisation(course, organisation) is True
+
+    def test_a_public_course_of_another_organisation_is_open(
+        self, organisation: Organisation
+    ) -> None:
+        course = _course_open_to(OrganisationFactory(), audience=CourseAudience.PUBLIC)
+
+        assert is_course_open_to_organisation(course, organisation) is True
+
+    def test_a_course_of_the_organisation_is_open(
+        self, organisation: Organisation
+    ) -> None:
+        course = _course_open_to(
+            organisation, audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        assert is_course_open_to_organisation(course, organisation) is True
+
+    def test_a_course_of_another_organisation_is_not_open(
+        self, organisation: Organisation
+    ) -> None:
+        course = _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        assert is_course_open_to_organisation(course, organisation) is False
+
+    def test_the_queryset_form_agrees_with_the_single_course_form(
+        self, organisation: Organisation
+    ) -> None:
+        open_course = _course_open_to(
+            organisation, audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        listed = Course.objects.filter(open_to_organisation_expression(organisation))
+
+        assert list(listed) == [open_course]
+
+
+@pytest.mark.django_db
+class TestCoursesVisibleToOrganisationCourses:
+    def test_an_educator_does_not_see_another_organisations_course(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        educator = UserFactory()
+        assign_object_role(educator, organisation, "organisation_admin")
+        own = _course_open_to(
+            organisation, audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+        _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        assert list(courses_visible_to(educator, organisation)) == [own]
+
+    def test_a_superuser_does_not_see_another_organisations_course(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        visible = courses_visible_to(UserFactory(superuser=True), organisation)
+
+        assert list(visible) == []
+
+
+@pytest.mark.django_db
+class TestRegisterableCoursesOpenToOrganisation:
+    def test_a_cohort_is_not_offered_another_organisations_course(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        assert list(registerable_courses_for(cohort)) == []
+
+    def test_a_learner_is_not_offered_another_organisations_course(
+        self, mock_site_context: Site
+    ) -> None:
+        learner = LearnerFactory()
+        _course_open_to(
+            OrganisationFactory(), audience=CourseAudience.ORGANISATION_LEARNERS
+        )
+
+        assert list(registerable_courses_for_learner(learner)) == []

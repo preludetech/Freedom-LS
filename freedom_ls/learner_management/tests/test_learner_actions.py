@@ -5,6 +5,7 @@ import pytest
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseAudience
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -650,3 +651,18 @@ class TestUnregisterFromCourse:
             changed = unregister_from_course(registration.learner, registration.course)
 
         assert (changed, WebhookEvent._base_manager.count()) == (False, 0)
+
+
+@pytest.mark.django_db
+class TestRegisterForCourseOrganisationCheck:
+    def test_a_course_closed_to_the_learners_organisation_is_refused(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+
+        with pytest.raises(ValueError, match="not open to the organisation"):
+            register_for_course(learner, course)
+
+        assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()

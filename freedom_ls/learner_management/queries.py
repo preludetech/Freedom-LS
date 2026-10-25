@@ -56,6 +56,8 @@ if TYPE_CHECKING:
 #: assign_ capability, so none can be offered or shown here.
 MEMBER_ROLES: tuple[str, ...] = ("organisation_admin", "cohort_admin", "cohort_viewer")
 
+COURSE_NOT_OPEN_MESSAGE = "This course is not open to the organisation."
+
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
@@ -210,6 +212,19 @@ def in_audience_expression(user: RequestUser) -> Q:
     )
 
 
+def open_to_organisation_expression(organisation: Organisation) -> Q:
+    """Courses open to this organisation: every course that is not an
+    organisation_learners organisation course (so every public one too),
+    plus the organisation's own."""
+    return _open_to_everyone_expression() | Q(
+        Exists(
+            Course.organisations.through.objects.filter(
+                course_id=OuterRef("pk"), organisation=organisation
+            )
+        )
+    )
+
+
 def _course_matches(course: Course, expression: Q) -> bool:
     # _base_manager, not objects: the course was already fetched through the
     # site-aware manager and the filter is on its pk alone, so no row from
@@ -222,6 +237,11 @@ def is_in_audience(user: RequestUser, course: Course) -> bool:
     """Single-course form of in_audience_expression, evaluated through the
     same expression so the two cannot drift."""
     return _course_matches(course, in_audience_expression(user))
+
+
+def is_course_open_to_organisation(course: Course, organisation: Organisation) -> bool:
+    """Single-course form of open_to_organisation_expression."""
+    return _course_matches(course, open_to_organisation_expression(organisation))
 
 
 def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:
@@ -419,8 +439,10 @@ def courses_visible_to(
     """Courses this user may see in this organisation: every published
     course, plus any course a visible cohort or learner holds a
     registration for, active or not. A hidden or coming-soon course
-    shows only through such a registration."""
-    everything = Course.objects.all()
+    shows only through such a registration. A course that belongs to other
+    organisations and is not open to this one is left out, superusers
+    included."""
+    everything = Course.objects.filter(open_to_organisation_expression(organisation))
     resolved = _resolved_or_none(user, everything)
     if resolved is not None:
         return resolved
@@ -439,27 +461,30 @@ def courses_visible_to(
     )
 
 
-def _registerable_courses() -> QuerySet[Course]:
-    """Published and hidden courses, by title; coming-soon courses cannot be
-    registered for."""
-    return Course.objects.exclude(visibility=CourseVisibility.COMING_SOON).order_by(
-        "title"
+def _registerable_courses(organisation: Organisation) -> QuerySet[Course]:
+    """Published and hidden courses open to the organisation, by title;
+    coming-soon courses cannot be registered for."""
+    return (
+        Course.objects.filter(open_to_organisation_expression(organisation))
+        .exclude(visibility=CourseVisibility.COMING_SOON)
+        .order_by("title")
     )
 
 
 def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
-    """Registerable courses the cohort holds no active registration for. A
-    course with an inactive registration is offered, and registering it
-    reactivates that row."""
-    return _registerable_courses().exclude(
+    """Registerable courses open to the cohort's organisation that the cohort
+    holds no active registration for. A course with an inactive registration
+    is offered, and registering it reactivates that row."""
+    return _registerable_courses(cohort.organisation).exclude(
         cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
     )
 
 
 def registerable_courses_for_learner(learner: Learner) -> QuerySet[Course]:
-    """Registerable courses the learner holds no active individual
-    registration for. A course with an inactive registration is offered."""
-    return _registerable_courses().exclude(
+    """Registerable courses open to the learner's organisation that the learner
+    holds no active individual registration for. A course with an inactive
+    registration is offered."""
+    return _registerable_courses(learner.organisation).exclude(
         learner_registrations__in=learner.learnercourseregistration_set.filter(
             is_active=True
         )
@@ -850,8 +875,9 @@ def peers_through(
     peers_of passes every cohort and course the learner has; a caller that has
     filtered them, by configuration say, passes the survivors and gets the same
     composition, so the two cannot drift. Course peers are restricted to the
-    organisation: a course is not owned by one, so without this a client's
-    learners would see another client's. All three conditions sit in one
+    organisation: a course may belong to organisations, but most belong to
+    none and are shared across the site, so without this a client's learners
+    would see another client's. All three conditions sit in one
     filter() call, for the reason holds_registration_for_any_expression gives.
     """
     site = learner.site

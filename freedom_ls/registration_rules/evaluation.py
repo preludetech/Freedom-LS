@@ -17,7 +17,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
@@ -29,7 +29,10 @@ from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import lock_users
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
-from freedom_ls.learner_management.queries import registered_course_pairs
+from freedom_ls.learner_management.queries import (
+    is_course_open_to_organisation,
+    registered_course_pairs,
+)
 from freedom_ls.learner_progress.queries import started_course_exists
 from freedom_ls.registration_rules.config import config
 from freedom_ls.registration_rules.kinds import RuleState
@@ -234,6 +237,10 @@ def apply_rule_changes(
     rule: RegistrationRule, changes: RuleChanges
 ) -> EvaluationResult:
     """Write the changes, in learner-pk order, with explicit site ids throughout."""
+    # A course's organisations can change after the rule was saved; a learner the
+    # course is no longer open to is skipped, not registered or reactivated.
+    if not is_course_open_to_organisation(rule.course, rule.organisation):
+        changes = replace(changes, register=(), reactivate=())
     registered: list[UUID] = []
     for learner_id in changes.register:
         try:

@@ -1357,11 +1357,12 @@ class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses are shared across the site, so the list, the counts and the
-        # cells are all read through the organisation in view: the cohorts and
-        # learners counted and linked on each row are narrowed to what this
-        # educator may see, and another organisation's cohorts never show
-        # through a shared course.
+        # Most courses are shared across the site, and a course that belongs
+        # to organisations is listed only for the ones it is open to. The
+        # list, the counts and the cells are all read through the organisation
+        # in view: the cohorts and learners counted and linked on each row are
+        # narrowed to what this educator may see, and another organisation's
+        # cohorts never show through a shared course.
         scoped = cast(OrganisationScopedRequest, request)
         visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
         visible_learners = learners_visible_to(scoped.user, scoped.organisation)
@@ -1515,7 +1516,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
+        # Most courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
         organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")

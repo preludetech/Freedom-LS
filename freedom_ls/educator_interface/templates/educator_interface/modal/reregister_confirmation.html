@@ -1,10 +1,13 @@
 {% comment %}
 The modal fragment a ReregisterLearnerForCourseAction's GET returns. Context:
-learner, registration, course, confirm_url.
+learner, registration, course, confirm_url, and refusal on a 422 re-render.
 {% endcomment %}
 <c-modal-header>Register {{ learner.user.display_name }} for {{ course }} again?</c-modal-header>
 
 <div class="space-y-3 px-6 py-4 text-sm">
+    {% if refusal %}
+        <p role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">{{ refusal }}</p>
+    {% endif %}
     <p>They get access to {{ course }} again, with their earlier progress.</p>
 </div>
 

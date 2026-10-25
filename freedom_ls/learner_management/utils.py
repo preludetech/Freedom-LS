@@ -166,7 +166,13 @@ def register_cohort_for_course(
     progress record for every member the row does not yet cover.
     """
     from freedom_ls.learner_management.models import CohortCourseRegistration
+    from freedom_ls.learner_management.queries import (
+        COURSE_NOT_OPEN_MESSAGE,
+        is_course_open_to_organisation,
+    )
 
+    if not is_course_open_to_organisation(course, cohort.organisation):
+        raise ValueError(COURSE_NOT_OPEN_MESSAGE)
     # _base_manager with an explicit site, as ensure_learner does: the
     # site-aware manager only fills site from an ambient request, and this
     # runs from commands and tests as well as views.
