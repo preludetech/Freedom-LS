@@ -2773,7 +2773,7 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
     action_name = "unregister_from_course"
     variant = "destructive"
     capability = CHANGE_LEARNERCOURSEREGISTRATION
-    unchanged_reason = "no individual registration"
+    unchanged_reason = "not registered individually"
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return None if obj.pk in self.registered_ids else self.unchanged_reason
@@ -2863,7 +2863,7 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
         except AccountAlreadySetUp:
             return BulkOutcome("skipped", self.unchanged_reason)
         except SetupEmailRecentlySent:
-            return BulkOutcome("skipped", "setup email sent recently")
+            return BulkOutcome("skipped", "emailed recently")
 
     def confirmation_wording(
         self,
@@ -2930,7 +2930,7 @@ class CohortCourseBulkAction(CohortBulkAction):
     # An inactive cohort is skipped; one deactivated after `apply` checked it
     # and before the service ran fails instead of aborting the run.
     failure_exceptions = (ValueError,)
-    inactive_reason = "an inactive cohort"
+    inactive_reason = "inactive"
     registered_ids: frozenset[object] = frozenset()
 
     def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
