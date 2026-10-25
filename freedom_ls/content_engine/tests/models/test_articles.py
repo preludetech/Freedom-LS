@@ -20,8 +20,8 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Article, ArticleVisibility, Topic
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.factories import SiteFactory
 
 requires_blog = pytest.mark.skipif(
     app_not_installed("freedom_ls.blog"), reason="blog app is not installed"

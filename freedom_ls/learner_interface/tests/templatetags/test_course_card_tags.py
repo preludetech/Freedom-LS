@@ -19,7 +19,7 @@ from freedom_ls.learner_interface.templatetags.course_card_tags import (
     get_course_by_path,
 )
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 APPLICATION_BACKEND = (
     "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"

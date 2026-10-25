@@ -20,22 +20,6 @@ def _get_current_site() -> Site | None:
     return None
 
 
-class SiteFactory(factory.django.DjangoModelFactory):
-    """Factory for django.contrib.sites.models.Site.
-
-    NOT a SiteAwareFactory — Site is the site dimension, not a site-aware model.
-    The Site this factory creates is the kind of object you might pass into
-    `mock_site_context`, not one created under it.
-    """
-
-    class Meta:
-        model = Site
-        django_get_or_create = ("name",)  # avoid UniqueConstraint clashes across tests
-
-    name = factory.Sequence(lambda n: f"TestSite{n}")
-    domain = factory.LazyAttribute(lambda obj: f"{obj.name.lower()}.example.com")
-
-
 class SiteAwareFactory(factory.django.DjangoModelFactory):
     """Base factory for all SiteAwareModel subclasses.
 

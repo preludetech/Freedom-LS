@@ -34,7 +34,7 @@ from freedom_ls.accounts.account_setup import (
 from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _pending_user() -> User:

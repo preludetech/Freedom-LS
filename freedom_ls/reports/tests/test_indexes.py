@@ -79,7 +79,7 @@ from freedom_ls.reports.indexes import (
     resolve_site_name,
 )
 from freedom_ls.reports.tests.helpers import form_progress, topic_progress
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     gif_bytes,

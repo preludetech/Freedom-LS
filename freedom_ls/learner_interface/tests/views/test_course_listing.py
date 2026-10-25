@@ -38,8 +38,8 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.factories import SiteFactory
 
 # Tests for the all_courses view at the context level.
 #

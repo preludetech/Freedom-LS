@@ -18,7 +18,7 @@ from freedom_ls.content_engine.templatetags.content_tags import (
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 # Tests for template tags in content_tags.py.
 #

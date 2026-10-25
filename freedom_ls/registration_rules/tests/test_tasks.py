@@ -7,8 +7,8 @@ import pytest
 from freedom_ls.hr_attributes.factories import OrganisationHRSettingsFactory
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.factories import SiteFactory
 
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)

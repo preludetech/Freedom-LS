@@ -14,7 +14,6 @@ from freedom_ls.accounts.factories import (
     SiteSignupPolicyFactory,
     UserFactory,
 )
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import (
     SiteResolutionError,
     UnknownSite,
@@ -22,6 +21,7 @@ from freedom_ls.site_aware_models.models import (
     get_cached_site,
     site_of,
 )
+from freedom_ls.tests.factories import SiteFactory
 
 type AssertNumQueries = Callable[[int], AbstractContextManager[None]]
 

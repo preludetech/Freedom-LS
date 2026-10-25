@@ -23,8 +23,8 @@ from freedom_ls.learner_progress.utils import (
     move_progress_preview,
     plan_progress_carry,
 )
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _thread_locals
+from freedom_ls.tests.factories import SiteFactory
 
 # Tests for ensure_course_progress_record and the cohort fan-out.
 #

@@ -15,7 +15,7 @@ from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.render import ReportRenderError
 from freedom_ls.reports.tasks import generate_cohort_report
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 pytestmark = pytest.mark.django_db
 

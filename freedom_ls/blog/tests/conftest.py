@@ -6,11 +6,9 @@ import pytest
 from django.test import override_settings
 from django.urls import clear_url_caches
 
-from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.app_guards import ignore_tests_unless_installed
 
-collect_ignore_glob: list[str] = []
-if app_not_installed("freedom_ls.blog"):
-    collect_ignore_glob = ["test_*.py"]
+collect_ignore_glob = ignore_tests_unless_installed("freedom_ls.blog")
 
 
 def _reload_urlconf() -> None:

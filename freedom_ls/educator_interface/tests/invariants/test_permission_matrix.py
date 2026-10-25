@@ -42,7 +42,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 #: Roles whose grants are gated on an active OrganisationMember. site_admin's
 #: grant is a SiteRoleAssignment, which _site_grants never gates.

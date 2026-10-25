@@ -22,7 +22,7 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import mark_notifications_read, raise_notification
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.mark.django_db

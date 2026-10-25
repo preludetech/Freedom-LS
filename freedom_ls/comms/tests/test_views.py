@@ -21,7 +21,7 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.messaging import mark_conversation_read, unread_conversation_count
 from freedom_ls.comms.models import Notification
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 BADGE_URL_NAME = "comms:notification_badge"
 PANEL_URL_NAME = "comms:notification_panel"

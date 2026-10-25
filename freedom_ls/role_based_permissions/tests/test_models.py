@@ -16,7 +16,7 @@ from freedom_ls.role_based_permissions.factories import (
     SystemRoleAssignmentFactory,
 )
 from freedom_ls.role_based_permissions.loader import clear_caches
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)

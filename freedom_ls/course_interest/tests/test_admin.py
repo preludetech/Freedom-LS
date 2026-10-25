@@ -22,7 +22,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.forms import CourseInterestAdminForm
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 CHANGELIST_URL_NAME = "admin:freedom_ls_course_interest_courseinterest_changelist"
 

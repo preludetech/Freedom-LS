@@ -12,8 +12,8 @@ from freedom_ls.accounts.factories import (
     UserFactory,
 )
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.factories import SiteFactory
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)

@@ -56,8 +56,8 @@ from freedom_ls.comms.models import (
     Message,
     Notification,
 )
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _thread_locals
+from freedom_ls.tests.factories import SiteFactory
 
 
 class AllowPolicy(MessagingPolicy):

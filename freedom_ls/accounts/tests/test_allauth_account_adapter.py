@@ -20,12 +20,12 @@ from freedom_ls.accounts.factories import (
     UserFactory,
 )
 from freedom_ls.accounts.models import SiteSignupPolicy
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.site_aware_models.models import (
     _CACHED_SITE_ATTR,
     SiteResolutionError,
     _thread_locals,
 )
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.mark.django_db

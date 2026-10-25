@@ -43,7 +43,7 @@ from freedom_ls.messaging_policy.models import (
     SiteMessagingConfig,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 pytestmark = pytest.mark.django_db
 

@@ -54,7 +54,7 @@ Where access resolves through role assignments, `assign_perm` grants nothing and
 
 Pattern to follow: `accounts/tests/conftest.py`, two fixtures plus the private `_seed_default_legal_docs`.
 
-A helper that tests import by hand goes in `helpers.py` beside the tests: `content_engine/tests/helpers.py`, `learner_progress/tests/helpers.py` and `panel_framework/tests/helpers.py` are examples. `panel_framework/tests/stub_models.py` holds that foundational app's stub models. Shared modules for the whole suite live in `freedom_ls/tests/`: `site_context.py` (`site_context`, `drop_ambient_request`), `demo_content_fixtures.py` (module-scoped fixtures that import the shipped `demo_content/` tree) and `app_guards.py`. `SiteFactory`, the factory for the `Site` row itself, lives in `freedom_ls.site_aware_models.factories`, beside `SiteAwareFactory`.
+A helper that tests import by hand goes in `helpers.py` beside the tests: `content_engine/tests/helpers.py`, `learner_progress/tests/helpers.py` and `panel_framework/tests/helpers.py` are examples. `panel_framework/tests/stub_models.py` holds that foundational app's stub models. Shared modules for the whole suite live in `freedom_ls/tests/`: `site_context.py` (`site_context`, `drop_ambient_request`), `demo_content_fixtures.py` (module-scoped fixtures that import the shipped `demo_content/` tree) and `app_guards.py`. `factories.py` holds `SiteFactory`, the factory for the `Site` row itself: `Site` belongs to no FLS app, so any app's tests can import it without adding a dependency.
 
 ### Fixture placement
 
@@ -136,4 +136,4 @@ if app_not_installed("freedom_ls.course_applications"):
 from freedom_ls.course_applications.factories import CourseApplicationFactory  # now safe
 ```
 
-The conftest form assigns `collect_ignore_glob` with the same call; `course_applications/tests/conftest.py` is the live example.
+The conftest form is one line, `collect_ignore_glob = ignore_tests_unless_installed("freedom_ls.course_applications")`, and covers every test module under `tests/`, subdirectories included; `course_applications/tests/conftest.py` is the live example.

@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 import pytest_django.fixtures
 
-# blog does not depend on site_aware_models, so its tests create the Site directly.
-from django.contrib.sites.models import Site
 from django.db import connection
 from django.test import Client, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -15,6 +13,7 @@ from django.urls import reverse
 
 from freedom_ls.content_engine.factories import ArticleFactory
 from freedom_ls.content_engine.models import Article, ArticleVisibility
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _without_csrf_token(content: bytes) -> str:
@@ -67,7 +66,7 @@ def test_hidden_and_unknown_slugs_return_identical_404s(client, mock_site_contex
 @pytest.mark.django_db
 def test_article_on_another_site_returns_404(client, mock_site_context):
     # Arrange
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
     ArticleFactory(slug="elsewhere", site=other_site)
     ArticleFactory(slug="here")
 
@@ -299,7 +298,7 @@ def test_index_links_each_title_and_shows_the_description(client, mock_site_cont
 @pytest.mark.django_db
 def test_index_excludes_another_sites_articles(client, mock_site_context):
     # Arrange
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
     ArticleFactory(title="Elsewhere piece", site=other_site)
     ArticleFactory(title="Local piece")
 
@@ -610,9 +609,7 @@ def test_sitemap_leaves_out_hidden_and_other_site_articles(mock_site_context):
     # Arrange
     visible = ArticleFactory(slug="open-one")
     hidden = ArticleFactory(slug="secret-one", visibility=ArticleVisibility.HIDDEN)
-    foreign = ArticleFactory(
-        slug="elsewhere-one", site=Site.objects.create(domain="o.example.com", name="O")
-    )
+    foreign = ArticleFactory(slug="elsewhere-one", site=SiteFactory())
 
     # Act
     body = Client().get(reverse("sitemap")).content.decode()

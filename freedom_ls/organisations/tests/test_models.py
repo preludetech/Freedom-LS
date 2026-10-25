@@ -21,7 +21,7 @@ from freedom_ls.organisations.models import (
     organisation_logo_upload_to,
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _jpeg_upload(name: str) -> SimpleUploadedFile:

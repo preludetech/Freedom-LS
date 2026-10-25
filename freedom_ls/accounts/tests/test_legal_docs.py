@@ -14,7 +14,7 @@ from django.core.checks import Warning as ChecksWarning
 from freedom_ls.accounts import legal_docs
 from freedom_ls.accounts.checks import check_legal_docs_present_when_required
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 from ._git_helpers import commit_all as _commit
 from ._git_helpers import init_repo as _init_repo

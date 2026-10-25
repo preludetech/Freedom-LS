@@ -27,7 +27,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import png_bytes
 from freedom_ls.tests.site_context import site_context
 

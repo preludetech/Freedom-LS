@@ -236,7 +236,7 @@ class TestDispatchEvent:
         mock_attempt.assert_called_once()
 
     def test_filters_by_site_id(self, mock_site_context: object) -> None:
-        from freedom_ls.site_aware_models.factories import SiteFactory
+        from freedom_ls.tests.factories import SiteFactory
         from freedom_ls.webhooks.events import dispatch_event
 
         # Create an endpoint for the current site
@@ -292,7 +292,7 @@ def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None
 @pytest.mark.django_db(transaction=True)
 class TestFireWebhookEventWithoutRequest:
     def test_explicit_site_records_the_event_with_that_site(self) -> None:
-        from freedom_ls.site_aware_models.factories import SiteFactory
+        from freedom_ls.tests.factories import SiteFactory
         from freedom_ls.webhooks.events import fire_webhook_event
 
         site = SiteFactory()

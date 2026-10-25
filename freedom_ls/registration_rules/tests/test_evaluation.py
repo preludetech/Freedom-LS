@@ -26,8 +26,8 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
-from freedom_ls.site_aware_models.factories import SiteFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
 
 if app_not_installed("freedom_ls.registration_rules"):

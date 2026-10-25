@@ -46,7 +46,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form, FormPage
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     photographic_jpeg_bytes,

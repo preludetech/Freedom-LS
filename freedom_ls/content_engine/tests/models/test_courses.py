@@ -35,7 +35,7 @@ from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 # CourseCategory: per-site uniqueness, Course ordering, and the dashboard_category FK.
 

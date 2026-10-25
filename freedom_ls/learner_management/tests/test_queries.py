@@ -92,7 +92,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     remove_object_role,
 )
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:

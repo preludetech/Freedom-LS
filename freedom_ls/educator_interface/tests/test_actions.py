@@ -62,7 +62,7 @@ from freedom_ls.role_based_permissions.exceptions import (
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:

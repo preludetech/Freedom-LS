@@ -43,7 +43,7 @@ from freedom_ls.learner_management.utils import (
     unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.site_aware_models.factories import SiteFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
 
 
