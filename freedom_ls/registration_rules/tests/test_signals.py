@@ -1265,3 +1265,51 @@ def test_loading_a_deactivated_registration_fixture_queues_nothing(
 
     # Assert
     assert callbacks == []
+
+
+@pytest.mark.django_db
+def test_deleting_a_rule_deletes_the_recommendations_it_alone_held(mock_site_context):
+    # Arrange
+    rule = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    sole = RuleRecommendationFactory(rule=rule)
+
+    # Act
+    rule.delete()
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(
+        pk=sole.recommendation_id
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_a_rule_leaves_a_recommendation_another_rule_holds(mock_site_context):
+    # Arrange
+    rule = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    shared = RuleRecommendationFactory(rule=rule)
+    other = RuleRecommendationFactory(
+        recommendation=shared.recommendation,
+        rule=RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND),
+    )
+
+    # Act
+    rule.delete()
+
+    # Assert
+    assert RecommendedCourse._base_manager.filter(pk=shared.recommendation_id).exists()
+    assert RuleRecommendation._base_manager.filter(pk=other.pk).exists()
+    assert not RuleRecommendation._base_manager.filter(pk=shared.pk).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_a_rule_leaves_staff_made_recommendations(mock_site_context):
+    # Arrange
+    rule = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    RuleRecommendationFactory(rule=rule)
+    staff_made = RecommendedCourseFactory()
+
+    # Act
+    rule.delete()
+
+    # Assert
+    assert RecommendedCourse._base_manager.filter(pk=staff_made.pk).exists()

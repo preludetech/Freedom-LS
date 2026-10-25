@@ -26,6 +26,7 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.admin import ListEntryAdmin
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
 from freedom_ls.learner_management.admin import LearnerCourseRegistrationAdmin
@@ -42,9 +43,11 @@ from freedom_ls.registration_rules.loader import get_rule_kind
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
+    RuleRecommendation,
     RuleRegistration,
     rules_naming,
 )
+from freedom_ls.registration_rules.signals import solely_held_by
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
 #: Each picker's model, so the narrowed queryset is built from the field name alone.
@@ -439,6 +442,14 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
             [rule for rule in rules if refusals[rule.pk] is None], request
         )
         refused = [reason for reason in refusals.values() if reason is not None]
+        for rule in rules:
+            if refusals[rule.pk] is not None:
+                continue
+            held = list(solely_held_by(rule))
+            to_delete.extend(f"Recommended course: {item}" for item in held)
+            if held:
+                name = str(RecommendedCourse._meta.verbose_name_plural)
+                model_count[name] = model_count.get(name, 0) + len(held)
         return to_delete, model_count, perms_needed, [*protected, *refused]
 
 
@@ -448,18 +459,26 @@ def _delete_refusal(rule: RegistrationRule) -> str | None:
     Deleting a rule leaves its registrations as they are, so it waits until
     the rule is disabled and the run that retracts its registrations has
     happened. Deleted sooner, the rows it still held active would never be
-    retracted by anyone.
+    retracted by anyone. A recommend rule waits the same way for the run that
+    removes its recommendations.
     """
     if rule.is_enabled:
         return f"Enabled rule: {rule.name}"
     unapplied = (
         rule.last_evaluated_at is None or rule.last_evaluated_at < rule.updated_at
     )
-    if unapplied and (
-        RuleRegistration._base_manager.filter(
-            rule=rule, registration__is_active=True
-        ).exists()
-    ):
+    if not unapplied:
+        return None
+    # Explicit site: the admin's ambient site is the request's, which need not be the rule's.
+    if rule.outcome == RegistrationRule.Outcome.RECOMMEND:
+        if RuleRecommendation._base_manager.filter(
+            site_id=rule.site_id, rule=rule
+        ).exists():
+            return f"Rule still removing its recommendations: {rule.name}"
+        return None
+    if RuleRegistration._base_manager.filter(
+        rule=rule, registration__is_active=True
+    ).exists():
         return f"Rule still retracting its registrations: {rule.name}"
     return None
 

@@ -17,6 +17,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
@@ -27,6 +28,7 @@ from freedom_ls.tests.site_context import drop_ambient_request
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.hr_attributes.factories import (
     DepartmentFactory,
     JobTitleFactory,
@@ -38,6 +40,7 @@ from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
+    RuleRecommendationFactory,
     RuleRegistrationFactory,
 )
 from freedom_ls.registration_rules.models import (
@@ -1126,3 +1129,118 @@ def test_an_applied_change_shows_no_warning(staff_client, rules_on):
 
     # Assert
     assert _warnings(response) == []
+
+
+def _disabled_recommend_rule():
+    return RegistrationRuleFactory(
+        is_enabled=False, outcome=RegistrationRule.Outcome.RECOMMEND
+    )
+
+
+@pytest.mark.django_db
+def test_a_disabled_recommend_rule_still_holding_recommendations_cannot_be_deleted_before_its_run(
+    staff_client,
+):
+    # Arrange
+    held = RuleRecommendationFactory(rule=_disabled_recommend_rule())
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_DELETE, args=[held.rule.pk]), {"post": "yes"}
+    )
+
+    # Assert
+    assert response.status_code == 403
+    assert RegistrationRule.objects.filter(pk=held.rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_disabled_recommend_rule_can_be_deleted_once_its_run_has_applied(
+    staff_client,
+):
+    # Arrange
+    held = RuleRecommendationFactory(rule=_disabled_recommend_rule())
+    _mark_run_applied(held.rule)
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_DELETE, args=[held.rule.pk]), {"post": "yes"}
+    )
+
+    # Assert
+    assert response.status_code == 302
+    assert not RegistrationRule.objects.filter(pk=held.rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_disabled_recommend_rule_holding_nothing_can_be_deleted_before_its_run(
+    staff_client,
+):
+    # Arrange
+    rule = _disabled_recommend_rule()
+
+    # Act
+    response = staff_client.post(reverse(RULE_DELETE, args=[rule.pk]), {"post": "yes"})
+
+    # Assert
+    assert response.status_code == 302
+    assert not RegistrationRule.objects.filter(pk=rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_delete_confirmation_names_a_recommend_rule_still_removing_as_protected(
+    staff_client,
+):
+    # Arrange
+    held = RuleRecommendationFactory(rule=_disabled_recommend_rule())
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_CHANGELIST),
+        {"action": "delete_selected", "_selected_action": [str(held.rule.pk)]},
+    )
+
+    # Assert
+    assert response.status_code == 200
+    assert response.context["protected"] == [
+        f"Rule still removing its recommendations: {held.rule.name}"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_delete_page_names_the_recommendations_only_the_rule_holds(staff_client):
+    # Arrange
+    rule = _disabled_recommend_rule()
+    other = _disabled_recommend_rule()
+    sole = RuleRecommendationFactory(rule=rule)
+    shared = RuleRecommendationFactory(rule=rule)
+    RuleRecommendationFactory(rule=other, recommendation=shared.recommendation)
+    _mark_run_applied(rule)
+
+    # Act
+    response = staff_client.get(reverse(RULE_DELETE, args=[rule.pk]))
+
+    # Assert
+    page = response.content.decode()
+    assert f"Recommended course: {sole.recommendation}" in page
+    assert f"Recommended course: {shared.recommendation}" not in page
+    assert dict(response.context["model_count"])["Recommended courses"] == 1
+
+
+@pytest.mark.django_db
+def test_deleting_a_recommend_rule_through_the_admin_deletes_its_sole_recommendation(
+    staff_client,
+):
+    # Arrange
+    sole = RuleRecommendationFactory(rule=_disabled_recommend_rule())
+    staff_made = RecommendedCourseFactory()
+    _mark_run_applied(sole.rule)
+
+    # Act
+    staff_client.post(reverse(RULE_DELETE, args=[sole.rule.pk]), {"post": "yes"})
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(
+        pk=sole.recommendation_id
+    ).exists()
+    assert RecommendedCourse._base_manager.filter(pk=staff_made.pk).exists()

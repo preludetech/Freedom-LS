@@ -8,7 +8,7 @@ from typing import cast
 from uuid import UUID
 
 from django.db import models, transaction
-from django.db.models import ProtectedError
+from django.db.models import Exists, OuterRef, ProtectedError, QuerySet
 from django.db.models.signals import (
     m2m_changed,
     post_delete,
@@ -20,6 +20,7 @@ from django.dispatch import Signal, receiver
 from django.tasks import Task
 from django.utils import timezone
 
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.models import (
     Department,
     JobTitle,
@@ -144,6 +145,29 @@ def snapshot_rule_name_before_delete(
     RuleRegistration._base_manager.filter(
         rule=instance, site_id=instance.site_id
     ).update(rule_name=instance.name)
+
+
+def solely_held_by(rule: RegistrationRule) -> QuerySet[RecommendedCourse]:
+    """The recommendations no other rule holds. Explicit site: pre_delete runs with
+    whatever request is ambient, or none."""
+    return RecommendedCourse._base_manager.filter(
+        site_id=rule.site_id, rule_recommendations__rule=rule
+    ).exclude(
+        Exists(
+            RuleRecommendation._base_manager.filter(
+                site_id=rule.site_id, recommendation=OuterRef("pk")
+            ).exclude(rule=rule)
+        )
+    )
+
+
+@receiver(pre_delete, sender=RegistrationRule)
+def delete_solely_held_recommendations_before_delete(
+    sender: type[RegistrationRule], instance: RegistrationRule, **kwargs: object
+) -> None:
+    """Delete the recommendations only this rule holds, before the CASCADE
+    leaves them with no RuleRecommendation and looking staff-made."""
+    solely_held_by(instance).delete()
 
 
 @receiver(pre_save, sender=LearnerCourseRegistration)
