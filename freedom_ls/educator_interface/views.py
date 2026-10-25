@@ -769,6 +769,22 @@ class AuditLogEntryTable(DataTable):
         ]
 
 
+class TargetedAuditLogEntryTable(AuditLogEntryTable):
+    """Audit log entries that may be about different objects, so each row names its target."""
+
+    card_template = "educator_interface/partials/audit_log_card.html"
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        when, who, what, details = AuditLogEntryTable.get_columns()
+        target = Column(
+            header="Target",
+            template="cotton/data-table-cells/text.html",
+            attr="target_label",
+        )
+        return [when, who, what, target, details]
+
+
 class HistoryPanel(DataTablePanel):
     """The History tab of one learner or cohort: every entry whose subjects name it."""
 
@@ -1055,6 +1071,7 @@ class CohortOverviewStack(PanelStack):
 
 class CohortHistoryPanel(HistoryPanel):
     model = Cohort
+    data_table = TargetedAuditLogEntryTable
     refresh_events = (COHORT_CHANGED,)
     empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
 
@@ -1785,9 +1802,8 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
         }
 
 
-class OrganisationAuditLogTable(AuditLogEntryTable):
+class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
     empty_state_template = "educator_interface/partials/audit_log_empty.html"
-    card_template = "educator_interface/partials/audit_log_card.html"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -1825,16 +1841,6 @@ class OrganisationAuditLogTable(AuditLogEntryTable):
             row.run_entry_total = totals.get(row.run_id, 0)
             row.run_entries_more = row.run_entry_total - len(row.run_entries)
         return page_obj
-
-    @staticmethod
-    def get_columns() -> list[Column]:
-        when, who, what, details = AuditLogEntryTable.get_columns()
-        target = Column(
-            header="Target",
-            template="cotton/data-table-cells/text.html",
-            attr="target_label",
-        )
-        return [when, who, what, target, details]
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
