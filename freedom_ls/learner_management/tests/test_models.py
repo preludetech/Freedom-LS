@@ -372,3 +372,29 @@ def test_loaded_is_active_is_none_on_an_unsaved_instance(mock_site_context):
     registration = LearnerCourseRegistrationFactory.build()
 
     assert registration.loaded_is_active is None
+
+
+@pytest.mark.django_db
+def test_learner_loaded_from_the_database_carries_loaded_is_active(mock_site_context):
+    learner = LearnerFactory(is_active=False)
+
+    loaded = Learner.objects.get(pk=learner.pk)
+
+    assert loaded.loaded_is_active is False
+
+
+@pytest.mark.django_db
+def test_cohort_loaded_from_the_database_carries_loaded_is_active(mock_site_context):
+    cohort = CohortFactory()
+
+    loaded = Cohort.objects.get(pk=cohort.pk)
+
+    assert loaded.loaded_is_active is True
+
+
+@pytest.mark.django_db
+def test_learner_and_cohort_built_in_memory_have_no_loaded_is_active(
+    mock_site_context,
+):
+    assert LearnerFactory.build().loaded_is_active is None
+    assert CohortFactory.build().loaded_is_active is None

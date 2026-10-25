@@ -71,6 +71,7 @@ from freedom_ls.learner_management.queries import (
     peers_through,
     registerable_courses_for,
     registerable_courses_for_learner,
+    registered_course_pairs,
     site_level_admins,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
@@ -93,6 +94,7 @@ from freedom_ls.role_based_permissions.utils import (
     remove_object_role,
 )
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import drop_ambient_request, site_context
 
 
 def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:
@@ -1931,3 +1933,120 @@ class TestSiteLevelAdmins:
         assign_object_role(UserFactory(), OrganisationFactory(), "organisation_admin")
 
         assert list(site_level_admins(mock_site_context)) == []
+
+
+# --- registered_course_pairs ---------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_include_an_active_individual_registration(
+    mock_site_context,
+) -> None:
+    registration = LearnerCourseRegistrationFactory()
+    learner = registration.learner
+
+    pairs = registered_course_pairs(learner.site_id, [learner.user_id])
+
+    assert pairs == {(learner.user_id, registration.course_id)}
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_include_an_active_cohort_registration_for_an_active_member(
+    mock_site_context,
+) -> None:
+    membership = CohortMembershipFactory()
+    registration = CohortCourseRegistrationFactory(cohort=membership.cohort)
+    learner = membership.learner
+
+    pairs = registered_course_pairs(learner.site_id, [learner.user_id])
+
+    assert pairs == {(learner.user_id, registration.course_id)}
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_skip_an_inactive_individual_registration(
+    mock_site_context,
+) -> None:
+    learner = LearnerFactory()
+    LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+
+    assert registered_course_pairs(learner.site_id, [learner.user_id]) == set()
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_skip_an_inactive_learner(mock_site_context) -> None:
+    learner = LearnerFactory(is_active=False)
+    LearnerCourseRegistrationFactory(learner=learner)
+
+    assert registered_course_pairs(learner.site_id, [learner.user_id]) == set()
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_skip_an_inactive_cohort(mock_site_context) -> None:
+    membership = CohortMembershipFactory()
+    CohortCourseRegistrationFactory(cohort=membership.cohort)
+    Cohort.objects.filter(pk=membership.cohort_id).update(is_active=False)
+    learner = membership.learner
+
+    assert registered_course_pairs(learner.site_id, [learner.user_id]) == set()
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_skip_an_inactive_cohort_registration(
+    mock_site_context,
+) -> None:
+    membership = CohortMembershipFactory()
+    CohortCourseRegistrationFactory(cohort=membership.cohort, is_active=False)
+    learner = membership.learner
+
+    assert registered_course_pairs(learner.site_id, [learner.user_id]) == set()
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_name_only_the_active_member_of_a_shared_cohort(
+    mock_site_context,
+) -> None:
+    cohort = CohortFactory()
+    active_member = CohortMembershipFactory(cohort=cohort).learner
+    unrelated_member = CohortMembershipFactory(cohort=cohort).learner
+    removed = CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(
+            user=active_member.user, organisation=OrganisationFactory(), is_active=False
+        ),
+    ).learner
+    registration = CohortCourseRegistrationFactory(cohort=cohort)
+
+    pairs = registered_course_pairs(
+        cohort.site_id, [active_member.user_id, removed.user_id]
+    )
+
+    assert pairs == {(active_member.user_id, registration.course_id)}
+    assert unrelated_member.user_id not in {user_id for user_id, _ in pairs}
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_skip_another_sites_registrations(
+    mock_site_context,
+) -> None:
+    other_site = SiteFactory()
+    with site_context(other_site):
+        registration = LearnerCourseRegistrationFactory()
+        other_learner = registration.learner
+
+    assert (
+        registered_course_pairs(mock_site_context.pk, [other_learner.user_id]) == set()
+    )
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_are_the_same_with_and_without_an_ambient_request(
+    mock_site_context,
+) -> None:
+    learner = LearnerCourseRegistrationFactory().learner
+    with_request = registered_course_pairs(learner.site_id, [learner.user_id])
+
+    drop_ambient_request()
+
+    assert registered_course_pairs(learner.site_id, [learner.user_id]) == with_request
+    assert with_request

@@ -24,6 +24,8 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -123,6 +125,41 @@ def test_initiate_access_free_course_creates_registration(
 
     assert LearnerCourseRegistration.objects.filter(
         learner__user=user, course=course
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_initiate_access_deletes_the_users_recommendation_for_the_course(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, course=course)
+    url = reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+    )
+
+    logged_in_client(user).post(url)
+
+    assert not RecommendedCourse.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db
+def test_initiate_access_after_an_admin_deactivation_deletes_the_recommendation(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    learner = LearnerFactory()
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=False)
+    RecommendedCourseFactory(user=learner.user, course=course)
+    url = reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+    )
+
+    logged_in_client(learner.user).post(url)
+
+    assert not RecommendedCourse.objects.filter(
+        user=learner.user, course=course
     ).exists()
 
 

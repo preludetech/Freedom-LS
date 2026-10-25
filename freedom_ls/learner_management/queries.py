@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from django.db.models import (
@@ -73,6 +74,23 @@ class ResolvedRegistration(NamedTuple):
     registration: LearnerCourseRegistration | CohortCourseRegistration
 
 
+#: An individual registration grants access while it and its Learner are both active.
+LEARNER_REGISTRATION_GRANTS_ACCESS = Q(is_active=True, learner__is_active=True)
+
+#: A cohort registration grants access while it and its cohort are both active. The
+#: member's own activity is tested where the member is looked up: see held_by_active_member.
+COHORT_REGISTRATION_GRANTS_ACCESS = Q(is_active=True, cohort__is_active=True)
+
+
+def held_by_active_member(member_filter: Q) -> Q:
+    """Both member conditions in one Q, so they land on one membership join.
+
+    Split across two filter() calls, a cohort holding both a removed and an
+    active Learner for the same user would leak access through the removed one.
+    """
+    return member_filter & Q(cohort__cohortmembership__learner__is_active=True)
+
+
 def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]:
     """Cohort registrations that give their members course access.
 
@@ -83,9 +101,7 @@ def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]
     inactive cohort's members keep their records and reports, and
     reactivating needs no catch-up.
     """
-    return CohortCourseRegistration.objects.filter(
-        is_active=True, cohort__is_active=True
-    )
+    return CohortCourseRegistration.objects.filter(COHORT_REGISTRATION_GRANTS_ACCESS)
 
 
 def is_registered_for_course_expression(user: RequestUser) -> Q:
@@ -111,22 +127,38 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
 
     return Exists(
         LearnerCourseRegistration.objects.filter(
+            LEARNER_REGISTRATION_GRANTS_ACCESS,
             course=OuterRef("pk"),
             learner__user=user,
-            learner__is_active=True,
-            is_active=True,
         )
     ) | Exists(
-        # Both cohort conditions must sit in this one filter() call -- see
-        # is_registered_for_course (utils.py) for why a split would leak
-        # access through a cohort holding both a removed and an active
-        # Learner for this user.
         access_granting_cohort_registrations().filter(
+            held_by_active_member(
+                Q(cohort__cohortmembership__learner__user=cast("User", user))
+            ),
             course=OuterRef("pk"),
-            cohort__cohortmembership__learner__user=cast("User", user),
-            cohort__cohortmembership__learner__is_active=True,
         )
     )
+
+
+def registered_course_pairs(
+    site_id: int, user_ids: Iterable[int]
+) -> set[tuple[int, UUID]]:
+    """Every (user_id, course_id) these users are registered for, by the dashboard's own test.
+
+    _base_manager with an explicit site: this runs from tasks and receivers with
+    no request, and must give the same answer with one.
+    """
+    ids = list(user_ids)
+    individual = LearnerCourseRegistration._base_manager.filter(
+        LEARNER_REGISTRATION_GRANTS_ACCESS, site_id=site_id, learner__user_id__in=ids
+    ).values_list("learner__user_id", "course_id")
+    through_cohort = CohortCourseRegistration._base_manager.filter(
+        COHORT_REGISTRATION_GRANTS_ACCESS,
+        held_by_active_member(Q(cohort__cohortmembership__learner__user_id__in=ids)),
+        site_id=site_id,
+    ).values_list("cohort__cohortmembership__learner__user_id", "course_id")
+    return set(individual) | set(through_cohort)
 
 
 def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:

@@ -5,3 +5,6 @@ class CourseRecommendationsConfig(AppConfig):
     label = "freedom_ls_course_recommendations"
     name = "freedom_ls.course_recommendations"
     verbose_name = "Course recommendations"
+
+    def ready(self) -> None:
+        from freedom_ls.course_recommendations import signals  # noqa: F401

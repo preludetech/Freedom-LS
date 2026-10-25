@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from typing import TYPE_CHECKING, Self
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -29,7 +30,40 @@ def _relations_are_set(instance: models.Model, *field_names: str) -> bool:
     return True
 
 
-class Cohort(SiteAwareModel, TimestampedModel):
+if TYPE_CHECKING:
+    # The mixin calls Model.from_db through super(), so the type checker is
+    # handed Model as its base. At runtime it is a plain mixin and super()
+    # reaches the concrete model's from_db through the MRO.
+    _MixinBase = models.Model
+else:
+    _MixinBase = object
+
+
+class LoadedIsActiveMixin(_MixinBase):
+    """Remember the is_active a row was loaded with.
+
+    A save compares it with the new value to tell a flip from a no-op without a
+    second query. None for a row built in memory or loaded with is_active deferred.
+    """
+
+    is_active: bool
+    loaded_is_active: bool | None = None
+
+    @classmethod
+    def from_db(
+        cls,
+        db: str | None,
+        field_names: Collection[str],
+        values: Collection[object],
+    ) -> Self:
+        instance = super().from_db(db, field_names, values)
+        loaded = dict(zip(field_names, values, strict=False))
+        if "is_active" in loaded:
+            instance.loaded_is_active = bool(loaded["is_active"])
+        return instance
+
+
+class Cohort(LoadedIsActiveMixin, SiteAwareModel, TimestampedModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
         on_delete=models.PROTECT,
@@ -50,7 +84,7 @@ class Cohort(SiteAwareModel, TimestampedModel):
         return self.name
 
 
-class Learner(SiteAwareModel):
+class Learner(LoadedIsActiveMixin, SiteAwareModel):
     """A user's association with an organisation for enrolment purposes.
 
     A user may hold a Learner row in more than one organisation. Enrolment
@@ -139,7 +173,7 @@ class CohortMembership(SiteAwareModel, TimestampedModel):
         return f"{self.learner} - {self.cohort}"
 
 
-class LearnerCourseRegistration(SiteAwareModel):
+class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
     """Individual learner registration for a course."""
 
     course = models.ForeignKey(
@@ -156,11 +190,6 @@ class LearnerCourseRegistration(SiteAwareModel):
     )
     registered_at = models.DateTimeField(auto_now_add=True)
 
-    # The `is_active` this instance was loaded with, or None when it was built in
-    # memory or loaded with `is_active` deferred. A save compares it with the
-    # new value to tell a reactivation from a no-op without a second query.
-    loaded_is_active: bool | None = None
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -168,19 +197,6 @@ class LearnerCourseRegistration(SiteAwareModel):
                 name="unique_learner_course_registration",
             )
         ]
-
-    @classmethod
-    def from_db(
-        cls,
-        db: str | None,
-        field_names: Collection[str],
-        values: Collection[object],
-    ) -> LearnerCourseRegistration:
-        instance = super().from_db(db, field_names, values)
-        loaded = dict(zip(field_names, values, strict=False))
-        if "is_active" in loaded:
-            instance.loaded_is_active = bool(loaded["is_active"])
-        return instance
 
     def __str__(self):
         return f"{self.learner} - {self.course}"

@@ -1030,9 +1030,6 @@ def initiate_course_access(request, course_slug):
     if created:
         record_course_self_registered(request, course)
 
-    # Delete any existing RecommendedCourse for this user and course
-    RecommendedCourse.objects.filter(user=request.user, course=course).delete()
-
     # Redirect into the player. course_home is now a resume redirector, so a
     # freshly registered (0-progress) learner lands on the first course item.
     return redirect("learner_interface:course_home", course_slug=course_slug)
