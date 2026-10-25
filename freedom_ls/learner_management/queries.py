@@ -141,6 +141,14 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
     )
 
 
+def user_id_of_learner(learner_id: UUID) -> int:
+    """The user behind a Learner, whatever the ambient site: for receivers and tasks."""
+    user_id: int = Learner._base_manager.values_list("user_id", flat=True).get(
+        pk=learner_id
+    )
+    return user_id
+
+
 def registered_course_pairs(
     site_id: int, user_ids: Iterable[int], course_ids: Iterable[UUID] | None = None
 ) -> set[tuple[int, UUID]]:

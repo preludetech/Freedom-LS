@@ -18,6 +18,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
@@ -398,3 +399,41 @@ def test_learner_and_cohort_built_in_memory_have_no_loaded_is_active(
 ):
     assert LearnerFactory.build().loaded_is_active is None
     assert CohortFactory.build().loaded_is_active is None
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_is_what_the_first_save_wrote(mock_site_context):
+    learner = LearnerFactory(is_active=False)
+
+    assert learner.loaded_is_active is False
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_follows_a_save_that_wrote_is_active(mock_site_context):
+    learner = Learner.objects.get(pk=LearnerFactory(is_active=False).pk)
+
+    learner.is_active = True
+    learner.save()
+
+    assert learner.loaded_is_active is True
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_stays_when_a_save_leaves_is_active_out(mock_site_context):
+    learner = Learner.objects.get(pk=LearnerFactory(is_active=False).pk)
+
+    learner.is_active = True
+    learner.save(update_fields=["organisation"])
+
+    assert learner.loaded_is_active is False
+
+
+@pytest.mark.django_db
+def test_cohort_registration_loaded_from_the_database_carries_loaded_is_active(
+    mock_site_context,
+):
+    registration = CohortCourseRegistrationFactory(is_active=False)
+
+    loaded = CohortCourseRegistration.objects.get(pk=registration.pk)
+
+    assert loaded.loaded_is_active is False

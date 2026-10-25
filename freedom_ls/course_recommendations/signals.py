@@ -5,7 +5,9 @@ imports is never connected, and fails silently rather than loudly.
 
 Each receiver deletes the recommendations a save has just made redundant, inside the
 caller's transaction, so a registration and the loss of its recommendation commit or
-roll back together.
+roll back together. Only a save that grants a course does the work: a re-save of a
+registration that was already active grants nothing new, and would otherwise read
+and lock every recommendation of the people it covers.
 """
 
 from __future__ import annotations
@@ -22,20 +24,13 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    LoadedIsActiveMixin,
 )
+from freedom_ls.learner_management.queries import user_id_of_learner
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from django.db.models import Model
-
-
-def _user_of_learner(learner_id: UUID) -> int:
-    user_id: int = Learner._base_manager.values_list("user_id", flat=True).get(
-        pk=learner_id
-    )
-    return user_id
 
 
 def _clear_for_cohort(cohort_id: UUID, site_id: int) -> None:
@@ -45,28 +40,29 @@ def _clear_for_cohort(cohort_id: UUID, site_id: int) -> None:
     clear_registered_recommendations(site_id, users)
 
 
-def _flipped_on(
-    instance: LoadedIsActiveMixin, update_fields: frozenset[str] | None
+def _granted(
+    instance: LearnerCourseRegistration | CohortCourseRegistration,
+    created: bool,
+    update_fields: frozenset[str] | None,
 ) -> bool:
-    """A save that turned is_active on. A save that leaves it out of update_fields
-    decides nothing, whatever a stale instance holds."""
-    if update_fields is not None and "is_active" not in update_fields:
-        return False
-    return instance.loaded_is_active is False and instance.is_active
+    """A registration created active, or turned active, grants its course."""
+    return (created and instance.is_active) or instance.flipped_on(update_fields)
 
 
 @receiver(post_save, sender=LearnerCourseRegistration)
 def clear_on_learner_registration(
     sender: type[Model],
     instance: LearnerCourseRegistration,
+    created: bool,
     raw: bool = False,
+    update_fields: frozenset[str] | None = None,
     **kwargs: object,
 ) -> None:
-    """A registration that is active grants the course, so the recommendation is spent."""
-    if raw or not instance.is_active:
+    """A registration that becomes active grants the course, so the recommendation is spent."""
+    if raw or not _granted(instance, created, update_fields):
         return
     clear_registered_recommendations(
-        instance.site_id, [_user_of_learner(instance.learner_id)]
+        instance.site_id, [user_id_of_learner(instance.learner_id)]
     )
 
 
@@ -74,11 +70,13 @@ def clear_on_learner_registration(
 def clear_on_cohort_registration(
     sender: type[Model],
     instance: CohortCourseRegistration,
+    created: bool,
     raw: bool = False,
+    update_fields: frozenset[str] | None = None,
     **kwargs: object,
 ) -> None:
     """Every member of a cohort registered for a course is registered for it."""
-    if raw or not instance.is_active:
+    if raw or not _granted(instance, created, update_fields):
         return
     _clear_for_cohort(instance.cohort_id, instance.site_id)
 
@@ -95,7 +93,7 @@ def clear_on_cohort_membership(
     if raw or not created:
         return
     clear_registered_recommendations(
-        instance.site_id, [_user_of_learner(instance.learner_id)]
+        instance.site_id, [user_id_of_learner(instance.learner_id)]
     )
 
 
@@ -108,7 +106,7 @@ def clear_on_cohort_reactivation(
     **kwargs: object,
 ) -> None:
     """Reactivating a cohort registers its members for the courses it holds again."""
-    if raw or not _flipped_on(instance, update_fields):
+    if raw or not instance.flipped_on(update_fields):
         return
     _clear_for_cohort(instance.pk, instance.site_id)
 
@@ -122,6 +120,6 @@ def clear_on_learner_reactivation(
     **kwargs: object,
 ) -> None:
     """Reactivating a Learner restores the registrations held through it."""
-    if raw or not _flipped_on(instance, update_fields):
+    if raw or not instance.flipped_on(update_fields):
         return
     clear_registered_recommendations(instance.site_id, [instance.user_id])

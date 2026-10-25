@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from typing import TYPE_CHECKING, Self
 
 from django.conf import settings
@@ -31,16 +31,18 @@ def _relations_are_set(instance: models.Model, *field_names: str) -> bool:
 
 
 if TYPE_CHECKING:
-    # The mixin calls Model.from_db through super(), so the type checker is
-    # handed Model as its base. At runtime it is a plain mixin and super()
-    # reaches the concrete model's from_db through the MRO.
+    from django.db.models.base import ModelBase
+
+    # The mixin calls Model.from_db and save through super(), so the type
+    # checker is handed Model as its base. At runtime it is a plain mixin and
+    # super() reaches the concrete model's methods through the MRO.
     _MixinBase = models.Model
 else:
     _MixinBase = object
 
 
 class LoadedIsActiveMixin(_MixinBase):
-    """Remember the is_active a row was loaded with.
+    """Remember the is_active a row was loaded with, or last saved.
 
     A save compares it with the new value to tell a flip from a no-op without a
     second query. None for a row built in memory or loaded with is_active deferred.
@@ -61,6 +63,48 @@ class LoadedIsActiveMixin(_MixinBase):
         if "is_active" in loaded:
             instance.loaded_is_active = bool(loaded["is_active"])
         return instance
+
+    def save(
+        self,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        fields = None if update_fields is None else frozenset(update_fields)
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=fields,
+        )
+        # After the save, so every post_save receiver compared against the
+        # loaded value; a second save of this instance then compares against
+        # what this one wrote. A save that left is_active out wrote nothing.
+        if fields is None or "is_active" in fields:
+            self.loaded_is_active = self.is_active
+
+    def _writes_is_active(self, update_fields: frozenset[str] | None) -> bool:
+        """A save that leaves is_active out of update_fields decides nothing,
+        whatever a stale instance holds."""
+        return update_fields is None or "is_active" in update_fields
+
+    def flipped_on(self, update_fields: frozenset[str] | None = None) -> bool:
+        """Whether the save in progress turned is_active on. For post_save receivers."""
+        return (
+            self._writes_is_active(update_fields)
+            and self.loaded_is_active is False
+            and self.is_active
+        )
+
+    def flipped_off(self, update_fields: frozenset[str] | None = None) -> bool:
+        """Whether the save in progress turned is_active off. For post_save receivers."""
+        return (
+            self._writes_is_active(update_fields)
+            and self.loaded_is_active is True
+            and not self.is_active
+        )
 
 
 class Cohort(LoadedIsActiveMixin, SiteAwareModel, TimestampedModel):
@@ -202,7 +246,7 @@ class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
         return f"{self.learner} - {self.course}"
 
 
-class CohortCourseRegistration(SiteAwareModel):
+class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
     """Cohort-wide registration for a course."""
 
     course = models.ForeignKey(

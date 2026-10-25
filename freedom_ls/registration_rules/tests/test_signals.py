@@ -1313,3 +1313,45 @@ def test_deleting_a_rule_leaves_staff_made_recommendations(mock_site_context):
 
     # Assert
     assert RecommendedCourse._base_manager.filter(pk=staff_made.pk).exists()
+
+
+@pytest.mark.django_db
+def test_re_saving_an_already_withdrawn_registration_queues_nothing(
+    recommend_rule,
+    registered_learner,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
+):
+    # Arrange
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+    registration.is_active = False
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.save()
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        LearnerCourseRegistration._base_manager.get(pk=registration.pk).save()
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()
+
+
+@pytest.mark.django_db
+def test_creating_an_inactive_registration_queues_nothing(
+    recommend_rule, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=recommend_rule.course, is_active=False
+        )
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()

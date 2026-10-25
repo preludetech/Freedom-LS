@@ -34,8 +34,8 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    LoadedIsActiveMixin,
 )
+from freedom_ls.learner_management.queries import user_id_of_learner
 from freedom_ls.registration_rules.evaluation import is_engine_write, switched_on
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
@@ -385,29 +385,12 @@ def _re_recommend_cohort(site_id: int, course_ids: Iterable[UUID]) -> None:
         _enqueue_rule(rule.pk, site_id)
 
 
-def _user_of_learner(learner_id: UUID) -> int:
-    user_id: int = Learner._base_manager.values_list("user_id", flat=True).get(
-        pk=learner_id
-    )
-    return user_id
-
-
 def _courses_of_cohort(cohort_id: UUID) -> list[UUID]:
     return list(
         CohortCourseRegistration._base_manager.filter(cohort_id=cohort_id)
         .values_list("course_id", flat=True)
         .distinct()
     )
-
-
-def _deactivated(
-    instance: LoadedIsActiveMixin, update_fields: frozenset[str] | None
-) -> bool:
-    """A save that turned is_active off. A save that leaves it out of update_fields
-    decides nothing, whatever a stale instance holds."""
-    if update_fields is not None and "is_active" not in update_fields:
-        return False
-    return instance.loaded_is_active is True and not instance.is_active
 
 
 @receiver(post_save, sender=LearnerCourseRegistration)
@@ -417,17 +400,14 @@ def re_recommend_on_registration_withdrawn(
     instance: LearnerCourseRegistration,
     signal: Signal,
     raw: bool = False,
+    update_fields: frozenset[str] | None = None,
     **kwargs: object,
 ) -> None:
-    """A registration that no longer grants its course puts the recommendation back.
-
-    Reads is_active alone: the snapshot is overwritten by another receiver
-    before this one runs.
-    """
-    if raw or (signal is post_save and instance.is_active):
+    """A registration that no longer grants its course puts the recommendation back."""
+    if raw or (signal is post_save and not instance.flipped_off(update_fields)):
         return
     _re_recommend_user(
-        instance.site_id, _user_of_learner(instance.learner_id), [instance.course_id]
+        instance.site_id, user_id_of_learner(instance.learner_id), [instance.course_id]
     )
 
 
@@ -440,7 +420,7 @@ def re_recommend_on_membership_deleted(
     """A member who leaves a cohort loses the courses it held for them."""
     _re_recommend_user(
         instance.site_id,
-        _user_of_learner(instance.learner_id),
+        user_id_of_learner(instance.learner_id),
         _courses_of_cohort(instance.cohort_id),
     )
 
@@ -462,7 +442,7 @@ def re_recommend_on_learner_withdrawn(
     holds one of the user's recommendations runs itself.
     """
     deleting = signal is pre_delete
-    if raw or not (deleting or _deactivated(instance, update_fields)):
+    if raw or not (deleting or instance.flipped_off(update_fields)):
         return
     course_ids = set(
         LearnerCourseRegistration._base_manager.filter(
@@ -489,10 +469,11 @@ def re_recommend_on_cohort_registration_withdrawn(
     instance: CohortCourseRegistration,
     signal: Signal,
     raw: bool = False,
+    update_fields: frozenset[str] | None = None,
     **kwargs: object,
 ) -> None:
     """A cohort that no longer holds a course puts it back in front of its members."""
-    if raw or (signal is post_save and instance.is_active):
+    if raw or (signal is post_save and not instance.flipped_off(update_fields)):
         return
     _re_recommend_cohort(instance.site_id, [instance.course_id])
 
@@ -506,6 +487,6 @@ def re_recommend_on_cohort_deactivated(
     **kwargs: object,
 ) -> None:
     """Deactivating a cohort withdraws every course it holds from its members."""
-    if raw or not _deactivated(instance, update_fields):
+    if raw or not instance.flipped_off(update_fields):
         return
     _re_recommend_cohort(instance.site_id, _courses_of_cohort(instance.pk))

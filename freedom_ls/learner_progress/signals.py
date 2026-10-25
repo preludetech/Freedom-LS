@@ -236,8 +236,6 @@ def ensure_course_progress_on_learner_registration(
     deactivated = (
         not created and instance.loaded_is_active is True and not instance.is_active
     )
-    # Remembered so a second save of this instance is not a second reactivation.
-    instance.loaded_is_active = instance.is_active
     if deactivated:
         _announce_unregistered(instance)
     if not instance.is_active:

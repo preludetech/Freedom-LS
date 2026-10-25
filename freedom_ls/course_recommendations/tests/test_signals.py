@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
@@ -17,6 +20,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
@@ -185,3 +189,54 @@ def test_a_raw_save_deletes_nothing(mock_site_context):
     LearnerCourseRegistration.save_base(registration, raw=True)
 
     assert RecommendedCourse.objects.filter(user=user).exists()
+
+
+def test_turning_one_cohort_instance_off_then_on_deletes_its_members_recommendations(
+    mock_site_context,
+):
+    membership = CohortMembershipFactory()
+    registration = CohortCourseRegistrationFactory(cohort=membership.cohort)
+    user = membership.learner.user
+    cohort = Cohort.objects.get(pk=membership.cohort_id)
+    cohort.is_active = False
+    cohort.save()
+    RecommendedCourseFactory(user=user, course=registration.course)
+
+    cohort.is_active = True
+    cohort.save()
+
+    assert not RecommendedCourse.objects.filter(user=user).exists()
+
+
+def _touches_recommendations(queries: CaptureQueriesContext) -> bool:
+    return any(
+        "recommendedcourse" in query["sql"].lower()
+        or "for no key update" in query["sql"].lower()
+        for query in queries.captured_queries
+    )
+
+
+def test_re_saving_an_active_individual_registration_reads_no_recommendations(
+    mock_site_context,
+):
+    registration = LearnerCourseRegistration.objects.get(
+        pk=LearnerCourseRegistrationFactory().pk
+    )
+
+    with CaptureQueriesContext(connection) as queries:
+        registration.save()
+
+    assert not _touches_recommendations(queries)
+
+
+def test_re_saving_an_active_cohort_registration_reads_no_recommendations(
+    mock_site_context,
+):
+    registration = CohortCourseRegistration.objects.get(
+        pk=CohortCourseRegistrationFactory().pk
+    )
+
+    with CaptureQueriesContext(connection) as queries:
+        registration.save()
+
+    assert not _touches_recommendations(queries)
