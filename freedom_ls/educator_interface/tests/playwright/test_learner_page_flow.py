@@ -210,7 +210,7 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     )
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    reason = "Moved to another programme"
+    reason = "abcdefghij" * 50
     page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
@@ -225,6 +225,12 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     history_row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(history_row).to_have_count(1)
     expect(history_row.get_by_text(reason)).to_be_visible()
+    # A long unbroken reason wraps inside the Details cell instead of
+    # stretching the table past its scroll wrapper.
+    table = main.get_by_role("table")
+    assert table.evaluate("t => t.offsetWidth <= t.parentElement.clientWidth"), (
+        "the History table is wider than its wrapper"
+    )
     page.goto(interface_url(live_server, organisation.slug, "audit-log"))
     row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(row.get_by_text("Ada Lovelace").first).to_be_visible()
