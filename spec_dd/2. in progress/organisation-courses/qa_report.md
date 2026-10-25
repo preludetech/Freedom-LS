@@ -146,7 +146,7 @@ The Harbour card disappears from the dashboard, and the player, detail and `/acc
 
 ## Bug status
 
-- **UNRESOLVED** — A registration through an inactive organisation Learner row loses access to the organisation course (reason: red lane — the test plan expects access to be kept, while the code and a branch test (`test_initiate_access_deactivated_learner_of_the_course_organisation_gets_404`) deliberately 404; choosing which is right is a product decision, and it is access-control behaviour)
+- **RESOLVED (working as intended)** — A registration through an inactive organisation Learner row loses access to the organisation course (reason: red lane — the test plan expects access to be kept, while the code and a branch test (`test_initiate_access_deactivated_learner_of_the_course_organisation_gets_404`) deliberately 404; choosing which is right is a product decision, and it is access-control behaviour). Decision: 404 is correct; a registration through a deactivated Learner row grants no access. The spec, plan and QA plan Scenario 3 now say so; no code change.
 
 ## General notes
 
