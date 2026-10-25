@@ -46,7 +46,7 @@ from freedom_ls.tests.factories import SiteFactory
 # These exercise the status/annotation logic the view attaches to each course
 # object it puts in the ``all_courses`` context: listing_status, progress
 # percentage, accent slot, and the next_up_* annotations on registered and
-# in-progress courses. Rendered-HTML row assertions follow further down.
+# in-progress courses.
 
 
 # The wrapper the express-interest partial renders around its call to action.
