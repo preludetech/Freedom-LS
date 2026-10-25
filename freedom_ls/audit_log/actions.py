@@ -4,7 +4,7 @@ how each one reads."""
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -101,9 +101,24 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
 )
 
 
+_describe_overrides: dict[str, Callable[[AuditLogEntry], str]] = {}
+
+
+def register_describe(code: str, describe: Callable[[AuditLogEntry], str]) -> None:
+    """Replace a registered action's describe renderer. Lets an app that knows
+    how to render a code's details register it without this app importing it."""
+    validate_action(code)
+    _describe_overrides[code] = describe
+
+
 def audit_actions() -> dict[str, AuditAction]:
     """Every registered audit action, FLS's own first."""
-    return {action.code: action for action in FLS_AUDIT_ACTIONS}
+    return {
+        action.code: replace(action, describe=_describe_overrides[action.code])
+        if action.code in _describe_overrides
+        else action
+        for action in FLS_AUDIT_ACTIONS
+    }
 
 
 def validate_action(code: str) -> None:

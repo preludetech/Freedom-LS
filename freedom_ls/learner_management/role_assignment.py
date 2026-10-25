@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from django.contrib.sites.models import Site
 from django.db import transaction
 
+from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.models import Cohort, OrganisationMember
 from freedom_ls.learner_management.queries import (
@@ -126,7 +127,12 @@ def assign_role(
 
 
 def remove_role(
-    grantor: User, user: User, role: str, target: Site | Organisation | Cohort
+    grantor: User,
+    user: User,
+    role: str,
+    target: Site | Organisation | Cohort,
+    *,
+    reason: str = "",
 ) -> None:
     """Remove `role` from `user` on `target`, on the grantor's behalf.
 
@@ -137,7 +143,7 @@ def remove_role(
     """
     _refuse_unless(grantor, user, ASSIGN.format(role=role), target, assigning=False)
     if isinstance(target, Site):
-        remove_site_role(user, role, site=target, removed_by=grantor)
+        remove_site_role(user, role, site=target, removed_by=grantor, reason=reason)
         return
     with transaction.atomic():
         if (
@@ -146,11 +152,11 @@ def remove_role(
             and not is_site_level_admin(grantor, target.site)
         ):
             _lock_and_refuse_last_organisation_admin(target, user)
-        remove_object_role(user, target, role, removed_by=grantor)
+        remove_object_role(user, target, role, removed_by=grantor, reason=reason)
 
 
 def set_organisation_member_active(
-    actor: User, member: OrganisationMember, is_active: bool
+    actor: User, member: OrganisationMember, is_active: bool, *, reason: str = ""
 ) -> None:
     """Activate or suspend `member`'s OrganisationMember row, on the actor's
     behalf. Suspending one who is the organisation's last organisation_admin
@@ -163,8 +169,19 @@ def set_organisation_member_active(
     with transaction.atomic():
         if not is_active and not is_site_level_admin(actor, member.site):
             _lock_and_refuse_last_organisation_admin(member.organisation, member.user)
+        changed = member.is_active != is_active
         member.is_active = is_active
         member.save(update_fields=["is_active"])
+        if changed:
+            record_entry(
+                action="member.suspended" if not is_active else "member.reactivated",
+                actor=actor,
+                target=member,
+                target_label=member.user.display_name,
+                organisation=member.organisation,
+                subjects=(member.user,),
+                reason=reason,
+            )
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,6 @@
 """Tests for role_based_permissions utility functions."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import UTC, datetime
 
 import pytest
@@ -12,9 +12,14 @@ from pytest_mock import MockerFixture
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+)
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -42,6 +47,7 @@ from freedom_ls.role_based_permissions.utils import (
     remove_system_role,
     sync_user_object_permissions,
 )
+from freedom_ls.tests.audit_assertions import assert_entry
 
 
 @pytest.fixture(autouse=True)
@@ -805,3 +811,219 @@ class TestAssignedAt:
         assignment.refresh_from_db()
         assert assignment.is_active is True
         assert assignment.assigned_at == _JANUARY
+
+
+def _change_then_fail(change: Callable[[], object]) -> None:
+    """Run `change` in a transaction that then rolls back."""
+    with transaction.atomic():
+        change()
+        raise RuntimeError
+
+
+@pytest.mark.django_db
+class TestRoleAuditEntries:
+    """Each role utility writes one entry per change, inside the caller's
+    transaction, and none for a call that changes nothing."""
+
+    def test_granting_on_a_cohort_records_the_cohorts_organisation(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory(name="Cohort A")
+        organisation = cohort.organisation
+        user = UserFactory()
+        grantor = UserFactory()
+
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=grantor)
+
+        assert_entry(
+            action="role.granted",
+            actor=grantor,
+            target=user,
+            target_label=user.display_name,
+            organisation=organisation,
+            subjects=(cohort,),
+            details={"role": "cohort_admin", "scope": "Cohort A"},
+        )
+
+    def test_granting_on_an_organisation_records_that_organisation(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = CohortFactory().organisation
+        user = UserFactory()
+
+        assign_object_role(user, organisation, "organisation_admin")
+
+        entry = AuditLogEntry.unscoped.get(action="role.granted")
+        assert entry.organisation == organisation
+        assert entry.details["scope"] == str(organisation)
+
+    def test_granting_on_a_course_records_no_organisation(
+        self, mock_site_context: Site
+    ) -> None:
+        course = CohortCourseRegistrationFactory(course__title="Algebra").course
+
+        assign_object_role(UserFactory(), course, "learner")
+
+        entry = AuditLogEntry.unscoped.get()
+        assert entry.organisation is None
+        assert entry.details["scope"] == "Algebra"
+
+    def test_regranting_an_active_role_by_another_grantor_writes_nothing(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        user = UserFactory()
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=UserFactory())
+
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=UserFactory())
+
+        assert AuditLogEntry.unscoped.count() == 1
+
+    def test_reactivating_an_inactive_role_writes_an_entry(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        user = UserFactory()
+        assign_object_role(user, cohort, "cohort_admin")
+        remove_object_role(user, cohort, "cohort_admin")
+
+        assign_object_role(user, cohort, "cohort_admin")
+
+        actions = list(
+            AuditLogEntry.unscoped.order_by("created_at").values_list(
+                "action", flat=True
+            )
+        )
+        assert actions == ["role.granted", "role.removed", "role.granted"]
+
+    def test_removing_an_object_role_writes_once_with_the_reason(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        user = UserFactory()
+        remover = UserFactory()
+        assign_object_role(user, cohort, "cohort_admin")
+
+        remove_object_role(user, cohort, "cohort_admin", remover, reason="Left")
+        remove_object_role(user, cohort, "cohort_admin", remover, reason="Left")
+
+        entry = AuditLogEntry.unscoped.get(action="role.removed")
+        assert entry.actor == remover
+        assert entry.reason == "Left"
+
+    def test_removing_a_role_never_held_writes_nothing(
+        self, mock_site_context: Site
+    ) -> None:
+        remove_object_role(UserFactory(), CohortFactory(), "cohort_admin")
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_null_grantor_logs_a_null_actor(self, mock_site_context: Site) -> None:
+        cohort = CohortFactory()
+        user = UserFactory()
+        assign_site_role(UserFactory(), "site_admin")
+        before = AuditLogEntry.unscoped.count()
+
+        assign_object_role(user, cohort, "cohort_admin")
+        remove_object_role(user, cohort, "cohort_admin")
+        assign_site_role(user, "site_admin")
+        remove_site_role(user, "site_admin")
+
+        entries = list(AuditLogEntry.unscoped.filter(target_object_id=str(user.pk)))
+        assert len(entries) == 4
+        assert AuditLogEntry.unscoped.count() == before + 4
+        assert {(e.actor, e.actor_label) for e in entries} == {(None, "")}
+
+    def test_site_role_entries_have_no_organisation_and_the_roles_site(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        other_admin = UserFactory()
+        assign_site_role(other_admin, "site_admin")
+
+        assign_site_role(user, "site_admin", site=mock_site_context)
+        remove_site_role(user, "site_admin", site=mock_site_context)
+
+        entries = AuditLogEntry.unscoped.filter(target_object_id=str(user.pk))
+        assert [e.action for e in entries.order_by("created_at")] == [
+            "role.granted",
+            "role.removed",
+        ]
+        assert {(e.organisation, e.site) for e in entries} == {
+            (None, mock_site_context)
+        }
+        assert {e.details["scope"] for e in entries} == {str(mock_site_context)}
+
+    def test_removing_a_site_role_twice_writes_once(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        assign_site_role(UserFactory(), "site_admin")
+        assign_site_role(user, "site_admin")
+
+        remove_site_role(user, "site_admin")
+        remove_site_role(user, "site_admin")
+
+        assert AuditLogEntry.unscoped.filter(action="role.removed").count() == 1
+
+    def test_a_refused_last_site_admin_removal_writes_nothing(
+        self, mock_site_context: Site
+    ) -> None:
+        user = UserFactory()
+        assign_site_role(user, "site_admin")
+        before = AuditLogEntry.unscoped.count()
+
+        with pytest.raises(RoleChangeRefused):
+            remove_site_role(user, "site_admin")
+
+        assert AuditLogEntry.unscoped.count() == before
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("utility", ["assign_object", "assign_site"])
+    def test_a_grant_rolled_back_by_the_caller_leaves_no_entry(
+        self, mock_site_context: Site, utility: str
+    ) -> None:
+        user = UserFactory()
+        cohort = CohortFactory()
+
+        change = (
+            (lambda: assign_object_role(user, cohort, "cohort_admin"))
+            if utility == "assign_object"
+            else (lambda: assign_site_role(user, "site_admin"))
+        )
+
+        with pytest.raises(RuntimeError):
+            _change_then_fail(change)
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("utility", ["remove_object", "remove_site"])
+    def test_a_removal_rolled_back_by_the_caller_leaves_no_new_entry(
+        self, mock_site_context: Site, utility: str
+    ) -> None:
+        user = UserFactory()
+        cohort = CohortFactory()
+        assign_site_role(UserFactory(), "site_admin")
+        assign_site_role(user, "site_admin")
+        assign_object_role(user, cohort, "cohort_admin")
+        before = AuditLogEntry.unscoped.count()
+
+        change = (
+            (lambda: remove_object_role(user, cohort, "cohort_admin"))
+            if utility == "remove_object"
+            else (lambda: remove_site_role(user, "site_admin"))
+        )
+
+        with pytest.raises(RuntimeError):
+            _change_then_fail(change)
+
+        assert AuditLogEntry.unscoped.count() == before
+
+    def test_the_system_role_utilities_write_nothing(self) -> None:
+        user = UserFactory()
+
+        assign_system_role(user, "system_admin")
+        remove_system_role(user, "system_admin")
+
+        assert AuditLogEntry.unscoped.count() == 0

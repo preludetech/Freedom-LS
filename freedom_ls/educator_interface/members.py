@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from django.contrib.sites.models import Site
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.audit_log.models import AuditLogEntry
     from freedom_ls.organisations.models import Organisation
 
 ORGANISATION_SCOPE = "Whole organisation"
@@ -96,3 +97,12 @@ def current_role_entries(user: User, organisation: Organisation) -> list[RoleEnt
         .prefetch_related("target")
     )
     return member_role_entries(user, organisation.site)
+
+
+def describe_role_change(entry: AuditLogEntry) -> str:
+    """ "{role display name} on {scope}", from the site's own role config so a
+    renamed role reads the way the rest of the interface names it."""
+    role = str(entry.details.get("role", ""))
+    config = get_role_config(entry.site.name)
+    display_name = config[role].display_name if role in config else role
+    return f"{display_name} on {entry.details.get('scope', '')}"

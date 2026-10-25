@@ -15,6 +15,7 @@ from django.db import transaction
 from django.db.models import Model
 from django.utils import timezone
 
+from freedom_ls.audit_log.writer import organisation_of, record_entry
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -240,6 +241,31 @@ def _refresh_assignment(
     return fields_to_update
 
 
+def _record_role_change(
+    action: str,
+    actor: User | None,
+    user: User,
+    target: Site | SiteAwareModelBase,
+    role: str,
+    reason: str = "",
+) -> None:
+    """One audit entry for a role granted to or removed from `user` on
+    `target`. The target's own name is the scope label; every role target
+    (an organisation, a cohort, a site, a course) stringifies to its name or
+    title."""
+    record_entry(
+        action=action,
+        actor=actor,
+        target=user,
+        target_label=user.display_name,
+        organisation=organisation_of(target),
+        subjects=(target,),
+        details={"role": role, "scope": str(target)},
+        reason=reason,
+        site=site_of(target),
+    )
+
+
 def assign_object_role(
     user: User,
     target: SiteAwareModelBase,
@@ -255,20 +281,23 @@ def assign_object_role(
     _check_assignment_scope(role, "object", site_name=site_name)
     ct = ContentType.objects.get_for_model(target)
     assignment: ObjectRoleAssignment
-    assignment, created = ObjectRoleAssignment.objects.get_or_create(
-        user=user,
-        content_type=ct,
-        object_id=str(target.pk),
-        role=role,
-        defaults={"assigned_by": assigned_by, "is_active": True},
-    )
-    if not created:
-        fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
-        if fields_to_update:
-            assignment.save(update_fields=fields_to_update)
+    with transaction.atomic():
+        assignment, created = ObjectRoleAssignment.objects.get_or_create(
+            user=user,
+            content_type=ct,
+            object_id=str(target.pk),
+            role=role,
+            defaults={"assigned_by": assigned_by, "is_active": True},
+        )
+        fields_to_update: list[str] = []
+        if not created:
+            fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
+            if fields_to_update:
+                assignment.save(update_fields=fields_to_update)
 
-    sync_user_object_permissions(user, target)
-    # TODO: AuditLog entry for role assignment
+        sync_user_object_permissions(user, target)
+        if created or "is_active" in fields_to_update:
+            _record_role_change("role.granted", assigned_by, user, target, role)
     return assignment
 
 
@@ -277,21 +306,27 @@ def remove_object_role(
     target: SiteAwareModelBase,
     role: str,
     removed_by: User | None = None,
+    *,
+    reason: str = "",
 ) -> None:
     """Remove an object-level role from a user on a target object.
 
-    Deactivates the ObjectRoleAssignment, then resyncs guardian permissions.
+    Deactivates the ObjectRoleAssignment, resyncs guardian permissions and
+    records the removal when an active assignment was deactivated.
     """
     check_role_name_in_config(role, site_name=site_of(target).name)
     ct = ContentType.objects.get_for_model(target)
-    ObjectRoleAssignment.objects.filter(
-        user=user,
-        content_type=ct,
-        object_id=str(target.pk),
-        role=role,
-    ).update(is_active=False, updated_at=timezone.now())
-    sync_user_object_permissions(user, target)
-    # TODO: AuditLog entry for role removal (use removed_by)
+    with transaction.atomic():
+        removed = ObjectRoleAssignment.objects.filter(
+            user=user,
+            content_type=ct,
+            object_id=str(target.pk),
+            role=role,
+            is_active=True,
+        ).update(is_active=False, updated_at=timezone.now())
+        sync_user_object_permissions(user, target)
+        if removed:
+            _record_role_change("role.removed", removed_by, user, target, role, reason)
 
 
 def assign_site_role(
@@ -313,19 +348,22 @@ def assign_site_role(
     check_role_name_in_config(role, site_name=site.name)
     _check_assignment_scope(role, "site", site_name=site.name)
     assignment: SiteRoleAssignment
-    assignment, created = SiteRoleAssignment.objects.get_or_create(
-        user=user,
-        site=site,
-        role=role,
-        defaults={"assigned_by": assigned_by, "is_active": True},
-    )
-    if not created:
-        fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
-        if fields_to_update:
-            assignment.save(update_fields=fields_to_update)
+    with transaction.atomic():
+        assignment, created = SiteRoleAssignment.objects.get_or_create(
+            user=user,
+            site=site,
+            role=role,
+            defaults={"assigned_by": assigned_by, "is_active": True},
+        )
+        fields_to_update: list[str] = []
+        if not created:
+            fields_to_update = _refresh_assignment(assignment, assigned_by, stamp=True)
+            if fields_to_update:
+                assignment.save(update_fields=fields_to_update)
 
-    sync_user_object_permissions(user, site)
-    # TODO: AuditLog entry for site role assignment
+        sync_user_object_permissions(user, site)
+        if created or "is_active" in fields_to_update:
+            _record_role_change("role.granted", assigned_by, user, site, role)
     return assignment
 
 
@@ -334,6 +372,8 @@ def remove_site_role(
     role: str,
     site: Site | None = None,
     removed_by: User | None = None,
+    *,
+    reason: str = "",
 ) -> None:
     """Remove a site-level role from a user on a site.
 
@@ -343,7 +383,9 @@ def remove_site_role(
 
     Args:
         site: The site to remove the role from. Defaults to the current site.
-        removed_by: The user performing the removal (for future audit logging).
+        removed_by: The user performing the removal, recorded as the actor of
+            the audit entry; none logs as the system.
+        reason: Free text stored on the audit entry.
     """
     if site is None:
         site = Site.objects.get_current()
@@ -364,13 +406,15 @@ def remove_site_role(
             ).exclude(user=user)
             if not other_active_admins.exists():
                 raise RoleChangeRefused(RefusalReason.LAST_SITE_ADMIN)
-        SiteRoleAssignment.objects.filter(
+        removed = SiteRoleAssignment.objects.filter(
             user=user,
             site=site,
             role=role,
+            is_active=True,
         ).update(is_active=False, updated_at=timezone.now())
+        if removed:
+            _record_role_change("role.removed", removed_by, user, site, role, reason)
     sync_user_object_permissions(user, site)
-    # TODO: AuditLog entry for site role removal (use removed_by)
 
 
 def assign_system_role(

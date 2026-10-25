@@ -410,4 +410,4 @@ def test_an_admin_of_another_organisation_gets_a_404_on_the_delete(
 
     assert response.status_code == 404
     assert Cohort.objects.filter(pk=cohort.pk).exists()
-    assert not AuditLogEntry.unscoped.exists()
+    assert not AuditLogEntry.unscoped.filter(action="cohort.deleted").exists()

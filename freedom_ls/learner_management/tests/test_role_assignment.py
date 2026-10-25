@@ -10,11 +10,12 @@ import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.sites.models import Site
-from django.db import connection
+from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     OrganisationMemberFactory,
@@ -45,6 +46,7 @@ from freedom_ls.role_based_permissions.models import (
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
+from freedom_ls.tests.audit_assertions import assert_entry
 
 
 @pytest.fixture(autouse=True)
@@ -561,3 +563,93 @@ def test_a_user_without_the_admin_role_is_not_the_last_organisation_admin(
     assign_object_role(UserFactory(), organisation, "organisation_admin")
 
     assert not is_last_organisation_admin(organisation, UserFactory())
+
+
+@pytest.mark.django_db
+class TestMemberAndRoleAudit:
+    def _member(self, organisation: Organisation) -> OrganisationMember:
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_admin")
+        member: OrganisationMember = OrganisationMember.objects.get(
+            user=user, organisation=organisation
+        )
+        return member
+
+    def test_suspending_writes_an_entry_with_the_user_as_a_subject(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        actor = UserFactory(superuser=True)
+        member = OrganisationMemberFactory(organisation=organisation)
+
+        set_organisation_member_active(actor, member, False, reason="Left")
+
+        assert_entry(
+            action="member.suspended",
+            actor=actor,
+            target=member,
+            target_label=member.user.display_name,
+            organisation=organisation,
+            subjects=(member.user,),
+            reason="Left",
+        )
+
+    def test_suspending_a_suspended_member_writes_nothing(
+        self, mock_site_context: Site
+    ) -> None:
+        actor = UserFactory(superuser=True)
+        member = OrganisationMemberFactory(is_active=False)
+
+        set_organisation_member_active(actor, member, False)
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_reactivating_writes_member_reactivated(
+        self, mock_site_context: Site
+    ) -> None:
+        actor = UserFactory(superuser=True)
+        member = OrganisationMemberFactory(is_active=False)
+
+        set_organisation_member_active(actor, member, True)
+
+        assert AuditLogEntry.unscoped.get().action == "member.reactivated"
+
+    def test_a_refused_suspension_writes_nothing(self, mock_site_context: Site) -> None:
+        organisation = OrganisationFactory()
+        member = self._member(organisation)
+        before = AuditLogEntry.unscoped.count()
+
+        with pytest.raises(RoleChangeRefused):
+            set_organisation_member_active(member.user, member, False)
+
+        assert AuditLogEntry.unscoped.count() == before
+
+    @pytest.mark.django_db(transaction=True)
+    def test_a_rolled_back_outer_transaction_leaves_no_entry(
+        self, mock_site_context: Site
+    ) -> None:
+        actor = UserFactory(superuser=True)
+        member = OrganisationMemberFactory()
+
+        def suspend() -> None:
+            with transaction.atomic():
+                set_organisation_member_active(actor, member, False)
+                raise RuntimeError
+
+        with pytest.raises(RuntimeError):
+            suspend()
+
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_remove_role_passes_the_reason_through(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        grantor = UserFactory(superuser=True)
+        user = UserFactory()
+        assign_role(grantor, user, "cohort_admin", cohort)
+
+        remove_role(grantor, user, "cohort_admin", cohort, reason="Moved teams")
+
+        assert AuditLogEntry.unscoped.get(action="role.removed").reason == "Moved teams"
