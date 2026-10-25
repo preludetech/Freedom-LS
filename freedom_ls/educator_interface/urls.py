@@ -53,6 +53,11 @@ urlpatterns = [
         views.learner_import_result,
         name="learner_import_result",
     ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$",
+        views.partial_learner_import_status,
+        name="learner_import_status",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation

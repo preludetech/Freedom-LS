@@ -139,7 +139,9 @@ from freedom_ls.educator_interface.reporting import (
     DashboardPanel,
     LearnerCoursesPanel,
 )
+from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
+from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import (
     BulkActionRun,
     Cohort,
@@ -152,6 +154,7 @@ from freedom_ls.learner_management.models import (
     LearnerImport,
     LearnerImportRow,
     OrganisationMember,
+    RunStatus,
 )
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
@@ -2275,17 +2278,23 @@ def learner_import_preview(
     result_url = _import_url("learner_import_result", scoped.organisation, import_id)
     if learner_import.status != ImportStatus.PREVIEWED:
         return _see_other(result_url)
-    if request.method == "POST":
-        # Only one of two simultaneous confirmations changes a row, so only one
-        # of them runs the import.
-        started = LearnerImport.objects.filter(
-            pk=learner_import.pk, status=ImportStatus.PREVIEWED
-        ).update(status=ImportStatus.RUNNING)
-        if started:
-            run_learner_import(str(learner_import.pk), scoped.organisation.site_id)
-        return _see_other(result_url)
     rows = LearnerImportRow.objects.filter(learner_import=learner_import)
     counts = _label_counts(rows, "preview_label")
+    add_count = learner_import.row_count - _count_of(counts, *NOT_ADDED_LABELS)
+    in_background = add_count > learner_management_config.BULK_BACKGROUND_THRESHOLD
+    if request.method == "POST":
+        # Only one of two simultaneous confirmations changes a row, so only one
+        # of them runs or enqueues the import.
+        started = LearnerImport.objects.filter(
+            pk=learner_import.pk, status=ImportStatus.PREVIEWED
+        ).update(status=ImportStatus.QUEUED if in_background else ImportStatus.RUNNING)
+        if started:
+            site_id = scoped.organisation.site_id
+            if in_background:
+                _run_learner_import_task.enqueue(str(learner_import.pk), site_id)
+            else:
+                run_learner_import(str(learner_import.pk), site_id)
+        return _see_other(result_url)
     # An unknown label shows every row rather than none.
     label = request.GET.get("label", "")
     shown = rows.filter(preview_label=label) if label in ImportLabel.values else rows
@@ -2310,8 +2319,8 @@ def learner_import_preview(
             "label_counts": counts,
             "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
             "error_count": _count_of(counts, ImportLabel.ERROR),
-            "add_count": learner_import.row_count
-            - _count_of(counts, *NOT_ADDED_LABELS),
+            "add_count": add_count,
+            "in_background": in_background,
         },
     )
 
@@ -2369,6 +2378,49 @@ def learner_import_errors(
     )
 
 
+def _import_status_context(
+    scoped: OrganisationScopedRequest, learner_import: LearnerImport
+) -> dict[str, object]:
+    """What `partials/run_status.html` renders for an import: the progress while
+    it is queued or running, the outcome once it has finished or failed."""
+    import_id = str(learner_import.pk)
+    total = learner_import.row_count
+    context: dict[str, object] = {
+        "run": learner_import,
+        "learner_import": learner_import,
+        "noun": "rows",
+        "total": total,
+        "percentage": learner_import.processed_count * 100 // total if total else 100,
+        "progress_text": f"Added {learner_import.processed_count} of {total} rows",
+        "status_url": _import_url(
+            "learner_import_status", scoped.organisation, import_id
+        ),
+        "result_template": "educator_interface/partials/learner_import_result_body.html",
+        "result_on_failure": True,
+    }
+    if learner_import.status not in (RunStatus.DONE, RunStatus.FAILED):
+        return context
+    counts = _label_counts(
+        LearnerImportRow.objects.filter(learner_import=learner_import), "final_label"
+    )
+    added = total - _count_of(counts, *NOT_ADDED_LABELS)
+    context.update(
+        label_counts=counts,
+        added_count=added,
+        not_added_count=total - added,
+        error_rows=[
+            {"row": row, "reason": error_reason(row)}
+            for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
+        ],
+        error_count=_count_of(counts, ImportLabel.ERROR),
+        errors_url=_import_url("learner_import_errors", scoped.organisation, import_id),
+        new_account_count=_count_of(counts, ImportLabel.NEW_ACCOUNT),
+        learners_url=_learners_url(scoped.organisation),
+        upload_url=_import_url("learner_import", scoped.organisation),
+    )
+    return context
+
+
 @login_required
 def learner_import_result(
     request: HttpRequest, organisation_slug: str, import_id: str
@@ -2383,30 +2435,30 @@ def learner_import_result(
         return _see_other(
             _import_url("learner_import_preview", scoped.organisation, import_id)
         )
-    rows = LearnerImportRow.objects.filter(learner_import=learner_import)
-    counts = _label_counts(rows, "final_label")
-    added = learner_import.row_count - _count_of(counts, *NOT_ADDED_LABELS)
     return _import_page(
         request,
         scoped,
         "educator_interface/learner_import_result.html",
-        {
-            "learner_import": learner_import,
-            "label_counts": counts,
-            "added_count": added,
-            "not_added_count": learner_import.row_count - added,
-            "error_rows": [
-                {"row": row, "reason": error_reason(row)}
-                for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
-            ],
-            "error_count": _count_of(counts, ImportLabel.ERROR),
-            "errors_url": _import_url(
-                "learner_import_errors", scoped.organisation, import_id
-            ),
-            "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
-            "learners_url": _learners_url(scoped.organisation),
-            "upload_url": _import_url("learner_import", scoped.organisation),
-        },
+        _import_status_context(scoped, learner_import),
+    )
+
+
+@login_required_htmx_to("educator_interface:root")
+def partial_learner_import_status(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse:
+    """The polled fragment of `learner_import_result`."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    user = cast(User, request.user)
+    if not check_import_gate(user, learner_import.organisation, learner_import.cohort):
+        return _import_denied(request, scoped)
+    if learner_import.status == ImportStatus.PREVIEWED:
+        raise Http404("The import has not been confirmed.")
+    return render(
+        request,
+        "educator_interface/partials/run_status.html",
+        _import_status_context(scoped, learner_import),
     )
 
 

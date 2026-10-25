@@ -47,7 +47,10 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.educator_interface.bulk_runs import run_bulk_action
 from freedom_ls.educator_interface.events import COHORT_CHANGED
-from freedom_ls.educator_interface.learner_import import create_learner_import
+from freedom_ls.educator_interface.learner_import import (
+    create_learner_import,
+    run_learner_import,
+)
 from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
@@ -4640,3 +4643,165 @@ def test_a_failed_import_shows_the_reupload_line(import_world: SimpleNamespace):
     )
 
     assert "Uploading the whole file again is safe" in page.text_content()
+
+
+def _import_task_rows():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path__endswith="_run_learner_import_task")
+
+
+def _ten_row_import(import_world: SimpleNamespace) -> LearnerImport:
+    return _import_for(
+        import_world.admin,
+        import_world.organisation,
+        *(f"learner{index}@example.com,,," for index in range(10)),
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_names_the_background_only_above_the_threshold(
+    import_world: SimpleNamespace, settings
+):
+    learner_import = _ten_row_import(import_world)
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    settings.BULK_BACKGROUND_THRESHOLD = 10
+    at_threshold = " ".join(
+        _get_document(import_world.client, url).text_content().split()
+    )
+    settings.BULK_BACKGROUND_THRESHOLD = 9
+    above_threshold = " ".join(
+        _get_document(import_world.client, url).text_content().split()
+    )
+
+    assert "runs in the background" not in at_threshold
+    assert (
+        "This import runs in the background. The result page will show progress."
+        in above_threshold
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_confirming_above_the_threshold_queues_one_task_and_the_result_page_polls(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+    result_url = _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+
+    confirmed = import_world.client.post(preview_url)
+    page = _get_document(import_world.client, result_url)
+
+    learner_import.refresh_from_db()
+    (status,) = page.cssselect("#run-status")
+    assert (confirmed.status_code, confirmed["Location"]) == (303, result_url)
+    assert learner_import.status == RunStatus.QUEUED
+    assert _import_task_rows().count() == 1
+    assert Learner.objects.filter(organisation=import_world.organisation).count() == 2
+    assert status.get("role") == "status"
+    assert status.get("hx-trigger") == "every 2s"
+    assert status.get("hx-get") == _import_url(
+        import_world.organisation, "learner_import_status", learner_import
+    )
+    assert "Added 0 of 10 rows" in status.text_content()
+    assert status.cssselect("progress, [role=progressbar]")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_second_confirmation_of_a_queued_import_does_not_enqueue_again(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    import_world.client.post(url)
+    second = import_world.client.post(url)
+
+    assert second.status_code == 303
+    assert second["Location"] == _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    assert _import_task_rows().count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_status_partial_drops_the_trigger_and_holds_the_result_once_done(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    status_url = _import_url(
+        import_world.organisation, "learner_import_status", learner_import
+    )
+
+    queued = import_world.client.get(status_url)
+    run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
+    done = import_world.client.get(status_url)
+
+    queued_status = lxml.html.fromstring(queued.content.decode())
+    done_status = lxml.html.fromstring(done.content.decode())
+    assert queued_status.get("hx-trigger") == "every 2s"
+    assert done_status.get("id") == "run-status"
+    assert done_status.get("hx-trigger") is None
+    assert done_status.get("hx-get") is None
+    assert "Added 10 learners. 0 rows were not added." in " ".join(
+        done_status.text_content().split()
+    )
+
+
+@pytest.mark.django_db
+def test_the_status_partial_of_a_failed_import_stops_polling_and_shows_the_reason(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=RunStatus.FAILED, error_message="Something broke.", processed_count=0
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+
+    status = lxml.html.fromstring(response.content.decode())
+    text = " ".join(status.text_content().split())
+    assert status.get("hx-trigger") is None
+    assert "Stopped after 0 of 1 rows" in text
+    assert "Something broke." in text
+    assert "Uploading the whole file again is safe" in text
+
+
+@pytest.mark.django_db
+def test_the_import_status_is_a_404_for_another_user_and_another_organisation(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(status=RunStatus.QUEUED)
+    other = cast(User, UserFactory(superuser=True))
+
+    by_other_user = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+    through_other_slug = import_world.client.get(
+        _import_url(OrganisationFactory(), "learner_import_status", learner_import)
+    )
+
+    assert by_other_user.status_code == 404
+    assert through_other_slug.status_code == 404

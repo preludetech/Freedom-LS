@@ -185,7 +185,12 @@ class TestCrossOrganisationIsolation:
 
     @pytest.mark.parametrize(
         "name",
-        ["learner_import_preview", "learner_import_result", "learner_import_errors"],
+        [
+            "learner_import_preview",
+            "learner_import_result",
+            "learner_import_errors",
+            "learner_import_status",
+        ],
     )
     def test_a_learner_import_of_organisation_b_404s_through_organisation_as_slug(
         self, isolation: SimpleNamespace, name: str
