@@ -1617,14 +1617,22 @@ def test_course_detail_shows_time_limit_ended_and_overdue_once_passed(
 
 @pytest.mark.django_db
 @time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_course_detail_shows_finish_by_once_passed_and_complete(time_limit_course):
+@pytest.mark.parametrize(
+    "now",
+    [datetime(2026, 4, 1, 10, 0, tzinfo=UTC), datetime(2026, 9, 1, 10, 0, tzinfo=UTC)],
+    ids=["before_the_end", "after_the_end"],
+)
+def test_course_detail_shows_no_time_limit_card_once_complete(
+    time_limit_course, now: datetime
+):
     course, record, client = time_limit_course
-    record.completed_time = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    record.completed_time = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
     record.save()
 
-    html = _detail_html(client, course)
+    with time_machine.travel(now, tick=False):
+        html = _detail_html(client, course)
 
-    assert "Finish by" in html
+    assert "Finish by" not in html
     assert "Time limit ended" not in html
     assert "Overdue" not in html
 

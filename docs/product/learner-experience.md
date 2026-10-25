@@ -287,7 +287,7 @@ When every item in a course is complete, the learner reaches a finish page and t
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in three places:
 
 - **Table of contents** (on the course detail page and in the course player's outline) — "Due" and the date beside each incomplete item that has one, with an **Overdue** mark once it has passed. A completed item shows neither.
-- **Course detail page** — "Finish by" and the date where the course has a time limit; once the limit has passed on an unfinished course, "Time limit ended" and the date with the Overdue mark. A visitor who is not registered sees no deadlines.
+- **Course detail page** — "Finish by" and the date where the course has a time limit; once the limit has passed on an unfinished course, "Time limit ended" and the date with the Overdue mark. A learner who has finished the course sees no time limit card. A visitor who is not registered sees no deadlines.
 - **Dashboard course card** — one line above the progress bar: the time limit having ended, else the number of overdue items, else the next date coming up.
 
 ![Course detail page with a passed time limit and overdue items in the table of contents](screenshots/learner_course_detail_due_dates.png)

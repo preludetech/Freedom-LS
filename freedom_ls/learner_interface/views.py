@@ -817,13 +817,15 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     time_limit_end: datetime | None = None
     time_limit_overdue = False
     time_limit_label = ""
-    if course_progress is not None and deadlines is not None:
+    # A finished course has nothing left to finish by, so its card goes, as a completed
+    # row's due date does.
+    if (
+        course_progress is not None
+        and deadlines is not None
+        and course_progress.completed_time is None
+    ):
         time_limit_end = deadlines.time_limit.due_at
-        time_limit_overdue = is_overdue(
-            deadlines.time_limit,
-            course_progress.completed_time is not None,
-            timezone.now(),
-        )
+        time_limit_overdue = is_overdue(deadlines.time_limit, False, timezone.now())
         time_limit_label = "Time limit ended" if time_limit_overdue else "Finish by"
     start_url: str | None
     cta_label: str | None
