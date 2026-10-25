@@ -37,7 +37,7 @@ reach below a long card list.
         A disabled fieldset disables every button inside it, the "More
         actions" trigger included, while a background run is going.
         {% endcomment %}
-        <fieldset x-show="showActions" x-bind:disabled="running" class="flex min-w-0 flex-wrap items-center gap-4">
+        <fieldset x-show="showActions" x-bind:disabled="running" class="m-0 flex min-w-0 flex-wrap items-center gap-4 rounded-none border-0 p-0">
             {% querystring request.GET as qs %}
             {% for entry in bulk_actions|slice:":2" %}
                 <c-button type="submit"
