@@ -757,8 +757,13 @@ def _recommended_readonly_fields_with_rules(
     request: HttpRequest,
     obj: RecommendedCourse | None = None,
 ) -> Sequence[str | Callable[[RecommendedCourse], str | SafeString]]:
+    # A rule finds its recommendation by user and course. Re-pointing a
+    # rule-made row would leave the rule's link on a row it no longer manages:
+    # never removed by the rule, yet deleted with it.
+    fixed = ["user", "course"] if obj is not None and _rules_of(obj) else []
     return [
         *_recommended_readonly_fields(self, request, obj),
+        *fixed,
         _REGISTRATION_RULES[request.user.has_perm(_VIEW_RULE)],
     ]
 

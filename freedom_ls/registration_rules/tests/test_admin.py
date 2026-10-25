@@ -1917,3 +1917,41 @@ def test_the_recommend_preview_says_who_is_recommended_on_the_course(
     # Assert
     page = " ".join(response.content.decode().split())
     assert f"changes who is recommended on {recommend_rule.course}." in page
+
+
+def _readonly_field_names(response) -> set[str]:
+    return {
+        item
+        for item in response.context["adminform"].readonly_fields
+        if isinstance(item, str)
+    }
+
+
+@pytest.mark.django_db
+def test_the_change_page_of_a_rule_made_recommendation_fixes_its_user_and_course(
+    staff_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory()
+
+    # Act
+    response = staff_client.get(
+        reverse(RECOMMENDED_CHANGE, args=[made.recommendation.pk])
+    )
+
+    # Assert
+    assert {"user", "course"} <= _readonly_field_names(response)
+
+
+@pytest.mark.django_db
+def test_the_change_page_of_a_staff_made_recommendation_leaves_user_and_course_editable(
+    staff_client,
+):
+    # Arrange
+    row = RecommendedCourseFactory()
+
+    # Act
+    response = staff_client.get(reverse(RECOMMENDED_CHANGE, args=[row.pk]))
+
+    # Assert
+    assert _readonly_field_names(response).isdisjoint({"user", "course"})
