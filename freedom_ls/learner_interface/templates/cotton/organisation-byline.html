@@ -1,0 +1,22 @@
+{% comment %}
+Card-sized line naming the organisation a course belongs to or is studied
+through: the logo in a small opaque surface box, then the name as text, so
+the logo is decorative and carries an empty alt. Nothing renders for the
+site's default organisation, which the surrounding chrome already brands.
+No element id: a list repeats this component once per card.
+
+Params:
+  organisation — the organisation to name; nothing renders without it, nor
+    for the Site's default organisation
+{% endcomment %}
+<c-vars organisation="" />
+{% if organisation and not organisation.is_default %}
+    <p class="flex items-center gap-2 text-sm text-muted min-w-0">
+        {% if organisation.logo %}
+            <span class="inline-flex h-6 shrink-0 items-center rounded-md bg-surface px-1">
+                <img src="{{ organisation.logo.url }}" alt="" class="h-full w-auto object-contain" />
+            </span>
+        {% endif %}
+        <span class="truncate">{{ organisation.name }}</span>
+    </p>
+{% endif %}

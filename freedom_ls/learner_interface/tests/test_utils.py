@@ -30,6 +30,9 @@ from freedom_ls.learner_interface.utils import (
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
+
+GET_CURRENT_COURSES_MAX_QUERIES = 5
 
 # --- get_all_courses ---
 
@@ -287,3 +290,50 @@ def test_get_course_index_part_rows_carry_no_due_at_but_their_children_do(
     assert "due_at" not in part_row
     assert part_row["children"][0]["due_at"] == due
     assert part_row["children"][0]["collection_item_id"] == topic_item.pk
+
+
+@pytest.mark.django_db
+def test_get_current_courses_stamps_the_card_organisation_from_the_record(
+    mock_site_context,
+):
+    user = UserFactory()
+    organisation = OrganisationFactory()
+    course: Course = CourseFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user, learner__organisation=organisation, course=course
+    )
+    course_progress_record(course, user)
+
+    result = get_current_courses(user)
+
+    assert result[0].card_organisation == organisation
+
+
+@pytest.mark.django_db
+def test_get_current_courses_stamps_no_card_organisation_without_a_record(
+    mock_site_context,
+):
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=CourseFactory())
+
+    result = get_current_courses(user)
+
+    assert result[0].card_organisation is None
+
+
+@pytest.mark.django_db
+def test_get_current_courses_query_count_does_not_grow_with_courses(
+    mock_site_context, django_assert_max_num_queries
+):
+    user = UserFactory()
+    for _ in range(6):
+        course = CourseFactory()
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=OrganisationFactory(),
+            course=course,
+        )
+        course_progress_record(course, user)
+
+    with django_assert_max_num_queries(GET_CURRENT_COURSES_MAX_QUERIES):
+        get_current_courses(user)

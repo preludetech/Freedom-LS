@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.course_access.backends import AccessBadge
+    from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -150,6 +151,14 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
     never mints access-type copy.
     """
     setattr(course, "access_badge", badge)  # noqa: B010
+
+
+def stamp_card_organisation(course: Course, organisation: Organisation | None) -> None:
+    """Stamp the organisation a dashboard card names onto a course.
+
+    ``None`` stamps nothing to show; the card renders no byline for it.
+    """
+    setattr(course, "card_organisation", organisation)  # noqa: B010
 
 
 @dataclass(frozen=True)
@@ -860,6 +869,9 @@ def get_current_courses(user: RequestUser) -> list[Course]:
             course,
             "registered_at",
             course_progress.created_at if course_progress else None,
+        )
+        stamp_card_organisation(
+            course, course_progress.learner.organisation if course_progress else None
         )
         current.append(course)
 

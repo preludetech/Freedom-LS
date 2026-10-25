@@ -113,6 +113,7 @@ from .utils import (
     get_item_part,
     get_resume_index,
     outstanding_items,
+    stamp_card_organisation,
     stamp_course_access_badge,
 )
 
@@ -293,6 +294,14 @@ def _visible_recommendations(
     return visible_recs
 
 
+def _stamp_single_organisation(course: Course) -> None:
+    # Exactly one organisation names the version; zero or several say nothing.
+    organisations = course.organisations.all()
+    stamp_card_organisation(
+        course, organisations[0] if len(organisations) == 1 else None
+    )
+
+
 def _annotate_registered_courses(
     courses: list[Course], user, backend: CourseAccessBackend
 ) -> None:
@@ -366,6 +375,7 @@ def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
     """
     for rec in recommendations:
         setattr(rec.course, "is_registered", False)  # noqa: B010
+        _stamp_single_organisation(rec.course)
         setattr(  # noqa: B010
             rec.course,
             "listing_status",
@@ -392,6 +402,7 @@ def _discovery_courses(
         backend.filter_visible(user=user, courses=get_all_courses())
         .exclude(pk__in=excluded_ids)
         .select_related("dashboard_category")
+        .prefetch_related("organisations")
     )
 
 
@@ -426,6 +437,7 @@ def _annotate_discovery_courses(
     """Stamp the access badge and listing status onto each discovery course."""
     for course in courses:
         setattr(course, "is_registered", False)  # noqa: B010
+        _stamp_single_organisation(course)
         stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
         setattr(  # noqa: B010
             course,

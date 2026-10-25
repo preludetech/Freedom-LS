@@ -22,7 +22,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_access.backends import (
     CourseAccessDecision,
     FreeOnlyCourseAccessBackend,
@@ -46,11 +46,15 @@ from freedom_ls.learner_interface.utils import (
 )
 from freedom_ls.learner_interface.views import _visible_recommendations
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 # Tests for the learner dashboard view.
@@ -1374,10 +1378,10 @@ def test_the_htmx_fragment_updates_the_status_region_out_of_band(
 # realistic-sized page and then grows the input that section must not be
 # sensitive to, to prove the count held.
 
-IN_PROGRESS_MAX_QUERIES = 59
+IN_PROGRESS_MAX_QUERIES = 60
 
 
-CATEGORY_SECTION_MAX_QUERIES = 6
+CATEGORY_SECTION_MAX_QUERIES = 7
 
 
 @pytest.mark.django_db
@@ -1454,8 +1458,8 @@ def deadline_card(mock_site_context, logged_in_client):
     return course, topics, user, record, logged_in_client(user)
 
 
-def _dashboard_html(client: Client) -> str:
-    response = client.get(reverse("learner_interface:dashboard"))
+def _dashboard_html(client: Client | None = None) -> str:
+    response = (client or Client()).get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     return response.content.decode()
 
@@ -1784,3 +1788,159 @@ def test_card_learner_none_override_removes_the_date(overridden_card):
 
     assert "Missed deadline" not in text
     assert "Next deadline" not in text
+
+
+# Organisation byline on dashboard cards.
+
+
+@pytest.mark.django_db
+def test_discovery_card_names_the_single_organisation(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(name="Solo Academy"))
+
+    assert "Solo Academy" in _dashboard_html()
+
+
+@pytest.mark.django_db
+def test_discovery_card_names_no_organisation_for_a_course_with_none(
+    mock_site_context,
+):
+    CourseFactory()
+    OrganisationFactory(name="Unrelated Academy")
+
+    assert "Unrelated Academy" not in _dashboard_html()
+
+
+@pytest.mark.django_db
+def test_discovery_card_names_no_organisation_for_a_course_with_several(
+    mock_site_context,
+):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(
+        OrganisationFactory(name="First Academy"),
+        OrganisationFactory(name="Second Academy"),
+    )
+
+    html = _dashboard_html()
+
+    assert "First Academy" not in html
+    assert "Second Academy" not in html
+
+
+@pytest.mark.django_db
+def test_coming_soon_card_names_the_single_organisation(mock_site_context):
+    course = CourseFactory(
+        visibility=CourseVisibility.COMING_SOON, audience=CourseAudience.PUBLIC
+    )
+    course.organisations.add(OrganisationFactory(name="Soon Academy"))
+
+    assert "Soon Academy" in _dashboard_html()
+
+
+@pytest.mark.django_db
+def test_recommended_card_names_the_single_organisation(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(name="Rec Academy"))
+    RecommendedCourseFactory(user=user, course=course)
+
+    assert "Rec Academy" in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_in_progress_card_names_the_organisation_the_learner_studies_through(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(name="Study Academy"),
+        course=course,
+    )
+    course_progress_record(course, user)
+
+    assert "Study Academy" in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_in_progress_card_names_the_organisation_of_a_cohort_registration(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory()
+    cohort = CohortFactory(organisation=OrganisationFactory(name="Cohort Academy"))
+    CohortMembershipFactory(cohort=cohort, learner__user=user)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    course_progress_record(course, user)
+
+    assert "Cohort Academy" in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_cards_name_nothing_for_the_default_organisation(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    default = get_default_organisation(mock_site_context)
+    default.name = "Home Academy"
+    default.save(update_fields=["name"])
+    CourseFactory().organisations.add(default)
+    course = CourseFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user, learner__organisation=default, course=course
+    )
+    course_progress_record(course, user)
+
+    assert "Home Academy" not in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_card_byline_renders_the_name_alone_when_the_organisation_has_no_logo(
+    mock_site_context,
+):
+    CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
+        OrganisationFactory(name="Plain Academy")
+    )
+
+    html = _dashboard_html()
+
+    assert "Plain Academy" in html
+    assert 'alt=""' not in html.split("Plain Academy")[0].rsplit("<p", 1)[-1]
+
+
+BYLINE_DASHBOARD_MAX_QUERIES = 48
+
+
+@pytest.mark.django_db
+def test_dashboard_query_count_does_not_grow_with_organisation_cards(
+    mock_site_context, django_assert_max_num_queries, logged_in_client
+):
+    user = UserFactory()
+    category = CourseCategoryFactory(show_on_dashboard=True)
+    for _ in range(3):
+        CourseFactory(
+            dashboard_category=category, audience=CourseAudience.PUBLIC
+        ).organisations.add(OrganisationFactory())
+        CourseFactory(
+            visibility=CourseVisibility.COMING_SOON, audience=CourseAudience.PUBLIC
+        ).organisations.add(OrganisationFactory())
+        RecommendedCourseFactory(
+            user=user,
+            course=_single_organisation_course(),
+        )
+    in_progress = CourseFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=in_progress)
+    course_progress_record(in_progress, user)
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(BYLINE_DASHBOARD_MAX_QUERIES):
+        client.get(reverse("learner_interface:dashboard"))
+
+
+def _single_organisation_course() -> Course:
+    course: Course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory())
+    return course

@@ -25,7 +25,11 @@ def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
     """Get recommended courses for a user. Returns empty queryset for anonymous users."""
     if not user.is_authenticated:
         return RecommendedCourse.objects.none()
-    return RecommendedCourse.objects.filter(user=user).select_related("course")
+    return (
+        RecommendedCourse.objects.filter(user=user)
+        .select_related("course")
+        .prefetch_related("course__organisations")
+    )
 
 
 def lock_users(site_id: int, user_ids: Iterable[int]) -> None:

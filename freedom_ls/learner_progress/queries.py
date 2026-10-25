@@ -265,7 +265,7 @@ def course_progress_by_course_for(
         Q(cohort_registration_id__in=grant_ids[_COHORT_GRANT])
         | Q(learner_registration_id__in=grant_ids[_INDIVIDUAL_GRANT]),
         learner_id__in=winning_learner_ids,
-    ).select_related("learner", "course")
+    ).select_related("learner__organisation", "course")
 
     by_course: dict[UUID, CourseProgress] = {}
     for record in records:

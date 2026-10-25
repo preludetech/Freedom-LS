@@ -24,7 +24,7 @@ status duplicate.
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
 missed_deadline, next_deadline, access_badge,
-current_price), user and show_time_zone_to_learners.
+current_price, card_organisation), user and show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
@@ -54,6 +54,8 @@ current_price), user and show_time_zone_to_learners.
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
+
+    <c-organisation-byline :organisation="course.card_organisation" />
 
     {% include "learner_interface/partials/course_listing_price.html" %}
 
