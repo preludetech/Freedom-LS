@@ -23,12 +23,17 @@ from freedom_ls.learner_management.learner_actions import (
     AddLearnerResult,
     AddOutcome,
     CohortOutcome,
+    ImportLookup,
     LearnerEntry,
+    add_learner,
     add_learners,
     add_to_cohort,
+    check_cohort_for,
+    classify_learner_entry,
     deactivate_cohort,
     deactivate_learner,
     deactivate_registration,
+    decide_add,
     move_between_cohorts,
     reactivate_cohort,
     reactivate_learner,
@@ -1232,3 +1237,179 @@ class TestRegisterForCourseOrganisationCheck:
             register_for_course(learner, course)
 
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+class TestDecideAdd:
+    @pytest.mark.parametrize(
+        ("kwargs", "expected"),
+        [
+            (
+                {"user": None, "learner": None, "learner_is_active": False},
+                (AddOutcome.CREATED, None),
+            ),
+            (
+                {"user": "u", "learner": None, "learner_is_active": False},
+                (AddOutcome.JOINED, None),
+            ),
+            (
+                {"user": "u", "learner": "l", "learner_is_active": False},
+                (AddOutcome.REACTIVATED, None),
+            ),
+            (
+                {"user": "u", "learner": "l", "learner_is_active": True},
+                (AddOutcome.ALREADY_LEARNER, None),
+            ),
+        ],
+    )
+    def test_outcome_follows_what_already_exists(self, kwargs, expected):
+        assert decide_add(is_member=False, cohort_given=False, **kwargs) == expected
+
+    def test_a_new_account_with_a_cohort_is_added_to_it(self):
+        result = decide_add(
+            user=None,
+            learner=None,
+            learner_is_active=False,
+            is_member=False,
+            cohort_given=True,
+        )
+
+        assert result == (AddOutcome.CREATED, CohortOutcome.ADDED)
+
+    def test_an_existing_member_is_reported_as_already_a_member(self):
+        result = decide_add(
+            user="u",
+            learner="l",
+            learner_is_active=True,
+            is_member=True,
+            cohort_given=True,
+        )
+
+        assert result == (AddOutcome.ALREADY_LEARNER, CohortOutcome.ALREADY_MEMBER)
+
+
+@pytest.mark.django_db
+class TestCheckCohortFor:
+    def test_an_active_cohort_of_the_organisation_passes(self, mock_site_context):
+        cohort = CohortFactory()
+
+        check_cohort_for(cohort.organisation_id, cohort)
+
+    def test_an_inactive_cohort_is_refused(self, mock_site_context):
+        cohort = CohortFactory(is_active=False)
+
+        with pytest.raises(ValueError, match="inactive"):
+            check_cohort_for(cohort.organisation_id, cohort)
+
+    def test_a_cohort_of_another_organisation_is_refused(self, mock_site_context):
+        cohort = CohortFactory()
+
+        with pytest.raises(ValueError, match="another organisation"):
+            check_cohort_for(OrganisationFactory().pk, cohort)
+
+
+def _scenarios(cohort):
+    """One address per branch of `decide_add`, for the cohort's organisation."""
+    organisation = cohort.organisation
+    UserFactory(email="known@example.com")
+    LearnerFactory(
+        organisation=organisation,
+        user=UserFactory(email="inactive@example.com"),
+        is_active=False,
+    )
+    LearnerFactory(
+        organisation=organisation, user=UserFactory(email="active@example.com")
+    )
+    member = LearnerFactory(
+        organisation=organisation, user=UserFactory(email="member@example.com")
+    )
+    CohortMembershipFactory(learner=member, cohort=cohort)
+    User._base_manager.create(site=SiteFactory(), email="away@example.com")
+    return [
+        "brand-new@example.com",
+        "known@example.com",
+        "inactive@example.com",
+        "active@example.com",
+        "member@example.com",
+        "away@example.com",
+        "not-an-email",
+    ]
+
+
+@pytest.mark.django_db
+class TestClassifyLearnerEntry:
+    @pytest.mark.parametrize("with_lookup", [False, True])
+    @pytest.mark.parametrize("with_cohort", [False, True])
+    def test_prediction_matches_what_add_learner_does(
+        self, mock_site_context, with_lookup, with_cohort
+    ):
+        cohort = CohortFactory()
+        emails = _scenarios(cohort)
+        target = cohort if with_cohort else None
+        lookup = (
+            ImportLookup.build(cohort.organisation, emails, target)
+            if with_lookup
+            else None
+        )
+
+        predicted = [
+            classify_learner_entry(
+                cohort.organisation, LearnerEntry(email), target, lookup
+            )
+            for email in emails
+        ]
+        actual = [
+            add_learner(cohort.organisation, LearnerEntry(email), target)
+            for email in emails
+        ]
+
+        assert [(r.outcome, r.cohort_outcome) for r in predicted] == [
+            (r.outcome, r.cohort_outcome) for r in actual
+        ]
+
+    @pytest.mark.parametrize("with_lookup", [False, True])
+    def test_classifying_writes_nothing(self, mock_site_context, with_lookup):
+        cohort = CohortFactory()
+        emails = _scenarios(cohort)
+        lookup = (
+            ImportLookup.build(cohort.organisation, emails, cohort)
+            if with_lookup
+            else None
+        )
+        counts_before = (
+            User._base_manager.count(),
+            Learner._base_manager.count(),
+            CohortMembership._base_manager.count(),
+        )
+
+        with CaptureQueriesContext(connection) as queries:
+            for email in emails:
+                classify_learner_entry(
+                    cohort.organisation, LearnerEntry(email), cohort, lookup
+                )
+
+        writes = [
+            q["sql"]
+            for q in queries.captured_queries
+            if q["sql"].lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE"))
+        ]
+        assert writes == []
+        assert counts_before == (
+            User._base_manager.count(),
+            Learner._base_manager.count(),
+            CohortMembership._base_manager.count(),
+        )
+
+    def test_the_lookup_is_matched_without_regard_to_case(self, mock_site_context):
+        cohort = CohortFactory()
+        LearnerFactory(
+            organisation=cohort.organisation,
+            user=UserFactory(email="mixed@example.com"),
+        )
+        lookup = ImportLookup.build(cohort.organisation, ["MIXED@example.com"], cohort)
+
+        result = classify_learner_entry(
+            cohort.organisation, LearnerEntry("MIXED@example.com"), cohort, lookup
+        )
+
+        assert result.outcome == AddOutcome.ALREADY_LEARNER

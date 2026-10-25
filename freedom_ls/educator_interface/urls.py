@@ -28,6 +28,21 @@ urlpatterns = [
         views.partial_bulk_action_run_status,
         name="bulk_action_run_status",
     ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/$",
+        views.learner_import,
+        name="learner_import",
+    ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$",
+        views.learner_import_preview,
+        name="learner_import_preview",
+    ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/(?P<import_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/result/$",
+        views.learner_import_result,
+        name="learner_import_result",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation

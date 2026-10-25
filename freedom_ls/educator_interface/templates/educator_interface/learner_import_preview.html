@@ -1,0 +1,58 @@
+{% extends "educator_interface/standalone_page.html" %}
+
+{% block standalone_main %}
+    {% include "educator_interface/partials/import_stepper.html" with step=2 %}
+    <c-panel-card title="{{ learner_import.file_name }}" description="{{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}">
+        <ul class="flex flex-wrap gap-x-6 gap-y-1">
+            {% for item in label_counts %}
+                <li>{{ item.name }}: {{ item.count }}</li>
+            {% endfor %}
+        </ul>
+        <ul class="mt-4 list-disc pl-5 text-sm">
+            <li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>
+            <li>Existing accounts keep their names.</li>
+            <li>Counts can change if someone else adds these learners before you confirm.</li>
+        </ul>
+        {% if error_count %}
+            <p class="mt-4">{{ error_count }} row{{ error_count|pluralize }} with errors will not be added.</p>
+        {% endif %}
+        {% if add_count %}
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <c-button type="submit">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
+            </form>
+        {% else %}
+            <p class="mt-4">Nothing can be added: every row has an error or is already a member.</p>
+        {% endif %}
+    </c-panel-card>
+    <c-panel-card title="Rows" flush="true">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-4 py-2">Line</th>
+                        <th scope="col" class="px-4 py-2">Email</th>
+                        <th scope="col" class="px-4 py-2">First name</th>
+                        <th scope="col" class="px-4 py-2">Last name</th>
+                        <th scope="col" class="px-4 py-2">Cohort</th>
+                        <th scope="col" class="px-4 py-2">Label</th>
+                        <th scope="col" class="px-4 py-2">Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr class="border-t border-border">
+                            <td class="px-4 py-2">{{ row.line_number }}</td>
+                            <td class="px-4 py-2">{{ row.email }}</td>
+                            <td class="px-4 py-2">{{ row.first_name }}</td>
+                            <td class="px-4 py-2">{{ row.last_name }}</td>
+                            <td class="px-4 py-2">{{ row.cohort_name }}</td>
+                            <td class="px-4 py-2">{{ row.get_preview_label_display }}</td>
+                            <td class="px-4 py-2">{{ row.preview_reason }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </c-panel-card>
+{% endblock standalone_main %}

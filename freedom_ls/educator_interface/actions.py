@@ -51,6 +51,7 @@ from freedom_ls.educator_interface.forms import (
     MemberEmailForm,
     ReasonForm,
 )
+from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.members import (
     ORGANISATION_SCOPE,
     RoleEntry,
@@ -84,6 +85,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     ADD_COHORTCOURSEREGISTRATION,
     ADD_COHORTMEMBERSHIP,
+    ADD_LEARNER,
     ADD_LEARNERCOURSEREGISTRATION,
     CHANGE_COHORT,
     CHANGE_COHORTCOURSEREGISTRATION,
@@ -1099,9 +1101,6 @@ class MoveToCohortAction(MembershipAction):
         return render(ctx.request, self.template_name, context, status=422)
 
 
-ADD_LEARNER = "freedom_ls_learner_management.add_learner"
-
-
 def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str | None:
     """`message` when the picker's field offers nothing, otherwise None."""
     queryset = cast(forms.ModelChoiceField, form.fields[field_name]).queryset
@@ -1348,6 +1347,30 @@ class AddLearnersAction(PanelAction):
         response = HttpResponse(html)
         response["HX-Trigger"] = build_hx_trigger(events)
         return response
+
+
+class ImportLearnersAction(PanelAction):
+    """A link to the learner import page, shown to a user who may import
+    learners into the organisation."""
+
+    label = "Import learners"
+    action_name = "import_learners"
+    variant = "secondary"
+    trigger_template_name = "educator_interface/partials/import_learners_link.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return check_import_gate(cast("User", scoped.user), scoped.organisation, None)
+
+    def get_trigger_context(self, ctx: PanelContext) -> dict[str, object]:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return {
+            **super().get_trigger_context(ctx),
+            "href": reverse(
+                "educator_interface:learner_import",
+                kwargs={"organisation_slug": scoped.organisation.slug},
+            ),
+        }
 
 
 class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):

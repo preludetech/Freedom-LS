@@ -28,6 +28,7 @@ from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
+from freedom_ls.base.csv_import import EchoWriter
 from freedom_ls.base.csv_safety import UTF8_BOM
 from freedom_ls.panel_framework.actions import (
     PanelAction,
@@ -1052,15 +1053,6 @@ def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
     return panel.ctx.page_url
 
 
-class _Echo:
-    """A file-like object whose `write` hands back the string it was given
-    instead of buffering it, so `csv.writer` can drive a generator that
-    `StreamingHttpResponse` streams one row at a time."""
-
-    def write(self, value: str) -> str:
-        return value
-
-
 def _export_response(
     request: HttpRequest, panel: DataTablePanel
 ) -> StreamingHttpResponse:
@@ -1081,7 +1073,7 @@ def _export_response(
     _query, queryset = panel.narrow(request)
 
     def rows() -> Iterator[str]:
-        echo = _Echo()
+        echo = EchoWriter()
         writer = csv.writer(echo)
         yield UTF8_BOM
         yield writer.writerow([column.header for column in columns])

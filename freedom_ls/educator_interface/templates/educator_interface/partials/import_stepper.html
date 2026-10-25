@@ -1,0 +1,11 @@
+{% comment %}
+The three steps of a learner import. Context: step (1, 2 or 3).
+{% endcomment %}
+<nav aria-label="Import steps">
+    <p class="text-sm text-muted">Step {{ step }} of 3</p>
+    <ol class="mt-1 flex gap-4 text-sm">
+        <li {% if step == 1 %}aria-current="step" class="font-semibold"{% endif %}>Upload</li>
+        <li {% if step == 2 %}aria-current="step" class="font-semibold"{% endif %}>Preview</li>
+        <li {% if step == 3 %}aria-current="step" class="font-semibold"{% endif %}>Result</li>
+    </ol>
+</nav>

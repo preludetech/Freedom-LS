@@ -46,6 +46,7 @@ from freedom_ls.learner_management.models import (
     BulkActionRun,
     CohortCourseRegistration,
     CohortMembership,
+    LearnerImport,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.tables import DataTable
@@ -177,6 +178,42 @@ class TestCrossOrganisationIsolation:
                     "organisation_slug": isolation.organisation_a.slug,
                     "run_id": run.pk,
                 },
+            )
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "name", ["learner_import_preview", "learner_import_result"]
+    )
+    def test_a_learner_import_of_organisation_b_404s_through_organisation_as_slug(
+        self, isolation: SimpleNamespace, name: str
+    ) -> None:
+        learner_import = LearnerImport.objects.create(
+            organisation=isolation.organisation_b,
+            requested_by=isolation.educator,
+            file_name="learners.csv",
+        )
+
+        response = isolation.client.get(
+            reverse(
+                f"educator_interface:{name}",
+                kwargs={
+                    "organisation_slug": isolation.organisation_a.slug,
+                    "import_id": learner_import.pk,
+                },
+            )
+        )
+
+        assert response.status_code == 404
+
+    def test_the_learner_import_upload_page_is_scoped_to_the_slugs_organisation(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        response = isolation.client.get(
+            reverse(
+                "educator_interface:learner_import",
+                kwargs={"organisation_slug": "no-such-organisation"},
             )
         )
 

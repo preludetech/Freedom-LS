@@ -36,7 +36,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
 )
-from freedom_ls.learner_management.models import BulkActionRun, Cohort
+from freedom_ls.learner_management.models import BulkActionRun, Cohort, LearnerImport
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -211,6 +211,51 @@ def test_a_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
         reverse(
             f"educator_interface:{name}",
             kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+        )
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+def test_a_learner_import_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client, name: str
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+    learner_import = LearnerImport.objects.create(
+        organisation=organisation, requested_by=requester, file_name="learners.csv"
+    )
+
+    response = logged_in_client(requester).get(
+        reverse(
+            f"educator_interface:{name}",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "import_id": learner_import.pk,
+            },
+        )
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learner_import_upload_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+
+    response = logged_in_client(requester).get(
+        reverse(
+            "educator_interface:learner_import",
+            kwargs={"organisation_slug": organisation.slug},
         )
     )
 

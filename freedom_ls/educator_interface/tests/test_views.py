@@ -17,6 +17,7 @@ import pytest
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.models import Model
 from django.template.loader import render_to_string
@@ -45,6 +46,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.educator_interface.bulk_runs import run_bulk_action
 from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.learner_import import create_learner_import
 from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
@@ -73,6 +75,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     Learner,
+    LearnerImport,
     OrganisationMember,
     RunStatus,
 )
@@ -4033,3 +4036,269 @@ def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_stat
         "Unregister from course",
     ]
     assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
+
+
+# learner import pages
+
+
+def _import_url(organisation: Organisation, name: str, learner_import=None) -> str:
+    kwargs: dict[str, object] = {"organisation_slug": organisation.slug}
+    if learner_import is not None:
+        kwargs["import_id"] = learner_import.pk
+    return reverse(f"educator_interface:{name}", kwargs=kwargs)
+
+
+def _csv_upload(*lines: str) -> SimpleUploadedFile:
+    body = "email,first_name,last_name,cohort\n" + "\n".join(lines)
+    return SimpleUploadedFile("learners.csv", body.encode(), "text/csv")
+
+
+def _import_for(user: User, organisation: Organisation, *lines: str) -> LearnerImport:
+    return create_learner_import(user, organisation, None, _csv_upload(*lines))
+
+
+@pytest.fixture
+def import_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+    organisation = OrganisationFactory()
+    grantor = cast(User, UserFactory(superuser=True))
+    admin = cast(User, LearnerFactory(user__staff=True, organisation=organisation).user)
+    assign_role(grantor, admin, "organisation_admin", organisation)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    cohort_admin = cast(
+        User, LearnerFactory(user__staff=True, organisation=organisation).user
+    )
+    assign_role(grantor, cohort_admin, "cohort_admin", cohort)
+    return SimpleNamespace(
+        organisation=organisation,
+        admin=admin,
+        client=logged_in_client(admin),
+        cohort_admin_client=logged_in_client(cohort_admin),
+        logged_in_client=logged_in_client,
+    )
+
+
+@pytest.mark.django_db
+def test_the_upload_page_shows_the_headers_the_stepper_and_the_file_input(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    assert page.cssselect("input[type=file]")
+    assert page.cssselect("code")[0].text == "email,first_name,last_name,cohort"
+    assert page.cssselect("ol li[aria-current='step']")
+    assert "Step 1 of 3" in page.text_content()
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_passes_the_import_gate_and_a_cohort_admin_gets_the_403_page(
+    import_world: SimpleNamespace,
+):
+    url = _import_url(import_world.organisation, "learner_import")
+
+    allowed = import_world.client.get(url)
+    denied = import_world.cohort_admin_client.get(url)
+
+    assert allowed.status_code == 200
+    assert denied.status_code == 403
+    assert (
+        "can't import learners here"
+        in lxml.html.fromstring(denied.content.decode()).text_content()
+    )
+
+
+@pytest.mark.django_db
+def test_a_bad_file_is_a_422_with_a_focused_alert_and_stores_nothing(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import"),
+        {"file": SimpleUploadedFile("learners.csv", b"name\nAda\n")},
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    (alert,) = page.cssselect("#main-content [role=alert]")
+    assert response.status_code == 422
+    assert alert.get("autofocus") is not None
+    assert "Unknown column(s): name" in alert.text_content()
+    assert not LearnerImport.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_good_file_redirects_with_a_303_to_its_preview(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import"),
+        {"file": _csv_upload("a@example.com,Ada,Lovelace,")},
+    )
+
+    learner_import = LearnerImport.objects.get()
+    assert response.status_code == 303
+    assert response["Location"] == _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_counts_each_label_and_offers_to_add_the_rows_that_can_be_added(
+    import_world: SimpleNamespace,
+):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "a@example.com,,,",
+        "b@example.com,,,",
+        f"{existing.user.email},,,",
+        "nonsense,,,",
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    text = " ".join(page.text_content().split())
+    assert "New account: 2" in text
+    assert "Already a member: 1" in text
+    assert "Error: 1" in text
+    assert "1 row with errors will not be added." in text
+    assert "2 new accounts will get a setup email." in text
+    assert [
+        button.text_content().strip()
+        for button in page.cssselect("#main-content button[type=submit]")
+    ] == ["Add 2 learners"]
+    assert len(page.cssselect("tbody tr")) == 4
+
+
+@pytest.mark.django_db
+def test_a_preview_with_nothing_to_add_has_no_confirm_button_and_says_why(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "nonsense,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert not page.cssselect("#main-content form button[type=submit]")
+    assert "Nothing can be added" in page.text_content()
+
+
+@pytest.mark.django_db
+def test_confirming_runs_the_import_and_the_result_page_reports_it(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "a@example.com,,,",
+        "b@example.com,,,",
+        "nonsense,,,",
+    )
+
+    confirmed = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    result_url = _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    page = _get_document(import_world.client, result_url)
+
+    text = " ".join(page.text_content().split())
+    assert (confirmed.status_code, confirmed["Location"]) == (303, result_url)
+    assert "Added 2 learners. 1 row was not added." in text
+    assert "2 setup emails were sent." in text
+    assert "Step 3 of 3" in text
+
+
+@pytest.mark.django_db
+def test_a_second_confirmation_does_not_run_the_import_again(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    import_world.client.post(url)
+    second = import_world.client.post(url)
+
+    assert second.status_code == 303
+    assert second["Location"] == _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    assert Learner.objects.filter(organisation=import_world.organisation).count() == 3
+
+
+@pytest.mark.django_db
+def test_a_finished_import_redirects_from_its_preview_to_its_result(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(status=RunStatus.DONE)
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    assert response.status_code == 303
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+def test_an_import_is_a_404_for_another_user_of_the_organisation(
+    import_world: SimpleNamespace, name: str
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    other = cast(User, UserFactory(superuser=True))
+
+    response = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, name, learner_import)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+def test_an_import_is_a_404_through_another_organisations_slug(
+    import_world: SimpleNamespace, name: str
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    elsewhere = OrganisationFactory()
+
+    response = import_world.client.get(_import_url(elsewhere, name, learner_import))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learners_list_offers_the_import_link_to_an_admin_and_not_to_a_cohort_admin(
+    import_world: SimpleNamespace,
+):
+    url = _interface_url(import_world.organisation.slug, "learners")
+    import_url = _import_url(import_world.organisation, "learner_import")
+
+    admin_page = import_world.client.get(url).content.decode()
+    cohort_admin_page = import_world.cohort_admin_client.get(url).content.decode()
+
+    assert f'href="{import_url}"' in admin_page
+    assert import_url not in cohort_admin_page

@@ -354,3 +354,95 @@ class BulkActionRun(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"{self.table_key} {self.action_name} ({self.status})"
+
+
+class ImportStatus(models.TextChoices):
+    """The lifecycle of a `LearnerImport`: the `RunStatus` values, preceded by
+    the stage where the file is parsed and previewed but not yet confirmed."""
+
+    PREVIEWED = "previewed", _("Previewed")
+    QUEUED = RunStatus.QUEUED.value, RunStatus.QUEUED.label
+    RUNNING = RunStatus.RUNNING.value, RunStatus.RUNNING.label
+    DONE = RunStatus.DONE.value, RunStatus.DONE.label
+    FAILED = RunStatus.FAILED.value, RunStatus.FAILED.label
+
+
+class ImportLabel(models.TextChoices):
+    """What an import row gets, from the outcome of adding that address."""
+
+    NEW_ACCOUNT = "new_account", _("New account")
+    JOINED = "joined", _("Joined the organisation")
+    REACTIVATED = "reactivated", _("Reactivated")
+    ADDED_TO_COHORT = "added_to_cohort", _("Added to the cohort")
+    ALREADY_MEMBER = "already_member", _("Already a member")
+    ERROR = "error", _("Error")
+
+
+class LearnerImport(SiteAwareModel):
+    """One uploaded CSV file of learners, from upload through preview to result.
+
+    The file itself is not kept: its rows are stored as `LearnerImportRow`
+    and only the file's name is recorded, for display.
+    """
+
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation", on_delete=models.CASCADE
+    )
+    cohort = models.ForeignKey(
+        Cohort, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    file_name = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20,
+        choices=ImportStatus.choices,
+        default=ImportStatus.PREVIEWED,
+        db_index=True,
+    )
+    row_count = models.PositiveIntegerField(default=0)
+    processed_count = models.PositiveIntegerField(default=0)
+    error_message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.file_name} ({self.status})"
+
+
+class LearnerImportRow(SiteAwareModel):
+    """One data line of a `LearnerImport`: the raw cells, the label it was
+    given at preview, and the label it got when committed (null until then)."""
+
+    learner_import = models.ForeignKey(
+        LearnerImport, on_delete=models.CASCADE, related_name="rows"
+    )
+    line_number = models.PositiveIntegerField()
+    email = models.TextField()
+    first_name = models.TextField(blank=True, default="")
+    last_name = models.TextField(blank=True, default="")
+    cohort_name = models.TextField(blank=True, default="")
+    preview_label = models.CharField(max_length=20, choices=ImportLabel.choices)
+    preview_reason = models.CharField(max_length=255, blank=True, default="")
+    # Null, not blank, until committed: a blank label would be a label.
+    final_label = models.CharField(  # noqa: DJ001
+        max_length=20, choices=ImportLabel.choices, null=True, blank=True
+    )
+    final_reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["line_number"]
+        indexes = [
+            models.Index(
+                fields=["learner_import", "line_number"],
+                name="learnerimportrow_line_idx",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"line {self.line_number}"

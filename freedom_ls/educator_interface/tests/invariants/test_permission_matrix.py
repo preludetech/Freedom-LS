@@ -23,6 +23,8 @@ from django.contrib.sites.models import Site
 from django.db.models import Model
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedAction,
     WalkedBulkAction,
@@ -666,3 +668,50 @@ def test_cohort_admin_holds_add_cohortmembership_on_another_cohort_only_with_a_g
     assign_object_role(user, other_cohort, "cohort_admin")
 
     assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_the_organisation_import_gate_needs_bulk_manage_learners_and_add_learner(
+    mock_site_context: Site, role: str
+) -> None:
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    expected = all(
+        ("organisation", OWN) in MATRIX[capability][role]
+        for capability in (BULK_MANAGE_LEARNERS, ADD_LEARNER)
+    )
+
+    assert check_import_gate(cast(User, user), organisation, None) is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_the_cohort_import_gate_needs_add_learner_and_add_cohortmembership(
+    mock_site_context: Site, role: str
+) -> None:
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
+    expected = ("organisation", OWN) in MATRIX[ADD_LEARNER][role] and (
+        "cohort",
+        OWN,
+    ) in MATRIX[ADD_COHORTMEMBERSHIP][role]
+
+    assert check_import_gate(cast(User, user), organisation, cohort) is expected
+
+
+@pytest.mark.django_db
+def test_the_cohort_import_gate_refuses_an_inactive_cohort(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    user = cast(User, world.users["organisation_admin"])
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
+    cohort.is_active = False
+    cohort.save(update_fields=["is_active"])
+
+    assert check_import_gate(user, organisation, cohort) is False
