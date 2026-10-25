@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from django.contrib.sites.models import Site
 from django.db import IntegrityError, transaction
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
@@ -43,7 +42,7 @@ def test_a_user_cannot_hold_two_recommendations_for_one_course(mock_site_context
 def test_two_sites_may_recommend_the_same_course_to_the_same_user(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory(domain="other.example.com", name="Other")
     RecommendedCourseFactory(user=user, course=course)
 
     RecommendedCourse.objects.create(user=user, course=course, site=other_site)

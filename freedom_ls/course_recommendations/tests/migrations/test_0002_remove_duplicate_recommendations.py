@@ -11,7 +11,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 
 APP = "freedom_ls_course_recommendations"
@@ -24,7 +24,7 @@ def test_duplicates_collapse_to_the_oldest_row(mock_site_context):
     course = CourseFactory()
     other_course = CourseFactory()
     site = Site.objects.get_current()
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory(domain="other.example.com", name="Other")
     other_user = UserFactory()
     other_site_course = CourseFactory()
 
