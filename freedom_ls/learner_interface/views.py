@@ -717,6 +717,13 @@ def _time_zone_context(request: HttpRequest) -> dict[str, bool]:
     }
 
 
+def _deadlines_or_none(
+    course_progress: CourseProgress | None,
+) -> CourseDeadlines | None:
+    """The record's resolved deadlines, or None when nothing grants the course."""
+    return course_deadlines(course_progress) if course_progress is not None else None
+
+
 def dashboard(request: HttpRequest) -> HttpResponse:
     """Dashboard view — authenticated or anonymous, whole page or one section.
 
@@ -1112,9 +1119,7 @@ def view_course_item(request, course_slug, index):
         current_index=index,
         can_access_content=True,
         course_progress=course_progress,
-        course_deadlines=(
-            course_deadlines(course_progress) if course_progress is not None else None
-        ),
+        course_deadlines=_deadlines_or_none(course_progress),
     )
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
@@ -1286,11 +1291,7 @@ def _player_chrome_context(
             current_index=index,
             can_access_content=True,
             course_progress=course_progress,
-            course_deadlines=(
-                course_deadlines(course_progress)
-                if course_progress is not None
-                else None
-            ),
+            course_deadlines=_deadlines_or_none(course_progress),
         )
 
     return {
@@ -1304,9 +1305,7 @@ def _player_chrome_context(
         "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
-        "show_time_zone_to_learners": shows_time_zone_to_learners(
-            cast(Site, get_cached_site(request))
-        ),
+        **_time_zone_context(request),
     }
 
 
@@ -1792,7 +1791,9 @@ def course_finish(request, course_slug):
             course=course,
             can_access_content=True,
             course_progress=course_progress,
+            course_deadlines=_deadlines_or_none(course_progress),
         ),
+        **_time_zone_context(request),
     }
 
     return render(request, "learner_interface/course_finish.html", context)

@@ -3920,6 +3920,19 @@ def test_sidebar_shows_a_missed_deadline_for_a_past_due_topic(due_course):
 
 
 @pytest.mark.django_db
+def test_finish_page_outline_shows_the_same_missed_deadline_as_the_player(due_course):
+    course, _first, second, user, client = due_course
+    SiteTimeZoneConfigFactory(show_time_zone_to_learners=True)
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    html = _finish(client, user, course).content.decode()
+    text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert re.search(r"Missed deadline 1 Jan 2020", text)
+    assert 'data-show-zone="true"' in html
+
+
+@pytest.mark.django_db
 def test_sidebar_labels_the_date_deadline(due_course):
     course, _first, second, _user, client = due_course
     set_due_date(course, second, due_date=date(2999, 1, 1))
