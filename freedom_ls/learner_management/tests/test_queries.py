@@ -2186,6 +2186,36 @@ class TestCoursesVisibleToOrganisationCourses:
 
         assert list(visible) == []
 
+    # A course can close to an organisation after a cohort or learner of it
+    # registered. Those registrations keep it in view, so an educator never
+    # loses sight of a course their learners are still studying.
+
+    def test_a_course_a_cohort_registered_for_stays_visible_after_closing(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        educator = UserFactory()
+        assign_object_role(educator, organisation, "organisation_admin")
+        registration = CohortCourseRegistrationFactory(
+            cohort__organisation=organisation
+        )
+        registration.course.organisations.add(OrganisationFactory())
+
+        assert list(courses_visible_to(educator, organisation)) == [registration.course]
+
+    def test_a_course_a_learner_registered_for_stays_visible_to_a_superuser(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        registration = LearnerCourseRegistrationFactory(
+            learner__organisation=organisation
+        )
+        registration.course.organisations.add(OrganisationFactory())
+
+        visible = courses_visible_to(UserFactory(superuser=True), organisation)
+
+        assert list(visible) == [registration.course]
+
 
 @pytest.mark.django_db
 class TestRegisterableCoursesOpenToOrganisation:

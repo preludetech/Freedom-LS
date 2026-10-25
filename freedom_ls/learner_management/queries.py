@@ -469,15 +469,11 @@ def courses_visible_to(
     user: RequestUser, organisation: Organisation
 ) -> QuerySet[Course]:
     """Courses this user may see in this organisation: every published
-    course, plus any course a visible cohort or learner holds a
-    registration for, active or not. A hidden or coming-soon course
-    shows only through such a registration. A course that belongs to other
-    organisations and is not open to this one is left out, superusers
-    included."""
-    everything = Course.objects.filter(open_to_organisation_expression(organisation))
-    resolved = _resolved_or_none(user, everything)
-    if resolved is not None:
-        return resolved
+    course open to it, plus any course a visible cohort or learner holds a
+    registration for, active or not. A hidden or coming-soon course, or one
+    that has since closed to this organisation, shows only through such a
+    registration. A course of other organisations that nobody here is
+    registered for is left out, superusers included."""
     # Subqueries, not joins: CourseDataTable annotates Count() over the same
     # relations, and a filter join would narrow those counts.
     through_cohorts = CohortCourseRegistration.objects.filter(
@@ -486,10 +482,13 @@ def courses_visible_to(
     through_learners = LearnerCourseRegistration.objects.filter(
         learner__in=learners_visible_to(user, organisation)
     ).values("course_id")
-    return everything.filter(
-        Q(visibility=CourseVisibility.PUBLISHED)
-        | Q(pk__in=through_cohorts)
-        | Q(pk__in=through_learners)
+    held = Q(pk__in=through_cohorts) | Q(pk__in=through_learners)
+    open_to = open_to_organisation_expression(organisation)
+    resolved = _resolved_or_none(user, Course.objects.filter(open_to | held))
+    if resolved is not None:
+        return resolved
+    return Course.objects.filter(
+        (open_to & Q(visibility=CourseVisibility.PUBLISHED)) | held
     )
 
 
