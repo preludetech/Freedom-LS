@@ -8,7 +8,10 @@ from django.db import IntegrityError
 
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.organisations.utils import (
+    ensure_organisation,
+    get_default_organisation,
+)
 
 
 @pytest.mark.django_db
@@ -55,3 +58,23 @@ def test_a_site_cannot_hold_two_default_organisations(mock_site_context):
     get_or_create on (site, is_default) resolve to exactly one row."""
     with pytest.raises(IntegrityError):
         OrganisationFactory(site=mock_site_context, is_default=True)
+
+
+@pytest.mark.django_db
+def test_ensure_organisation_reuses_an_existing_row(mock_site_context):
+    site = mock_site_context
+    first, created_first = ensure_organisation(site, "Reuse Me")
+
+    second, created_second = ensure_organisation(site, "Reuse Me")
+
+    assert (created_first, created_second) == (True, False)
+    assert second == first
+
+
+@pytest.mark.django_db
+def test_ensure_organisation_slugs_from_the_slug_base(mock_site_context):
+    organisation, _ = ensure_organisation(
+        mock_site_context, "Some Name", slug_base="fixed-slug"
+    )
+
+    assert organisation.slug == "fixed-slug"

@@ -42,11 +42,11 @@ from django.core.files import File
 from django.core.files.base import ContentFile
 
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.utils import ensure_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_organisations import (
     LOGO_DARK_PATH,
     LOGO_LIGHT_PATH,
     LOGO_PATH,
-    _ensure_organisation,
 )
 
 # Exactly 45 characters.
@@ -112,16 +112,16 @@ def command(site_name: str) -> None:
             f"Site '{site_name}' not found. Available: {available}"
         ) from e
 
-    medium, created = _ensure_organisation(site, MEDIUM_NAME)
+    medium, created = ensure_organisation(site, MEDIUM_NAME)
     _describe(medium, created, "no logo, mid-length wordmark")
 
-    shorter, created = _ensure_organisation(site, SHORTER_NAME)
+    shorter, created = ensure_organisation(site, SHORTER_NAME)
     _describe(shorter, created, "no logo, one step shorter")
 
-    markup, created = _ensure_organisation(site, MARKUP_NAME)
+    markup, created = ensure_organisation(site, MARKUP_NAME)
     _describe(markup, created, "no logo, must render as literal text")
 
-    punctuation, created = _ensure_organisation(
+    punctuation, created = ensure_organisation(
         site, PUNCTUATION_NAME, slug_base=PUNCTUATION_SLUG_BASE
     )
     _describe(
@@ -130,7 +130,7 @@ def command(site_name: str) -> None:
         f"no logo, initials={punctuation.initials!r} (monogram must fall back again)",
     )
 
-    vanish, created = _ensure_organisation(site, LOGO_VANISH_NAME)
+    vanish, created = ensure_organisation(site, LOGO_VANISH_NAME)
     if not vanish.logo:
         with LOGO_PATH.open("rb") as fh:
             vanish.logo.save(LOGO_PATH.name, File(fh), save=True)
@@ -141,7 +141,7 @@ def command(site_name: str) -> None:
         f"logo at {location} (exists={exists}) -- QA deletes this file by hand",
     )
 
-    dual, created = _ensure_organisation(site, DUAL_LOGO_NAME)
+    dual, created = ensure_organisation(site, DUAL_LOGO_NAME)
     for field_name, fixture in (
         ("logo", LOGO_LIGHT_PATH),
         ("logo_on_dark", LOGO_DARK_PATH),
@@ -156,7 +156,7 @@ def command(site_name: str) -> None:
         f"light logo at {dual.logo.name!r}, dark at {dual.logo_on_dark.name!r}",
     )
 
-    bad, created = _ensure_organisation(site, BAD_LOGO_NAME)
+    bad, created = ensure_organisation(site, BAD_LOGO_NAME)
     if not bad.logo:
         # FieldFile.save() -> Model.save(), which never calls full_clean(), so
         # validate_organisation_logo does not run. Bypassing it is the point.

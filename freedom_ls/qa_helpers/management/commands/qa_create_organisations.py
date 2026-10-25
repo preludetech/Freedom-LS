@@ -30,8 +30,7 @@ import djclick as click
 from django.contrib.sites.models import Site
 from django.core.files import File
 
-from freedom_ls.organisations.models import Organisation
-from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
+from freedom_ls.organisations.utils import ensure_organisation
 
 _FIXTURES = Path(__file__).resolve().parent.parent.parent / "fixtures"
 
@@ -51,24 +50,6 @@ LONG_NAME = (
 NON_LATIN_NAME = "Восточно-Европейская Академия Непрерывного Образования"
 
 
-def _ensure_organisation(
-    site: Site, name: str, slug_base: str | None = None
-) -> tuple[Organisation, bool]:
-    """Get-or-create an Organisation on ``site``, slugged from its name.
-
-    ``slug_base`` overrides the derived base slug, for a fixture that wants a
-    stable, memorable slug to pass to the other QA commands'
-    ``--organisation-slug`` rather than whatever its name derives.
-    """
-    base = slug_base if slug_base is not None else slug_base_for(name)
-    organisation, created = Organisation.objects.get_or_create(
-        site=site,
-        name=name,
-        defaults={"slug": get_unique_slug(Organisation, site, base)},
-    )
-    return organisation, created
-
-
 @click.command()
 @click.argument("site_name", default="DemoDev")
 def command(site_name: str) -> None:
@@ -81,14 +62,14 @@ def command(site_name: str) -> None:
             f"Site '{site_name}' not found. Available: {available}"
         ) from e
 
-    with_logo, created = _ensure_organisation(site, WITH_LOGO_NAME)
+    with_logo, created = ensure_organisation(site, WITH_LOGO_NAME)
     if not with_logo.logo:
         with LOGO_PATH.open("rb") as fh:
             with_logo.logo.save(LOGO_PATH.name, File(fh), save=True)
     verb = "Created" if created else "Reused"
     click.secho(f"{verb} organisation '{WITH_LOGO_NAME}' (has logo)", fg="green")
 
-    without_logo, created = _ensure_organisation(site, WITHOUT_LOGO_NAME)
+    without_logo, created = ensure_organisation(site, WITHOUT_LOGO_NAME)
     verb = "Created" if created else "Reused"
     click.secho(
         f"{verb} organisation '{WITHOUT_LOGO_NAME}' "
@@ -96,14 +77,14 @@ def command(site_name: str) -> None:
         fg="green",
     )
 
-    _, created = _ensure_organisation(site, LONG_NAME)
+    _, created = ensure_organisation(site, LONG_NAME)
     verb = "Created" if created else "Reused"
     click.secho(
         f"{verb} organisation '{LONG_NAME}' (long name — condensed wordmark / footer truncation)",
         fg="green",
     )
 
-    _, created = _ensure_organisation(site, NON_LATIN_NAME)
+    _, created = ensure_organisation(site, NON_LATIN_NAME)
     verb = "Created" if created else "Reused"
     click.secho(
         f"{verb} organisation '{NON_LATIN_NAME}' (non-Latin name — unicode download filename)",

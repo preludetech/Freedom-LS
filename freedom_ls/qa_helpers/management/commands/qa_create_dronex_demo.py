@@ -47,13 +47,13 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.utils import ensure_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
     _pin_current_site,
     _site_context,
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_organisations import (
     _FIXTURES,
-    _ensure_organisation,
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_report_cohort import (
     _get_or_create_user,
@@ -627,7 +627,7 @@ def command(site_name: str, output_dir: Path, no_render: bool) -> None:
     """Build the Drone-X demo organisation, courses and cohorts, and render reports."""
     site = _get_site(site_name)
 
-    organisation, _ = _ensure_organisation(
+    organisation, _ = ensure_organisation(
         site, ORGANISATION_NAME, slug_base=ORGANISATION_SLUG
     )
     _ensure_logo(organisation)

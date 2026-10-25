@@ -22,6 +22,7 @@ from django.test import override_settings
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
+from freedom_ls.dev_tools.demo_organisations import ensure_demo_organisations
 from freedom_ls.tests.site_context import site_context
 
 
@@ -67,6 +68,7 @@ def loaded_demo_content(
         override_settings(MEDIA_ROOT=demo_media_root),
         site_context(demo_site),
     ):
+        ensure_demo_organisations(demo_site)
         save_content_to_db(settings.BASE_DIR / "demo_content", demo_site.name)
     return demo_site
 

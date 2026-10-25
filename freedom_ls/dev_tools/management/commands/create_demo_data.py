@@ -16,6 +16,7 @@ from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand, CommandParser
 
 from freedom_ls.accounts.models import User
+from freedom_ls.dev_tools.demo_organisations import ensure_demo_organisations
 from freedom_ls.dev_tools.guard import require_dev_tools_enabled
 from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_management.utils import ensure_learner
@@ -126,6 +127,8 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING(f"Site '{site.name}' already exists")
                 )
+
+            ensure_demo_organisations(site)
 
             # Create user for this site
             user_email = f"{site_data['name'].lower()}@email.com"
