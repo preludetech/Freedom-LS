@@ -1,8 +1,6 @@
 """Course-icon resolver.
 
-This module lives in ``learner_interface`` rather than in ``freedom_ls.icons``
-so that the icons app stays portable and reusable in downstream Django
-projects: "course icon resolution" is a learner-interface concern.
+Course icon resolution is shared by every app that draws a course tile.
 
 The resolver walks the resolution order:
 
