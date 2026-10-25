@@ -54,6 +54,16 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     page.get_by_role("button", name="Upload and preview").click()
 
     expect(page.get_by_text("Step 2 of 3")).to_be_visible()
+    # The base list style puts a marker in the gap between inline items.
+    for selector in (
+        "nav[aria-label='Import steps'] li",
+        "li:has(> a[data-label-filter])",
+    ):
+        markers = page.locator(selector).evaluate_all(
+            "items => items.map(item => getComputedStyle(item).listStyleType)"
+        )
+        assert markers
+        assert set(markers) == {"none"}
     page.get_by_role("link", name="Error: 1").click()
     expect(page).to_have_url(re.compile(r"label=error"))
     rows = page.locator("table tbody tr")
