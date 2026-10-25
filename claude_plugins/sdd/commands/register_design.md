@@ -24,16 +24,15 @@ directory this branch is working on, inside the current worktree, and is committ
 branch. Never write into another worktree, never switch branches, and never commit to a branch
 other than the current one, even when another worktree holds a spec the design also serves.
 
-## Step 0: Pre-step rebase
-
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
+It does not rebase. It only adds spec files to the current branch, so it has no reason to pull in
+main first, and the next SDD step's pre-step rebase picks main up.
 
 ## Step 1: Resolve the inputs
 
 - **`<spec-dir>`**: a directory under `spec_dd/` in the current worktree. Resolve it in this order:
   1. **On a feature branch**, it is the spec directory the branch is working on: the directory under
-     `spec_dd/2. in progress/` that matches the branch name, resolved the way `pre_step_rebase.md`'s
-     "Inputs from the caller" line says. The user may omit it. If the user names a
+     `spec_dd/2. in progress/` named after the current branch (`git branch --show-current`). The user
+     may omit it. If the user names a
      different directory, stop and say the design is registered on this branch's spec, not
      elsewhere. If no directory matches the branch, stop and say so.
   2. **On `main` or `master`**, the user names it. It is either one spec, or the parent of a cut
@@ -150,8 +149,10 @@ nobody mistakes it for an oversight.
 ## Step 4: Screenshot the design
 
 Delegate to `sdd:sdd-mechanic`: run `<script> "<spec-dir>"` and report its exit status and output.
-Resolve `<script>` through `PLUGINS_ROOT` exactly as `claude_plugins/sdd/commands/protected/pre_step_rebase.md`
-Step 3 resolves `upstream_change_scan.sh`. The path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/design_screenshots.sh`,
+Resolve `PLUGINS_ROOT` by `claude_plugins/sdd/commands/init.md`'s "The `PLUGINS_ROOT` rule": the
+`PLUGINS_ROOT="…"` line in `claude.sh` at the project root, else the agreeing `PLUGINS_ROOT="…"`
+line in the `.sh` files under `.claude/*/scripts/` whose value is not `__PLUGINS_ROOT__` (stop if
+two disagree), else `.`. The path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/design_screenshots.sh`,
 written without a `./` prefix when `PLUGINS_ROOT` is `.`.
 
 The script renders every page at the top level of `design_source/` and writes one PNG per screen

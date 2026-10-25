@@ -4,7 +4,7 @@ allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
 ---
 
 This is a helper command. Every feature-branch command follows this helper as its own Step 0; a
-command run in hook mode skips it. It runs at **depth 0**,
+command run in hook mode skips it, and `register_design`, which only adds spec files, never runs it. It runs at **depth 0**,
 inline, on the caller's model and tool grants.
 
 Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise `<spec-dir>` is
