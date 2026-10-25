@@ -15,7 +15,7 @@ class WebhookEndpointFactory(SiteAwareFactory):
 
     url = factory.Faker("url")
     description = factory.Faker("sentence", nb_words=4)
-    event_types = factory.LazyFunction(lambda: ["user.registered"])
+    event_types = factory.LazyFunction(lambda: ["user.signed_up"])
     is_active = True
     # secret is auto-generated in WebhookEndpoint.save()
     http_method = ""
@@ -40,7 +40,7 @@ class WebhookEventFactory(SiteAwareFactory):
     class Meta:
         model = WebhookEvent
 
-    event_type = "user.registered"
+    event_type = "user.signed_up"
     payload = factory.LazyFunction(lambda: {"user_id": "abc-123"})
 
 

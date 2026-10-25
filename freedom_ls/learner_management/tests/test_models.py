@@ -32,7 +32,7 @@ from freedom_ls.organisations.utils import get_default_organisation
 
 # Self-registration through initiate_course_access (the chokepoint for
 # self-service course access) keys on Learner: the Learner it creates, its
-# idempotence, and reactivation of a removed learner. The backend-branching
+# idempotence, and reactivation of a deactivated learner. The backend-branching
 # coverage (gated vs free, GET vs POST) is in learner_interface views.
 def _initiate_course_access_url(course_slug: str) -> str:
     return reverse(
@@ -257,7 +257,7 @@ class TestLearnerCourseRegistrationUniqueness:
 @pytest.mark.django_db
 class TestDeactivatingALearnerPreservesRecords:
     """Removal is soft and never cascades: every enrolment and progress row a
-    removed learner held stays exactly as it was. Only access is suspended."""
+    deactivated learner held stays exactly as it was. Only access is switched off."""
 
     def test_the_course_registration_stays_active(self, mock_site_context):
         learner = LearnerFactory()

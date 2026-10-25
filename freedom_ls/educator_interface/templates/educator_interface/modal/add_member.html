@@ -132,7 +132,7 @@ site_level.
         </div>
         {% endif %}
         {% if member_state == "inactive" %}
-        <p>{{ member_name }} is suspended here, so the role takes effect only once they are reactivated.</p>
+        <p>{{ member_name }} is inactive here, so the role takes effect only once they are reactivated.</p>
         {% elif member_state == "missing" %}
         <p>{{ member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}

@@ -35,8 +35,8 @@ from freedom_ls.role_based_permissions.types import Role
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
-    remove_object_role,
-    remove_site_role,
+    deactivate_object_role,
+    deactivate_site_role,
 )
 
 if TYPE_CHECKING:
@@ -126,7 +126,7 @@ def assign_role(
         assign_object_role(user, target, role, assigned_by=grantor)
 
 
-def remove_role(
+def deactivate_role(
     grantor: User,
     user: User,
     role: str,
@@ -134,16 +134,18 @@ def remove_role(
     *,
     reason: str = "",
 ) -> None:
-    """Remove `role` from `user` on `target`, on the grantor's behalf.
+    """Deactivate `user`'s `role` on `target`, on the grantor's behalf.
 
-    Removing site_admin defers its last-admin lock to remove_site_role,
-    which every caller of the raw utility also gets. Removing the
+    Deactivating site_admin defers its last-admin lock to deactivate_site_role,
+    which every caller of the raw utility also gets. Deactivating the
     organisation_admin an organisation depends on runs its own lock here,
     since that check has nowhere else to live.
     """
     _refuse_unless(grantor, user, ASSIGN.format(role=role), target, assigning=False)
     if isinstance(target, Site):
-        remove_site_role(user, role, site=target, removed_by=grantor, reason=reason)
+        deactivate_site_role(
+            user, role, site=target, deactivated_by=grantor, reason=reason
+        )
         return
     with transaction.atomic():
         if (
@@ -152,16 +154,18 @@ def remove_role(
             and not is_site_level_admin(grantor, target.site)
         ):
             _lock_and_refuse_last_organisation_admin(target, user)
-        remove_object_role(user, target, role, removed_by=grantor, reason=reason)
+        deactivate_object_role(
+            user, target, role, deactivated_by=grantor, reason=reason
+        )
 
 
 def set_organisation_member_active(
     actor: User, member: OrganisationMember, is_active: bool, *, reason: str = ""
 ) -> None:
-    """Activate or suspend `member`'s OrganisationMember row, on the actor's
-    behalf. Suspending one who is the organisation's last organisation_admin
-    runs the same lock as removing that role outright, since it has the same
-    effect: nobody left to administer the organisation.
+    """Reactivate or deactivate `member`'s OrganisationMember row, on the
+    actor's behalf. Deactivating one who is the organisation's last
+    organisation_admin runs the same lock as deactivating that role, since it
+    has the same effect: nobody left to administer the organisation.
     """
     _refuse_unless(
         actor, member.user, CHANGE_MEMBER, member.organisation, assigning=is_active
@@ -177,7 +181,7 @@ def set_organisation_member_active(
         member.save(update_fields=["is_active"])
         if changed:
             record_entry(
-                action="member.suspended" if not is_active else "member.reactivated",
+                action="member.deactivated" if not is_active else "member.reactivated",
                 actor=actor,
                 target=member,
                 target_label=member.user.display_name,
@@ -202,7 +206,7 @@ def grantable_roles(grantor: User, organisation: Organisation) -> list[Grantable
     built from the same grant builders can() reads, so the cost does not
     grow with the number of cohorts. This is the source of every choice
     offered and every submitted choice checked; assign_role and
-    remove_role remain the authoritative check on each target."""
+    deactivate_role remain the authoritative check on each target."""
     result: list[GrantableRole] = []
     for role in MEMBER_ROLES:
         capability = ASSIGN.format(role=role)

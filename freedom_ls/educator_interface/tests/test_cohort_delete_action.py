@@ -1,7 +1,7 @@
 """Deleting an empty cohort from its settings tab.
 
 Only a cohort with no memberships and no course registrations can be deleted;
-removed learners and inactive registrations still count.
+deactivated learners and inactive registrations still count.
 
 The cohort page also renders for a cohort whose registrations granted progress.
 
@@ -229,12 +229,12 @@ def test_the_delete_dialog_body_says_the_delete_cannot_be_undone(
     assert "cohort" in body.text_content()
 
 
-@pytest.fixture(params=["removed learner", "inactive registration"])
+@pytest.fixture(params=["deactivated learner", "inactive registration"])
 def cohort_holding_only_dormant_rows(
     request: pytest.FixtureRequest, mock_site_context: Site
 ) -> Cohort:
     cohort: Cohort = CohortFactory(organisation=OrganisationFactory(), name="Dormant")
-    if request.param == "removed learner":
+    if request.param == "deactivated learner":
         CohortMembershipFactory(
             cohort=cohort,
             learner=LearnerFactory(organisation=cohort.organisation, is_active=False),
@@ -458,7 +458,7 @@ def test_deleting_a_cohort_records_the_roles_removed_with_it(
 
     entries = list(AuditLogEntry.unscoped.order_by("created_at"))
     assert [entry.action for entry in entries] == [
-        "role.granted",
+        "role.assigned",
         "role.removed",
         "cohort.deleted",
     ]

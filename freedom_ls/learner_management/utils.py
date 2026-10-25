@@ -47,7 +47,7 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     # Both cohort conditions must sit in one filter() call: several conditions
     # on a multi-valued relation within one filter() apply to the same joined
     # row, but split across two calls they can match different rows of the
-    # cohort's memberships -- so a cohort holding this user's removed Learner
+    # cohort's memberships -- so a cohort holding this user's deactivated Learner
     # alongside a second, active Learner would otherwise grant access.
     cohort = (
         access_granting_cohort_registrations()
@@ -64,7 +64,7 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
 def ensure_learner(user: User, organisation: Organisation) -> Learner:
     """Get or create the Learner recording a user's association with an organisation.
 
-    Idempotent, and reactivates a row that was previously removed: a fresh
+    Idempotent, and reactivates a row that was previously deactivated: a fresh
     enrolment is a live signal of re-association.
 
     _base_manager, not objects: SiteAwareManager.get_queryset() ANDs the
@@ -137,15 +137,13 @@ def fire_webhook_event_on_commit(
     transaction.on_commit(lambda: fire_webhook_event(event_type, payload, site=site))
 
 
-def announce_cohort_registration_change(registration: CohortCourseRegistration) -> None:
-    """Tell integrators a cohort registration changed. Called only by a
+def announce_cohort_registration_change(
+    registration: CohortCourseRegistration, event_type: str
+) -> None:
+    """Tell integrators a cohort registration changed, under the same
+    `cohort_registration.*` code the audit entry carries. Called only by a
     change, never by a no-op save."""
     cohort = registration.cohort
-    event_type = (
-        "cohort.course_registered"
-        if registration.is_active
-        else "cohort.course_unregistered"
-    )
     fire_webhook_event_on_commit(
         event_type,
         {
@@ -175,7 +173,8 @@ def _record_cohort_registration_entry(
 def register_cohort_for_course(
     cohort: Cohort, course: Course, *, actor: User | None = None, reason: str = ""
 ) -> CohortCourseRegistration:
-    """Register, or re-register, the cohort for the course.
+    """Register the cohort for the course, reactivating an inactive
+    registration.
 
     Reuses the row the unique constraint allows per cohort and course,
     and saves through save() so the post_save fan-out mints a course
@@ -197,36 +196,35 @@ def register_cohort_for_course(
             registration.is_active = True
             registration.save(update_fields=["is_active"])
         if created or reactivated:
-            announce_cohort_registration_change(registration)
-            _record_cohort_registration_entry(
-                cohort,
+            code = (
                 "cohort_registration.added"
                 if created
-                else "cohort_registration.reregistered",
-                course,
-                actor,
-                reason,
+                else "cohort_registration.reactivated"
             )
+            announce_cohort_registration_change(registration, code)
+            _record_cohort_registration_entry(cohort, code, course, actor, reason)
     return registration
 
 
-def unregister_cohort_from_course(
+def deactivate_cohort_registration(
     registration: CohortCourseRegistration,
     *,
     actor: User | None = None,
     reason: str = "",
 ) -> None:
-    """Withdraw the registration. Reversible: the row and every course
+    """Deactivate the registration. Reversible: the row and every course
     progress record it minted stay."""
     with transaction.atomic():
         was_active = registration.is_active
         registration.is_active = False
         registration.save(update_fields=["is_active"])
         if was_active:
-            announce_cohort_registration_change(registration)
+            announce_cohort_registration_change(
+                registration, "cohort_registration.deactivated"
+            )
             _record_cohort_registration_entry(
                 registration.cohort,
-                "cohort_registration.unregistered",
+                "cohort_registration.deactivated",
                 registration.course,
                 actor,
                 reason,

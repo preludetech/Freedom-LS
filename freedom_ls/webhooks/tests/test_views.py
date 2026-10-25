@@ -38,7 +38,7 @@ def _send_test_result_url(endpoint_pk: object) -> str:
 
 def _post_send_test(client: object, admin_user: object) -> object:
     """Send a test event to an endpoint that accepts it, stubbing the outbound POST."""
-    endpoint = WebhookEndpointFactory(event_types=["user.registered"])
+    endpoint = WebhookEndpointFactory(event_types=["user.signed_up"])
     client.force_login(admin_user)
     stubbed = httpx.Response(
         status_code=200,
@@ -48,7 +48,7 @@ def _post_send_test(client: object, admin_user: object) -> object:
     with patch("freedom_ls.webhooks.delivery.httpx.request", return_value=stubbed):
         return client.post(
             _send_test_result_url(endpoint.pk),
-            data={"event_type": "user.registered"},
+            data={"event_type": "user.signed_up"},
         )
 
 
@@ -59,7 +59,7 @@ class TestSendTestFormView:
     ) -> None:
         """Send test form should load and display event type options."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered", "course.completed"],
+            event_types=["user.signed_up", "course.completed"],
         )
         client.force_login(admin_user)
         response = client.get(_send_test_form_url(endpoint.pk))
@@ -67,7 +67,7 @@ class TestSendTestFormView:
         # Bind to the rendered context dict, not just the HTML.
         assert response.context["endpoint"] == endpoint
         content = response.content.decode()
-        assert "user.registered" in content
+        assert "user.signed_up" in content
         assert "course.completed" in content
 
     def test_shows_all_available_event_types(
@@ -75,7 +75,7 @@ class TestSendTestFormView:
     ) -> None:
         """Form should show all available event types, not just subscribed ones."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
         response = client.get(_send_test_form_url(endpoint.pk))
@@ -87,10 +87,10 @@ class TestSendTestFormView:
             code for code, _ in response.context["form"].fields["event_type"].choices
         ]
         assert "course.completed" in choice_codes
-        assert "course.registered" in choice_codes
+        assert "registration.added" in choice_codes
         content = response.content.decode()
         assert "course.completed" in content
-        assert "course.registered" in content
+        assert "registration.added" in content
 
     def test_renders_inside_the_admin_shell_with_the_sidebar(
         self, admin_user: object, mock_site_context: object, client: object
@@ -158,7 +158,7 @@ class TestSendTestResultView:
     ) -> None:
         """Submitting the form should create a WebhookEvent and WebhookDelivery."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
 
@@ -174,7 +174,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         assert response.status_code == 200
@@ -193,7 +193,7 @@ class TestSendTestResultView:
     ) -> None:
         """The created event should have _test: True merged into the payload."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
 
@@ -209,7 +209,7 @@ class TestSendTestResultView:
         ):
             client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         event = WebhookEvent.objects.first()
@@ -221,7 +221,7 @@ class TestSendTestResultView:
     ) -> None:
         """The event payload should contain sample data from WEBHOOK_EVENT_TYPE_SAMPLES."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
 
@@ -237,7 +237,7 @@ class TestSendTestResultView:
         ):
             client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         event = WebhookEvent.objects.first()
@@ -250,7 +250,7 @@ class TestSendTestResultView:
     ) -> None:
         """Result page should show response status code and body."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
 
@@ -266,7 +266,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         content = response.content.decode()
@@ -277,7 +277,7 @@ class TestSendTestResultView:
     ) -> None:
         """Transformed endpoints should show a rendered request preview."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             http_method="POST",
             content_type="application/json",
             body_template='{"user": "{{ event.data.user_email }}"}',
@@ -297,7 +297,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         content = response.content.decode()
@@ -313,7 +313,7 @@ class TestSendTestResultView:
             encrypted_value="super-secret-key-1234",
         )
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             http_method="POST",
             content_type="application/json",
             headers_template='{"Authorization": "Bearer {{ secrets.api_key }}"}',
@@ -334,7 +334,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         content = response.content.decode()
@@ -352,7 +352,7 @@ class TestSendTestResultView:
             encrypted_value="super-secret-key-1234",
         )
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             http_method="POST",
             content_type="application/json",
             body_template='{"token": "{{ secrets.api_key }}"}',
@@ -372,7 +372,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         content = response.content.decode()
@@ -386,7 +386,7 @@ class TestSendTestResultView:
     ) -> None:
         """Non-transformed endpoints should show the standard request details."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             body_template="",
         )
         client.force_login(admin_user)
@@ -403,7 +403,7 @@ class TestSendTestResultView:
         ):
             response = client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         content = response.content.decode()
@@ -420,7 +420,7 @@ class TestSendTestResultView:
         client.force_login(regular_user)
         response = client.post(
             _send_test_result_url(endpoint.pk),
-            data={"event_type": "user.registered"},
+            data={"event_type": "user.signed_up"},
         )
         assert response.status_code == 302
         assert "/login" in response.url
@@ -432,7 +432,7 @@ class TestSendTestResultView:
         self, admin_user: object, mock_site_context: object, client: object
     ) -> None:
         """Unknown event_type should be rejected by validate_event_type."""
-        endpoint = WebhookEndpointFactory(event_types=["user.registered"])
+        endpoint = WebhookEndpointFactory(event_types=["user.signed_up"])
         client.force_login(admin_user)
         response = client.post(
             _send_test_result_url(endpoint.pk),
@@ -457,7 +457,7 @@ class TestSendTestResultView:
     ) -> None:
         """The created event should use the endpoint's site_id."""
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
         )
         client.force_login(admin_user)
 
@@ -473,7 +473,7 @@ class TestSendTestResultView:
         ):
             client.post(
                 _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
+                data={"event_type": "user.signed_up"},
             )
 
         event = WebhookEvent.objects.first()

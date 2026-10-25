@@ -136,7 +136,7 @@ def _member_organisations(user: Holder) -> QuerySet:
 
     The gate every organisation or cohort grant is checked against: a role
     assignment alone is not enough, because deactivating this row must
-    suspend the grants it covers without touching the assignments
+    switch off the grants it covers without touching the assignments
     themselves. A site-level grant never needs this -- _site_grants stays
     ungated.
     """

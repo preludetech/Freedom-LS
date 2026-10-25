@@ -1,1 +1,1 @@
-{% load tz %}<time datetime="{{ object.created_at|date:'c' }}">{{ object.created_at|localtime|date:"j M Y, H:i" }}</time>
+{% load tz %}<time datetime="{{ object.created_at|date:'c' }}" class="inline-flex flex-wrap gap-x-1.5"><span class="whitespace-nowrap">{{ object.created_at|localtime|date:"j M Y" }}</span><span class="whitespace-nowrap">{{ object.created_at|localtime|date:"H:i" }}</span></time>

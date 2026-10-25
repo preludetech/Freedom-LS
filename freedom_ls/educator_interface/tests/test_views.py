@@ -1119,7 +1119,7 @@ def test_an_inactive_cohorts_courses_tab_shows_no_register_trigger(
 def _unregister_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
     prefix = _interface_url(
         cohort.organisation.slug,
-        f"cohorts/{cohort.pk}/__tabs/courses/__actions/unregister",
+        f"cohorts/{cohort.pk}/__tabs/courses/__actions/deactivate_cohort_registration",
     )
     return [
         button.get("hx-get")
@@ -1931,7 +1931,7 @@ def _scope_lines(row) -> list[str]:
 QUERY_BOUND = 54
 
 
-MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
+MARKERS = {"You", "Inactive", "Account turned off", "Also a learner"}
 
 
 def _marker_labels(row) -> set[str]:
@@ -2053,7 +2053,7 @@ def _make_viewer_and_subject(members_client, organisation, case: str):
     ("case", "expected"),
     [
         ("plain", set()),
-        ("suspended", {"Suspended"}),
+        ("suspended", {"Inactive"}),
         ("turned_off", {"Account turned off"}),
         ("learner", {"Also a learner"}),
         ("inactive_learner", set()),
@@ -2089,7 +2089,7 @@ def test_a_member_with_no_organisation_member_row_is_suspended(members_client):
 
     row = _member_row(_members_document(client, organisation), "subject@example.com")
 
-    assert _marker_labels(row) == {"Suspended"}
+    assert _marker_labels(row) == {"Inactive"}
 
 
 @pytest.mark.django_db
@@ -2339,7 +2339,7 @@ def _remove_triggers(row) -> list[str]:
     return [
         button.get("hx-get")
         for button in row.cssselect("button[hx-get]")
-        if "remove_role" in button.get("hx-get")
+        if "deactivate_role" in button.get("hx-get")
     ]
 
 
@@ -2474,12 +2474,12 @@ def _state_triggers(row, action: str) -> list[str]:
     return [
         button.get("hx-get")
         for button in row.cssselect("button[hx-get]")
-        if f"__actions/{action}" in button.get("hx-get")
+        if f"__actions/{action}?" in button.get("hx-get")
     ]
 
 
 @pytest.mark.django_db
-def test_an_active_member_row_offers_suspend_and_not_reactivate(members_client):
+def test_an_active_member_row_offers_deactivate_and_not_reactivate(members_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
@@ -2487,14 +2487,14 @@ def test_an_active_member_row_offers_suspend_and_not_reactivate(members_client):
 
     row = _member_row(_members_document(client, organisation), "other@example.com")
 
-    (trigger,) = _state_triggers(row, "suspend")
+    (trigger,) = _state_triggers(row, "deactivate")
     assert f"user={user.pk}" in trigger
     assert _state_triggers(row, "reactivate") == []
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("row_state", ["inactive", "missing"])
-def test_a_suspended_member_row_offers_reactivate_and_not_suspend(
+def test_an_inactive_member_row_offers_reactivate_and_not_deactivate(
     members_client, row_state
 ):
     organisation = OrganisationFactory()
@@ -2511,7 +2511,7 @@ def test_a_suspended_member_row_offers_reactivate_and_not_suspend(
 
     (trigger,) = _state_triggers(row, "reactivate")
     assert f"user={user.pk}" in trigger
-    assert _state_triggers(row, "suspend") == []
+    assert _state_triggers(row, "deactivate") == []
 
 
 def _make_site_level(user: User, organisation: Organisation) -> None:
@@ -2537,7 +2537,7 @@ def test_a_site_level_or_turned_off_row_offers_neither_state_action(
 
     row = _member_row(_members_document(client, organisation), "other@example.com")
 
-    assert _state_triggers(row, "suspend") == []
+    assert _state_triggers(row, "deactivate") == []
     assert _state_triggers(row, "reactivate") == []
 
 
@@ -2551,7 +2551,7 @@ def test_the_viewers_own_row_offers_neither_state_action(members_client):
 
     row = _member_row(_members_document(client, organisation), "me@example.com")
 
-    assert _state_triggers(row, "suspend") == []
+    assert _state_triggers(row, "deactivate") == []
     assert _state_triggers(row, "reactivate") == []
 
 
@@ -3693,7 +3693,7 @@ def test_the_audit_log_filters_narrow_by_who_what_and_when(staff_client: Client)
     AuditLogEntryFactory(
         target=organisation,
         actor=ada,
-        action="role.granted",
+        action="role.assigned",
         target_label="Wrong action",
     )
     AuditLogEntryFactory(
@@ -3731,7 +3731,7 @@ def test_the_filtered_audit_log_empty_state_offers_a_clear_link(staff_client: Cl
     AuditLogEntryFactory(target=organisation, action="cohort.created")
 
     response = staff_client.get(
-        f"{_audit_log_url(organisation)}?audit_log-what=role.granted"
+        f"{_audit_log_url(organisation)}?audit_log-what=role.assigned"
     )
 
     html = response.content.decode()

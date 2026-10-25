@@ -41,11 +41,11 @@ from freedom_ls.learner_management.queries import (
     is_registered_for_course_expression,
 )
 from freedom_ls.learner_management.utils import (
+    deactivate_cohort_registration,
     ensure_learner,
     ensure_organisation_member,
     is_registered_for_course,
     register_cohort_for_course,
-    unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.audit_assertions import assert_entry
@@ -103,8 +103,8 @@ class TestDirectRegistration:
     def test_removed_learner_grants_nothing_though_registration_is_active(
         self, mock_site_context
     ):
-        """An active registration held by a removed Learner grants nothing:
-        records are preserved, but access is suspended."""
+        """An active registration held by a deactivated Learner grants nothing:
+        records are preserved, but access is switched off."""
         course = CourseFactory()
         learner = LearnerFactory(is_active=False)
         LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
@@ -144,8 +144,8 @@ class TestCohortRegistration:
         """Pins the split-filter hazard: both cohort conditions -- membership
         by this user and that membership's Learner being active -- must be
         evaluated against the *same* joined membership row. A cohort holding
-        the removed learner's membership alongside a second, unrelated,
-        active learner's membership must not grant access to the removed one.
+        the deactivated learner's membership alongside a second, unrelated,
+        active learner's membership must not grant access to the deactivated one.
         """
         course = CourseFactory()
         removed_learner = LearnerFactory(is_active=False)
@@ -372,7 +372,7 @@ class TestEnsureOrganisationMember:
 @pytest.mark.django_db
 @pytest.mark.django_db
 class TestCohortRegistrationWebhooks:
-    def test_registering_records_a_course_registered_event(
+    def test_registering_records_a_cohort_registration_added_event(
         self, mock_site_context, django_capture_on_commit_callbacks
     ):
         cohort = CohortFactory()
@@ -382,7 +382,7 @@ class TestCohortRegistrationWebhooks:
             register_cohort_for_course(cohort, course)
 
         event = WebhookEvent._base_manager.get()
-        assert event.event_type == "cohort.course_registered"
+        assert event.event_type == "cohort_registration.added"
         assert event.site_id == cohort.site_id
         assert event.payload == {
             "organisation_id": str(cohort.organisation_id),
@@ -407,10 +407,10 @@ class TestCohortRegistrationWebhooks:
         registration = CohortCourseRegistrationFactory()
 
         with django_capture_on_commit_callbacks(execute=True):
-            unregister_cohort_from_course(registration)
+            deactivate_cohort_registration(registration)
 
         event = WebhookEvent._base_manager.get()
-        assert event.event_type == "cohort.course_unregistered"
+        assert event.event_type == "cohort_registration.deactivated"
 
     def test_unregistering_an_inactive_registration_records_nothing(
         self, mock_site_context, django_capture_on_commit_callbacks
@@ -418,11 +418,11 @@ class TestCohortRegistrationWebhooks:
         registration = CohortCourseRegistrationFactory(is_active=False)
 
         with django_capture_on_commit_callbacks(execute=True):
-            unregister_cohort_from_course(registration)
+            deactivate_cohort_registration(registration)
 
         assert WebhookEvent._base_manager.count() == 0
 
-    def test_reactivating_records_one_course_registered_event(
+    def test_reactivating_records_one_cohort_registration_reactivated_event(
         self, mock_site_context, django_capture_on_commit_callbacks
     ):
         registration = CohortCourseRegistrationFactory(is_active=False)
@@ -431,7 +431,7 @@ class TestCohortRegistrationWebhooks:
             register_cohort_for_course(registration.cohort, registration.course)
 
         event = WebhookEvent._base_manager.get()
-        assert event.event_type == "cohort.course_registered"
+        assert event.event_type == "cohort_registration.reactivated"
 
 
 @pytest.mark.django_db
@@ -452,7 +452,7 @@ class TestRegisterCohortForCourse:
         self, mock_site_context
     ):
         registration = CohortCourseRegistrationFactory()
-        unregister_cohort_from_course(registration)
+        deactivate_cohort_registration(registration)
 
         again = register_cohort_for_course(registration.cohort, registration.course)
 
@@ -463,7 +463,7 @@ class TestRegisterCohortForCourse:
     def test_unregistering_deactivates_the_registration(self, mock_site_context):
         registration = CohortCourseRegistrationFactory()
 
-        unregister_cohort_from_course(registration)
+        deactivate_cohort_registration(registration)
 
         registration.refresh_from_db()
         assert registration.is_active is False
@@ -515,7 +515,7 @@ class TestCohortRegistrationAudit:
         )
 
         assert_entry(
-            action="cohort_registration.reregistered",
+            action="cohort_registration.reactivated",
             actor=actor,
             target=registration.cohort,
             target_label=registration.cohort.name,
@@ -538,10 +538,10 @@ class TestCohortRegistrationAudit:
         registration = CohortCourseRegistrationFactory(is_active=True)
         actor = UserFactory()
 
-        unregister_cohort_from_course(registration, actor=actor)
+        deactivate_cohort_registration(registration, actor=actor)
 
         assert_entry(
-            action="cohort_registration.unregistered",
+            action="cohort_registration.deactivated",
             actor=actor,
             target=registration.cohort,
             target_label=registration.cohort.name,
@@ -554,7 +554,7 @@ class TestCohortRegistrationAudit:
     ):
         registration = CohortCourseRegistrationFactory(is_active=False)
 
-        unregister_cohort_from_course(registration, actor=UserFactory())
+        deactivate_cohort_registration(registration, actor=UserFactory())
 
         assert AuditLogEntry.unscoped.count() == 0
 
@@ -565,7 +565,7 @@ class TestCohortRegistrationAudit:
         def run_then_fail() -> None:
             with transaction.atomic():
                 register_cohort_for_course(cohort, CourseFactory(), actor=UserFactory())
-                unregister_cohort_from_course(registered, actor=UserFactory())
+                deactivate_cohort_registration(registered, actor=UserFactory())
                 raise RuntimeError("rolled back")
 
         with pytest.raises(RuntimeError, match="rolled back"):

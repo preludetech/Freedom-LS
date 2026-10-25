@@ -42,7 +42,7 @@ widening, removes_role and member_state (missing, inactive or active).
     </c-button-group>
 </form>
 {% elif step == "confirmation" %}
-<c-modal-header focus_title="true">{% if removes_role %}Remove {{ member.display_name }} from {{ entry.display_name }}{% else %}Change cohorts for {{ member.display_name }}{% endif %}</c-modal-header>
+<c-modal-header focus_title="true">{% if removes_role %}Deactivate {{ entry.display_name }} for {{ member.display_name }}{% else %}Change cohorts for {{ member.display_name }}{% endif %}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
@@ -53,7 +53,7 @@ widening, removes_role and member_state (missing, inactive or active).
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
     <div class="space-y-3 px-6 py-4 text-sm">
         {% if added %}<p>Adds: {{ added }}</p>{% endif %}
-        {% if removed %}<p>Removes: {{ removed }}</p>{% endif %}
+        {% if removed %}<p>Deactivates on: {{ removed }}</p>{% endif %}
         {% if widening %}
         <p>{{ member.display_name }} will be able to do more than they can now: {{ entry.display_name }} on {{ added }}.</p>
         {% endif %}
@@ -61,14 +61,14 @@ widening, removes_role and member_state (missing, inactive or active).
         <p>{{ member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
         {% endif %}
         {% if added and member_state == "inactive" %}
-        <p>{{ member.display_name }} is suspended here, so the added cohorts take effect only once they are reactivated.</p>
+        <p>{{ member.display_name }} is inactive here, so the added cohorts take effect only once they are reactivated.</p>
         {% elif added and member_state == "missing" %}
         <p>{{ member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
     </div>
     <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
         <c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Saving...">{% if removes_role %}Remove{% else %}Change cohorts{% endif %}</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Saving...">{% if removes_role %}Deactivate{% else %}Change cohorts{% endif %}</c-button>
     </c-button-group>
 </form>
 {% endif %}

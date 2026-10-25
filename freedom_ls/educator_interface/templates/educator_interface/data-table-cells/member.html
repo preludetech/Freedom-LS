@@ -3,7 +3,7 @@
 A member as an avatar chip: bold name, with the email under it when the user
 has a name. A nameless user is shown by the email alone. The chip is not a
 link: a member has no page of their own. The markers sit beside the chip:
-"You" for the viewer's own row, "Suspended" for a missing or inactive
+"You" for the viewer's own row, "Inactive" for a missing or inactive
 organisation membership, "Account turned off" for an inactive user, and
 "Also a learner" for an active Learner row in the same organisation.
 {% endcomment %}
@@ -12,7 +12,7 @@ organisation membership, "Account turned off" for an inactive user, and
         <c-panel-avatar-chip name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" />
     </span>
     {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}
-    {% if object.is_suspended %}<c-panel-status-badge tone="warning" label="Suspended" />{% endif %}
+    {% if object.is_inactive %}<c-panel-status-badge tone="warning" label="Inactive" />{% endif %}
     {% if not object.is_active %}<c-panel-status-badge tone="muted" label="Account turned off" />{% endif %}
     {% if object.learner_rows %}<c-panel-status-badge tone="muted" label="Also a learner" />{% endif %}
 </span>

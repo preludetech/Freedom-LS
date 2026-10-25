@@ -135,7 +135,7 @@ def remove_from_cohort(
             learner=learner, cohort=cohort
         ).delete()
         if deleted:
-            _fire("cohort.member_removed", learner, _cohort_payload(cohort))
+            _fire("cohort_membership.removed", learner, _cohort_payload(cohort))
             _record_learner_entry(
                 learner,
                 "cohort_membership.removed",
@@ -156,7 +156,7 @@ def _add_membership(learner: Learner, cohort: Cohort) -> bool:
             site=learner.site, learner=learner, cohort=cohort
         )
         if created:
-            _fire("cohort.member_added", learner, _cohort_payload(cohort))
+            _fire("cohort_membership.added", learner, _cohort_payload(cohort))
     return created
 
 
@@ -219,8 +219,8 @@ def move_between_cohorts(
         cohort_membership_moved.send(
             sender=Learner, learner=learner, source=source, destination=destination
         )
-        _fire("cohort.member_removed", learner, _cohort_payload(source, move_id))
-        _fire("cohort.member_added", learner, _cohort_payload(destination, move_id))
+        _fire("cohort_membership.removed", learner, _cohort_payload(source, move_id))
+        _fire("cohort_membership.added", learner, _cohort_payload(destination, move_id))
         _record_learner_entry(
             learner,
             "cohort_membership.moved",
@@ -241,9 +241,9 @@ def register_for_course(
 ) -> bool:
     """Give the learner an individual registration for the course,
     reactivating an inactive one; False when an active one already exists.
-    `course.registered` comes from the registration's `post_save` receiver.
-    Raises CourseNotOpenError when the course is not open to the
-    learner's organisation."""
+    The `registration.added` or `registration.reactivated` webhook comes from
+    the registration's `post_save` receiver. Raises CourseNotOpenError when
+    the course is not open to the learner's organisation."""
     require_course_open_to(course, learner.organisation)
     with transaction.atomic():
         registration, created = LearnerCourseRegistration._base_manager.get_or_create(
@@ -256,7 +256,7 @@ def register_for_course(
             registration.save(update_fields=["is_active"])
         _record_learner_entry(
             learner,
-            "registration.added" if created else "registration.reregistered",
+            "registration.added" if created else "registration.reactivated",
             actor,
             reason,
             details={"course": course.title},
@@ -264,12 +264,13 @@ def register_for_course(
     return True
 
 
-def unregister_from_course(
+def deactivate_registration(
     learner: Learner, course: Course, *, actor: User | None = None, reason: str = ""
 ) -> bool:
     """Deactivate the learner's individual registration for the course; False
-    when they hold no active one. Course progress records are kept.
-    `course.unregistered` comes from the registration's `post_save` receiver."""
+    when they hold no active one. Course progress records are kept. The
+    `registration.deactivated` webhook comes from the registration's
+    `post_save` receiver."""
     with transaction.atomic():
         registration = LearnerCourseRegistration._base_manager.filter(
             learner=learner, course=course, is_active=True
@@ -280,7 +281,7 @@ def unregister_from_course(
         registration.save(update_fields=["is_active"])
         _record_learner_entry(
             learner,
-            "registration.unregistered",
+            "registration.deactivated",
             actor,
             reason,
             details={"course": course.title},
@@ -357,13 +358,21 @@ def _add_one(
     if cohort is not None:
         added = _add_membership(learner, cohort)
         cohort_outcome = CohortOutcome.ADDED if added else CohortOutcome.ALREADY_MEMBER
-    # One entry whatever changed: a learner who is new or newly active here is
-    # "added", with the cohort named when they joined it too; one already
-    # active here changed only if they joined the cohort.
+    # One entry whatever changed, named like the webhook it fired: a learner
+    # new here is "added", one switched back on is "reactivated", each with
+    # the cohort named when they joined it too; one already active here
+    # changed only if they joined the cohort.
     joined_cohort = cohort if cohort_outcome == CohortOutcome.ADDED else None
     cohort_subjects = [joined_cohort] if joined_cohort else []
-    if outcome != AddOutcome.ALREADY_LEARNER:
-        details: dict[str, JSONValue] = {"outcome": outcome.value}
+    if outcome == AddOutcome.REACTIVATED:
+        details: dict[str, JSONValue] = {}
+        if joined_cohort:
+            details["cohort"] = joined_cohort.name
+        _record_learner_entry(
+            learner, "learner.reactivated", actor, reason, cohort_subjects, details
+        )
+    elif outcome != AddOutcome.ALREADY_LEARNER:
+        details = {"outcome": outcome.value}
         if joined_cohort:
             details["cohort"] = joined_cohort.name
         _record_learner_entry(

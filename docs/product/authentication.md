@@ -61,7 +61,7 @@ Users authenticate with standard session cookies. A successful password reset lo
 
 ## Registration Webhook
 
-A successful new registration, including an account created by claiming an application, fires a `user.registered` webhook carrying the user's id, email, and name. See [webhooks](./webhooks.md).
+A successful new registration, including an account created by claiming an application, fires a `user.signed_up` webhook carrying the user's id, email, and name. See [webhooks](./webhooks.md).
 
 ## API Client Authentication
 

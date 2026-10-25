@@ -29,7 +29,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.tests.helpers import requires_tailwind_bundle
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -237,7 +237,7 @@ def test_educator_manages_cohorts_and_learners(
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
     page.get_by_role("button", name="Create Cohort").click()
     page.locator("#app-modal").get_by_label("Name").fill("Should never exist")
-    remove_object_role(educator_user, organisation_a, "organisation_admin")
+    deactivate_object_role(educator_user, organisation_a, "organisation_admin")
     modal.get_by_role("button", name="Save", exact=True).click()
     heading = page.get_by_role(
         "heading", name="You can't use “Create Cohort” here any more"
@@ -263,7 +263,7 @@ def test_educator_manages_cohorts_and_learners(
     page.get_by_role("button", name="Delete").first.click()
     dialog_delete = page.get_by_role("dialog").get_by_role("button", name="Delete")
     expect(dialog_delete).to_be_visible()
-    remove_object_role(educator_user, organisation_a, "organisation_admin")
+    deactivate_object_role(educator_user, organisation_a, "organisation_admin")
     dialog_delete.click()
     heading = page.get_by_role("heading", name="This is no longer available")
     expect(heading).to_be_visible()

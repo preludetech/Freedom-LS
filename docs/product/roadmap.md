@@ -96,7 +96,7 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 **Status: Organisation and cohort roles are managed in the educator interface, and role changes are logged; site admin is not managed there.**
 
-Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#members-and-roles). An organisation admin adds, removes, suspends and reactivates the organisation's members and their roles from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
+Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#members-and-roles). An organisation admin adds, deactivates and reactivates the organisation's members, and assigns and deactivates their roles, from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
 
 - **Site admin is assigned by a developer.** Neither the educator interface nor the Django admin can grant or remove it.
 - **No notification** tells a person that a role was granted or removed.
@@ -134,7 +134,7 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 **Status: Cohorts can be administered; learner and deadline override management cannot.**
 
-The educator interface can create, edit, deactivate, reactivate and delete cohorts, and register a cohort for courses or unregister it; its Courses section is read-only. See [educator interface](./educator-interface.md). These operations must still be performed in the Django admin by an administrator:
+The educator interface can create, edit, deactivate, reactivate and delete cohorts, and register a cohort for courses or deactivate that registration; its Courses section is read-only. See [educator interface](./educator-interface.md). These operations must still be performed in the Django admin by an administrator:
 
 - **Cohort membership** — adding learners to a cohort, moving them between cohorts, or removing them.
 - **Organisation membership** — associating a learner with an organisation, or marking one removed.

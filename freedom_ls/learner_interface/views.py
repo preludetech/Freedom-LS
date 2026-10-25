@@ -1056,7 +1056,7 @@ def initiate_course_access(request, course_slug):
     # the post_save receiver that gives every Site one. That fallback is reached
     # for a public organisation course and a course with no organisations; the
     # audience gate already 404s everyone else. ensure_learner
-    # reactivates a removed learner, so re-registering is a live signal of
+    # reactivates a deactivated learner, so re-registering is a live signal of
     # re-association.
     organisation = own_organisation_for_course(
         request.user, course

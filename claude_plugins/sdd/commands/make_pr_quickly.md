@@ -7,6 +7,10 @@ Open a pull request for the current branch **right now**. Nothing comes first.
 
 The user wants the PR to exist. The title and body do not matter. Speed is the only goal.
 
+Local state never blocks the PR. A rebase in progress, a detached HEAD, a rejected push or
+uncommitted changes are not reasons to stop or to report back without a PR. The branch already on
+the remote is good enough: open the PR from it.
+
 ## Never
 
 - rebase, fetch, or run the pre-step rebase
@@ -22,16 +26,17 @@ The user wants the PR to exist. The title and body do not matter. Speed is the o
 Run this as a single Bash call:
 
 ```
-git push -u origin HEAD && gh pr create --base main --fill
+g=$(git rev-parse --git-dir); b=$(git branch --show-current)
+[ -z "$b" ] && b=$(sed 's#^refs/heads/##' "$g"/rebase-merge/head-name "$g"/rebase-apply/head-name 2>/dev/null | head -1)
+[ -n "$(git branch --show-current)" ] && git push -u origin HEAD
+gh pr create --head "$b" --base main --title "$b" --body "" || gh pr view "$b" --json url -q .url
 ```
 
-`--fill` takes the title and body from the commits, so nothing has to be written.
-
-- If the push is rejected because the remote branch has diverged (for example after a local
-  rebase), retry once with `git push -u origin HEAD --force-with-lease --force-if-includes`, then
-  run `gh pr create --base main --fill`.
-- If `gh pr create` says a pull request already exists for the branch, that's fine. Get its URL with
-  `gh pr view --json url -q .url`.
+- The branch name comes from the rebase state when HEAD is detached mid-rebase.
+- The push runs only when a branch is checked out, and its failure is ignored: the PR is opened
+  from whatever the remote branch holds.
+- `gh pr view` prints the URL when a PR already exists for the branch.
+- If that call prints no URL, report the `gh` error. Do not retry the push or force it.
 
 ## Report
 

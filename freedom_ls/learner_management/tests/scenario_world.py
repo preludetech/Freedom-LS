@@ -46,7 +46,7 @@ from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRole
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 
 CUSTOM_ROLES_MODULE = "fake_permissions_module_for_scenario_world"
@@ -186,7 +186,9 @@ def build_world(site: Site, *, scale: int = 1) -> World:
         assign_object_role(role_holders["c1_c2_admin"], cohort, "cohort_admin")
         assign_object_role(role_holders["c1_c2_viewer"], cohort, "cohort_viewer")
     assign_object_role(role_holders["c1_admin_inactive_assignment"], c1, "cohort_admin")
-    remove_object_role(role_holders["c1_admin_inactive_assignment"], c1, "cohort_admin")
+    deactivate_object_role(
+        role_holders["c1_admin_inactive_assignment"], c1, "cohort_admin"
+    )
     assign_object_role(role_holders["c1_admin_inactive_user"], c1, "cohort_admin")
     assign_object_role(role_holders["custom_educator_c2"], c2, "custom_educator")
     assign_object_role(role_holders["custom_bystander_o1"], o1, "custom_bystander")

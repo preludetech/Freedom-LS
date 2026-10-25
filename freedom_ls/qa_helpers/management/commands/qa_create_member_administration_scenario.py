@@ -52,7 +52,7 @@ from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 
 SUPERUSER_EMAIL = "demodev@email.com"
@@ -130,7 +130,7 @@ def _clear_superuser(superuser: User) -> None:
         click.secho(
             f"Removing {grant.role} on {org.slug} from {superuser.email}", fg="yellow"
         )
-        remove_object_role(superuser, org, grant.role)
+        deactivate_object_role(superuser, org, grant.role)
     deleted = OrganisationMember._base_manager.filter(user=superuser).delete()
     if deleted[0]:
         click.secho(

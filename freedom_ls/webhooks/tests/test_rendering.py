@@ -15,14 +15,14 @@ from freedom_ls.webhooks.rendering import (
 class TestBuildTemplateContext:
     def test_includes_event_data(self, mock_site_context: Site) -> None:
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={"user_id": "abc-123", "user_email": "test@example.com"},
         )
         context = build_template_context(event, mock_site_context.pk)
         event_ctx = context["event"]
         assert isinstance(event_ctx, dict)
         assert event_ctx["id"] == str(event.pk)
-        assert event_ctx["type"] == "user.registered"
+        assert event_ctx["type"] == "user.signed_up"
         data = event_ctx["data"]
         assert isinstance(data, dict)
         assert data["user_id"] == "abc-123"
@@ -78,8 +78,8 @@ class TestRenderTemplate:
 
     def test_replace_filter_works(self) -> None:
         template_str = "{{ name | replace('.', '_') }}"
-        result = render_template(template_str, {"name": "user.registered"})
-        assert result == "user_registered"
+        result = render_template(template_str, {"name": "user.signed_up"})
+        assert result == "user_signed_up"
 
     def test_renders_nested_event_data(self) -> None:
         template_str = (
@@ -87,10 +87,10 @@ class TestRenderTemplate:
         )
         context = {
             "event": {
-                "type": "user.registered",
+                "type": "user.signed_up",
                 "data": {"user_email": "test@example.com"},
             }
         }
         result = render_template(template_str, context)
-        assert "user.registered" in result
+        assert "user.signed_up" in result
         assert "test@example.com" in result

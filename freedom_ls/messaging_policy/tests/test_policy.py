@@ -62,7 +62,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 from freedom_ls.tests.factories import SiteFactory
 
@@ -827,7 +827,7 @@ def test_a_learner_reply_to_an_educator_whose_role_was_removed_has_no_relationsh
     policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
 ) -> None:
     open_educators(settings, ["cohort_admin"])
-    remove_object_role(
+    deactivate_object_role(
         world.role_holders["c1_admin"], world.cohorts["c1"], "cohort_admin"
     )
 

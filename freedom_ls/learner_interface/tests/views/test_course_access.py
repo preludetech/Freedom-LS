@@ -533,7 +533,7 @@ def test_view_course_item_registered_renders_content(
 def test_view_course_item_removed_learner_redirects_to_course_detail(
     mock_site_context, logged_in_client, course_with_topic
 ):
-    """A removed learner's active registration grants nothing: view_course_item
+    """A deactivated learner's active registration grants nothing: view_course_item
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
     learner = LearnerFactory(is_active=False)
@@ -618,7 +618,7 @@ def test_course_home_unregistered_redirects_to_course_detail(
 def test_course_home_removed_learner_redirects_to_course_detail(
     mock_site_context, logged_in_client, course_with_topic
 ):
-    """A removed learner's active registration grants nothing: course_home
+    """A deactivated learner's active registration grants nothing: course_home
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
     learner = LearnerFactory(is_active=False)

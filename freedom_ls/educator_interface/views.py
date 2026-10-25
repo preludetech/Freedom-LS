@@ -68,20 +68,20 @@ from freedom_ls.educator_interface.actions import (
     AddMemberToCohortAction,
     AddToCohortAction,
     ChangeCohortsAction,
+    DeactivateCohortRegistrationAction,
+    DeactivateMemberAction,
+    DeactivateRegistrationAction,
+    DeactivateRoleAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
     MoveToCohortAction,
     ReactivateMemberAction,
+    ReactivateRegistrationAction,
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
-    RemoveRoleAction,
-    ReregisterLearnerForCourseAction,
     ResendSetupEmailAction,
-    SuspendMemberAction,
-    UnregisterCohortFromCourseAction,
-    UnregisterLearnerFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
@@ -490,7 +490,7 @@ class LearnerDataTable(DataTable):
         request = cast(OrganisationScopedRequest, request)
         organisation = request.organisation
         return (
-            learners_visible_to(request.user, organisation, include_removed=True)
+            learners_visible_to(request.user, organisation, include_inactive=True)
             .select_related("user")
             .prefetch_related(
                 # A Learner belongs to exactly one organisation, so the course
@@ -688,8 +688,8 @@ class LearnerRegistrationsPanel(Panel):
 
     def get_actions(self) -> list[PanelAction]:
         return [
-            UnregisterLearnerFromCourseAction(),
-            ReregisterLearnerForCourseAction(),
+            DeactivateRegistrationAction(),
+            ReactivateRegistrationAction(),
         ]
 
     def get_context_data(self) -> dict[str, object]:
@@ -847,12 +847,12 @@ def _interface_path(organisation: Organisation, path_string: str) -> str:
 _LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
     LearnerStatus.ACTIVE: "success",
     LearnerStatus.PENDING: "info",
-    LearnerStatus.REMOVED: "muted",
+    LearnerStatus.INACTIVE: "muted",
 }
 
 
 def learner_status_badge(learner: Learner) -> StatusBadge:
-    """The badge for a learner's status: Active, Pending or Removed."""
+    """The badge for a learner's status: Active, Pending or Inactive."""
     status = learner_status(learner)
     return StatusBadge(_LEARNER_STATUS_TONES[status], status.label)
 
@@ -900,7 +900,7 @@ class CohortCourseRegistrationDataTable(DataTable):
             *_registration_columns(),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/unregister.html",
+                template="educator_interface/data-table-cells/deactivate_registration.html",
                 card="secondary",
             ),
         ]
@@ -934,7 +934,7 @@ class CohortLearnersPanel(DataTablePanel):
         return cast(Cohort, self.instance).name
 
     def get_tab_count(self) -> int | None:
-        # The table lists removed members too; the tab counts current ones.
+        # The table lists inactive learners too; the tab counts current ones.
         return self.get_queryset(self.request).filter(is_active=True).count()
 
 
@@ -948,9 +948,9 @@ class CohortCoursesPanel(DataTablePanel):
         return super().get_queryset(request).filter(cohort=self.instance)
 
     def get_actions(self) -> list[PanelAction]:
-        # Unregister renders per row, not in the footer: the unregister cell
+        # Deactivate renders per row, not in the footer: the registration cell
         # reads its URL from row_action_urls.
-        return [RegisterCohortForCourseAction(), UnregisterCohortFromCourseAction()]
+        return [RegisterCohortForCourseAction(), DeactivateCohortRegistrationAction()]
 
     def get_tab_count(self) -> int | None:
         return self.get_queryset(self.request).filter(is_active=True).count()
@@ -975,7 +975,7 @@ class CohortCourseCompletionPanel(Panel):
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
         # Course progress records minted for members who have since been
-        # removed or have left the cohort are kept for ever, so the counts are
+        # deactivated or have left the cohort are kept for ever, so the counts are
         # narrowed to current, active members or they would disagree with the
         # Learners tab.
         current_member = Q(
@@ -1203,7 +1203,7 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
-            not learners_visible_to(request.user, organisation, include_removed=True)
+            not learners_visible_to(request.user, organisation, include_inactive=True)
             .filter(pk=instance.pk)
             .exists()
         ):
@@ -1725,7 +1725,7 @@ class MemberDataTable(DataTable):
         for row in page_obj.object_list:
             row.is_site_level = row.pk in site_level_ids
             row.role_entries = member_role_entries(row, site)
-            row.is_suspended = not any(m.is_active for m in row.member_rows)
+            row.is_inactive = not any(m.is_active for m in row.member_rows)
         return page_obj
 
     @staticmethod
@@ -1773,9 +1773,9 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [
             AddMemberAction(),
-            RemoveRoleAction(),
+            DeactivateRoleAction(),
             ChangeCohortsAction(),
-            SuspendMemberAction(),
+            DeactivateMemberAction(),
             ReactivateMemberAction(),
         ]
 

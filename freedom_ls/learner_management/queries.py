@@ -281,9 +281,9 @@ def latest_registration(user: User, course: Course) -> LearnerCourseRegistration
     access checks require both flags, so sorting on both in that order puts
     an access-granting row first whenever one exists -- without it, a user
     holding an active registration through a live Learner and another
-    through a removed one would resolve to whichever was registered later,
-    and the record keying their work could land under the removed Learner.
-    Filtering instead would cut a removed learner off from their own
+    through a deactivated one would resolve to whichever was registered later,
+    and the record keying their work could land under the deactivated Learner.
+    Filtering instead would cut a deactivated learner off from their own
     registration, which the individual branch deliberately still reaches.
     """
     from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -708,12 +708,12 @@ def visible_learners_expression(user: User, roles: frozenset[str], site: Site) -
 class LearnerStatus(TextChoices):
     ACTIVE = "active", "Active"
     PENDING = "pending", "Pending"
-    REMOVED = "removed", "Removed"
+    INACTIVE = "inactive", "Inactive"
 
 
 def learner_status(learner: Learner) -> LearnerStatus:
     if not learner.is_active:
-        return LearnerStatus.REMOVED
+        return LearnerStatus.INACTIVE
     if is_pending(learner.user):
         return LearnerStatus.PENDING
     return LearnerStatus.ACTIVE
@@ -722,7 +722,7 @@ def learner_status(learner: Learner) -> LearnerStatus:
 def learner_status_q(status: LearnerStatus) -> Q:
     """The queryset twin of learner_status, on a Learner queryset."""
     pending = pending_user_q("user__")
-    if status == LearnerStatus.REMOVED:
+    if status == LearnerStatus.INACTIVE:
         return Q(is_active=False)
     if status == LearnerStatus.PENDING:
         return Q(is_active=True) & pending
@@ -730,7 +730,7 @@ def learner_status_q(status: LearnerStatus) -> Q:
 
 
 def learners_visible_to(
-    user: RequestUser, organisation: Organisation, *, include_removed: bool = False
+    user: RequestUser, organisation: Organisation, *, include_inactive: bool = False
 ) -> QuerySet[Learner]:
     """Learners this person may see within an organisation.
 
@@ -742,13 +742,13 @@ def learners_visible_to(
     cohort-scoped educator the whole organisation's roster; only a
     site/organisation-level grant sees both.
 
-    Removed learners are left out unless `include_removed` is set.
+    Deactivated learners are left out unless `include_inactive` is set.
     """
-    # is_active sits outside the visibility Q: a removed learner must not
+    # is_active sits outside the visibility Q: a deactivated learner must not
     # reappear just because they still hold a membership in a granted cohort,
     # or still belong to the organisation.
     within = Learner.objects.filter(organisation=organisation)
-    if not include_removed:
+    if not include_inactive:
         within = within.filter(is_active=True)
     resolved = _resolved_or_none(user, within)
     if resolved is not None:
@@ -1004,7 +1004,7 @@ def member_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignm
 
 
 def members_of(organisation: Organisation) -> QuerySet[User]:
-    """Everyone holding a member role in the organisation, suspended members
+    """Everyone holding a member role in the organisation, inactive members
     and turned-off accounts included: they still hold the role. A site
     admin or superuser is here only through such a role, never through
     their site-level access."""

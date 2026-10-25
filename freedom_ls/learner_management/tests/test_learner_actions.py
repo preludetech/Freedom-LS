@@ -26,11 +26,11 @@ from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
     deactivate_learner,
+    deactivate_registration,
     move_between_cohorts,
     reactivate_learner,
     register_for_course,
     remove_from_cohort,
-    unregister_from_course,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -280,8 +280,8 @@ class TestMembershipAudit:
 
         entry = AuditLogEntry.unscoped.get()
         assert (entry.action, entry.details) == (
-            "learner.added",
-            {"outcome": "reactivated", "cohort": cohort.name},
+            "learner.reactivated",
+            {"cohort": cohort.name},
         )
 
     def test_an_already_active_learner_newly_in_the_cohort_writes_a_membership_entry(
@@ -367,7 +367,7 @@ class TestRegistrationAudit:
         register_for_course(registration.learner, registration.course, actor=actor)
 
         assert_entry(
-            action="registration.reregistered",
+            action="registration.reactivated",
             actor=actor,
             target=registration.learner,
             target_label=registration.learner.user.display_name,
@@ -390,10 +390,10 @@ class TestRegistrationAudit:
         registration = LearnerCourseRegistrationFactory(is_active=True)
         actor = UserFactory()
 
-        unregister_from_course(registration.learner, registration.course, actor=actor)
+        deactivate_registration(registration.learner, registration.course, actor=actor)
 
         assert_entry(
-            action="registration.unregistered",
+            action="registration.deactivated",
             actor=actor,
             target=registration.learner,
             target_label=registration.learner.user.display_name,
@@ -406,7 +406,7 @@ class TestRegistrationAudit:
     ):
         registration = LearnerCourseRegistrationFactory(is_active=False)
 
-        unregister_from_course(
+        deactivate_registration(
             registration.learner, registration.course, actor=UserFactory()
         )
 
@@ -419,7 +419,7 @@ class TestRegistrationAudit:
         def run_then_fail() -> None:
             with transaction.atomic():
                 register_for_course(learner, CourseFactory(), actor=UserFactory())
-                unregister_from_course(learner, registered.course, actor=UserFactory())
+                deactivate_registration(learner, registered.course, actor=UserFactory())
                 raise RuntimeError("rolled back")
 
         with pytest.raises(RuntimeError, match="rolled back"):
@@ -558,7 +558,7 @@ class TestRemoveFromCohort:
             remove_from_cohort(learner, cohort)
 
         event = WebhookEvent._base_manager.get()
-        assert event.event_type == "cohort.member_removed"
+        assert event.event_type == "cohort_membership.removed"
         assert event.payload == {
             "user_id": learner.user.pk,
             "user_email": learner.user.email,
@@ -629,7 +629,7 @@ class TestAddToCohort:
             add_to_cohort(learner, cohort)
 
         event = WebhookEvent._base_manager.get()
-        assert event.event_type == "cohort.member_added"
+        assert event.event_type == "cohort_membership.added"
         assert event.payload == {
             "user_id": learner.user.pk,
             "user_email": learner.user.email,
@@ -826,7 +826,7 @@ class TestAddLearners:
         with django_capture_on_commit_callbacks(execute=True):
             _outcome(cohort.organisation, "member@example.com", cohort)
 
-        event = WebhookEvent._base_manager.get(event_type="cohort.member_added")
+        event = WebhookEvent._base_manager.get(event_type="cohort_membership.added")
         assert event.payload["move_id"] is None
 
     def test_a_second_run_records_no_member_added_event(
@@ -901,8 +901,8 @@ class TestMoveBetweenCohorts:
         assert [
             (e.event_type, e.payload["cohort_id"], e.payload["move_id"]) for e in events
         ] == [
-            ("cohort.member_removed", str(source.pk), move_id),
-            ("cohort.member_added", str(destination.pk), move_id),
+            ("cohort_membership.removed", str(source.pk), move_id),
+            ("cohort_membership.added", str(destination.pk), move_id),
         ]
 
     def test_refuses_the_same_cohort(self, mock_site_context):
@@ -1008,7 +1008,7 @@ class TestUnregisterFromCourse:
     def test_deactivates_the_registration_and_returns_true(self, mock_site_context):
         registration = LearnerCourseRegistrationFactory(is_active=True)
 
-        changed = unregister_from_course(registration.learner, registration.course)
+        changed = deactivate_registration(registration.learner, registration.course)
 
         registration.refresh_from_db()
         assert (changed, registration.is_active) == (True, False)
@@ -1021,9 +1021,9 @@ class TestUnregisterFromCourse:
         WebhookEvent._base_manager.all().delete()
 
         with django_capture_on_commit_callbacks(execute=True):
-            unregister_from_course(learner, course)
+            deactivate_registration(learner, course)
 
-        event = WebhookEvent._base_manager.get(event_type="course.unregistered")
+        event = WebhookEvent._base_manager.get(event_type="registration.deactivated")
         assert event.payload == {
             "user_id": learner.user.pk,
             "user_email": learner.user.email,
@@ -1040,7 +1040,7 @@ class TestUnregisterFromCourse:
         WebhookEvent._base_manager.all().delete()
 
         with django_capture_on_commit_callbacks(execute=True):
-            changed = unregister_from_course(registration.learner, registration.course)
+            changed = deactivate_registration(registration.learner, registration.course)
 
         assert (changed, WebhookEvent._base_manager.count()) == (False, 0)
 

@@ -51,7 +51,7 @@ def forget_cohort(site_id: int, cohort_id: UUID) -> None:
 def _active_member_ids(cohorts: Sequence[Cohort]) -> dict[UUID, set[UUID]]:
     """Each cohort's learners still active in the organisation, in one query.
 
-    Removed learners keep their membership rows, so every reader that counts
+    Deactivated learners keep their membership rows, so every reader that counts
     or lists a cohort's people filters them out here, not by hand.
     """
     by_cohort: dict[UUID, set[UUID]] = {cohort.pk: set() for cohort in cohorts}
@@ -141,7 +141,7 @@ def _trim_progress(
 def cached_cohort_report(cohort: Cohort, *, refresh: bool = False) -> CohortReportData:
     """The cohort's report gather without the PDF-only detail, at most REPORTS_SCREEN_CACHE_SECONDS old.
 
-    Removed learners are trimmed on every read, as for the progress gather.
+    Deactivated learners are trimmed on every read, as for the progress gather.
     """
     key = _cache_key(cohort.site_id, cohort.pk, "report")
     data = None if refresh else cache.get(key)

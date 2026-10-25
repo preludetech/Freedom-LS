@@ -69,21 +69,27 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
             "Account created and setup email sent",
         ),
         ("learner.added", {"outcome": "joined"}, "Joined the organisation"),
-        ("learner.added", {"outcome": "reactivated"}, "Reactivated"),
         (
             "learner.added",
             {"outcome": "joined", "cohort": "Year 10"},
             "Joined the organisation, added to Year 10",
         ),
+        ("learner.reactivated", {}, ""),
+        ("learner.reactivated", {"cohort": "Year 10"}, "Added to Year 10"),
         (
-            "role.granted",
+            "role.assigned",
             {"role": "cohort_admin", "role_label": "Cohort admin", "scope": "Cohort A"},
             "Cohort admin on Cohort A",
         ),
         (
-            "role.removed",
+            "role.deactivated",
             {"role": "retired_role", "scope": "Cohort A"},
             "retired_role on Cohort A",
+        ),
+        (
+            "role.removed",
+            {"role": "cohort_admin", "role_label": "Cohort admin", "scope": "Cohort A"},
+            "Cohort admin on Cohort A",
         ),
     ],
 )

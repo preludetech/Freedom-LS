@@ -31,7 +31,7 @@ class LearnerFactory(SiteAwareFactory):
     Delegates to ensure_learner so that repeated calls with the same
     user/organisation return the existing row rather than violating
     unique_learner_per_organisation. ensure_learner always reactivates, so
-    ``is_active=False`` is applied afterwards to build a removed learner.
+    ``is_active=False`` is applied afterwards to build a deactivated learner.
     """
 
     class Meta:

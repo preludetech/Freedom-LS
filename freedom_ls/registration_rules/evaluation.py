@@ -256,7 +256,7 @@ def apply_rule_changes(
                     self_registered=False,
                 )
                 # Not bulk_create: the progress record and the
-                # course.registered announcement hang off post_save.
+                # registration.added announcement hang off post_save.
                 registration.save()
                 RuleRegistration._base_manager.create(
                     site_id=rule.site_id,
@@ -268,7 +268,7 @@ def apply_rule_changes(
             continue
         registered.append(learner_id)
 
-    # Reactivate. post_save announces course.registered again and notifies
+    # Reactivate. post_save announces registration.reactivated and notifies
     # nobody: a reactivation is news to integrators, not to the learner.
     _set_is_active(
         LearnerCourseRegistration._base_manager.filter(

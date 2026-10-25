@@ -933,7 +933,7 @@ def test_all_courses_hidden_course_absent_for_unregistered(
 def test_all_courses_hidden_course_absent_for_removed_learner(
     mock_site_context, course_with_topic, logged_in_client
 ):
-    """A removed learner's active registration grants nothing, so filter_visible
+    """A deactivated learner's active registration grants nothing, so filter_visible
     must drop the hidden course exactly as it would for an unregistered user."""
     course = course_with_topic(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"

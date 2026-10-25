@@ -54,8 +54,8 @@ def test_registering_then_unregistering_a_cohort_from_the_courses_tab(
     expect(row.get_by_text("Active", exact=True)).to_be_visible()
     expect(page.get_by_role("link", name="Courses 1", exact=True)).to_be_visible()
 
-    row.get_by_role("button", name="Unregister", exact=True).click()
-    modal.get_by_role("button", name="Unregister", exact=True).click()
+    row.get_by_role("button", name="Deactivate", exact=True).click()
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
     expect(row.get_by_text("Inactive", exact=True)).to_be_visible()

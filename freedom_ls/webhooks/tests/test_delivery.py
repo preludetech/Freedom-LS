@@ -36,7 +36,7 @@ class TestBuildWebhookPayload:
     @pytest.mark.django_db
     def test_returns_valid_json(self, mock_site_context: object) -> None:
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={"user_id": "abc-123"},
         )
         result = build_webhook_payload(event)
@@ -46,7 +46,7 @@ class TestBuildWebhookPayload:
     @pytest.mark.django_db
     def test_envelope_contains_required_fields(self, mock_site_context: object) -> None:
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={"user_id": "abc-123"},
         )
         result = build_webhook_payload(event)
@@ -567,7 +567,7 @@ class TestAttemptDeliveryWithTransformation:
             http_method="POST",
             auth_type="none",
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
         delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
 
         mock_response = httpx.Response(
@@ -585,7 +585,7 @@ class TestAttemptDeliveryWithTransformation:
         assert delivery.status == "success"
         sent_body = mock_request.call_args.kwargs["content"]
         parsed = json.loads(sent_body)
-        assert parsed["custom"] == "user.registered"
+        assert parsed["custom"] == "user.signed_up"
 
     def test_with_transformation_uses_rendered_headers(
         self, mock_site_context: object
@@ -830,7 +830,7 @@ class TestAttemptDeliveryWithTransformation:
             content_type="application/json",
             auth_type="none",
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
         delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
 
         mock_response = httpx.Response(
@@ -980,7 +980,7 @@ class TestBrevoPresetIntegration:
         # Create endpoint configured with the Brevo preset
         endpoint = WebhookEndpointFactory(
             url=preset.default_url,
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             http_method=preset.http_method,
             content_type=preset.content_type,
             headers_template=preset.headers_template,
@@ -991,7 +991,7 @@ class TestBrevoPresetIntegration:
 
         # Create the event
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={
                 "user_id": "abc-123",
                 "user_email": "learner@example.com",
@@ -1055,7 +1055,7 @@ class TestBrevoPresetIntegration:
         # No secrets created -- template will fail on rendering
         WebhookEndpointFactory(
             url=preset.default_url,
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             http_method=preset.http_method,
             content_type=preset.content_type,
             headers_template=preset.headers_template,
@@ -1065,7 +1065,7 @@ class TestBrevoPresetIntegration:
         )
 
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={
                 "user_id": "abc-123",
                 "user_email": "test@example.com",
@@ -1098,12 +1098,12 @@ class TestStandardWebhookIntegration:
 
         # Regular endpoint -- no transformation fields
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
         )
 
         event = WebhookEventFactory(
-            event_type="user.registered",
+            event_type="user.signed_up",
             payload={"user_id": "abc-123"},
         )
 
@@ -1134,7 +1134,7 @@ class TestStandardWebhookIntegration:
 
         # Standard envelope body
         body = json.loads(call_kwargs["content"])
-        assert body["type"] == "user.registered"
+        assert body["type"] == "user.signed_up"
         assert body["data"] == {"user_id": "abc-123"}
         assert body["id"] == str(event.pk)
         assert "timestamp" in body
@@ -1178,7 +1178,7 @@ class TestSiteIsolation:
             site=site_b,
         )
 
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         # Clear request context to simulate background task environment
         old_request = getattr(_thread_locals, "request", None)
@@ -1207,7 +1207,7 @@ class TestSiteIsolation:
 
         # Endpoint for site A
         WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
             site=site_a,
         )
@@ -1215,12 +1215,12 @@ class TestSiteIsolation:
         # Endpoint for site B
         site_b = SiteFactory(name="SiteB", domain="siteb.example.com")
         WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
             site=site_b,
         )
 
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         mock_response = httpx.Response(
             status_code=200,

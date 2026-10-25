@@ -24,7 +24,7 @@ _Last updated: 2026-10-23_
 
 A learner can hold more than one registration for the same course — most often through more than one organisation, but also by holding a cohort registration and an individual one at once. Each grants its own progress record, with its own percentage, completion time, resume pointer, and quiz-attempt history; completing the course under one leaves the other exactly as it stands. The learner interface shows one registration's progress at a time and offers no organisation switch, so the two are never seen side by side. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
-A deactivated cohort stops granting access through its course registrations; a member keeps access to a course only through an individual registration or another active cohort's registration. Progress records are neither removed nor changed, so a learner who regains access continues where they left off. Unregistering a cohort from a course works the same way: progress is kept, and registering the cohort again picks up the earlier registration and gives progress records to members who joined in the meantime.
+A deactivated cohort stops granting access through its course registrations; a member keeps access to a course only through an individual registration or another active cohort's registration. Progress records are neither removed nor changed, so a learner who regains access continues where they left off. Deactivating a cohort's course registration works the same way: progress is kept, and registering the cohort again reactivates the earlier registration and gives progress records to members who joined in the meantime.
 
 ## Progress Percentage
 

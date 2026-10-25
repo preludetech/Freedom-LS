@@ -39,7 +39,7 @@ from freedom_ls.role_based_permissions.models import (
 )
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
-    remove_site_role,
+    deactivate_site_role,
     sync_user_object_permissions,
 )
 
@@ -117,7 +117,7 @@ def _drop_other_grants(user: User, organisation: Organisation) -> list[str]:
     for site_assignment in SiteRoleAssignment._base_manager.filter(
         user=user, is_active=True
     ).select_related("site"):
-        remove_site_role(user, site_assignment.role, site=site_assignment.site)
+        deactivate_site_role(user, site_assignment.role, site=site_assignment.site)
         dropped.append(f"site {site_assignment.role} on {site_assignment.site}")
     for system_assignment in SystemRoleAssignment.objects.filter(
         user=user, is_active=True

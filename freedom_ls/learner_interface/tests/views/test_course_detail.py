@@ -375,7 +375,7 @@ def test_hidden_course_registered_user_gets_200(
 def test_hidden_course_removed_learner_gets_404(
     mock_site_context, course_with_topic, logged_in_client
 ):
-    """A removed learner's active registration grants nothing: the hidden
+    """A deactivated learner's active registration grants nothing: the hidden
     course 404s again, exactly as it would for an unregistered user."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     learner = LearnerFactory(is_active=False)

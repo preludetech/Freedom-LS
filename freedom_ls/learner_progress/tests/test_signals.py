@@ -38,8 +38,8 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
+    deactivate_cohort_registration,
     register_cohort_for_course,
-    unregister_cohort_from_course,
 )
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
@@ -572,7 +572,7 @@ class TestCourseRegisteredNotification:
         ):
             LearnerCourseRegistrationFactory(self_registered=True)
 
-        assert fire.call_args.args[0] == "course.registered"
+        assert fire.call_args.args[0] == "registration.added"
 
     def test_a_registration_created_through_the_admin_notifies_once(
         self, mock_site_context, staff_client, django_capture_on_commit_callbacks
@@ -691,7 +691,7 @@ class TestCourseRegisteredNotification:
             pytest.raises(RuntimeError),
             django_capture_on_commit_callbacks(execute=True),
         ):
-            _ensure_and_announce(registration, announce=True)
+            _ensure_and_announce(registration, announce=True, created=True)
 
         assert Notification._base_manager.filter(
             user=registration.learner.user, category="course.registered"
@@ -700,7 +700,7 @@ class TestCourseRegisteredNotification:
 
 @pytest.mark.django_db
 class TestReactivationAnnouncesTheRegistration:
-    """A reactivation fires `course.registered` for integrators and raises no
+    """A reactivation fires `registration.reactivated` for integrators and raises no
     notification: the person who reactivated it, or the learner themselves, is
     already looking at the result."""
 
@@ -732,7 +732,9 @@ class TestReactivationAnnouncesTheRegistration:
                 deactivated_registration.learner, deactivated_registration.course
             )
 
-        assert [call.args[0] for call in fire.call_args_list] == ["course.registered"]
+        assert [call.args[0] for call in fire.call_args_list] == [
+            "registration.reactivated"
+        ]
         assert not Notification._base_manager.exists()
 
     def test_the_self_registration_view_records_the_event_and_no_notification(
@@ -759,7 +761,9 @@ class TestReactivationAnnouncesTheRegistration:
         ):
             client.post(url)
 
-        assert [call.args[0] for call in fire.call_args_list] == ["course.registered"]
+        assert [call.args[0] for call in fire.call_args_list] == [
+            "registration.reactivated"
+        ]
         assert not Notification._base_manager.exists()
 
     def test_saving_the_reactivated_instance_again_records_nothing(
@@ -819,10 +823,10 @@ class TestReactivationAnnouncesTheRegistration:
 # transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestCourseRegisteredWebhookEvent:
-    def test_creating_a_registration_fires_course_registered_with_the_full_payload(
+    def test_creating_a_registration_fires_registration_added_with_the_full_payload(
         self, mock_site_context: object
     ) -> None:
-        """Creating a new LearnerCourseRegistration fires course.registered event."""
+        """Creating a new LearnerCourseRegistration fires registration.added."""
         with patch(
             "freedom_ls.webhooks.events.fire_webhook_event_for_site"
         ) as mock_fire:
@@ -830,7 +834,7 @@ class TestCourseRegisteredWebhookEvent:
 
         record = CourseProgress.objects.get(learner_registration=registration)
         mock_fire.assert_called_once_with(
-            "course.registered",
+            "registration.added",
             {
                 "user_id": registration.learner.user_id,
                 "user_email": registration.learner.user.email,
@@ -855,14 +859,14 @@ class TestCourseRegisteredWebhookEvent:
             registration.is_active = False
             registration.save()
 
-        assert "course.registered" not in [
+        assert not {"registration.added", "registration.reactivated"} & {
             call.args[0] for call in mock_fire.call_args_list
-        ]
+        }
 
-    def test_deactivating_a_loaded_registration_fires_course_unregistered(
+    def test_deactivating_a_loaded_registration_fires_registration_deactivated(
         self, mock_site_context: object
     ) -> None:
-        """A registration turned off outside unregister_from_course -- the
+        """A registration turned off outside deactivate_registration -- the
         admin, a command, an import -- is announced all the same."""
         created = LearnerCourseRegistrationFactory()
         registration = LearnerCourseRegistration.objects.get(pk=created.pk)
@@ -873,7 +877,7 @@ class TestCourseRegisteredWebhookEvent:
             registration.save()
 
         mock_fire.assert_called_once_with(
-            "course.unregistered",
+            "registration.deactivated",
             {
                 "user_id": learner.user.pk,
                 "user_email": learner.user.email,
@@ -888,7 +892,7 @@ class TestCourseRegisteredWebhookEvent:
 
 @pytest.mark.django_db(transaction=True)
 class TestCohortRegistrationWebhookEvents:
-    def test_registering_a_cohort_fires_no_learner_course_registered_event(
+    def test_registering_a_cohort_fires_no_learner_registration_event(
         self, mock_site_context: object
     ) -> None:
         cohort = CohortFactory()
@@ -896,17 +900,25 @@ class TestCohortRegistrationWebhookEvents:
 
         register_cohort_for_course(cohort, course)
 
-        assert not _webhook_events().filter(event_type="course.registered").exists()
+        assert (
+            not _webhook_events()
+            .filter(event_type__startswith="registration.")
+            .exists()
+        )
 
-    def test_unregistering_a_cohort_fires_no_learner_course_registered_event(
+    def test_deactivating_a_cohort_registration_fires_no_learner_registration_event(
         self, mock_site_context: object
     ) -> None:
         registration = CohortCourseRegistrationFactory()
         _webhook_events().delete()
 
-        unregister_cohort_from_course(registration)
+        deactivate_cohort_registration(registration)
 
-        assert not _webhook_events().filter(event_type="course.registered").exists()
+        assert (
+            not _webhook_events()
+            .filter(event_type__startswith="registration.")
+            .exists()
+        )
 
 
 @pytest.mark.django_db
@@ -930,7 +942,7 @@ class TestReRegisteringACohort:
         with django_capture_on_commit_callbacks(execute=True):
             registration = CohortCourseRegistrationFactory()
             member = CohortMembershipFactory(cohort=registration.cohort)
-        unregister_cohort_from_course(registration)
+        deactivate_cohort_registration(registration)
         record = CourseProgress.objects.get(
             learner=member.learner, cohort_registration=registration
         )

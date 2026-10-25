@@ -409,7 +409,7 @@ def test_a_rule_made_registration_fires_the_webhook_with_no_request(
         evaluate_rule(rule.pk, rule.site_id)
 
     # Assert
-    event = WebhookEvent._base_manager.get(event_type="course.registered")
+    event = WebhookEvent._base_manager.get(event_type="registration.added")
     assert event.site_id == rule.site_id
     assert event.payload["course_id"] == str(rule.course_id)
 
@@ -669,7 +669,7 @@ def test_reactivating_announces_course_registered_to_integrators(
         evaluate_rule(title_rule.pk, title_rule.site_id)
 
     # Assert
-    event = WebhookEvent._base_manager.get(event_type="course.registered")
+    event = WebhookEvent._base_manager.get(event_type="registration.reactivated")
     assert event.site_id == title_rule.site_id
     assert event.payload["course_id"] == str(registration.course_id)
     assert event.payload["user_id"] == unmatched_learner.user_id
@@ -690,7 +690,7 @@ def test_retracting_announces_course_unregistered_to_integrators(
         evaluate_rule(title_rule.pk, title_rule.site_id)
 
     # Assert
-    event = WebhookEvent._base_manager.get(event_type="course.unregistered")
+    event = WebhookEvent._base_manager.get(event_type="registration.deactivated")
     assert event.site_id == title_rule.site_id
     assert event.payload["course_id"] == str(registration.course_id)
     assert event.payload["learner_id"] == str(unmatched_learner.pk)

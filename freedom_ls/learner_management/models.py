@@ -156,7 +156,7 @@ class Learner(LoadedIsActiveMixin, SiteAwareModel):
     cannot be represented.
 
     Self-service registration on the default organisation reactivates a
-    removed learner rather than refusing it: registering again is treated as
+    deactivated learner rather than refusing it: registering again is treated as
     a live signal of re-association, so ensure_learner overwrites
     is_active=False instead of erroring on it.
     """

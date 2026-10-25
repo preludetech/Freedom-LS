@@ -34,7 +34,7 @@ def announce_user_registered(request: HttpRequest, user: User) -> None:
     from freedom_ls.webhooks.events import fire_webhook_event
 
     fire_webhook_event(
-        "user.registered",
+        "user.signed_up",
         {
             "user_id": user.pk,
             "user_email": user.email,

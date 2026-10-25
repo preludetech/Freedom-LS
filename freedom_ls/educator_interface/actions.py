@@ -55,11 +55,11 @@ from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
     deactivate_learner,
+    deactivate_registration,
     move_between_cohorts,
     reactivate_learner,
     register_for_course,
     remove_from_cohort,
-    unregister_from_course,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -90,17 +90,17 @@ from freedom_ls.learner_management.role_assignment import (
     CHANGE_MEMBER,
     GrantableRole,
     assign_role,
+    deactivate_role,
     grantable_roles,
     is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
-    remove_role,
     set_organisation_member_active,
 )
 from freedom_ls.learner_management.utils import (
+    deactivate_cohort_registration,
     ensure_organisation_member,
     register_cohort_for_course,
-    unregister_cohort_from_course,
 )
 from freedom_ls.learner_progress.utils import move_progress_preview
 from freedom_ls.organisations.models import Organisation
@@ -184,7 +184,7 @@ def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpRespon
 
 def cohort_not_empty_sentence(cohort: Cohort) -> str:
     """Why a cohort cannot be deleted, counting everything deletion would
-    cascade away: removed learners and inactive registrations included.
+    cascade away: deactivated learners and inactive registrations included.
     Empty for an empty cohort, so one call tells a caller both things."""
     learners = cohort.cohortmembership_set.count()
     registrations = cohort.course_registrations.count()
@@ -199,7 +199,7 @@ def cohort_not_empty_sentence(cohort: Cohort) -> str:
         return ""
     return (
         f"{cohort} can't be deleted while it has {join_prose(parts)}, counting "
-        "removed learners and inactive registrations."
+        "inactive learners and inactive registrations."
     )
 
 
@@ -401,7 +401,7 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
     """Deletes a cohort that has no memberships and no course registrations.
 
     A cohort that is not empty is neither offered the action nor allowed to
-    submit it: deletion would cascade away removed learners' memberships and
+    submit it: deletion would cascade away deactivated learners' memberships and
     inactive registrations, which nobody sees on the page.
     """
 
@@ -611,21 +611,23 @@ class ResendSetupEmailAction(PanelAction):
 KEEPING_NAMES_SHOWN = 10
 
 
-class UnregisterCohortFromCourseAction(
+class DeactivateCohortRegistrationAction(
     ReasonMixin, RequiresActiveCohortMixin, PanelAction
 ):
-    """Withdraws one of the cohort's active course registrations, after
+    """Deactivates one of the cohort's active course registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the courses tab and renders per row there, never
     as a footer button."""
 
-    label = "Unregister"
-    action_name = "unregister"
+    label = "Deactivate"
+    action_name = "deactivate_cohort_registration"
     variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_cohortcourseregistration"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/unregister_confirmation.html"
+    template_name = (
+        "educator_interface/modal/deactivate_cohort_registration_confirmation.html"
+    )
 
     def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
         return get_object_or_404(
@@ -657,7 +659,7 @@ class UnregisterCohortFromCourseAction(
         return context
 
     def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
-        unregister_cohort_from_course(
+        deactivate_cohort_registration(
             self._registration(ctx),
             actor=cast("User", ctx.request.user),
             reason=submitted_reason(self, ctx),
@@ -720,19 +722,19 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         return _registration_changed_response(self._learner)
 
 
-class UnregisterLearnerFromCourseAction(ReasonMixin, PanelAction):
-    """Withdraws one of the learner's active individual registrations, after
+class DeactivateRegistrationAction(ReasonMixin, PanelAction):
+    """Deactivates one of the learner's active individual registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the registrations card and renders per row there,
     never as a footer button."""
 
-    label = "Unregister"
-    action_name = "unregister_from_course"
+    label = "Deactivate"
+    action_name = "deactivate_registration"
     variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_learnercourseregistration"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/unregister_from_course_confirmation.html"
+    template_name = "educator_interface/modal/deactivate_registration_confirmation.html"
 
     def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
         registrations = LearnerCourseRegistration.objects.filter(
@@ -776,7 +778,7 @@ class UnregisterLearnerFromCourseAction(ReasonMixin, PanelAction):
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        unregister_from_course(
+        deactivate_registration(
             learner,
             self._registration(ctx).course,
             actor=cast("User", ctx.request.user),
@@ -785,18 +787,18 @@ class UnregisterLearnerFromCourseAction(ReasonMixin, PanelAction):
         return _registration_changed_response(learner)
 
 
-class ReregisterLearnerForCourseAction(PanelAction):
+class ReactivateRegistrationAction(PanelAction):
     """Reactivates one of the learner's inactive individual registrations,
-    after confirmation. Like unregistering, the registration travels as a
+    after confirmation. Like deactivating, the registration travels as a
     `registration` parameter and the action renders per row."""
 
-    label = "Re-register"
-    action_name = "reregister_for_course"
+    label = "Reactivate"
+    action_name = "reactivate_registration"
     variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_learnercourseregistration"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/reregister_confirmation.html"
+    template_name = "educator_interface/modal/reactivate_registration_confirmation.html"
 
     def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
         registrations = LearnerCourseRegistration.objects.filter(
@@ -917,7 +919,7 @@ class MembershipAction(PanelAction):
             scoped = cast("OrganisationScopedRequest", ctx.request)
             learner = get_object_or_404(
                 learners_visible_to(
-                    scoped.user, scoped.organisation, include_removed=True
+                    scoped.user, scoped.organisation, include_inactive=True
                 ),
                 pk=_uuid_param(ctx.request, "learner"),
             )
@@ -1423,7 +1425,7 @@ def _held_pairs(user: User, organisation: Organisation) -> set[tuple[str, str]]:
 def member_state(user: User | None, organisation: Organisation) -> str:
     """Where a role given now would land: "new" for an account not yet
     created, "missing" for one with no OrganisationMember row here,
-    "inactive" for a suspended row, else "active"."""
+    "inactive" for an inactive row, else "active"."""
     if user is None:
         return "new"
     member = OrganisationMember.objects.filter(
@@ -1856,16 +1858,16 @@ class MemberRoleAction(PanelAction):
         raise Http404("The member does not hold this role")
 
 
-class RemoveRoleAction(ReasonMixin, MemberRoleAction):
+class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
     """Takes one role entry off a member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
     cohort in reach is a 404 dialog and a 403 submit, since the trigger
     renders by role alone."""
 
-    label = "Remove"
-    action_name = "remove_role"
-    template_name = "educator_interface/modal/remove_role_confirmation.html"
+    label = "Deactivate role"
+    action_name = "deactivate_role"
+    template_name = "educator_interface/modal/deactivate_role_confirmation.html"
 
     def _split(
         self, ctx: PanelContext, entry: RoleEntry
@@ -1944,7 +1946,7 @@ class RemoveRoleAction(ReasonMixin, MemberRoleAction):
         try:
             with transaction.atomic():
                 for target in targets:
-                    remove_role(
+                    deactivate_role(
                         cast("User", ctx.request.user),
                         user,
                         entry.role,
@@ -2054,7 +2056,7 @@ class ChangeCohortsAction(MemberRoleAction):
                 for cohort in plan.added:
                     assign_role(grantor, user, entry.role, cohort)
                 for cohort in plan.removed:
-                    remove_role(grantor, user, entry.role, cohort)
+                    deactivate_role(grantor, user, entry.role, cohort)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
         return member_changed_response(user)
@@ -2112,10 +2114,10 @@ class MemberStateAction(PanelAction):
         ).first()
 
 
-class SuspendMemberAction(ReasonMixin, MemberStateAction):
-    label = "Suspend"
-    action_name = "suspend"
-    template_name = "educator_interface/modal/suspend_member_confirmation.html"
+class DeactivateMemberAction(ReasonMixin, MemberStateAction):
+    label = "Deactivate"
+    action_name = "deactivate"
+    template_name = "educator_interface/modal/deactivate_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
@@ -2141,7 +2143,7 @@ class SuspendMemberAction(ReasonMixin, MemberStateAction):
         user = _member_param(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
-            raise Http404("The member is already suspended")
+            raise Http404("The member is already inactive")
         try:
             set_organisation_member_active(
                 cast("User", ctx.request.user),

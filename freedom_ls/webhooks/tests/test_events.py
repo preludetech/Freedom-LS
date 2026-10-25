@@ -33,19 +33,19 @@ class TestFireWebhookEvent:
 
         assert WebhookEvent.objects.count() == 0
 
-        fire_webhook_event("user.registered", {"user_id": "abc-123"})
+        fire_webhook_event("user.signed_up", {"user_id": "abc-123"})
 
         assert WebhookEvent.objects.count() == 1
         event = WebhookEvent.objects.first()
         assert event is not None
-        assert event.event_type == "user.registered"
+        assert event.event_type == "user.signed_up"
         assert event.payload == {"user_id": "abc-123"}
 
     def test_enqueues_dispatch_event_task(self, mock_site_context: object) -> None:
         from freedom_ls.webhooks.events import fire_webhook_event
 
         with patch("freedom_ls.webhooks.events.default_task_backend") as mock_backend:
-            fire_webhook_event("user.registered", {"user_id": "abc-123"})
+            fire_webhook_event("user.signed_up", {"user_id": "abc-123"})
 
         event = WebhookEvent.objects.first()
         assert event is not None
@@ -81,7 +81,7 @@ class TestFireWebhookEventForSite:
         drop_ambient_request()
 
         with patch("freedom_ls.webhooks.events.default_task_backend") as mock_backend:
-            fire_webhook_event_for_site("user.registered", {"user_id": "abc"}, site_id)
+            fire_webhook_event_for_site("user.signed_up", {"user_id": "abc"}, site_id)
 
         event = WebhookEvent._base_manager.get()
         assert event.site_id == site_id
@@ -107,7 +107,7 @@ class TestFireWebhookEventForSite:
 
         drop_ambient_request()
 
-        fire_webhook_event("user.registered", {"user_id": "abc"})
+        fire_webhook_event("user.signed_up", {"user_id": "abc"})
 
         assert not WebhookEvent._base_manager.exists()
 
@@ -120,10 +120,10 @@ class TestDispatchEvent:
         from freedom_ls.webhooks.events import dispatch_event
 
         endpoint = WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -142,12 +142,12 @@ class TestDispatchEvent:
     ) -> None:
         from freedom_ls.webhooks.events import dispatch_event
 
-        # Endpoint subscribes to course.completed, not user.registered
+        # Endpoint subscribes to course.completed, not user.signed_up
         WebhookEndpointFactory(
             event_types=["course.completed"],
             is_active=True,
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -160,11 +160,11 @@ class TestDispatchEvent:
 
         # Manually disabled endpoint (is_active=False, disabled_at=None)
         WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=False,
             disabled_at=None,
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -183,11 +183,11 @@ class TestDispatchEvent:
 
         # Endpoint circuit-broken over an hour ago — circuit breaker allows probe
         WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
             disabled_at=timezone.now() - timedelta(hours=1, minutes=1),
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -200,9 +200,9 @@ class TestDispatchEvent:
     ) -> None:
         from freedom_ls.webhooks.events import dispatch_event
 
-        WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
-        WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
-        event = WebhookEventFactory(event_type="user.registered")
+        WebhookEndpointFactory(event_types=["user.signed_up"], is_active=True)
+        WebhookEndpointFactory(event_types=["user.signed_up"], is_active=True)
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -226,8 +226,8 @@ class TestDispatchEvent:
     def test_dispatch_event_is_idempotent(self, mock_site_context: object) -> None:
         from freedom_ls.webhooks.events import dispatch_event
 
-        WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
-        event = WebhookEventFactory(event_type="user.registered")
+        WebhookEndpointFactory(event_types=["user.signed_up"], is_active=True)
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -240,16 +240,16 @@ class TestDispatchEvent:
         from freedom_ls.webhooks.events import dispatch_event
 
         # Create an endpoint for the current site
-        WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
+        WebhookEndpointFactory(event_types=["user.signed_up"], is_active=True)
 
         # Create endpoint for a different site
         other_site = SiteFactory()
         WebhookEndpointFactory(
-            event_types=["user.registered"],
+            event_types=["user.signed_up"],
             is_active=True,
             site=other_site,
         )
-        event = WebhookEventFactory(event_type="user.registered")
+        event = WebhookEventFactory(event_type="user.signed_up")
 
         with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
             dispatch_event(str(event.pk), mock_site_context.pk)
@@ -261,8 +261,8 @@ class TestDispatchEvent:
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
-def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None:
-    """POST to the signup URL should create a WebhookEvent with type 'user.registered'."""
+def test_signup_creates_user_signed_up_webhook_event(mock_site_context) -> None:
+    """POST to the signup URL should create a WebhookEvent with type 'user.signed_up'."""
     assert WebhookEvent.objects.count() == 0
 
     # Mock attempt_delivery so we don't make real HTTP requests (system boundary).
@@ -282,7 +282,7 @@ def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None
 
     assert response.status_code == 302  # successful signup redirects
 
-    events = list(WebhookEvent.objects.filter(event_type="user.registered"))
+    events = list(WebhookEvent.objects.filter(event_type="user.signed_up"))
     assert len(events) == 1
     event = events[0]
     assert event.payload["user_email"] == "integration-test@example.com"
@@ -296,9 +296,9 @@ class TestFireWebhookEventWithoutRequest:
 
         site = SiteFactory()
 
-        fire_webhook_event("user.registered", {"user_id": "abc-123"}, site=site)
+        fire_webhook_event("user.signed_up", {"user_id": "abc-123"}, site=site)
 
-        event = WebhookEvent._base_manager.get(event_type="user.registered")
+        event = WebhookEvent._base_manager.get(event_type="user.signed_up")
         assert event.site_id == site.pk
 
     def test_no_site_and_no_request_records_nothing(self) -> None:
@@ -307,7 +307,7 @@ class TestFireWebhookEventWithoutRequest:
 
         drop_ambient_request()
 
-        fire_webhook_event("user.registered", {"user_id": "abc-123"})
+        fire_webhook_event("user.signed_up", {"user_id": "abc-123"})
 
         assert WebhookEvent._base_manager.count() == 0
 

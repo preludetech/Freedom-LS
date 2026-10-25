@@ -2796,12 +2796,12 @@ def test_claim_post_removes_the_applicant_from_the_session_map(
 
 
 @pytest.mark.django_db
-def test_claim_post_fires_the_user_registered_webhook_once(client, claimable):
+def test_claim_post_fires_the_user_signed_up_webhook_once(client, claimable):
     with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
         _claim(client, claimable)
 
     assert fire.call_count == 1
-    assert fire.call_args.args[0] == "user.registered"
+    assert fire.call_args.args[0] == "user.signed_up"
 
 
 @pytest.mark.django_db
@@ -2992,13 +2992,13 @@ def test_claim_post_of_a_draft_writes_the_consent(client, claimable_draft):
 
 
 @pytest.mark.django_db
-def test_claim_post_of_a_draft_fires_the_user_registered_webhook_once(
+def test_claim_post_of_a_draft_fires_the_user_signed_up_webhook_once(
     client, claimable_draft
 ):
     with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
         _claim(client, claimable_draft)
 
-    assert (fire.call_count, fire.call_args.args[0]) == (1, "user.registered")
+    assert (fire.call_count, fire.call_args.args[0]) == (1, "user.signed_up")
 
 
 @pytest.mark.django_db

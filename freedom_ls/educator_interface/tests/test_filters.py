@@ -200,11 +200,11 @@ def _status_learners() -> dict[str, Learner]:
     pending.user.set_unusable_password()
     pending.user.save(update_fields=["password"])
     removed = cast(Learner, LearnerFactory(organisation=organisation, is_active=False))
-    return {"active": active, "pending": pending, "removed": removed}
+    return {"active": active, "pending": pending, "inactive": removed}
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("status", ["active", "pending", "removed"])
+@pytest.mark.parametrize("status", ["active", "pending", "inactive"])
 def test_status_filter_narrows_to_each_status(status: str) -> None:
     learners = _status_learners()
 
@@ -520,7 +520,7 @@ def test_a_user_value_matches_only_that_actors_entries(audit_request):
 def test_the_action_filter_narrows_by_code(audit_request):
     request, organisation = audit_request
     created = AuditLogEntryFactory(target=organisation, action="cohort.created")
-    AuditLogEntryFactory(target=organisation, action="role.granted")
+    AuditLogEntryFactory(target=organisation, action="role.assigned")
 
     assert _entry_pks(request, AuditActionFilter(), ["cohort.created"]) == {created.pk}
 

@@ -1,8 +1,8 @@
 {% comment %}
-The modal fragment a ReregisterLearnerForCourseAction's GET returns. Context:
+The modal fragment a ReactivateRegistrationAction's GET returns. Context:
 learner, registration, course, confirm_url, and refusal on a 422 re-render.
 {% endcomment %}
-<c-modal-header>Register {{ learner.user.display_name }} for {{ course }} again?</c-modal-header>
+<c-modal-header>Reactivate {{ learner.user.display_name }}'s registration for {{ course }}?</c-modal-header>
 
 <div class="space-y-3 px-6 py-4 text-sm">
     {% if refusal %}
@@ -18,8 +18,8 @@ learner, registration, course, confirm_url, and refusal on a 422 re-render.
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']">
         <input type="hidden" name="registration" value="{{ registration.pk }}">
-        <c-button type="submit" variant="primary" loading="true" loading_text="Registering...">
-            Re-register
+        <c-button type="submit" variant="primary" loading="true" loading_text="Reactivating...">
+            Reactivate
         </c-button>
     </form>
 </c-button-group>

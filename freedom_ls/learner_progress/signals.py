@@ -128,14 +128,19 @@ def recalculate_course_progress_on_form_attempt(
 
 
 def _ensure_and_announce(
-    registration: LearnerCourseRegistration, *, announce: bool, notify: bool = True
+    registration: LearnerCourseRegistration,
+    *,
+    announce: bool,
+    created: bool,
+    notify: bool = True,
 ) -> None:
     """Mint this registration's record, then announce it.
 
-    `announce` and `notify` are decided when the signal is received, not here:
-    by the time the transaction commits, `created` is long gone.
+    `announce`, `created` and `notify` are decided when the signal is received,
+    not here: by the time the transaction commits, `created` is long gone.
 
-    Integrators hear about every registration, a reactivation included. The
+    Integrators hear about every registration, as `registration.added` for a
+    new one and `registration.reactivated` for one switched back on. The
     learner is only notified when someone else registered them: a learner who
     registered themselves is already in the course, and whoever reactivates a
     registration is looking at the result.
@@ -165,7 +170,7 @@ def _ensure_and_announce(
         )
 
     fire_webhook_event_for_site(
-        "course.registered",
+        "registration.added" if created else "registration.reactivated",
         {
             "user_id": learner.user_id,
             "user_email": learner.user.email,
@@ -179,14 +184,14 @@ def _ensure_and_announce(
     )
 
 
-def _announce_unregistered(registration: LearnerCourseRegistration) -> None:
-    """Tell integrators a registration was withdrawn, whichever path withdrew it."""
+def _announce_deactivated(registration: LearnerCourseRegistration) -> None:
+    """Tell integrators a registration was deactivated, whichever path did it."""
     learner = Learner._base_manager.select_related("user").get(
         pk=registration.learner_id
     )
     course = registration.course
     fire_webhook_event_on_commit(
-        "course.unregistered",
+        "registration.deactivated",
         {
             **learner_webhook_payload(learner),
             "course_id": str(course.pk),
@@ -210,12 +215,12 @@ def _ensure_for_membership(membership: CohortMembership) -> None:
 
 # Registration is what grants a record, so these three receivers are the only
 # place records are minted. There is deliberately no post_delete counterpart:
-# removing a membership, withdrawing a registration and deactivating a learner
+# removing a membership, deactivating a registration and deactivating a learner
 # are access decisions, and none of them retires work already recorded.
 #
 # on_commit throughout, for two reasons. A cohort fan-out half-visible to a
 # concurrent reader before the registration itself commits would be worse than
-# no fan-out at all; and deferring is what lets course.registered be announced
+# no fan-out at all; and deferring is what lets registration.added be announced
 # only once the record it names exists.
 
 
@@ -237,15 +242,15 @@ def ensure_course_progress_on_learner_registration(
         not created and instance.loaded_is_active is True and not instance.is_active
     )
     if deactivated:
-        _announce_unregistered(instance)
+        _announce_deactivated(instance)
     if not instance.is_active:
-        # A withdrawn registration grants nothing: not on a deactivating save,
+        # An inactive registration grants nothing: not on a deactivating save,
         # and not on a creation either -- an import of a past enrolment would
         # otherwise announce one that was never active.
         return
     transaction.on_commit(
         lambda: _ensure_and_announce(
-            instance, announce=created or reactivated, notify=created
+            instance, announce=created or reactivated, created=created, notify=created
         )
     )
 

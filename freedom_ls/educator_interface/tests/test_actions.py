@@ -56,7 +56,7 @@ from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
 from freedom_ls.learner_management.role_assignment import (
     GrantableRole,
     assign_role,
-    remove_role,
+    deactivate_role,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -161,7 +161,7 @@ def test_deactivate_fragment_says_why_a_non_empty_cohort_cannot_be_deleted(
 
     assert (
         "Evening group can't be deleted while it has 1 learner and 1 course "
-        "registration, counting removed learners and inactive registrations." in text
+        "registration, counting inactive learners and inactive registrations." in text
     )
 
 
@@ -288,7 +288,7 @@ def test_a_reason_posted_to_a_dialog_without_a_reason_field_is_ignored(
 
 
 @pytest.mark.django_db
-def test_cohort_not_empty_sentence_counts_removed_learners_and_inactive_registrations(
+def test_cohort_not_empty_sentence_counts_inactive_learners_and_inactive_registrations(
     mock_site_context,
 ):
     organisation = OrganisationFactory()
@@ -304,7 +304,7 @@ def test_cohort_not_empty_sentence_counts_removed_learners_and_inactive_registra
 
     assert sentence == (
         "Evening group can't be deleted while it has 2 learners and 1 course "
-        "registration, counting removed learners and inactive registrations."
+        "registration, counting inactive learners and inactive registrations."
     )
 
 
@@ -487,7 +487,9 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
 
 
 def _unregister_post_url(organisation: Organisation, cohort: Cohort) -> str:
-    return _cohort_url(organisation, cohort, "/__tabs/courses/__actions/unregister")
+    return _cohort_url(
+        organisation, cohort, "/__tabs/courses/__actions/deactivate_cohort_registration"
+    )
 
 
 def _unregister_url(
@@ -526,7 +528,7 @@ def test_unregister_fragment_title_names_the_cohort_and_course(staff_client: Cli
         staff_client, _unregister_url(organisation, cohort, registration)
     )
 
-    assert "Unregister Evening group from Algebra" in text
+    assert "Deactivate Evening group's registration for Algebra" in text
 
 
 @pytest.mark.django_db
@@ -748,7 +750,11 @@ def test_the_courses_tab_footer_offers_register_but_no_unregister_button(
     ]
     register_url = _register_url(organisation, cohort)
     assert register_url in footer_urls
-    assert not [url for url in footer_urls if url.endswith("/__actions/unregister")]
+    assert not [
+        url
+        for url in footer_urls
+        if url.endswith("/__actions/deactivate_cohort_registration")
+    ]
 
 
 @pytest.mark.django_db
@@ -2205,7 +2211,7 @@ def _learner_unregister_url(organisation: Organisation, learner: Learner) -> str
     return _interface_url(
         organisation.slug,
         f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
-        "/__actions/unregister_from_course",
+        "/__actions/deactivate_registration",
     )
 
 
@@ -2430,7 +2436,7 @@ def _learner_reregister_url(organisation: Organisation, learner: Learner) -> str
     return _interface_url(
         organisation.slug,
         f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
-        "/__actions/reregister_for_course",
+        "/__actions/reactivate_registration",
     )
 
 
@@ -2439,7 +2445,7 @@ def _reregister_triggers(client: Client, url: str) -> list[str]:
     return [
         button.get("hx-get") or ""
         for button in document.cssselect("button[hx-get]")
-        if "reregister_for_course" in (button.get("hx-get") or "")
+        if "reactivate_registration" in (button.get("hx-get") or "")
     ]
 
 
@@ -2476,7 +2482,7 @@ def test_reregister_fragment_names_the_learner_and_the_course(staff_client: Clie
         + f"?registration={registration.pk}",
     )
 
-    assert f"Register {learner.user.display_name} for Algebra again?" in text
+    assert f"Reactivate {learner.user.display_name}'s registration for Algebra?" in text
 
 
 @pytest.mark.django_db
@@ -3631,7 +3637,7 @@ def test_a_cohort_of_another_organisation_is_a_form_error_and_writes_nothing(
 
 
 def _remove_role_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "members/__actions/remove_role")
+    return _interface_url(organisation.slug, "members/__actions/deactivate_role")
 
 
 def _member_holding(
@@ -3675,7 +3681,7 @@ def test_the_remove_confirmation_names_the_person_the_role_and_the_scope(
 
     text = _text(_remove_dialog(admin_client, organisation, user, "cohort_admin"))
 
-    assert "Remove Ada Lovelace from Cohort admin" in text
+    assert "Deactivate Cohort admin for Ada Lovelace" in text
     assert (
         "They lose Cohort admin on Evening group: Manages the learners and course registrations in their cohorts."
         in text
@@ -3945,7 +3951,7 @@ def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
     cohorts = [_cohort(organisation), _cohort(organisation)]
     user = _member_holding("cohort_viewer", cohorts)
     before = _active_roles(user)
-    real_remove_role = remove_role
+    real_remove_role = deactivate_role
     calls: list[Cohort] = []
 
     def refuse_second(grantor, target_user, role, target, **kwargs):
@@ -3955,7 +3961,7 @@ def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
         real_remove_role(grantor, target_user, role, target, **kwargs)
 
     monkeypatch.setattr(
-        "freedom_ls.educator_interface.actions.remove_role", refuse_second
+        "freedom_ls.educator_interface.actions.deactivate_role", refuse_second
     )
 
     response = _remove(admin_client, organisation, user, "cohort_viewer")
@@ -4105,7 +4111,7 @@ def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
     text = _text(response)
     assert "Adds: Newly given" in text
     assert "will be able to do more than they can now" in text
-    assert "Removes:" not in text
+    assert "Deactivates on:" not in text
 
 
 @pytest.mark.django_db
@@ -4137,7 +4143,7 @@ def test_the_confirmation_for_a_removed_cohort_names_the_loss(
     response = _change(admin_client, organisation, user, [kept], confirmed=False)
 
     text = _text(response)
-    assert "Removes: Let go" in text
+    assert "Deactivates on: Let go" in text
     assert "will be able to do more" not in text
     assert "Adds:" not in text
 
@@ -4154,7 +4160,7 @@ def test_the_confirmation_for_an_added_and_a_removed_cohort_names_both(
 
     text = _text(response)
     assert "Adds: Added one" in text
-    assert "Removes: Dropped one" in text
+    assert "Deactivates on: Dropped one" in text
 
 
 @pytest.mark.django_db
@@ -4167,9 +4173,9 @@ def test_the_confirmation_for_every_cohort_removed_uses_the_remove_wording(
     response = _change(admin_client, organisation, user, [], confirmed=False)
 
     document = lxml.html.fromstring(response.content.decode())
-    assert f"Remove {user.display_name} from Cohort viewer" in _text(response)
+    assert f"Deactivate Cohort viewer for {user.display_name}" in _text(response)
     (button,) = document.cssselect("button[type=submit]")
-    assert button.text_content().split()[0] == "Remove"
+    assert button.text_content().split()[0] == "Deactivate"
 
 
 @pytest.mark.django_db
@@ -4319,7 +4325,7 @@ def test_the_confirmation_for_a_suspended_member_says_the_cohorts_wait_for_react
         _change(admin_client, organisation, user, [held, added], confirmed=False)
     )
 
-    assert "is suspended here, so the added cohorts take effect only once" in text
+    assert "is inactive here, so the added cohorts take effect only once" in text
     assert "has no active membership here" not in text
 
 
@@ -4348,7 +4354,7 @@ def test_a_refusal_partway_through_a_change_keeps_every_assignment(
     def refuse(*args: object, **kwargs: object) -> None:
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
 
-    monkeypatch.setattr("freedom_ls.educator_interface.actions.remove_role", refuse)
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.deactivate_role", refuse)
 
     response = _change(admin_client, organisation, user, [added])
 
@@ -4380,7 +4386,7 @@ def _member_row(user: User, organisation: Organisation) -> OrganisationMember:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("action", ["suspend", "reactivate"])
+@pytest.mark.parametrize("action", ["deactivate", "reactivate"])
 def test_the_state_dialogs_leave_the_member_row_unchanged(
     admin_client, organisation, action
 ):
@@ -4398,9 +4404,9 @@ def test_the_suspend_dialog_says_they_keep_their_roles(admin_client, organisatio
         "cohort_viewer", _cohort(organisation), first_name="Ada", last_name="Lovelace"
     )
 
-    text = _text(_state_dialog(admin_client, organisation, user, "suspend"))
+    text = _text(_state_dialog(admin_client, organisation, user, "deactivate"))
 
-    assert "Suspend Ada Lovelace" in text
+    assert "Deactivate Ada Lovelace" in text
     assert (
         f"They keep their roles but can do nothing in {organisation.name} "
         "until reactivated."
@@ -4416,7 +4422,7 @@ def test_suspending_stops_a_cohort_capability_and_answers_204(
     capability = "freedom_ls_learner_management.view_cohort"
     assert can(user, capability, cohort)
 
-    response = _state_post(admin_client, organisation, user, "suspend")
+    response = _state_post(admin_client, organisation, user, "deactivate")
 
     assert response.status_code == 204
     assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
@@ -4494,7 +4500,7 @@ def test_an_organisation_admin_suspending_the_last_organisation_admin_is_422(
         lambda *args: True,
     )
 
-    response = _state_post(admin_client, organisation, sole, "suspend")
+    response = _state_post(admin_client, organisation, sole, "deactivate")
 
     assert response.status_code == 422
     assert "Ada is this organisation's only organisation admin." in _text(response)
@@ -4514,8 +4520,8 @@ def test_a_site_admin_is_warned_in_the_suspend_dialog_and_succeeds(
     )
     client = logged_in_client(site_admin)
 
-    dialog = _text(_state_dialog(client, organisation, sole, "suspend"))
-    response = _state_post(client, organisation, sole, "suspend")
+    dialog = _text(_state_dialog(client, organisation, sole, "deactivate"))
+    response = _state_post(client, organisation, sole, "deactivate")
 
     assert "Ada Lovelace is the only organisation admin." in dialog
     assert response.status_code == 204
@@ -4528,7 +4534,7 @@ def test_the_suspend_dialog_has_no_warning_while_another_organisation_admin_rema
 ):
     other = _member_holding("organisation_admin", organisation)
 
-    text = _text(_state_dialog(admin_client, organisation, other, "suspend"))
+    text = _text(_state_dialog(admin_client, organisation, other, "deactivate"))
 
     assert "only organisation admin" not in text
 
@@ -4540,7 +4546,7 @@ def test_a_stale_suspend_of_an_inactive_row_answers_the_unavailable_fragment(
     user = _member_holding("cohort_viewer", _cohort(organisation))
     OrganisationMember.objects.filter(user=user).update(is_active=False)
 
-    response = _state_post(admin_client, organisation, user, "suspend")
+    response = _state_post(admin_client, organisation, user, "deactivate")
 
     assert response.status_code == 404
     assert "This is no longer available" in response.content.decode()
@@ -4553,7 +4559,7 @@ def test_a_stale_suspend_of_a_member_with_no_row_answers_the_unavailable_fragmen
     user = _member_holding("cohort_viewer", _cohort(organisation))
     OrganisationMember.objects.filter(user=user).delete()
 
-    response = _state_post(admin_client, organisation, user, "suspend")
+    response = _state_post(admin_client, organisation, user, "deactivate")
 
     assert response.status_code == 404
 
@@ -4576,7 +4582,7 @@ def test_suspending_yourself_is_422_with_the_self_message(
 ):
     client, me = _holder_client(logged_in_client, organisation)
 
-    response = _state_post(client, organisation, me, "suspend")
+    response = _state_post(client, organisation, me, "deactivate")
 
     assert response.status_code == 422
     assert "You can't change your own roles." in _text(response)
@@ -4584,7 +4590,7 @@ def test_suspending_yourself_is_422_with_the_self_message(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("action", ["suspend", "reactivate"])
+@pytest.mark.parametrize("action", ["deactivate", "reactivate"])
 def test_a_state_change_for_a_non_member_answers_the_unavailable_fragment(
     admin_client, organisation, action
 ):
@@ -4600,7 +4606,9 @@ def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
         "cohort_viewer", _cohort(organisation), first_name="<b>Bold</b>"
     )
 
-    html = _state_dialog(admin_client, organisation, user, "suspend").content.decode()
+    html = _state_dialog(
+        admin_client, organisation, user, "deactivate"
+    ).content.decode()
 
     assert "<b>Bold</b>" not in html
     assert "&lt;b&gt;Bold&lt;/b&gt;" in html
@@ -4961,7 +4969,7 @@ def test_reregistering_a_learner_writes_an_entry_by_the_logged_in_user(
     )
 
     entry = AuditLogEntry.unscoped.get()
-    assert (entry.action, entry.actor) == ("registration.reregistered", actor)
+    assert (entry.action, entry.actor) == ("registration.reactivated", actor)
 
 
 @pytest.mark.django_db
@@ -4980,7 +4988,7 @@ def test_unregistering_a_learner_writes_an_entry_by_the_logged_in_user(
     )
 
     entry = AuditLogEntry.unscoped.get()
-    assert (entry.action, entry.actor) == ("registration.unregistered", actor)
+    assert (entry.action, entry.actor) == ("registration.deactivated", actor)
 
 
 @pytest.mark.django_db
@@ -5016,7 +5024,7 @@ def test_unregistering_a_cohort_writes_an_entry_by_the_logged_in_user(
     )
 
     entry = AuditLogEntry.unscoped.get()
-    assert (entry.action, entry.actor) == ("cohort_registration.unregistered", actor)
+    assert (entry.action, entry.actor) == ("cohort_registration.deactivated", actor)
 
 
 @pytest.mark.django_db
@@ -5326,7 +5334,7 @@ def _reason_remove_role(organisation: Organisation) -> _DialogRequest:
 
 def _reason_suspend_member(organisation: Organisation) -> _DialogRequest:
     user = _member_holding("cohort_viewer", _cohort(organisation))
-    return _state_url(organisation, "suspend"), {"user": str(user.pk)}
+    return _state_url(organisation, "deactivate"), {"user": str(user.pk)}
 
 
 REASON_DIALOGS = [

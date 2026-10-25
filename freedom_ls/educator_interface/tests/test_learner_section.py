@@ -149,7 +149,7 @@ def test_learners_list_shows_a_removed_learner_when_filtered_to_removed(
     removed.save(update_fields=["is_active"])
 
     response = educator_client(organisation).get(
-        _learners_url(organisation.slug), {"learners-status": "removed"}
+        _learners_url(organisation.slug), {"learners-status": "inactive"}
     )
 
     assert "Grace" in response.content.decode()

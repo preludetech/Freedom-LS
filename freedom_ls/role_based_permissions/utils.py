@@ -262,7 +262,7 @@ def _record_role_change(
     role: str,
     reason: str = "",
 ) -> None:
-    """One audit entry for a role granted to or removed from `user` on
+    """One audit entry for a role assigned to or deactivated for `user` on
     `target`. The target's own name is the scope label; every role target
     (an organisation, a cohort, a site, a course) stringifies to its name or
     title. The role's display name is stored with the entry, like the other
@@ -316,22 +316,22 @@ def assign_object_role(
 
         sync_user_object_permissions(user, target)
         if created or fields_to_update:
-            _record_role_change("role.granted", assigned_by, user, target, role)
+            _record_role_change("role.assigned", assigned_by, user, target, role)
     return assignment
 
 
-def remove_object_role(
+def deactivate_object_role(
     user: User,
     target: SiteAwareModelBase,
     role: str,
-    removed_by: User | None = None,
+    deactivated_by: User | None = None,
     *,
     reason: str = "",
 ) -> None:
-    """Remove an object-level role from a user on a target object.
+    """Deactivate a user's object-level role on a target object.
 
     Deactivates the ObjectRoleAssignment, resyncs guardian permissions and
-    records the removal when an active assignment was deactivated.
+    records the change when an active assignment was deactivated.
     """
     check_role_name_in_config(role, site_name=site_of(target).name)
     ct = ContentType.objects.get_for_model(target)
@@ -345,7 +345,9 @@ def remove_object_role(
         ).update(is_active=False, updated_at=timezone.now())
         sync_user_object_permissions(user, target)
         if removed:
-            _record_role_change("role.removed", removed_by, user, target, role, reason)
+            _record_role_change(
+                "role.deactivated", deactivated_by, user, target, role, reason
+            )
 
 
 def assign_site_role(
@@ -383,27 +385,27 @@ def assign_site_role(
 
         sync_user_object_permissions(user, site)
         if created or fields_to_update:
-            _record_role_change("role.granted", assigned_by, user, site, role)
+            _record_role_change("role.assigned", assigned_by, user, site, role)
     return assignment
 
 
-def remove_site_role(
+def deactivate_site_role(
     user: User,
     role: str,
     site: Site | None = None,
-    removed_by: User | None = None,
+    deactivated_by: User | None = None,
     *,
     reason: str = "",
 ) -> None:
-    """Remove a site-level role from a user on a site.
+    """Deactivate a user's site-level role on a site.
 
     Deactivates the SiteRoleAssignment, then resyncs guardian permissions
-    on the Site object. Refuses to remove a user's last active site_admin
+    on the Site object. Refuses to deactivate a user's last active site_admin
     assignment on a site, so a site is never left without one.
 
     Args:
-        site: The site to remove the role from. Defaults to the current site.
-        removed_by: The user performing the removal, recorded as the actor of
+        site: The site the role is on. Defaults to the current site.
+        deactivated_by: The user deactivating the role, recorded as the actor of
             the audit entry; none logs as the system.
         reason: Free text stored on the audit entry.
     """
@@ -433,7 +435,9 @@ def remove_site_role(
             is_active=True,
         ).update(is_active=False, updated_at=timezone.now())
         if removed:
-            _record_role_change("role.removed", removed_by, user, site, role, reason)
+            _record_role_change(
+                "role.deactivated", deactivated_by, user, site, role, reason
+            )
     sync_user_object_permissions(user, site)
 
 
@@ -464,12 +468,12 @@ def assign_system_role(
     return assignment
 
 
-def remove_system_role(
+def deactivate_system_role(
     user: User,
     role: str,
-    removed_by: User | None = None,
+    deactivated_by: User | None = None,
 ) -> None:
-    """Remove a system-level role from a user.
+    """Deactivate a user's system-level role.
 
     Deactivates the SystemRoleAssignment. No guardian sync.
     """
@@ -478,7 +482,7 @@ def remove_system_role(
         user=user,
         role=role,
     ).update(is_active=False, updated_at=timezone.now())
-    # TODO: AuditLog entry for system role removal (use removed_by)
+    # TODO: AuditLog entry for system role deactivation (use deactivated_by)
 
 
 def get_course_roles(user: User, course: Model) -> set[str]:

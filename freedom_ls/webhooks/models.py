@@ -282,12 +282,12 @@ class WebhookEndpoint(SiteAwareModel):
         secret values so rendered output is realistic.
         """
         # Use the first subscribed event type, or fall back to first available sample
-        event_type = "user.registered"
+        event_type = "user.signed_up"
         if self.event_types:
             event_type = self.event_types[0]
 
         sample_data = WEBHOOK_EVENT_TYPE_SAMPLES.get(
-            event_type, WEBHOOK_EVENT_TYPE_SAMPLES.get("user.registered", {})
+            event_type, WEBHOOK_EVENT_TYPE_SAMPLES.get("user.signed_up", {})
         )
 
         # Load actual secrets for this site so rendered output is valid

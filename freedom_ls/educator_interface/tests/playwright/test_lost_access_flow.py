@@ -23,7 +23,7 @@ from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.role_based_permissions.utils import remove_object_role
+from freedom_ls.role_based_permissions.utils import deactivate_object_role
 from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
 from .helpers import interface_url
@@ -58,7 +58,7 @@ def test_a_navigation_click_after_losing_access_lands_on_the_not_found_page(
     cohorts_link = page.locator("#sidebar-nav").get_by_role("link", name="Cohorts")
     expect(cohorts_link).to_be_visible()
 
-    remove_object_role(educator_user, organisation, "organisation_admin")
+    deactivate_object_role(educator_user, organisation, "organisation_admin")
     cohorts_link.click()
 
     expect(page.get_by_role("heading", name=_NOT_FOUND_HEADING)).to_be_visible()
@@ -82,7 +82,7 @@ def test_a_confirm_in_an_open_dialog_after_losing_access_lands_on_the_not_found_
     modal = page.locator("#app-modal")
     expect(modal.get_by_text("They lose")).to_be_visible()
 
-    remove_object_role(educator_user, organisation, "organisation_admin")
+    deactivate_object_role(educator_user, organisation, "organisation_admin")
     modal.get_by_role("button", name="Remove", exact=True).click()
 
     expect(page.get_by_role("heading", name=_NOT_FOUND_HEADING)).to_be_visible()

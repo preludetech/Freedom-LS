@@ -169,7 +169,7 @@ def learner_sort_key(user: User) -> tuple[str, str]:
 def load_active_memberships(cohort: Cohort, site_id: int) -> QuerySet[CohortMembership]:
     """Memberships whose learner is still active in the organisation, with the user loaded.
 
-    Removed learners keep their membership rows, so every reader that counts
+    Deactivated learners keep their membership rows, so every reader that counts
     or lists a cohort's people filters them out here, not by hand.
     """
     return CohortMembership.objects.filter(
@@ -199,7 +199,7 @@ def load_registrations(cohort: Cohort, site_id: int) -> list[CohortCourseRegistr
 def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
     """The cohort's active members in report order, refusing a cohort too large to render.
 
-    Removed learners are gone before the size check, so they do not count toward
+    Deactivated learners are gone before the size check, so they do not count toward
     REPORTS_MAX_LEARNERS.
     """
     memberships = list(load_active_memberships(cohort, site_id))

@@ -29,7 +29,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 
 
@@ -117,7 +117,7 @@ def test_denied_create_cohort_action_answers_403_naming_an_organisation_admin(
     list_response = client.get(_interface_url(organisation.slug, "cohorts"))
     assert list_response.status_code == 200
 
-    remove_object_role(user, organisation, "organisation_admin")
+    deactivate_object_role(user, organisation, "organisation_admin")
 
     create_response = client.post(
         _interface_url(organisation.slug, "cohorts/__actions/create_cohort"),
@@ -196,7 +196,7 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
     )
     assert client.get(delete_url, HTTP_HX_REQUEST="true").status_code == 200
 
-    remove_object_role(user, organisation, "organisation_admin")
+    deactivate_object_role(user, organisation, "organisation_admin")
 
     response = client.delete(delete_url, HTTP_HX_REQUEST="true")
 
@@ -260,7 +260,7 @@ def test_a_cohort_viewers_pasted_unregister_url_answers_403(
     response = client.get(
         _interface_url(
             organisation.slug,
-            f"cohorts/{cohort.pk}/__tabs/courses/__actions/unregister",
+            f"cohorts/{cohort.pk}/__tabs/courses/__actions/deactivate_cohort_registration",
         ),
         {"registration": str(registration.pk)},
         HTTP_HX_REQUEST="true",
@@ -348,10 +348,10 @@ def test_a_member_who_lost_every_role_gets_404_on_members_and_the_unavailable_fr
     assign_object_role(target, cohort, "cohort_viewer")
     client = logged_in_client(user)
     members_url = _interface_url(organisation.slug, "members")
-    action_url = _interface_url(organisation.slug, "members/__actions/remove_role")
+    action_url = _interface_url(organisation.slug, "members/__actions/deactivate_role")
     assert client.get(members_url).status_code == 200
 
-    remove_object_role(user, organisation, "organisation_admin")
+    deactivate_object_role(user, organisation, "organisation_admin")
 
     stale = client.post(
         action_url,

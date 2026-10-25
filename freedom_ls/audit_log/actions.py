@@ -30,12 +30,17 @@ class AuditAction:
 _ADDED_OUTCOMES = {
     "created": "Account created and setup email sent",
     "joined": "Joined the organisation",
-    "reactivated": "Reactivated",
 }
 
 
 def _describe_cohort(entry: AuditLogEntry) -> str:
     return str(entry.details.get("cohort", ""))
+
+
+def _describe_joined_cohort(entry: AuditLogEntry) -> str:
+    """The cohort a learner joined in the same change, when there was one."""
+    cohort = entry.details.get("cohort")
+    return f"Added to {cohort}" if cohort else ""
 
 
 def _describe_course(entry: AuditLogEntry) -> str:
@@ -81,17 +86,17 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("learner.added", "Learner added", _describe_learner_added),
     AuditAction("learner.renamed", "Learner renamed", _describe_rename),
     AuditAction("learner.deactivated", "Learner deactivated"),
-    AuditAction("learner.reactivated", "Learner reactivated"),
+    AuditAction("learner.reactivated", "Learner reactivated", _describe_joined_cohort),
     AuditAction("learner.setup_email_resent", "Setup email resent"),
     AuditAction("cohort_membership.added", "Added to cohort", _describe_cohort),
     AuditAction("cohort_membership.removed", "Removed from cohort", _describe_cohort),
     AuditAction("cohort_membership.moved", "Moved between cohorts", _describe_move),
     AuditAction("registration.added", "Registered for course", _describe_course),
     AuditAction(
-        "registration.reregistered", "Re-registered for course", _describe_course
+        "registration.reactivated", "Registration reactivated", _describe_course
     ),
     AuditAction(
-        "registration.unregistered", "Unregistered from course", _describe_course
+        "registration.deactivated", "Registration deactivated", _describe_course
     ),
     AuditAction("cohort.created", "Cohort created"),
     AuditAction("cohort.renamed", "Cohort renamed", _describe_rename),
@@ -102,18 +107,19 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "cohort_registration.added", "Cohort registered for course", _describe_course
     ),
     AuditAction(
-        "cohort_registration.reregistered",
-        "Cohort re-registered for course",
+        "cohort_registration.reactivated",
+        "Cohort registration reactivated",
         _describe_course,
     ),
     AuditAction(
-        "cohort_registration.unregistered",
-        "Cohort unregistered from course",
+        "cohort_registration.deactivated",
+        "Cohort registration deactivated",
         _describe_course,
     ),
-    AuditAction("role.granted", "Role granted", _describe_role),
+    AuditAction("role.assigned", "Role assigned", _describe_role),
+    AuditAction("role.deactivated", "Role deactivated", _describe_role),
     AuditAction("role.removed", "Role removed", _describe_role),
-    AuditAction("member.suspended", "Member suspended"),
+    AuditAction("member.deactivated", "Member deactivated"),
     AuditAction("member.reactivated", "Member reactivated"),
     AuditAction(
         "bulk_action.completed", "Bulk action completed", _describe_run_summary

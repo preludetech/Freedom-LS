@@ -185,11 +185,11 @@ def test_a_run_summary_within_the_row_limit_is_not_truncated(mock_site_context):
 def test_a_run_summary_stores_the_bulk_action_only_when_given(mock_site_context):
     organisation = OrganisationFactory()
 
-    with_action = _summary(organisation, bulk_action="deactivate_learners")
+    with_action = _summary(organisation, bulk_action="learner.deactivated")
     without = _summary(organisation)
 
     assert (with_action.details["bulk_action"], set(without.details)) == (
-        "deactivate_learners",
+        "learner.deactivated",
         {"counts", "rows", "truncated"},
     )
 

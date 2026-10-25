@@ -350,7 +350,7 @@ class TestCrossOrganisationIsolation:
         response = isolation.client.get(
             _interface_url(
                 isolation.organisation_a.slug,
-                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/unregister",
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/deactivate_cohort_registration",
             ),
             {"registration": str(foreign.pk)},
             HTTP_HX_REQUEST="true",
@@ -927,7 +927,7 @@ class TestLearnerRegistrationIsolation:
         "path",
         [
             "__actions/register_for_course",
-            "__tabs/overview/__panels/registrations/__actions/unregister_from_course",
+            "__tabs/overview/__panels/registrations/__actions/deactivate_registration",
         ],
     )
     def test_another_organisations_learner_answers_404(

@@ -66,7 +66,7 @@ _SCOPE_LOOKUPS = {
 def narrow_learners(
     learners: models.QuerySet[Learner], scope: str, cohort_id: str | UUID
 ) -> models.QuerySet[Learner]:
-    """The learners a cohort admits under ``scope``, removed ones included.
+    """The learners a cohort admits under ``scope``, deactivated ones included.
 
     One definition for both halves of the rule -- the options a dropdown offers
     and the queryset that validates what comes back. If they drifted, someone
@@ -296,7 +296,7 @@ class CohortMembershipInline(TabularInline):
         # scope to until the form is saved. The queryset validates the learner
         # that comes back; the widget scopes the options offered, which
         # otherwise come unfiltered from the shared autocomplete endpoint.
-        # Removed learners must stay in the queryset -- it also validates the
+        # Deactivated learners must stay in the queryset -- it also validates the
         # inline rows that already exist, so excluding them would make a cohort
         # holding one impossible to save.
         if db_field.name == "learner" and request.resolver_match:

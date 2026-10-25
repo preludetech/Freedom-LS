@@ -517,7 +517,7 @@ class TestUserRegisteredWebhookEvent:
 
         mock_super_save.assert_called_once()
         mock_fire.assert_called_once_with(
-            "user.registered",
+            "user.signed_up",
             {
                 "user_id": user.pk,
                 "user_email": user.email,

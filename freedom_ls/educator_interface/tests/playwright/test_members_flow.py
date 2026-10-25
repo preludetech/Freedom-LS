@@ -82,9 +82,9 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     expect(row.get_by_text("Alpha Cohort")).to_be_visible()
     expect(row.get_by_text("Beta Cohort")).to_have_count(0)
 
-    row.get_by_role("button", name="Remove", exact=True).click()
+    row.get_by_role("button", name="Deactivate role", exact=True).click()
     expect(modal.get_by_text("They lose")).to_be_visible()
-    modal.get_by_role("button", name="Remove", exact=True).click()
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
     expect(main.get_by_text("Erin Existing")).to_have_count(0)
@@ -145,8 +145,8 @@ def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
     expect(card).to_be_visible()
 
     for control in (
-        card.get_by_role("button", name="Remove", exact=True),
-        card.get_by_role("button", name="Suspend", exact=True),
+        card.get_by_role("button", name="Deactivate role", exact=True),
+        card.get_by_role("button", name="Deactivate", exact=True),
         main.get_by_role("button", name="Filter"),
         main.get_by_role("button", name="Sort"),
     ):

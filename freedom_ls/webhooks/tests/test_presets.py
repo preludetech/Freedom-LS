@@ -47,7 +47,7 @@ class TestBrevoCreateContactPreset:
         context = {
             "event": {
                 "id": "sample-uuid-0000",
-                "type": "user.registered",
+                "type": "user.signed_up",
                 "timestamp": "2026-01-01T00:00:00Z",
                 "data": {
                     "user_id": "sample-uuid-1234",

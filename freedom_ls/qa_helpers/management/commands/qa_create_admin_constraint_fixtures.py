@@ -176,7 +176,7 @@ def command(site_name: str) -> None:
         site,
         ENDPOINT_ONE_URL,
         description="QA Endpoint One (templated, uses qa_hook_api_key)",
-        event_types=["user.registered", "course.registered"],
+        event_types=["user.signed_up", "registration.added"],
         http_method="POST",
         content_type="application/json",
         auth_type="none",

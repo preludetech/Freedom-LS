@@ -73,7 +73,7 @@ for the row and **child** for the resolved object.
 | **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. Learner-facing copy says "Deadline" and "Missed deadline", never "Due" or "Overdue". |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
 | `is_registered_for_course` | `learner_management/utils.py:16` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
-| `ensure_learner` | `learner_management/utils.py:51` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |
+| `ensure_learner` | `learner_management/utils.py:51` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a deactivated row. The only supported way to make one. |
 | `CourseAccessDecision`, `CourseAccessBackend`, `CourseAccessType` | `course_access/backends.py:41`, `:95`, `:177` | The pluggable access layer. Note the `*Decision` suffix — it is the house pattern for a resolver's return value. |
 
 ### `Learner` — read this before naming anything nearby
@@ -92,9 +92,10 @@ through two client organisations has **two `Learner` rows and one `User`**.
   (`learner_progress/queries.py`) resolves which one a piece of work lands on, the same way
   `learner_for_course` resolves the registration. Nothing filters `CourseProgress`, `TopicProgress` or
   `FormProgress` by hand outside a short, named list of read paths — go through `course_progress_for`.
-- **`is_active=False` means "removed from this organisation"**, never deleted. Nothing cascades: a
-  removed learner keeps their registrations, memberships and progress. It is filtered explicitly at
-  every call site — there is deliberately no manager that hides removed rows.
+- **`is_active=False` means the learner is deactivated in this organisation**, never deleted.
+  Nothing cascades: a deactivated learner keeps their registrations, memberships and progress. It is
+  filtered explicitly at every call site — there is deliberately no manager that hides deactivated
+  rows.
 - **Never construct one directly.** Use `ensure_learner`.
 - **`learners_visible_to`** (`learner_management/queries.py:261`) returns `Learner` rows and replaced
   the deleted `users_visible_to`. Don't reintroduce a user-shaped sibling.
@@ -166,6 +167,40 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 
 ---
 
+## Changes — `freedom_ls/audit_log/actions.py`, `freedom_ls/base/webhook_event_types.py`
+
+A change to the system is named once, as a `noun.verb` code. The audit action and the webhook
+event type for the same change are **the same string**: `registration.deactivated` is what the
+audit log stores and what a receiver gets as `type`. The full table of codes, with the label each
+shows in the UI, is `freedom_ls/audit_log/README.md`; `freedom_ls/audit_log/tests/test_vocabulary.py`
+fails a code that steps outside this section.
+
+The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
+(a `LearnerCourseRegistration`), `cohort_registration`, `role`, `member` (an `OrganisationMember`),
+`user`, `course`, `bulk_action`, `import`. The verb comes from this list and nowhere else:
+
+| Verb | Means | Not |
+| --- | --- | --- |
+| `created` | A standalone object now exists: `cohort.created`. | |
+| `added` | An association now exists: a learner in an organisation (`learner.added`), in a cohort (`cohort_membership.added`), or registered for a course (`registration.added`, `cohort_registration.added`). | `registered`, `enrolled`, `granted` |
+| `deactivated` / `reactivated` | An `is_active` flag went False / True, on any model that has one. | `unregistered`, `suspended`, `removed`, `revoked`, `reregistered` |
+| `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort). | |
+| `deleted` | A standalone object was deleted: `cohort.deleted`. | |
+| `assigned` | A role was given to a user. Its opposite is `role.deactivated`. | `granted` |
+| `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
+
+The words a person reads follow the same verbs:
+
+- **Buttons and dialogs** use the verb: Deactivate, Reactivate, Remove, Delete, Register, Assign.
+- **The state** of a row whose `is_active` is False is **Inactive** — in a badge, a filter, a status
+  column. Not "Removed", "Suspended" or "Deactivated".
+- **A registration that exists** is "Registered" (`registration.added` reads "Registered for
+  course"); one switched off has its "Registration deactivated".
+- A webhook event that is also an audit action carries the audit action's label. A webhook-only
+  event (`user.signed_up`, `course.completed`) follows the same `noun.verb` shape.
+
+---
+
 ## Words that are already taken
 
 Do not give these a second meaning.
@@ -178,7 +213,9 @@ Do not give these a second meaning.
 | **slot** | `Course.accent_slot`, palette slots, cotton template slots. | Something else. |
 | **course item** | Positional content in a course — `view_course_item`, `_paginate_course_items` (the educator matrix columns), `docs/product/educator-interface.md`. Today it means the resolved `Topic`/`Form`. | Only reuse it deliberately, and say so. |
 | **collection** | `ContentCollectionItem.collection` only. | Keep it for that; don't widen it. |
-| **is_active** | Four different things across several models: removed-from-organisation (`Learner`), registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`), and a list entry retired from the pickers (`JobTitle`, `Department`, `Location`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. |
+| **is_active** | Several different things across several models: a learner active in the organisation (`Learner`), a registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`), an active cohort (`Cohort`), a member active in the organisation (`OrganisationMember`), a role assignment in force (`SiteRoleAssignment`, `ObjectRoleAssignment`), and a list entry retired from the pickers (`JobTitle`, `Department`, `Location`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. Setting it to False is **deactivating**; setting it back is **reactivating**; the state is **Inactive** — in UI copy, audit log labels, webhook event types, identifiers and docs alike (see the Changes section above). Not "unregister", "suspend", "remove" or "revoke": those either name a different action or invent a new one. "Remove" and "delete" are kept for rows that are actually deleted, such as a `CohortMembership`. The one exception is the list entries, which are **retired**. |
+| **registered**, **registration** | Course access: a `LearnerCourseRegistration` or `CohortCourseRegistration`. | For an account being created: **signup** (`SiteSignupPolicy`, `user.signed_up`). |
+| **removed** | A row that was actually deleted (`cohort_membership.removed`, `role.removed`). | For an `is_active` flip: **deactivated**; for the state: **inactive**. |
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
@@ -220,6 +257,8 @@ The codebase has caught up. `learner-terminology-rename` moved the three apps to
   nouns, and the vocabulary of last resort.
 - `docs/product/README.md` — the index, and one-paragraph definitions of every concept.
   `docs/product/learner-tracking.md` is the progress vocabulary; `learner-experience.md` the player's.
+- `freedom_ls/audit_log/README.md` — every audit action code with its label, target and details,
+  and which of them are also webhook event types.
 - `docs/app_structure.md` — the canonical app names and the authoritative dependency graph.
 - `claude_plugins/fls-content/skills/content-types/SKILL.md` — the author-facing `content_type` values.
 - `freedom_ls/content_base/schema.py` — `ContentType` as a `StrEnum`.

@@ -1,4 +1,4 @@
-"""Tests for the checked assignment utilities: assign_role, remove_role and
+"""Tests for the checked assignment utilities: assign_role, deactivate_role and
 set_organisation_member_active."""
 
 from __future__ import annotations
@@ -25,11 +25,11 @@ from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
     CHANGE_MEMBER,
     assign_role,
+    deactivate_role,
     grantable_roles,
     is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
-    remove_role,
     set_organisation_member_active,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -144,7 +144,7 @@ def test_a_site_admin_removing_the_last_organisation_admin_succeeds(
     admin = UserFactory()
     assign_object_role(admin, organisation, "organisation_admin")
 
-    remove_role(grantor, admin, "organisation_admin", organisation)
+    deactivate_role(grantor, admin, "organisation_admin", organisation)
 
     assert not ObjectRoleAssignment.objects.filter(
         user=admin, role="organisation_admin", is_active=True
@@ -160,7 +160,7 @@ def test_the_last_organisation_admin_removing_themselves_is_refused_as_self(
     assign_object_role(admin, organisation, "organisation_admin")
 
     with pytest.raises(RoleChangeRefused) as exc_info:
-        remove_role(admin, admin, "organisation_admin", organisation)
+        deactivate_role(admin, admin, "organisation_admin", organisation)
 
     assert exc_info.value.reason == RefusalReason.SELF
     assert ObjectRoleAssignment.objects.filter(
@@ -244,7 +244,7 @@ def test_removing_site_admin_through_remove_role_surfaces_last_site_admin(
     assign_site_role(sole_admin, "site_admin")
 
     with pytest.raises(RoleChangeRefused) as exc_info:
-        remove_role(grantor, sole_admin, "site_admin", mock_site_context)
+        deactivate_role(grantor, sole_admin, "site_admin", mock_site_context)
 
     assert exc_info.value.reason == RefusalReason.LAST_SITE_ADMIN
     assert SiteRoleAssignment.objects.filter(
@@ -263,7 +263,7 @@ def test_removing_an_organisation_admin_locks_the_organisation_row(
     assign_object_role(other_admin, organisation, "organisation_admin")
 
     with CaptureQueriesContext(connection) as captured:
-        remove_role(grantor, other_admin, "organisation_admin", organisation)
+        deactivate_role(grantor, other_admin, "organisation_admin", organisation)
 
     assert any(
         "freedom_ls_organisations_organisation" in query["sql"]
@@ -310,7 +310,7 @@ def test_removing_a_cohort_role_takes_no_lock(mock_site_context: Site) -> None:
     assign_object_role(viewer, cohort, "cohort_viewer")
 
     with CaptureQueriesContext(connection) as captured:
-        remove_role(grantor, viewer, "cohort_viewer", cohort)
+        deactivate_role(grantor, viewer, "cohort_viewer", cohort)
 
     assert not _locks_the_organisation_row(captured)
 
@@ -585,7 +585,7 @@ class TestMemberAndRoleAudit:
         set_organisation_member_active(actor, member, False, reason="Left")
 
         assert_entry(
-            action="member.suspended",
+            action="member.deactivated",
             actor=actor,
             target=member,
             target_label=member.user.display_name,
@@ -644,13 +644,13 @@ class TestMemberAndRoleAudit:
         actor = UserFactory(superuser=True)
         member = OrganisationMemberFactory()
 
-        def suspend() -> None:
+        def deactivate() -> None:
             with transaction.atomic():
                 set_organisation_member_active(actor, member, False)
                 raise RuntimeError
 
         with pytest.raises(RuntimeError):
-            suspend()
+            deactivate()
 
         assert AuditLogEntry.unscoped.count() == 0
 
@@ -663,6 +663,9 @@ class TestMemberAndRoleAudit:
         user = UserFactory()
         assign_role(grantor, user, "cohort_admin", cohort)
 
-        remove_role(grantor, user, "cohort_admin", cohort, reason="Moved teams")
+        deactivate_role(grantor, user, "cohort_admin", cohort, reason="Moved teams")
 
-        assert AuditLogEntry.unscoped.get(action="role.removed").reason == "Moved teams"
+        assert (
+            AuditLogEntry.unscoped.get(action="role.deactivated").reason
+            == "Moved teams"
+        )

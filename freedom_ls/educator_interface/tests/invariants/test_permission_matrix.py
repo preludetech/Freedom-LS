@@ -523,7 +523,7 @@ def test_learners_visible_to_agrees_with_can_on_every_learner(
             continue
         learner = cast(Learner, scope)
         visible = (
-            learners_visible_to(user, learner.organisation, include_removed=True)
+            learners_visible_to(user, learner.organisation, include_inactive=True)
             .filter(pk=learner.pk)
             .exists()
         )

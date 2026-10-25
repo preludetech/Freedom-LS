@@ -306,7 +306,7 @@ class TestWebhookEndpointFormTransformation:
             data={
                 "url": "https://example.com/webhook",
                 "description": "Test endpoint",
-                "event_types": ["user.registered"],
+                "event_types": ["user.signed_up"],
                 "is_active": True,
                 "http_method": "POST",
                 "content_type": "application/json",
@@ -335,7 +335,7 @@ class TestWebhookEndpointFormTransformation:
             data={
                 "url": "https://example.com/webhook",
                 "description": "Test endpoint",
-                "event_types": ["user.registered"],
+                "event_types": ["user.signed_up"],
                 "is_active": True,
                 "http_method": "POST",
                 "content_type": "application/json",
@@ -358,7 +358,7 @@ class TestWebhookEndpointFormTransformation:
             data={
                 "url": "https://api.brevo.com/v3/events",
                 "description": "Brevo endpoint",
-                "event_types": ["user.registered"],
+                "event_types": ["user.signed_up"],
                 "is_active": True,
                 "http_method": "POST",
                 "content_type": "application/json",

@@ -4,8 +4,8 @@ Builds three organisations,
 four cohorts (including the same cohort name in two organisations, which is
 what proves the narrowed uniqueness constraint), and eight personas —
 including a learner registered through two organisations, one with a Learner
-row but no enrolment at all, and a removed learner whose enrolment records are
-preserved while their access is suspended.
+row but no enrolment at all, and a deactivated learner whose enrolment records are
+preserved while their access is switched off.
 
 Everything is created on ONE site (default: DemoDev — the site
 ``FORCE_SITE_NAME`` pins the dev server to, whatever port it listens on).
@@ -297,7 +297,7 @@ def _ensure_user_registration(
 
 
 def _ensure_removed_learner(organisation: Organisation, user: User) -> Learner:
-    """Write a removed Learner directly.
+    """Write a deactivated Learner directly.
 
     is_active=False is exactly what ensure_learner will not produce — it
     always reactivates the row on write — so this bypasses it and writes the
@@ -319,7 +319,7 @@ def _ensure_active_registration_for_learner(
 
     Takes the Learner instance directly rather than learner__user= /
     learner__organisation= traversal, so LearnerFactory's ensure_learner call
-    never runs here — that call would otherwise reactivate a removed learner
+    never runs here — that call would otherwise reactivate a deactivated learner
     as a side effect of registering them.
     """
     if not LearnerCourseRegistration.objects.filter(
@@ -429,7 +429,7 @@ def _seed(site: Site) -> None:
     )
     ensure_learner(unregistered_learner, rpas)
 
-    # Rita Removed: records preserved, access suspended — a removed Learner in
+    # Rita Removed: records preserved, access switched off — a deactivated Learner in
     # RPAS Training that still carries an active course registration.
     removed_user = _ensure_user(site, "removed.learner@example.com", "Rita", "Removed")
     removed_learner = _ensure_removed_learner(rpas, removed_user)
@@ -478,7 +478,7 @@ def _seed(site: Site) -> None:
         fg="green",
     )
     click.secho(
-        f"LEARNER {removed_user.email!r} is a removed Learner (is_active="
+        f"LEARNER {removed_user.email!r} is a deactivated Learner (is_active="
         f"{removed_learner.is_active}) in {rpas.name!r}, with an active "
         f"registration for {solo_course.slug!r}",
         fg="green",

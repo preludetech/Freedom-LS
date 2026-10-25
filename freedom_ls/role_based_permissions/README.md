@@ -12,7 +12,7 @@ Permissions are organized into three scopes:
 | **Site** | `SiteRoleAssignment` | Admin of a specific site |
 | **Object** | `ObjectRoleAssignment` | Instructor on a specific cohort |
 
-Each role is a named collection of permission strings. When a role is assigned or removed, the system automatically syncs the corresponding guardian object permissions so that standard Django permission checks (`user.has_perm("app.codename", obj)`) work as expected.
+Each role is a named collection of permission strings. When a role is assigned or deactivated, the system automatically syncs the corresponding guardian object permissions so that standard Django permission checks (`user.has_perm("app.codename", obj)`) work as expected.
 
 ## Quick start
 
@@ -23,9 +23,9 @@ from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
     assign_system_role,
-    remove_object_role,
-    remove_site_role,
-    remove_system_role,
+    deactivate_object_role,
+    deactivate_site_role,
+    deactivate_system_role,
 )
 
 # Assign a site-level role (permissions synced to the Site object)
@@ -37,10 +37,10 @@ assign_object_role(user, cohort, "cohort_admin", assigned_by=admin_user)
 # Assign a system-level role (no guardian sync — global scope)
 assign_system_role(user, "system_admin", assigned_by=admin_user)
 
-# Remove roles (guardian permissions updated automatically)
-remove_site_role(user, "site_admin")
-remove_object_role(user, cohort, "cohort_admin")
-remove_system_role(user, "system_admin")
+# Deactivate roles (guardian permissions updated automatically)
+deactivate_site_role(user, "site_admin")
+deactivate_object_role(user, cohort, "cohort_admin")
+deactivate_system_role(user, "system_admin")
 ```
 
 ### Checking permissions

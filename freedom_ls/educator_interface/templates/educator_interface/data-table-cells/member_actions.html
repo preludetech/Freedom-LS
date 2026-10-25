@@ -1,8 +1,8 @@
 {% comment %}
 The actions column of a member row. The viewer's own row has no actions, only
 a note that their roles are changed by someone else. Another member's row
-offers Suspend or Reactivate, except a site-level admin's or a turned-off
-account's, which a suspension would not change.
+offers Deactivate or Reactivate, except a site-level admin's or a turned-off
+account's, which deactivating would not change.
 {% endcomment %}
 {% if object.pk == viewer.pk %}
     <span class="flex items-center gap-2 text-sm text-muted">
@@ -10,9 +10,9 @@ account's, which a suspension would not change.
         You can't change your own roles. Ask another organisation admin.
     </span>
 {% elif object.is_active and not object.is_site_level %}
-    {% if not object.is_suspended and row_action_urls.suspend %}
-        <c-modal-trigger url="{{ row_action_urls.suspend }}?user={{ object.pk }}" label="Suspend" variant="secondary" />
-    {% elif object.is_suspended and row_action_urls.reactivate %}
+    {% if not object.is_inactive and row_action_urls.deactivate %}
+        <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate" variant="secondary" />
+    {% elif object.is_inactive and row_action_urls.reactivate %}
         <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate" variant="secondary" />
     {% endif %}
 {% endif %}

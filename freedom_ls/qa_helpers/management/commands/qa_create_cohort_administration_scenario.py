@@ -180,7 +180,7 @@ def _seed(site: Site) -> None:
     _ensure_member(site, cohort_b, a1)
     _ensure_member(site, cohort_old, old)
     _ensure_member(site, cohort_s, s1)
-    # The removed learner: membership first (while active), then deactivate.
+    # The deactivated learner: membership first (while active), then deactivate.
     _ensure_member(site, cohort_removed, removed)
     Learner._base_manager.filter(user=removed, organisation=north).update(
         is_active=False

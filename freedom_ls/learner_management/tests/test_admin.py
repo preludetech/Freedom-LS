@@ -176,7 +176,7 @@ class TestCohortMembershipInlineLearnerField:
         self, mock_site_context
     ) -> None:
         """This queryset also validates the inline rows that already exist, so
-        excluding removed learners would make a cohort holding one unsavable."""
+        excluding deactivated learners would make a cohort holding one unsavable."""
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation, name="Cohort A")
         removed = LearnerFactory(organisation=organisation, is_active=False)

@@ -169,7 +169,7 @@ def test_dashboard_completed_courses(mock_site_context, courses, logged_in_clien
 def test_dashboard_removed_learner_lists_course_in_neither_section(
     mock_site_context, courses, logged_in_client
 ):
-    """A removed learner's active registration grants nothing, so the course
+    """A deactivated learner's active registration grants nothing, so the course
     must not surface as either current or completed."""
     learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, course=courses[0])

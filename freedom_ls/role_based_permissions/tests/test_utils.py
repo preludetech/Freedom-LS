@@ -39,12 +39,12 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     assign_system_role,
     check_role_name_in_config,
+    deactivate_object_role,
+    deactivate_site_role,
+    deactivate_system_role,
     delete_role_rows_for,
     get_cohort_roles,
     get_object_roles,
-    remove_object_role,
-    remove_site_role,
-    remove_system_role,
     sync_user_object_permissions,
 )
 from freedom_ls.tests.audit_assertions import assert_entry
@@ -113,7 +113,7 @@ class TestObjectRolesWithoutSiteId:
             side_effect=ImproperlyConfigured("SITE_ID not set"),
         )
 
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         assert "view_cohort" not in get_perms(user, cohort)
 
@@ -214,7 +214,7 @@ class TestAssignObjectRole:
 
 
 class TestRemoveObjectRole:
-    """Tests for remove_object_role."""
+    """Tests for deactivate_object_role."""
 
     @pytest.mark.django_db
     def test_deactivates_assignment_and_removes_guardian_permissions(self) -> None:
@@ -223,7 +223,7 @@ class TestRemoveObjectRole:
         cohort = CohortFactory()
         assign_object_role(user, cohort, "cohort_admin")
 
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         ct = ContentType.objects.get_for_model(cohort)
         assignment = ObjectRoleAssignment.objects.get(
@@ -243,7 +243,7 @@ class TestRemoveObjectRole:
         assign_object_role(user, cohort, "cohort_viewer")
 
         # Remove cohort_admin — cohort_viewer's view_cohort should remain
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         perms = get_perms(user, cohort)
         assert "view_cohort" in perms
@@ -257,7 +257,7 @@ class TestRemoveObjectRole:
             assign_object_role(user, cohort, "cohort_admin")
 
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
-            remove_object_role(user, cohort, "cohort_admin")
+            deactivate_object_role(user, cohort, "cohort_admin")
 
         ct = ContentType.objects.get_for_model(cohort)
         assignment = ObjectRoleAssignment.objects.get(
@@ -357,7 +357,7 @@ class TestSyncUserObjectPermissionsSiteConfig:
 
 
 class TestSiteRoleFunctions:
-    """Tests for assign_site_role and remove_site_role."""
+    """Tests for assign_site_role and deactivate_site_role."""
 
     @pytest.mark.django_db
     def test_assign_site_role_creates_assignment(self, mock_site_context: Site) -> None:
@@ -376,11 +376,11 @@ class TestSiteRoleFunctions:
     def test_remove_site_role_deactivates_assignment(
         self, mock_site_context: Site
     ) -> None:
-        """remove_site_role deactivates the assignment."""
+        """deactivate_site_role deactivates the assignment."""
         user = UserFactory()
         assign_site_role(user, "site_admin")
         assign_site_role(UserFactory(), "site_admin")
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
         assert not SiteRoleAssignment.objects.filter(
             user=user, role="site_admin", is_active=True
@@ -397,7 +397,7 @@ class TestSiteRoleFunctions:
             assign_site_role(UserFactory(), "site_admin")
 
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
-            remove_site_role(user, "site_admin")
+            deactivate_site_role(user, "site_admin")
 
         assignment = SiteRoleAssignment.objects.get(user=user, role="site_admin")
         assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
@@ -430,7 +430,7 @@ class TestSiteRoleFunctions:
         # (only site_admin has assignment_scope="site" in the base config)
         SiteRoleAssignmentFactory(user=user, role="other_role")
 
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
         # site_admin should be deactivated, other_role should remain
         assert not SiteRoleAssignment.objects.filter(
@@ -449,7 +449,7 @@ class TestSiteRoleFunctions:
         assign_site_role(user, "site_admin")
 
         with pytest.raises(RoleChangeRefused) as exc_info:
-            remove_site_role(user, "site_admin")
+            deactivate_site_role(user, "site_admin")
 
         assert exc_info.value.reason == RefusalReason.LAST_SITE_ADMIN
         assert SiteRoleAssignment.objects.filter(
@@ -467,7 +467,7 @@ class TestSiteRoleFunctions:
         assign_site_role(inactive_admin, "site_admin")
 
         with pytest.raises(RoleChangeRefused) as exc_info:
-            remove_site_role(user, "site_admin")
+            deactivate_site_role(user, "site_admin")
 
         assert exc_info.value.reason == RefusalReason.LAST_SITE_ADMIN
         assert SiteRoleAssignment.objects.filter(
@@ -482,7 +482,7 @@ class TestSiteRoleFunctions:
         user = UserFactory()
         assign_site_role(UserFactory(), "site_admin")
 
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
         assert not SiteRoleAssignment.objects.filter(
             user=user, role="site_admin"
@@ -497,7 +497,7 @@ class TestSiteRoleFunctions:
         assign_site_role(user, "site_admin")
         SiteRoleAssignmentFactory(user=user, role="cohort_admin")
 
-        remove_site_role(user, "cohort_admin")
+        deactivate_site_role(user, "cohort_admin")
 
         assert not SiteRoleAssignment.objects.filter(
             user=user, role="cohort_admin", is_active=True
@@ -505,7 +505,7 @@ class TestSiteRoleFunctions:
 
 
 class TestSystemRoleFunctions:
-    """Tests for assign_system_role and remove_system_role."""
+    """Tests for assign_system_role and deactivate_system_role."""
 
     @pytest.mark.django_db
     def test_assign_system_role_creates_assignment(self) -> None:
@@ -536,10 +536,10 @@ class TestSystemRoleFunctions:
 
     @pytest.mark.django_db
     def test_remove_system_role_deactivates_assignment(self) -> None:
-        """remove_system_role deactivates the assignment."""
+        """deactivate_system_role deactivates the assignment."""
         user = UserFactory()
         assign_system_role(user, "system_admin")
-        remove_system_role(user, "system_admin")
+        deactivate_system_role(user, "system_admin")
 
         assert not SystemRoleAssignment.objects.filter(
             user=user, role="system_admin", is_active=True
@@ -555,7 +555,7 @@ class TestSystemRoleFunctions:
             assign_system_role(user, "system_admin")
 
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
-            remove_system_role(user, "system_admin")
+            deactivate_system_role(user, "system_admin")
 
         assignment = SystemRoleAssignment.objects.get(user=user, role="system_admin")
         assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
@@ -581,7 +581,7 @@ class TestGetObjectRoles:
         user = UserFactory()
         cohort = CohortFactory()
         assign_object_role(user, cohort, "cohort_admin")
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         roles = get_object_roles(user, cohort)
         assert roles == set()
@@ -793,7 +793,7 @@ class TestAssignedAt:
         cohort = CohortFactory()
         with time_machine.travel(_JANUARY, tick=False):
             assign_object_role(user, cohort, "cohort_admin")
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         with time_machine.travel(_FEBRUARY, tick=False):
             assignment = assign_object_role(user, cohort, "cohort_admin")
@@ -838,7 +838,7 @@ class TestAssignedAt:
         with time_machine.travel(_JANUARY, tick=False):
             assign_site_role(user, "site_admin")
             assign_site_role(UserFactory(), "site_admin")
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
         with time_machine.travel(_FEBRUARY, tick=False):
             assignment = assign_site_role(user, "site_admin")
@@ -880,7 +880,7 @@ class TestAssignedAt:
         user = UserFactory()
         with time_machine.travel(_JANUARY, tick=False):
             assign_system_role(user, "system_admin")
-        remove_system_role(user, "system_admin")
+        deactivate_system_role(user, "system_admin")
 
         with time_machine.travel(_FEBRUARY, tick=False):
             assignment = assign_system_role(user, "system_admin")
@@ -913,7 +913,7 @@ class TestRoleAuditEntries:
         assign_object_role(user, cohort, "cohort_admin", assigned_by=grantor)
 
         assert_entry(
-            action="role.granted",
+            action="role.assigned",
             actor=grantor,
             target=user,
             target_label=user.display_name,
@@ -934,7 +934,7 @@ class TestRoleAuditEntries:
 
         assign_object_role(user, organisation, "organisation_admin")
 
-        entry = AuditLogEntry.unscoped.get(action="role.granted")
+        entry = AuditLogEntry.unscoped.get(action="role.assigned")
         assert entry.organisation == organisation
         assert entry.details["scope"] == str(organisation)
 
@@ -961,7 +961,7 @@ class TestRoleAuditEntries:
         assign_object_role(user, cohort, "cohort_admin", assigned_by=second_grantor)
 
         actors = list(
-            AuditLogEntry.unscoped.filter(action="role.granted")
+            AuditLogEntry.unscoped.filter(action="role.assigned")
             .order_by("created_at")
             .values_list("actor", flat=True)
         )
@@ -986,7 +986,7 @@ class TestRoleAuditEntries:
         cohort = CohortFactory()
         user = UserFactory()
         assign_object_role(user, cohort, "cohort_admin")
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
 
         assign_object_role(user, cohort, "cohort_admin")
 
@@ -995,7 +995,7 @@ class TestRoleAuditEntries:
                 "action", flat=True
             )
         )
-        assert actions == ["role.granted", "role.removed", "role.granted"]
+        assert actions == ["role.assigned", "role.deactivated", "role.assigned"]
 
     def test_removing_an_object_role_writes_once_with_the_reason(
         self, mock_site_context: Site
@@ -1005,17 +1005,17 @@ class TestRoleAuditEntries:
         remover = UserFactory()
         assign_object_role(user, cohort, "cohort_admin")
 
-        remove_object_role(user, cohort, "cohort_admin", remover, reason="Left")
-        remove_object_role(user, cohort, "cohort_admin", remover, reason="Left")
+        deactivate_object_role(user, cohort, "cohort_admin", remover, reason="Left")
+        deactivate_object_role(user, cohort, "cohort_admin", remover, reason="Left")
 
-        entry = AuditLogEntry.unscoped.get(action="role.removed")
+        entry = AuditLogEntry.unscoped.get(action="role.deactivated")
         assert entry.actor == remover
         assert entry.reason == "Left"
 
     def test_removing_a_role_never_held_writes_nothing(
         self, mock_site_context: Site
     ) -> None:
-        remove_object_role(UserFactory(), CohortFactory(), "cohort_admin")
+        deactivate_object_role(UserFactory(), CohortFactory(), "cohort_admin")
 
         assert AuditLogEntry.unscoped.count() == 0
 
@@ -1026,9 +1026,9 @@ class TestRoleAuditEntries:
         before = AuditLogEntry.unscoped.count()
 
         assign_object_role(user, cohort, "cohort_admin")
-        remove_object_role(user, cohort, "cohort_admin")
+        deactivate_object_role(user, cohort, "cohort_admin")
         assign_site_role(user, "site_admin")
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
         entries = list(AuditLogEntry.unscoped.filter(target_object_id=str(user.pk)))
         assert len(entries) == 4
@@ -1043,12 +1043,12 @@ class TestRoleAuditEntries:
         assign_site_role(other_admin, "site_admin")
 
         assign_site_role(user, "site_admin", site=mock_site_context)
-        remove_site_role(user, "site_admin", site=mock_site_context)
+        deactivate_site_role(user, "site_admin", site=mock_site_context)
 
         entries = AuditLogEntry.unscoped.filter(target_object_id=str(user.pk))
         assert [e.action for e in entries.order_by("created_at")] == [
-            "role.granted",
-            "role.removed",
+            "role.assigned",
+            "role.deactivated",
         ]
         assert {(e.organisation, e.site) for e in entries} == {
             (None, mock_site_context)
@@ -1062,10 +1062,10 @@ class TestRoleAuditEntries:
         assign_site_role(UserFactory(), "site_admin")
         assign_site_role(user, "site_admin")
 
-        remove_site_role(user, "site_admin")
-        remove_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
+        deactivate_site_role(user, "site_admin")
 
-        assert AuditLogEntry.unscoped.filter(action="role.removed").count() == 1
+        assert AuditLogEntry.unscoped.filter(action="role.deactivated").count() == 1
 
     def test_a_refused_last_site_admin_removal_writes_nothing(
         self, mock_site_context: Site
@@ -1075,7 +1075,7 @@ class TestRoleAuditEntries:
         before = AuditLogEntry.unscoped.count()
 
         with pytest.raises(RoleChangeRefused):
-            remove_site_role(user, "site_admin")
+            deactivate_site_role(user, "site_admin")
 
         assert AuditLogEntry.unscoped.count() == before
 
@@ -1111,9 +1111,9 @@ class TestRoleAuditEntries:
         before = AuditLogEntry.unscoped.count()
 
         change = (
-            (lambda: remove_object_role(user, cohort, "cohort_admin"))
+            (lambda: deactivate_object_role(user, cohort, "cohort_admin"))
             if utility == "remove_object"
-            else (lambda: remove_site_role(user, "site_admin"))
+            else (lambda: deactivate_site_role(user, "site_admin"))
         )
 
         with pytest.raises(RuntimeError):
@@ -1125,6 +1125,6 @@ class TestRoleAuditEntries:
         user = UserFactory()
 
         assign_system_role(user, "system_admin")
-        remove_system_role(user, "system_admin")
+        deactivate_system_role(user, "system_admin")
 
         assert AuditLogEntry.unscoped.count() == 0

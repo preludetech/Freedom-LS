@@ -193,7 +193,7 @@ def _register_with_fresh_progress(site: Site, user: User, course: Course) -> Non
     _reset_progress(record)
 
 
-def _unregister(user: User, course: Course) -> None:
+def _delete_registration(user: User, course: Course) -> None:
     """Progress goes first: CourseProgress PROTECTs the registration it hangs off."""
     records = CourseProgress.objects.filter(learner__user=user, course=course)
     TopicProgress.objects.filter(course_progress__in=records).delete()
@@ -265,7 +265,7 @@ def command(site_name: str) -> None:
         slug=SELF_REGISTRATION_SLUG,
         access_config=FREE,
     )
-    _unregister(learner_b, self_registration)
+    _delete_registration(learner_b, self_registration)
 
     learner_c = _get_or_create_learner(site, LEARNER_C_EMAIL, "Learner C")
     cohort_course = _get_or_create_qa_course(

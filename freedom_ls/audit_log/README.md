@@ -71,58 +71,58 @@ entry's `details` into one line. The noun is what the entry is about, the verb w
 
 | Code | Label | Target | Other subjects | `details` |
 | --- | --- | --- | --- | --- |
-| `learner.added` | Learner added | learner | cohort, if one was given | `outcome` (`created`, `joined`, `reactivated`), `cohort` |
+| `learner.added` | Learner added | learner | cohort, if one was given | `outcome` (`created`, `joined`), `cohort` |
 | `learner.renamed` | Learner renamed | learner | | `old`, `new` |
 | `learner.deactivated` | Learner deactivated | learner | | |
-| `learner.reactivated` | Learner reactivated | learner | | |
+| `learner.reactivated` | Learner reactivated | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one |
 | `learner.setup_email_resent` | Setup email resent | learner | | |
 | `cohort_membership.added` | Added to cohort | learner | cohort | `cohort` |
 | `cohort_membership.removed` | Removed from cohort | learner | cohort | `cohort` |
 | `cohort_membership.moved` | Moved between cohorts | learner | both cohorts | `source`, `destination`, `move_id` |
 | `registration.added` | Registered for course | learner | | `course` |
-| `registration.reregistered` | Re-registered for course | learner | | `course` |
-| `registration.unregistered` | Unregistered from course | learner | | `course` |
+| `registration.reactivated` | Registration reactivated | learner | | `course` |
+| `registration.deactivated` | Registration deactivated | learner | | `course` |
 | `cohort.created` | Cohort created | cohort | | |
 | `cohort.renamed` | Cohort renamed | cohort | | `old`, `new` |
 | `cohort.deactivated` | Cohort deactivated | cohort | | |
 | `cohort.reactivated` | Cohort reactivated | cohort | | |
 | `cohort.deleted` | Cohort deleted | cohort | | |
 | `cohort_registration.added` | Cohort registered for course | cohort | | `course` |
-| `cohort_registration.reregistered` | Cohort re-registered for course | cohort | | `course` |
-| `cohort_registration.unregistered` | Cohort unregistered from course | cohort | | `course` |
-| `role.granted` | Role granted | user | the object the role is on | `role`, `role_label`, `scope` |
-| `role.removed` | Role removed | user | the object the role is on | `role`, `role_label`, `scope` |
-| `member.suspended` | Member suspended | organisation member | its user | |
+| `cohort_registration.reactivated` | Cohort registration reactivated | cohort | | `course` |
+| `cohort_registration.deactivated` | Cohort registration deactivated | cohort | | `course` |
+| `role.assigned` | Role assigned | user | the object the role is on | `role`, `role_label`, `scope` |
+| `role.deactivated` | Role deactivated | user | the object the role is on | `role`, `role_label`, `scope` |
+| `role.removed` | Role removed | user | the cohort being deleted | `role`, `role_label`, `scope` |
+| `member.deactivated` | Member deactivated | organisation member | its user | |
 | `member.reactivated` | Member reactivated | organisation member | its user | |
 | `bulk_action.completed` | Bulk action completed | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
 | `import.committed` | Import committed | organisation | | `counts`, `rows`, `truncated` |
 
-The last two are the summary actions; `record_run_summary` accepts nothing else.
+The last two are the summary actions; `record_run_summary` accepts nothing else. `role.deactivated`
+is the `is_active` flip done from Members; `role.removed` is a role row deleted along with its
+cohort.
+
+The codes follow the vocabulary in the domain glossary (`.claude/skills/domain-glossary/SKILL.md`,
+"Changes"): a glossary noun, then one of its verbs. `tests/invariants/test_vocabulary.py` fails a code that
+uses any other word.
 
 ### Audit actions and webhook event types
 
-The audit log and the webhooks app name the same events differently, because they answer different
-questions. A webhook event type says what happened to the system (`cohort.member_added`); an audit
-action says what happened to the object a person is reading about (`cohort_membership.added`, on
-the learner's page). The learner and membership pairs are written in the same functions; the course
-registration webhooks fire from the registration models' `post_save` receivers in
-`learner_progress`, while the audit entries are written by the service functions that save them.
-The pairs:
+A change has one name. Where a change also fires a webhook, the event type is the same string as
+the audit action, with the same label (`freedom_ls/base/webhook_event_types.py`): `learner.added`,
+`learner.deactivated`, `learner.reactivated`, `cohort_membership.added`,
+`cohort_membership.removed`, `registration.added`, `registration.reactivated`,
+`registration.deactivated`, `cohort_registration.added`, `cohort_registration.reactivated` and
+`cohort_registration.deactivated`. The learner and membership pairs fire and write in the same
+service functions; the learner registration webhooks fire from `LearnerCourseRegistration`'s
+`post_save` receiver in `learner_progress`, while the entries are written by the service functions
+that save the row.
 
-| Audit action | Webhook event type |
-| --- | --- |
-| `learner.added` | `learner.added` |
-| `learner.deactivated` | `learner.deactivated` |
-| `learner.reactivated` | `learner.reactivated` |
-| `cohort_membership.added` | `cohort.member_added` |
-| `cohort_membership.removed` | `cohort.member_removed` |
-| `cohort_membership.moved` | `cohort.member_removed` then `cohort.member_added`, sharing a `move_id` |
-| `registration.added`, `registration.reregistered` | `course.registered` |
-| `registration.unregistered` | `course.unregistered` |
-| `cohort_registration.added`, `cohort_registration.reregistered` | `cohort.course_registered` |
-| `cohort_registration.unregistered` | `cohort.course_unregistered` |
-
-Renames, cohort lifecycle, roles, member suspension and the summary actions fire no webhook.
+Two differences remain. `cohort_membership.moved` is one entry but two webhook events,
+`cohort_membership.removed` then `cohort_membership.added`, sharing a `move_id`. And a self-
+registration fires `registration.added` with no entry, because the audit log records staff
+actions only. Renames, cohort lifecycle, roles, member deactivation and the summary actions fire
+no webhook; `user.signed_up` and `course.completed` are webhook-only.
 
 ### Adding your own
 

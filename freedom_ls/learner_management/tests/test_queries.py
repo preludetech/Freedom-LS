@@ -98,7 +98,7 @@ from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRole
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
-    remove_object_role,
+    deactivate_object_role,
 )
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request, site_context
@@ -258,7 +258,7 @@ class TestLatestRegistration:
     def test_a_removed_learners_registration_is_still_returned_on_its_own(
         self, mock_site_context
     ):
-        """is_active is a tiebreak, not a filter: a removed learner still
+        """is_active is a tiebreak, not a filter: a deactivated learner still
         resolves to their own registration, which is what keeps their own
         registration resolvable."""
         user = UserFactory()
@@ -588,7 +588,7 @@ class TestLearnersVisibleTo:
     def test_removed_learner_still_in_a_visible_cohort_is_not_visible(
         self, mock_site_context
     ):
-        """Pins is_active sitting outside both Q branches: a removed learner
+        """Pins is_active sitting outside both Q branches: a deactivated learner
         who still holds a membership in a visible cohort must not reappear
         through the cohort branch."""
         organisation = OrganisationFactory()
@@ -612,7 +612,7 @@ class TestLearnersVisibleTo:
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_admin")
 
-        result = learners_visible_to(role_holder, organisation, include_removed=True)
+        result = learners_visible_to(role_holder, organisation, include_inactive=True)
 
         assert set(result) == {removed}
 
@@ -628,7 +628,7 @@ class TestLearnersVisibleTo:
         educator = UserFactory()
         assign_object_role(educator, cohort, "cohort_admin")
 
-        result = learners_visible_to(educator, organisation, include_removed=True)
+        result = learners_visible_to(educator, organisation, include_inactive=True)
 
         assert set(result) == {removed}
 
@@ -702,7 +702,7 @@ class TestActiveOrganisationAdmins:
         organisation = OrganisationFactory()
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
-        remove_object_role(admin, organisation, "organisation_admin")
+        deactivate_object_role(admin, organisation, "organisation_admin")
 
         assert list(active_organisation_admins(organisation)) == []
 
@@ -748,7 +748,7 @@ class TestCohortEducators:
         cohort = _make_cohort()
         educator = UserFactory()
         assign_object_role(educator, cohort, "cohort_admin")
-        remove_object_role(educator, cohort, "cohort_admin")
+        deactivate_object_role(educator, cohort, "cohort_admin")
 
         assert cohort_educators(cohort) == []
 
@@ -993,8 +993,8 @@ class TestOrganisationForLearnerCourse:
         """Pins the same split-filter hazard as is_registered_for_course: the
         membership-by-this-user condition and the is_active condition must be
         evaluated against the same joined membership row, or a cohort holding
-        a removed learner alongside an unrelated active one would still name
-        an organisation the removed learner was cut off from."""
+        a deactivated learner alongside an unrelated active one would still name
+        an organisation the deactivated learner was cut off from."""
         course = CourseFactory()
         organisation = OrganisationFactory()
         removed_user = UserFactory()
@@ -1615,7 +1615,7 @@ def _learner_with_status(status: LearnerStatus) -> Learner:
             user=UserFactory(), organisation=OrganisationFactory(), is_active=True
         ),
     )
-    if status == LearnerStatus.REMOVED:
+    if status == LearnerStatus.INACTIVE:
         learner.is_active = False
         learner.save(update_fields=["is_active"])
     if status == LearnerStatus.PENDING:
@@ -1901,7 +1901,7 @@ class TestMembersOf:
         organisation = OrganisationFactory()
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
-        remove_object_role(admin, organisation, "organisation_admin")
+        deactivate_object_role(admin, organisation, "organisation_admin")
 
         assert list(members_of(organisation)) == []
 

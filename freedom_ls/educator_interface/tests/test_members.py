@@ -184,7 +184,7 @@ def test_the_organisation_log_shows_a_role_removed_through_the_action(
             "educator_interface:interface",
             kwargs={
                 "organisation_slug": organisation.slug,
-                "path_string": "members/__actions/remove_role",
+                "path_string": "members/__actions/deactivate_role",
             },
         ),
         {"user": str(user.pk), "role": "cohort_admin"},
