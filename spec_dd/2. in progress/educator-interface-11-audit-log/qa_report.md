@@ -126,7 +126,7 @@ Manifestations:
 |---|---|
 | B1 | **FIXED** (commit: f792ddfa) — Long unbroken reason stretches the History table instead of wrapping. Re-verified: learner History table 1598/1598px at desktop and 718/718px at tablet; org log page 2 and Cohort A History also fit. ![](screenshots/page-2026-10-25T07-46-29-586Z.png) |
 | B2 | **FIXED** (commit: 871d4e7b) — Django admin calls the model 'Audit log entrys'. Re-verified: index, sidebar and changelist read "Audit log entries" / "47 audit log entries"; /add/ still 403. ![](screenshots/page-2026-10-25T08-07-39-184Z.png) |
-| B3 | **UNRESOLVED** — Cohort History rows don't say which learner or member they are about (reason: the spec deliberately gives only the organisation log a Target column; whether the cohort History should name the learner or member is a product decision) |
+| B3 | **FIXED** (commit: eba7201a) — Cohort History rows don't say which learner or member they are about. Decision: the cohort History gets the organisation log's Target column and card; the spec is updated to match. Not re-verified in a browser. |
 
 Full run after the fixes: the B2 fixer ran the full tier after both fix commits were in (its migration selected the full tier): 9538 passed, 1 warning.
 
