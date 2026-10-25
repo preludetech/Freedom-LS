@@ -121,6 +121,10 @@ class RuleRecommendation(SiteAwareModel):
             )
         ]
 
+    def __str__(self) -> str:
+        # Not the rule's name: this renders where the viewer may not view rules.
+        return "Registration rule"
+
 
 class AttributeRuleConditions(SiteAwareModel):
     """What an attribute rule asks of a learner.

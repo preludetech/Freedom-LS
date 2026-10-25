@@ -1744,6 +1744,105 @@ def test_the_warning_is_not_shown_after_the_delete_itself(staff_client):
     )
 
 
+RECOMMENDATION_DELETER_PERMISSIONS = [
+    "view_recommendedcourse",
+    "change_recommendedcourse",
+    "delete_recommendedcourse",
+]
+
+
+@pytest.fixture
+def rule_viewing_deleter_client(mock_site_context, logged_in_client):
+    """A staff user who may delete recommendations and view rules."""
+    user = UserFactory(staff=True)
+    user.user_permissions.set(
+        Permission.objects.filter(
+            codename__in=[*RECOMMENDATION_DELETER_PERMISSIONS, "view_registrationrule"]
+        )
+    )
+    return logged_in_client(user)
+
+
+@pytest.fixture
+def recommendations_only_deleter_client(mock_site_context, logged_in_client):
+    """A staff user who may delete recommendations but not view rules."""
+    user = UserFactory(staff=True)
+    user.user_permissions.set(
+        Permission.objects.filter(codename__in=RECOMMENDATION_DELETER_PERMISSIONS)
+    )
+    return logged_in_client(user)
+
+
+@pytest.mark.django_db
+def test_the_delete_page_names_each_rule_for_a_user_who_may_view_rules(
+    rule_viewing_deleter_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory(rule__name="Alpha")
+    RuleRecommendationFactory(recommendation=made.recommendation, rule__name="Beta")
+
+    # Act
+    response = rule_viewing_deleter_client.get(
+        reverse(RECOMMENDED_DELETE, args=[made.recommendation.pk])
+    )
+
+    # Assert
+    assert sorted(response.context["deleted_objects"][1]) == [
+        "Rule recommendation: Alpha",
+        "Rule recommendation: Beta",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_delete_page_hides_rule_names_from_a_user_who_may_not_view_rules(
+    recommendations_only_deleter_client,
+):
+    # Arrange
+    made = RuleRecommendationFactory(rule__name="Secret rule")
+
+    # Act
+    response = recommendations_only_deleter_client.get(
+        reverse(RECOMMENDED_DELETE, args=[made.recommendation.pk])
+    )
+
+    # Assert
+    assert response.context["deleted_objects"][1] == [
+        "Rule recommendation: Registration rule"
+    ]
+    content = response.content.decode()
+    assert "Secret rule" not in content
+    assert "RuleRecommendation object" not in content
+
+
+@pytest.mark.django_db
+def test_bulk_delete_confirmation_names_each_rows_own_rules(
+    rule_viewing_deleter_client,
+):
+    # Arrange
+    first = RuleRecommendationFactory(rule__name="Alpha").recommendation
+    second = RuleRecommendationFactory(rule__name="Beta").recommendation
+
+    # Act
+    response = rule_viewing_deleter_client.post(
+        reverse(RECOMMENDED_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [str(first.pk), str(second.pk)],
+        },
+    )
+
+    # Assert
+    # One entry per selected row: the row's string, then its children.
+    (rows,) = response.context["deletable_objects"]
+    children = dict(zip(rows[::2], rows[1::2], strict=True))
+    by_course = {
+        str(row.course): next(label for label in children if str(row.course) in label)
+        for row in (first, second)
+    }
+    assert children[by_course[str(first.course)]] == ["Rule recommendation: Alpha"]
+    assert children[by_course[str(second.course)]] == ["Rule recommendation: Beta"]
+
+
 @pytest.mark.django_db
 def test_the_changelist_costs_a_bounded_number_of_queries_however_many_rows(
     staff_client, mock_site_context, django_assert_max_num_queries

@@ -25,6 +25,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
+from django.utils.text import capfirst
 
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_recommendations.admin import RecommendedCourseAdmin
@@ -772,21 +773,50 @@ def _recommended_deleted_objects_warning_of_rules(
     "post"); the warning belongs on the confirmation page only.
     """
     rows = list(objs)
+    rule_names: dict[UUID, list[str]] = {}
+    for link in RuleRecommendation._base_manager.filter(
+        recommendation__in=rows
+    ).select_related("rule"):
+        rule_names.setdefault(link.recommendation_id, []).append(link.rule.name)
     confirming = request.method == "GET" or "post" not in request.POST
-    if (
-        confirming
-        and RuleRecommendation._base_manager.filter(recommendation__in=rows).exists()
-    ):
+    if confirming and rule_names:
         messages.warning(
             request,
             "A recommendation a registration rule made comes back on the rule's "
             "next evaluation while the user still matches. Disable or change the "
             "rule instead.",
         )
-    stock: tuple[list[str], dict[str, int], set[str], list[str]] = (
-        _recommended_deleted_objects(self, rows, request)
+    to_delete, model_count, perms_needed, protected = _recommended_deleted_objects(
+        self, rows, request
     )
-    return stock
+    if request.user.has_perm(_VIEW_RULE):
+        _name_rules_in_deleted_objects(to_delete, rows, rule_names)
+    return to_delete, model_count, perms_needed, protected
+
+
+def _name_rules_in_deleted_objects(
+    to_delete: list[str | list[str]],
+    rows: list[RecommendedCourse],
+    rule_names: Mapping[UUID, list[str]],
+) -> None:
+    """Swap each row's rule-recommendation lines for the rules' names, in place.
+
+    The stock list holds each row's line, followed by a list of its children
+    when it has any, in the order of `rows`. A row's rule-recommendation lines
+    are all alike, so the names may go in any order.
+    """
+    label = capfirst(RuleRecommendation._meta.verbose_name)
+    stock_line = f"{label}: {RuleRecommendation()}"
+    row_index = -1
+    for entry in to_delete:
+        if not isinstance(entry, list):
+            row_index += 1
+            continue
+        names = iter(rule_names.get(rows[row_index].pk, []))
+        entry[:] = [
+            f"{label}: {next(names)}" if child == stock_line else child
+            for child in entry
+        ]
 
 
 # Wired from here for the same reason as the registration admin above:
