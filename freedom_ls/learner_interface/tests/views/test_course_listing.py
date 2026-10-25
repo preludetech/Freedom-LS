@@ -45,8 +45,8 @@ from freedom_ls.tests.factories import SiteFactory
 #
 # These exercise the status/annotation logic the view attaches to each course
 # object it puts in the ``all_courses`` context: listing_status, progress
-# percentage, accent slot, and the absence of next_up_*
-# annotations. Rendered-HTML row assertions follow further down.
+# percentage, accent slot, and the next_up_* annotations on registered and
+# in-progress courses. Rendered-HTML row assertions follow further down.
 
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -184,23 +184,27 @@ def test_all_courses_not_registered_row_has_no_progress_bar(
 
 
 @pytest.mark.django_db
-def test_all_courses_registered_zero_percent_row_links_to_first_item(
-    mock_site_context, courses, logged_in_client
+def test_all_courses_registered_row_links_to_next_up_item_and_names_it(
+    mock_site_context, logged_in_client
 ):
-    """A registered-0% row links to view_course_item at index=1."""
+    """A registered row's title links to its first item and shows "Next up: <title>"."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    course = CourseFactory(title="Course A", slug="course-a")
+    first = TopicFactory(title="Opening topic", slug="opening", content="content")
+    course.items.create(child=first, order=0)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
 
+    assert response.status_code == 200
+    body = response.content.decode()
     item_url = reverse(
         "learner_interface:view_course_item",
-        kwargs={"course_slug": courses[0].slug, "index": 1},
+        kwargs={"course_slug": course.slug, "index": 1},
     )
-    body = response.content.decode()
-    assert item_url in body
+    assert f'href="{item_url}"' in body
+    assert "Next up: Opening topic" in body
 
 
 @pytest.mark.django_db
@@ -226,26 +230,52 @@ def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
 
 
 @pytest.mark.django_db
-def test_all_courses_in_progress_row_links_to_first_item(
-    mock_site_context, courses, logged_in_client
+def test_all_courses_in_progress_row_links_to_the_item_in_progress(
+    mock_site_context, logged_in_client
 ):
-    """An in-progress row links to view_course_item at index=1."""
+    """An in-progress row links to the item the learner is partway through, not index 1."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
-    course_progress_record(
-        courses[0], user, progress_percentage=55, completed_time=None
-    )
+    course = CourseFactory(title="Course A", slug="course-a")
+    done = TopicFactory(title="Finished topic", slug="finished", content="content")
+    current = TopicFactory(title="Current topic", slug="current", content="content")
+    course.items.create(child=done, order=0)
+    course.items.create(child=current, order=1)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    topic_completion(course, user, done, complete_time=timezone.now())
+    topic_completion(course, user, current, complete_time=None)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
 
+    assert response.status_code == 200
+    body = response.content.decode()
     item_url = reverse(
         "learner_interface:view_course_item",
-        kwargs={"course_slug": courses[0].slug, "index": 1},
+        kwargs={"course_slug": course.slug, "index": 2},
     )
+    assert f'href="{item_url}"' in body
+    assert "Next up: Current topic" in body
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_course_without_items_links_to_course_home(
+    mock_site_context, logged_in_client
+):
+    """With nothing to resume, a registered row's title links to the course home."""
+    user = UserFactory()
+    course = CourseFactory(title="Empty course", slug="empty-course")
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    client = logged_in_client(user)
+
+    response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200
     body = response.content.decode()
-    assert item_url in body
+    home_url = reverse(
+        "learner_interface:course_home", kwargs={"course_slug": course.slug}
+    )
+    assert f'href="{home_url}"' in body
+    assert "Next up:" not in body
 
 
 @pytest.mark.django_db

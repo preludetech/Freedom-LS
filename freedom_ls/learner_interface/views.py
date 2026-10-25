@@ -98,6 +98,7 @@ from .utils import (
     IN_PROGRESS,
     READY,
     UNRESOLVED,
+    CourseListingStatus,
     Unresolved,
     current_entry_status,
     derive_listing_status,
@@ -176,7 +177,7 @@ def _annotate_next_up(
     user,
     *,
     can_access_content: bool,
-    course_progress: CourseProgress | None,
+    course_progress: CourseProgress | None | Unresolved,
     course_deadlines: CourseDeadlines | None,
     now: datetime,
 ) -> None:
@@ -793,6 +794,20 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
         stamp_course_access_badge(course, badge=entry.access_badge)
+        if entry.status in (
+            CourseListingStatus.REGISTERED,
+            CourseListingStatus.IN_PROGRESS,
+        ):
+            _annotate_next_up(
+                course,
+                request.user,
+                can_access_content=backend.get_access(
+                    user=request.user, course=course
+                ).can_access_content,
+                course_progress=UNRESOLVED,
+                course_deadlines=None,
+                now=timezone.now(),
+            )
         courses_with_attrs.append(course)
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.

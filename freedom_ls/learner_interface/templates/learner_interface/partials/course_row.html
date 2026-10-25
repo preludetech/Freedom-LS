@@ -15,7 +15,7 @@ Standard fields land in standard places:
 
 Title-link target by status:
   complete                 -> course_finish
-  registered / in_progress -> view_course_item index=1
+  registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
@@ -25,13 +25,14 @@ Removing the old "Coming soon" chip (status is now only in the eyebrow) also
 frees the horizontal space that clipped "Details" off narrow viewports.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
-icon_fallback, title, progress_percentage, access_badge, current_price) and
-user.
+icon_fallback, title, progress_percentage, next_up_url, next_up_title,
+access_badge, current_price) and user.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "registered" or course.listing_status == "in_progress" %}
-    {% url 'learner_interface:view_course_item' course_slug=course.slug index=1 as title_url %}
+    {% url 'learner_interface:course_home' course_slug=course.slug as home_url %}
+    {% firstof course.next_up_url home_url as title_url %}
 {% else %}
     {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
 {% endif %}
@@ -62,6 +63,12 @@ user.
     {% endwith %}
 
     {% include "learner_interface/partials/course_listing_price.html" %}
+
+    {% if course.next_up_title %}
+        <p class="text-sm text-muted">
+            Next up: {{ course.next_up_title }}
+        </p>
+    {% endif %}
 
     {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
         <c-slot name="footer">
