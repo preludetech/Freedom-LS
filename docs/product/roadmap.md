@@ -5,7 +5,7 @@ _Last updated: 2026-10-25_
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
 - **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -94,13 +94,13 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 ## Role-Based Access Control (RBAC)
 
-**Status: Organisation and cohort roles are managed in the educator interface; site admin and an audit log are not.**
+**Status: Organisation and cohort roles are managed in the educator interface, and role changes are logged; site admin is not managed there.**
 
 Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#members-and-roles). An organisation admin adds, removes, suspends and reactivates the organisation's members and their roles from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
 
 - **Site admin is assigned by a developer.** Neither the educator interface nor the Django admin can grant or remove it.
 - **No notification** tells a person that a role was granted or removed.
-- **No audit log** of role or membership changes.
+- **The audit log has gaps.** Role, membership, learner and cohort changes made through FLS are recorded (see [educator interface](./educator-interface.md#history)), but system administrator role changes and records edited directly in the Django admin are not. Nothing before the audit log was introduced is recorded, the log cannot be exported to CSV, and report downloads are not logged.
 
 ## Per-Request Media Access Control
 

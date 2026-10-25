@@ -14,6 +14,7 @@ _Last updated: 2026-10-25_
 - When direct messaging is turned on, educators can message learners from a Messages section or from a learner's quick view. See [Messages](#messages).
 - **Access is granted by role**: site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
 - Organisation admins add members, give and remove their roles, and suspend or reactivate them from the Members section. See [Members and roles](#members-and-roles).
+- Site and organisation admins see a record of who changed what and when, on a History tab on learner and cohort pages and in an Audit log section. See [History](#history).
 - **Limits:** educators cannot see or set deadlines, and there are no bulk learner operations. See [Limits](#limits).
 
 ## Panel Interface
@@ -49,7 +50,7 @@ Renaming, deactivating, reactivating and deleting need an organisation admin or 
 Lists the learners of the current organisation the educator has access to — learners in cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they have enrolled in anything yet. Someone studying with more than one organisation appears once per organisation, showing only the cohort memberships and course registrations belonging to the one currently in view. Each learner has a status: **active**, **pending** (staff created their account and they have not yet set a password and signed in) or **removed**. Removed learners are hidden until the Status filter asks for them. Detail pages carry the same access check as the listing; see [Access Control](#access-control).
 
 - **Adding learners** — organisation admins and site admins paste up to 50 email addresses, optionally with names, and can put them straight into a cohort. An address that already has an account on the site joins the organisation; a new one gets an account and an **account setup email** with a link to choose a password, which can be resent from the learner's page. The dialog reports what happened to each address. Staff-created people still meet the site's terms and registration forms at first login.
-- **Learner page** — a header with name, email, status and actions, and tabs for an overview, courses, and history. The Courses tab gives each course the learner is registered for its completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. The history tab is an empty placeholder.
+- **Learner page** — a header with name, email, status and actions, and tabs for an overview, courses, and history. The Courses tab gives each course the learner is registered for its completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. The History tab lists the recorded changes to the learner. See [History](#history).
 - **Cohort membership** — add a learner to a cohort, remove them, or **move** them to another active cohort in the organisation. Each confirmation names the courses the learner loses access to. A move carries course progress across, keeping whichever record is further along for a course both cohorts grant; nothing is deleted.
 - **Course registration** — register a learner for any course that is not coming soon, unregister and re-register them. Unregistering keeps their progress and says whether a cohort still gives them the course. Registering or re-registering a learner for a course not open to their organisation is refused with a message.
 - **Deactivating** — removes the learner's access to this organisation's courses while keeping their cohorts, registrations and progress, which return on reactivation. On the site's default organisation a learner can undo a deactivation or unregistration by registering themselves for an open course.
@@ -93,7 +94,17 @@ The Members section, under Administration in the navigation, is visible only to 
 
 ![Add a member dialog with the cohort admin role chosen and two cohorts ticked](screenshots/educator_add_member.png)
 
-Admins can give only roles at or below their own. Any change that gives someone access they did not have, or takes access away, is confirmed first and says what changes. Roles add up: to change someone's role, add the new one and remove the old. The person is not notified when a role is given or removed, a setup email cannot be resent from this section, members have no page of their own, and there is no record of past role changes.
+Admins can give only roles at or below their own. Any change that gives someone access they did not have, or takes access away, is confirmed first and says what changes. Roles add up: to change someone's role, add the new one and remove the old. The person is not notified when a role is given or removed, a setup email cannot be resent from this section, members have no page of their own, and role changes and suspensions are recorded in the [Audit log](#history).
+
+### History
+
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and member roles and suspensions. The record shows as a **History** tab on a learner's page and on a cohort's page, and as an **Audit log** section under Administration. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab and the Audit log also name the person each row is about. Changes with no user behind them show as "System".
+
+Confirming a removal or deactivation (removing a learner from a cohort, unregistering from a course, deactivating a learner or cohort, deleting a cohort, removing a role, suspending a member) offers an optional **Reason**, shown in the history to staff only.
+
+Only site admins and organisation admins see the History tabs and the Audit log; cohort admins and cohort viewers do not. The Audit log lists the current organisation's entries, newest first, filtered by who, by what and by when.
+
+Not recorded: anything before the feature was installed (there is no backfill), records edited directly in the Django admin, and logins. The log has no search or CSV export, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 
 ### Messages
 
