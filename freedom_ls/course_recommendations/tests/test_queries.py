@@ -53,9 +53,6 @@ def test_another_users_recommendations_are_not_returned(mock_site_context):
     assert [r.course for r in result] == [courses[0]]
 
 
-# --- clear_registered_recommendations ------------------------------------------
-
-
 @pytest.mark.django_db
 def test_clearing_deletes_a_recommendation_for_a_registered_course(mock_site_context):
     registration = LearnerCourseRegistrationFactory()

@@ -1935,9 +1935,6 @@ class TestSiteLevelAdmins:
         assert list(site_level_admins(mock_site_context)) == []
 
 
-# --- registered_course_pairs ---------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_registered_course_pairs_include_an_active_individual_registration(
     mock_site_context,
