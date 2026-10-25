@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 from typing import TYPE_CHECKING
 
 from freedom_ls.audit_log.config import config
@@ -121,13 +122,19 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
 )
 
 
-def audit_actions() -> dict[str, AuditAction]:
-    """Every registered audit action, FLS's own first."""
+@cache
+def _registry(extra: tuple[tuple[str, str], ...]) -> dict[str, AuditAction]:
     actions = {action.code: action for action in FLS_AUDIT_ACTIONS}
     # Downstream-defined actions follow FLS's own, so FLS codes keep their order and win any collision.
-    for code, label in config.AUDIT_LOG_EXTRA_ACTIONS.items():
+    for code, label in extra:
         actions.setdefault(code, AuditAction(code, label))
     return actions
+
+
+def audit_actions() -> dict[str, AuditAction]:
+    """Every registered audit action, FLS's own first. Built once per value
+    of the extra-actions setting and shared, so callers must not change it."""
+    return _registry(tuple(config.AUDIT_LOG_EXTRA_ACTIONS.items()))
 
 
 def validate_action(code: str) -> None:

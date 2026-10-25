@@ -742,9 +742,7 @@ class AuditLogEntryTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
-        return AuditLogEntry.objects.filter(organisation=organisation).select_related(
-            "site"
-        )
+        return AuditLogEntry.objects.filter(organisation=organisation)
 
     @staticmethod
     def get_columns() -> list[Column]:

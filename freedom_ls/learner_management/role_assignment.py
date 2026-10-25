@@ -169,7 +169,10 @@ def set_organisation_member_active(
     with transaction.atomic():
         if not is_active and not is_site_level_admin(actor, member.site):
             _lock_and_refuse_last_organisation_admin(member.organisation, member.user)
-        changed = member.is_active != is_active
+        # The caller's instance may be stale: two overlapping requests would
+        # each see the old state and each write an entry for the one change.
+        stored = OrganisationMember._base_manager.select_for_update().get(pk=member.pk)
+        changed = stored.is_active != is_active
         member.is_active = is_active
         member.save(update_fields=["is_active"])
         if changed:

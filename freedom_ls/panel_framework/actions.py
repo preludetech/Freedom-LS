@@ -7,6 +7,7 @@ from typing import cast
 
 from django import forms
 from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
+from django.db import transaction
 from django.db.models import Model
 from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
@@ -415,6 +416,31 @@ class DeleteAction(PanelAction):
             "delete_url": self.get_action_url(ctx),
         }
 
+    def _blocked_context(
+        self, ctx: PanelContext, instance: Model, reason: str
+    ) -> dict[str, object]:
+        return self._confirmation_context(
+            ctx, instance, cascade_summary=[], blocked_reason=reason
+        )
+
+    def _blocked_response(
+        self, ctx: PanelContext, instance: Model, reason: str
+    ) -> HttpResponse:
+        """The confirmation re-rendered with `reason` in place of a live
+        delete button, the way a form answers an invalid submit."""
+        html = render_to_string(
+            self.template_name,
+            self._blocked_context(ctx, instance, reason),
+            request=ctx.request,
+        )
+        return HttpResponse(html, status=422)
+
+    def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
+        """Runs inside the delete's transaction, just before the row goes.
+        Returning a response sends it instead of deleting; a subclass that
+        does so must not have written anything first."""
+        return None
+
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         """The error-variant button and its confirmation modal.
 
@@ -427,11 +453,8 @@ class DeleteAction(PanelAction):
         try:
             cascade = self.get_cascade_summary(instance)
         except ProtectedError as error:
-            return self._confirmation_context(
-                ctx,
-                instance,
-                cascade_summary=[],
-                blocked_reason=self.get_blocked_reason(instance, error),
+            return self._blocked_context(
+                ctx, instance, self.get_blocked_reason(instance, error)
             )
         return self._confirmation_context(
             ctx, instance, cascade_summary=cascade, blocked_reason=""
@@ -445,21 +468,18 @@ class DeleteAction(PanelAction):
         # gone, and the event still needs to name what was deleted.
         events = self.get_success_events(instance)
         try:
-            instance.delete()
+            with transaction.atomic():
+                refusal = self.before_delete(ctx, instance)
+                if refusal is not None:
+                    return refusal
+                instance.delete()
         except ProtectedError as error:
             # The render path hides the button, so reaching here means a stale
-            # page or a hand-made request. Answer it the way a form does.
-            html = render_to_string(
-                self.template_name,
-                self._confirmation_context(
-                    ctx,
-                    instance,
-                    cascade_summary=[],
-                    blocked_reason=self.get_blocked_reason(instance, error),
-                ),
-                request=ctx.request,
+            # page or a hand-made request. Rendered after the block, since
+            # a transaction marked for rollback cannot run queries.
+            return self._blocked_response(
+                ctx, instance, self.get_blocked_reason(instance, error)
             )
-            return HttpResponse(html, status=422)
         if not self.success_url:
             response = HttpResponse(status=204)
             response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)

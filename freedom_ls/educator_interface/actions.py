@@ -8,7 +8,7 @@ from uuid import UUID
 
 from django import forms
 from django.db import transaction
-from django.db.models import Model, ProtectedError, QuerySet
+from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -227,11 +227,16 @@ class RequiresActiveCohortMixin(PanelAction):
         return super().handle_submit(ctx)
 
 
-def submitted_reason(ctx: PanelContext) -> str:
-    """The reason a confirm dialog posted, trimmed. Actions are shared across
-    requests, so the reason is read from the request rather than kept on the
-    action. ReasonMixin has already rejected an invalid one."""
-    return ctx.request.POST.get("reason", "").strip()
+def submitted_reason(action: PanelAction, ctx: PanelContext) -> str:
+    """The reason `action`'s confirm dialog posted, as ReasonForm cleans it.
+    Only an action with ReasonMixin has a reason field, so any other ignores
+    whatever its POST carries. Actions are shared across requests, so the
+    reason is read from the request rather than kept on the action;
+    ReasonMixin.handle_submit has already refused an invalid one."""
+    if not isinstance(action, ReasonMixin):
+        return ""
+    form = ReasonForm(ctx.request.POST)
+    return str(form.cleaned_data["reason"]) if form.is_valid() else ""
 
 
 class ReasonMixin(PanelAction):
@@ -305,10 +310,15 @@ class EditLearnerNameAction(EditAction):
         return self._learner
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
-        # The form has already bound the new names onto the user, so the old
-        # display name has to come from the stored row.
+        # The form has already bound the new names onto the user; its initial
+        # data still holds the stored ones, read here through an unsaved user
+        # so the old name falls back to the email the same way.
         user = cast("User", form.instance)
-        old_name = User._base_manager.get(pk=user.pk).display_name
+        old_name = User(
+            first_name=form.initial["first_name"],
+            last_name=form.initial["last_name"],
+            email=user.email,
+        ).display_name
         with transaction.atomic():
             response = super().form_valid(request, form)
             if {"first_name", "last_name"} & set(form.changed_data):
@@ -353,7 +363,7 @@ class CohortStateAction(PanelAction):
                 target=cohort,
                 target_label=cohort.name,
                 organisation=cohort.organisation,
-                reason=submitted_reason(ctx),
+                reason=submitted_reason(self, ctx),
             )
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
@@ -400,13 +410,6 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
     def is_offered(self, ctx: PanelContext) -> bool:
         return cohort_is_empty(cast(Cohort, ctx.instance))
 
-    def _blocked_context(
-        self, ctx: PanelContext, cohort: Cohort, reason: str
-    ) -> dict[str, object]:
-        return self._confirmation_context(
-            ctx, cohort, cascade_summary=[], blocked_reason=reason
-        )
-
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
         reason = cohort_not_empty_sentence(cohort)
@@ -414,64 +417,34 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
             return self._blocked_context(ctx, cohort, reason)
         return super().get_context_data(ctx)
 
-    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
-        with transaction.atomic():
-            # Lock the cohort so a membership added between this check and the
-            # delete either lands first and is refused here, or waits and then
-            # fails on the missing cohort. A cohort another request deleted
-            # while this one waited is a 404, which the action route answers
-            # with its "unavailable" fragment. The action route authorised
-            # ctx.instance before this ran; the re-read only takes the lock.
-            cohort = get_object_or_404(
-                Cohort.objects.select_for_update(), pk=cast(Cohort, ctx.instance).pk
-            )
-            reason = cohort_not_empty_sentence(cohort)
-            if reason:
-                return self._blocked_response(ctx, cohort, reason)
-            events = self.get_success_events(cohort)
-            protected: ProtectedError | None = None
-            actor = cast("User", ctx.request.user)
-            reason = submitted_reason(ctx)
-            # The roles go here rather than in the pre_delete receiver, which
-            # has no request and would log their removal as the system.
-            delete_role_rows_for(cohort, removed_by=actor, reason=reason)
-            # Written before the delete because the entry reads the pk, which
-            # delete() clears.
-            record_entry(
-                action="cohort.deleted",
-                actor=actor,
-                target=cohort,
-                target_label=cohort.name,
-                organisation=cohort.organisation,
-                reason=reason,
-            )
-            try:
-                cohort.delete()
-            except ProtectedError as error:
-                # The entry above must not outlive a delete that did not happen.
-                # The refusal is rendered after the block because a transaction
-                # marked for rollback cannot run queries.
-                transaction.set_rollback(True)
-                protected = error
-        if protected is not None:
-            return self._blocked_response(
-                ctx, cohort, self.get_blocked_reason(cohort, protected)
-            )
-        if self.success_url:
-            return navigation_response(self.success_url)
-        response = HttpResponse(status=204)
-        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
-        return response
-
-    def _blocked_response(
-        self, ctx: PanelContext, cohort: Cohort, reason: str
-    ) -> HttpResponse:
-        html = render_to_string(
-            self.template_name,
-            self._blocked_context(ctx, cohort, reason),
-            request=ctx.request,
+    def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse | None:
+        # Lock the cohort so a membership added between this check and the
+        # delete either lands first and is refused here, or waits and then
+        # fails on the missing cohort. A cohort another request deleted
+        # while this one waited is a 404, which the action route answers
+        # with its "unavailable" fragment. The action route authorised
+        # ctx.instance before this ran; the re-read only takes the lock.
+        cohort = get_object_or_404(Cohort.objects.select_for_update(), pk=instance.pk)
+        not_empty = cohort_not_empty_sentence(cohort)
+        if not_empty:
+            return self._blocked_response(ctx, cohort, not_empty)
+        actor = cast("User", ctx.request.user)
+        reason = submitted_reason(self, ctx)
+        # The roles go here rather than in the pre_delete receiver, which
+        # has no request and would log their removal as the system.
+        delete_role_rows_for(cohort, removed_by=actor, reason=reason)
+        # Written before the delete because the entry reads the pk, which
+        # delete() clears. A delete that a protected relation then blocks
+        # rolls the entry back with it.
+        record_entry(
+            action="cohort.deleted",
+            actor=actor,
+            target=cohort,
+            target_label=cohort.name,
+            organisation=cohort.organisation,
+            reason=reason,
         )
-        return HttpResponse(html, status=422)
+        return None
 
 
 class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
@@ -544,7 +517,7 @@ class LearnerStateAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         if not self.perform(
-            learner, cast("User", ctx.request.user), submitted_reason(ctx)
+            learner, cast("User", ctx.request.user), submitted_reason(self, ctx)
         ):
             return render(
                 ctx.request,
@@ -604,7 +577,9 @@ class ResendSetupEmailAction(PanelAction):
         learner = cast(Learner, ctx.instance)
         try:
             with transaction.atomic():
-                resend_account_setup_email(learner.user, learner.organisation.name)
+                # The entry goes first: a refused send rolls it back, while
+                # a failed entry must not leave an email sent and the resend
+                # guard set with nothing in the log.
                 record_entry(
                     action="learner.setup_email_resent",
                     actor=cast("User", ctx.request.user),
@@ -612,6 +587,7 @@ class ResendSetupEmailAction(PanelAction):
                     target_label=learner.user.display_name,
                     organisation=learner.organisation,
                 )
+                resend_account_setup_email(learner.user, learner.organisation.name)
         except SetupEmailRecentlySent:
             return render(
                 ctx.request,
@@ -684,7 +660,7 @@ class UnregisterCohortFromCourseAction(
         unregister_cohort_from_course(
             self._registration(ctx),
             actor=cast("User", ctx.request.user),
-            reason=submitted_reason(ctx),
+            reason=submitted_reason(self, ctx),
         )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
@@ -804,7 +780,7 @@ class UnregisterLearnerFromCourseAction(ReasonMixin, PanelAction):
             learner,
             self._registration(ctx).course,
             actor=cast("User", ctx.request.user),
-            reason=submitted_reason(ctx),
+            reason=submitted_reason(self, ctx),
         )
         return _registration_changed_response(learner)
 
@@ -965,7 +941,7 @@ class MembershipAction(PanelAction):
         if not cohort.is_active:
             return inactive_cohort_response(ctx.request, cohort)
         self.perform(
-            learner, cohort, cast("User", ctx.request.user), submitted_reason(ctx)
+            learner, cohort, cast("User", ctx.request.user), submitted_reason(self, ctx)
         )
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
@@ -1973,7 +1949,7 @@ class RemoveRoleAction(ReasonMixin, MemberRoleAction):
                         user,
                         entry.role,
                         target,
-                        reason=submitted_reason(ctx),
+                        reason=submitted_reason(self, ctx),
                     )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
@@ -2168,7 +2144,10 @@ class SuspendMemberAction(ReasonMixin, MemberStateAction):
             raise Http404("The member is already suspended")
         try:
             set_organisation_member_active(
-                cast("User", ctx.request.user), row, False, reason=submitted_reason(ctx)
+                cast("User", ctx.request.user),
+                row,
+                False,
+                reason=submitted_reason(self, ctx),
             )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
@@ -2199,7 +2178,12 @@ class ReactivateMemberAction(MemberStateAction):
             raise Http404("The member is already active")
         try:
             with transaction.atomic():
-                row = row or ensure_organisation_member(user, organisation)
+                # A member with no row has no access, so the row is created
+                # suspended: reactivating it below is then a real change, and
+                # one that writes its entry.
+                row = row or ensure_organisation_member(
+                    user, organisation, is_active=False
+                )
                 set_organisation_member_active(
                     cast("User", ctx.request.user), row, True
                 )

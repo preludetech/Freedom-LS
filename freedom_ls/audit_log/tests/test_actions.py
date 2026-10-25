@@ -7,6 +7,7 @@ from django.test import override_settings
 from freedom_ls.audit_log.actions import (
     FLS_AUDIT_ACTIONS,
     SUMMARY_ACTIONS,
+    audit_actions,
     get_audit_action,
     validate_action,
 )
@@ -116,3 +117,12 @@ def test_an_fls_code_wins_a_collision_with_an_extra_code():
         label = get_audit_action("cohort.created").label
 
     assert label == "Cohort created"
+
+
+def test_the_registry_is_built_once_per_value_of_the_setting():
+    assert audit_actions() is audit_actions()
+    with override_settings(AUDIT_LOG_EXTRA_ACTIONS={"invoice.sent": "Invoice sent"}):
+        extended = audit_actions()
+
+    assert extended is not audit_actions()
+    assert "invoice.sent" not in audit_actions()

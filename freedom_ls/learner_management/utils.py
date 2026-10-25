@@ -87,7 +87,7 @@ def ensure_learner(user: User, organisation: Organisation) -> Learner:
 
 
 def ensure_organisation_member(
-    user: User, organisation: Organisation
+    user: User, organisation: Organisation, *, is_active: bool = True
 ) -> OrganisationMember:
     """Get or create the OrganisationMember recording that a user helps run
     an organisation's learners.
@@ -95,7 +95,7 @@ def ensure_organisation_member(
     Idempotent, but unlike ensure_learner it never reactivates an existing
     row: a deactivated member must stay deactivated until someone explicitly
     reactivates them, so a fresh grant on the organisation cannot silently
-    undo that decision.
+    undo that decision. `is_active` only applies to a row created here.
 
     _base_manager, not objects: SiteAwareManager.get_queryset() ANDs the
     ambient thread-local site onto every lookup when a request exists, and
@@ -111,7 +111,7 @@ def ensure_organisation_member(
         site=organisation.site,
         user=user,
         organisation=organisation,
-        defaults={"is_active": True},
+        defaults={"is_active": is_active},
     )
     return member
 

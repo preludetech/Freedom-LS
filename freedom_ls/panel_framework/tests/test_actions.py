@@ -833,6 +833,25 @@ def test_delete_action_cascade_summary_counts_fast_deleted_rows(
 
 
 @pytest.mark.django_db
+def test_a_refusal_from_before_delete_is_answered_and_keeps_the_row(
+    mock_site_context: Site,
+) -> None:
+    class _RefusingDelete(DeleteAction):
+        def before_delete(self, ctx: PanelContext, instance: Model) -> HttpResponse:
+            return self._blocked_response(ctx, instance, "Not today.")
+
+    item = make_stub(name="kept")
+    request = RequestFactory().delete("/")
+    request.user = make_staff_user()
+
+    response = _RefusingDelete(success_url="/items").handle_submit(_ctx(request, item))
+
+    assert response.status_code == 422
+    assert "Not today." in response.content.decode()
+    assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
 def test_delete_action_render_returns_confirmation_html(
     mock_site_context: Site,
 ) -> None:

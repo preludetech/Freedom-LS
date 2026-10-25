@@ -614,6 +614,19 @@ class TestMemberAndRoleAudit:
 
         assert AuditLogEntry.unscoped.get().action == "member.reactivated"
 
+    def test_a_change_already_made_by_another_request_writes_nothing(
+        self, mock_site_context: Site
+    ) -> None:
+        """The stored row decides whether anything changed, not the caller's
+        instance, which another request may have overtaken."""
+        actor = UserFactory(superuser=True)
+        member = OrganisationMemberFactory(is_active=False)
+        OrganisationMember._base_manager.filter(pk=member.pk).update(is_active=True)
+
+        set_organisation_member_active(actor, member, True)
+
+        assert AuditLogEntry.unscoped.count() == 0
+
     def test_a_refused_suspension_writes_nothing(self, mock_site_context: Site) -> None:
         organisation = OrganisationFactory()
         member = self._member(organisation)

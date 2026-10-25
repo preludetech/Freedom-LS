@@ -76,6 +76,18 @@ def test_the_actor_label_is_the_actors_display_name(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_the_labels_hold_the_longest_display_name(mock_site_context):
+    """A display name runs to 401 characters: two 200-character names and
+    a space."""
+    actor = UserFactory(first_name="a" * 200, last_name="b" * 200)
+
+    entry = _record(OrganisationFactory(), actor=actor, target_label=actor.display_name)
+
+    entry.refresh_from_db()
+    assert len(entry.actor_label) == len(entry.target_label) == 401
+
+
+@pytest.mark.django_db
 def test_labels_survive_deleting_the_actor_and_the_target(mock_site_context):
     actor = UserFactory()
     site = Site.objects.get_current()

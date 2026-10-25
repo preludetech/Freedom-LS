@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from django.conf import settings
@@ -67,7 +66,8 @@ class AuditLogEntry(SiteAwareModel):
     """One audited change: who did what to which object, and when.
 
     The `*_label` fields keep reading correctly after the actor or the target
-    is gone.
+    is gone. They are copied from other models' fields, so they carry no
+    length of their own: a user's display name alone runs to 401 characters.
     """
 
     created_at = models.DateTimeField(default=timezone.now)
@@ -83,14 +83,14 @@ class AuditLogEntry(SiteAwareModel):
         on_delete=models.SET_NULL,
         related_name="+",
     )
-    actor_label = models.CharField(max_length=255, blank=True)
+    actor_label = models.CharField(blank=True)
     action = models.CharField(max_length=100)
     target_content_type = models.ForeignKey(
         ContentType, on_delete=models.PROTECT, related_name="+"
     )
     target_object_id = models.CharField(max_length=255)
     target = GenericForeignKey("target_content_type", "target_object_id")
-    target_label = models.CharField(max_length=255)
+    target_label = models.CharField()
     subjects = ArrayField(models.CharField(max_length=300))
     reason = models.CharField(max_length=500, blank=True)
     details = models.JSONField(default=dict, blank=True)
@@ -114,12 +114,12 @@ class AuditLogEntry(SiteAwareModel):
     def __str__(self) -> str:
         return f"{self.action}: {self.target_label}"
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
         if not self._state.adding:
             raise AppendOnlyError()
         super().save(*args, **kwargs)
 
-    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
         raise AppendOnlyError()
 
     @cached_property

@@ -22,6 +22,7 @@ from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
@@ -265,6 +266,25 @@ def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client):
 
     assert response.status_code == 422
     assert "is already active" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_reason_posted_to_a_dialog_without_a_reason_field_is_ignored(
+    staff_client: Client,
+):
+    """Reactivate takes no reason, so a hand-made POST carrying one, however
+    long, neither fails nor reaches the entry."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1, is_active=False)
+
+    response = _post(
+        staff_client,
+        _cohort_url(organisation, cohort, "/__actions/reactivate"),
+        {"reason": "x" * 600},
+    )
+
+    assert response.status_code == 204
+    assert AuditLogEntry.unscoped.get(action="cohort.reactivated").reason == ""
 
 
 @pytest.mark.django_db
@@ -4451,6 +4471,20 @@ def test_reactivating_a_member_with_no_row_creates_an_active_one(
 
 
 @pytest.mark.django_db
+def test_reactivating_a_member_with_no_row_writes_member_reactivated(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    OrganisationMember.objects.filter(user=user).delete()
+
+    _state_post(admin_client, organisation, user, "reactivate")
+
+    entry = AuditLogEntry.unscoped.get(action="member.reactivated")
+    assert entry.target == _member_row(user, organisation)
+    assert entry.subjects[1:] == [subject_key(user)]
+
+
+@pytest.mark.django_db
 def test_an_organisation_admin_suspending_the_last_organisation_admin_is_422(
     admin_client, organisation, monkeypatch
 ):
@@ -5151,6 +5185,34 @@ def test_a_refused_resend_writes_nothing(
 
     assert (too_soon.status_code, already.status_code) == (422, 422)
     assert AuditLogEntry.unscoped.count() == entries_before
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_failed_entry_sends_no_email_and_leaves_the_resend_open(
+    staff_client: Client, django_capture_on_commit_callbacks, monkeypatch
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    url = _resend_url(organisation, learner)
+
+    def fail(**kwargs: object) -> None:
+        raise _RolledBackError
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.record_entry", fail)
+    with (
+        pytest.raises(_RolledBackError),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        _post(staff_client, url)
+    monkeypatch.undo()
+    assert mail.outbox == []
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, url)
+
+    assert response.status_code == 204
+    assert len(mail.outbox) == 1
 
 
 class _RolledBackError(Exception):
