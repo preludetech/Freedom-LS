@@ -18,10 +18,20 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: Resend setup email skip line reads '1 is account already set up' (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: Import stepper labels run together ('1. Upload2. Preview3. Result') (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: Bad-header error names only the first header problem (TDD: failing test first, then fix)
-- [ ] (user) Decide whether a CSV header error should list every problem (unknown, repeated and missing headers) in one message or only the first, then align the spec, the QA plan and base/csv_import.py
+- [x] (user) Decide what to do about QA bug: Resend setup email skip line reads '1 is account already set up' (TDD: failing test first, then fix)
+  - Decision: fix it.
+- [x] (user) Decide what to do about QA bug: Import stepper labels run together ('1. Upload2. Preview3. Result') (TDD: failing test first, then fix)
+  - Decision: fix it, together with the stray bullets between the count links on the import preview.
+- [x] (user) Decide what to do about QA bug: Bad-header error names only the first header problem (TDD: failing test first, then fix)
+  - Decision: fix it.
+- [x] (user) Decide whether a CSV header error should list every problem (unknown, repeated and missing headers) in one message or only the first, then align the spec, the QA plan and base/csv_import.py
+  - Decision: list every problem in one message, then the accepted columns.
+- [x] Fix B3 (TDD: failing test first): the resend setup email confirmation must read "1 account is already set up and will be skipped." instead of "1 is account already set up and will be skipped."
+- [x] Fix B5 (TDD: failing test first): the import stepper must show Upload, Preview and Result as separate numbered steps, not "1. Upload2. Preview3. Result"
+- [x] Remove the stray bullet markers between the count links on the import preview (same list-style cause as B5)
+- [x] Fix B6 (TDD: failing test first): change `_check_headers` in base/csv_import.py so one error message lists every unknown, repeated and missing header, then the accepted columns
+- [x] Reword the spec's header-check sentence (1. spec.md, "a missing `email`, an unknown header or a repeated header rejects the file...") to say the error lists every header problem
+- [x] Re-run QA test 2.badhead and confirm it passes against the existing QA plan expectation
 
 ## 4. Documentation and pull request
 
