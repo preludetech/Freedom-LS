@@ -30,21 +30,24 @@ def carry_over_deadline_overrides(
     **kwargs: object,
 ) -> None:
     """Move deadline override rows from a child's stale collection item to the one a load just
-    made.
+    wrote.
 
     A sync never removes the row a moved child left behind, so the deadline overrides pointing
-    at it would otherwise stop applying. Only the unambiguous case moves: exactly one other row
-    for the same child in the same course that this load did not write. A file with two
-    collection items on purpose has both rows written, and a child with two stale rows is left
-    for a person. A part placed in several courses is looked at in each of them.
+    at it would otherwise stop applying. Every written row is looked at, not only the created
+    ones: a child moved back to where it came from lands on the row it left, which the load
+    updates rather than creates. Only the unambiguous case moves: exactly one other row for
+    the same child in the same course that this load did not write. A file with two collection
+    items on purpose has both rows written, and a child with two stale rows is left for a
+    person. A part placed in several courses is looked at in each of them. A registration or
+    record that already has an override on the written row keeps it; its row on the stale item
+    stays where it is rather than clash.
 
-    A first load creates every row, so the courses and their item trees are read once per load
-    rather than once per created row.
+    The courses and their item trees are read once per load rather than once per written row.
     """
     written_ids = {row.pk for row in written}
     courses = _CoursesOfCollections(site)
     items_by_course: dict[UUID, list[ContentCollectionItem]] = {}
-    for new_row in created:
+    for new_row in written:
         for course in courses.placing(new_row):
             if course.pk not in items_by_course:
                 items_by_course[course.pk] = course_viewable_collection_items(course)
@@ -59,10 +62,23 @@ def carry_over_deadline_overrides(
             ]
             if len(stale) != 1:
                 continue
-            for model in (CohortDeadlineOverride, LearnerDeadlineOverride):
-                model._base_manager.filter(site=site, collection_item=stale[0]).update(
+            for model, parent in _OVERRIDE_PARENTS:
+                already_on_new_row = model._base_manager.filter(
                     collection_item=new_row
-                )
+                ).values(parent)
+                model._base_manager.filter(site=site, collection_item=stale[0]).exclude(
+                    **{f"{parent}__in": already_on_new_row}
+                ).update(collection_item=new_row)
+
+
+# Each override model with the field that names whose override a row is, which the unique
+# constraints pair with the collection item.
+_OVERRIDE_PARENTS: tuple[
+    tuple[type[CohortDeadlineOverride] | type[LearnerDeadlineOverride], str], ...
+] = (
+    (CohortDeadlineOverride, "cohort_registration"),
+    (LearnerDeadlineOverride, "course_progress"),
+)
 
 
 class _CoursesOfCollections:

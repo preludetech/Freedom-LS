@@ -108,6 +108,57 @@ def test_moving_a_topic_carries_both_override_models_to_the_new_row(
 
 
 @pytest.mark.django_db
+def test_moving_a_topic_back_carries_the_overrides_to_the_row_it_left(
+    site, mock_site_context, tmp_path
+):
+    """The way back reuses the row the first move left behind, so no row is created."""
+    old_row, cohort_override, learner_override = _first_load_with_overrides(
+        tmp_path, site
+    )
+    _move_topic_to_part_b(tmp_path)
+    _load(tmp_path, site)
+    (tmp_path / PART_B / "moving.md").rename(tmp_path / PART_A / "moving.md")
+
+    _load(tmp_path, site)
+
+    assert _row_in_part(_topic(), PART_A).pk == old_row.pk
+    assert _item_of(cohort_override) == old_row.pk
+    assert _item_of(learner_override) == old_row.pk
+
+
+@pytest.mark.django_db
+def test_an_override_already_on_the_row_a_topic_returns_to_stays_put(
+    site, mock_site_context, tmp_path
+):
+    """Set on the stale row between loads, so the one on the row it left cannot move
+    without clashing; the load succeeds and leaves both where they are."""
+    old_row, cohort_override, learner_override = _first_load_with_overrides(
+        tmp_path, site
+    )
+    _move_topic_to_part_b(tmp_path)
+    _load(tmp_path, site)
+    new_row = _row_in_part(_topic(), PART_B)
+    later_cohort_override = CohortDeadlineOverrideFactory(
+        site=site,
+        cohort_registration=cohort_override.cohort_registration,
+        collection_item=old_row,
+    )
+    later_learner_override = LearnerDeadlineOverrideFactory(
+        site=site,
+        course_progress=learner_override.course_progress,
+        collection_item=old_row,
+    )
+    (tmp_path / PART_B / "moving.md").rename(tmp_path / PART_A / "moving.md")
+
+    _load(tmp_path, site)
+
+    assert _item_of(later_cohort_override) == old_row.pk
+    assert _item_of(later_learner_override) == old_row.pk
+    assert _item_of(cohort_override) == new_row.pk
+    assert _item_of(learner_override) == new_row.pk
+
+
+@pytest.mark.django_db
 def test_a_reload_without_a_move_leaves_the_overrides(
     site, mock_site_context, tmp_path
 ):
