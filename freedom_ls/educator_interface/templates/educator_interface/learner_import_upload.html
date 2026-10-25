@@ -20,7 +20,11 @@
                 {{ form.file }}
             </div>
             <p class="text-sm">Accepted columns: <code>{{ headers }}</code></p>
-            <p class="text-sm"><code>email</code> is required; <code>cohort</code> is matched by name</p>
+            {% if cohort %}
+                <p class="text-sm">Every learner in the file is added to <strong>{{ cohort.name }}</strong>. The <code>cohort</code> column is ignored.</p>
+            {% else %}
+                <p class="text-sm"><code>email</code> is required; <code>cohort</code> is matched by name</p>
+            {% endif %}
             <p class="text-sm"><a href="{{ template_url }}" download>Download the template</a></p>
             <c-button type="submit">Upload and preview</c-button>
         </form>

@@ -189,7 +189,8 @@ def check_rows(
 ) -> Iterator[RowCheck]:
     """The shared classification steps, in order: email cleaning, lengths,
     duplicates (against every row of the import, not only `rows`) and cohort
-    resolution."""
+    resolution. An import made from a cohort's page uses that cohort for every
+    row and never reads the cohort cell."""
     first_line_of: dict[str, int] = {}
     for line_number, email in (
         LearnerImportRow._base_manager.filter(learner_import=learner_import)
@@ -203,9 +204,9 @@ def check_rows(
         error = _length_error(email, row) if email else "Email is empty."
         if not error and first_line_of[email.lower()] != row.line_number:
             error = f"Same email as line {first_line_of[email.lower()]}."
-        cohort: Cohort | None = None
+        cohort: Cohort | None = learner_import.cohort
         cohort_name = row.cohort_name.strip()
-        if not error and cohort_name:
+        if not error and cohort is None and cohort_name:
             if cohorts is None:
                 cohorts = {
                     candidate.name.lower(): candidate

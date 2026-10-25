@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 
 from freedom_ls.accounts.account_setup import (
     AccountAlreadySetUp,
@@ -1364,26 +1365,34 @@ class AddLearnersAction(PanelAction):
 
 class ImportLearnersAction(PanelAction):
     """A link to the learner import page, shown to a user who may import
-    learners into the organisation."""
+    learners. On a cohort's page the link carries the cohort, which is then the
+    import's cohort."""
 
     label = "Import learners"
     action_name = "import_learners"
     variant = "secondary"
     trigger_template_name = "educator_interface/partials/import_learners_link.html"
 
+    @staticmethod
+    def _cohort(ctx: PanelContext) -> Cohort | None:
+        return ctx.instance if isinstance(ctx.instance, Cohort) else None
+
     def has_permission(self, ctx: PanelContext) -> bool:
         scoped = cast("OrganisationScopedRequest", ctx.request)
-        return check_import_gate(cast("User", scoped.user), scoped.organisation, None)
+        return check_import_gate(
+            cast("User", scoped.user), scoped.organisation, self._cohort(ctx)
+        )
 
     def get_trigger_context(self, ctx: PanelContext) -> dict[str, object]:
         scoped = cast("OrganisationScopedRequest", ctx.request)
-        return {
-            **super().get_trigger_context(ctx),
-            "href": reverse(
-                "educator_interface:learner_import",
-                kwargs={"organisation_slug": scoped.organisation.slug},
-            ),
-        }
+        cohort = self._cohort(ctx)
+        href = reverse(
+            "educator_interface:learner_import",
+            kwargs={"organisation_slug": scoped.organisation.slug},
+        )
+        if cohort is not None:
+            href = f"{href}?{urlencode({'cohort': str(cohort.pk)})}"
+        return {**super().get_trigger_context(ctx), "href": href}
 
 
 class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):

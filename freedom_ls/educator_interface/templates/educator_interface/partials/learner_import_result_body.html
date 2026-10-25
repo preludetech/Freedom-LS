@@ -43,6 +43,6 @@ status partial.
 {% endif %}
 <p class="mt-4 text-sm">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
 <p class="mt-4 space-x-4">
-    <a href="{{ learners_url }}">Back to learners</a>
+    <a href="{{ learners_url }}">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</a>
     <a href="{{ upload_url }}">Import another file</a>
 </p>

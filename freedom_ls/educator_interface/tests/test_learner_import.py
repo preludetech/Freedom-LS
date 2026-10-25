@@ -162,6 +162,36 @@ def test_a_cohort_cell_matches_only_cohorts_the_user_can_add_to(
     assert rows[2].preview_label == ImportLabel.ERROR
 
 
+def test_a_cohort_import_ignores_the_cohort_cell_and_uses_its_own_cohort(
+    organisation: Organisation, admin: User
+) -> None:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Accra"))
+    CohortFactory(organisation=organisation, name="Lagos")
+    upload = _file("a@example.com,,,Lagos", "b@example.com,,,No such cohort")
+
+    learner_import = create_learner_import(admin, organisation, cohort, upload)
+
+    assert learner_import.cohort == cohort
+    assert _labels(learner_import) == [ImportLabel.NEW_ACCOUNT] * 2
+
+
+def test_a_cohort_import_adds_every_row_to_its_cohort(
+    organisation: Organisation, admin: User, mock_site_context: Site
+) -> None:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Accra"))
+    existing = LearnerFactory(organisation=organisation)
+    upload = _file("a@example.com,,,Lagos", f"{existing.user.email},,,")
+    learner_import = create_learner_import(admin, organisation, cohort, upload)
+
+    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+
+    assert _labels(learner_import, "final_label") == [
+        ImportLabel.NEW_ACCOUNT,
+        ImportLabel.ADDED_TO_COHORT,
+    ]
+    assert cohort.cohortmembership_set.count() == 2
+
+
 def test_a_file_level_failure_stores_nothing(
     organisation: Organisation, admin: User
 ) -> None:
