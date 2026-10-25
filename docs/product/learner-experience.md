@@ -16,6 +16,7 @@ _Last updated: 2026-10-25_
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
 - A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. Nothing is enforced: an item past its deadline stays open and completable. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
+- A course can belong to particular organisations, and only their learners see it unless it is public. Dashboard cards name the organisation, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 - A site has a public blog: an index of its published articles and a page for each article, readable without logging in. An article can carry an image, shown on its page, its cards and its social-sharing preview. See [Blog](#blog).
 - A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
@@ -43,6 +44,8 @@ Each category chosen for the dashboard gets a section of its own, headed by its 
 Every section shows up to three cards at a time, with previous/next controls and a "1 to 3 of 12" position beside the heading to reach the rest. Paging one section leaves the others where they are.
 
 Each course card shows the course title, its registration status, and a progress percentage once the learner has started it, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action. A card does not name the course's category; the [detail page](#course-detail-page) does.
+
+A card for an organisation's course carries a small byline under the title with the organisation's logo and name: on an in-progress card, the organisation the learner studies it through; on other dashboard cards, the organisation that owns the course when there is exactly one. The site's default organisation never gets a byline, and the all-courses list, completed cards and the course detail page show none.
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
@@ -248,7 +251,7 @@ Returning to a course sends the learner straight back to the item they last view
 
 If a learner is studying a course through an organisation — reached either through their cohort or through their own registration — that organisation's logo and name appear in the course outline header, directly above the course title, as a small, clearly secondary mark. If the organisation has no logo, an initials monogram derived from its name is shown instead; if its name has no usable letters, a generic icon.
 
-A learner who self-registers for a course, rather than being added through a cohort, is registered through the site's own default organisation, so no mark appears unless an administrator has given that organisation a logo.
+A learner who self-registers for an organisation's course is registered through their own organisation. For any other course, a self-registered learner is registered through the site's own default organisation, so no mark appears unless an administrator has given that organisation a logo.
 
 This is co-branding, not rebranding: the rest of the learner-facing chrome — theme, colours, domain — remains the site's own regardless of organisation. There is no per-organisation theme, domain, or email and certificate branding.
 

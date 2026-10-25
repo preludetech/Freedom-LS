@@ -51,6 +51,8 @@ Every site has at least one organisation, named after the site itself and create
 
 Staff access within an organisation comes from role assignments: a role on the organisation covers everything in it, including cohorts created later, and a role on a cohort covers that cohort only. Either counts only while the person is an active member of that organisation. See [educator interface](./educator-interface.md#access-control).
 
+A course can belong to one or more organisations, declared by its authors in the course content (see [content editing workflow](./content-editing-workflow.md)). Such a course is seen and opened only by learners of those organisations, unless its audience is set to public, and it can be registered onto only through those organisations. A course with no organisation stays open to the whole site. A learner already registered keeps access for as long as the learner association they registered through stays active.
+
 This is the canonical statement of what an organisation is and is not; other docs link here rather than restating it.
 
 ## Limitations and Gaps
@@ -60,7 +62,7 @@ This is the canonical statement of what an organisation is and is not; other doc
 - **Site-aware user groups are not available.** A site-scoped equivalent of Django's groups is drafted but not enabled; permissions are granted per user. See [roadmap](./roadmap.md).
 - **Organisations cannot be deleted or merged**, and there is no nested (parent/child) organisation structure.
 - **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and theme, and there is no per-organisation brand colour. An organisation's name and logo are what distinguish it visually: a small mark in the course player — see [learner experience](./learner-experience.md) — and the primary brand on the cover of a [cohort progress report](./reports.md).
-- **Courses, course interest, applications, and recommendations are not organisation-scoped** in this release — they remain shared across the whole site. See [roadmap](./roadmap.md).
+- **Only course visibility and registration are organisation-scoped.** Course interest and applications are not restricted by a course's organisations, and recommendation rules are not set per organisation, though recommendations only surface courses the learner may see. See [roadmap](./roadmap.md).
 
 ## Per-Site Configuration
 
