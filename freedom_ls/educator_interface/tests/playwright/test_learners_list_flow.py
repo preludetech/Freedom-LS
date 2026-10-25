@@ -103,7 +103,7 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     main.get_by_role("button", name="Add to cohort", exact=True).click()
     modal.get_by_label("Cohort").select_option(label="Evening group")
     expect(
-        modal.get_by_text(f"{matching} learners will be added to Evening group.")
+        modal.get_by_text(f"Add {matching} learners to Evening group.")
     ).to_be_visible()
     modal.get_by_role("button", name="Add to cohort", exact=True).click()
 
@@ -125,7 +125,7 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     main.get_by_role("button", name="Remove from cohort", exact=True).click()
     modal.get_by_label("Cohort").select_option(label="Evening group")
     expect(
-        modal.get_by_text(f"{matching} learners will be removed from Evening group.")
+        modal.get_by_text(f"Remove {matching} learners from Evening group.")
     ).to_be_visible()
     modal.get_by_role("button", name="Remove from cohort", exact=True).click()
 
