@@ -26,7 +26,7 @@ from django.core.management.base import CommandError
 from django.db import DatabaseError
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.deployment.housekeeping import (
     BulkRecordModel,
     OrphanReapResult,
@@ -51,6 +51,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)

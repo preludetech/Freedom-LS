@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
@@ -30,6 +30,7 @@ from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
 from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.tests.factories import SiteFactory
 
 
 # Self-registration through initiate_course_access (the chokepoint for
