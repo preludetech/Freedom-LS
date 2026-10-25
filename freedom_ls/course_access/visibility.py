@@ -1,9 +1,10 @@
-"""Shared visibility gate for view chokepoints.
+"""Shared availability gate for view chokepoints.
 
-Centralises the "hidden courses 404 for anyone not registered" rule so that
-every view surface (course detail, apply, express-interest) enforces it
-identically and cannot drift from the VisibilityEnforcingBackend's filter_visible
-rule: hidden means hidden.
+Centralises the two rules that make a course a 404 for a user: a hidden course
+the user is not registered for, and a course the user is not in the audience
+of. Every view surface (course detail, apply, express-interest) enforces them
+identically and cannot drift from the VisibilityEnforcingBackend's
+filter_visible rule.
 """
 
 from __future__ import annotations
@@ -17,15 +18,14 @@ if TYPE_CHECKING:
     from freedom_ls.learner_management.utils import RequestUser
 
 
-def raise_404_if_hidden_unregistered(user: RequestUser, course: Course) -> None:
-    """Raise Http404 if the course is hidden and the user is not registered for it.
-
-    A registered learner keeps access to a hidden course (mirrors filter_visible
-    and get_access), so only unregistered users get the 404.
-    """
-    # Lazy imports mirror backends.py — avoid a module-load import cycle.
+def raise_404_if_unavailable(user: RequestUser, course: Course) -> None:
+    """404 for a hidden course the user is not registered for, and for a
+    course the user is not in the audience of. A registered learner keeps
+    both, mirroring filter_visible and get_access."""
+    # Lazy imports mirror backends.py: avoid a module-load import cycle.
     from freedom_ls.content_engine.models import CourseVisibility
     from freedom_ls.course_access.overrides import override_visibility_to_visible
+    from freedom_ls.learner_management.queries import is_in_audience
     from freedom_ls.learner_management.utils import is_registered_for_course
 
     if override_visibility_to_visible():
@@ -34,4 +34,7 @@ def raise_404_if_hidden_unregistered(user: RequestUser, course: Course) -> None:
     if course.visibility == CourseVisibility.HIDDEN and not is_registered_for_course(
         user, course
     ):
+        raise Http404
+
+    if not is_in_audience(user, course):
         raise Http404

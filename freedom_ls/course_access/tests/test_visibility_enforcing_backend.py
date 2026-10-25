@@ -29,6 +29,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
 )
+from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
 
 BACKEND_PATHS = [
     "freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend",
@@ -466,3 +467,113 @@ class TestMinimalStubBackendEnforcement:
         # The wrapper intercepts coming_soon; the stub's "Stub CTA" never reaches the caller.
         assert decision.can_access_content is False
         assert decision.cta_label == "I'm interested"
+
+
+IN_AUDIENCE_CASES = [name for name, (_, inside) in AUDIENCE_CASES.items() if inside]
+OUTSIDE_AUDIENCE_CASES = [
+    name for name, (_, inside) in AUDIENCE_CASES.items() if not inside
+]
+
+
+def _is_closed(decision) -> bool:
+    return (
+        decision.cta_label is None
+        and not decision.can_self_register
+        and not decision.can_access_content
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("backend_path", BACKEND_PATHS)
+class TestVisibilityEnforcingBackendAudience:
+    """The audience rule: filter_visible and get_access agree with it."""
+
+    @pytest.mark.parametrize("case", IN_AUDIENCE_CASES)
+    def test_filter_visible_lists_a_course_for_a_user_inside_the_audience(
+        self, mock_site_context, backend_path, case
+    ):
+        user, course = AUDIENCE_CASES[case][0]()
+
+        result = _filter_visible_for(
+            backend_path, user=user, courses=Course.objects.all()
+        )
+
+        assert result.filter(pk=course.pk).exists()
+
+    @pytest.mark.parametrize("case", OUTSIDE_AUDIENCE_CASES)
+    def test_filter_visible_omits_a_course_for_a_user_outside_the_audience(
+        self, mock_site_context, backend_path, case
+    ):
+        user, course = AUDIENCE_CASES[case][0]()
+
+        result = _filter_visible_for(
+            backend_path, user=user, courses=Course.objects.all()
+        )
+
+        assert not result.filter(pk=course.pk).exists()
+
+    @pytest.mark.parametrize("case", IN_AUDIENCE_CASES)
+    def test_get_access_is_open_for_a_user_inside_the_audience(
+        self, mock_site_context, backend_path, case
+    ):
+        user, course = AUDIENCE_CASES[case][0]()
+
+        decision = _decision_for(backend_path, user=user, course=course)
+
+        assert not _is_closed(decision)
+
+    @pytest.mark.parametrize("case", OUTSIDE_AUDIENCE_CASES)
+    def test_get_access_is_closed_for_a_user_outside_the_audience(
+        self, mock_site_context, backend_path, case
+    ):
+        user, course = AUDIENCE_CASES[case][0]()
+
+        decision = _decision_for(backend_path, user=user, course=course)
+
+        assert _is_closed(decision)
+
+    def test_coming_soon_organisation_course_is_closed_not_interested_for_an_outsider(
+        self, mock_site_context, backend_path
+    ):
+        user, course = AUDIENCE_CASES["learner_of_another_organisation"][0]()
+        course.visibility = CourseVisibility.COMING_SOON
+        course.save()
+
+        decision = _decision_for(backend_path, user=user, course=course)
+
+        assert _is_closed(decision)
+
+    def test_visibility_override_lifts_the_audience_rule_in_get_access(
+        self, mock_site_context, backend_path
+    ):
+        user, course = AUDIENCE_CASES["learner_of_another_organisation"][0]()
+
+        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+            decision = _decision_for(backend_path, user=user, course=course)
+
+        assert not _is_closed(decision)
+
+    def test_visibility_override_lifts_the_audience_rule_in_filter_visible(
+        self, mock_site_context, backend_path
+    ):
+        user, course = AUDIENCE_CASES["learner_of_another_organisation"][0]()
+
+        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+            result = _filter_visible_for(
+                backend_path, user=user, courses=Course.objects.all()
+            )
+
+        assert result.filter(pk=course.pk).exists()
+
+    @pytest.mark.parametrize("make_user", [AnonymousUser, UserFactory])
+    def test_course_with_no_organisations_is_listed_as_before(
+        self, mock_site_context, backend_path, make_user
+    ):
+        course = CourseFactory()
+        user = make_user()
+
+        result = _filter_visible_for(
+            backend_path, user=user, courses=Course.objects.all()
+        )
+
+        assert result.filter(pk=course.pk).exists()

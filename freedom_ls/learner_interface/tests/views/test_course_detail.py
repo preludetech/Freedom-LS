@@ -316,6 +316,48 @@ def test_hidden_course_unregistered_user_gets_404(
 
 
 @pytest.mark.django_db
+def test_organisation_course_detail_gets_404_for_a_learner_outside_the_audience(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(slug="org-course")
+    course.organisations.add(OrganisationFactory())
+    client = logged_in_client(LearnerFactory().user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_organisation_course_home_gets_404_for_a_learner_outside_the_audience(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(slug="org-course")
+    course.organisations.add(OrganisationFactory())
+    client = logged_in_client(LearnerFactory().user)
+
+    response = client.get(
+        reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_organisation_course_detail_gets_200_for_a_learner_in_the_organisation(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(slug="org-course")
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+    client = logged_in_client(LearnerFactory(organisation=organisation).user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
 def test_hidden_course_registered_user_gets_200(
     mock_site_context, course_with_topic, logged_in_client
 ):

@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django import template
+from django.db.models import Q
 
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_access import get_course_access_backend
+from freedom_ls.learner_management.queries import is_organisation_course_expression
 
 if TYPE_CHECKING:
     from freedom_ls.content_base.models import BaseContent
@@ -37,6 +39,10 @@ def get_course_by_path(
             site_id=content_instance.site_id, file_path=final_path
         )
         .exclude(visibility=CourseVisibility.HIDDEN)
+        .exclude(
+            Q(audience=CourseAudience.ORGANISATION_LEARNERS)
+            & is_organisation_course_expression()
+        )
         .first()
     )
 

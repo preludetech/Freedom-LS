@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_interest_expressed
-from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.models import CourseInterest
 
 _CTA_TEMPLATE = "course_interest/partials/express_interest_cta.html"
@@ -63,7 +63,7 @@ def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResp
 
     course = get_object_or_404(Course, slug=course_slug)
 
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
     if course.visibility != CourseVisibility.COMING_SOON:
         return HttpResponse(status=422)
 
@@ -96,7 +96,7 @@ def partial_remove_interest(request: HttpRequest, course_slug: str) -> HttpRespo
 
     course = get_object_or_404(Course, slug=course_slug)
 
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
 
     CourseInterest.objects.filter(user=request.user, course=course).delete()
 
@@ -118,7 +118,7 @@ def deferred_express_interest(request: HttpRequest, course_slug: str) -> HttpRes
     """
     course = get_object_or_404(Course, slug=course_slug)
 
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
 
     pending_slug = request.session.pop(_PENDING_INTEREST_SESSION_KEY, None)
     if (

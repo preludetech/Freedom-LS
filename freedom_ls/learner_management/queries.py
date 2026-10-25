@@ -16,7 +16,7 @@ from django.db.models import (
 from django.db.models.functions import Cast
 
 from freedom_ls.accounts.account_setup import is_pending, pending_user_q
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
     _current_site,
@@ -177,6 +177,51 @@ def registered_course_pairs(
             "cohort__cohortmembership__learner__user_id", "course_id"
         )
     )
+
+
+def is_organisation_course_expression() -> Exists:
+    # The through table rather than a join on `organisations`, so the
+    # predicate adds no rows to the course queryset it is embedded in.
+    return Exists(Course.organisations.through.objects.filter(course_id=OuterRef("pk")))
+
+
+def _open_to_everyone_expression() -> Q:
+    # The half both audience rules share: a course that belongs to no
+    # organisation, or one that is public, is open whoever is asking.
+    return ~is_organisation_course_expression() | Q(audience=CourseAudience.PUBLIC)
+
+
+def in_audience_expression(user: RequestUser) -> Q:
+    """Courses this user may see: every course open to everyone, and for a
+    signed-in user the courses of the organisations they hold an active
+    Learner row in, plus any course they are registered for, so a change to
+    a course's organisations never strands a learner mid-course."""
+    if not user.is_authenticated:
+        return _open_to_everyone_expression()
+    own_organisation_learner = Exists(
+        Learner.objects.filter(
+            user=user, is_active=True, organisation__courses=OuterRef("pk")
+        )
+    )
+    return (
+        _open_to_everyone_expression()
+        | own_organisation_learner
+        | is_registered_for_course_expression(user)
+    )
+
+
+def _course_matches(course: Course, expression: Q) -> bool:
+    # _base_manager, not objects: the course was already fetched through the
+    # site-aware manager and the filter is on its pk alone, so no row from
+    # another site can match. The base manager lets the check run where no
+    # request has pinned a site: the admin's clean(), a background rule run.
+    return Course._base_manager.filter(pk=course.pk).filter(expression).exists()
+
+
+def is_in_audience(user: RequestUser, course: Course) -> bool:
+    """Single-course form of in_audience_expression, evaluated through the
+    same expression so the two cannot drift."""
+    return _course_matches(course, in_audience_expression(user))
 
 
 def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:

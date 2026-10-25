@@ -56,6 +56,8 @@ from freedom_ls.learner_management.queries import (
     courses_losing_access,
     educators_of,
     holds_registration_for_any_expression,
+    in_audience_expression,
+    is_in_audience,
     is_registered_for_course_expression,
     latest_registration,
     learner_for_course,
@@ -74,6 +76,7 @@ from freedom_ls.learner_management.queries import (
     registered_course_pairs,
     site_level_admins,
 )
+from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
     educator_names,
@@ -145,6 +148,33 @@ def _backdate_cohort_registration(
     )
     registration.refresh_from_db()
     return registration
+
+
+@pytest.mark.django_db
+class TestInAudience:
+    @pytest.mark.parametrize("case", AUDIENCE_CASES)
+    def test_single_course_form_matches_the_case_table(
+        self, mock_site_context: Site, case: str
+    ) -> None:
+        build, expected = AUDIENCE_CASES[case]
+        user, course = build()
+
+        assert is_in_audience(user, course) is expected
+
+    @pytest.mark.parametrize("case", AUDIENCE_CASES)
+    def test_queryset_form_matches_the_case_table(
+        self, mock_site_context: Site, case: str
+    ) -> None:
+        build, expected = AUDIENCE_CASES[case]
+        user, course = build()
+
+        listed = (
+            Course.objects.filter(pk=course.pk)
+            .filter(in_audience_expression(user))
+            .exists()
+        )
+
+        assert listed is expected
 
 
 @pytest.mark.django_db

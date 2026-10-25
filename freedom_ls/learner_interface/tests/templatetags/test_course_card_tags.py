@@ -12,13 +12,14 @@ from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import CourseVisibility, Topic
+from freedom_ls.content_engine.models import CourseAudience, CourseVisibility, Topic
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.learner_interface.templatetags.course_card_tags import (
     course_access_badge,
     get_course_by_path,
 )
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
 
 APPLICATION_BACKEND = (
@@ -51,6 +52,25 @@ class TestGetCourseByPath:
         course = CourseFactory(
             file_path="course/course.md", visibility=CourseVisibility.COMING_SOON
         )
+
+        assert get_course_by_path("../course/course.md", source_topic) == course
+
+    def test_organisation_learners_organisation_course_is_none(
+        self, source_topic: Topic
+    ) -> None:
+        course = CourseFactory(
+            file_path="course/course.md",
+            audience=CourseAudience.ORGANISATION_LEARNERS,
+        )
+        course.organisations.add(OrganisationFactory())
+
+        assert get_course_by_path("../course/course.md", source_topic) is None
+
+    def test_public_organisation_course_is_returned(self, source_topic: Topic) -> None:
+        course = CourseFactory(
+            file_path="course/course.md", audience=CourseAudience.PUBLIC
+        )
+        course.organisations.add(OrganisationFactory())
 
         assert get_course_by_path("../course/course.md", source_topic) == course
 

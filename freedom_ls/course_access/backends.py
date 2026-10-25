@@ -18,6 +18,8 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.learner_management.queries import (
+    in_audience_expression,
+    is_in_audience,
     is_registered_for_course_expression,
 )
 from freedom_ls.learner_management.utils import is_registered_for_course
@@ -364,6 +366,16 @@ _COMING_SOON_ACQUISITION_SUBTEXT = (
 )
 
 
+def _closed_decision() -> CourseAccessDecision:
+    """The decision for a course the user may not see: no call to action, no access."""
+    return CourseAccessDecision(
+        cta_label=None,
+        cta_url=None,
+        can_self_register=False,
+        can_access_content=False,
+    )
+
+
 class VisibilityEnforcingBackend(CourseAccessBackend):
     """Applies Course.visibility around any inner backend.
 
@@ -389,6 +401,8 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             override_visibility_to_visible,
         )
 
+        if not override_visibility_to_visible() and not is_in_audience(user, course):
+            return _closed_decision()
         if (
             course.visibility == CourseVisibility.COMING_SOON
             and not is_registered_for_course(user, course)
@@ -411,12 +425,7 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             and not is_registered_for_course(user, course)
             and not override_visibility_to_visible()
         ):
-            return CourseAccessDecision(
-                cta_label=None,
-                cta_url=None,
-                can_self_register=False,
-                can_access_content=False,
-            )
+            return _closed_decision()
         if override_access_to_free():
             # Dev/staging preview: replace the inner backend's real decision with
             # the canonical free decision, ignoring the course's actual access_config.
@@ -477,10 +486,14 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         # Anonymous users never see hidden courses; authenticated users see a
         # hidden course only if registered for it (Exists() subquery, no joins).
         if not user.is_authenticated:
-            return courses.exclude(visibility=CourseVisibility.HIDDEN)
-        return courses.annotate(
-            _is_registered=is_registered_for_course_expression(user)
-        ).exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
+            return courses.exclude(visibility=CourseVisibility.HIDDEN).filter(
+                in_audience_expression(user)
+            )
+        return (
+            courses.annotate(_is_registered=is_registered_for_course_expression(user))
+            .exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
+            .filter(in_audience_expression(user))
+        )
 
     def validate_course_config(
         self,

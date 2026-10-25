@@ -42,6 +42,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
 
 # ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
@@ -67,6 +68,24 @@ def test_initiate_access_gated_course_redirects_to_apply_url(
     )
     assert response.status_code == 302
     assert response["Location"] == apply_url
+
+
+@pytest.mark.django_db
+def test_initiate_access_gets_404_for_an_organisation_course_outside_the_audience(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    course.organisations.add(OrganisationFactory())
+    client = logged_in_client(UserFactory())
+
+    response = client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

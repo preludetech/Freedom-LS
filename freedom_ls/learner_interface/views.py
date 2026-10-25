@@ -40,7 +40,7 @@ from freedom_ls.course_access.overrides import (
     is_coming_soon_for_display,
     override_visibility_to_visible,
 )
-from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
@@ -823,7 +823,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     is_registered = get_is_registered(user=request.user, course=course)
     # Hidden courses 404 for anyone not registered, matching the wrapper's
     # filter_visible rule (coming_soon and published detail pages stay accessible).
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
     decision = get_course_access_backend().get_access_for_request(
         request=request, course=course
     )
@@ -947,7 +947,7 @@ def course_home(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
     # Hidden courses 404 for anyone not registered, matching every other slug
     # chokepoint — never leak existence via a 302-vs-404 divergence.
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
 
     if (
         not get_course_access_backend()
@@ -983,7 +983,7 @@ def initiate_course_access(request, course_slug):
     # POST-only express-interest endpoint, so redirecting the browser there would 405.)
     # The visibility preview override lifts the coming-soon gate so the course flows
     # through to the backend's free self-registration.
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
     if (
         course.visibility == CourseVisibility.COMING_SOON
         and not override_visibility_to_visible()
@@ -1044,7 +1044,7 @@ def _course_access_redirect(
     a hidden course must 404 rather than 302 (a redirect would confirm it exists),
     and the access backend decides whether this learner may see content at all.
     """
-    raise_404_if_hidden_unregistered(user, course)
+    raise_404_if_unavailable(user, course)
     decision = get_course_access_backend().get_access(user=user, course=course)
     if not decision.can_access_content:
         return redirect("learner_interface:course_detail", course_slug=course.slug)

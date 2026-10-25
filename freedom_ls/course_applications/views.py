@@ -33,7 +33,7 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.course_access import get_course_access_backend
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.overrides import is_coming_soon_for_display
-from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_applications.anonymous_session import (
     anonymous_applicant_for_course,
     application_of,
@@ -145,7 +145,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     course = get_object_or_404(Course, slug=course_slug)
 
     # Enforce course visibility: hidden courses 404 for unregistered users.
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
 
     if not request.user.is_authenticated:
         return _anonymous_apply(request, course)
@@ -571,7 +571,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("course_applications:apply", course_slug=course_slug)
     course = get_object_or_404(Course, slug=course_slug)
-    raise_404_if_hidden_unregistered(request.user, course)
+    raise_404_if_unavailable(request.user, course)
     if not _anonymous_applications_allowed(course):
         return redirect_to_acquisition_auth(request)
     applicant = anonymous_applicant_for_course(request, course)
