@@ -11,7 +11,8 @@ from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.content_engine.factories import CourseFactory
 
 APP = "freedom_ls_course_recommendations"

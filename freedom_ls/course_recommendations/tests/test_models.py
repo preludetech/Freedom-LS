@@ -6,10 +6,11 @@ import pytest
 
 from django.db import IntegrityError, transaction
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.mark.django_db

@@ -6,7 +6,7 @@ import pytest
 
 from django.contrib.auth.models import AnonymousUser
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
@@ -18,6 +18,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request, site_context
 
 pytestmark = pytest.mark.django_db
