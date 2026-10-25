@@ -8,7 +8,8 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import ensure_organisation
 
 # (name, slug). The demo course files reference the slug, so the slug is
-# passed as the slug base and stays put if the name is later edited.
+# passed as the slug base: it stays put if the name is later edited, and a
+# re-run finds the renamed row by it rather than creating a second one.
 DEMO_ORGANISATIONS: list[tuple[str, str]] = [
     ("Harbour College", "harbour-college"),
     ("Northwind Logistics", "northwind-logistics"),

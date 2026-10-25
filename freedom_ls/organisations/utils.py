@@ -32,8 +32,14 @@ def ensure_organisation(
 
     ``slug_base`` overrides the derived base slug, for a caller that wants a
     stable, memorable slug rather than whatever its name derives. The slug is
-    only set on creation, so renaming a row later never moves it.
+    only set on creation and never moves on a rename, so such a caller is
+    identifying the row by its slug: a row already holding it is returned as
+    is, whatever it is called now.
     """
+    if slug_base is not None:
+        existing = Organisation.objects.filter(site=site, slug=slug_base).first()
+        if existing is not None:
+            return existing, False
     base = slug_base if slug_base is not None else slug_base_for(name)
     organisation, created = Organisation.objects.get_or_create(
         site=site,

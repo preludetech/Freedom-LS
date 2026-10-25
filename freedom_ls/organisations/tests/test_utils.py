@@ -78,3 +78,16 @@ def test_ensure_organisation_slugs_from_the_slug_base(mock_site_context):
     )
 
     assert organisation.slug == "fixed-slug"
+
+
+@pytest.mark.django_db
+def test_ensure_organisation_finds_a_renamed_row_by_its_slug(mock_site_context):
+    site = mock_site_context
+    first, _ = ensure_organisation(site, "Old Name", slug_base="fixed-slug")
+    first.name = "New Name"
+    first.save(update_fields=["name"])
+
+    second, created = ensure_organisation(site, "Old Name", slug_base="fixed-slug")
+
+    assert (second, created) == (first, False)
+    assert Organisation.objects.filter(site=site, slug="fixed-slug").count() == 1
