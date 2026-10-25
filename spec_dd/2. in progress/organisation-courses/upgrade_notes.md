@@ -28,11 +28,18 @@ default, or `public`). Existing courses get no organisations, so they behave exa
 - A course frontmatter that names an organisation slug the site does not have fails
   `content_save` with an error that lists the valid slugs. Before loading content that uses
   `organisations`, create those organisations on each site.
-- `LearnerCourseRegistration.clean()`, `CohortCourseRegistration.clean()` and
-  `RegistrationRule.clean()` now raise a `ValidationError` on `course` when the course is an
-  `organisation_learners` organisation course that is not open to the learner's, cohort's or
-  rule's organisation. Code that registers learners through forms or `full_clean()` will now see
-  this error for such courses.
+- `LearnerCourseRegistration.clean()` and `CohortCourseRegistration.clean()` now raise a
+  `ValidationError` on `course` when a registration is created or reactivated for an
+  `organisation_learners` organisation course that is not open to the learner's or cohort's
+  organisation. `RegistrationRule.clean()` raises the same when a rule is created, enabled, or
+  moved to such a course or organisation. Other edits of an existing row, deactivating or
+  disabling it included, are not checked. Code that registers learners through forms or
+  `full_clean()` will now see this error for such courses.
+- `register_for_course` and `register_cohort_for_course` raise
+  `freedom_ls.learner_management.queries.CourseNotOpenError`, a `ValueError` subclass, for such
+  a course. Code catching `ValueError` keeps working; catch the subclass to be specific.
+- `freedom_ls.organisations.utils.ensure_organisation` with `slug_base` returns the organisation
+  already holding that slug, whatever its name, before falling back to the lookup by name.
 
 ## Manual steps
 
