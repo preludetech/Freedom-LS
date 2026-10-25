@@ -40,22 +40,22 @@ def _check_headers(
     accepted_headers: Sequence[str],
     required_headers: Sequence[str],
 ) -> None:
-    accepted = ", ".join(accepted_headers)
+    """Reject the headers with one message naming every problem."""
     unknown = [header for header in headers if header not in accepted_headers]
-    if unknown:
-        raise CsvImportError(
-            f"Unknown column(s): {', '.join(unknown)}. Accepted columns: {accepted}."
-        )
     repeated = sorted({header for header in headers if headers.count(header) > 1})
-    if repeated:
-        raise CsvImportError(
-            f"Repeated column(s): {', '.join(repeated)}. Accepted columns: {accepted}."
-        )
     missing = [header for header in required_headers if header not in headers]
-    if missing:
+    problems = [
+        f"{label}: {', '.join(found)}."
+        for label, found in (
+            ("Unknown column(s)", unknown),
+            ("Repeated column(s)", repeated),
+            ("Missing required column(s)", missing),
+        )
+        if found
+    ]
+    if problems:
         raise CsvImportError(
-            f"Missing required column(s): {', '.join(missing)}. "
-            f"Accepted columns: {accepted}."
+            f"{' '.join(problems)} Accepted columns: {', '.join(accepted_headers)}."
         )
 
 
