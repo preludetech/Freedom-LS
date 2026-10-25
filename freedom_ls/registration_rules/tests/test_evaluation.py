@@ -1465,3 +1465,335 @@ def test_a_recommend_rule_run_touches_only_the_given_site(mock_site_context):
     assert result.recommended == (own.user_id,)
     assert [row.user_id for row in _recommendations_for(rule)] == [own.user_id]
     assert _recommendations_for(rule).get().site_id == rule.site_id
+
+
+@pytest.fixture
+def two_organisations_recommending(mock_site_context):
+    """One user in two organisations, each with a recommend rule on the same course."""
+    rule_a = _recommend_rule()
+    rule_b = _recommend_rule(organisation=OrganisationFactory(), course=rule_a.course)
+    learner_a = LearnerFactory(organisation=rule_a.organisation)
+    learner_b = LearnerFactory(user=learner_a.user, organisation=rule_b.organisation)
+    drop_ambient_request()
+    return rule_a, rule_b, learner_a, learner_b
+
+
+def _held_by(rule):
+    return list(
+        RuleRecommendation._base_manager.filter(rule=rule).values_list(
+            "recommendation__user_id", flat=True
+        )
+    )
+
+
+def _after_classifying(monkeypatch, mutate):
+    """Run `mutate` between the classifying read and the write of every recommend run."""
+    from freedom_ls.registration_rules import evaluation
+
+    classify = evaluation.classify_recommendation_changes
+
+    def classify_then_mutate(rule, state, user_ids=None):
+        changes = classify(rule, state, user_ids=user_ids)
+        mutate()
+        return changes
+
+    monkeypatch.setattr(
+        evaluation, "classify_recommendation_changes", classify_then_mutate
+    )
+
+
+@pytest.mark.django_db
+def test_rules_of_two_organisations_share_one_recommendation(
+    two_organisations_recommending,
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+
+    # Act
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+
+    # Assert
+    assert _recommendations_for(rule_a).get().user_id == learner_a.user_id
+    assert _held_by(rule_a) == [learner_a.user_id]
+    assert _held_by(rule_b) == [learner_a.user_id]
+
+
+@pytest.mark.django_db
+def test_one_rule_unmatching_leaves_the_recommendation_with_the_other_rules_row(
+    two_organisations_recommending,
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+    RegistrationRule._base_manager.filter(pk=rule_a.pk).update(is_enabled=False)
+
+    # Act
+    result = evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    assert result.recommendations_removed == ()
+    assert _recommendations_for(rule_a).get().user_id == learner_a.user_id
+    assert _held_by(rule_a) == []
+    assert _held_by(rule_b) == [learner_a.user_id]
+
+
+@pytest.mark.django_db
+def test_the_last_rule_to_unmatch_deletes_the_recommendation(
+    two_organisations_recommending,
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+    RegistrationRule._base_manager.filter(pk__in=[rule_a.pk, rule_b.pk]).update(
+        is_enabled=False
+    )
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Act
+    result = evaluate_rule(rule_b.pk, rule_b.site_id)
+
+    # Assert
+    assert result.recommendations_removed == (learner_a.user_id,)
+    assert not _recommendations_for(rule_a).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_evaluating_both_learners_of_one_user_back_to_back_gives_the_same_rows(
+    two_organisations_recommending,
+):
+    # Arrange
+    rule_a, rule_b, learner_a, learner_b = two_organisations_recommending
+
+    # Act
+    evaluate_learner(learner_a.pk, rule_a.site_id)
+    evaluate_learner(learner_b.pk, rule_a.site_id)
+
+    # Assert
+    assert _recommendations_for(rule_a).get().user_id == learner_a.user_id
+    assert _held_by(rule_a) == [learner_a.user_id]
+    assert _held_by(rule_b) == [learner_a.user_id]
+
+
+@pytest.mark.django_db
+def test_two_enabled_rules_in_one_organisation_share_a_recommendation(
+    mock_site_context,
+):
+    # Arrange
+    rule_one = _recommend_rule()
+    rule_two = RegistrationRuleFactory(
+        is_enabled=True,
+        outcome=RegistrationRule.Outcome.RECOMMEND,
+        organisation=rule_one.organisation,
+        course=rule_one.course,
+    )
+    learner = LearnerFactory(organisation=rule_one.organisation)
+    drop_ambient_request()
+    evaluate_rule(rule_one.pk, rule_one.site_id)
+    evaluate_rule(rule_two.pk, rule_two.site_id)
+    RegistrationRule._base_manager.filter(pk=rule_one.pk).update(is_enabled=False)
+
+    # Act
+    evaluate_rule(rule_one.pk, rule_one.site_id)
+
+    # Assert
+    assert _recommendations_for(rule_one).get().user_id == learner.user_id
+    assert _held_by(rule_one) == []
+    assert _held_by(rule_two) == [learner.user_id]
+
+
+@pytest.mark.django_db
+def test_a_rule_does_not_join_a_staff_made_recommendation(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    RecommendedCourseFactory(user=learner.user, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_create_that_finds_a_rule_made_row_made_meanwhile_joins_it(
+    two_organisations_recommending, monkeypatch
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+
+    def other_rule_recommends_first():
+        recommendation, _ = RecommendedCourse._base_manager.get_or_create(
+            site_id=rule_b.site_id,
+            user_id=learner_a.user_id,
+            course_id=rule_a.course_id,
+        )
+        RuleRecommendation._base_manager.get_or_create(
+            site_id=rule_b.site_id, rule=rule_b, recommendation=recommendation
+        )
+
+    _after_classifying(monkeypatch, other_rule_recommends_first)
+
+    # Act
+    result = evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    assert result.recommended == ()
+    assert _held_by(rule_a) == [learner_a.user_id]
+    assert _held_by(rule_b) == [learner_a.user_id]
+
+
+@pytest.mark.django_db
+def test_a_create_that_finds_a_staff_made_row_made_meanwhile_skips_it(
+    mock_site_context, monkeypatch
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+    _after_classifying(
+        monkeypatch,
+        lambda: RecommendedCourse._base_manager.get_or_create(
+            site_id=rule.site_id, user_id=learner.user_id, course_id=rule.course_id
+        ),
+    )
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result.recommended == ()
+    assert _recommendations_for(rule).count() == 1
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_remove_whose_row_gained_another_rules_hold_meanwhile_drops_only_its_own(
+    two_organisations_recommending, monkeypatch
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    RegistrationRule._base_manager.filter(pk=rule_a.pk).update(is_enabled=False)
+    _after_classifying(
+        monkeypatch,
+        lambda: RuleRecommendation._base_manager.get_or_create(
+            site_id=rule_b.site_id,
+            rule=rule_b,
+            recommendation=_recommendations_for(rule_a).get(),
+        ),
+    )
+
+    # Act
+    result = evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    assert result.recommendations_removed == ()
+    assert _recommendations_for(rule_a).get().user_id == learner_a.user_id
+    assert _held_by(rule_a) == []
+    assert _held_by(rule_b) == [learner_a.user_id]
+
+
+@pytest.mark.django_db
+def test_a_drop_whose_row_lost_the_other_rules_hold_meanwhile_deletes_the_row(
+    two_organisations_recommending, monkeypatch
+):
+    # Arrange
+    rule_a, rule_b, learner_a, _ = two_organisations_recommending
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+    RegistrationRule._base_manager.filter(pk=rule_a.pk).update(is_enabled=False)
+    _after_classifying(
+        monkeypatch,
+        lambda: RuleRecommendation._base_manager.filter(rule=rule_b).delete(),
+    )
+
+    # Act
+    result = evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    assert result.recommendations_removed == (learner_a.user_id,)
+    assert not _recommendations_for(rule_a).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_a_drop_that_finds_the_row_deleted_meanwhile_does_nothing(
+    two_organisations_recommending, monkeypatch
+):
+    # Arrange
+    rule_a, rule_b, _, _ = two_organisations_recommending
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+    RegistrationRule._base_manager.filter(pk=rule_a.pk).update(is_enabled=False)
+    _after_classifying(monkeypatch, lambda: _recommendations_for(rule_a).delete())
+
+    # Act
+    result = evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    assert result == EvaluationResult()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_an_add_that_finds_the_row_deleted_meanwhile_leaves_no_dangling_hold(
+    two_organisations_recommending, monkeypatch
+):
+    # Arrange
+    rule_a, rule_b, _, _ = two_organisations_recommending
+    evaluate_rule(rule_b.pk, rule_b.site_id)
+    _after_classifying(monkeypatch, lambda: _recommendations_for(rule_a).delete())
+
+    # Act
+    evaluate_rule(rule_a.pk, rule_a.site_id)
+
+    # Assert
+    connection.check_constraints()
+    assert not RuleRecommendation._base_manager.filter(rule=rule_a).exists()
+
+
+@pytest.mark.django_db
+def test_a_rule_made_recommendation_deleted_by_hand_comes_back_while_the_user_matches(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+    _recommendations_for(rule).delete()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert _recommendations_for(rule).get().user_id == learner.user_id
+    assert _held_by(rule) == [learner.user_id]
+
+
+@pytest.mark.django_db
+def test_a_staff_made_recommendation_deleted_by_hand_does_not_come_back(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    Learner._base_manager.filter(pk=learner.pk).update(
+        organisation=OrganisationFactory()
+    )
+    RecommendedCourseFactory(user=learner.user, course=rule.course)
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+    _recommendations_for(rule).delete()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert not _recommendations_for(rule).exists()

@@ -75,11 +75,21 @@ class RuleChanges:
 
 
 @dataclass(frozen=True)
+class SharedRecommendation:
+    """A recommendation the rule holds alongside other rules, which stays when it lets go."""
+
+    user_id: int
+    other_rule_names: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class RecommendationChanges:
     """What one recommend rule would change for the users in scope, by user pk."""
 
     recommend: tuple[int, ...] = ()
+    add_rule_recommendation: tuple[int, ...] = ()
     remove: tuple[int, ...] = ()
+    drop_rule_recommendation: tuple[SharedRecommendation, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -324,18 +334,62 @@ def classify_recommendation_changes(
     matched -= _registered_users(state, matched)
     # One entry per recommendation; a rule-made row appears once per rule, a
     # staff-made row once with None.
-    rules_by_user: dict[int, set[UUID | None]] = defaultdict(set)
-    for user_id, rule_id in recommendations.values_list(
-        "user_id", "rule_recommendations__rule_id"
+    rules_by_user: dict[int, dict[UUID | None, str | None]] = defaultdict(dict)
+    for user_id, rule_id, rule_name in recommendations.values_list(
+        "user_id", "rule_recommendations__rule_id", "rule_recommendations__rule__name"
     ):
-        rules_by_user[user_id].add(rule_id)
+        rules_by_user[user_id][rule_id] = rule_name
     recommend = sorted(matched - rules_by_user.keys())
-    remove = sorted(
-        user_id
-        for user_id, rule_ids in rules_by_user.items()
-        if rule_ids == {rule.pk} and user_id not in matched
+    add_rule_recommendation: list[int] = []
+    remove: list[int] = []
+    drop: list[SharedRecommendation] = []
+    for user_id in sorted(rules_by_user):
+        names_by_rule = rules_by_user[user_id]
+        rule_ids = set(names_by_rule)
+        if None in rule_ids:
+            continue  # staff-made: a rule neither joins nor removes it
+        if user_id in matched:
+            if rule.pk not in rule_ids:
+                add_rule_recommendation.append(user_id)
+        elif rule_ids == {rule.pk}:
+            remove.append(user_id)
+        elif rule.pk in rule_ids:
+            others = sorted(
+                name
+                for other_id, name in names_by_rule.items()
+                if other_id != rule.pk and name is not None
+            )
+            drop.append(SharedRecommendation(user_id, tuple(others)))
+    return RecommendationChanges(
+        recommend=tuple(recommend),
+        add_rule_recommendation=tuple(add_rule_recommendation),
+        remove=tuple(remove),
+        drop_rule_recommendation=tuple(drop),
     )
-    return RecommendationChanges(recommend=tuple(recommend), remove=tuple(remove))
+
+
+def _join_recommendations(rule: RegistrationRule, user_ids: Iterable[int]) -> None:
+    """Attach the rule to rule-made recommendations it does not yet hold."""
+    # Re-read under a lock: the row may have been deleted, or turned out to be
+    # staff-made, since the classifying read.
+    for recommendation in (
+        RecommendedCourse._base_manager.select_for_update(no_key=True)
+        .filter(
+            site_id=rule.site_id, course_id=rule.course_id, user_id__in=list(user_ids)
+        )
+        .order_by("pk")
+        .prefetch_related("rule_recommendations")
+    ):
+        held_by = {held.rule_id for held in recommendation.rule_recommendations.all()}
+        if not held_by or rule.pk in held_by:
+            continue
+        try:
+            with transaction.atomic():
+                RuleRecommendation._base_manager.create(
+                    site_id=rule.site_id, recommendation=recommendation, rule=rule
+                )
+        except IntegrityError:
+            continue
 
 
 def apply_recommendation_changes(
@@ -343,11 +397,12 @@ def apply_recommendation_changes(
 ) -> EvaluationResult:
     """Write the changes, in user-pk order, with explicit site ids throughout."""
     recommended: list[int] = []
+    to_join: list[int] = list(changes.add_rule_recommendation)
     for user_id in changes.recommend:
         try:
             # A savepoint per row: a recommendation made by someone else between
             # the read and this write hits the unique constraint, and only this
-            # row rolls back. Theirs stands; a rule never takes over a row.
+            # row rolls back. The user then joins that row if a rule made it.
             # Explicit site_id: a task has no request for the model to read it from.
             with transaction.atomic():
                 recommendation = RecommendedCourse._base_manager.create(
@@ -357,27 +412,32 @@ def apply_recommendation_changes(
                     site_id=rule.site_id, recommendation=recommendation, rule=rule
                 )
         except IntegrityError:
+            to_join.append(user_id)
             continue
         recommended.append(user_id)
+    _join_recommendations(rule, sorted(to_join))
 
     removed: list[int] = []
+    leaving = [*changes.remove, *(d.user_id for d in changes.drop_rule_recommendation)]
     # Re-read under a lock: a clearing receiver may have deleted the row, or
-    # another rule may have attached itself to it, since the classifying read.
+    # another rule may have attached itself to it or let go of it, since the
+    # classifying read.
     for recommendation in (
         RecommendedCourse._base_manager.select_for_update(no_key=True)
-        .filter(
-            site_id=rule.site_id,
-            course_id=rule.course_id,
-            user_id__in=changes.remove,
-        )
+        .filter(site_id=rule.site_id, course_id=rule.course_id, user_id__in=leaving)
         .order_by("pk")
         .prefetch_related("rule_recommendations")
     ):
         held_by = {held.rule_id for held in recommendation.rule_recommendations.all()}
-        if held_by != {rule.pk}:
-            continue  # another rule still holds this recommendation, so it stays
-        recommendation.delete()
-        removed.append(recommendation.user_id)
+        if rule.pk not in held_by:
+            continue
+        if held_by == {rule.pk}:
+            recommendation.delete()
+            removed.append(recommendation.user_id)
+        else:
+            RuleRecommendation._base_manager.filter(
+                recommendation=recommendation, rule=rule
+            ).delete()
     return EvaluationResult(
         recommended=tuple(recommended), recommendations_removed=tuple(removed)
     )

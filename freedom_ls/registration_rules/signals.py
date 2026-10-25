@@ -31,6 +31,7 @@ from freedom_ls.registration_rules.evaluation import is_engine_write
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
+    RuleRecommendation,
     RuleRegistration,
     rules_naming,
 )
@@ -87,12 +88,14 @@ def _enqueue_learner(learner_id: UUID, site_id: int) -> None:
 
 
 def _learner_needs_evaluation(
-    learner_id: UUID, organisation_id: UUID, site_id: int
+    learner_id: UUID, organisation_id: UUID, site_id: int, *, user_id: int
 ) -> bool:
-    """Whether any rule could register or retract this learner.
+    """Whether any rule could register, retract or recommend to this learner.
 
     True when their organisation has rules and its switch on, or when a rule
-    already owns one of their registrations (a learner who moved away).
+    already owns one of their registrations or holds one of their
+    recommendations (a learner who moved away, possibly from another
+    organisation's rule).
     """
     if RegistrationRule._base_manager.filter(
         site_id=site_id,
@@ -100,8 +103,12 @@ def _learner_needs_evaluation(
         organisation__hr_settings__registration_rules_enabled=True,
     ).exists():
         return True
-    return RuleRegistration._base_manager.filter(
+    if RuleRegistration._base_manager.filter(
         site_id=site_id, registration__learner_id=learner_id
+    ).exists():
+        return True
+    return RuleRecommendation._base_manager.filter(
+        site_id=site_id, recommendation__user_id=user_id
     ).exists()
 
 
@@ -256,7 +263,10 @@ def evaluate_learner_on_save(
     ):
         return
     if _learner_needs_evaluation(
-        instance.pk, instance.organisation_id, instance.site_id
+        instance.pk,
+        instance.organisation_id,
+        instance.site_id,
+        user_id=instance.user_id,
     ):
         _enqueue_learner(instance.pk, instance.site_id)
 
@@ -276,13 +286,13 @@ def evaluate_learner_on_attributes_change(
     """
     if raw:
         return
-    organisation_id = (
+    learner = (
         Learner._base_manager.filter(pk=instance.learner_id)
-        .values_list("organisation_id", flat=True)
+        .values_list("organisation_id", "user_id")
         .first()
     )
-    if organisation_id is not None and _learner_needs_evaluation(
-        instance.learner_id, organisation_id, instance.site_id
+    if learner is not None and _learner_needs_evaluation(
+        instance.learner_id, learner[0], instance.site_id, user_id=learner[1]
     ):
         _enqueue_learner(instance.learner_id, instance.site_id)
 

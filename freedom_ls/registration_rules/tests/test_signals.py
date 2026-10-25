@@ -20,6 +20,7 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.factories import (
     DepartmentFactory,
@@ -34,7 +35,11 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
@@ -48,6 +53,7 @@ from freedom_ls.registration_rules.models import (
     RuleRecommendation,
     RuleRegistration,
 )
+from freedom_ls.registration_rules.tasks import evaluate_learner_task
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
@@ -249,8 +255,8 @@ def rule_made_registration(mock_site_context):
     return link
 
 
-def _registration_form_post(response, *, is_active: bool) -> dict[str, str]:
-    """The registration change form's own values, with is_active set."""
+def _admin_form_post(response, *, is_active: bool) -> dict[str, str]:
+    """An admin change form's own values, with is_active set."""
     form = response.context["adminform"].form
     payload = {
         name: "" if form.initial.get(name) is None else str(form.initial.get(name))
@@ -279,7 +285,7 @@ def test_changing_is_active_in_the_admin_detaches_the_rule(
         is_active=not is_active
     )
     url = reverse(REGISTRATION_CHANGE, args=[registration.pk])
-    payload = _registration_form_post(staff_client.get(url), is_active=is_active)
+    payload = _admin_form_post(staff_client.get(url), is_active=is_active)
 
     # Act
     response = staff_client.post(url, payload)
@@ -296,7 +302,7 @@ def test_saving_the_admin_form_without_changing_is_active_keeps_the_rule(
     # Arrange
     registration = rule_made_registration.registration
     url = reverse(REGISTRATION_CHANGE, args=[registration.pk])
-    payload = _registration_form_post(staff_client.get(url), is_active=True)
+    payload = _admin_form_post(staff_client.get(url), is_active=True)
 
     # Act
     response = staff_client.post(url, payload)
@@ -766,4 +772,101 @@ def test_joining_a_cohort_that_holds_the_course_deletes_a_rule_made_recommendati
 
     # Assert
     assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_reactivating_a_learner_deletes_a_rule_made_recommendation(
+    rule_made_recommendation,
+):
+    # Arrange
+    recommendation = rule_made_recommendation.recommendation
+    learner = LearnerFactory(user=recommendation.user, is_active=False)
+    LearnerCourseRegistrationFactory(learner=learner, course=recommendation.course)
+    learner = Learner._base_manager.get(pk=learner.pk)
+
+    assert RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+
+    # Act
+    learner.is_active = True
+    learner.save()
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_reactivating_a_cohort_deletes_a_rule_made_recommendation_for_a_member(
+    rule_made_recommendation,
+):
+    # Arrange
+    recommendation = rule_made_recommendation.recommendation
+    cohort = CohortFactory()
+    Cohort._base_manager.filter(pk=cohort.pk).update(is_active=False)
+    CohortCourseRegistrationFactory(cohort=cohort, course=recommendation.course)
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(
+            user=recommendation.user, organisation=cohort.organisation
+        ),
+    )
+    cohort = Cohort._base_manager.get(pk=cohort.pk)
+
+    assert RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+
+    # Act
+    cohort.is_active = True
+    cohort.save()
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_in_an_organisation_without_rules_queues_an_evaluation_when_a_rule_holds_their_recommendation(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    held = RuleRecommendationFactory()
+    learner = LearnerFactory(user=held.recommendation.user)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.save()
+
+    # Assert
+    queued = _queued_tasks("evaluate_learner_task").get()
+    assert queued.args_kwargs["args"] == [str(learner.pk), learner.site_id]
+
+
+@pytest.mark.django_db
+def test_deactivating_a_learner_in_the_admin_removes_the_rules_recommendation_once_the_task_runs(
+    staff_client, mock_site_context, database_task_backend
+):
+    # Arrange
+    rule = RegistrationRuleFactory(
+        is_enabled=True, outcome=RegistrationRule.Outcome.RECOMMEND
+    )
+    OrganisationHRSettingsFactory(
+        organisation=rule.organisation, registration_rules_enabled=True
+    )
+    learner = LearnerFactory(organisation=rule.organisation)
+    RuleRecommendationFactory(
+        rule=rule,
+        recommendation=RecommendedCourseFactory(user=learner.user, course=rule.course),
+    )
+    url = reverse(
+        "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+    )
+    payload = _admin_form_post(staff_client.get(url), is_active=False)
+
+    # Act
+    staff_client.post(url, payload)
+    evaluate_learner_task.func(str(learner.pk), learner.site_id)
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(user=learner.user).exists()
     assert not RuleRecommendation._base_manager.exists()
