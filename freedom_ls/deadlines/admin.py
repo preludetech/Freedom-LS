@@ -29,6 +29,7 @@ from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
 from freedom_ls.deadlines.resolver import (
     DeadlineSource,
     DeadlineValue,
+    LayerRows,
     ResolvedDeadline,
     course_deadlines,
     due_instant,
@@ -171,6 +172,9 @@ class DeadlineOverrideInline(TabularInline):
     verbose_name = "deadline override"
     # The path from a row to its course, which the read-only columns read for every row.
     parent_select_related: tuple[str, ...] = ()
+    # The cohort rows beneath this page's rows, fetched once per request by the inline whose
+    # rows have any; None means each row reads its own.
+    cohort_rows_beneath: LayerRows | None = None
 
     def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineOverride]:
         rows: models.QuerySet[DeadlineOverride] = super().get_queryset(request)
@@ -267,7 +271,7 @@ class DeadlineOverrideInline(TabularInline):
     def default_changed_note(self, obj: DeadlineOverride) -> str:
         if obj._state.adding:
             return ""
-        beneath = canonical_beneath(obj)
+        beneath = canonical_beneath(obj, self.cohort_rows_beneath)
         if obj.replaced_value == beneath:
             return ""
         return (
@@ -291,6 +295,21 @@ class CohortDeadlineOverrideInline(DeadlineOverrideInline):
 class LearnerDeadlineOverrideInline(DeadlineOverrideInline):
     model = LearnerDeadlineOverride
     parent_select_related = ("course_progress__course",)
+
+    def get_formset(
+        self, request: HttpRequest, obj: object | None = None, **kwargs: object
+    ) -> type[BaseInlineFormSet]:
+        # One read of the record's cohort rows for every learner row's "Default changed"
+        # column, as the resolver reads them; the admin makes one inline per request.
+        self.cohort_rows_beneath = {}
+        if isinstance(obj, CourseProgress) and obj.cohort_registration_id is not None:
+            self.cohort_rows_beneath = {
+                (row.cohort_registration_id, row.collection_item_id): row
+                for row in CohortDeadlineOverride.objects.filter(
+                    cohort_registration_id=obj.cohort_registration_id
+                )
+            }
+        return super().get_formset(request, obj, **kwargs)
 
 
 def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, str]:

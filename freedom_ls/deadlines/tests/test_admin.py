@@ -666,3 +666,42 @@ def test_the_change_page_query_count_does_not_grow_with_items_or_rows(
     assert _change_page_query_count(staff_client, large) == _change_page_query_count(
         staff_client, small
     )
+
+
+def _cohort_record_with_overrides(
+    item_count: int, override_count: int
+) -> CourseProgress:
+    """A cohort-granted record with a cohort and a learner override on the same items."""
+    registration = _registration_with_overrides(item_count, override_count)
+    record: CourseProgress = CourseProgressFactory(
+        course=registration.course,
+        cohort_registration=registration,
+        learner_registration=None,
+    )
+    for row in CohortDeadlineOverride.objects.filter(cohort_registration=registration):
+        LearnerDeadlineOverrideFactory(
+            course_progress=record, collection_item=row.collection_item
+        )
+    return record
+
+
+def _progress_page_query_count(client: Client, record: CourseProgress) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        response = _progress_page(client, record)
+    assert response.status_code == 200
+    return len(queries)
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_query_count_does_not_grow_with_learner_rows(
+    staff_client, mock_site_context
+) -> None:
+    """Each learner row's "Default changed" column read the cohort row beneath it one
+    query at a time."""
+    small = _cohort_record_with_overrides(item_count=4, override_count=1)
+    large = _cohort_record_with_overrides(item_count=24, override_count=6)
+    _progress_page_query_count(staff_client, small)
+
+    assert _progress_page_query_count(
+        staff_client, large
+    ) == _progress_page_query_count(staff_client, small)
