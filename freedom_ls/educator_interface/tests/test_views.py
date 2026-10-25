@@ -4903,6 +4903,40 @@ def test_uploading_from_the_cohort_page_stores_the_cohort_on_the_import(
 
 
 @pytest.mark.django_db
+def test_the_preview_of_a_cohort_import_shows_the_target_cohort_on_every_row(
+    import_world: SimpleNamespace,
+):
+    """The preview echoed the file's ignored cohort cell, so a row naming
+    another cohort, or none, looked like it would join somewhere else."""
+    cohort = CohortFactory(organisation=import_world.organisation, name="Target A")
+    CohortFactory(organisation=import_world.organisation, name="Other C")
+    learner_import = create_learner_import(
+        import_world.admin,
+        import_world.organisation,
+        cohort,
+        _csv_upload("a@example.com,Co,Imp,Other C", "b@example.com,,,"),
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    table_cells = [
+        " ".join(row.cssselect("td")[4].text_content().split())
+        for row in page.cssselect("tbody tr")
+    ]
+    card_values = [
+        " ".join(dd.text_content().split())
+        for dd in page.cssselect("[data-row-cards] dt:contains('Cohort') + dd")
+    ]
+    assert table_cells == ["Target A", "Target A"]
+    assert card_values == ["Target A", "Target A"]
+
+
+@pytest.mark.django_db
 def test_a_failed_cohort_upload_keeps_the_cohort_for_the_next_attempt(
     import_world: SimpleNamespace,
 ):

@@ -59,7 +59,7 @@
                             <td class="px-4 py-2">{{ row.email }}</td>
                             <td class="px-4 py-2">{{ row.first_name }}</td>
                             <td class="px-4 py-2">{{ row.last_name }}</td>
-                            <td class="px-4 py-2">{{ row.cohort_name }}</td>
+                            <td class="px-4 py-2">{% firstof learner_import.cohort.name row.cohort_name %}</td>
                             <td class="px-4 py-2">{{ row.get_preview_label_display }}</td>
                             <td class="px-4 py-2">{{ row.preview_reason }}</td>
                         </tr>
@@ -88,9 +88,9 @@
                             <dt class="text-muted">Name</dt>
                             <dd class="min-w-0 break-words">{{ row.first_name }} {{ row.last_name }}</dd>
                         {% endif %}
-                        {% if row.cohort_name %}
+                        {% if learner_import.cohort or row.cohort_name %}
                             <dt class="text-muted">Cohort</dt>
-                            <dd class="min-w-0 break-words">{{ row.cohort_name }}</dd>
+                            <dd class="min-w-0 break-words">{% firstof learner_import.cohort.name row.cohort_name %}</dd>
                         {% endif %}
                     </dl>
                 </li>
