@@ -447,8 +447,8 @@ def test_effective_deadlines_says_so_when_there_are_none(
 READABLE_DUPLICATE = "already has an override here"
 
 
-def _learner_post(client: Client, record: CourseProgress, row: dict[str, str]):
-    """Post the course progress page with one new learner override row."""
+def _learner_post(client: Client, record: CourseProgress, rows: list[dict[str, str]]):
+    """Post the course progress page with new learner override rows."""
     page = _progress_page(client, record)
     form = page.context["adminform"].form
     payload = {
@@ -460,10 +460,11 @@ def _learner_post(client: Client, record: CourseProgress, row: dict[str, str]):
         payload[f"{prefix}-INITIAL_FORMS"] = "0"
         payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
         payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
-    payload["deadline_overrides-TOTAL_FORMS"] = "1"
-    payload["deadline_overrides-0-course_progress"] = str(record.pk)
-    for name, value in row.items():
-        payload[f"deadline_overrides-0-{name}"] = value
+    payload["deadline_overrides-TOTAL_FORMS"] = str(len(rows))
+    for index, row in enumerate(rows):
+        payload[f"deadline_overrides-{index}-course_progress"] = str(record.pk)
+        for name, value in row.items():
+            payload[f"deadline_overrides-{index}-{name}"] = value
     return client.post(reverse(PROGRESS_CHANGE_URL_NAME, args=[record.pk]), payload)
 
 
@@ -511,11 +512,13 @@ def test_a_second_learner_override_for_the_same_target_reads_plainly(
     response = _learner_post(
         staff_client,
         record,
-        {
-            "collection_item": str(item.pk) if with_item else "",
-            "kind": DeadlineKind.RELATIVE,
-            "due_days_after_registration": "3",
-        },
+        [
+            {
+                "collection_item": str(item.pk) if with_item else "",
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": "3",
+            }
+        ],
     )
 
     content = response.content.decode()
@@ -523,3 +526,67 @@ def test_a_second_learner_override_for_the_same_target_reads_plainly(
     assert READABLE_DUPLICATE in content
     assert "unique_learner" not in content
     assert LearnerDeadlineOverride.objects.count() == 1
+
+
+def _two_rows_for(target: ContentCollectionItem | None) -> list[dict[str, str]]:
+    row = {
+        "collection_item": str(target.pk) if target is not None else "",
+        "kind": DeadlineKind.RELATIVE,
+        "due_days_after_registration": "3",
+    }
+    return [row, {**row, "due_days_after_registration": "5"}]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_item", [True, False], ids=["item", "time_limit"])
+def test_two_new_cohort_rows_for_the_same_target_are_refused_as_one_form_error(
+    staff_client, mock_site_context, with_item: bool
+) -> None:
+    """The unique constraints are conditional, so the formset's own uniqueness check
+    skips them and two new rows for one target used to reach the database as a 500."""
+    registration, item = _registration_with_item()
+
+    response = _post(
+        staff_client, registration, _two_rows_for(item if with_item else None)
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert READABLE_DUPLICATE in content
+    assert "unique_cohort" not in content
+    assert CohortDeadlineOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("with_item", [True, False], ids=["item", "time_limit"])
+def test_two_new_learner_rows_for_the_same_target_are_refused_as_one_form_error(
+    staff_client, mock_site_context, with_item: bool
+) -> None:
+    record, item = _record_with_item()
+
+    response = _learner_post(
+        staff_client, record, _two_rows_for(item if with_item else None)
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert READABLE_DUPLICATE in content
+    assert "unique_learner" not in content
+    assert LearnerDeadlineOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_item_row_and_a_time_limit_row_can_be_added_together(
+    staff_client, mock_site_context
+) -> None:
+    registration, item = _registration_with_item()
+    row = {"kind": DeadlineKind.RELATIVE, "due_days_after_registration": "3"}
+
+    response = _post(
+        staff_client,
+        registration,
+        [{**row, "collection_item": str(item.pk)}, {**row, "collection_item": ""}],
+    )
+
+    assert response.status_code == 302
+    assert CohortDeadlineOverride.objects.count() == 2

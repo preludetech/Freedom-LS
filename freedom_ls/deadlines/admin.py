@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import cast
+from uuid import UUID
 
 from unfold.admin import ModelAdmin, TabularInline
 
@@ -12,6 +13,7 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import models
 from django.db.models import BaseConstraint, Model
 from django.forms import BaseInlineFormSet
+from django.forms.formsets import DELETION_FIELD_NAME
 from django.http import HttpRequest
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
@@ -45,6 +47,16 @@ from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
 
+TIME_LIMIT_DUPLICATE = "The course time limit already has an override here."
+ITEM_DUPLICATE = "This item already has an override here."
+
+
+def duplicate_error(collection_item_id: UUID | None) -> ValidationError:
+    """The clash for one target, worded for an admin rather than as a constraint name."""
+    if collection_item_id is None:
+        return ValidationError(TIME_LIMIT_DUPLICATE, code="unique")
+    return ValidationError(ITEM_DUPLICATE, code="unique")
+
 
 class CollectionItemChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj: ContentCollectionItem) -> str:
@@ -67,11 +79,7 @@ class DeadlineOverrideForm(ConstraintValidationFormMixin):
         constraint: BaseConstraint,
         error: ValidationError,
     ) -> ValidationError:
-        if self.instance.collection_item_id is None:
-            return ValidationError(
-                "The course time limit already has an override here.", code="unique"
-            )
-        return ValidationError("This item already has an override here.", code="unique")
+        return duplicate_error(self.instance.collection_item_id)
 
 
 class DeadlineOverrideFormSet(BaseInlineFormSet):
@@ -79,6 +87,21 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
     so the stamping lives on the formset the inline hands it rather than in save_formset."""
 
     set_by: User
+
+    def clean(self) -> None:
+        # Both unique constraints are conditional, which Django's formset uniqueness check
+        # skips, and the form-level check only sees saved rows. Two rows for one target in
+        # the same submit would otherwise reach the database.
+        super().clean()
+        seen: set[UUID | None] = set()
+        for form in self.forms:
+            if not form.is_valid() or form.cleaned_data.get(DELETION_FIELD_NAME):
+                continue
+            target = form.cleaned_data.get("collection_item")
+            target_id = target.pk if target is not None else None
+            if target_id in seen:
+                raise duplicate_error(target_id)
+            seen.add(target_id)
 
     def save_new(self, form: forms.ModelForm, commit: bool = True) -> DeadlineOverride:
         instance = cast(DeadlineOverride, super().save_new(form, commit=False))
