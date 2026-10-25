@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, NamedTuple, cast
 
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     Count,
@@ -242,6 +243,25 @@ def is_in_audience(user: RequestUser, course: Course) -> bool:
 def is_course_open_to_organisation(course: Course, organisation: Organisation) -> bool:
     """Single-course form of open_to_organisation_expression."""
     return _course_matches(course, open_to_organisation_expression(organisation))
+
+
+class CourseNotOpenError(ValueError):
+    """An organisation_learners organisation course that the organisation is
+    not one of. A ValueError so the registration paths' callers that catch
+    that still do."""
+
+
+def require_course_open_to(course: Course, organisation: Organisation) -> None:
+    """The service-function form of the refusal, for every path that creates
+    or reactivates a registration."""
+    if not is_course_open_to_organisation(course, organisation):
+        raise CourseNotOpenError(COURSE_NOT_OPEN_MESSAGE)
+
+
+def validate_course_open_to(course: Course, organisation: Organisation) -> None:
+    """The clean() form of the refusal: a ValidationError on `course`."""
+    if not is_course_open_to_organisation(course, organisation):
+        raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
 
 
 def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:

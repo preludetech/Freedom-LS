@@ -30,6 +30,25 @@ def _relations_are_set(instance: models.Model, *field_names: str) -> bool:
     return True
 
 
+def _is_new_or_reactivated(
+    registration: LearnerCourseRegistration | CohortCourseRegistration,
+) -> bool:
+    """Whether this save creates the registration or switches an inactive one
+    on: the two writes the open-to check guards. An edit that leaves an active
+    row active, or deactivates it, is not checked, so a course that later
+    gained organisations never locks the registrations made before it did.
+    """
+    if registration._state.adding:
+        return True
+    if not registration.is_active:
+        return False
+    return (
+        not type(registration)
+        ._base_manager.filter(pk=registration.pk, is_active=True)
+        .exists()
+    )
+
+
 if TYPE_CHECKING:
     from django.db.models.base import ModelBase
 
@@ -246,13 +265,10 @@ class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
         super().clean()
         if not _relations_are_set(self, "learner", "course"):
             return
-        from freedom_ls.learner_management.queries import (
-            COURSE_NOT_OPEN_MESSAGE,
-            is_course_open_to_organisation,
-        )
+        if _is_new_or_reactivated(self):
+            from freedom_ls.learner_management.queries import validate_course_open_to
 
-        if not is_course_open_to_organisation(self.course, self.learner.organisation):
-            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
+            validate_course_open_to(self.course, self.learner.organisation)
 
     def __str__(self):
         return f"{self.learner} - {self.course}"
@@ -284,13 +300,10 @@ class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
         super().clean()
         if not _relations_are_set(self, "cohort", "course"):
             return
-        from freedom_ls.learner_management.queries import (
-            COURSE_NOT_OPEN_MESSAGE,
-            is_course_open_to_organisation,
-        )
+        if _is_new_or_reactivated(self):
+            from freedom_ls.learner_management.queries import validate_course_open_to
 
-        if not is_course_open_to_organisation(self.course, self.cohort.organisation):
-            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
+            validate_course_open_to(self.course, self.cohort.organisation)
 
     def __str__(self):
         return f"{self.cohort} - {self.course}"

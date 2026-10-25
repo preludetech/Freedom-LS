@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseAudience
+from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -377,6 +377,14 @@ def test_loaded_is_active_is_none_on_an_unsaved_instance(mock_site_context):
     assert registration.loaded_is_active is None
 
 
+def _close_course_to_other_organisations(course: Course) -> None:
+    """Make the course an organisation course of a fresh organisation, so it is
+    no longer open to whichever organisation already registered for it."""
+    course.audience = CourseAudience.ORGANISATION_LEARNERS
+    course.save(update_fields=["audience"])
+    course.organisations.add(OrganisationFactory())
+
+
 @pytest.mark.django_db
 def test_learner_loaded_from_the_database_carries_loaded_is_active(mock_site_context):
     learner = LearnerFactory(is_active=False)
@@ -478,6 +486,60 @@ class TestRegistrationOrganisationCheck:
         registration = LearnerCourseRegistration(learner=learner, course=course)
 
         registration.full_clean(exclude=["site"])
+
+    # A course can gain organisations after a registration was made. The rows
+    # made before that stay editable; only switching an inactive one back on
+    # is a new grant of access and is refused.
+
+    def test_an_existing_registration_is_still_saved_after_its_course_closes(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory()
+        _close_course_to_other_organisations(registration.course)
+
+        registration.full_clean(exclude=["site"])
+
+    def test_an_existing_registration_can_be_deactivated_after_its_course_closes(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory()
+        _close_course_to_other_organisations(registration.course)
+        registration.is_active = False
+
+        registration.full_clean(exclude=["site"])
+
+    def test_reactivating_a_registration_whose_course_closed_is_refused(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+        _close_course_to_other_organisations(registration.course)
+        registration.is_active = True
+
+        with pytest.raises(ValidationError) as error:
+            registration.full_clean(exclude=["site"])
+
+        assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]
+
+    def test_an_existing_cohort_registration_can_be_deactivated_after_its_course_closes(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory()
+        _close_course_to_other_organisations(registration.course)
+        registration.is_active = False
+
+        registration.full_clean(exclude=["site"])
+
+    def test_reactivating_a_cohort_registration_whose_course_closed_is_refused(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+        _close_course_to_other_organisations(registration.course)
+        registration.is_active = True
+
+        with pytest.raises(ValidationError) as error:
+            registration.full_clean(exclude=["site"])
+
+        assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]
 
     def test_clean_does_not_raise_when_the_learner_is_unset(self, mock_site_context):
         registration = LearnerCourseRegistration(course=CourseFactory())

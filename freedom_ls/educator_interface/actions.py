@@ -69,6 +69,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
     MEMBER_ROLES,
+    CourseNotOpenError,
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
@@ -698,7 +699,7 @@ class ReregisterLearnerForCourseAction(PanelAction):
         learner = cast(Learner, ctx.instance)
         try:
             register_for_course(learner, self._registration(ctx).course)
-        except ValueError as error:
+        except CourseNotOpenError as error:
             # The course may have gained organisations since the registration
             # was made, leaving it closed to this learner's organisation.
             context = self.get_context_data(ctx)

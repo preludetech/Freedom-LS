@@ -31,6 +31,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.queries import CourseNotOpenError
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.webhooks.models import WebhookEvent
@@ -662,7 +663,7 @@ class TestRegisterForCourseOrganisationCheck:
         course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
         course.organisations.add(OrganisationFactory())
 
-        with pytest.raises(ValueError, match="not open to the organisation"):
+        with pytest.raises(CourseNotOpenError):
             register_for_course(learner, course)
 
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()

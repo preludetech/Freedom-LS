@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import cast
 
 import pytest
 
@@ -23,7 +24,11 @@ from freedom_ls.registration_rules.factories import (
     RegistrationRuleFactory,
     RuleRecommendationFactory,
 )
-from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS, RuleRecommendation
+from freedom_ls.registration_rules.models import (
+    DATE_BOUND_PAIRS,
+    RegistrationRule,
+    RuleRecommendation,
+)
 
 LOWER = date(2024, 6, 1)
 
@@ -143,3 +148,56 @@ def test_a_rule_for_a_course_open_to_its_organisation_is_accepted(mock_site_cont
     rule = RegistrationRuleFactory.build(course=course, organisation=organisation)
 
     rule.full_clean(exclude=["site"])
+
+
+# A course can gain organisations after its rule was saved. The rule stays
+# editable and can be disabled; enabling it, or pointing it at another course
+# or organisation, would start registering and is refused.
+
+
+def _stale_rule(is_enabled: bool = False) -> RegistrationRule:
+    rule = cast(RegistrationRule, RegistrationRuleFactory(is_enabled=is_enabled))
+    rule.course.audience = CourseAudience.ORGANISATION_LEARNERS
+    rule.course.save(update_fields=["audience"])
+    rule.course.organisations.add(OrganisationFactory())
+    return rule
+
+
+@pytest.mark.django_db
+def test_a_stale_rule_can_be_renamed(mock_site_context):
+    rule = _stale_rule(is_enabled=True)
+    rule.name = "Renamed"
+
+    rule.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+def test_a_stale_rule_can_be_disabled(mock_site_context):
+    rule = _stale_rule(is_enabled=True)
+    rule.is_enabled = False
+
+    rule.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+def test_enabling_a_stale_rule_is_refused(mock_site_context):
+    rule = _stale_rule()
+    rule.is_enabled = True
+
+    with pytest.raises(ValidationError) as error:
+        rule.full_clean(exclude=["site"])
+
+    assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]
+
+
+@pytest.mark.django_db
+def test_moving_a_rule_to_a_closed_course_is_refused(mock_site_context):
+    rule = RegistrationRuleFactory()
+    closed = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+    closed.organisations.add(OrganisationFactory())
+    rule.course = closed
+
+    with pytest.raises(ValidationError) as error:
+        rule.full_clean(exclude=["site"])
+
+    assert COURSE_NOT_OPEN_MESSAGE in error.value.message_dict["course"]

@@ -34,7 +34,10 @@ from freedom_ls.learner_management.models import (
     Learner,
     OrganisationMember,
 )
-from freedom_ls.learner_management.queries import is_registered_for_course_expression
+from freedom_ls.learner_management.queries import (
+    CourseNotOpenError,
+    is_registered_for_course_expression,
+)
 from freedom_ls.learner_management.utils import (
     ensure_learner,
     ensure_organisation_member,
@@ -472,7 +475,7 @@ class TestRegisterCohortForCourseOrganisationCheck:
         course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
         course.organisations.add(OrganisationFactory())
 
-        with pytest.raises(ValueError, match="not open to the organisation"):
+        with pytest.raises(CourseNotOpenError):
             register_cohort_for_course(cohort, course)
 
         assert not cohort.course_registrations.exists()

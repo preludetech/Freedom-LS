@@ -23,10 +23,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_management.queries import (
-    COURSE_NOT_OPEN_MESSAGE,
-    is_course_open_to_organisation,
-)
+from freedom_ls.learner_management.queries import require_course_open_to
 from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
     ensure_learner,
@@ -146,10 +143,9 @@ def register_for_course(learner: Learner, course: Course) -> bool:
     """Give the learner an individual registration for the course,
     reactivating an inactive one; False when an active one already exists.
     `course.registered` comes from the registration's `post_save` receiver.
-    Raises ValueError when the course is not open to the learner's
-    organisation."""
-    if not is_course_open_to_organisation(course, learner.organisation):
-        raise ValueError(COURSE_NOT_OPEN_MESSAGE)
+    Raises CourseNotOpenError when the course is not open to the
+    learner's organisation."""
+    require_course_open_to(course, learner.organisation)
     with transaction.atomic():
         registration, created = LearnerCourseRegistration._base_manager.get_or_create(
             site=learner.site, learner=learner, course=course

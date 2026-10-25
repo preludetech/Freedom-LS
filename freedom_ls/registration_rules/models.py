@@ -69,15 +69,35 @@ class RegistrationRule(SiteAwareModel, TimestampedModel):
         super().clean()
         if not (self.course_id and self.organisation_id):
             return
+        if not self._would_start_registering():
+            return
         # Lazy import: learner_management's models import this app's neighbours
         # at load time, and queries imports those models.
-        from freedom_ls.learner_management.queries import (
-            COURSE_NOT_OPEN_MESSAGE,
-            is_course_open_to_organisation,
-        )
+        from freedom_ls.learner_management.queries import validate_course_open_to
 
-        if not is_course_open_to_organisation(self.course, self.organisation):
-            raise ValidationError({"course": COURSE_NOT_OPEN_MESSAGE})
+        validate_course_open_to(self.course, self.organisation)
+
+    def _would_start_registering(self) -> bool:
+        """Whether this save is a new rule, moves it to another course or
+        organisation, or enables it: the writes the open-to check guards. A
+        course can gain organisations after the rule was saved; the rule can
+        still be renamed, edited or disabled, and apply_rule_changes registers
+        nobody through it meanwhile.
+        """
+        if self._state.adding:
+            return True
+        stored = (
+            RegistrationRule._base_manager.filter(pk=self.pk)
+            .values("course_id", "organisation_id", "is_enabled")
+            .first()
+        )
+        if stored is None:
+            return True
+        return (
+            stored["course_id"] != self.course_id
+            or stored["organisation_id"] != self.organisation_id
+            or (self.is_enabled and not stored["is_enabled"])
+        )
 
 
 class RuleRegistration(SiteAwareModel):
