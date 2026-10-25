@@ -65,7 +65,7 @@ current_price), user and show_time_zone_to_learners.
 
     {% if course.missed_deadline %}
         <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-            <c-panel-status-badge tone="error" label="Missed deadline" />
+            <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
             <span>{{ course.missed_deadline.title }} {% local_time course.missed_deadline.due_at %}</span>
         </p>
     {% elif course.next_deadline %}

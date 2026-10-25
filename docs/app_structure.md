@@ -135,7 +135,6 @@ flowchart TB
     learner_interface --> learner_management
     learner_interface --> learner_progress
     learner_interface --> organisations
-    learner_interface --> panel_framework
     learner_interface --> site_aware_models
     learner_interface --> webhooks
     learner_management --> accounts
@@ -279,7 +278,7 @@ flowchart TB
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
-| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, icons, learner_management, learner_progress, organisations, panel_framework, site_aware_models, webhooks | course_applications, markdown_rendering |
+| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
 | learner_management | accounts, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |

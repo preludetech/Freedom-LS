@@ -6,8 +6,3 @@
 from = "base"
 to = "learner_management"
 reason = "TEMPLATES registers freedom_ls.learner_management.context_processors.can_access_educator_interface; base's header template reads the context variable it returns."
-
-[[edge]]
-from = "learner_interface"
-to = "panel_framework"
-reason = "learner templates render c-panel-status-badge."

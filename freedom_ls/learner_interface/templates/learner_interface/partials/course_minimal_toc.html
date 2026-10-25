@@ -6,7 +6,7 @@
     {% if child.due_at and child.status != "COMPLETE" %}
         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 {{ deadline_indent }}">
             {% if child.is_overdue %}
-                <c-panel-status-badge tone="error" label="Missed deadline" />
+                <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
                 <span class="text-xs text-muted whitespace-nowrap">{% local_time child.due_at %}</span>
             {% else %}
                 <span class="text-xs text-muted whitespace-nowrap">Deadline {% local_time child.due_at %}</span>
