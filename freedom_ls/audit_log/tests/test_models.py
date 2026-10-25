@@ -113,3 +113,8 @@ def test_prune_before_deletes_every_row_across_batches(mock_site_context):
 
     assert deleted == 5
     assert AuditLogEntry.unscoped.count() == 0
+
+
+def test_plural_name_is_spelled_entries():
+    """The admin used to show "Audit log entrys" because no plural was set."""
+    assert AuditLogEntry._meta.verbose_name_plural == "audit log entries"

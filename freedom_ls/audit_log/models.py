@@ -104,6 +104,7 @@ class AuditLogEntry(SiteAwareModel):
         # unscoped one makes them carry the append-only guards too.
         base_manager_name = "unscoped"
         ordering = ("-created_at", "-id")
+        verbose_name_plural = "audit log entries"
         indexes = [
             Index(fields=["organisation", "-created_at"]),
             Index(fields=["run_id"]),
