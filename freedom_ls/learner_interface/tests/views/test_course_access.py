@@ -40,7 +40,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -256,7 +256,7 @@ def test_initiate_access_public_organisation_course_without_a_row_uses_default_o
 
 
 @pytest.mark.django_db
-def test_initiate_access_learner_removed_from_the_course_organisation_changes_no_registration(
+def test_initiate_access_deactivated_learner_of_the_course_organisation_gets_404(
     mock_site_context, logged_in_client, course_with_topic
 ):
     course = course_with_topic(access_type="free")
@@ -277,6 +277,37 @@ def test_initiate_access_learner_removed_from_the_course_organisation_changes_no
     assert response.status_code == 404
     assert LearnerCourseRegistration.objects.filter(course=course).count() == 1
     assert registration.is_active
+
+
+@pytest.mark.django_db
+def test_initiate_access_organisation_course_closed_to_the_default_organisation_redirects_to_detail(
+    mock_site_context, logged_in_client, course_with_topic, settings
+):
+    # The visibility preview lets a user with no claim on the course past the
+    # audience gate; the default organisation is the only one left to register
+    # them through, and the course is not open to it.
+    settings.OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True
+    course = course_with_topic(access_type="free")
+    course.audience = CourseAudience.ORGANISATION_LEARNERS
+    course.save()
+    course.organisations.set([OrganisationFactory()])
+    user = UserFactory()
+
+    response = logged_in_client(user).post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    assert not LearnerCourseRegistration.objects.filter(course=course).exists()
+    assert not Learner.objects.filter(
+        user=user, organisation=get_default_organisation(mock_site_context)
+    ).exists()
 
 
 # ---------------------------------------------------------------------------
