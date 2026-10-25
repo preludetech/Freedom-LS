@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -32,6 +34,25 @@ class AuditLogEntryQuerySet(models.QuerySet["AuditLogEntry"]):
 
     def delete(self) -> tuple[int, dict[str, int]]:
         raise AppendOnlyError()
+
+    def prune_before(self, cutoff: datetime, *, batch_size: int = 1000) -> int:
+        """The only delete path. Deletes rows created before `cutoff` in
+        batches so a long-retained table never locks in one statement."""
+        total = 0
+        while True:
+            batch = list(
+                self.filter(created_at__lt=cutoff).values_list("pk", flat=True)[
+                    :batch_size
+                ]
+            )
+            if not batch:
+                return total
+            total += self._delete_batch(batch)
+
+    def _delete_batch(self, pks: list[UUID]) -> int:
+        # The base delete, since this class's own refuses.
+        deleted, _ = models.QuerySet.delete(self.filter(pk__in=pks))
+        return deleted
 
     def bulk_update(
         self,

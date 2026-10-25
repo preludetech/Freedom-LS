@@ -1,6 +1,10 @@
+from datetime import timedelta
 from typing import cast
 
 import pytest
+import time_machine
+
+from django.utils import timezone
 
 from freedom_ls.audit_log.exceptions import AppendOnlyError
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
@@ -84,3 +88,28 @@ def test_update_may_only_null_the_actor(entry):
 
     with pytest.raises(AppendOnlyError):
         AuditLogEntry.unscoped.update(actor=None, reason="x")
+
+
+@pytest.mark.django_db
+def test_prune_before_deletes_only_rows_before_the_cutoff(mock_site_context):
+    now = timezone.now()
+    with time_machine.travel(now - timedelta(days=10), tick=False):
+        AuditLogEntryFactory.create_batch(2)
+    recent = AuditLogEntryFactory()
+
+    deleted = AuditLogEntry.unscoped.all().prune_before(now - timedelta(days=5))
+
+    assert deleted == 2
+    assert list(AuditLogEntry.unscoped.all()) == [recent]
+
+
+@pytest.mark.django_db
+def test_prune_before_deletes_every_row_across_batches(mock_site_context):
+    AuditLogEntryFactory.create_batch(5)
+
+    deleted = AuditLogEntry.unscoped.all().prune_before(
+        timezone.now() + timedelta(days=1), batch_size=2
+    )
+
+    assert deleted == 5
+    assert AuditLogEntry.unscoped.count() == 0
