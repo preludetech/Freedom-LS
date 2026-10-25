@@ -1,6 +1,8 @@
 from django.apps import AppConfig, apps
 from django.core.exceptions import ImproperlyConfigured
 
+_REQUIRED_APPS = ("freedom_ls.hr_attributes", "freedom_ls.course_recommendations")
+
 
 class RegistrationRulesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
@@ -10,14 +12,14 @@ class RegistrationRulesConfig(AppConfig):
 
     def import_models(self) -> None:
         # Raised here rather than as a system check: the models, signals and
-        # admin all import hr_attributes, so without it startup fails before
-        # any check could run.
-        if not apps.is_installed("freedom_ls.hr_attributes"):
-            raise ImproperlyConfigured(
-                "freedom_ls.registration_rules requires freedom_ls.hr_attributes. "
-                'Add "freedom_ls.hr_attributes" to INSTALLED_APPS before '
-                '"freedom_ls.registration_rules".'
-            )
+        # admin all import these apps, so without one startup fails before any
+        # check could run.
+        for app in _REQUIRED_APPS:
+            if not apps.is_installed(app):
+                raise ImproperlyConfigured(
+                    f"freedom_ls.registration_rules requires {app}. "
+                    f'Add "{app}" to INSTALLED_APPS before "freedom_ls.registration_rules".'
+                )
         super().import_models()
 
     def ready(self) -> None:

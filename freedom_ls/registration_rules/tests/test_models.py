@@ -7,14 +7,18 @@ from datetime import date
 import pytest
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
-from freedom_ls.registration_rules.factories import AttributeRuleConditionsFactory
-from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS
+from freedom_ls.registration_rules.factories import (
+    AttributeRuleConditionsFactory,
+    RuleRecommendationFactory,
+)
+from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS, RuleRecommendation
 
 LOWER = date(2024, 6, 1)
 
@@ -98,3 +102,15 @@ def test_one_bound_alone_is_accepted(mock_site_context, field):
 
     # Act / Assert
     conditions.clean()
+
+
+@pytest.mark.django_db
+def test_a_rule_cannot_recommend_the_same_recommendation_twice(mock_site_context):
+    # Arrange
+    existing = RuleRecommendationFactory()
+
+    # Act / Assert
+    with pytest.raises(IntegrityError), transaction.atomic():
+        RuleRecommendation.objects.create(
+            recommendation=existing.recommendation, rule=existing.rule
+        )

@@ -13,6 +13,7 @@ anyone else's. The marker is how the detach receiver tells them apart.
 from __future__ import annotations
 
 import itertools
+from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -24,13 +25,19 @@ from django.db import IntegrityError, transaction
 from django.db.models import OuterRef, Q, QuerySet
 from django.utils import timezone
 
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_management.queries import registered_course_pairs
 from freedom_ls.learner_progress.queries import started_course_exists
 from freedom_ls.registration_rules.config import config
 from freedom_ls.registration_rules.kinds import RuleState
 from freedom_ls.registration_rules.loader import get_rule_kind
-from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
+from freedom_ls.registration_rules.models import (
+    RegistrationRule,
+    RuleRecommendation,
+    RuleRegistration,
+)
 
 _engine_writing: ContextVar[bool] = ContextVar("engine_writing", default=False)
 
@@ -68,16 +75,29 @@ class RuleChanges:
 
 
 @dataclass(frozen=True)
+class RecommendationChanges:
+    """What one recommend rule would change for the users in scope, by user pk."""
+
+    recommend: tuple[int, ...] = ()
+    remove: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
 class EvaluationResult:
     registered: tuple[UUID, ...] = ()
     reactivated: tuple[UUID, ...] = ()
     retracted: tuple[UUID, ...] = ()
+    recommended: tuple[int, ...] = ()
+    recommendations_removed: tuple[int, ...] = ()
 
     def merged_with(self, other: EvaluationResult) -> EvaluationResult:
         return EvaluationResult(
             registered=self.registered + other.registered,
             reactivated=self.reactivated + other.reactivated,
             retracted=self.retracted + other.retracted,
+            recommended=self.recommended + other.recommended,
+            recommendations_removed=self.recommendations_removed
+            + other.recommendations_removed,
         )
 
 
@@ -180,6 +200,7 @@ def _hand_overs(
             site_id=state.site_id,
             course_id=state.course_id,
             is_enabled=True,
+            outcome=RegistrationRule.Outcome.REGISTER,
         )
         .exclude(pk=rule.pk)
         .order_by("name", "pk")
@@ -279,6 +300,89 @@ def apply_rule_changes(
     )
 
 
+def _registered_users(state: RuleState, user_ids: Iterable[int]) -> set[int]:
+    """A registered user counts as not matching: the dashboard already shows them the course."""
+    return {
+        user_id
+        for user_id, course_id in registered_course_pairs(state.site_id, user_ids)
+        if course_id == state.course_id
+    }
+
+
+def classify_recommendation_changes(
+    rule: RegistrationRule, state: RuleState, user_ids: Sequence[int] | None = None
+) -> RecommendationChanges:
+    """Compare the rule's match with the course's recommendations. Reads only."""
+    matching = get_rule_kind(rule.kind).matching_learners(state)
+    recommendations = RecommendedCourse._base_manager.filter(
+        site_id=state.site_id, course_id=state.course_id
+    )
+    if user_ids is not None:
+        matching = matching.filter(user_id__in=user_ids)
+        recommendations = recommendations.filter(user_id__in=user_ids)
+    matched = set(matching.values_list("user_id", flat=True))
+    matched -= _registered_users(state, matched)
+    # One entry per recommendation; a rule-made row appears once per rule, a
+    # staff-made row once with None.
+    rules_by_user: dict[int, set[UUID | None]] = defaultdict(set)
+    for user_id, rule_id in recommendations.values_list(
+        "user_id", "rule_recommendations__rule_id"
+    ):
+        rules_by_user[user_id].add(rule_id)
+    recommend = sorted(matched - rules_by_user.keys())
+    remove = sorted(
+        user_id
+        for user_id, rule_ids in rules_by_user.items()
+        if rule_ids == {rule.pk} and user_id not in matched
+    )
+    return RecommendationChanges(recommend=tuple(recommend), remove=tuple(remove))
+
+
+def apply_recommendation_changes(
+    rule: RegistrationRule, changes: RecommendationChanges
+) -> EvaluationResult:
+    """Write the changes, in user-pk order, with explicit site ids throughout."""
+    recommended: list[int] = []
+    for user_id in changes.recommend:
+        try:
+            # A savepoint per row: a recommendation made by someone else between
+            # the read and this write hits the unique constraint, and only this
+            # row rolls back. Theirs stands; a rule never takes over a row.
+            # Explicit site_id: a task has no request for the model to read it from.
+            with transaction.atomic():
+                recommendation = RecommendedCourse._base_manager.create(
+                    site_id=rule.site_id, user_id=user_id, course_id=rule.course_id
+                )
+                RuleRecommendation._base_manager.create(
+                    site_id=rule.site_id, recommendation=recommendation, rule=rule
+                )
+        except IntegrityError:
+            continue
+        recommended.append(user_id)
+
+    removed: list[int] = []
+    # Re-read under a lock: a clearing receiver may have deleted the row, or
+    # another rule may have attached itself to it, since the classifying read.
+    for recommendation in (
+        RecommendedCourse._base_manager.select_for_update(no_key=True)
+        .filter(
+            site_id=rule.site_id,
+            course_id=rule.course_id,
+            user_id__in=changes.remove,
+        )
+        .order_by("pk")
+        .prefetch_related("rule_recommendations")
+    ):
+        held_by = {held.rule_id for held in recommendation.rule_recommendations.all()}
+        if held_by != {rule.pk}:
+            continue  # another rule still holds this recommendation, so it stays
+        recommendation.delete()
+        removed.append(recommendation.user_id)
+    return EvaluationResult(
+        recommended=tuple(recommended), recommendations_removed=tuple(removed)
+    )
+
+
 def _set_is_active(
     registrations: QuerySet[LearnerCourseRegistration], is_active: bool
 ) -> list[LearnerCourseRegistration]:
@@ -308,10 +412,35 @@ def _register_scope(rule: RegistrationRule, state: RuleState) -> list[UUID]:
     )
 
 
+def _recommend_scope(rule: RegistrationRule, state: RuleState) -> list[int]:
+    """Every user the rule matches plus every user it holds a RuleRecommendation for."""
+    return sorted(
+        set(
+            get_rule_kind(rule.kind)
+            .matching_learners(state)
+            .values_list("user_id", flat=True)
+        )
+        | set(
+            RecommendedCourse._base_manager.filter(
+                site_id=rule.site_id, rule_recommendations__rule_id=rule.pk
+            ).values_list("user_id", flat=True)
+        )
+    )
+
+
 def _register_step(rule: RegistrationRule, learner_ids: list[UUID]) -> EvaluationResult:
     return apply_rule_changes(
         rule,
         classify_rule_changes(rule, RuleState.from_rule(rule), learner_ids=learner_ids),
+    )
+
+
+def _recommend_step(rule: RegistrationRule, user_ids: list[int]) -> EvaluationResult:
+    return apply_recommendation_changes(
+        rule,
+        classify_recommendation_changes(
+            rule, RuleState.from_rule(rule), user_ids=user_ids
+        ),
     )
 
 
@@ -354,6 +483,10 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
     # by it, and must still read as unapplied afterwards.
     started_at = timezone.now()
     state = RuleState.from_rule(rule)
+    if rule.outcome == RegistrationRule.Outcome.RECOMMEND:
+        return _run_in_batches(
+            rule_id, site_id, started_at, _recommend_scope(rule, state), _recommend_step
+        )
     return _run_in_batches(
         rule_id, site_id, started_at, _register_scope(rule, state), _register_step
     )
@@ -381,15 +514,16 @@ def evaluate_learner(learner_id: UUID, site_id: int) -> EvaluationResult:
             .filter(
                 Q(organisation_id=learner.organisation_id, is_enabled=True)
                 | Q(rule_registrations__registration__learner_id=learner_id)
+                | Q(rule_recommendations__recommendation__user_id=learner.user_id)
             )
             .distinct()
             .order_by("pk")
         )
         for rule in switched_on(rules):
-            changes = classify_rule_changes(
-                rule, RuleState.from_rule(rule), learner_ids=[learner_id]
-            )
-            result = result.merged_with(apply_rule_changes(rule, changes))
+            if rule.outcome == RegistrationRule.Outcome.RECOMMEND:
+                result = result.merged_with(_recommend_step(rule, [learner.user_id]))
+            else:
+                result = result.merged_with(_register_step(rule, [learner_id]))
     return result
 
 

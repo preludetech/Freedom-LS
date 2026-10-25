@@ -5,12 +5,14 @@ from collections.abc import Iterable
 import factory
 
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
+    RuleRecommendation,
     RuleRegistration,
 )
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
@@ -34,6 +36,14 @@ class RuleRegistrationFactory(SiteAwareFactory):
     rule = factory.SubFactory(RegistrationRuleFactory)
     rule_name = factory.LazyAttribute(lambda o: o.rule.name)
     is_retracted = False
+
+
+class RuleRecommendationFactory(SiteAwareFactory):
+    class Meta:
+        model = RuleRecommendation
+
+    recommendation = factory.SubFactory(RecommendedCourseFactory)
+    rule = factory.SubFactory(RegistrationRuleFactory)
 
 
 class AttributeRuleConditionsFactory(SiteAwareFactory):

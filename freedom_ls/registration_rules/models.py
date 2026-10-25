@@ -30,6 +30,7 @@ DATE_BOUND_PAIRS: tuple[tuple[str, str, str], ...] = (
 class RegistrationRule(SiteAwareModel, TimestampedModel):
     class Outcome(models.TextChoices):
         REGISTER = "register", "Register"
+        RECOMMEND = "recommend", "Recommend"
 
     # Both PROTECT: a rule explains registrations that may outlive the people
     # who wrote it, and neither side is deleted while one exists.
@@ -93,6 +94,32 @@ class RuleRegistration(SiteAwareModel):
 
     def __str__(self) -> str:
         return self.rule_name
+
+
+class RuleRecommendation(SiteAwareModel):
+    """A rule that recommends a course to a user. One row per rule, so rules of
+    different organisations share a recommendation without reading each other's rows.
+
+    Both CASCADE: a recommendation with no rule left behind it is deleted by the
+    rule's own pre_delete, and a deleted recommendation leaves nothing to label.
+    """
+
+    recommendation = models.ForeignKey(
+        "freedom_ls_course_recommendations.RecommendedCourse",
+        on_delete=models.CASCADE,
+        related_name="rule_recommendations",
+    )
+    rule = models.ForeignKey(
+        RegistrationRule, on_delete=models.CASCADE, related_name="rule_recommendations"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "recommendation", "rule"],
+                name="unique_rule_recommendation",
+            )
+        ]
 
 
 class AttributeRuleConditions(SiteAwareModel):

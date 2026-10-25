@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.factories import OrganisationHRSettingsFactory
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -14,6 +15,7 @@ if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
 from freedom_ls.registration_rules.factories import RegistrationRuleFactory
+from freedom_ls.registration_rules.models import RegistrationRule
 from freedom_ls.registration_rules.tasks import (
     evaluate_learner_task,
     evaluate_organisation_task,
@@ -120,4 +122,25 @@ def test_evaluate_organisation_task_leaves_the_same_organisation_on_another_site
     # Assert
     assert not LearnerCourseRegistration._base_manager.filter(
         learner=learner, course=rule.course
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_evaluate_rule_task_recommends_for_a_recommend_rule(mock_site_context):
+    # Arrange
+    rule = RegistrationRuleFactory(
+        is_enabled=True, outcome=RegistrationRule.Outcome.RECOMMEND
+    )
+    OrganisationHRSettingsFactory(
+        organisation=rule.organisation, registration_rules_enabled=True
+    )
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule_task.func(str(rule.pk), rule.site_id)
+
+    # Assert
+    assert RecommendedCourse._base_manager.filter(
+        user=learner.user, course=rule.course
     ).exists()

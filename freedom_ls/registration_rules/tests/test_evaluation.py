@@ -13,6 +13,8 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.comms.models import Notification
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.factories import (
     JobTitleFactory,
     LearnerHRAttributesFactory,
@@ -20,6 +22,9 @@ from freedom_ls.hr_attributes.factories import (
 )
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
@@ -45,10 +50,15 @@ from freedom_ls.registration_rules.evaluation import (
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
+    RuleRecommendationFactory,
     RuleRegistrationFactory,
 )
 from freedom_ls.registration_rules.kinds import RuleState
-from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
+from freedom_ls.registration_rules.models import (
+    RegistrationRule,
+    RuleRecommendation,
+    RuleRegistration,
+)
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
@@ -1154,3 +1164,304 @@ def test_a_rule_edited_during_a_run_still_shows_its_change_as_not_applied(
     rule = RegistrationRule._base_manager.get(pk=title_rule.pk)
     assert rule.last_evaluated_at is not None
     assert rule.last_evaluated_at < rule.updated_at
+
+
+def _recommend_rule(**overrides):
+    return _enabled_rule(outcome=RegistrationRule.Outcome.RECOMMEND, **overrides)
+
+
+def _recommendations_for(rule):
+    return RecommendedCourse._base_manager.filter(course=rule.course)
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_recommends_the_course_to_each_matching_user_and_registers_nobody(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learners = LearnerFactory.create_batch(2, organisation=rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert set(_recommendations_for(rule).values_list("user_id", flat=True)) == {
+        learner.user_id for learner in learners
+    }
+    assert RuleRecommendation._base_manager.filter(rule=rule).count() == 2
+    assert not _registrations_for(rule).exists()
+    assert not RuleRegistration._base_manager.filter(rule=rule).exists()
+    assert sorted(result.recommended) == sorted(learner.user_id for learner in learners)
+
+
+@pytest.mark.django_db
+def test_a_second_run_of_a_recommend_rule_creates_nothing(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result == EvaluationResult()
+    assert _recommendations_for(rule).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_skips_a_user_registered_individually(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_skips_a_user_registered_through_a_cohort(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    cohort = CohortFactory(organisation=rule.organisation)
+    learner = LearnerFactory(organisation=rule.organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_skips_a_user_registered_through_their_learner_in_another_organisation(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    elsewhere = LearnerFactory(user=learner.user)
+    LearnerCourseRegistrationFactory(learner=elsewhere, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_rule_made_recommendation_for_a_user_registered_by_bulk_create_is_removed(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+    LearnerCourseRegistration._base_manager.bulk_create(
+        [
+            LearnerCourseRegistration(
+                site_id=rule.site_id,
+                learner=learner,
+                course=rule.course,
+                is_active=True,
+            )
+        ]
+    )
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result.recommendations_removed == (learner.user_id,)
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_user_who_stops_matching_loses_the_rule_made_recommendation(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    other_organisation = OrganisationFactory()
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+    Learner._base_manager.filter(pk=learner.pk).update(organisation=other_organisation)
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result.recommendations_removed == (learner.user_id,)
+    assert not _recommendations_for(rule).exists()
+    assert not RuleRecommendation._base_manager.filter(rule=rule).exists()
+
+
+@pytest.mark.django_db
+def test_disabling_a_recommend_rule_removes_every_recommendation_it_made(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    LearnerFactory.create_batch(2, organisation=rule.organisation)
+    drop_ambient_request()
+    evaluate_rule(rule.pk, rule.site_id)
+    RegistrationRule._base_manager.filter(pk=rule.pk).update(is_enabled=False)
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert len(result.recommendations_removed) == 2
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_matching_users_staff_made_recommendation_is_left_alone(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    staff_made = RecommendedCourseFactory(user=learner.user, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result == EvaluationResult()
+    assert list(_recommendations_for(rule)) == [staff_made]
+    assert not RuleRecommendation._base_manager.filter(rule=rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_staff_made_recommendation_survives_the_user_no_longer_matching(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    RecommendedCourseFactory(user=learner.user, course=rule.course)
+    Learner._base_manager.filter(pk=learner.pk).update(
+        organisation=OrganisationFactory()
+    )
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert _recommendations_for(rule).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_staff_made_recommendation_survives_disabling_the_rule(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    RecommendedCourseFactory(user=learner.user, course=rule.course)
+    RegistrationRule._base_manager.filter(pk=rule.pk).update(is_enabled=False)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert _recommendations_for(rule).count() == 1
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_recommends_the_course_to_their_user(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(learner.pk, rule.site_id)
+
+    # Assert
+    assert result.recommended == (learner.user_id,)
+    assert _recommendations_for(rule).get().user_id == learner.user_id
+    assert not _registrations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_removes_a_recommendation_their_rule_no_longer_matches(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    RuleRecommendationFactory(
+        rule=rule,
+        recommendation=RecommendedCourseFactory(user=learner.user, course=rule.course),
+    )
+    Learner._base_manager.filter(pk=learner.pk).update(
+        organisation=OrganisationFactory()
+    )
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(learner.pk, rule.site_id)
+
+    # Assert
+    assert result.recommendations_removed == (learner.user_id,)
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_register_rule_does_not_hand_a_registration_to_a_recommend_rule_on_its_course(
+    mock_site_context,
+):
+    # Arrange
+    register_rule = _enabled_rule()
+    new_organisation = OrganisationFactory()
+    _recommend_rule(organisation=new_organisation, course=register_rule.course)
+    learner = LearnerFactory(organisation=register_rule.organisation)
+    RuleRegistrationFactory(
+        rule=register_rule,
+        registration=LearnerCourseRegistrationFactory(
+            learner=learner, course=register_rule.course, self_registered=False
+        ),
+    )
+    Learner._base_manager.filter(pk=learner.pk).update(organisation=new_organisation)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(register_rule.pk, register_rule.site_id)
+
+    # Assert
+    assert result.retracted == (learner.pk,)
+    assert RuleRegistration._base_manager.get(rule=register_rule).is_retracted is True
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_run_touches_only_the_given_site(mock_site_context):
+    # Arrange
+    rule = _recommend_rule()
+    own = LearnerFactory(organisation=rule.organisation)
+    foreign = LearnerFactory(organisation=rule.organisation)
+    Learner._base_manager.filter(pk=foreign.pk).update(site=SiteFactory())
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert result.recommended == (own.user_id,)
+    assert [row.user_id for row in _recommendations_for(rule)] == [own.user_id]
+    assert _recommendations_for(rule).get().site_id == rule.site_id

@@ -20,6 +20,7 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
+from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.hr_attributes.factories import (
     DepartmentFactory,
     JobTitleFactory,
@@ -27,6 +28,9 @@ from freedom_ls.hr_attributes.factories import (
     OrganisationHRSettingsFactory,
 )
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
@@ -36,9 +40,14 @@ from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
+    RuleRecommendationFactory,
     RuleRegistrationFactory,
 )
-from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
+from freedom_ls.registration_rules.models import (
+    RegistrationRule,
+    RuleRecommendation,
+    RuleRegistration,
+)
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
@@ -699,3 +708,62 @@ def test_saving_conditions_outside_the_admin_marks_the_rule_changed(
     # Assert
     rule = RegistrationRule._base_manager.get(pk=conditions.rule_id)
     assert rule.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
+
+
+@pytest.fixture
+def rule_made_recommendation(mock_site_context):
+    return RuleRecommendationFactory()
+
+
+@pytest.mark.django_db
+def test_registering_a_user_individually_deletes_a_rule_made_recommendation(
+    rule_made_recommendation,
+):
+    # Arrange
+    recommendation = rule_made_recommendation.recommendation
+    learner = LearnerFactory(user=recommendation.user)
+
+    # Act
+    LearnerCourseRegistrationFactory(learner=learner, course=recommendation.course)
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_registering_a_cohort_deletes_a_rule_made_recommendation_for_a_member(
+    rule_made_recommendation,
+):
+    # Arrange
+    recommendation = rule_made_recommendation.recommendation
+    membership = CohortMembershipFactory(
+        learner=LearnerFactory(user=recommendation.user)
+    )
+
+    # Act
+    CohortCourseRegistrationFactory(
+        cohort=membership.cohort, course=recommendation.course
+    )
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_joining_a_cohort_that_holds_the_course_deletes_a_rule_made_recommendation(
+    rule_made_recommendation,
+):
+    # Arrange
+    recommendation = rule_made_recommendation.recommendation
+    cohort = CohortFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=recommendation.course)
+    learner = LearnerFactory(user=recommendation.user, organisation=cohort.organisation)
+
+    # Act
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(pk=recommendation.pk).exists()
+    assert not RuleRecommendation._base_manager.exists()
