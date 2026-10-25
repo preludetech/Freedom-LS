@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -14,7 +14,7 @@ _Last updated: 2026-10-23_
 - When direct messaging is turned on, educators can message learners from a Messages section or from a learner's quick view. See [Messages](#messages).
 - **Access is granted by role**: site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
 - Organisation admins add members, give and remove their roles, and suspend or reactivate them from the Members section. See [Members and roles](#members-and-roles).
-- **Limits:** deadline management is done in the Django admin, and there are no bulk learner operations. See [Limits](#limits).
+- **Limits:** educators cannot see or set deadlines, and there are no bulk learner operations. See [Limits](#limits).
 
 ## Panel Interface
 
@@ -145,6 +145,6 @@ These operations are not available in the educator interface:
 - **Email changes** — a learner's email is changed in the [Django admin](./admin-interface.md#learner-rosters).
 - **Deleting a learner** — learners are deactivated, never deleted, here.
 - **Site admin** — the site admin role is not given or removed from the educator interface, nor from the Django admin.
-- **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
+- **Deadlines** — due dates, time limits, deadline overrides and overdue status are not shown or set here, and overdue learners do not appear in the needs-attention list. Overrides are set in the Django admin; see [admin interface](./admin-interface.md#deadline-overrides).
 
 Educators cannot send email to learners from FLS, and there is no group or broadcast messaging; see [messaging](./messaging.md#not-built).

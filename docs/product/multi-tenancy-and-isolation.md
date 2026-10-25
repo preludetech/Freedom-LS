@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -24,8 +24,8 @@ All of the following are site-scoped, so a given site's copy is invisible to eve
 - **User accounts**, including the ability to reuse an email address across sites.
 - **Course content** — courses, parts, topics, activities, and forms.
 - **Learner data** — course, topic, and form progress, quiz answers, and course registrations.
-- **Cohorts** — cohorts, memberships, cohort course registrations, and both cohort and per-learner deadlines.
-- **Configuration** — signup policy, recommended courses, and legal consent records.
+- **Cohorts** — cohorts, memberships, cohort course registrations, and the deadline overrides set on cohort course registrations or on individual learners.
+- **Configuration** — signup policy, recommended courses, legal consent records, and the site's time zone.
 - **Webhooks** — endpoints and their encrypted secrets.
 - **Public discoverability surfaces** — the sitemap, `robots.txt`, and structured data on catalogue and course pages. All absolute URLs are built from the requesting site's own domain rather than a fixed host, so a visitor on one site never sees another's courses or URLs.
 
@@ -64,4 +64,4 @@ This is the canonical statement of what an organisation is and is not; other doc
 
 ## Per-Site Configuration
 
-Signup policy and registration requirements are configured per site — see [authentication](./authentication.md). Webhook endpoints and secrets are likewise per site — see [webhooks](./webhooks.md).
+Signup policy and registration requirements are configured per site — see [authentication](./authentication.md). Webhook endpoints and secrets are likewise per site — see [webhooks](./webhooks.md). Each site also has its own time zone for due dates, and can choose whether learners see a zone label next to them — see [admin interface](./admin-interface.md#site-time-zone).

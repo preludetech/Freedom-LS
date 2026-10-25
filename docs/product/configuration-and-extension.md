@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -147,7 +147,6 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `ALLOW_SIGN_UPS` | Installation-wide signup toggle; a site's own signup policy takes precedence. |
 | `REQUIRE_NAME` | Installation-wide default for requiring a name at registration. |
 | `REQUIRE_TERMS_ACCEPTANCE` | Installation-wide default for requiring terms acceptance. |
-| `DEADLINES_ACTIVE` | Enables or disables deadline features site-wide. |
 | `FORCE_SITE_NAME` | Pins the installation to one site instead of resolving by host. |
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
 | `REFERRAL_TRACKING_COOKIE_NAME` | Name of the signup attribution cookie. |

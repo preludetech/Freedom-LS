@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -9,6 +9,7 @@ _Last updated: 2026-10-22_
 - Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
+- An administrator can override a due date or a course time limit for a cohort's course registration or for a single learner, including removing it. Each override records who set it and why, and is flagged when the content's own value has changed since. See [Deadline Overrides](#deadline-overrides).
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
@@ -62,6 +63,21 @@ Course [applications](./learner-experience.md#applying-to-a-course) have their o
 Anonymous visitors can apply before they have an account, so their applications show up as soon as they are submitted and can be found by the applicant's email. Until the applicant follows the emailed claim link, the application is flagged "Unverified email" on the list, the application page, and the form-answer and uploaded-file screens. Anonymous applicants also have their own read-only list, searchable by email, whose only action is delete: deleting one erases that applicant's application, answers and files, which is how an erasure request is handled before an account exists. An applicant who has already claimed their application is protected from that delete; deleting their user removes the application instead, together with any unclaimed applications under the same address. Nothing is purged automatically; see [security and data handling](./security-and-data-handling.md). An applicant can correct their own email address, both while the application is a draft and after submitting it while the address is still unverified, so match an erasure request against the application's current address. "Verified email" does not mean the application is submitted: an applicant who follows their claim link on an unfinished draft is verified and has an account while the application is still a draft, and an unverified application may be either a draft or submitted. The applicant's side is described under [applying to a course](./learner-experience.md#applying-to-a-course).
 
 Access follows the standard view permissions, so a staff user granted them can read applications, answers and files without being a superuser; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built). Applications cannot be added, edited or deleted in the admin, and there is no review, approve or reject action yet; see [roadmap](./roadmap.md).
+
+## Deadline Overrides
+
+Course authors set due dates and time limits in the course content; see [content editing workflow](./content-editing-workflow.md#course-frontmatter-options). The admin is where an administrator changes one for particular people, without touching the content.
+
+- **Per cohort registration.** A cohort's course registration page lists its overrides. Each one replaces the due date of one topic or form in that course, or the course's time limit, for everyone in that cohort registered to the course.
+- **Per learner.** A learner's course progress page lists overrides for that one learner, and a read-only panel shows every due date and the time limit end that learner currently has, and where each comes from. A learner override takes precedence over a cohort one.
+- **"No deadline".** An override can remove a due date or time limit altogether, as well as set a fixed date (with optional time) or a number of days after registration.
+- **Who and why.** Each override shows who set it and carries a free-text reason, and a note appears if the content's own value changed after the override was saved, so an administrator can decide whether it still makes sense.
+
+Overrides only change what is shown, in the admin and to [learners](./learner-experience.md#due-dates-and-overdue). They do not lock content, send reminders or grant extensions, and the educator interface has no screen for them.
+
+## Site Time Zone
+
+Each site can be given one time zone in the admin, and a choice whether to show that zone's name to learners. Without one, the server's time zone is used. The admin shows deadline dates and times in this zone, with the zone named. Learners see dates in their own browser's zone, and see the site's zone label only when **show time zone to learners** is switched on; it is off by default.
 
 ## Course Interest
 

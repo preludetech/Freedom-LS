@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-25_
 
 ## Summary
 
@@ -86,6 +86,8 @@ dashboard_category: technical
 
 `dashboard_category` can be omitted when a course names exactly one category, and both keys can be left off entirely. Belonging to more than one category is recorded, but only the dashboard category is read anywhere today: there is no catalogue filtering by category yet, so a course's other categories have no visible effect. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 
+**Due dates and time limits.** A topic or form can carry a due date in its own frontmatter, either a fixed `due_date` (such as `2026-03-14`) or `due_days_after_registration`, a number of days after the learner registered on the course. Either can take an optional `due_time`, a quoted 24-hour time such as `"17:00"`; without one, the item falls due at the end of that day in the site's time zone. A course can carry a `time_limit_days`, a whole number of days (at least 1) after registration. An administrator can override these per cohort registration or per learner, see [admin interface](./admin-interface.md#deadline-overrides); what learners see is described in [learner experience](./learner-experience.md#due-dates-and-overdue). Nothing is enforced: a due date or time limit does not lock content or trigger any consequence.
+
 Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price can also be set in the admin, and a price set there survives a later content re-save unless the course file sets or clears it. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
 
 ## Validation and Loading
@@ -95,7 +97,7 @@ uv run python manage.py content_validate <path>
 uv run python manage.py content_save <path> <site_name>
 ```
 
-Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, an invalid price, and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
+Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, an invalid price, a malformed due date or time limit (for example, both `due_date` and `due_days_after_registration`, or a `due_time` with neither), and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
 

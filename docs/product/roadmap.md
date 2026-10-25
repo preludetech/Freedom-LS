@@ -1,12 +1,12 @@
 # Roadmap
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-10-25_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
-- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadlines), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
+- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Organisation Deferrals
@@ -132,18 +132,30 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 ## Educator Interface Gaps
 
-**Status: Cohorts can be administered; learner and deadline management cannot.**
+**Status: Cohorts can be administered; learner and deadline override management cannot.**
 
 The educator interface can create, edit, deactivate, reactivate and delete cohorts, and register a cohort for courses or unregister it; its Courses section is read-only. See [educator interface](./educator-interface.md). These operations must still be performed in the Django admin by an administrator:
 
 - **Cohort membership** — adding learners to a cohort, moving them between cohorts, or removing them.
 - **Organisation membership** — associating a learner with an organisation, or marking one removed.
 - **Individual course registration** — registering a single learner for a course.
-- **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
+- **Deadline overrides** — setting or removing a due date or course time limit for a cohort course registration or a single learner. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
 
 Also not built in the educator interface: bulk actions on lists, and data for the cohort overview's "needs attention" card, which shows a placeholder.
 
 Educators can message learners from within FLS; see [Direct Messaging](#direct-messaging) for what messaging still lacks.
+
+## Deadlines
+
+**Status: Due dates, course time limits and the overdue mark are built; nothing is enforced.**
+
+Authors can give topics and forms a due date and courses a time limit, administrators can override them, and learners see due dates and an overdue mark; see [learner experience](./learner-experience.md#due-dates-and-overdue). Overdue is only a label. Not built:
+
+- **Consequences after a date passes** — nothing is locked, closed or ended.
+- **Extensions and pause** — staff cannot extend a learner's deadlines or pause a course, and learners cannot pause their own.
+- **Reminders** — no notification, email or webhook is sent as a date approaches or passes.
+- **Educator-interface screens** — due dates and overrides are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
+- **Overdue in educator views** — overdue learners do not appear in a cohort's "needs attention" card or in [cohort reports](./reports.md).
 
 ## Enforcing Content Security Policy
 
