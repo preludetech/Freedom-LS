@@ -647,3 +647,40 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
         page.set_viewport_size(viewport)
         page.goto(dashboard_url)
         assert_no_horizontal_overflow(page)
+
+
+def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    page = logged_in_page
+    course = CourseFactory(
+        title="Back Link Course",
+        slug="back-link-course",
+        access_config={"access_type": "free"},
+    )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    courses_url = str(reverse_url(live_server, "learner_interface:courses"))
+    detail_url = _detail_url(live_server, course)
+
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(dashboard_url)
+
+    page.goto(courses_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(courses_url)
+
+    page.goto(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(dashboard_url)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(detail_url)
+        assert_no_horizontal_overflow(page)

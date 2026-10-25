@@ -504,4 +504,24 @@ document.addEventListener("alpine:init", () => {
             this.$el.removeEventListener("htmx:afterSwap", this._onAfterSwap);
         },
     }));
+
+    // The Back link on the course detail page. Stepping back through history
+    // returns the learner to whichever page sent them here; the link's href is
+    // the dashboard, used when there is no such page. document.referrer can be
+    // stale after an htmx-boosted navigation, which is accepted.
+    Alpine.data("historyBackLink", () => ({
+        goBack(event) {
+            if (!this.cameFromAnotherPageHere()) return;
+            event.preventDefault();
+            history.back();
+        },
+        cameFromAnotherPageHere() {
+            if (history.length <= 1 || !document.referrer) return false;
+            const referrer = new URL(document.referrer, location.href);
+            return (
+                referrer.origin === location.origin &&
+                referrer.pathname !== location.pathname
+            );
+        },
+    }));
 });

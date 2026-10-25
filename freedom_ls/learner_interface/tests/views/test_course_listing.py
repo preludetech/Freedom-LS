@@ -1403,25 +1403,45 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     assert first_item_url in body
 
 
+def _detail_back_link_href(body: str) -> str | None:
+    assert 'aria-label="Breadcrumb"' not in body
+    anchors = re.findall(r"<a\b([^>]*)>(.*?)</a>", body, flags=re.DOTALL)
+    texts = [re.sub(r"<[^>]+>", "", inner).strip() for _, inner in anchors]
+    assert "All courses" not in texts
+    for (attrs, _), text in zip(anchors, texts, strict=True):
+        if text == "Back":
+            href = re.search(r'href="([^"]*)"', attrs)
+            return href.group(1) if href else None
+    return None
+
+
 @pytest.mark.django_db
-def test_course_detail_renders_breadcrumbs(
+def test_course_detail_offers_a_back_link_to_the_dashboard(
     mock_site_context, course_with_topics, logged_in_client
 ):
-    """The detail page renders breadcrumbs including the 'All courses' link
-    and the current course title."""
-    user = UserFactory()
-    client = logged_in_client(user)
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
+    client = logged_in_client(UserFactory())
+    url = reverse(
+        "learner_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
     )
-    body = response.content.decode()
-    all_courses_url = reverse("learner_interface:courses")
-    assert all_courses_url in body
-    assert "All courses" in body
-    assert course_with_topics.title in body
+
+    href = _detail_back_link_href(client.get(url).content.decode())
+
+    assert href == reverse("learner_interface:dashboard")
+
+
+@pytest.mark.django_db
+def test_course_detail_offers_an_anonymous_visitor_a_back_link_to_the_dashboard(
+    mock_site_context, course_with_topics
+):
+    url = reverse(
+        "learner_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+
+    href = _detail_back_link_href(Client().get(url).content.decode())
+
+    assert href == reverse("learner_interface:dashboard")
 
 
 @pytest.mark.django_db

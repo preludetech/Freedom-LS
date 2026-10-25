@@ -47,16 +47,23 @@
         </div>
     {% endpartialdef %}
 
-    {% comment %}Trim c-page's default top padding (py-8 lg:py-12) — the breadcrumbs
-    sit just under the site header and directly above the full-bleed hero, so the
+    {% comment %}Trim c-page's default top padding (py-8 lg:py-12) — the Back link
+    sits just under the site header and directly above the full-bleed hero, so the
     standard well rhythm leaves an oversized white band here.{% endcomment %}
     <c-page class="pt-2 lg:pt-2">
         <div class="space-y-2">
 
-            {% comment %}Breadcrumbs. Shared c-breadcrumbs component with plain
-            full-page anchors (no hx_target) — the panel framework's HTMX target
-            #main-content does not exist on this standalone page.{% endcomment %}
-            <c-breadcrumbs :crumbs="breadcrumbs" />
+            {% comment %}A plain anchor, not the panel framework's back-link partial, which
+            navigates by htmx into a #main-content this standalone page does not have.
+            historyBackLink steps back through history when the learner came from another
+            page on this site; otherwise the href takes them to the dashboard.{% endcomment %}
+            <a href="{% url 'learner_interface:dashboard' %}"
+               x-data="historyBackLink"
+               x-on:click="goBack"
+               class="inline-flex min-h-11 items-center gap-1.5 rounded-md py-2 pe-2 text-sm font-semibold text-primary no-underline hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+                <span aria-hidden="true"><c-icon name="previous" class="size-4" /></span>
+                Back
+            </a>
 
             {% comment %}Hero: accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
@@ -76,7 +83,7 @@
                 </span>
 
                 {% comment %}Inner well — matches c-page's max-width + horizontal padding so the
-                hero content lines up with the breadcrumbs and the content below.{% endcomment %}
+                hero content lines up with the Back link and the content below.{% endcomment %}
                 <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-white">
                     {% if course.dashboard_category %}
                         <span data-testid="course-category-chip" class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">

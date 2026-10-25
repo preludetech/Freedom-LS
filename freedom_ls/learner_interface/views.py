@@ -894,10 +894,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     is_coming_soon = is_coming_soon_for_display(course)
     if is_coming_soon and not is_registered:
         stamp_interest(request.user, [course])
-    breadcrumbs = [
-        {"label": "All courses", "url": reverse("learner_interface:courses")},
-        {"label": course.title},
-    ]
     viewable = course.viewable_items()
     # "Lessons" counts content items only — assessments (Form children) are
     # surfaced separately via ``includes_assessments``, so exclude them here.
@@ -952,7 +948,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "enrolment_summary": decision.enrolment_summary,
             "acquisition_heading": decision.acquisition_heading,
             "acquisition_subtext": decision.acquisition_subtext,
-            "breadcrumbs": breadcrumbs,
             "lesson_count": lesson_count,
             "lesson_count_label": lesson_count_label,
             "includes_assessments": includes_assessments,
