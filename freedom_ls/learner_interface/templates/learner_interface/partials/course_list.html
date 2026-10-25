@@ -32,7 +32,7 @@ outer grid: the controls beside the heading, the card grid across both columns.
     <div id="{{ section.swap_id }}" class="contents">
         <div class="flex items-center gap-4 justify-self-end">
             <span class="text-sm text-muted tabular-nums">{{ section.position_text }}</span>
-            <c-course-section-pagination :page_obj="section.page_obj"
+            <c-section-pagination :page_obj="section.page_obj"
                                          target_id="{{ section.swap_id }}"
                                          page_param_name="{{ section.page_param_name }}"
                                          nav_label="{{ section.nav_label }}" />

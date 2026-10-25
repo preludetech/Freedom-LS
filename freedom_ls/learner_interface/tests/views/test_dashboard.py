@@ -30,7 +30,6 @@ from freedom_ls.course_access.backends import (
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.deadlines.models import DeadlineKind
-from freedom_ls.learner_interface.dashboard_sections import section_page_href
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
     learner_override,
@@ -1035,43 +1034,6 @@ def test_in_progress_pages(mock_site_context, logged_in_client):
     in_progress = rendered_section(response, "in-progress")
     assert len(in_progress.courses) == 3
     assert in_progress.position_text == "1 to 3 of 4"
-
-
-@pytest.mark.django_db
-def test_a_link_preserves_every_other_sections_page(rf):
-    request = rf.get(DASHBOARD_URL, {"page_available": "2", "page_history": "3"})
-
-    href = section_page_href(request, "page_available", 3)
-
-    assert "page_available=3" in href
-    assert "page_history=3" in href
-
-
-@pytest.mark.django_db
-def test_a_page_one_link_drops_its_own_parameter(rf):
-    request = rf.get(DASHBOARD_URL, {"page_available": "2", "page_history": "3"})
-
-    href = section_page_href(request, "page_available", 1)
-
-    assert "page_available" not in href
-    assert "page_history=3" in href
-
-
-@pytest.mark.django_db
-def test_a_link_carries_an_unrecognised_parameter_through(rf):
-    request = rf.get(DASHBOARD_URL, {"utm_source": "newsletter"})
-
-    href = section_page_href(request, "page_available", 2)
-
-    assert "utm_source=newsletter" in href
-    assert "page_available=2" in href
-
-
-@pytest.mark.django_db
-def test_a_page_one_link_with_nothing_else_is_the_bare_path(rf):
-    request = rf.get(DASHBOARD_URL)
-
-    assert section_page_href(request, "page_available", 1) == DASHBOARD_URL
 
 
 @pytest.mark.django_db
