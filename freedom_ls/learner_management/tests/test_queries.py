@@ -72,6 +72,7 @@ from freedom_ls.learner_management.queries import (
     organisation_for_learner_course,
     organisations_accessible_to,
     other_grants_for,
+    own_organisation_for_course,
     peers_of,
     peers_through,
     registerable_courses_for,
@@ -2207,3 +2208,38 @@ class TestRegisterableCoursesOpenToOrganisation:
         )
 
         assert list(registerable_courses_for_learner(learner)) == []
+
+
+@pytest.mark.django_db
+class TestOwnOrganisationForCourse:
+    def test_earliest_active_learner_row_in_a_course_organisation_wins(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        first = OrganisationFactory()
+        second = OrganisationFactory()
+        course.organisations.add(first, second)
+        LearnerFactory(user=user, organisation=first)
+        LearnerFactory(user=user, organisation=second)
+
+        assert own_organisation_for_course(user, course) == first
+
+    def test_user_without_a_learner_row_in_the_course_organisations_gets_none(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        course.organisations.add(OrganisationFactory())
+        user = UserFactory()
+        LearnerFactory(user=user, organisation=OrganisationFactory())
+
+        assert own_organisation_for_course(user, course) is None
+
+    def test_inactive_learner_row_gets_none(self, mock_site_context):
+        course = CourseFactory()
+        organisation = OrganisationFactory()
+        course.organisations.add(organisation)
+        user = UserFactory()
+        LearnerFactory(user=user, organisation=organisation, is_active=False)
+
+        assert own_organisation_for_course(user, course) is None

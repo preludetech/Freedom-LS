@@ -330,6 +330,18 @@ def organisation_for_learner_course(user: User, course: Course) -> Organisation 
     return resolved.learner.organisation if resolved is not None else None
 
 
+def own_organisation_for_course(user: User, course: Course) -> Organisation | None:
+    """The earliest of the user's active Learner rows in one of the course's
+    organisations, or None when they hold none."""
+    learner = (
+        Learner.objects.filter(user=user, is_active=True, organisation__courses=course)
+        .select_related("organisation")
+        .order_by("created_at")
+        .first()
+    )
+    return learner.organisation if learner is not None else None
+
+
 def _resolved_or_none[ModelT: Model](
     user: RequestUser, everything: QuerySet[ModelT]
 ) -> QuerySet[ModelT] | None:

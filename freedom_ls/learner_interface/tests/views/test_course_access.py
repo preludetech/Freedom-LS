@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
@@ -43,6 +43,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 
 # ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
@@ -180,6 +181,102 @@ def test_initiate_access_after_an_admin_deactivation_deletes_the_recommendation(
     assert not RecommendedCourse.objects.filter(
         user=learner.user, course=course
     ).exists()
+
+
+def _initiate_access(client: Client, course) -> None:
+    client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "audience", [CourseAudience.ORGANISATION_LEARNERS, CourseAudience.PUBLIC]
+)
+def test_initiate_access_registers_through_the_users_organisation_of_the_course(
+    mock_site_context, logged_in_client, course_with_topic, audience
+):
+    course = course_with_topic(access_type="free")
+    course.audience = audience
+    course.save()
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+    user = UserFactory()
+    LearnerFactory(user=user, organisation=organisation)
+
+    _initiate_access(logged_in_client(user), course)
+
+    registration = LearnerCourseRegistration.objects.get(
+        learner__user=user, course=course
+    )
+    assert registration.learner.organisation == organisation
+
+
+@pytest.mark.django_db
+def test_initiate_access_registers_through_the_earliest_learner_row(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    first = OrganisationFactory()
+    second = OrganisationFactory()
+    course.organisations.add(first, second)
+    user = UserFactory()
+    LearnerFactory(user=user, organisation=first)
+    LearnerFactory(user=user, organisation=second)
+
+    _initiate_access(logged_in_client(user), course)
+
+    registration = LearnerCourseRegistration.objects.get(
+        learner__user=user, course=course
+    )
+    assert registration.learner.organisation == first
+
+
+@pytest.mark.django_db
+def test_initiate_access_public_organisation_course_without_a_row_uses_default_organisation(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    course.audience = CourseAudience.PUBLIC
+    course.save()
+    course.organisations.add(OrganisationFactory())
+    user = UserFactory()
+
+    _initiate_access(logged_in_client(user), course)
+
+    registration = LearnerCourseRegistration.objects.get(
+        learner__user=user, course=course
+    )
+    assert registration.learner.organisation == get_default_organisation(
+        mock_site_context
+    )
+
+
+@pytest.mark.django_db
+def test_initiate_access_learner_removed_from_the_course_organisation_changes_no_registration(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+    user = UserFactory()
+    learner = LearnerFactory(user=user, organisation=organisation, is_active=False)
+    registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    response = logged_in_client(user).post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    registration.refresh_from_db()
+    assert response.status_code == 404
+    assert LearnerCourseRegistration.objects.filter(course=course).count() == 1
+    assert registration.is_active
 
 
 # ---------------------------------------------------------------------------

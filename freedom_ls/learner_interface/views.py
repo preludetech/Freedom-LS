@@ -65,7 +65,9 @@ from freedom_ls.form_engine.paging import answered_counts, resume_page_number
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_management.queries import (
+    is_course_open_to_organisation,
     learner_for_course,
+    own_organisation_for_course,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.attempts import (
@@ -1003,17 +1005,27 @@ def initiate_course_access(request, course_slug):
             else redirect("learner_interface:course_detail", course_slug=course_slug)
         )
 
-    # Create the course registration directly on the learner. No organisation
-    # is in scope for a self-service registration, so it lands on the Site's
-    # default Organisation — guaranteed to exist by the post_save receiver
-    # that gives every Site one. ensure_learner reactivates a removed learner,
-    # so re-registering is a live signal of re-association.
-    learner = ensure_learner(
-        request.user,
+    # The registration lands on the organisation of this course the learner
+    # already belongs to, so their card and player chip carry it. Without such
+    # a row it lands on the Site's default Organisation, guaranteed to exist by
+    # the post_save receiver that gives every Site one. That fallback is reached
+    # for a public organisation course, a course with no organisations, and the
+    # case below; the audience gate already 404s everyone else. ensure_learner
+    # reactivates a removed learner, so re-registering is a live signal of
+    # re-association.
+    organisation = own_organisation_for_course(
+        request.user, course
+    ) or get_default_organisation(
         # get_cached_site's RequestSite branch only applies with the Sites
         # framework absent, which FLS always has installed.
-        get_default_organisation(cast(Site, get_cached_site(request))),
+        cast(Site, get_cached_site(request))
     )
+    # Registered while out: a learner whose only claim on the course is an old
+    # registration would otherwise be re-registered through the default
+    # organisation, which the course is not open to.
+    if not is_course_open_to_organisation(course, organisation):
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
+    learner = ensure_learner(request.user, organisation)
     # update_or_create, not get_or_create: defaults only apply on create, so a
     # registration an admin had deactivated would stay inactive and the learner
     # would be bounced back out of the course they just asked to enter.
