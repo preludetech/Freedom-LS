@@ -93,6 +93,26 @@ def _override(
             "due_time",
             id="time-limit-has-no-time",
         ),
+        pytest.param(
+            {
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": 3,
+                "due_date": date(2026, 3, 1),
+            },
+            True,
+            "due_date",
+            id="relative-takes-no-date",
+        ),
+        pytest.param(
+            {
+                "kind": DeadlineKind.FIXED,
+                "due_date": date(2026, 3, 1),
+                "due_days_after_registration": 3,
+            },
+            True,
+            "due_days_after_registration",
+            id="fixed-takes-no-days",
+        ),
     ],
 )
 def test_clean_refuses_an_inconsistent_shape(
@@ -245,6 +265,26 @@ def _record_item() -> tuple[CourseProgress, ContentCollectionItem]:
             False,
             "due_time",
             id="time-limit-has-no-time",
+        ),
+        pytest.param(
+            {
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": 3,
+                "due_date": date(2026, 3, 1),
+            },
+            True,
+            "due_date",
+            id="relative-takes-no-date",
+        ),
+        pytest.param(
+            {
+                "kind": DeadlineKind.FIXED,
+                "due_date": date(2026, 3, 1),
+                "due_days_after_registration": 3,
+            },
+            True,
+            "due_days_after_registration",
+            id="fixed-takes-no-days",
         ),
     ],
 )

@@ -154,6 +154,47 @@ def test_saving_an_existing_row_recomputes_what_it_replaced(
 
 
 @pytest.mark.django_db
+def test_editing_only_the_reason_keeps_what_the_row_replaced(
+    staff_client, mock_site_context
+) -> None:
+    """Re-stamping on every save silently cleared the 'Default has changed' note."""
+    registration, item = _registration_with_item()
+    override = CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=item,
+        replaced_value="relative:14",
+    )
+    item.due_days_after_registration = 20
+    item.save()
+    payload = _payload(
+        registration,
+        [
+            {
+                "id": str(override.pk),
+                "collection_item": str(item.pk),
+                "kind": DeadlineKind.RELATIVE,
+                "due_days_after_registration": "14",
+                "reason": "Agreed with the cohort lead",
+            }
+        ],
+    )
+    payload["deadline_overrides-INITIAL_FORMS"] = "1"
+
+    response = staff_client.post(
+        reverse(CHANGE_URL_NAME, args=[registration.pk]), payload
+    )
+
+    assert response.status_code == 302
+    override.refresh_from_db()
+    assert override.replaced_value == "relative:14"
+    assert override.reason == "Agreed with the cohort lead"
+    body = staff_client.get(
+        reverse(CHANGE_URL_NAME, args=[registration.pk])
+    ).content.decode()
+    assert "Default has changed" in body
+
+
+@pytest.mark.django_db
 def test_the_picker_lists_only_the_courses_items(
     staff_client, mock_site_context
 ) -> None:

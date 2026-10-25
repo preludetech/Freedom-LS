@@ -38,12 +38,18 @@ def _validate_deadline_override(
 ) -> None:
     """The shape rules every override row obeys, raised as one ValidationError."""
     errors: dict[str, str] = {}
-    if kind == DeadlineKind.FIXED and due_date is None:
-        errors["due_date"] = "A fixed deadline needs a date."
-    if kind == DeadlineKind.RELATIVE and due_days_after_registration is None:
-        errors["due_days_after_registration"] = (
-            "A relative deadline needs a number of days."
-        )
+    if kind == DeadlineKind.FIXED:
+        if due_date is None:
+            errors["due_date"] = "A fixed deadline needs a date."
+        if due_days_after_registration is not None:
+            errors["due_days_after_registration"] = "A fixed deadline takes no days."
+    if kind == DeadlineKind.RELATIVE:
+        if due_days_after_registration is None:
+            errors["due_days_after_registration"] = (
+                "A relative deadline needs a number of days."
+            )
+        if due_date is not None:
+            errors["due_date"] = "A relative deadline takes no date."
     if kind == DeadlineKind.NONE and (
         due_date or due_time or due_days_after_registration is not None
     ):

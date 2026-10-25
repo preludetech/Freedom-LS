@@ -47,6 +47,9 @@ from freedom_ls.site_aware_models.time_zones import site_time_zone
 
 DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
 
+VALUE_FIELDS = frozenset(
+    {"collection_item", "kind", "due_date", "due_time", "due_days_after_registration"}
+)
 TIME_LIMIT_DUPLICATE = "The course time limit already has an override here."
 ITEM_DUPLICATE = "This item already has an override here."
 
@@ -105,7 +108,7 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
 
     def save_new(self, form: forms.ModelForm, commit: bool = True) -> DeadlineOverride:
         instance = cast(DeadlineOverride, super().save_new(form, commit=False))
-        return self._stamped(instance, commit)
+        return self._stamped(instance, commit, restamp=True)
 
     def save_existing(
         self,
@@ -116,11 +119,17 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
         instance = cast(
             DeadlineOverride, super().save_existing(form, obj, commit=False)
         )
-        return self._stamped(instance, commit)
+        # What the row replaced is read again only when the row's value moved; editing
+        # the reason alone must not clear a "Default has changed" note.
+        restamp = not VALUE_FIELDS.isdisjoint(form.changed_data)
+        return self._stamped(instance, commit, restamp=restamp)
 
-    def _stamped(self, instance: DeadlineOverride, commit: bool) -> DeadlineOverride:
+    def _stamped(
+        self, instance: DeadlineOverride, commit: bool, *, restamp: bool
+    ) -> DeadlineOverride:
         instance.set_by = self.set_by
-        instance.replaced_value = canonical_beneath(instance)
+        if restamp:
+            instance.replaced_value = canonical_beneath(instance)
         if commit:
             instance.save()
         return instance
