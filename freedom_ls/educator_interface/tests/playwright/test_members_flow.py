@@ -75,7 +75,7 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     row.get_by_role("button", name="Change cohorts", exact=True).click()
     modal.get_by_label("Beta Cohort").uncheck()
     modal.get_by_role("button", name="Change cohorts", exact=True).click()
-    expect(modal.get_by_text("Removes: Beta Cohort")).to_be_visible()
+    expect(modal.get_by_text("Deactivates on: Beta Cohort")).to_be_visible()
     modal.get_by_role("button", name="Change cohorts", exact=True).click()
 
     expect(modal).to_be_hidden()

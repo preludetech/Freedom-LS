@@ -136,7 +136,7 @@ def test_deactivating_then_reactivating_a_learner_from_the_page_header(
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Removed", exact=True).first).to_be_visible()
+    expect(main.get_by_text("Inactive", exact=True).first).to_be_visible()
     main.get_by_role("button", name="Reactivate", exact=True).first.click()
     modal.get_by_role("button", name="Reactivate", exact=True).click()
     expect(modal).to_be_hidden()
@@ -220,7 +220,7 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Removed", exact=True).first).to_be_visible()
+    expect(main.get_by_text("Inactive", exact=True).first).to_be_visible()
     page.get_by_role("link", name="History", exact=True).click()
     history_row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(history_row).to_have_count(1)

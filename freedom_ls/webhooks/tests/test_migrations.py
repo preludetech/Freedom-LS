@@ -55,7 +55,7 @@ class TestRenameEventTypes:
         self, mock_site_context: Site
     ) -> None:
         endpoint = WebhookEndpointFactory(
-            event_types=["registration.added", "registration.added"]
+            event_types=["registration.added", "registration.reactivated"]
         )
         before = endpoint.updated_at
 
@@ -63,7 +63,7 @@ class TestRenameEventTypes:
 
         endpoint.refresh_from_db()
         assert (endpoint.event_types, endpoint.updated_at) == (
-            ["registration.added", "registration.added"],
+            ["registration.added", "registration.reactivated"],
             before,
         )
 
