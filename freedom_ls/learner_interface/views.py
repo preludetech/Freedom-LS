@@ -1009,8 +1009,8 @@ def initiate_course_access(request, course_slug):
     # already belongs to, so their card and player chip carry it. Without such
     # a row it lands on the Site's default Organisation, guaranteed to exist by
     # the post_save receiver that gives every Site one. That fallback is reached
-    # for a public organisation course, a course with no organisations, and the
-    # case below; the audience gate already 404s everyone else. ensure_learner
+    # for a public organisation course and a course with no organisations; the
+    # audience gate already 404s everyone else. ensure_learner
     # reactivates a removed learner, so re-registering is a live signal of
     # re-association.
     organisation = own_organisation_for_course(
@@ -1020,9 +1020,11 @@ def initiate_course_access(request, course_slug):
         # framework absent, which FLS always has installed.
         cast(Site, get_cached_site(request))
     )
-    # Registered while out: a learner whose only claim on the course is an old
-    # registration would otherwise be re-registered through the default
-    # organisation, which the course is not open to.
+    # The audience gate and the free backend stop everyone else before this
+    # point, but the visibility preview override lifts the audience gate and
+    # another access backend may let a registered user self-register. Either
+    # would otherwise register the learner through an organisation the course
+    # is not open to.
     if not is_course_open_to_organisation(course, organisation):
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     learner = ensure_learner(request.user, organisation)
