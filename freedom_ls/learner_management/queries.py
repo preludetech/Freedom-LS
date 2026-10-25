@@ -142,9 +142,11 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
 
 
 def registered_course_pairs(
-    site_id: int, user_ids: Iterable[int]
+    site_id: int, user_ids: Iterable[int], course_ids: Iterable[UUID] | None = None
 ) -> set[tuple[int, UUID]]:
     """Every (user_id, course_id) these users are registered for, by the dashboard's own test.
+
+    `course_ids` narrows the answer to those courses; None means every course.
 
     _base_manager with an explicit site: this runs from tasks and receivers with
     no request, and must give the same answer with one.
@@ -152,13 +154,21 @@ def registered_course_pairs(
     ids = list(user_ids)
     individual = LearnerCourseRegistration._base_manager.filter(
         LEARNER_REGISTRATION_GRANTS_ACCESS, site_id=site_id, learner__user_id__in=ids
-    ).values_list("learner__user_id", "course_id")
+    )
     through_cohort = CohortCourseRegistration._base_manager.filter(
         COHORT_REGISTRATION_GRANTS_ACCESS,
         held_by_active_member(Q(cohort__cohortmembership__learner__user_id__in=ids)),
         site_id=site_id,
-    ).values_list("cohort__cohortmembership__learner__user_id", "course_id")
-    return set(individual) | set(through_cohort)
+    )
+    if course_ids is not None:
+        courses = list(course_ids)
+        individual = individual.filter(course_id__in=courses)
+        through_cohort = through_cohort.filter(course_id__in=courses)
+    return set(individual.values_list("learner__user_id", "course_id")) | set(
+        through_cohort.values_list(
+            "cohort__cohortmembership__learner__user_id", "course_id"
+        )
+    )
 
 
 def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:

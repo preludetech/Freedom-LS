@@ -2047,3 +2047,18 @@ def test_registered_course_pairs_are_the_same_with_and_without_an_ambient_reques
 
     assert registered_course_pairs(learner.site_id, [learner.user_id]) == with_request
     assert with_request
+
+
+@pytest.mark.django_db
+def test_registered_course_pairs_narrow_to_the_given_courses(mock_site_context) -> None:
+    learner = LearnerFactory()
+    wanted = LearnerCourseRegistrationFactory(learner=learner)
+    LearnerCourseRegistrationFactory(learner=learner)
+    membership = CohortMembershipFactory(learner=learner)
+    CohortCourseRegistrationFactory(cohort=membership.cohort)
+
+    pairs = registered_course_pairs(
+        learner.site_id, [learner.user_id], [wanted.course_id]
+    )
+
+    assert pairs == {(learner.user_id, wanted.course_id)}

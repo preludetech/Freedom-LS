@@ -26,6 +26,7 @@ from django.db.models import OuterRef, Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.course_recommendations.models import RecommendedCourse
+from freedom_ls.course_recommendations.queries import lock_users
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.learner_management.queries import registered_course_pairs
@@ -310,12 +311,13 @@ def apply_rule_changes(
     )
 
 
-def _registered_users(state: RuleState, user_ids: Iterable[int]) -> set[int]:
+def _registered_users(
+    site_id: int, course_id: UUID, user_ids: Iterable[int]
+) -> set[int]:
     """A registered user counts as not matching: the dashboard already shows them the course."""
     return {
         user_id
-        for user_id, course_id in registered_course_pairs(state.site_id, user_ids)
-        if course_id == state.course_id
+        for user_id, _ in registered_course_pairs(site_id, user_ids, [course_id])
     }
 
 
@@ -331,7 +333,7 @@ def classify_recommendation_changes(
         matching = matching.filter(user_id__in=user_ids)
         recommendations = recommendations.filter(user_id__in=user_ids)
     matched = set(matching.values_list("user_id", flat=True))
-    matched -= _registered_users(state, matched)
+    matched -= _registered_users(state.site_id, state.course_id, matched)
     # One entry per recommendation; a rule-made row appears once per rule, a
     # staff-made row once with None.
     rules_by_user: dict[int, dict[UUID | None, str | None]] = defaultdict(dict)
@@ -398,7 +400,17 @@ def apply_recommendation_changes(
     """Write the changes, in user-pk order, with explicit site ids throughout."""
     recommended: list[int] = []
     to_join: list[int] = list(changes.add_rule_recommendation)
-    for user_id in changes.recommend:
+    recommend: list[int] = []
+    if changes.recommend:
+        # Re-read under the users' locks: a registration saved since the
+        # classifying read takes the same lock before it reads, so it is either
+        # committed and seen here, or waits and sees the recommendation made below.
+        lock_users(rule.site_id, changes.recommend)
+        registered = _registered_users(rule.site_id, rule.course_id, changes.recommend)
+        recommend = [
+            user_id for user_id in changes.recommend if user_id not in registered
+        ]
+    for user_id in recommend:
         try:
             # A savepoint per row: a recommendation made by someone else between
             # the read and this write hits the unique constraint, and only this

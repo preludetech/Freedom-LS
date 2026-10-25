@@ -41,7 +41,9 @@ if app_not_installed("freedom_ls.registration_rules"):
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.registration_rules.evaluation import (
     EvaluationResult,
+    apply_recommendation_changes,
     apply_rule_changes,
+    classify_recommendation_changes,
     classify_rule_changes,
     evaluate_learner,
     evaluate_organisation,
@@ -1796,4 +1798,24 @@ def test_a_staff_made_recommendation_deleted_by_hand_does_not_come_back(
     evaluate_rule(rule.pk, rule.site_id)
 
     # Assert
+    assert not _recommendations_for(rule).exists()
+
+
+@pytest.mark.django_db
+def test_a_user_registered_after_the_classifying_read_is_not_recommended(
+    mock_site_context,
+):
+    # Arrange
+    rule = _recommend_rule()
+    learner = LearnerFactory(organisation=rule.organisation)
+    changes = classify_recommendation_changes(rule, RuleState.from_rule(rule))
+    assert changes.recommend == (learner.user_id,)
+    LearnerCourseRegistrationFactory(learner=learner, course=rule.course)
+    drop_ambient_request()
+
+    # Act
+    result = apply_recommendation_changes(rule, changes)
+
+    # Assert
+    assert result.recommended == ()
     assert not _recommendations_for(rule).exists()
