@@ -6324,7 +6324,22 @@ def test_bulk_resend_confirmation_skips_learners_who_set_up_their_account(
 
     text = _bulk_text(response)
     assert "1 learner will be sent a setup email." in text
-    assert "1 is account already set up and will be skipped." in text
+    assert "1 account is already set up and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_resend_confirmation_counts_set_up_accounts_in_the_plural(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = [_bulk_learner(organisation=organisation) for _ in range(2)]
+
+    response = _bulk_post(
+        staff_client, organisation, "resend_setup_email", [pending, *done]
+    )
+
+    assert "2 accounts are already set up and will be skipped." in _bulk_text(response)
 
 
 @pytest.mark.django_db
