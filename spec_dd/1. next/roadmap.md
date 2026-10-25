@@ -20,6 +20,15 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `referral-attribution-over-time`
 - `retry-sent-emails`
 - `server-side-conversion-tracking`
+- `test-organisation-and-hygene-10-content-engine-and-markdown-rendering`
+- `test-organisation-and-hygene-11-reports`
+- `test-organisation-and-hygene-12-accounts`
+- `test-organisation-and-hygene-13-learner-interface-part-1`
+- `test-organisation-and-hygene-5-foundational-apps`
+- `test-organisation-and-hygene-6-small-apps`
+- `test-organisation-and-hygene-7-course-access-and-applications`
+- `test-organisation-and-hygene-8-learner-management-and-progress`
+- `test-organisation-and-hygene-9-form-engine`
 - `user-communication-6-moderation`
 - `user-communication-ux-improve`
 
@@ -263,7 +272,6 @@ standard up. Specs 4 to 15 clean up to it.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 2 | `test-organisation-and-hygene-2-sdd-review-and-boy-scout` | `implement_plan` writes tests with the testing skills loaded, reviews each batch for test organisation, and runs a boy-scout agent that tidies touched tests and flags obvious bugs. | `test-organisation-and-hygene-1-testing-standards` | in progress |
-| 4 | `test-organisation-and-hygene-4-shared-test-infrastructure` | Root `conftest.py` and `freedom_ls/tests/`: the Playwright re-export, fixture placement, `SiteFactory` moved to `site_aware_models`, missing optional-app collection guards, dead test directories. | `test-organisation-and-hygene-3-enforcement-checks` | in progress |
 | 5 | `test-organisation-and-hygene-5-foundational-apps` | `site_aware_models`, `role_based_permissions`, `organisations`, `base`: local stub models replace borrowed downstream models. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 6 | `test-organisation-and-hygene-6-small-apps` | The apps with one violation or none: `health`, `content_base`, `icons`, `qa_helpers`, `webhooks`, `mail`, `google_tag`, `dev_tools`, `course_interest`, `course_recommendations`, `deployment`, `referral_tracking`, `contrib/conformance`. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 7 | `test-organisation-and-hygene-7-course-access-and-applications` | The `course_access` tests that import `course_applications` against the runtime edge, `course_applications`' `learner_progress` import and its conftest helper. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
