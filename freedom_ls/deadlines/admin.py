@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -26,13 +25,8 @@ from freedom_ls.deadlines.models import (
     LearnerDeadlineOverride,
     course_viewable_collection_items,
 )
-from freedom_ls.deadlines.queries import (
-    canonical_beneath,
-    content_default_for,
-    layers_beneath,
-)
+from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
 from freedom_ls.deadlines.resolver import (
-    DeadlineLayer,
     DeadlineSource,
     DeadlineValue,
     ResolvedDeadline,
@@ -43,7 +37,7 @@ from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
-from freedom_ls.site_aware_models.time_zones import site_time_zone
+from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
 
 DeadlineOverride = CohortDeadlineOverride | LearnerDeadlineOverride
 
@@ -135,11 +129,6 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
         return instance
 
 
-def site_zone_text(instant: datetime) -> str:
-    """An instant as the admin shows it: the site zone, named."""
-    return f"{instant:%-d %b %Y, %H:%M} {instant.tzname()}"
-
-
 def _value_text(value: DeadlineValue | None, obj: DeadlineOverride) -> str:
     """A value as the admin shows it: a fixed date in the site zone, a relative one as its
     offset, since no learner's registration date applies to a cohort-wide row."""
@@ -180,6 +169,14 @@ class DeadlineOverrideInline(TabularInline):
         "set_by",
     ]
     verbose_name = "deadline override"
+    # The path from a row to its course, which the read-only columns read for every row.
+    parent_select_related: tuple[str, ...] = ()
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineOverride]:
+        rows: models.QuerySet[DeadlineOverride] = super().get_queryset(request)
+        return rows.select_related(
+            "site", "collection_item", "set_by", *self.parent_select_related
+        )
 
     def parent_course(self, request: HttpRequest) -> Course | None:
         """The course of the object being edited, or None on the add page or for a malformed id.
@@ -218,23 +215,38 @@ class DeadlineOverrideInline(TabularInline):
     ) -> forms.ModelChoiceField | None:
         # The picker offers only the parent course's own rows. On the add page there is no
         # course yet, so it offers nothing; clean() refuses a row from another course regardless.
-        if db_field.name == "collection_item":
-            course = self.parent_course(request)
-            kwargs["form_class"] = CollectionItemChoiceField
-            kwargs["queryset"] = (
-                ContentCollectionItem.objects.filter(
-                    pk__in=[i.pk for i in course_viewable_collection_items(course)]
-                )
-                if course is not None
-                else ContentCollectionItem.objects.none()
+        if db_field.name != "collection_item":
+            return cast(
+                "forms.ModelChoiceField | None",
+                super().formfield_for_foreignkey(db_field, request, **kwargs),
             )
+        course = self.parent_course(request)
+        items = (
+            ContentCollectionItem.objects.filter(
+                pk__in=[i.pk for i in course_viewable_collection_items(course)]
+            ).prefetch_related("child")
+            if course is not None
+            else ContentCollectionItem.objects.none()
+        )
         field = cast(
             "forms.ModelChoiceField | None",
-            super().formfield_for_foreignkey(db_field, request, **kwargs),
+            super().formfield_for_foreignkey(
+                db_field,
+                request,
+                form_class=CollectionItemChoiceField,
+                queryset=items,
+                **kwargs,
+            ),
         )
-        if field is not None and db_field.name == "collection_item":
-            # Set after the call: unfold replaces the empty label with its own.
+        if field is not None:
+            # Set after the call: unfold replaces the empty label with its own. The choices
+            # are listed once here; left to the field, every row's widget would run the
+            # picker query again.
             field.empty_label = "Course time limit"
+            field.choices = [
+                ("", field.empty_label),
+                *((item.pk, field.label_from_instance(item)) for item in items),
+            ]
         return field
 
     @admin.display(description="Content default")
@@ -245,18 +257,11 @@ class DeadlineOverrideInline(TabularInline):
 
     @admin.display(description="Effective")
     def effective_value(self, obj: DeadlineOverride) -> str:
+        # An override row always holds a value, so it is the effective one for its layer;
+        # the column shows it as a date in the site zone or as an offset.
         if obj._state.adding:
             return ""
-        layers = [
-            DeadlineLayer(
-                DeadlineSource.COHORT_REGISTRATION, obj.value(), obj.replaced_value
-            ),
-            *layers_beneath(obj),
-        ]
-        winner = next(
-            (layer.value for layer in layers if layer.value is not None), None
-        )
-        return _value_text(winner, obj)
+        return _value_text(obj.value(), obj)
 
     @admin.display(description="Default changed")
     def default_changed_note(self, obj: DeadlineOverride) -> str:
@@ -280,10 +285,12 @@ SOURCE_LABELS: dict[DeadlineSource, str] = {
 
 class CohortDeadlineOverrideInline(DeadlineOverrideInline):
     model = CohortDeadlineOverride
+    parent_select_related = ("cohort_registration__course",)
 
 
 class LearnerDeadlineOverrideInline(DeadlineOverrideInline):
     model = LearnerDeadlineOverride
+    parent_select_related = ("course_progress__course",)
 
 
 def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, str]:

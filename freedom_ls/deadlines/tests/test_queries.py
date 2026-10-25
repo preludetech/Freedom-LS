@@ -88,7 +88,6 @@ def test_layers_beneath_a_cohort_row_is_the_content_default(mock_site_context):
         DeadlineLayer(
             DeadlineSource.CONTENT,
             DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14),
-            None,
         )
     ]
 
@@ -158,12 +157,10 @@ def test_layers_beneath_a_learner_row_on_a_cohort_record_has_the_cohort_row_firs
         DeadlineLayer(
             DeadlineSource.COHORT_REGISTRATION,
             DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=5),
-            "relative:14",
         ),
         DeadlineLayer(
             DeadlineSource.CONTENT,
             DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14),
-            None,
         ),
     ]
 

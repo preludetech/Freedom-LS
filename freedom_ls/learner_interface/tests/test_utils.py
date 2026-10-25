@@ -163,7 +163,7 @@ def test_get_current_courses_have_progress_percentage(mock_site_context):
 
 
 def _resolved(due_at: datetime | None) -> ResolvedDeadline:
-    return ResolvedDeadline(due_at, DeadlineSource.CONTENT, False)
+    return ResolvedDeadline(due_at, DeadlineSource.CONTENT)
 
 
 @pytest.mark.django_db

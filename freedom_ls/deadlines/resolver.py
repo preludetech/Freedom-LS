@@ -66,17 +66,15 @@ class DeadlineValue:
 class DeadlineLayer(NamedTuple):
     source: DeadlineSource
     value: DeadlineValue | None
-    replaced_value: str | None
 
 
 @dataclass(frozen=True)
 class ResolvedDeadline:
     due_at: datetime | None
     source: DeadlineSource | None
-    default_changed: bool
 
 
-NO_DEADLINE = ResolvedDeadline(due_at=None, source=None, default_changed=False)
+NO_DEADLINE = ResolvedDeadline(due_at=None, source=None)
 
 
 def due_instant(
@@ -104,28 +102,13 @@ def due_instant(
 def resolve_deadline(
     layers: Sequence[DeadlineLayer], registration_date: date, tz: ZoneInfo
 ) -> ResolvedDeadline:
-    """Most specific layer first; the first layer holding a value wins outright.
-
-    default_changed compares the winning layer's stored copy of what it replaced with what
-    sits beneath it now, so an admin can see that a content default moved under an override."""
-    for position, layer in enumerate(layers):
-        if layer.value is None:
-            continue
-        beneath = next(
-            (
-                lower.value
-                for lower in layers[position + 1 :]
-                if lower.value is not None
-            ),
-            None,
-        )
-        beneath_canonical = beneath.canonical() if beneath is not None else ""
-        return ResolvedDeadline(
-            due_at=due_instant(layer.value, registration_date, tz),
-            source=layer.source,
-            default_changed=layer.replaced_value is not None
-            and layer.replaced_value != beneath_canonical,
-        )
+    """Most specific layer first; the first layer holding a value wins outright."""
+    for layer in layers:
+        if layer.value is not None:
+            return ResolvedDeadline(
+                due_at=due_instant(layer.value, registration_date, tz),
+                source=layer.source,
+            )
     return NO_DEADLINE
 
 
@@ -146,9 +129,6 @@ class CourseDeadlines:
 
 class DeadlineOverrideRow(Protocol):
     """What the layer builder reads from a deadline override row."""
-
-    @property
-    def replaced_value(self) -> str: ...
 
     def value(self) -> DeadlineValue | None: ...
 
@@ -216,9 +196,7 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
 
 
 def _layer(source: DeadlineSource, row: DeadlineOverrideRow | None) -> DeadlineLayer:
-    if row is None:
-        return DeadlineLayer(source, None, None)
-    return DeadlineLayer(source, row.value(), row.replaced_value)
+    return DeadlineLayer(source, row.value() if row is not None else None)
 
 
 def _layers(
@@ -236,7 +214,7 @@ def _layers(
     return [
         _layer(DeadlineSource.LEARNER, learner_rows.get((record.pk, item_id))),
         _layer(DeadlineSource.COHORT_REGISTRATION, cohort_row),
-        DeadlineLayer(DeadlineSource.CONTENT, content, None),
+        DeadlineLayer(DeadlineSource.CONTENT, content),
     ]
 
 

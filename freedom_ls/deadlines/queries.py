@@ -45,12 +45,10 @@ def layers_beneath(
             if cohort_row is not None:
                 layers.append(
                     DeadlineLayer(
-                        DeadlineSource.COHORT_REGISTRATION,
-                        cohort_row.value(),
-                        cohort_row.replaced_value,
+                        DeadlineSource.COHORT_REGISTRATION, cohort_row.value()
                     )
                 )
-    layers.append(DeadlineLayer(DeadlineSource.CONTENT, content_default_for(row), None))
+    layers.append(DeadlineLayer(DeadlineSource.CONTENT, content_default_for(row)))
     return layers
 
 

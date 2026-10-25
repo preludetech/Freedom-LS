@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import pytest
 
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.admin import site_zone_text
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     LearnerDeadlineOverrideFactory,
@@ -350,15 +351,6 @@ def test_a_refused_new_row_has_no_note(staff_client, mock_site_context) -> None:
     assert "Default has changed" not in content
 
 
-def test_site_zone_text_names_the_zone() -> None:
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    instant = datetime(2026, 3, 14, 17, 0, tzinfo=ZoneInfo("Africa/Johannesburg"))
-
-    assert site_zone_text(instant) == "14 Mar 2026, 17:00 SAST"
-
-
 PROGRESS_CHANGE_URL_NAME = "admin:freedom_ls_learner_progress_courseprogress_change"
 
 
@@ -631,3 +623,46 @@ def test_an_item_row_and_a_time_limit_row_can_be_added_together(
 
     assert response.status_code == 302
     assert CohortDeadlineOverride.objects.count() == 2
+
+
+def _registration_with_overrides(
+    item_count: int, override_count: int
+) -> CohortCourseRegistration:
+    course: Course = CourseFactory()
+    items = []
+    for order in range(item_count):
+        topic = TopicFactory()
+        course.items.create(child=topic, order=order)
+        items.append(collection_item_for(course, topic))
+    registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        course=course
+    )
+    for item in items[:override_count]:
+        CohortDeadlineOverrideFactory(
+            cohort_registration=registration, collection_item=item
+        )
+    return registration
+
+
+def _change_page_query_count(
+    client: Client, registration: CohortCourseRegistration
+) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(reverse(CHANGE_URL_NAME, args=[registration.pk]))
+    assert response.status_code == 200
+    return len(queries)
+
+
+@pytest.mark.django_db
+def test_the_change_page_query_count_does_not_grow_with_items_or_rows(
+    staff_client, mock_site_context
+) -> None:
+    """The picker read each item's child, and each row's read-only columns read the
+    row's item, parent course and site, one query at a time."""
+    small = _registration_with_overrides(item_count=4, override_count=1)
+    large = _registration_with_overrides(item_count=24, override_count=6)
+    _change_page_query_count(staff_client, small)
+
+    assert _change_page_query_count(staff_client, large) == _change_page_query_count(
+        staff_client, small
+    )

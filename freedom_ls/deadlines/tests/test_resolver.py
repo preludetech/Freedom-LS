@@ -52,12 +52,8 @@ FIXED = DeadlineValue(DeadlineKind.FIXED, due_date=date(2026, 3, 20))
 RELATIVE = DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14)
 
 
-def _layer(
-    source: DeadlineSource,
-    value: DeadlineValue | None,
-    replaced_value: str | None = None,
-) -> DeadlineLayer:
-    return DeadlineLayer(source, value, replaced_value)
+def _layer(source: DeadlineSource, value: DeadlineValue | None) -> DeadlineLayer:
+    return DeadlineLayer(source, value)
 
 
 # --- DeadlineValue ---
@@ -173,7 +169,7 @@ def test_a_relative_value_without_a_day_count_is_refused():
 
 def test_overdue_one_microsecond_after_the_instant_and_not_at_it():
     due = datetime(2026, 3, 20, 23, 59, 59, 999999, tzinfo=JOHANNESBURG)
-    resolved = ResolvedDeadline(due, DeadlineSource.CONTENT, False)
+    resolved = ResolvedDeadline(due, DeadlineSource.CONTENT)
 
     assert not is_overdue(resolved, completed=False, now=due)
     assert is_overdue(resolved, completed=False, now=due + timedelta(microseconds=1))
@@ -181,7 +177,7 @@ def test_overdue_one_microsecond_after_the_instant_and_not_at_it():
 
 def test_a_completed_item_is_never_overdue():
     due = datetime(2026, 3, 20, tzinfo=UTC)
-    resolved = ResolvedDeadline(due, DeadlineSource.CONTENT, False)
+    resolved = ResolvedDeadline(due, DeadlineSource.CONTENT)
 
     assert not is_overdue(resolved, completed=True, now=due + timedelta(days=30))
 
@@ -235,42 +231,6 @@ def test_a_none_kind_override_wins_and_removes_the_deadline():
 
     assert resolved.due_at is None
     assert resolved.source == DeadlineSource.LEARNER
-
-
-def test_default_changed_is_true_when_the_default_moved_under_an_override():
-    layers = [
-        _layer(DeadlineSource.LEARNER, RELATIVE, replaced_value="fixed:2026-03-01"),
-        _layer(DeadlineSource.CONTENT, FIXED),
-    ]
-
-    assert resolve_deadline(layers, date(2026, 3, 1), JOHANNESBURG).default_changed
-
-
-def test_default_changed_is_false_when_the_default_is_what_the_override_replaced():
-    layers = [
-        _layer(DeadlineSource.LEARNER, RELATIVE, replaced_value=FIXED.canonical()),
-        _layer(DeadlineSource.CONTENT, FIXED),
-    ]
-
-    assert not resolve_deadline(layers, date(2026, 3, 1), JOHANNESBURG).default_changed
-
-
-def test_default_changed_is_false_when_the_override_stored_no_copy():
-    layers = [
-        _layer(DeadlineSource.LEARNER, RELATIVE),
-        _layer(DeadlineSource.CONTENT, FIXED),
-    ]
-
-    assert not resolve_deadline(layers, date(2026, 3, 1), JOHANNESBURG).default_changed
-
-
-def test_default_changed_is_true_when_the_default_was_removed_beneath_an_override():
-    layers = [
-        _layer(DeadlineSource.LEARNER, RELATIVE, replaced_value=FIXED.canonical()),
-        _layer(DeadlineSource.CONTENT, None),
-    ]
-
-    assert resolve_deadline(layers, date(2026, 3, 1), JOHANNESBURG).default_changed
 
 
 # --- course_deadlines (ORM) ---

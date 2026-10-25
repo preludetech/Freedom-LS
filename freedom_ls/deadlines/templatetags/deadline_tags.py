@@ -5,6 +5,8 @@ from django.template import Context
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
+from freedom_ls.site_aware_models.time_zones import site_zone_text
+
 register = template.Library()
 
 
@@ -19,5 +21,5 @@ def local_time(context: Context, value: datetime) -> SafeString:
         '<time datetime="{}" x-data="localTime" data-show-zone="{}">{}</time>',
         value.astimezone(UTC).isoformat(),
         show_zone,
-        f"{value:%-d %b %Y, %H:%M} {value.tzname()}",
+        site_zone_text(value),
     )
