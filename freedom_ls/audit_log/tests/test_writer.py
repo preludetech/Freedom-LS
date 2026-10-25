@@ -1,10 +1,19 @@
+import uuid
+
 import pytest
 
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import organisation_of, record_entry, subject_key
+from freedom_ls.audit_log.writer import (
+    RUN_LABEL_LENGTH,
+    RUN_ROWS_KEPT,
+    organisation_of,
+    record_entry,
+    record_run_summary,
+    subject_key,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.site_context import drop_ambient_request
 
@@ -117,3 +126,92 @@ def test_organisation_of_a_site_is_none(mock_site_context):
 @pytest.mark.django_db
 def test_organisation_of_an_object_without_one_is_none(mock_site_context):
     assert organisation_of(UserFactory()) is None
+
+
+def _summary(organisation, **overrides):
+    arguments = {
+        "action": "bulk_action.completed",
+        "run_id": uuid.uuid4(),
+        "organisation": organisation,
+        "actor": None,
+        "counts": {"changed": 3, "skipped": 1, "failed": 0},
+    }
+    return record_run_summary(**{**arguments, **overrides})
+
+
+@pytest.mark.django_db
+def test_a_run_summary_targets_the_organisation_and_carries_the_run_id(
+    mock_site_context,
+):
+    organisation = OrganisationFactory()
+    run_id = uuid.uuid4()
+
+    entry = _summary(organisation, run_id=run_id)
+
+    assert (
+        entry.run_id,
+        entry.organisation,
+        entry.target_object_id,
+        entry.target_label,
+        entry.subjects,
+    ) == (
+        run_id,
+        organisation,
+        str(organisation.pk),
+        organisation.name,
+        [subject_key(organisation)],
+    )
+
+
+@pytest.mark.django_db
+def test_a_run_summary_cuts_rows_and_labels_and_flags_truncation(mock_site_context):
+    rows = [("x" * (RUN_LABEL_LENGTH + 10), "skipped")] * (RUN_ROWS_KEPT + 1)
+
+    entry = _summary(OrganisationFactory(), rows=rows)
+
+    assert (
+        len(entry.details["rows"]),
+        len(entry.details["rows"][0]["label"]),
+        entry.details["truncated"],
+    ) == (RUN_ROWS_KEPT, RUN_LABEL_LENGTH, True)
+
+
+@pytest.mark.django_db
+def test_a_run_summary_within_the_row_limit_is_not_truncated(mock_site_context):
+    entry = _summary(OrganisationFactory(), rows=[("Row 2", "invalid email")])
+
+    assert (entry.details["rows"], entry.details["truncated"]) == (
+        [{"label": "Row 2", "outcome": "invalid email"}],
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_a_run_summary_stores_the_bulk_action_only_when_given(mock_site_context):
+    organisation = OrganisationFactory()
+
+    with_action = _summary(organisation, bulk_action="deactivate_learners")
+    without = _summary(organisation)
+
+    assert (with_action.details["bulk_action"], set(without.details)) == (
+        "deactivate_learners",
+        {"counts", "rows", "truncated"},
+    )
+
+
+@pytest.mark.django_db
+def test_a_run_summary_keeps_only_the_three_counts(mock_site_context):
+    entry = _summary(
+        OrganisationFactory(),
+        counts={"changed": 1, "skipped": 2, "failed": 3, "raw_cell": 4},
+    )
+
+    assert entry.details["counts"] == {"changed": 1, "skipped": 2, "failed": 3}
+
+
+@pytest.mark.django_db
+def test_a_run_summary_with_a_non_summary_action_raises(mock_site_context):
+    with pytest.raises(ValueError, match="cohort\\.created"):
+        _summary(OrganisationFactory(), action="cohort.created")
+
+    assert AuditLogEntry.unscoped.count() == 0

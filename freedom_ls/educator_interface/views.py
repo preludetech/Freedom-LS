@@ -21,7 +21,9 @@ from django.db.models import (
     Q,
     QuerySet,
     Subquery,
+    Window,
 )
+from django.db.models.functions import RowNumber
 from django.http import (
     FileResponse,
     Http404,
@@ -34,8 +36,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import record_entry, subject_key
+from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -1785,6 +1788,43 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 class OrganisationAuditLogTable(AuditLogEntryTable):
     empty_state_template = "educator_interface/partials/audit_log_empty.html"
     card_template = "educator_interface/partials/audit_log_card.html"
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        # A bulk run's per-object entries show on the learner and cohort History
+        # tabs; here only its summary row stands for the run.
+        return AuditLogEntryTable.get_queryset(request).exclude(
+            Q(run_id__isnull=False) & ~Q(action__in=SUMMARY_ACTIONS)
+        )
+
+    @classmethod
+    def get_rows(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> Page:
+        page_obj = super().get_rows(request, queryset, query)
+        summaries = [row for row in page_obj.object_list if row.run_id is not None]
+        if not summaries:
+            return page_obj
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        run_ids = {row.run_id for row in summaries}
+        per_object = AuditLogEntry.objects.filter(
+            organisation=organisation, run_id__in=run_ids
+        ).exclude(action__in=SUMMARY_ACTIONS)
+        entries_by_run: dict[UUID, list[AuditLogEntry]] = {}
+        for entry in per_object.annotate(
+            position=Window(
+                RowNumber(),
+                partition_by=F("run_id"),
+                order_by=[F("created_at").desc(), F("id").desc()],
+            )
+        ).filter(position__lte=RUN_ROWS_KEPT):
+            entries_by_run.setdefault(cast(UUID, entry.run_id), []).append(entry)
+        totals = dict(per_object.values_list("run_id").annotate(total=Count("pk")))
+        for row in summaries:
+            row.run_entries = entries_by_run.get(row.run_id, [])
+            row.run_entry_total = totals.get(row.run_id, 0)
+            row.run_entries_more = row.run_entry_total - len(row.run_entries)
+        return page_obj
 
     @staticmethod
     def get_columns() -> list[Column]:

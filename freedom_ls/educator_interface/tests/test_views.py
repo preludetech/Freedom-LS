@@ -6,7 +6,7 @@ import csv
 import io
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
@@ -17,6 +17,7 @@ import pytest
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.db import connection
+from django.db.models import Model
 from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
@@ -27,6 +28,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.writer import record_entry, record_run_summary
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
     SendResult,
@@ -3696,3 +3698,101 @@ def test_the_filtered_audit_log_empty_state_offers_a_clear_link(staff_client: Cl
     assert "educator_interface/partials/audit_log_empty.html" in template_names
     assert "No entries match these filters." in html
     assert "Clear filters" in html
+
+
+def _record_run(
+    organisation: Organisation,
+    learners: Sequence[object],
+    run_id: uuid.UUID,
+    target_label: str = "Spring cohort",
+) -> None:
+    for learner in learners:
+        record_entry(
+            action="learner.deactivated",
+            actor=None,
+            target=cast(Model, learner),
+            target_label=target_label,
+            organisation=organisation,
+            run_id=run_id,
+        )
+    record_run_summary(
+        action="bulk_action.completed",
+        run_id=run_id,
+        organisation=organisation,
+        actor=None,
+        counts={"changed": len(learners), "skipped": 0, "failed": 0},
+    )
+
+
+@pytest.mark.django_db
+def test_a_bulk_run_is_one_audit_log_row_listing_fifty_entries_and_the_rest(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learners = [LearnerFactory(organisation=organisation) for _ in range(60)]
+    _record_run(organisation, learners, uuid4(), target_label="<b>bold</b>")
+
+    response = staff_client.get(_audit_log_url(organisation))
+
+    document = lxml.html.fromstring(response.content)
+    (row,) = _audit_log_rows(document)
+    (details,) = document.cssselect("tbody tr details")
+    html = response.content.decode()
+    assert (
+        row[2],
+        row[4].startswith("60 changed, 0 skipped, 0 failed"),
+        details.cssselect("summary")[0].text_content().strip(),
+        len(details.cssselect("li")),
+        "and 10 more" in details.text_content(),
+        "<b>bold</b>" in html,
+        "&lt;b&gt;bold&lt;/b&gt;" in html,
+    ) == ("Bulk action completed", True, "Show 60 entries", 50, True, False, True)
+
+
+@pytest.mark.django_db
+def test_a_bulk_runs_entry_shows_on_the_learners_history_tab(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    _record_run(organisation, [learner], uuid4())
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [row[2] for row in rows] == ["Learner deactivated"]
+
+
+@pytest.mark.django_db
+def test_a_run_in_another_organisation_with_the_same_run_id_is_not_listed(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    other = OrganisationFactory()
+    run_id = uuid4()
+    _record_run(organisation, [LearnerFactory(organisation=organisation)], run_id)
+    _record_run(
+        other,
+        [LearnerFactory(organisation=other), LearnerFactory(organisation=other)],
+        run_id,
+    )
+
+    document = _get_document(staff_client, _audit_log_url(organisation))
+
+    (details,) = document.cssselect("tbody tr details")
+    assert (
+        details.cssselect("summary")[0].text_content().strip(),
+        len(details.cssselect("li")),
+    ) == ("Show 1 entries", 1)
+
+
+@pytest.mark.django_db
+def test_the_audit_log_renders_three_runs_within_a_query_budget(
+    staff_client: Client, django_assert_max_num_queries
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    for _ in range(3):
+        _record_run(organisation, [learner] * 5, uuid4())
+
+    with django_assert_max_num_queries(QUERY_BUDGET):
+        response = staff_client.get(_audit_log_url(organisation))
+
+    assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3

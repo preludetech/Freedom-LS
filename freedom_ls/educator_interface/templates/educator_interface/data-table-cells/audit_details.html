@@ -1,1 +1,12 @@
 {{ object.description }}{% if object.reason %}<span class="block text-muted">{{ object.reason }}</span>{% endif %}
+{% if object.run_entries %}
+<details class="mt-1">
+    <summary class="cursor-pointer text-sm">Show {{ object.run_entry_total }} entries</summary>
+    <ul class="mt-1 text-sm">
+        {% for entry in object.run_entries %}
+        <li class="break-words">{{ entry.actor_label|default:"System" }}, {{ entry.label }}, {{ entry.target_label }}</li>
+        {% endfor %}
+    </ul>
+    {% if object.run_entries_more > 0 %}<p class="text-sm text-muted">and {{ object.run_entries_more }} more</p>{% endif %}
+</details>
+{% endif %}

@@ -55,6 +55,16 @@ def _describe_learner_added(entry: AuditLogEntry) -> str:
     return text
 
 
+def _describe_run_summary(entry: AuditLogEntry) -> str:
+    counts = entry.details.get("counts")
+    if not isinstance(counts, dict):
+        return ""
+    return (
+        f"{counts.get('changed', 0)} changed, {counts.get('skipped', 0)} skipped, "
+        f"{counts.get('failed', 0)} failed"
+    )
+
+
 #: Actions that summarise a bulk run rather than change one object.
 SUMMARY_ACTIONS = frozenset({"bulk_action.completed", "import.committed"})
 
@@ -96,8 +106,10 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("role.removed", "Role removed"),
     AuditAction("member.suspended", "Member suspended"),
     AuditAction("member.reactivated", "Member reactivated"),
-    AuditAction("bulk_action.completed", "Bulk action completed"),
-    AuditAction("import.committed", "Import committed"),
+    AuditAction(
+        "bulk_action.completed", "Bulk action completed", _describe_run_summary
+    ),
+    AuditAction("import.committed", "Import committed", _describe_run_summary),
 )
 
 
