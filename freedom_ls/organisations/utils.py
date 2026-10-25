@@ -3,10 +3,24 @@
 from __future__ import annotations
 
 from django.contrib.sites.models import Site
+from django.db.models import Model
 
 from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 
 from .models import Organisation
+
+
+def organisation_of(target: Model) -> Organisation | None:
+    """The organisation an object belongs to: the object itself when it is
+    one, none for a Site, else the object's `organisation` when it has one.
+    The learner-management models that carry one cannot be named here
+    without a dependency cycle, so they are recognised by that attribute."""
+    if isinstance(target, Organisation):
+        return target
+    if isinstance(target, Site):
+        return None
+    organisation = getattr(target, "organisation", None)
+    return organisation if isinstance(organisation, Organisation) else None
 
 
 def get_default_organisation(site: Site) -> Organisation:

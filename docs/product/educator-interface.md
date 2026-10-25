@@ -98,7 +98,7 @@ Admins can give only roles at or below their own. Any change that gives someone 
 
 ### History
 
-The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and member roles and suspensions. The record shows as a **History** tab on a learner's page and on a cohort's page, and as an **Audit log** section under Administration. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab and the Audit log also name the person each row is about. Changes with no user behind them show as "System".
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and member roles and suspensions. The record shows as a **History** tab on a learner's page and on a cohort's page, and as an **Audit log** section under Administration. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab and the Audit log also name the person each row is about. Deleting a cohort also records each role that went with it. Changes with no user behind them show as "System".
 
 Confirming a removal or deactivation (removing a learner from a cohort, unregistering from a course, deactivating a learner or cohort, deleting a cohort, removing a role, suspending a member) offers an optional **Reason**, shown in the history to staff only.
 

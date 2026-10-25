@@ -23,6 +23,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.utils import organisation_of
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
@@ -86,12 +87,8 @@ def _organisation_of(scope: Model) -> Organisation | None:
     silently: an unsupported scope is a bug in the caller, not a request to
     refuse.
     """
-    if isinstance(scope, Site):
-        return None
-    if isinstance(scope, Organisation):
-        return scope
-    if isinstance(scope, (Cohort, Learner)):
-        return scope.organisation
+    if isinstance(scope, (Site, Organisation, Cohort, Learner)):
+        return organisation_of(scope)
     raise TypeError(f"can() has no organisation rule for {type(scope).__name__}")
 
 

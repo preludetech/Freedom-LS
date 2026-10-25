@@ -74,6 +74,16 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
             {"outcome": "joined", "cohort": "Year 10"},
             "Joined the organisation, added to Year 10",
         ),
+        (
+            "role.granted",
+            {"role": "cohort_admin", "role_label": "Cohort admin", "scope": "Cohort A"},
+            "Cohort admin on Cohort A",
+        ),
+        (
+            "role.removed",
+            {"role": "retired_role", "scope": "Cohort A"},
+            "retired_role on Cohort A",
+        ),
     ],
 )
 def test_membership_actions_describe_themselves_from_their_details(

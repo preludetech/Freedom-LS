@@ -24,19 +24,6 @@ def subject_key(obj: Model) -> str:
     return f"{obj._meta.app_label}.{obj._meta.model_name}:{obj.pk}"
 
 
-def organisation_of(target: Model) -> Organisation | None:
-    """The organisation an audited target belongs to: the target itself when
-    it is one, none for a Site, else the target's `organisation` when it has
-    one. The learner-management models that carry one cannot be named here
-    without a dependency cycle, so they are recognised by that attribute."""
-    if isinstance(target, Organisation):
-        return target
-    if isinstance(target, Site):
-        return None
-    organisation = getattr(target, "organisation", None)
-    return organisation if isinstance(organisation, Organisation) else None
-
-
 def _site_for(target: Model) -> Site:
     if not isinstance(target, Site | SiteAwareModelBase):
         raise TypeError(f"{type(target).__name__} has no site; pass `site` explicitly.")

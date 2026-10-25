@@ -4,7 +4,7 @@ how each one reads."""
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from freedom_ls.audit_log.config import config
@@ -57,6 +57,12 @@ def _describe_learner_added(entry: AuditLogEntry) -> str:
     return text
 
 
+def _describe_role(entry: AuditLogEntry) -> str:
+    # The code stands in for entries written before the label was stored.
+    role = entry.details.get("role_label") or entry.details.get("role", "")
+    return f"{role} on {entry.details.get('scope', '')}"
+
+
 def _describe_run_summary(entry: AuditLogEntry) -> str:
     counts = entry.details.get("counts")
     if not isinstance(counts, dict):
@@ -104,8 +110,8 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "Cohort unregistered from course",
         _describe_course,
     ),
-    AuditAction("role.granted", "Role granted"),
-    AuditAction("role.removed", "Role removed"),
+    AuditAction("role.granted", "Role granted", _describe_role),
+    AuditAction("role.removed", "Role removed", _describe_role),
     AuditAction("member.suspended", "Member suspended"),
     AuditAction("member.reactivated", "Member reactivated"),
     AuditAction(
@@ -115,28 +121,13 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
 )
 
 
-_describe_overrides: dict[str, Callable[[AuditLogEntry], str]] = {}
-
-
-def register_describe(code: str, describe: Callable[[AuditLogEntry], str]) -> None:
-    """Replace a registered action's describe renderer. Lets an app that knows
-    how to render a code's details register it without this app importing it."""
-    validate_action(code)
-    _describe_overrides[code] = describe
-
-
 def audit_actions() -> dict[str, AuditAction]:
     """Every registered audit action, FLS's own first."""
     actions = {action.code: action for action in FLS_AUDIT_ACTIONS}
     # Downstream-defined actions follow FLS's own, so FLS codes keep their order and win any collision.
     for code, label in config.AUDIT_LOG_EXTRA_ACTIONS.items():
         actions.setdefault(code, AuditAction(code, label))
-    return {
-        code: replace(action, describe=_describe_overrides[code])
-        if code in _describe_overrides
-        else action
-        for code, action in actions.items()
-    }
+    return actions
 
 
 def validate_action(code: str) -> None:

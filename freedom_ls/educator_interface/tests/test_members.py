@@ -14,10 +14,8 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.educator_interface.members import (
     RoleEntry,
-    describe_role_change,
     member_role_entries,
 )
 from freedom_ls.learner_management.factories import (
@@ -170,29 +168,6 @@ class TestMemberRoleEntries:
 
         with pytest.raises(ValueError, match="no longer exists"):
             member_role_entries(loaded, mock_site_context)
-
-
-@pytest.mark.django_db
-class TestDescribeRoleChange:
-    def test_shows_the_role_display_name_and_the_scope(
-        self, mock_site_context: Site
-    ) -> None:
-        entry = AuditLogEntryFactory(
-            action="role.granted",
-            details={"role": "cohort_admin", "scope": "Cohort A"},
-        )
-
-        assert describe_role_change(entry) == "Cohort admin on Cohort A"
-
-    def test_falls_back_to_the_code_for_a_role_no_longer_configured(
-        self, mock_site_context: Site
-    ) -> None:
-        entry = AuditLogEntryFactory(
-            action="role.removed",
-            details={"role": "retired_role", "scope": "Cohort A"},
-        )
-
-        assert describe_role_change(entry) == "retired_role on Cohort A"
 
 
 @pytest.mark.django_db

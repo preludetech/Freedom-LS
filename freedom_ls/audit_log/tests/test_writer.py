@@ -9,7 +9,6 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import (
     RUN_LABEL_LENGTH,
     RUN_ROWS_KEPT,
-    organisation_of,
     record_entry,
     record_run_summary,
     subject_key,
@@ -110,23 +109,6 @@ def test_the_reason_is_stripped(mock_site_context):
     entry = _record(OrganisationFactory(), reason="  left the company \n")
 
     assert entry.reason == "left the company"
-
-
-@pytest.mark.django_db
-def test_organisation_of_an_organisation_is_itself(mock_site_context):
-    organisation = OrganisationFactory()
-
-    assert organisation_of(organisation) == organisation
-
-
-@pytest.mark.django_db
-def test_organisation_of_a_site_is_none(mock_site_context):
-    assert organisation_of(Site.objects.get_current()) is None
-
-
-@pytest.mark.django_db
-def test_organisation_of_an_object_without_one_is_none(mock_site_context):
-    assert organisation_of(UserFactory()) is None
 
 
 def _summary(organisation, **overrides):

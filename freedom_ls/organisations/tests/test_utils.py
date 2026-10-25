@@ -1,16 +1,19 @@
-"""Tests for get_default_organisation."""
+"""Tests for get_default_organisation and organisation_of."""
 
 from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db import IntegrityError
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import (
     ensure_organisation,
     get_default_organisation,
+    organisation_of,
 )
 
 
@@ -91,3 +94,20 @@ def test_ensure_organisation_finds_a_renamed_row_by_its_slug(mock_site_context):
 
     assert (second, created) == (first, False)
     assert Organisation.objects.filter(site=site, slug="fixed-slug").count() == 1
+
+
+@pytest.mark.django_db
+def test_organisation_of_an_organisation_is_itself(mock_site_context):
+    organisation = OrganisationFactory()
+
+    assert organisation_of(organisation) == organisation
+
+
+@pytest.mark.django_db
+def test_organisation_of_a_site_is_none(mock_site_context):
+    assert organisation_of(Site.objects.get_current()) is None
+
+
+@pytest.mark.django_db
+def test_organisation_of_an_object_without_one_is_none(mock_site_context):
+    assert organisation_of(UserFactory()) is None

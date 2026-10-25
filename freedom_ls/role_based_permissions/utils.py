@@ -15,7 +15,8 @@ from django.db import transaction
 from django.db.models import Model
 from django.utils import timezone
 
-from freedom_ls.audit_log.writer import organisation_of, record_entry
+from freedom_ls.audit_log.writer import record_entry
+from freedom_ls.organisations.utils import organisation_of
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -33,9 +34,15 @@ from freedom_ls.role_based_permissions.models import (
 )
 
 
-def delete_role_rows_for(target: Model) -> None:
+def delete_role_rows_for(
+    target: Site | SiteAwareModelBase,
+    *,
+    removed_by: User | None = None,
+    reason: str = "",
+) -> None:
     """Delete every object role assignment on `target`, active or not, and
-    the guardian rows that go with them.
+    the guardian rows that go with them, recording a removal for each active
+    one so the log says whose access went with the target.
 
     For a target that is about to be deleted: deactivating would leave
     guardian rows behind and assignments whose target resolves to None.
@@ -44,9 +51,15 @@ def delete_role_rows_for(target: Model) -> None:
     match nothing and leave the rows behind.
     """
     target_type = ContentType.objects.get_for_model(target)
-    ObjectRoleAssignment._base_manager.filter(
+    rows = ObjectRoleAssignment._base_manager.filter(
         content_type=target_type, object_id=str(target.pk)
-    ).delete()
+    )
+    with transaction.atomic():
+        for row in rows.filter(is_active=True).select_related("user"):
+            _record_role_change(
+                "role.removed", removed_by, row.user, target, row.role, reason
+            )
+        rows.delete()
     UserObjectPermission.objects.filter(
         content_type=target_type, object_pk=str(target.pk)
     ).delete()
@@ -252,7 +265,11 @@ def _record_role_change(
     """One audit entry for a role granted to or removed from `user` on
     `target`. The target's own name is the scope label; every role target
     (an organisation, a cohort, a site, a course) stringifies to its name or
-    title."""
+    title. The role's display name is stored with the entry, like the other
+    labels, so it reads after the role is renamed or retired."""
+    site = site_of(target)
+    config = get_role_config(site.name)
+    role_label = config[role].display_name if role in config else role
     record_entry(
         action=action,
         actor=actor,
@@ -260,9 +277,9 @@ def _record_role_change(
         target_label=user.display_name,
         organisation=organisation_of(target),
         subjects=(target,),
-        details={"role": role, "scope": str(target)},
+        details={"role": role, "role_label": role_label, "scope": str(target)},
         reason=reason,
-        site=site_of(target),
+        site=site,
     )
 
 
@@ -274,7 +291,9 @@ def assign_object_role(
 ) -> ObjectRoleAssignment:
     """Assign an object-level role to a user on a target object.
 
-    Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
+    Creates or reactivates an ObjectRoleAssignment, then syncs guardian
+    permissions. Records a grant whenever the row changed, so a re-grant
+    that moved "added by" to another grantor is in the log too.
     """
     site_name = site_of(target).name
     check_role_name_in_config(role, site_name=site_name)
@@ -296,7 +315,7 @@ def assign_object_role(
                 assignment.save(update_fields=fields_to_update)
 
         sync_user_object_permissions(user, target)
-        if created or "is_active" in fields_to_update:
+        if created or fields_to_update:
             _record_role_change("role.granted", assigned_by, user, target, role)
     return assignment
 
@@ -338,7 +357,8 @@ def assign_site_role(
     """Assign a site-level role to a user on a site.
 
     Creates or reactivates a SiteRoleAssignment, then syncs guardian permissions
-    on the Site object.
+    on the Site object. Records a grant whenever the row changed, so a
+    re-grant that moved "added by" to another grantor is in the log too.
 
     Args:
         site: The site to assign the role on. Defaults to the current site.
@@ -362,7 +382,7 @@ def assign_site_role(
                 assignment.save(update_fields=fields_to_update)
 
         sync_user_object_permissions(user, site)
-        if created or "is_active" in fields_to_update:
+        if created or fields_to_update:
             _record_role_change("role.granted", assigned_by, user, site, role)
     return assignment
 

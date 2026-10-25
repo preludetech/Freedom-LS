@@ -125,6 +125,7 @@ from freedom_ls.role_based_permissions.exceptions import (
     RoleChangeRefused,
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.utils import delete_role_rows_for
 
 if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
@@ -429,15 +430,20 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
                 return self._blocked_response(ctx, cohort, reason)
             events = self.get_success_events(cohort)
             protected: ProtectedError | None = None
-            # Written first because the entry reads the pk, which delete()
-            # clears.
+            actor = cast("User", ctx.request.user)
+            reason = submitted_reason(ctx)
+            # The roles go here rather than in the pre_delete receiver, which
+            # has no request and would log their removal as the system.
+            delete_role_rows_for(cohort, removed_by=actor, reason=reason)
+            # Written before the delete because the entry reads the pk, which
+            # delete() clears.
             record_entry(
                 action="cohort.deleted",
-                actor=cast("User", ctx.request.user),
+                actor=actor,
                 target=cohort,
                 target_label=cohort.name,
                 organisation=cohort.organisation,
-                reason=submitted_reason(ctx),
+                reason=reason,
             )
             try:
                 cohort.delete()

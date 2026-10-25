@@ -637,6 +637,83 @@ class TestDeleteRoleRowsFor:
         ).exists()
 
     @pytest.mark.django_db
+    def test_records_a_removal_for_each_active_assignment(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory(name="Cohort A")
+        admin = UserFactory()
+        viewer = UserFactory()
+        remover = UserFactory()
+        ObjectRoleAssignmentFactory(
+            user=admin, target_object=cohort, role="cohort_admin"
+        )
+        ObjectRoleAssignmentFactory(
+            user=viewer, target_object=cohort, role="cohort_viewer"
+        )
+
+        delete_role_rows_for(cohort, removed_by=remover, reason="Cohort deleted")
+
+        removed = AuditLogEntry.unscoped.filter(action="role.removed")
+        assert sorted(removed.values_list("target_object_id", flat=True)) == sorted(
+            [str(admin.pk), str(viewer.pk)]
+        )
+        assert set(removed.values_list("actor", flat=True)) == {remover.pk}
+        assert set(removed.values_list("reason", flat=True)) == {"Cohort deleted"}
+
+    @pytest.mark.django_db
+    def test_records_nothing_for_an_inactive_assignment(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        ObjectRoleAssignmentFactory(
+            target_object=cohort, role="cohort_viewer", is_active=False
+        )
+
+        delete_role_rows_for(cohort)
+
+        assert not AuditLogEntry.unscoped.filter(action="role.removed").exists()
+
+    @pytest.mark.django_db
+    def test_a_removal_with_no_actor_logs_as_the_system(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory(name="Cohort A")
+        user = UserFactory()
+        ObjectRoleAssignmentFactory(
+            user=user, target_object=cohort, role="cohort_admin", is_active=True
+        )
+
+        delete_role_rows_for(cohort)
+
+        assert_entry(
+            action="role.removed",
+            actor=None,
+            target=user,
+            target_label=user.display_name,
+            organisation=cohort.organisation,
+            subjects=(cohort,),
+            details={
+                "role": "cohort_admin",
+                "role_label": "Cohort admin",
+                "scope": "Cohort A",
+            },
+        )
+
+    @pytest.mark.django_db
+    def test_a_role_no_longer_configured_is_labelled_by_its_code(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        ObjectRoleAssignmentFactory(
+            target_object=cohort, role="retired_role", is_active=True
+        )
+
+        delete_role_rows_for(cohort)
+
+        entry = AuditLogEntry.unscoped.get(action="role.removed")
+        assert entry.details["role_label"] == "retired_role"
+
+    @pytest.mark.django_db
     def test_leaves_another_targets_rows_alone(self) -> None:
         cohort = CohortFactory()
         other = CohortFactory()
@@ -842,7 +919,11 @@ class TestRoleAuditEntries:
             target_label=user.display_name,
             organisation=organisation,
             subjects=(cohort,),
-            details={"role": "cohort_admin", "scope": "Cohort A"},
+            details={
+                "role": "cohort_admin",
+                "role_label": "Cohort admin",
+                "scope": "Cohort A",
+            },
         )
 
     def test_granting_on_an_organisation_records_that_organisation(
@@ -868,14 +949,34 @@ class TestRoleAuditEntries:
         assert entry.organisation is None
         assert entry.details["scope"] == "Algebra"
 
-    def test_regranting_an_active_role_by_another_grantor_writes_nothing(
+    def test_regranting_an_active_role_by_another_grantor_writes_a_second_grant(
+        self, mock_site_context: Site
+    ) -> None:
+        """The re-grant moves "added by" to the new grantor, so the log says who."""
+        cohort = CohortFactory()
+        user = UserFactory()
+        second_grantor = UserFactory()
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=UserFactory())
+
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=second_grantor)
+
+        actors = list(
+            AuditLogEntry.unscoped.filter(action="role.granted")
+            .order_by("created_at")
+            .values_list("actor", flat=True)
+        )
+        assert actors[1:] == [second_grantor.pk]
+        assert len(actors) == 2
+
+    def test_regranting_an_active_role_by_the_same_grantor_writes_nothing(
         self, mock_site_context: Site
     ) -> None:
         cohort = CohortFactory()
         user = UserFactory()
-        assign_object_role(user, cohort, "cohort_admin", assigned_by=UserFactory())
+        grantor = UserFactory()
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=grantor)
 
-        assign_object_role(user, cohort, "cohort_admin", assigned_by=UserFactory())
+        assign_object_role(user, cohort, "cohort_admin", assigned_by=grantor)
 
         assert AuditLogEntry.unscoped.count() == 1
 

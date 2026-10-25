@@ -444,6 +444,33 @@ def test_a_reason_posted_with_the_delete_reaches_the_entry(
 
 
 @pytest.mark.django_db
+def test_deleting_a_cohort_records_the_roles_removed_with_it(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    """The roles are gone with the cohort; the log says whose, by whom and why."""
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+    admin = UserFactory()
+    assign_object_role(admin, cohort, "cohort_admin")
+    deleter = UserFactory(superuser=True)
+    client = logged_in_client(deleter)
+
+    client.post(_delete_url(client, cohort), {"reason": "Merged"})
+
+    entries = list(AuditLogEntry.unscoped.order_by("created_at"))
+    assert [entry.action for entry in entries] == [
+        "role.granted",
+        "role.removed",
+        "cohort.deleted",
+    ]
+    removed = entries[1]
+    assert (removed.actor, removed.reason, removed.target_label) == (
+        deleter,
+        "Merged",
+        admin.display_name,
+    )
+
+
+@pytest.mark.django_db
 def test_a_delete_posted_with_no_reason_is_allowed(
     mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
