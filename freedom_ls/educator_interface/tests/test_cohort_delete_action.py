@@ -128,7 +128,7 @@ def test_the_cohort_page_renders_the_delete_trigger(
     body = client.get(f"{_panel_url(cohort)}/__tabs/settings").content.decode()
 
     assert f'hx-get="{url}"' in body
-    assert f'hx-delete="{url}"' in client.get(url).content.decode()
+    assert f'hx-post="{url}"' in client.get(url).content.decode()
 
 
 @pytest.mark.django_db
@@ -224,7 +224,7 @@ def test_the_delete_dialog_body_says_the_delete_cannot_be_undone(
 
     document = lxml.html.fromstring(client.get(url).content)
 
-    (body,) = document.cssselect("header + div")
+    body = document.cssselect("form > div")[0]
     assert "cannot be undone" in body.text_content()
     assert "cohort" in body.text_content()
 
@@ -411,3 +411,80 @@ def test_an_admin_of_another_organisation_gets_a_404_on_the_delete(
     assert response.status_code == 404
     assert Cohort.objects.filter(pk=cohort.pk).exists()
     assert not AuditLogEntry.unscoped.filter(action="cohort.deleted").exists()
+
+
+@pytest.mark.django_db
+def test_the_delete_dialog_renders_the_optional_reason_field(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    client = logged_in_client(UserFactory(superuser=True))
+
+    document = lxml.html.fromstring(client.get(_delete_url(client, cohort)).content)
+
+    (field,) = document.cssselect("form input[name='reason']")
+    assert field.get("maxlength") == "500"
+    assert "Reason (optional)" in document.text_content()
+
+
+@pytest.mark.django_db
+def test_a_reason_posted_with_the_delete_reaches_the_entry(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(
+        _delete_url(client, cohort), {"reason": " Merged into another cohort "}
+    )
+
+    assert response.status_code == 204
+    assert not Cohort.objects.filter(pk=cohort.pk).exists()
+    assert AuditLogEntry.unscoped.get().reason == "Merged into another cohort"
+
+
+@pytest.mark.django_db
+def test_a_delete_posted_with_no_reason_is_allowed(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(_delete_url(client, cohort))
+
+    assert response.status_code == 204
+    assert AuditLogEntry.unscoped.get().reason == ""
+
+
+@pytest.mark.django_db
+def test_a_delete_reason_over_500_characters_answers_422_and_keeps_the_cohort(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(_delete_url(client, cohort), {"reason": "x" * 501})
+
+    assert response.status_code == 422
+    assert "at most 500 characters" in response.content.decode()
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+def test_a_posted_delete_of_a_non_empty_cohort_is_refused_as_before(
+    cohort_with_granted_progress: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(
+        _delete_url(client, cohort_with_granted_progress), {"reason": "Tidy up"}
+    )
+
+    assert response.status_code == 422
+    assert cohort_not_empty_sentence(cohort_with_granted_progress) in html.unescape(
+        response.content.decode()
+    )
+    assert Cohort.objects.filter(pk=cohort_with_granted_progress.pk).exists()
+    assert not AuditLogEntry.unscoped.exists()

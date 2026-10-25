@@ -43,6 +43,7 @@ from freedom_ls.educator_interface.forms import (
     LearnerNameForm,
     LearnerPickerForm,
     MemberEmailForm,
+    ReasonForm,
 )
 from freedom_ls.educator_interface.members import (
     ORGANISATION_SCOPE,
@@ -225,6 +226,39 @@ class RequiresActiveCohortMixin(PanelAction):
         return super().handle_submit(ctx)
 
 
+def submitted_reason(ctx: PanelContext) -> str:
+    """The reason a confirm dialog posted, trimmed. Actions are shared across
+    requests, so the reason is read from the request rather than kept on the
+    action. ReasonMixin has already rejected an invalid one."""
+    return ctx.request.POST.get("reason", "").strip()
+
+
+class ReasonMixin(PanelAction):
+    """A confirm dialog that takes an optional reason. List it first in the
+    bases, as RequiresActiveCohortMixin is, so the reason is validated before
+    any other submit handling. An action with its own submit overrides
+    handle_confirmed_submit, never handle_submit, and one that builds its own
+    context calls super().get_context_data so the reason field is in it."""
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        context = super().get_context_data(ctx)
+        context.setdefault("reason_form", ReasonForm())
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = ReasonForm(ctx.request.POST)
+        if not form.is_valid():
+            context = {**self.get_context_data(ctx), "reason_form": form}
+            html = render_to_string(self.template_name, context, request=ctx.request)
+            return HttpResponse(html, status=422)
+        return self.handle_confirmed_submit(ctx)
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        """The submit once the reason is valid: the next handle_submit in the
+        MRO."""
+        return super().handle_submit(ctx)
+
+
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
     """Edit, offered only while the cohort is active."""
 
@@ -318,13 +352,14 @@ class CohortStateAction(PanelAction):
                 target=cohort,
                 target_label=cohort.name,
                 organisation=cohort.organisation,
+                reason=submitted_reason(ctx),
             )
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
         return navigation_response(ctx.page_url)
 
 
-class DeactivateCohortAction(RequiresActiveCohortMixin, CohortStateAction):
+class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortStateAction):
     label = "Deactivate"
     action_name = "deactivate"
     target_state = False
@@ -351,13 +386,15 @@ class ReactivateCohortAction(CohortStateAction):
         return super().handle_submit(ctx)
 
 
-class DeleteEmptyCohortAction(DeleteAction):
+class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
     """Deletes a cohort that has no memberships and no course registrations.
 
     A cohort that is not empty is neither offered the action nor allowed to
     submit it: deletion would cascade away removed learners' memberships and
     inactive registrations, which nobody sees on the page.
     """
+
+    template_name = "educator_interface/modal/delete_cohort_confirmation.html"
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return cohort_is_empty(cast(Cohort, ctx.instance))
@@ -376,7 +413,7 @@ class DeleteEmptyCohortAction(DeleteAction):
             return self._blocked_context(ctx, cohort, reason)
         return super().get_context_data(ctx)
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         with transaction.atomic():
             # Lock the cohort so a membership added between this check and the
             # delete either lands first and is refused here, or waits and then
@@ -400,6 +437,7 @@ class DeleteEmptyCohortAction(DeleteAction):
                 target=cohort,
                 target_label=cohort.name,
                 organisation=cohort.organisation,
+                reason=submitted_reason(ctx),
             )
             try:
                 cohort.delete()
@@ -482,7 +520,7 @@ class LearnerStateAction(PanelAction):
     capability = "freedom_ls_learner_management.change_learner"
     target_state: bool
 
-    def perform(self, learner: Learner, actor: User) -> bool:
+    def perform(self, learner: Learner, actor: User, reason: str = "") -> bool:
         raise NotImplementedError
 
     def is_offered(self, ctx: PanelContext) -> bool:
@@ -499,7 +537,9 @@ class LearnerStateAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        if not self.perform(learner, cast("User", ctx.request.user)):
+        if not self.perform(
+            learner, cast("User", ctx.request.user), submitted_reason(ctx)
+        ):
             return render(
                 ctx.request,
                 "educator_interface/modal/learner_already_in_state.html",
@@ -511,14 +551,14 @@ class LearnerStateAction(PanelAction):
         return navigation_response(ctx.page_url)
 
 
-class DeactivateLearnerAction(LearnerStateAction):
+class DeactivateLearnerAction(ReasonMixin, LearnerStateAction):
     label = "Deactivate"
     action_name = "deactivate"
     target_state = False
     template_name = "educator_interface/modal/deactivate_learner_confirmation.html"
 
-    def perform(self, learner: Learner, actor: User) -> bool:
-        return deactivate_learner(learner, actor=actor)
+    def perform(self, learner: Learner, actor: User, reason: str = "") -> bool:
+        return deactivate_learner(learner, actor=actor, reason=reason)
 
 
 class ReactivateLearnerAction(LearnerStateAction):
@@ -527,7 +567,7 @@ class ReactivateLearnerAction(LearnerStateAction):
     target_state = True
     template_name = "educator_interface/modal/reactivate_learner_confirmation.html"
 
-    def perform(self, learner: Learner, actor: User) -> bool:
+    def perform(self, learner: Learner, actor: User, reason: str = "") -> bool:
         return reactivate_learner(learner, actor=actor)
 
 
@@ -589,7 +629,9 @@ class ResendSetupEmailAction(PanelAction):
 KEEPING_NAMES_SHOWN = 10
 
 
-class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
+class UnregisterCohortFromCourseAction(
+    ReasonMixin, RequiresActiveCohortMixin, PanelAction
+):
     """Withdraws one of the cohort's active course registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the courses tab and renders per row there, never
@@ -634,7 +676,9 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
 
     def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
         unregister_cohort_from_course(
-            self._registration(ctx), actor=cast("User", ctx.request.user)
+            self._registration(ctx),
+            actor=cast("User", ctx.request.user),
+            reason=submitted_reason(ctx),
         )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
@@ -694,7 +738,7 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         return _registration_changed_response(self._learner)
 
 
-class UnregisterLearnerFromCourseAction(PanelAction):
+class UnregisterLearnerFromCourseAction(ReasonMixin, PanelAction):
     """Withdraws one of the learner's active individual registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the registrations card and renders per row there,
@@ -748,12 +792,13 @@ class UnregisterLearnerFromCourseAction(PanelAction):
         )
         return context
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         unregister_from_course(
             learner,
             self._registration(ctx).course,
             actor=cast("User", ctx.request.user),
+            reason=submitted_reason(ctx),
         )
         return _registration_changed_response(learner)
 
@@ -871,7 +916,9 @@ class MembershipAction(PanelAction):
     renders_in_footer = False
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
-    def perform(self, learner: Learner, cohort: Cohort, actor: User) -> bool:
+    def perform(
+        self, learner: Learner, cohort: Cohort, actor: User, reason: str = ""
+    ) -> bool:
         raise NotImplementedError
 
     def _cohort(self, ctx: PanelContext) -> Cohort:
@@ -911,19 +958,23 @@ class MembershipAction(PanelAction):
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
             return inactive_cohort_response(ctx.request, cohort)
-        self.perform(learner, cohort, cast("User", ctx.request.user))
+        self.perform(
+            learner, cohort, cast("User", ctx.request.user), submitted_reason(ctx)
+        )
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
 
 
-class RemoveFromCohortAction(MembershipAction):
+class RemoveFromCohortAction(ReasonMixin, MembershipAction):
     label = "Remove from cohort"
     action_name = "remove_from_cohort"
     capability = "freedom_ls_learner_management.delete_cohortmembership"
     template_name = "educator_interface/modal/remove_from_cohort_confirmation.html"
 
-    def perform(self, learner: Learner, cohort: Cohort, actor: User) -> bool:
-        return remove_from_cohort(learner, cohort, actor=actor)
+    def perform(
+        self, learner: Learner, cohort: Cohort, actor: User, reason: str = ""
+    ) -> bool:
+        return remove_from_cohort(learner, cohort, actor=actor, reason=reason)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, cohort = self._pair(ctx)
@@ -1823,7 +1874,7 @@ class MemberRoleAction(PanelAction):
         raise Http404("The member does not hold this role")
 
 
-class RemoveRoleAction(MemberRoleAction):
+class RemoveRoleAction(ReasonMixin, MemberRoleAction):
     """Takes one role entry off a member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
@@ -1876,25 +1927,29 @@ class RemoveRoleAction(MemberRoleAction):
         if entry.role != "organisation_admin" and not removed:
             raise Http404("No cohort of this role is within the grantor's reach")
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
-        return {
-            "member": user,
-            "entry": entry,
-            "description": description,
-            "full_scope": (
-                entry.full_scope
-                if entry.role == "organisation_admin"
-                else join_prose([cohort.name for cohort in removed])
-            ),
-            "stays": join_prose([cohort.name for cohort in staying]),
-            "keeps": self._kept(ctx, user, entry, entries),
-            "last_organisation_admin": entry.role == "organisation_admin"
-            and is_last_organisation_admin(organisation, user),
-            "grantor_is_site_level": is_site_level_admin(grantor, site),
-            "target_is_site_level": is_site_level_admin(user, site),
-            "confirm_url": self.get_action_url(ctx),
-        }
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "member": user,
+                "entry": entry,
+                "description": description,
+                "full_scope": (
+                    entry.full_scope
+                    if entry.role == "organisation_admin"
+                    else join_prose([cohort.name for cohort in removed])
+                ),
+                "stays": join_prose([cohort.name for cohort in staying]),
+                "keeps": self._kept(ctx, user, entry, entries),
+                "last_organisation_admin": entry.role == "organisation_admin"
+                and is_last_organisation_admin(organisation, user),
+                "grantor_is_site_level": is_site_level_admin(grantor, site),
+                "target_is_site_level": is_site_level_admin(user, site),
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
         user = _member_param(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
@@ -1908,7 +1963,11 @@ class RemoveRoleAction(MemberRoleAction):
             with transaction.atomic():
                 for target in targets:
                     remove_role(
-                        cast("User", ctx.request.user), user, entry.role, target
+                        cast("User", ctx.request.user),
+                        user,
+                        entry.role,
+                        target,
+                        reason=submitted_reason(ctx),
                     )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
@@ -2071,7 +2130,7 @@ class MemberStateAction(PanelAction):
         ).first()
 
 
-class SuspendMemberAction(MemberStateAction):
+class SuspendMemberAction(ReasonMixin, MemberStateAction):
     label = "Suspend"
     action_name = "suspend"
     template_name = "educator_interface/modal/suspend_member_confirmation.html"
@@ -2079,24 +2138,32 @@ class SuspendMemberAction(MemberStateAction):
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
         user = _member_param(ctx)
-        return {
-            "member": user,
-            "organisation": organisation,
-            "last_organisation_admin": is_last_organisation_admin(organisation, user),
-            "grantor_is_site_level": is_site_level_admin(
-                cast("User", ctx.request.user), organisation.site
-            ),
-            "confirm_url": self.get_action_url(ctx),
-        }
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "member": user,
+                "organisation": organisation,
+                "last_organisation_admin": is_last_organisation_admin(
+                    organisation, user
+                ),
+                "grantor_is_site_level": is_site_level_admin(
+                    cast("User", ctx.request.user), organisation.site
+                ),
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
         user = _member_param(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
             raise Http404("The member is already suspended")
         try:
-            set_organisation_member_active(cast("User", ctx.request.user), row, False)
+            set_organisation_member_active(
+                cast("User", ctx.request.user), row, False, reason=submitted_reason(ctx)
+            )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
         return member_changed_response(user)

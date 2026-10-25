@@ -194,3 +194,42 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     expect(main.get_by_text("Morning group")).to_have_count(0)
     page.get_by_role("link", name="Courses", exact=True).click()
     expect(main.get_by_text("1 of 2 items")).to_be_visible()
+
+
+def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+    )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    reason = "Moved to another programme"
+    page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
+    modal = page.locator("#app-modal")
+    main = page.locator("#main-content")
+
+    main.get_by_role("button", name="Deactivate", exact=True).first.click()
+    modal.get_by_label("Reason (optional)").fill(reason)
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(main.get_by_text("Removed", exact=True).first).to_be_visible()
+    page.get_by_role("link", name="History", exact=True).click()
+    history_row = main.get_by_role("row").filter(has_text="Learner deactivated")
+    expect(history_row).to_have_count(1)
+    expect(history_row.get_by_text(reason)).to_be_visible()
+    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+    row = main.get_by_role("row").filter(has_text="Learner deactivated")
+    expect(row.get_by_text("Ada Lovelace").first).to_be_visible()
+    expect(row.get_by_text(reason)).to_be_visible()
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+        assert_no_horizontal_overflow(page)

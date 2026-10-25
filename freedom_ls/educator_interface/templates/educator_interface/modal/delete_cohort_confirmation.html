@@ -1,0 +1,45 @@
+{% comment %}
+The modal fragment a DeleteEmptyCohortAction returns. It posts rather than
+sending a DELETE so the reason travels as a form field. Context: instance,
+noun, cascade_summary, blocked_reason, delete_url, reason_form.
+{% endcomment %}
+<c-modal-header>Delete {{ instance }}</c-modal-header>
+
+{% if blocked_reason %}
+    <div class="space-y-3 px-6 py-4">
+        <div class="rounded-md border border-error/20 bg-error/10 p-3">
+            <p class="text-sm text-on-surface">{{ blocked_reason }}</p>
+        </div>
+    </div>
+
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    </c-button-group>
+{% else %}
+    <form hx-post="{{ delete_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <div class="space-y-3 px-6 py-4">
+            <p class="text-sm">Deleting this {{ noun }} cannot be undone.</p>
+            {% if cascade_summary %}
+                <div class="rounded-md border border-error/20 bg-error/10 p-3">
+                    <p class="mb-2 text-sm font-semibold text-error">This will also delete:</p>
+                    <ul class="list-inside list-disc text-sm">
+                        {% for item in cascade_summary %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+        {% include "educator_interface/partials/reason_field.html" %}
+
+        <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+            <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+            <c-button type="submit" variant="error" loading="true" loading_text="Deleting...">
+                Delete
+            </c-button>
+        </c-button-group>
+    </form>
+{% endif %}

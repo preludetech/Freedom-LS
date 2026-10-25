@@ -244,3 +244,14 @@ class CohortSetForm(forms.Form):
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
+
+
+class ReasonForm(forms.Form):
+    reason = forms.CharField(
+        required=False,
+        max_length=500,
+        strip=True,
+        label="Reason (optional)",
+        help_text="Only staff can see this. It is shown in the history.",
+        widget=forms.TextInput(attrs={"maxlength": "500"}),
+    )

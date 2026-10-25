@@ -4,22 +4,24 @@ on_default_organisation, action_url.
 {% endcomment %}
 <c-modal-header>Deactivate {{ learner.user.display_name }}</c-modal-header>
 
-<div class="space-y-3 px-6 py-4 text-sm">
-    <p>{{ learner.user.display_name }} loses access to this organisation's courses.</p>
-    <p>Their cohorts, registrations and progress are kept and return when you reactivate them.</p>
-    {% if on_default_organisation %}
-        <p>If they self-register for an open course, they are reactivated.</p>
-    {% endif %}
-</div>
+<form hx-post="{{ action_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button[type='submit']">
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
-    <form hx-post="{{ action_url }}"
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
-          hx-disabled-elt="find button[type='submit']">
+    <div class="space-y-3 px-6 py-4 text-sm">
+        <p>{{ learner.user.display_name }} loses access to this organisation's courses.</p>
+        <p>Their cohorts, registrations and progress are kept and return when you reactivate them.</p>
+        {% if on_default_organisation %}
+            <p>If they self-register for an open course, they are reactivated.</p>
+        {% endif %}
+    </div>
+    {% include "educator_interface/partials/reason_field.html" %}
+
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
         <c-button type="submit" variant="secondary" loading="true" loading_text="Deactivating...">
             Deactivate
         </c-button>
-    </form>
-</c-button-group>
+    </c-button-group>
+</form>

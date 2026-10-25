@@ -14,6 +14,7 @@ from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.db import transaction
+from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
 
@@ -2932,7 +2933,7 @@ def test_confirming_an_unknown_address_sends_one_setup_email(
 def test_a_refusal_after_the_account_step_rolls_the_account_back(
     admin_client, organisation, monkeypatch, django_capture_on_commit_callbacks
 ):
-    def refuse(*args: object) -> None:
+    def refuse(*args: object, **kwargs: object) -> None:
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
 
     monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
@@ -3215,7 +3216,7 @@ def test_each_refusal_answers_422_with_its_message(
 ):
     UserFactory(email="ada@example.com")
 
-    def refuse(*args: object) -> None:
+    def refuse(*args: object, **kwargs: object) -> None:
         raise RoleChangeRefused(reason)
 
     monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
@@ -3233,7 +3234,7 @@ def test_a_not_permitted_refusal_is_the_403_fragment(
 ):
     UserFactory(email="ada@example.com")
 
-    def refuse(*args: object) -> None:
+    def refuse(*args: object, **kwargs: object) -> None:
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
 
     monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
@@ -3927,11 +3928,11 @@ def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
     real_remove_role = remove_role
     calls: list[Cohort] = []
 
-    def refuse_second(grantor, target_user, role, target):
+    def refuse_second(grantor, target_user, role, target, **kwargs):
         if calls:
             raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
         calls.append(target)
-        real_remove_role(grantor, target_user, role, target)
+        real_remove_role(grantor, target_user, role, target, **kwargs)
 
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.remove_role", refuse_second
@@ -4324,7 +4325,7 @@ def test_a_refusal_partway_through_a_change_keeps_every_assignment(
     user = _member_holding("cohort_viewer", dropped)
     before = _active_roles(user)
 
-    def refuse(*args: object) -> None:
+    def refuse(*args: object, **kwargs: object) -> None:
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
 
     monkeypatch.setattr("freedom_ls.educator_interface.actions.remove_role", refuse)
@@ -5215,3 +5216,138 @@ def test_a_failure_after_the_write_leaves_no_entry(
         post_then_fail()
 
     assert not AuditLogEntry.unscoped.exists()
+
+
+# the optional reason in the confirm dialogs
+
+
+_DialogRequest = tuple[str, dict[str, str]]
+
+
+def _reason_deactivate_cohort(organisation: Organisation) -> _DialogRequest:
+    cohort = CohortFactory(organisation=organisation)
+    return _cohort_url(organisation, cohort, "/__actions/deactivate"), {}
+
+
+def _reason_deactivate_learner(organisation: Organisation) -> _DialogRequest:
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    return _learner_state_url(organisation, learner, "deactivate"), {}
+
+
+def _reason_remove_from_cohort(organisation: Organisation) -> _DialogRequest:
+    learner, cohort = _membership(organisation)
+    return _remove_url_from_learner(organisation, learner), {"cohort": str(cohort.pk)}
+
+
+def _reason_unregister_cohort(organisation: Organisation) -> _DialogRequest:
+    cohort, registration = _registered_cohort(organisation)
+    return _unregister_post_url(organisation, cohort), {
+        "registration": str(registration.pk)
+    }
+
+
+def _reason_unregister_learner(organisation: Organisation) -> _DialogRequest:
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+    return _learner_unregister_url(organisation, learner), {
+        "registration": str(registration.pk)
+    }
+
+
+def _reason_remove_role(organisation: Organisation) -> _DialogRequest:
+    user = _member_holding("cohort_admin", _cohort(organisation))
+    return _remove_role_url(organisation), {
+        "user": str(user.pk),
+        "role": "cohort_admin",
+    }
+
+
+def _reason_suspend_member(organisation: Organisation) -> _DialogRequest:
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    return _state_url(organisation, "suspend"), {"user": str(user.pk)}
+
+
+REASON_DIALOGS = [
+    _reason_deactivate_cohort,
+    _reason_deactivate_learner,
+    _reason_remove_from_cohort,
+    _reason_unregister_cohort,
+    _reason_unregister_learner,
+    _reason_remove_role,
+    _reason_suspend_member,
+]
+
+
+def _reason_post(
+    client: Client, request: _DialogRequest, reason: str | None
+) -> tuple[HttpResponse, list[AuditLogEntry]]:
+    """POST the dialog `request` and return the response with the entries it
+    wrote, leaving out those that setting the scene wrote."""
+    before = set(AuditLogEntry.unscoped.values_list("pk", flat=True))
+    url, params = request
+    data = params if reason is None else {**params, "reason": reason}
+    response = _post(client, url, data)
+    written = list(AuditLogEntry.unscoped.exclude(pk__in=before))
+    return response, written
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("build_url", REASON_DIALOGS)
+def test_a_confirm_dialog_renders_the_optional_reason_field(
+    staff_client: Client, build_url: Callable[[Organisation], _DialogRequest]
+) -> None:
+    organisation = OrganisationFactory()
+    url, params = build_url(organisation)
+
+    response = staff_client.get(url, params, HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content.decode())
+    (field,) = document.cssselect("input[name='reason']")
+    assert field.get("maxlength") == "500"
+    label = document.cssselect(f"label[for='{field.get('id')}']")[0]
+    assert label.text_content().strip() == "Reason (optional):"
+    assert document.cssselect("form input[name='reason']")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("build_url", REASON_DIALOGS)
+def test_a_reason_posted_with_a_confirm_dialog_reaches_the_entry(
+    staff_client: Client, build_url: Callable[[Organisation], _DialogRequest]
+) -> None:
+    organisation = OrganisationFactory()
+
+    response, written = _reason_post(
+        staff_client, build_url(organisation), "  Left the programme  "
+    )
+
+    assert response.status_code in (200, 204)
+    assert [entry.reason for entry in written] == ["Left the programme"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("build_url", REASON_DIALOGS)
+def test_a_confirm_dialog_allows_an_empty_reason(
+    staff_client: Client, build_url: Callable[[Organisation], _DialogRequest]
+) -> None:
+    organisation = OrganisationFactory()
+
+    response, written = _reason_post(staff_client, build_url(organisation), None)
+
+    assert response.status_code in (200, 204)
+    assert [entry.reason for entry in written] == [""]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("build_url", REASON_DIALOGS)
+def test_a_reason_over_500_characters_answers_422_and_changes_nothing(
+    staff_client: Client, build_url: Callable[[Organisation], _DialogRequest]
+) -> None:
+    organisation = OrganisationFactory()
+
+    response, written = _reason_post(staff_client, build_url(organisation), "x" * 501)
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("input[name='reason']")
+    assert "at most 500 characters" in document.text_content()
+    assert written == []

@@ -1,0 +1,8 @@
+{% comment %}
+The optional reason input shared by the confirm dialogs that record why a
+change was made. Context: reason_form, a ReasonForm, bound when the dialog is
+re-rendered after a failed submit.
+{% endcomment %}
+<div class="px-6 pb-4">
+    {% include "partials/form.html" with form=reason_form %}
+</div>

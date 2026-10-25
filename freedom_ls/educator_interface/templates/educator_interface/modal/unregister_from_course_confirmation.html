@@ -7,29 +7,31 @@ on_default_organisation, confirm_url.
 {% endcomment %}
 <c-modal-header>Unregister {{ learner.user.display_name }} from {{ course }}</c-modal-header>
 
-<div class="space-y-3 px-6 py-4 text-sm">
-    {% if keeping_cohorts %}
-        <p>They keep access through {{ keeping_cohorts }}.</p>
-    {% elif keeps_access %}
-        <p>They keep access through another cohort.</p>
-    {% else %}
-        <p>They lose access to {{ course }}.</p>
-    {% endif %}
-    <p>Progress is kept.</p>
-    {% if on_default_organisation %}
-        <p>If they self-register for this course, they are registered again.</p>
-    {% endif %}
-</div>
+<form hx-post="{{ confirm_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button[type='submit']">
+    <input type="hidden" name="registration" value="{{ registration.pk }}">
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
-    <form hx-post="{{ confirm_url }}"
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
-          hx-disabled-elt="find button[type='submit']">
-        <input type="hidden" name="registration" value="{{ registration.pk }}">
+    <div class="space-y-3 px-6 py-4 text-sm">
+        {% if keeping_cohorts %}
+            <p>They keep access through {{ keeping_cohorts }}.</p>
+        {% elif keeps_access %}
+            <p>They keep access through another cohort.</p>
+        {% else %}
+            <p>They lose access to {{ course }}.</p>
+        {% endif %}
+        <p>Progress is kept.</p>
+        {% if on_default_organisation %}
+            <p>If they self-register for this course, they are registered again.</p>
+        {% endif %}
+    </div>
+    {% include "educator_interface/partials/reason_field.html" %}
+
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
         <c-button type="submit" variant="secondary" loading="true" loading_text="Unregistering...">
             Unregister
         </c-button>
-    </form>
-</c-button-group>
+    </c-button-group>
+</form>
