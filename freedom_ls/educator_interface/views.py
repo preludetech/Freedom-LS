@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, cast
@@ -9,7 +10,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
-from django.core.paginator import Page
+from django.core.paginator import Page, Paginator
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -40,7 +41,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
-from freedom_ls.base.csv_import import CsvImportError
+from freedom_ls.base.csv_import import CsvImportError, write_error_csv
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -112,10 +113,14 @@ from freedom_ls.educator_interface.filters import (
 )
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
 from freedom_ls.educator_interface.learner_import import (
+    ERROR_CSV_HEADER,
     HEADERS,
     NOT_ADDED_LABELS,
+    TEMPLATE_EXAMPLE_ROWS,
     check_import_gate,
     create_learner_import,
+    error_reason,
+    error_rows,
     run_learner_import,
 )
 from freedom_ls.educator_interface.members import member_role_entries
@@ -2180,6 +2185,10 @@ def _import_denied(
     )
 
 
+IMPORT_PREVIEW_PAGE_SIZE = 50
+IMPORT_RESULT_ERROR_ROWS = 50
+
+
 def _label_counts(
     rows: QuerySet[LearnerImportRow], field: str
 ) -> list[dict[str, object]]:
@@ -2244,7 +2253,11 @@ def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse
         request,
         scoped,
         "educator_interface/learner_import_upload.html",
-        {"form": form, "headers": ",".join(HEADERS)},
+        {
+            "form": form,
+            "headers": ",".join(HEADERS),
+            "template_url": _import_url("learner_import_template", organisation),
+        },
         status=422 if form.errors else 200,
     )
 
@@ -2273,19 +2286,86 @@ def learner_import_preview(
         return _see_other(result_url)
     rows = LearnerImportRow.objects.filter(learner_import=learner_import)
     counts = _label_counts(rows, "preview_label")
+    # An unknown label shows every row rather than none.
+    label = request.GET.get("label", "")
+    shown = rows.filter(preview_label=label) if label in ImportLabel.values else rows
+    page_obj = Paginator(
+        shown.order_by("line_number"), IMPORT_PREVIEW_PAGE_SIZE
+    ).get_page(request.GET.get("page"))
     return _import_page(
         request,
         scoped,
         "educator_interface/learner_import_preview.html",
         {
             "learner_import": learner_import,
-            "rows": rows.order_by("line_number"),
+            "page_obj": page_obj,
+            "label": label if label in ImportLabel.values else "",
+            "preview_url": _import_url(
+                "learner_import_preview", scoped.organisation, import_id
+            ),
+            "upload_url": _import_url("learner_import", scoped.organisation),
+            "errors_url": _import_url(
+                "learner_import_errors", scoped.organisation, import_id
+            ),
             "label_counts": counts,
             "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
             "error_count": _count_of(counts, ImportLabel.ERROR),
             "add_count": learner_import.row_count
             - _count_of(counts, *NOT_ADDED_LABELS),
         },
+    )
+
+
+def _csv_attachment(chunks: Iterator[str], filename: str) -> StreamingHttpResponse:
+    response = StreamingHttpResponse(chunks, content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def learner_import_template(
+    request: HttpRequest, organisation_slug: str
+) -> HttpResponse | StreamingHttpResponse:
+    """A CSV with the accepted headers and two example rows."""
+    scoped = scope_request(request, organisation_slug)
+    if not check_import_gate(cast(User, request.user), scoped.organisation, None):
+        return _import_denied(request, scoped)
+    return _csv_attachment(
+        write_error_csv(HEADERS, TEMPLATE_EXAMPLE_ROWS), "learner-import-template.csv"
+    )
+
+
+@login_required
+def learner_import_errors(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse | StreamingHttpResponse:
+    """The rows of an import that were not added because of an error, with
+    the reason for each, in the shape the import accepts plus a reason."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    if not check_import_gate(
+        cast(User, request.user), learner_import.organisation, learner_import.cohort
+    ):
+        return _import_denied(request, scoped)
+    # Built before the response is returned: the body is read after the
+    # request's site scope has been cleared.
+    rows = error_rows(learner_import).iterator(chunk_size=500)
+    filename = f"learner-import-errors-{timezone.localdate().isoformat()}.csv"
+    return _csv_attachment(
+        write_error_csv(
+            ERROR_CSV_HEADER,
+            (
+                (
+                    row.email,
+                    row.first_name,
+                    row.last_name,
+                    row.cohort_name,
+                    error_reason(row),
+                )
+                for row in rows
+            ),
+        ),
+        filename,
     )
 
 
@@ -2315,6 +2395,14 @@ def learner_import_result(
             "label_counts": counts,
             "added_count": added,
             "not_added_count": learner_import.row_count - added,
+            "error_rows": [
+                {"row": row, "reason": error_reason(row)}
+                for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
+            ],
+            "error_count": _count_of(counts, ImportLabel.ERROR),
+            "errors_url": _import_url(
+                "learner_import_errors", scoped.organisation, import_id
+            ),
             "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
             "learners_url": _learners_url(scoped.organisation),
             "upload_url": _import_url("learner_import", scoped.organisation),

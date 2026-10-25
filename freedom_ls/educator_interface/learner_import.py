@@ -13,7 +13,7 @@ from typing import cast
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q, QuerySet
 from django.shortcuts import get_object_or_404
 
 from freedom_ls.accounts.models import User
@@ -52,6 +52,13 @@ NAME_MAX_LENGTH = 150
 #: Zero-width and non-breaking spaces survive `str.strip` and arrive in
 #: addresses copied from web pages and documents.
 EMAIL_NOISE = ("​", "﻿", "\xa0")
+
+#: What the template download shows an educator how to fill in.
+TEMPLATE_EXAMPLE_ROWS = (
+    ("ada@example.com", "Ada", "Lovelace", ""),
+    ("grace@example.com", "Grace", "Hopper", "Cohort name"),
+)
+ERROR_CSV_HEADER = (*HEADERS, "reason")
 
 INVALID_EMAIL_REASON = "This isn't a valid email address."
 OTHER_SITE_REASON = "This address belongs to an account on another site."
@@ -317,3 +324,20 @@ def run_learner_import(import_id: str, site_id: int) -> None:
             return
         commit_rows(learner_import, learner_import.requested_by)
         learner_import.status = RunStatus.DONE
+
+
+def error_rows(learner_import: LearnerImport) -> QuerySet[LearnerImportRow]:
+    """The rows that were not added because of an error, in line order: the
+    committed errors, plus, while nothing has been committed, the errors the
+    preview predicted."""
+    errors = Q(final_label=ImportLabel.ERROR)
+    if learner_import.status == ImportStatus.PREVIEWED:
+        errors |= Q(final_label__isnull=True, preview_label=ImportLabel.ERROR)
+    return LearnerImportRow._base_manager.filter(
+        errors, learner_import=learner_import
+    ).order_by("line_number")
+
+
+def error_reason(row: LearnerImportRow) -> str:
+    """Why a row is an error: the committed reason once there is one."""
+    return row.final_reason if row.final_label else row.preview_reason

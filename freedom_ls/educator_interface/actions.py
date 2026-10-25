@@ -1300,11 +1300,24 @@ class AddLearnersAction(PanelAction):
     def _fragment_context(
         self, ctx: PanelContext, form: AddLearnersForm, preset: Cohort | None
     ) -> dict[str, object]:
-        return form_fragment_context(
-            form,
-            form_title=f"Add learners to {preset}" if preset else "Add learners",
-            form_url=self._form_url(ctx, preset),
-            submit_buttons=[self._BUTTON],
+        return {
+            **form_fragment_context(
+                form,
+                form_title=f"Add learners to {preset}" if preset else "Add learners",
+                form_url=self._form_url(ctx, preset),
+                submit_buttons=[self._BUTTON],
+            ),
+            "import_url": self._import_url(ctx) if form.over_limit else None,
+        }
+
+    def _import_url(self, ctx: PanelContext) -> str:
+        return reverse(
+            "educator_interface:learner_import",
+            kwargs={
+                "organisation_slug": cast(
+                    "OrganisationScopedRequest", ctx.request
+                ).organisation.slug
+            },
         )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:

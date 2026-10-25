@@ -184,7 +184,8 @@ class TestCrossOrganisationIsolation:
         assert response.status_code == 404
 
     @pytest.mark.parametrize(
-        "name", ["learner_import_preview", "learner_import_result"]
+        "name",
+        ["learner_import_preview", "learner_import_result", "learner_import_errors"],
     )
     def test_a_learner_import_of_organisation_b_404s_through_organisation_as_slug(
         self, isolation: SimpleNamespace, name: str
@@ -207,12 +208,13 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
+    @pytest.mark.parametrize("name", ["learner_import", "learner_import_template"])
     def test_the_learner_import_upload_page_is_scoped_to_the_slugs_organisation(
-        self, isolation: SimpleNamespace
+        self, isolation: SimpleNamespace, name: str
     ) -> None:
         response = isolation.client.get(
             reverse(
-                "educator_interface:learner_import",
+                f"educator_interface:{name}",
                 kwargs={"organisation_slug": "no-such-organisation"},
             )
         )

@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import lxml.html
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -4302,3 +4303,340 @@ def test_the_learners_list_offers_the_import_link_to_an_admin_and_not_to_a_cohor
 
     assert f'href="{import_url}"' in admin_page
     assert import_url not in cohort_admin_page
+
+
+# learner import preview, template and error file
+
+
+def _numbered_lines(good: int, bad: int) -> list[str]:
+    return [f"person{n}@example.com,,," for n in range(good)] + [
+        f"bad{n},,," for n in range(bad)
+    ]
+
+
+@pytest.mark.django_db
+def test_the_preview_filters_its_rows_to_the_label_in_the_query_string(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "good@example.com,,,",
+        "bad,,,",
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+        + "?label=error",
+    )
+
+    emails = [cell.text for cell in page.cssselect("table tbody tr td:nth-child(2)")]
+    assert emails == ["bad"]
+
+
+@pytest.mark.django_db
+def test_each_label_count_links_to_the_preview_filtered_by_that_label(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    page = _get_document(import_world.client, preview_url)
+
+    hrefs = [link.get("href") for link in page.cssselect("a[data-label-filter]")]
+    assert sorted(hrefs) == [
+        f"{preview_url}?label=error",
+        f"{preview_url}?label=new_account",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 51)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    first = _get_document(import_world.client, f"{preview_url}?label=error")
+    second = _get_document(import_world.client, f"{preview_url}?label=error&page=2")
+
+    next_link = first.cssselect("a[rel='next']")[0]
+    assert (
+        len(first.cssselect("table tbody tr")),
+        len(second.cssselect("table tbody tr")),
+        next_link.get("href"),
+    ) == (50, 1, "?label=error&page=2")
+
+
+@pytest.mark.django_db
+def test_the_preview_shows_the_file_chip_and_a_link_to_upload_a_different_file(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    chip = " ".join(page.cssselect(".chip")[0].text_content().split())
+    upload_link = page.xpath("//a[normalize-space()='Upload a different file']")[0]
+    assert (chip, upload_link.get("href")) == (
+        "learners.csv \u00b7 1 row",
+        _import_url(import_world.organisation, "learner_import"),
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_offers_each_row_as_a_card_for_narrow_screens(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,Ada,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    card = page.cssselect("ul[data-row-cards] > li")[0]
+    assert "a@example.com" in card.text_content()
+    assert "New account" in card.text_content()
+
+
+@pytest.mark.django_db
+def test_the_preview_links_to_the_error_rows_download_only_when_there_are_errors(
+    import_world: SimpleNamespace,
+):
+    with_errors = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,", "bad,,,"
+    )
+    without_errors = _import_for(
+        import_world.admin, import_world.organisation, "b@example.com,,,"
+    )
+
+    def download_links(learner_import: LearnerImport) -> list[str]:
+        page = _get_document(
+            import_world.client,
+            _import_url(
+                import_world.organisation, "learner_import_preview", learner_import
+            ),
+        )
+        return [
+            " ".join(a.text_content().split())
+            for a in page.cssselect("a[data-error-download]")
+        ]
+
+    assert (download_links(with_errors), download_links(without_errors)) == (
+        ["Download the 1 error row"],
+        [],
+    )
+
+
+@pytest.mark.django_db
+def test_the_template_download_is_a_bom_prefixed_csv_with_the_headers_and_two_examples(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_template")
+    )
+
+    body = b"".join(response.streaming_content).decode("utf-8")
+    rows = list(csv.reader(io.StringIO(body.lstrip("﻿"))))
+    assert (
+        body.startswith("﻿"),
+        response["Content-Disposition"],
+        rows[0],
+        len(rows),
+    ) == (
+        True,
+        'attachment; filename="learner-import-template.csv"',
+        ["email", "first_name", "last_name", "cohort"],
+        3,
+    )
+
+
+@pytest.mark.django_db
+def test_the_template_download_is_refused_to_a_user_who_fails_the_import_gate(
+    import_world: SimpleNamespace,
+):
+    response = import_world.cohort_admin_client.get(
+        _import_url(import_world.organisation, "learner_import_template")
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_the_upload_page_links_to_the_template(import_world: SimpleNamespace):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    hrefs = [a.get("href") for a in page.cssselect("a")]
+    assert _import_url(import_world.organisation, "learner_import_template") in hrefs
+
+
+def _error_csv_rows(response) -> tuple[str, list[list[str]]]:
+    body = b"".join(response.streaming_content).decode("utf-8")
+    return body, list(csv.reader(io.StringIO(body.lstrip("﻿"))))
+
+
+@pytest.mark.django_db
+def test_the_error_csv_of_a_preview_holds_exactly_the_error_rows_with_reasons(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "good@example.com,Ada,Lovelace,",
+        "=bad,Eve,Hacker,",
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    body, rows = _error_csv_rows(response)
+    assert (body.startswith("﻿"), rows) == (
+        True,
+        [
+            ["email", "first_name", "last_name", "cohort", "reason"],
+            ["'=bad", "Eve", "Hacker", "", "This isn't a valid email address."],
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_the_error_csv_is_named_for_the_day(import_world: SimpleNamespace):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "bad,,,"
+    )
+
+    with time_machine.travel(datetime(2026, 3, 4, 12, tzinfo=UTC)):
+        response = import_world.client.get(
+            _import_url(
+                import_world.organisation, "learner_import_errors", learner_import
+            )
+        )
+
+    assert (
+        response["Content-Disposition"]
+        == 'attachment; filename="learner-import-errors-2026-03-04.csv"'
+    )
+
+
+@pytest.mark.django_db
+def test_the_error_csv_of_a_finished_import_holds_the_final_error_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    _body, rows = _error_csv_rows(response)
+    assert [row[0] for row in rows[1:]] == ["bad"]
+
+
+@pytest.mark.django_db
+def test_the_error_csv_is_a_404_for_another_user_of_the_organisation(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "bad,,,"
+    )
+    other = cast(User, UserFactory(superuser=True))
+
+    response = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_result_lists_its_error_rows_the_download_and_the_reupload_line(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    text = " ".join(page.text_content().split())
+    error_cells = [cell.text for cell in page.cssselect("table[data-error-rows] td")]
+    download = page.cssselect("a[data-error-download]")[0].get("href")
+    assert (error_cells, download) == (
+        ["3", "bad", "This isn't a valid email address."],
+        _import_url(import_world.organisation, "learner_import_errors", learner_import),
+    )
+    assert (
+        "Uploading the whole file again is safe: rows already added show as "
+        "'already a member'." in text
+    )
+
+
+@pytest.mark.django_db
+def test_the_result_shows_only_the_first_fifty_error_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(0, 51)
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert len(page.cssselect("table[data-error-rows] tbody tr")) == 50
+
+
+@pytest.mark.django_db
+def test_a_failed_import_shows_the_reupload_line(import_world: SimpleNamespace):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=RunStatus.FAILED, error_message="Something broke."
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert "Uploading the whole file again is safe" in page.text_content()
