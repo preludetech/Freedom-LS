@@ -15,7 +15,10 @@ class SiteFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = Site
-        django_get_or_create = ("domain",)  # Site.domain is unique
+        # Site.domain is unique. Keying on name too means an identical call returns
+        # the existing row, while a call that reuses a domain under another name
+        # raises IntegrityError instead of quietly returning the wrong Site.
+        django_get_or_create = ("domain", "name")
 
     name = factory.Sequence(lambda n: f"TestSite{n}")
     domain = factory.LazyAttribute(lambda obj: f"{obj.name.lower()}.example.com")

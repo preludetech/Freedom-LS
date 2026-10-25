@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from django.apps import apps
 
+# pytest's ``python_files`` from pyproject.toml; a conftest-level ``collect_ignore_glob``
+# has no ``config`` to read it from.
+_TEST_MODULE_GLOBS = ("tests.py", "test_*.py", "*_tests.py")
+
 
 def app_not_installed(app_label_dotted: str) -> bool:
     """True when the app is absent — matches plain-name and AppConfig-path installs."""
@@ -19,7 +23,13 @@ def ignore_tests_unless_installed(app_label_dotted: str) -> list[str]:
     """``collect_ignore_glob`` for a ``tests/conftest.py``: every test module below it.
 
     Covers subdirectories too, so ``tests/playwright/`` needs no guard of its own.
+    pytest resolves each glob against the conftest's directory, so the ``**/`` form
+    alone would miss the modules directly below it.
     """
     if app_not_installed(app_label_dotted):
-        return ["test_*.py", "**/test_*.py"]
+        return [
+            glob
+            for pattern in _TEST_MODULE_GLOBS
+            for glob in (pattern, f"**/{pattern}")
+        ]
     return []

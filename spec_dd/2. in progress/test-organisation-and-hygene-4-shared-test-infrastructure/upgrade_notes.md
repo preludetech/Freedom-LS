@@ -26,9 +26,10 @@ act.
   from freedom_ls.tests.factories import SiteFactory
   ```
 
-  It now gets or creates by `domain` instead of `name`. Two calls with the same `name` but
-  different domains now create two sites. Two calls with the same `domain` return the same site,
-  even when the names differ.
+  It now gets or creates by `domain` and `name` together instead of `name` alone. Two calls with
+  the same `name` but different domains now create two sites. Two calls with the same `domain`
+  and `name` return the same site. A call that reuses a `domain` under a different `name` raises
+  `IntegrityError`, because `Site.domain` is unique.
 - **The quiz fixtures are no longer in `freedom_ls.conftest`.** A project that star-imports
   `freedom_ls.conftest` no longer gets `course_with_scored_quiz` or `sit_quiz`. Import them by
   name into the `conftest.py` that needs them:

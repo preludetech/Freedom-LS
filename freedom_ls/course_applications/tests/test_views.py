@@ -3561,7 +3561,7 @@ def test_session_from_one_site_resolves_nothing_on_another_sites_host(
         str(application.course_id): str(application.anonymous_applicant.pk)
     }
     session.save()
-    other_site = SiteFactory(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
 
     with site_context(other_site):
         response = client.get(

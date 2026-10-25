@@ -779,7 +779,7 @@ def test_an_allowed_anonymous_session_cannot_download_its_file_from_another_site
     form_progress, _question = anonymous_sitting
     answer_file = _anonymous_file(form_progress)
     _allow_session(client, form_progress)
-    other_site = SiteFactory(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
 
     with site_context(other_site):
         response = client.get(_download_url(answer_file))

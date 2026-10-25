@@ -9,11 +9,11 @@ from urllib.parse import urlparse
 
 import pytest
 
-from django.contrib.sites.models import Site
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.tests.factories import SiteFactory
 
 # Playwright tests in every app's tests/playwright/ directory, and downstream projects
 # that star-import this module, reach these fixtures through the root conftest. Naming
@@ -167,8 +167,7 @@ def site(request):
         name = "TestSite"
         domain = "testsite"
 
-    site, _ = Site.objects.get_or_create(name=name, defaults={"domain": domain})
-    return site
+    return SiteFactory(name=name, domain=domain)
 
 
 @pytest.fixture
