@@ -97,6 +97,30 @@ def test_parse_names_accepted_headers_when_rejecting_a_header() -> None:
         _parse("email,age\na@example.com,3\n")
 
 
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (
+            "e-mail,name\nx,y\n",
+            "Unknown column(s): e-mail. Missing required column(s): email. "
+            "Accepted columns: email, name.",
+        ),
+        (
+            "email,name,name,age\nx,y,z,1\n",
+            "Unknown column(s): age. Repeated column(s): name. "
+            "Accepted columns: email, name.",
+        ),
+    ],
+)
+def test_parse_names_every_header_problem_in_one_message(
+    content: str, message: str
+) -> None:
+    with pytest.raises(CsvImportError) as error:
+        _parse(content)
+
+    assert str(error.value) == message
+
+
 def test_parse_rejects_a_file_over_the_size_limit() -> None:
     content = "email\n" + "a@example.com\n" * (MAX_UPLOAD_BYTES // 10)
 
