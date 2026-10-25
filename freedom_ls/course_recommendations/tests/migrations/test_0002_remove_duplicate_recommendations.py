@@ -29,7 +29,8 @@ def test_duplicates_collapse_to_the_oldest_row(mock_site_context):
     other_site_course = CourseFactory()
 
     executor = MigrationExecutor(connection)
-    leaf = executor.loader.graph.leaf_nodes(APP)
+    # Every app's leaf: migrating back also unapplies apps that depend on this one.
+    leaf = executor.loader.graph.leaf_nodes()
     executor.migrate([(APP, "0001_initial")])
     old_apps = executor.loader.project_state([(APP, "0001_initial")]).apps
     Historical = old_apps.get_model(APP, "RecommendedCourse")
@@ -52,7 +53,9 @@ def test_duplicates_collapse_to_the_oldest_row(mock_site_context):
     executor = MigrationExecutor(connection)
     executor.loader.build_graph()
     executor.migrate(leaf)
-    new_apps = executor.loader.project_state(leaf).apps
+    new_apps = executor.loader.project_state(
+        executor.loader.graph.leaf_nodes(APP)
+    ).apps
     Current = new_apps.get_model(APP, "RecommendedCourse")
 
     assert set(Current.objects.values_list("pk", flat=True)) == {
