@@ -1,0 +1,87 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e3]:
+    - generic [ref=f6e4]:
+      - heading "Welcome back to Django site admin" [level=1] [ref=f6e6]:
+        - generic [ref=f6e7]: Welcome back to
+        - generic [ref=f6e8]: Django site admin
+      - generic [ref=f6e9]:
+        - generic [ref=f6e11]:
+          - generic [ref=f6e12]: Email*
+          - textbox "Email*" [ref=f6e13]
+        - generic [ref=f6e15]:
+          - generic [ref=f6e16]: Password*
+          - textbox "Password*" [ref=f6e17]
+        - button "Log in arrow_forward" [ref=f6e19] [cursor=pointer]:
+          - text: Log in
+          - generic [ref=f6e20]: arrow_forward
+    - generic [ref=f6e21]:
+      - link "arrow_back Return to site" [ref=f6e22] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f6e23]: arrow_back
+        - text: Return to site
+      - generic [ref=f6e24]: computer
+  - list [ref=f6e29]:
+    - listitem [ref=f6e30]:
+      - link "Hide »" [ref=f6e31] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e32]:
+      - link "Toggle Theme" [ref=f6e33] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e36]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e37]
+      - link "History /admin/login/?next=/admin/freedom_ls_learner_management/cohortcourseregistration/301dfd4b-4446-4157-9953-17a49c0fa611/change/" [ref=f6e38] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e39]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e40]
+      - link "Versions Django 6.0.4" [ref=f6e41] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e42]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e43]
+      - 'link "Time CPU: 262.84ms (310.92ms)" [ref=f6e44] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f6e45]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e46]
+      - link "Settings" [ref=f6e47] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e48]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e49]
+      - link "Headers" [ref=f6e50] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e51]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e52]
+      - link "Request login" [ref=f6e53] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e54]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e55]
+      - link "SQL 3 queries in 13.13ms" [ref=f6e56] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e57]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e58]
+      - link "Static files 15 files used" [ref=f6e59] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e60]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e61]
+      - link "Templates admin/login.html" [ref=f6e62] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e63]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e64]
+      - link "Alerts" [ref=f6e65] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e66]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e67]
+      - link "Cache 0 calls in 0.00ms" [ref=f6e68] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e69]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e70]
+      - link "Signals 102 receivers of 15 signals" [ref=f6e71] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e73]
+      - link "Community" [ref=f6e74] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e75]:
+      - checkbox "Enable for next and successive requests" [ref=f6e76]
+      - generic [ref=f6e77]: Intercept redirects
+    - listitem [ref=f6e78]:
+      - checkbox "Enable for next and successive requests" [ref=f6e79]
+      - generic [ref=f6e80]: Profiling

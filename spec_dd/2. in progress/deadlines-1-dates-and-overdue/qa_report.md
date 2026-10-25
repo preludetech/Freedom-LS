@@ -1,141 +1,158 @@
 # Frontend QA report: deadlines-1-dates-and-overdue
 
-Run date: 2026-10-24. Branch: `deadlines-1-dates-and-overdue`.
-
-Summary: 26 test results recorded, 22 pass and 4 fail (1.2, 4.3, 7.3 and §10 desktop). 4 bugs documented (B1 to B4). The smoke gate passed. The test plan is `3. frontend_qa.md`.
-
 ## Methodology
 
-- Playwright MCP, driven by hand.
-- Viewports: 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet).
-- Browser time zone: Africa/Johannesburg. A separate America/New_York browser context was used for §7.1.
-- Locale emulated as en-GB, to match the plan's date wording.
-- Screenshots were collected into this spec directory's `screenshots/` folder. Every image referenced below exists beside this report.
+- Tool: Playwright MCP against the dev server at http://127.0.0.1:8931/.
+- Browser time zone Africa/Johannesburg (a New York context was used for test 7.1); browser locale en-US.
+- Viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
+- Screenshots are collected in `screenshots/` beside this report. Every embedded image exists there.
+- Server date was 25 Oct 2026.
 
 ## Diff scoping
 
-- Class: **FULL**.
-- Changed files that triggered it:
-  - `freedom_ls/base/static/base/js/alpine-components.js`
-  - `freedom_ls/base/static/base/js/interface-swap-fallback.js`
-  - `freedom_ls/learner_interface/templates/learner_interface/course_detail.html`
-  - `freedom_ls/learner_interface/templates/learner_interface/partials/course_card.html`
-  - `freedom_ls/learner_interface/templates/learner_interface/partials/course_minimal_toc.html`
-- Skipped: nothing. Desktop, mobile and tablet all ran.
+Class: FULL. It was triggered by template and static paths, for example `learner_interface/templates/learner_interface/course_detail.html`, `partials/course_card.html`, `partials/course_minimal_toc.html`, `base/static/base/js/alpine-components.js` and `interface-swap-fallback.js` (153 changed files in total). Nothing was skipped, so every test in the plan ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages checked: `/` and `/courses/functionality-demo-course-parts/detail/`. No failure URL or reason.
+Status: pass. Pages checked:
+
+- http://127.0.0.1:8931/
+- http://127.0.0.1:8931/courses/functionality-demo-course-parts/detail/
 
 ## Results
 
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 1.1 | desktop | pass | Cohort learner (registered 1 Mar 2026) sees the expected dated rows, with `<time datetime>` in UTC. Every March date has passed by 24 Oct 2026, so all show Overdue, which is correct; the plan's dates have aged. | ![](screenshots/page-2026-10-24T07-16-29-714Z.png) |
-| 1.2 | desktop | fail | Player sidebar shows the same badges and dates as the outline. On every dated row the item title is squeezed to 0px width (see B1). | ![](screenshots/page-2026-10-24T07-16-47-457Z.png) |
-| 1.3 | desktop | pass | Completing Welcome clears its date and badge in the player sidebar and on the outline. Other rows are unchanged. | |
-| 1.4 | desktop | pass | Fresh learner: Welcome is Overdue ("Due 31 Jan 2024, 23:59") and the other items show today-relative dates with no badges. | ![](screenshots/page-2026-10-24T07-17-40-296Z.png) |
-| 1.5 | desktop | pass | A visitor (logged in, unregistered) and an anonymous user see no `<time>`, no Overdue badge and no Finish-by cell. | ![](screenshots/page-2026-10-24T07-18-09-394Z.png) |
-| 2.1 | desktop | pass | Fresh learner sees "Finish by 22 Jan 2027, 23:59" (today+90). The cohort learner correctly sees "Time limit ended / Overdue / 30 May 2026, 23:59". | ![](screenshots/page-2026-10-24T07-17-40-296Z.png) |
-| 2.2 | desktop | pass | Late learner sees "Time limit ended", an Overdue badge and 14 Oct 2026, 23:59. The plain course has no time-limit cell. | |
-| 3.1 | desktop | pass | Late learner card shows the Overdue badge and "Time limit ended 14 Oct 2026, 23:59" between "Next up" and the progress bar. The plain course card has no deadline line. | ![](screenshots/page-2026-10-24T07-18-13-862Z.png) |
-| 3.2 | desktop | pass | Fresh learner card shows a "1 overdue" badge and no Next due line. | ![](screenshots/page-2026-10-24T07-17-39-122Z.png) |
-| 3.3 | desktop | pass | Cohort learner card shows "Overdue, Time limit ended 30 May 2026, 23:59" instead of the plan's "Next due". All the plan's dates have aged, and time-limit-ended takes precedence. | |
-| 4.1 | desktop | pass | The picker lists only the parts course's 7 topics and forms. The cohort override saved, with the Content default, Effective, Default changed and Set by columns correct. The inline row header reads "CohortDeadlineOverride object (uuid)" because there is no `__str__`. | ![](screenshots/element-2026-10-24T07-19-50-667Z.png) |
-| 4.3 | desktop | fail | The four inconsistent rows were refused and nothing was saved; three messages match exactly. The duplicate Welcome row shows a raw constraint-name message (B3) and a spurious "Default has changed" note (B4). | ![](screenshots/page-4-3-second-Welcome.png) |
-| 4.2 | desktop | pass | Tested with a second cohort member registered today, because the plan's fresh learner is not in the cohort. Welcome reads "Due 27 Oct 2026, 23:59" and the dashboard shows the same as Next due. Individual learners still see the 2024 Overdue date. | |
-| 4.4 | desktop | pass | The 200-day time-limit override applies. A cohort member registered today sees "Finish by 12 May 2027, 23:59". The 1 Mar learner sees "Time limit ended 17 Sept 2026". The late learner is unchanged. | |
-| 5.1 | desktop | pass | The course progress admin lists Effective deadlines with their sources. A "No deadline" learner override removes Welcome's date and badge for the learner. | ![](screenshots/page-5-1-learner-override.png) |
-| 5.2 | desktop | pass | A learner fixed override (25 Oct 2026, 09:00 SAST) replaces the cohort override in the admin, the outline and the player sidebar. The dashboard shows "Time limit ended" because the learner's limit has passed and takes precedence. | ![](screenshots/page-5-2-learner-fixed.png) |
-| 5.3 | desktop | pass | After the learner override is deleted, Welcome returns to the cohort layer ("Due 4 Mar 2026, 23:59"). | |
-| 6 | desktop | pass | After the content default changed to 10 days, the override row shows the "Default has changed" note. Cohort learners' dates are unchanged, and the late learner moved to Reg+10. | ![](screenshots/page-6-default-changed.png) |
-| 9 | desktop | pass | With What to Expect's default removed, it shows no date for cohort and fresh learners. The dashboard Next due skips to Key Ideas. | |
-| 7.1 | desktop | pass | With the time zone switch on, the Johannesburg browser shows "GMT+2" labels. New York shows the same instants as "GMT-4" before 1 Nov and "GMT-5" after. With the switch off there is no label. | ![](screenshots/page-7-1-new-york-labels.png) |
-| 7.2 | desktop | pass | Switching the site zone to Pacific/Auckland shifts displayed times (What to Expect shows 12:59) and the Effective deadlines name NZDT. Restored to Africa/Johannesburg afterwards. | |
-| 7.3 | desktop | fail | An invalid zone (Mars/Olympus) is refused and the row is unchanged. Adding a second Site time zone row returns an HTTP 500 IntegrityError (B2). | ![](screenshots/page-7-3-duplicate.png) |
-| 10 | desktop | fail | The detail page, player and dashboard have no horizontal overflow or console errors. It fails only on the player sidebar, where dated titles shrink to 0px (B1). | ![](screenshots/page-2026-10-24T07-16-47-457Z.png) |
-| 10 | mobile | pass | The stats strip stacks, and the badge and date stay on one line. Long titles truncate with an ellipsis but stay on screen, and the player drawer is full width. No overflow. | ![](screenshots/page-2026-10-24T07-28-34-340Z.png) ![](screenshots/page-2026-10-24T07-28-48-725Z.png) ![](screenshots/page-10-mobile-dashboard.png) |
-| 10 | tablet | pass | The three-cell stats strip fits on one row. Outline titles show in full, the player uses the drawer outline, and the dashboard card is fine. No overflow or console errors. | ![](screenshots/page-10-tablet-detail.png) ![](screenshots/page-10-tablet-player.png) ![](screenshots/page-10-tablet-dashboard.png) |
-| 8 | desktop | pass | A learner override survives moving a collection item on re-sync: Key Ideas still shows "Due 29 Oct 2026, 23:59" under its new section. The stale row stays listed with its content default, as the plan expects. | ![](screenshots/page-8-carry-over.png) |
+| Test | Viewport | Status | Note |
+|---|---|---|---|
+| 1.1 | desktop | pass | Cohort learner outline shows dates and Overdue badges. Every dated row is Overdue because 25 Oct 2026 is past all the dates. |
+| 1.2 | desktop | pass | Player sidebar matches the course detail badges and dates. The date wraps under the title in the narrow sidebar. |
+| 1.3 | desktop | pass | Completing Welcome cleared its badge and date in the sidebar and the outline. Other rows were unchanged. |
+| 1.4 | desktop | pass | Fresh learner: Welcome Overdue, What to Expect Nov 1 2026, Key Ideas Nov 8 05:00 PM, Finish by Jan 23 2027. |
+| 1.5 | desktop | pass | Unregistered and anonymous visitors see no `<time>` elements, no Overdue and no time limit cell. |
+| 2.1 | desktop | pass | Finish by cell is correct for the fresh learner (Reg+90). The cohort learner's limit has passed, so it reads Time limit ended May 30 2026. |
+| 2.2 | desktop | pass | Late learner shows TIME LIMIT ENDED and OVERDUE with Oct 15 2026 11:59 PM. The plain course has no time-limit cell. |
+| 3.1 | desktop | pass | Late learner dashboard card: Overdue badge and Time limit ended line, above the progress bar. |
+| 3.2 | desktop | pass | Fresh learner parts card shows a "1 overdue" badge and no Next due line. |
+| 3.3 | desktop | pass | The cohort learner's limit has passed, so the card shows Time limit ended May 30, 2026. Next due was exercised in 5.1. |
+| 4.1 | desktop | pass | Picker lists only the parts course items. Welcome saved as Days after registration / 3, with Content default, Effective and Set by shown. |
+| 4.2 | desktop | pass | Verified with cohort member qa_deadline_cohort2: Welcome Due Oct 27 2026, no badge. Fresh and late learners are unaffected. |
+| 4.3 | desktop | pass | All four invalid combinations were refused with clear messages and nothing was saved. |
+| 4.4 | desktop | pass | Cohort time limit override of 200 days gives Sep 17 2026 for the cohort learner. The late learner is unchanged. |
+| 5.1 | desktop | pass | Effective deadlines list is correct. A No deadline override drops Welcome from the list and the learner outline. |
+| 5.2 | desktop | pass | Run on qa_deadline_cohort2. Learner override Fixed 2026-10-26 09:00 replaces the cohort override everywhere. |
+| 5.3 | desktop | pass | Deleting the learner override returns Welcome to the cohort layer (Oct 27 2026). |
+| 6 | desktop | pass | "Default has changed" note appears. Override-held dates did not move, and the late learner with no override moved to Jul 27. |
+| 7.1 | desktop | pass | The time-zone label and New York conversion are correct, and the same instants are shown. No label when the setting is off. |
+| 7.2 | desktop | pass | With Pacific/Auckland the cohort learner's What to Expect reads Mar 8, 2026, 12:59 PM. Reset to Africa/Johannesburg afterwards. |
+| 7.3 | desktop | pass | An invalid time zone name is refused, as is a duplicate site row. |
+| 8 | desktop | pass | The learner override followed Key Ideas to its new path after the re-sync. The stale row is also listed. |
+| 9 | desktop | pass | With the default removed, What to Expect is undated. Next due skips to Key Ideas for the fresh learner. |
+| 10 | desktop | pass | No horizontal overflow on the course detail, player or dashboard. No console errors. |
+| 10 | mobile | pass | The stats strip stacks and outline rows wrap the badge and date beneath the title. No overflow. |
+| 1.2 | mobile | pass | The outline opens as a bottom sheet. Every dated row shows its badge and date, and nothing is clipped. |
+| 3.1 | mobile | pass | The dashboard card wraps the time-limit line beside the badge, above Details and the progress bar. |
+| 10 | tablet | pass | The stats strip stays three across and the outline keeps the badge and date on one line. No overflow. |
+| 1.2 | tablet | pass | The outline is hidden behind the "Open course outline" button, as on mobile. |
+| 3.1 | tablet | pass | Two cards per row, with the deadline line wrapping inside the card. |
+
+### Key screenshots
+
+**1.1 and 10 (desktop): cohort and late learner course detail**
+
+![](screenshots/page-2026-10-25T07-21-08-433Z.png)
+
+**1.2 (desktop): player sidebar**
+
+![](screenshots/page-2026-10-25T07-21-21-020Z.png)
+
+**1.4 and 2.1 (desktop): fresh learner outline and Finish by cell**
+
+![](screenshots/page-2026-10-25T07-21-46-384Z.png)
+
+**3.1 (desktop): late learner dashboard**
+
+![](screenshots/page-2026-10-25T07-22-09-302Z.png)
+
+**4.1 (desktop): cohort override inline and picker**
+
+![](screenshots/page-2026-10-25T07-24-06-197Z.png)
+
+**4.3 (desktop): refused combinations**
+
+![](screenshots/page-2026-10-25T07-24-55-362Z.png)
+
+**5.1 (desktop): Effective deadlines in the CourseProgress admin**
+
+![](screenshots/page-2026-10-25T07-25-27-942Z.png)
+
+**5.1 (desktop): fresh learner dashboard after the No deadline override**
+
+![](screenshots/page-2026-10-25T07-25-39-402Z.png)
+
+**7.3 (desktop): site time zone validation**
+
+![](screenshots/page-2026-10-25T07-27-18-103Z.png)
+
+**6 (desktop): "Default has changed" note**
+
+![](screenshots/page-2026-10-25T07-27-42-932Z.png)
+
+**8 (desktop): carry-over course after re-sync**
+
+![](screenshots/page-2026-10-25T07-34-08-684Z.png)
+
+**10 (mobile): course detail**
+
+![](screenshots/page-2026-10-25T07-35-20-664Z.png)
+
+**1.2 (mobile): player, outline closed**
+
+![](screenshots/page-2026-10-25T07-35-26-863Z.png)
+
+**1.2 (mobile): player, outline open**
+
+![](screenshots/page-2026-10-25T07-35-34-476Z.png)
+
+**3.1 (mobile): dashboard**
+
+![](screenshots/page-2026-10-25T07-35-39-620Z.png)
+
+**10 (tablet): course detail**
+
+![](screenshots/page-2026-10-25T07-35-52-836Z.png)
+
+**1.2 (tablet): player**
+
+![](screenshots/page-2026-10-25T07-35-59-308Z.png)
+
+**3.1 (tablet): dashboard**
+
+![](screenshots/page-2026-10-25T07-36-04-673Z.png)
 
 ## Design check
 
 No design states tested.
 
-## B1: Player sidebar squeezes dated item titles to zero width
+## Defects
 
-Manifestations: 1.2 (desktop), 10 (desktop).
-
-![](screenshots/page-2026-10-24T07-16-47-457Z.png)
-
-**Expected:** In the course player's left sidebar outline at 1920x1080, a row with an Overdue badge and a "Due ..." date keeps its title visible (truncated or wrapped), per the test plan's "wrap without pushing the title off screen".
-
-**Actual:** On every row that carries a due date (Welcome, What to Expect, Key Ideas, Knowledge Check, Course Feedback) the title element measures 0px wide and is invisible, and the item icon is clipped. Undated rows show titles. The sidebar is about 256px wide. The mobile and tablet drawers are full width and are fine. The likely location is `freedom_ls/learner_interface/templates/learner_interface/partials/course_minimal_toc.html`, where the due-date partial sits in a shrink-0 container.
-
-## B2: Adding a second site time zone row returns HTTP 500
-
-Manifestations: 7.3 (desktop).
-
-![](screenshots/page-7-3-duplicate.png)
-
-**Expected:** In Admin > Site aware models > Site time zones > Add, when the current site already has a SiteTimeZoneConfig row, the form refuses the save with a uniqueness error and nothing is saved.
-
-**Actual:** Saving raises IntegrityError `duplicate key value violates unique constraint "unique_time_zone_config_per_site"` and the page is a 500. The admin form only has `time_zone` and `show_time_zone_to_learners`. The site is filled on save, so the form never validates the constraint.
-
-## B3: Duplicate deadline override shows the raw constraint name
-
-Manifestations: 4.3 (desktop).
-
-![](screenshots/page-4-3-second-Welcome.png)
-
-**Expected:** Adding a second cohort override for the same collection item shows a readable uniqueness error on the inline.
-
-**Actual:** The inline row error reads "Constraint "unique_cohort_override_per_item" is violated." (the developer-facing constraint name). The learner override inline uses the same pattern of constraint.
-
-## B4: Refused unsaved override row claims the default has changed
-
-Manifestations: 4.3 (desktop).
-
-![](screenshots/page-4-3-second-Welcome.png)
-
-**Expected:** A new override row that failed validation (never saved) shows no "Default has changed" note.
-
-**Actual:** The refused new row's Default changed column reads "Default has changed since this override was set (was nothing, now fixed:2024-01-31)".
+No defects were found, and no bug records were produced.
 
 ## Bug status
 
-| Bug | Status |
-|---|---|
-| B1 | **FIXED** (commit: 10b2038a) — Player sidebar squeezes dated item titles to zero width |
-| B2 | **FIXED** (commit: bfbac976) — Adding a second site time zone row returns HTTP 500 |
-| B3 | **FIXED** (commit: 993014eb) — Duplicate deadline override shows the raw constraint name |
-| B4 | **FIXED** — Refused unsaved override row claims the default has changed (the UUID pk is set before save, so the read-only columns now check `_state.adding`) |
-| — | **FIXED** — order-dependent query budgets in `test_resolver.py` (both budget tests now resolve once before measuring, so the Site and ContentType caches are warm). Full run: 9088 passed. |
-
-Re-verification after each fix, against the live auto-reloaded server:
-
-- B1: every dated row in the desktop player sidebar now has a visible title, with the badge and date wrapping beneath it. The course detail outline still renders on one line. ![](screenshots/page-b1-reverify-player.png) ![](screenshots/page-b1-reverify-detail.png)
-- B2: a second site time zone is refused with "Site time zone with this Site already exists." and the site still has one row. Editing the existing row still saves. ![](screenshots/page-b2-reverify.png)
-- B3: a duplicate override row now reads "This item already has an override here." Saving the existing rows still works. ![](screenshots/page-b3-reverify.png)
+No bugs recorded.
 
 ## General notes
 
-- Test plan dates have aged. The plan was written for a date before March 2026 and run on 24 Oct 2026. The cohort learner (registered 1 Mar 2026) has every relative date, the 90-day limit and the 200-day override limit in the past. So 1.1, 2.1, 3.3, 4.4 and 5.2 show Overdue or "Time limit ended" where the plan expects no badge, Finish by, or Next due. Behaviour was checked against today's date and the precedence rules instead. "Finish by" and "Next due" were exercised with learners registered today. The plan should pin learner registration dates relative to the run date.
-- Test plan corrections:
-  - The course detail URL is `/courses/<slug>/detail/`; `/courses/<slug>/` opens the player.
-  - The plain course is "Functionality Demo - show end with Topic" (slug `functionality-demo-show-end-with-topic`).
-  - The item titles are "What to Expect", "Key Ideas" and "Course Feedback".
-  - §4.2 names the fresh learner, but that learner is not in the cohort, so a second cohort member (`qa_deadline_cohort2`, registered today) was added.
-- Dates follow the browser locale (`Intl.DateTimeFormat(undefined)`). Playwright's default en-US gives "Jan 31, 2024, 11:59 PM"; the run emulated en-GB to match the plan's wording. en-GB writes September as "Sept". Zone labels read "GMT+2", "GMT-4" and "GMT-5" in en-GB rather than SAST or EST.
-- Rebase before QA: the branch was rebased onto origin/main twice, because main moved mid-rebase. Conflicts were in `learner_interface/views.py` (kept main's `get_access_for_request` and the branch's comment), the `test_course_detail.py` imports, and `test_organisation/import_contracts.toml` (main's list plus `freedom_ls.deadlines`). The full test tier gave 9412 passed, and pre-commit was clean. The upstream-change review was unchanged. The rebase helper's front-end check was folded into this QA run's §10 three-viewport pass.
-- Admin cosmetics (not filed as bugs):
-  - Inline override rows are headed "CohortDeadlineOverride object (uuid)" or "LearnerDeadlineOverride object (uuid)" because there is no `__str__`.
-  - Empty Due date and Due time inputs show red warning triangles on valid rows.
-  - The "Set by" email wraps per character in a narrow column.
-  - Django's "Note: You are 2 hours ahead of server time." appears under the due time widget. This may confuse admins, since due times are read in the site zone.
-- The hero-strip Overdue badge in the "Time limit ended" cell renders as a grey uppercase chip on the teal hero, not the red error tone used on the outline and card.
-- The data helper added an uncommitted management command, `freedom_ls/qa_helpers/management/commands/qa_create_deadlines_scenario.py`. It fails mypy with 26 errors and makes the app-map hook flag a qa_helpers to deadlines edge. It was not committed. After the fixes it was moved out of the repo, to the session scratchpad, so it stops breaking the pre-commit and app-map checks.
-- Overriding a relative item with kind "Days after registration" and no time uses end of day, dropping the content default's 17:00 (the Key Ideas carry-over showed 23:59). This is consistent with the override having its own `due_time` field.
+1. The plan's expectations were written for an earlier "today". The cohort learner (Reg 1 Mar 2026) has every date and the 90-day limit in the past on 25 Oct 2026. Items therefore show Overdue and the card shows "Time limit ended", instead of the plan's "no badge", "Finish by" and "Next due" expectations. The behaviour is correct for the date, and the Next due line was verified with other learners. The plan would be more robust if it seeded the cohort learner relative to today.
+2. Plan inconsistency: 4.2 step 1 expects the fresh learner (individual registration) to see the cohort override, which contradicts its own step 3. It was verified with cohort member qa_deadline_cohort2 instead. 5.2 used qa_deadline_cohort2 instead of resetting the cohort learner's completion.
+3. Plan naming drift: the plain course is "Functionality Demo - show end with Topic" (slug functionality-demo-show-end-with-topic). Its items are "What to Expect", "Key Ideas" and "Course Feedback". Course detail lives at /courses/<slug>/detail/ (bare /courses/<slug>/ redirects to the player). The stats strip has no Duration cell for this course.
+4. Dates render in the browser locale (en-US: "Mar 8, 2026, 11:59 PM", hours zero-padded as "05:00 PM"), not the plan's "8 Mar 2026, 23:59".
+5. Admin inline rows head with "CohortDeadlineOverride object (<uuid>)" / "LearnerDeadlineOverride object (<uuid>)". The override models have no readable `__str__`.
+6. The "Default has changed" note shows the internal encoding ("was fixed:2024-01-31, now relative:10"), as the plan specifies.
+7. Admin date/time widgets show Django's "You are 2 hours ahead of server time" warning (server TIME_ZONE UTC). This is pre-existing Django behaviour.
+8. Registered learners still see "Free · open to everyone / Start course" in the course detail enrolment card. This is unrelated to this branch.
+9. After the §8 re-sync the stale Core Concepts Key Ideas row remains (known sync behaviour), so the admin Effective deadlines lists Key Ideas twice.
+10. On the hero stats strip the OVERDUE badge renders in a neutral light tone rather than the error tone used in the outline, presumably for contrast on the teal hero.
+11. qa_deadline_cohort2@email.com, a cohort member from an earlier run, was used for 4.2, 5.2 and 5.3.
+12. §11 clean-up was delegated to the data helper (overrides, completions, carry-over course, zone settings).
 
-status: ok
-reason: 4 bugs — 3 fixed, 1 unresolved; full run after fixes 1 failed / 9417 passed (order-dependent query count); report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented

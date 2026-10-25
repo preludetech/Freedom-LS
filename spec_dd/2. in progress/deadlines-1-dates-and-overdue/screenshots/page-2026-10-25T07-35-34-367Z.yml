@@ -1,0 +1,176 @@
+- generic [ref=f164e1]:
+  - banner [ref=f164e2]:
+    - link [ref=f164e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f164e4]
+    - navigation [ref=f164e5]:
+      - generic [ref=f164e6]:
+        - generic [ref=f164e7]:
+          - link "Messages, none unread" [ref=f164e69] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f164e9]
+          - status:
+            - generic [ref=f164e70]: Messages, none unread
+        - generic [ref=f164e12]:
+          - button "Notifications, 2 new" [ref=f164e13]:
+            - img "notifications" [ref=f164e15]
+          - status:
+            - generic [ref=f164e17]: Notifications, 2 new
+            - generic [aria-hidden] [ref=f164e18]: "2"
+        - button "Open user menu for qa_deadline_solo@email.com" [ref=f164e20] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f164e21]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f164e22]:
+    - generic [ref=f164e24]:
+      - dialog "Course outline" [ref=f164e71]:
+        - generic [ref=f164e74]:
+          - generic [ref=f164e75]:
+            - generic [ref=f164e76]:
+              - generic [aria-hidden] [ref=f164e77]: QD
+              - generic [ref=f164e78]: QA Deadlines Org
+            - paragraph [ref=f164e79]: Course outline
+            - paragraph [ref=f164e80]: Functionality Demo - Course Parts
+            - generic [ref=f164e82]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f164e83]: 0%
+              - generic [ref=f164e84]: 0% complete
+          - navigation "Course outline" [ref=f164e85]:
+            - list [ref=f164e86]:
+              - listitem [ref=f164e87]:
+                - button "1. course_part In progress Getting Started" [expanded] [ref=f164e88] [cursor=pointer]:
+                  - generic [ref=f164e89]:
+                    - generic [ref=f164e90]: "1."
+                    - generic [ref=f164e91]:
+                      - img "course_part" [ref=f164e92]
+                      - generic [ref=f164e94]: In progress
+                    - generic [ref=f164e95]: Getting Started
+                - list [ref=f164e101]:
+                  - listitem [ref=f164e102]:
+                    - generic [ref=f164e103]:
+                      - generic [ref=f164e104]: "1.1"
+                      - generic [ref=f164e105]:
+                        - img "topic" [ref=f164e106]
+                        - generic [ref=f164e108]: In progress
+                      - generic [ref=f164e109]: Welcome
+                    - generic [ref=f164e110]:
+                      - generic [ref=f164e111]: Overdue
+                      - generic [ref=f164e112]:
+                        - text: Due
+                        - time [ref=f164e113]: Jan 31, 2024, 11:59 PM
+                  - listitem [ref=f164e114]:
+                    - generic [ref=f164e115]:
+                      - generic [ref=f164e116]: "1.2"
+                      - generic [ref=f164e117]:
+                        - img "topic" [ref=f164e118]
+                        - generic [ref=f164e120]: Locked
+                      - generic [ref=f164e121]: What to Expect
+                    - generic [ref=f164e122]:
+                      - generic [ref=f164e123]: Overdue
+                      - generic [ref=f164e124]:
+                        - text: Due
+                        - time [ref=f164e125]: Jul 24, 2026, 11:59 PM
+              - listitem [ref=f164e126]:
+                - button "2. course_part Locked Core Concepts" [expanded] [ref=f164e127] [cursor=pointer]:
+                  - generic [ref=f164e128]:
+                    - generic [ref=f164e129]: "2."
+                    - generic [ref=f164e130]:
+                      - img "course_part" [ref=f164e131]
+                      - generic [ref=f164e133]: Locked
+                    - generic [ref=f164e134]: Core Concepts
+                - list [ref=f164e140]:
+                  - listitem [ref=f164e141]:
+                    - generic [ref=f164e142]:
+                      - generic [ref=f164e143]: "2.1"
+                      - generic [ref=f164e144]:
+                        - img "topic" [ref=f164e145]
+                        - generic [ref=f164e147]: Locked
+                      - generic [ref=f164e148]: Key Ideas
+                    - generic [ref=f164e149]:
+                      - generic [ref=f164e150]: Overdue
+                      - generic [ref=f164e151]:
+                        - text: Due
+                        - time [ref=f164e152]: Jul 31, 2026, 05:00 PM
+                  - listitem [ref=f164e153]:
+                    - generic [ref=f164e154]:
+                      - generic [ref=f164e155]: "2.2"
+                      - generic [ref=f164e156]:
+                        - img "topic" [ref=f164e157]
+                        - generic [ref=f164e159]: Locked
+                      - generic [ref=f164e160]: Going Deeper
+                  - listitem [ref=f164e161]:
+                    - generic [ref=f164e162]:
+                      - generic [ref=f164e163]: "2.3"
+                      - generic [ref=f164e164]:
+                        - img "form" [ref=f164e165]
+                        - generic [ref=f164e167]: Locked
+                      - generic [ref=f164e168]: Knowledge Check
+                    - generic [ref=f164e169]:
+                      - generic [ref=f164e170]: Overdue
+                      - generic [ref=f164e171]:
+                        - text: Due
+                        - time [ref=f164e172]: Aug 7, 2026, 11:59 PM
+              - listitem [ref=f164e173]:
+                - button "3. course_part Locked Wrapping Up" [expanded] [ref=f164e174] [cursor=pointer]:
+                  - generic [ref=f164e175]:
+                    - generic [ref=f164e176]: "3."
+                    - generic [ref=f164e177]:
+                      - img "course_part" [ref=f164e178]
+                      - generic [ref=f164e180]: Locked
+                    - generic [ref=f164e181]: Wrapping Up
+                - list [ref=f164e187]:
+                  - listitem [ref=f164e188]:
+                    - generic [ref=f164e189]:
+                      - generic [ref=f164e190]: "3.1"
+                      - generic [ref=f164e191]:
+                        - img "topic" [ref=f164e192]
+                        - generic [ref=f164e194]: Locked
+                      - generic [ref=f164e195]: Summary
+                  - listitem [ref=f164e196]:
+                    - generic [ref=f164e197]:
+                      - generic [ref=f164e198]: "3.2"
+                      - generic [ref=f164e199]:
+                        - img "form" [ref=f164e200]
+                        - generic [ref=f164e202]: Locked
+                      - generic [ref=f164e203]: Course Feedback
+                    - generic [ref=f164e204]:
+                      - generic [ref=f164e205]: Overdue
+                      - generic [ref=f164e206]:
+                        - text: Due
+                        - time [ref=f164e207]: Aug 16, 2026, 11:59 PM
+      - generic [ref=f164e25]:
+        - generic [ref=f164e27]:
+          - generic [ref=f164e28]:
+            - button "Open course outline" [expanded] [ref=f164e29] [cursor=pointer]:
+              - img "table_of_contents" [ref=f164e30]
+            - navigation "Breadcrumb" [ref=f164e33]:
+              - list [ref=f164e34]:
+                - listitem [ref=f164e35]:
+                  - link "Functionality Demo - Course Parts" [ref=f164e36] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-course-parts/detail/
+                - listitem [ref=f164e37]:
+                  - generic [aria-hidden] [ref=f164e38]: ">"
+                  - link "Getting Started" [ref=f164e39] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-course-parts/1/
+                - listitem [ref=f164e40]:
+                  - generic [aria-hidden] [ref=f164e41]: ">"
+                  - generic "Welcome" [ref=f164e42]
+          - generic [ref=f164e44]:
+            - progressbar "Progress for Functionality Demo - Course Parts" [ref=f164e45]: 0%
+            - generic [ref=f164e46]: 0%
+          - heading "Welcome" [level=1] [ref=f164e48]
+        - generic [ref=f164e50]:
+          - generic [ref=f164e51]:
+            - paragraph [ref=f164e52]: "Welcome to the Course Parts demo course. This topic is inside Part 1: \"Getting Started\"."
+            - paragraph [ref=f164e53]: This course demonstrates how content can be organised into parts, which act as chapters or modules within a course. Each part groups related topics and forms together.
+          - button "Next" [ref=f164e56] [cursor=pointer]
+  - contentinfo [ref=f164e60]:
+    - generic [ref=f164e61]:
+      - paragraph [ref=f164e62]: © 2026 FirstClass
+      - navigation "Legal" [ref=f164e63]:
+        - link "Terms and Conditions" [ref=f164e64] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f164e65] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f164e66] [cursor=pointer]: deadlines-1-dates-and-overdue
+  - generic "Show toolbar" [ref=f164e68]: DJDT
