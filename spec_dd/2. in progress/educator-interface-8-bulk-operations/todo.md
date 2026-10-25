@@ -16,8 +16,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: Resend setup email skip line reads '1 is account already set up' (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Import stepper labels run together ('1. Upload2. Preview3. Result') (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Bad-header error names only the first header problem (TDD: failing test first, then fix)
+- [ ] (user) Decide whether a CSV header error should list every problem (unknown, repeated and missing headers) in one message or only the first, then align the spec, the QA plan and base/csv_import.py
 
 ## 4. Documentation and pull request
 
