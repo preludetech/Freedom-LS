@@ -13,10 +13,11 @@ anyone else's. The marker is how the detach receiver tells them apart.
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
@@ -85,6 +86,20 @@ def rules_enabled_for(organisation_id: UUID) -> bool:
     return OrganisationHRSettings._base_manager.filter(
         organisation_id=organisation_id, registration_rules_enabled=True
     ).exists()
+
+
+def switched_on(rules: Iterable[RegistrationRule]) -> Iterator[RegistrationRule]:
+    """The rules whose organisation's switch is on, read once per organisation.
+
+    A learner who moved still holds the old organisation's rows, and that
+    organisation has its own switch.
+    """
+    switches: dict[UUID, bool] = {}
+    for rule in rules:
+        if rule.organisation_id not in switches:
+            switches[rule.organisation_id] = rules_enabled_for(rule.organisation_id)
+        if switches[rule.organisation_id]:
+            yield rule
 
 
 def classify_rule_changes(
@@ -171,14 +186,9 @@ def _hand_overs(
     )
     remaining = set(learner_ids)
     taken: dict[UUID, HandOver] = {}
-    switches: dict[UUID, bool] = {}
-    for other in others:
+    for other in switched_on(others):
         if not remaining:
             break
-        if other.organisation_id not in switches:
-            switches[other.organisation_id] = rules_enabled_for(other.organisation_id)
-        if not switches[other.organisation_id]:
-            continue
         matched = get_rule_kind(other.kind).matching_learners(
             RuleState.from_rule(other)
         )
@@ -281,16 +291,9 @@ def _set_is_active(
     return written
 
 
-def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
-    """Reconcile one rule against everyone it matches or owns."""
-    rule = RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).first()
-    if rule is None or not rules_enabled_for(rule.organisation_id):
-        return EvaluationResult()
-    # The run's start, not its end: an edit made while it runs is not applied
-    # by it, and must still read as unapplied afterwards.
-    started_at = timezone.now()
-    state = RuleState.from_rule(rule)
-    in_scope = sorted(
+def _register_scope(rule: RegistrationRule, state: RuleState) -> list[UUID]:
+    """Every learner the rule matches plus every learner it owns a registration for."""
+    return sorted(
         set(
             get_rule_kind(rule.kind)
             .matching_learners(state)
@@ -298,11 +301,27 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
         )
         | set(
             Learner._base_manager.filter(
-                site_id=site_id,
-                learnercourseregistration__rule_registration__rule_id=rule_id,
+                site_id=rule.site_id,
+                learnercourseregistration__rule_registration__rule_id=rule.pk,
             ).values_list("pk", flat=True)
         )
     )
+
+
+def _register_step(rule: RegistrationRule, learner_ids: list[UUID]) -> EvaluationResult:
+    return apply_rule_changes(
+        rule,
+        classify_rule_changes(rule, RuleState.from_rule(rule), learner_ids=learner_ids),
+    )
+
+
+def _run_in_batches[PK: (UUID, int)](
+    rule_id: UUID,
+    site_id: int,
+    started_at: datetime,
+    in_scope: Sequence[PK],
+    step: Callable[[RegistrationRule, list[PK]], EvaluationResult],
+) -> EvaluationResult:
     result = EvaluationResult()
     for batch in itertools.batched(
         in_scope, config.REGISTRATION_RULE_BATCH_SIZE, strict=False
@@ -318,15 +337,26 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
             )
             if rule is None or not rules_enabled_for(rule.organisation_id):
                 return result
-            changes = classify_rule_changes(
-                rule, RuleState.from_rule(rule), learner_ids=list(batch)
-            )
-            result = result.merged_with(apply_rule_changes(rule, changes))
+            result = result.merged_with(step(rule, list(batch)))
     # update(), not save(): a finished run is not an edit of the rule.
     RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).update(
         last_evaluated_at=started_at
     )
     return result
+
+
+def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
+    """Reconcile one rule against everyone it matches or owns."""
+    rule = RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).first()
+    if rule is None or not rules_enabled_for(rule.organisation_id):
+        return EvaluationResult()
+    # The run's start, not its end: an edit made while it runs is not applied
+    # by it, and must still read as unapplied afterwards.
+    started_at = timezone.now()
+    state = RuleState.from_rule(rule)
+    return _run_in_batches(
+        rule_id, site_id, started_at, _register_scope(rule, state), _register_step
+    )
 
 
 def evaluate_learner(learner_id: UUID, site_id: int) -> EvaluationResult:
@@ -355,14 +385,7 @@ def evaluate_learner(learner_id: UUID, site_id: int) -> EvaluationResult:
             .distinct()
             .order_by("pk")
         )
-        # One switch read per organisation: a learner who moved still holds
-        # the old organisation's rows, and that organisation has its own switch.
-        switches: dict[UUID, bool] = {}
-        for rule in rules:
-            if rule.organisation_id not in switches:
-                switches[rule.organisation_id] = rules_enabled_for(rule.organisation_id)
-            if not switches[rule.organisation_id]:
-                continue
+        for rule in switched_on(rules):
             changes = classify_rule_changes(
                 rule, RuleState.from_rule(rule), learner_ids=[learner_id]
             )
