@@ -114,7 +114,7 @@ from .utils import (
     stamp_course_access_badge,
 )
 
-TIME_LIMIT_TITLE = "Course time limit"
+COURSE_DEADLINE_TITLE = "Course"
 
 
 @dataclass(frozen=True)
@@ -156,7 +156,7 @@ def _card_deadline_line(
     ]
     time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
     if time_limit.due_at is not None:
-        time_limit_deadline = CardDeadline(TIME_LIMIT_TITLE, time_limit.due_at)
+        time_limit_deadline = CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at)
         if is_overdue(time_limit, False, now):
             missed.append(time_limit_deadline)
         elif time_limit.due_at > now:

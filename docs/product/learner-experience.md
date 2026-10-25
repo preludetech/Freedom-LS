@@ -286,8 +286,8 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
 
-- **Course player outline** — "Deadline" and the date under each incomplete item that has one, with a **Missed deadline** mark once it has passed. A completed item shows neither.
-- **Dashboard course card** — one line above the progress bar: the earliest missed deadline with its title and date, else "Next deadline:" with the title and date of the next one. A passed or coming time limit shows as "Course time limit".
+- **Course player outline** — "Deadline" and the date under each incomplete item that has one. Once it has passed, a **Missed deadline** mark takes the place of "Deadline". A completed item shows neither.
+- **Dashboard course card** — one line above the progress bar: the earliest missed deadline with its title and date, else "Next deadline:" with the title and date of the next one. A passed or coming time limit shows as "Course", as in "Missed deadline Course <date>".
 
 The **course detail page** shows no deadlines. It reads the same for everyone, registered or not: where the course has a time limit, a "Time limit" cell gives its length, such as "90 days".
 

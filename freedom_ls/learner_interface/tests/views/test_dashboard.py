@@ -1471,21 +1471,21 @@ def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
     text = _dashboard_text(client)
 
     assert "Missed deadline Second Topic 1 Jan 2020" in text
-    assert "Course time limit" not in text
+    assert "Missed deadline Course " not in text
     assert "Next deadline" not in text
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_names_a_missed_time_limit_course_time_limit(deadline_card):
+def test_card_names_a_missed_time_limit_course(deadline_card):
     course, _topics, _user, _record, client = deadline_card
     course.time_limit_days = 30
     course.save()
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Course time limit 31 Mar 2026" in text
-    assert "Time limit ended" not in text
+    assert "Missed deadline Course 31 Mar 2026" in text
+    assert "time limit" not in text.lower()
     assert "Overdue" not in text
 
 
@@ -1529,7 +1529,7 @@ def test_card_shows_the_earliest_next_deadline_across_topics_and_time_limit(
 
     text = _dashboard_text(client)
 
-    assert "Next deadline: Course time limit 30 May 2026" in text
+    assert "Next deadline: Course 30 May 2026" in text
     assert "Missed deadline" not in text
 
 

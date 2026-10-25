@@ -3912,11 +3912,11 @@ def test_sidebar_shows_a_missed_deadline_for_a_past_due_topic(due_course):
     course, _first, second, _user, client = due_course
     set_due_date(course, second, due_date=date(2020, 1, 1))
 
-    html = _player_html(client, course)
+    text = " ".join(re.sub(r"<[^>]+>", " ", _player_html(client, course)).split())
 
-    assert "Missed deadline" in html
-    assert "1 Jan 2020" in html
-    assert "Overdue" not in html
+    assert re.search(r"Missed deadline 1 Jan 2020", text)
+    assert "Deadline 1 Jan 2020" not in text
+    assert "Overdue" not in text
 
 
 @pytest.mark.django_db
