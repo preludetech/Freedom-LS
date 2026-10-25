@@ -127,7 +127,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden">
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}">
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
