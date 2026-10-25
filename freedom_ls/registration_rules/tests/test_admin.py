@@ -19,7 +19,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
@@ -46,13 +46,14 @@ from freedom_ls.registration_rules.factories import (
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
+    RuleRecommendation,
     RuleRegistration,
 )
 from freedom_ls.registration_rules.tests.helpers import change_payload
 
 
 @pytest.mark.django_db
-def test_add_page_offers_only_name_organisation_and_course(staff_client):
+def test_add_page_offers_only_name_organisation_course_and_outcome(staff_client):
     # Act
     response = staff_client.get(
         reverse("admin:freedom_ls_registration_rules_registrationrule_add")
@@ -64,6 +65,7 @@ def test_add_page_offers_only_name_organisation_and_course(staff_client):
         "name",
         "organisation",
         "course",
+        "outcome",
     ]
     assert response.context["inline_admin_formsets"] == []
 
@@ -77,7 +79,12 @@ def test_saving_a_new_rule_lands_on_its_change_page_disabled(staff_client):
     # Act
     response = staff_client.post(
         reverse("admin:freedom_ls_registration_rules_registrationrule_add"),
-        {"name": "Finance", "organisation": organisation.pk, "course": course.pk},
+        {
+            "name": "Finance",
+            "organisation": organisation.pk,
+            "course": course.pk,
+            "outcome": RegistrationRule.Outcome.REGISTER,
+        },
     )
 
     # Assert
@@ -578,7 +585,12 @@ def _active_learner_ids(course) -> set:
 
 
 def _listed_ids(response, key: str) -> set:
-    return {learner.pk for learner in response.context[key]}
+    """The learners behind the users a preview lists."""
+    return set(
+        Learner.objects.filter(user__in=response.context[key]).values_list(
+            "pk", flat=True
+        )
+    )
 
 
 def _post_change(client, rule, **kwargs):
@@ -722,7 +734,7 @@ def test_a_learner_who_started_the_course_stays_registered_with_that_reason(
 
     # Assert
     assert response.context["stays_registered"] == [
-        (edited_rule.held, "Started the course")
+        (edited_rule.held.user, "Started the course")
     ]
     assert _listed_ids(response, "will_retract") == set()
 
@@ -749,7 +761,7 @@ def test_a_learner_another_enabled_rule_holds_stays_registered_with_its_name(
 
     # Assert
     assert response.context["stays_registered"] == [
-        (edited_rule.held, f"Still matched by {taker.name}")
+        (edited_rule.held.user, f"Still matched by {taker.name}")
     ]
 
 
@@ -1244,3 +1256,255 @@ def test_deleting_a_recommend_rule_through_the_admin_deletes_its_sole_recommenda
         pk=sole.recommendation_id
     ).exists()
     assert RecommendedCourse._base_manager.filter(pk=staff_made.pk).exists()
+
+
+RULE_ADD = "admin:freedom_ls_registration_rules_registrationrule_add"
+
+
+@pytest.mark.django_db
+def test_the_outcome_posted_on_the_add_page_is_saved_on_the_rule(staff_client):
+    # Arrange
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+
+    # Act
+    staff_client.post(
+        reverse(RULE_ADD),
+        {
+            "name": "Finance",
+            "organisation": organisation.pk,
+            "course": course.pk,
+            "outcome": RegistrationRule.Outcome.RECOMMEND,
+        },
+    )
+
+    # Assert
+    rule = RegistrationRule.objects.get(name="Finance")
+    assert rule.outcome == RegistrationRule.Outcome.RECOMMEND
+
+
+@pytest.mark.django_db
+def test_a_post_to_the_change_page_cannot_change_the_outcome(staff_client):
+    # Arrange
+    rule = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.REGISTER)
+
+    # Act
+    staff_client.post(
+        reverse(RULE_CHANGE, args=[rule.pk]),
+        {**change_payload(rule), "outcome": RegistrationRule.Outcome.RECOMMEND},
+    )
+
+    # Assert
+    rule.refresh_from_db()
+    assert rule.outcome == RegistrationRule.Outcome.REGISTER
+
+
+@pytest.fixture
+def recommend_rule(rules_on, department):
+    """A disabled recommend rule on `department`, with one matching user."""
+    rule = RegistrationRuleFactory(
+        organisation=rules_on, outcome=RegistrationRule.Outcome.RECOMMEND
+    )
+    AttributeRuleConditionsFactory(rule=rule, departments=[department])
+    return rule
+
+
+def _recommended_user_ids(course) -> set:
+    return set(
+        RecommendedCourse._base_manager.filter(course=course).values_list(
+            "user_id", flat=True
+        )
+    )
+
+
+def _listed_user_ids(response, key: str) -> set:
+    return {user.pk for user in response.context[key]}
+
+
+def _hold_recommendation(rule, user, *other_rules):
+    recommendation = RecommendedCourseFactory(user=user, course=rule.course)
+    for holder in (rule, *other_rules):
+        RuleRecommendationFactory(rule=holder, recommendation=recommendation)
+    return recommendation
+
+
+@pytest.fixture
+def edited_recommend_rule(rules_on, department):
+    """An enabled recommend rule on `department`: one user it holds, one it will gain."""
+    other = DepartmentFactory(organisation=rules_on)
+    rule = RegistrationRuleFactory(
+        organisation=rules_on,
+        is_enabled=True,
+        outcome=RegistrationRule.Outcome.RECOMMEND,
+    )
+    AttributeRuleConditionsFactory(rule=rule, departments=[department])
+    held = _learner_in(rules_on, department=department).user
+    _hold_recommendation(rule, held)
+    gained = _learner_in(rules_on, department=other).user
+    return SimpleNamespace(rule=rule, other=other, held=held, gained=gained)
+
+
+@pytest.mark.django_db
+def test_the_preview_of_enabling_a_recommend_rule_matches_what_confirming_recommends(
+    staff_client, recommend_rule, department, django_capture_on_commit_callbacks
+):
+    # Arrange
+    _learner_in(recommend_rule.organisation, department=department)
+    _learner_in(recommend_rule.organisation, department=department)
+    _learner_in(recommend_rule.organisation)
+    payload = {"is_enabled": True, "departments": [department.pk]}
+    preview = _post_change(staff_client, recommend_rule, **payload)
+
+    # Act
+    _confirm(
+        staff_client, recommend_rule, django_capture_on_commit_callbacks, **payload
+    )
+
+    # Assert
+    listed = _listed_user_ids(preview, "will_recommend")
+    assert len(listed) == 2
+    assert _recommended_user_ids(recommend_rule.course) == listed
+
+
+@pytest.mark.django_db
+def test_the_preview_of_editing_a_recommend_rule_matches_what_confirming_changes(
+    staff_client, edited_recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    rule = edited_recommend_rule.rule
+    payload = {"is_enabled": True, "departments": [edited_recommend_rule.other.pk]}
+    preview = _post_change(staff_client, rule, **payload)
+    expected = (
+        _recommended_user_ids(rule.course) | _listed_user_ids(preview, "will_recommend")
+    ) - _listed_user_ids(preview, "will_remove")
+
+    # Act
+    _confirm(staff_client, rule, django_capture_on_commit_callbacks, **payload)
+
+    # Assert
+    assert _listed_user_ids(preview, "will_recommend") == {
+        edited_recommend_rule.gained.pk
+    }
+    assert _listed_user_ids(preview, "will_remove") == {edited_recommend_rule.held.pk}
+    assert _recommended_user_ids(rule.course) == expected
+
+
+@pytest.mark.django_db
+def test_the_preview_of_disabling_a_recommend_rule_matches_what_confirming_removes(
+    staff_client, edited_recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    rule = edited_recommend_rule.rule
+    preview = _post_change(staff_client, rule, is_enabled=False)
+
+    # Act
+    _confirm(staff_client, rule, django_capture_on_commit_callbacks, is_enabled=False)
+
+    # Assert
+    assert _listed_user_ids(preview, "will_remove") == {edited_recommend_rule.held.pk}
+    assert _recommended_user_ids(rule.course) == set()
+
+
+@pytest.mark.django_db
+def test_a_recommendation_another_rule_also_holds_stays_with_that_rules_name(
+    staff_client, edited_recommend_rule
+):
+    # Arrange
+    rule = edited_recommend_rule.rule
+    taker = RegistrationRuleFactory(
+        organisation=rule.organisation,
+        course=rule.course,
+        is_enabled=True,
+        outcome=RegistrationRule.Outcome.RECOMMEND,
+    )
+    RuleRecommendation.objects.get(rule=rule).delete()
+    recommendation = RecommendedCourse.objects.get(user=edited_recommend_rule.held)
+    RuleRecommendationFactory(rule=rule, recommendation=recommendation)
+    RuleRecommendationFactory(rule=taker, recommendation=recommendation)
+
+    # Act
+    response = _post_change(
+        staff_client,
+        rule,
+        is_enabled=True,
+        departments=[edited_recommend_rule.other.pk],
+    )
+
+    # Assert
+    assert response.context["stays_recommended"] == [
+        (edited_recommend_rule.held, f"Also recommended by {taker.name}")
+    ]
+    assert _listed_user_ids(response, "will_remove") == set()
+
+
+@pytest.mark.django_db
+def test_a_recommend_rule_preview_has_no_register_heading(
+    staff_client, recommend_rule, department
+):
+    # Arrange
+    _learner_in(recommend_rule.organisation, department=department)
+
+    # Act
+    response = _post_change(
+        staff_client, recommend_rule, is_enabled=True, departments=[department.pk]
+    )
+
+    # Assert
+    content = response.content.decode()
+    assert "Will be recommended (1)" in content
+    assert "Will be registered" not in content
+    assert "Will be retracted" not in content
+
+
+@pytest.mark.django_db
+def test_the_change_page_of_a_recommend_rule_on_an_unpublished_course_warns_in_recommend_terms(
+    staff_client, mock_site_context
+):
+    # Arrange
+    rule = RegistrationRuleFactory(
+        course=CourseFactory(visibility=CourseVisibility.HIDDEN),
+        outcome=RegistrationRule.Outcome.RECOMMEND,
+    )
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert _warnings(response) == [
+        "This course is not published. The rule still recommends it, "
+        "but learners will not see the recommendation until it is."
+    ]
+
+
+@pytest.mark.django_db
+def test_a_user_without_view_learner_permission_sees_recommendation_counts_and_no_names(
+    rule_changer_client, recommend_rule, department
+):
+    # Arrange
+    learner = _learner_in(recommend_rule.organisation, department=department)
+
+    # Act
+    response = _post_change(
+        rule_changer_client,
+        recommend_rule,
+        is_enabled=True,
+        departments=[department.pk],
+    )
+
+    # Assert
+    content = response.content.decode()
+    assert "Will be recommended (1)" in content
+    assert learner.user.email not in content
+
+
+@pytest.mark.django_db
+def test_the_outcome_filter_narrows_the_changelist(staff_client, mock_site_context):
+    # Arrange
+    recommend = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    RegistrationRuleFactory(outcome=RegistrationRule.Outcome.REGISTER)
+
+    # Act
+    response = staff_client.get(reverse(RULE_CHANGELIST), {"outcome": "recommend"})
+
+    # Assert
+    assert list(response.context["cl"].result_list) == [recommend]

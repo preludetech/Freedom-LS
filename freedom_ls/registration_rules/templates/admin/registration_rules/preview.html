@@ -9,7 +9,11 @@
 {% block content %}
     {% component "unfold/components/card.html" %}
         {% component "unfold/components/text.html" %}
-            Saving "{{ rule.name }}" changes who is registered on {{ rule.course }}.
+            {% if recommends %}
+                Saving "{{ rule.name }}" changes who is recommended {{ rule.course }}.
+            {% else %}
+                Saving "{{ rule.name }}" changes who is registered on {{ rule.course }}.
+            {% endif %}
         {% endcomponent %}
 
         {% if switch_is_off %}
@@ -19,30 +23,37 @@
             </p>
         {% endif %}
 
-        <section class="mt-6" id="will-register">
-            <h2 class="font-semibold">Will be registered ({{ will_register|length }})</h2>
-            {% include "admin/registration_rules/preview_list.html" with entries=will_register %}
-        </section>
+        {% if recommends %}
+            <section class="mt-6" id="will-recommend">
+                <h2 class="font-semibold">Will be recommended ({{ will_recommend|length }})</h2>
+                {% include "admin/registration_rules/preview_list.html" with entries=will_recommend %}
+            </section>
 
-        <section class="mt-6" id="will-retract">
-            <h2 class="font-semibold">Will be retracted ({{ will_retract|length }})</h2>
-            {% include "admin/registration_rules/preview_list.html" with entries=will_retract %}
-        </section>
+            <section class="mt-6" id="will-remove">
+                <h2 class="font-semibold">Recommendation will be removed ({{ will_remove|length }})</h2>
+                {% include "admin/registration_rules/preview_list.html" with entries=will_remove %}
+            </section>
 
-        <section class="mt-6" id="stays-registered">
-            <h2 class="font-semibold">Stops matching but stays registered ({{ stays_registered|length }})</h2>
-            {% if stays_registered %}
-                {% if can_view_learners %}
-                    <ul class="mt-2 flex flex-col gap-1">
-                        {% for learner, reason in stays_registered %}
-                            <li>{{ learner.user.display_name }} ({{ learner.user.email }}): {{ reason }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% else %}
-                <p class="mt-2">Nobody</p>
-            {% endif %}
-        </section>
+            <section class="mt-6" id="stays-recommended">
+                <h2 class="font-semibold">Stops matching but stays recommended ({{ stays_recommended|length }})</h2>
+                {% include "admin/registration_rules/preview_reasons.html" with reasons=stays_recommended %}
+            </section>
+        {% else %}
+            <section class="mt-6" id="will-register">
+                <h2 class="font-semibold">Will be registered ({{ will_register|length }})</h2>
+                {% include "admin/registration_rules/preview_list.html" with entries=will_register %}
+            </section>
+
+            <section class="mt-6" id="will-retract">
+                <h2 class="font-semibold">Will be retracted ({{ will_retract|length }})</h2>
+                {% include "admin/registration_rules/preview_list.html" with entries=will_retract %}
+            </section>
+
+            <section class="mt-6" id="stays-registered">
+                <h2 class="font-semibold">Stops matching but stays registered ({{ stays_registered|length }})</h2>
+                {% include "admin/registration_rules/preview_reasons.html" with reasons=stays_registered %}
+            </section>
+        {% endif %}
 
         <form method="post" action="{{ form_url }}" class="flex flex-wrap items-center gap-4 mt-8">
             {% csrf_token %}

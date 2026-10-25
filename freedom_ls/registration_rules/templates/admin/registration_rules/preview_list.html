@@ -1,8 +1,8 @@
 {% if entries %}
     {% if can_view_learners %}
         <ul class="mt-2 flex flex-col gap-1">
-            {% for learner in entries %}
-                <li>{{ learner.user.display_name }} ({{ learner.user.email }})</li>
+            {% for person in entries %}
+                <li>{{ person.display_name }} ({{ person.email }})</li>
             {% endfor %}
         </ul>
     {% endif %}

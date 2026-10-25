@@ -128,3 +128,80 @@ def test_enabling_a_rule_previews_then_registers_the_matching_learner(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_registers(
+    live_server, admin_page: Page, live_server_site
+) -> None:
+    # Arrange
+    organisation = OrganisationFactory(name="Acme Finance")
+    OrganisationHRSettingsFactory(
+        organisation=organisation, registration_rules_enabled=True
+    )
+    course = CourseFactory(title="Budgeting basics")
+    department = DepartmentFactory(organisation=organisation, name="Accounts")
+    learner_user = UserFactory(password=_LOGGED_IN_PASSWORD)
+    EmailAddress.objects.create(
+        user=learner_user, email=learner_user.email, verified=True, primary=True
+    )
+    LearnerHRAttributesFactory(
+        learner__organisation=organisation,
+        learner__user=learner_user,
+        department=department,
+    )
+    page = admin_page
+
+    # Act: staff make an enabled recommend rule and confirm its preview.
+    page.goto(
+        f"{live_server.url}"
+        f"{reverse('admin:freedom_ls_registration_rules_registrationrule_add')}"
+    )
+    page.get_by_label("Name").fill("Accounts team")
+    _pick_autocomplete(page, "organisation", "Acme Finance")
+    _pick_autocomplete(page, "course", "Budgeting basics")
+    page.get_by_label("Recommend", exact=True).check()
+    page.get_by_role("button", name="Save", exact=True).first.click()
+
+    page.locator("#id_attribute_conditions-0-departments").select_option(
+        label="Accounts"
+    )
+    page.get_by_label("Is enabled").check()
+    page.get_by_role("button", name="Save", exact=True).first.click()
+
+    # Assert
+    expect(page.get_by_text("Will be recommended (1)")).to_be_visible()
+    expect(page.get_by_text(str(learner_user.email))).to_be_visible()
+
+    # Act
+    page.get_by_role("button", name="Confirm and save").click()
+    expect(page).to_have_url(
+        f"{live_server.url}"
+        f"{reverse('admin:freedom_ls_registration_rules_registrationrule_changelist')}"
+    )
+
+    # Act: the learner opens the dashboard.
+    page.context.clear_cookies()
+    _login_via_ui(page, live_server, str(learner_user.email), _LOGGED_IN_PASSWORD)
+    dashboard = f"{live_server.url}{reverse('learner_interface:dashboard')}"
+    page.goto(dashboard)
+
+    # Assert
+    expect(
+        page.locator("#recommended-courses").get_by_text(course.title)
+    ).to_be_visible()
+
+    # Act: the learner registers for the course.
+    page.goto(
+        f"{live_server.url}"
+        f"{reverse('learner_interface:initiate_course_access', args=[course.slug])}"
+    )
+    page.goto(dashboard)
+
+    # Assert
+    expect(page.get_by_text(course.title).first).to_be_visible()
+    expect(
+        page.locator("#recommended-courses").get_by_text(course.title)
+    ).to_have_count(0)
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)

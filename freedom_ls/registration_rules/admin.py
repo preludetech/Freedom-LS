@@ -8,6 +8,7 @@ from unfold.admin import StackedInline
 from django.contrib import admin, messages
 from django.contrib.admin.options import csrf_protect_m
 from django.contrib.admin.utils import unquote
+from django.contrib.auth import get_user_model
 from django.db.models import (
     BooleanField,
     Exists,
@@ -18,7 +19,7 @@ from django.db.models import (
     QuerySet,
 )
 from django.db.models.fields.related import ManyToManyField
-from django.forms import ModelMultipleChoiceField, all_valid
+from django.forms import ModelForm, ModelMultipleChoiceField, all_valid
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -35,6 +36,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.registration_rules.evaluation import (
+    classify_recommendation_changes,
     classify_rule_changes,
     rules_enabled_for,
 )
@@ -135,14 +137,16 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         "name",
         "organisation",
         "course",
+        "outcome",
         "is_enabled",
         "uses_inactive_entries",
         "change_not_yet_applied",
         "last_evaluated_at",
     ]
-    list_filter = ["organisation", "is_enabled", "course"]
+    list_filter = ["organisation", "outcome", "is_enabled", "course"]
     search_fields = ["name"]
     autocomplete_fields = ["organisation", "course"]
+    radio_fields = {"outcome": admin.VERTICAL}
     readonly_fields = ["last_evaluated_at", "created_at", "updated_at"]
 
     def get_inlines(
@@ -214,10 +218,16 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
                 f"{', '.join(inactive)}. New learners cannot be given them."
             )
         if obj.course.visibility != CourseVisibility.PUBLISHED:
-            warnings.append(
-                "This course is not published. The rule still registers learners, "
-                "who will not see it until it is."
-            )
+            if obj.outcome == RegistrationRule.Outcome.RECOMMEND:
+                warnings.append(
+                    "This course is not published. The rule still recommends it, "
+                    "but learners will not see the recommendation until it is."
+                )
+            else:
+                warnings.append(
+                    "This course is not published. The rule still registers learners, "
+                    "who will not see it until it is."
+                )
         if getattr(obj, "change_not_yet_applied", False):
             if not rules_enabled_for(obj.organisation_id):
                 warnings.append(
@@ -328,46 +338,23 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
                 else kind.conditions_from_cleaned_data(cleaned)
             ),
         )
-        changes = classify_rule_changes(saved, submitted)
         # The lists name people. Counts are enough for someone allowed to run
         # rules but not to look at learners.
         can_view_learners = request.user.has_perm(
             "freedom_ls_learner_management.view_learner"
         )
-        learner_ids = {
-            *changes.register,
-            *changes.reactivate,
-            *changes.retract,
-            *changes.kept_started,
-            *(handed.learner_id for handed in changes.hand_over),
-        }
-        learners = (
-            {
-                learner.pk: learner
-                for learner in Learner.objects.filter(
-                    pk__in=learner_ids
-                ).select_related("user")
-            }
-            if can_view_learners
-            else {}
-        )
+        if saved.outcome == RegistrationRule.Outcome.RECOMMEND:
+            outcome_context = self._recommend_preview_context(
+                saved, submitted, can_view_learners
+            )
+        else:
+            outcome_context = self._register_preview_context(
+                saved, submitted, can_view_learners
+            )
         context = {
             "rule": saved,
             "can_view_learners": can_view_learners,
-            "will_register": [
-                learners.get(pk) for pk in (*changes.register, *changes.reactivate)
-            ],
-            "will_retract": [learners.get(pk) for pk in changes.retract],
-            "stays_registered": [
-                *(
-                    (learners.get(pk), "Started the course")
-                    for pk in changes.kept_started
-                ),
-                *(
-                    (learners.get(h.learner_id), f"Still matched by {h.rule_name}")
-                    for h in changes.hand_over
-                ),
-            ],
+            **outcome_context,
             "switch_is_off": not rules_enabled_for(saved.organisation_id),
             "posted": [
                 (name, value)
@@ -382,18 +369,102 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
             request, "admin/registration_rules/preview.html", context
         )
 
+    def _register_preview_context(
+        self, saved: RegistrationRule, submitted: RuleState, can_view_learners: bool
+    ) -> dict[str, object]:
+        changes = classify_rule_changes(saved, submitted)
+        learner_ids = {
+            *changes.register,
+            *changes.reactivate,
+            *changes.retract,
+            *changes.kept_started,
+            *(handed.learner_id for handed in changes.hand_over),
+        }
+        users = (
+            {
+                learner.pk: learner.user
+                for learner in Learner.objects.filter(
+                    pk__in=learner_ids
+                ).select_related("user")
+            }
+            if can_view_learners
+            else {}
+        )
+        return {
+            "recommends": False,
+            "will_register": [
+                users.get(pk) for pk in (*changes.register, *changes.reactivate)
+            ],
+            "will_retract": [users.get(pk) for pk in changes.retract],
+            "stays_registered": [
+                *((users.get(pk), "Started the course") for pk in changes.kept_started),
+                *(
+                    (users.get(h.learner_id), f"Still matched by {h.rule_name}")
+                    for h in changes.hand_over
+                ),
+            ],
+        }
+
+    def _recommend_preview_context(
+        self, saved: RegistrationRule, submitted: RuleState, can_view_learners: bool
+    ) -> dict[str, object]:
+        changes = classify_recommendation_changes(saved, submitted)
+        user_ids = {
+            *changes.recommend,
+            *changes.remove,
+            *(shared.user_id for shared in changes.drop_rule_recommendation),
+        }
+        users = (
+            {user.pk: user for user in get_user_model().objects.filter(pk__in=user_ids)}
+            if can_view_learners
+            else {}
+        )
+        return {
+            "recommends": True,
+            "will_recommend": [users.get(pk) for pk in changes.recommend],
+            "will_remove": [users.get(pk) for pk in changes.remove],
+            "stays_recommended": [
+                (
+                    users.get(shared.user_id),
+                    f"Also recommended by {', '.join(shared.other_rule_names)}",
+                )
+                for shared in changes.drop_rule_recommendation
+            ],
+        }
+
+    def get_form(
+        self,
+        request: HttpRequest,
+        obj: RegistrationRule | None = None,
+        change: bool = False,
+        **kwargs: object,
+    ) -> type[ModelForm]:
+        kwargs.setdefault(
+            "help_texts",
+            {
+                "outcome": (
+                    "Register: matching learners are registered. Recommend: the "
+                    "course appears in their Recommended courses and they choose "
+                    "whether to register."
+                )
+            },
+        )
+        form: type[ModelForm] = super().get_form(request, obj, change=change, **kwargs)
+        return form
+
     def get_fields(
         self, request: HttpRequest, obj: RegistrationRule | None = None
     ) -> list[str]:
-        # The add page takes the three things a rule cannot change afterwards.
+        # The add page takes the four things a rule cannot change afterwards.
         # Conditions and the switch wait for the change page, where the
         # organisation is known and a preview can be shown.
         if obj is None:
-            return ["name", "organisation", "course"]
+            return ["name", "organisation", "course", "outcome"]
         return [
             "name",
             "organisation",
             "course",
+            "outcome",
             "is_enabled",
             "last_evaluated_at",
             "created_at",
@@ -404,9 +475,14 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: RegistrationRule | None = None
     ) -> list[str]:
         readonly = list(super().get_readonly_fields(request, obj))
-        # Changing either would silently retract one group and register
-        # another. Staff disable the rule and make a new one instead.
-        return readonly if obj is None else [*readonly, "organisation", "course"]
+        # Changing any of them would silently retract one group and register
+        # another, or turn registrations into recommendations. Staff disable
+        # the rule and make a new one instead.
+        return (
+            readonly
+            if obj is None
+            else [*readonly, "organisation", "course", "outcome"]
+        )
 
     def response_add(
         self,
