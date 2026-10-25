@@ -239,6 +239,18 @@ class StubClassifyingBulkAction(StubBulkAction):
         return super().apply(user, obj, cleaned_data)
 
 
+class StubArchiveBulkAction(StubBulkAction):
+    label = "Archive"
+    action_name = "stub_archive_bulk"
+
+
+class StubExportBulkAction(StubBulkAction):
+    """A third permitted action, so the selection bar has a "More actions" menu."""
+
+    label = "Export"
+    action_name = "stub_export_bulk"
+
+
 class StubForbiddenBulkAction(BulkAction):
     label = "Forbidden bulk action"
     action_name = "stub_forbidden_bulk"
@@ -440,7 +452,7 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
 
     @classmethod
     def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
-        return [StubBulkAction()]
+        return [StubBulkAction(), StubArchiveBulkAction(), StubExportBulkAction()]
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:

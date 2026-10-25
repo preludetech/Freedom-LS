@@ -317,6 +317,33 @@ def test_data_table_interaction(
             assert icon_width == 16
 
 
+def test_more_actions_menu_stays_inside_the_viewport(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The selection bar sits at the bottom, and its "More actions" menu used
+    to open downward, off the screen, leaving its last item out of reach."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+
+    for viewport in (QA_VIEWPORTS[0], QA_VIEWPORTS[2]):
+        page.set_viewport_size(viewport)
+        page.goto(list_url)
+        page.locator("#stubs-table input[name='keys']:visible").first.check()
+        page.get_by_role("button", name="More actions").click()
+        last_item = page.get_by_role("menuitem").last
+        expect(last_item).to_be_visible()
+        box = last_item.bounding_box()
+        assert box is not None
+        assert box["y"] >= 0, f"menu item above the viewport at {viewport}"
+        assert box["y"] + box["height"] <= viewport["height"], (
+            f"menu item below the viewport at {viewport}"
+        )
+
+
 def test_select_all_matching_spans_every_page(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
