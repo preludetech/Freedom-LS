@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterator
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Protocol
 from urllib.parse import urlsplit
 
@@ -805,8 +805,13 @@ def _handle_bulk_action(
     count = queryset.count()
     if count == 0:
         return error_response(selection, count, "Nothing selected")
-    if selection.mode == "keys" and count > action.max_rows:
-        message = f"{count} selected; the limit is {action.max_rows}"
+    in_background = action.runs_in_background(count)
+    # A whole filtered table is bounded only when a task does the work.
+    if count > action.max_rows and not (
+        selection.mode == "all_matching" and in_background
+    ):
+        what = "matching" if selection.mode == "all_matching" else "selected"
+        message = f"{count} {what}; the limit is {action.max_rows}"
         return error_response(selection, count, message)
 
     form = BulkConfirmForm(request.POST)
@@ -847,49 +852,49 @@ def _handle_bulk_action(
                 ),
             )
 
-    in_background = action.runs_in_background(count)
     classified: dict[str, BulkOutcome] | None = (
-        None
-        if in_background
-        else action.classify_all(request.user, queryset, cleaned_data)
+        None if in_background else action.classify_all(request, queryset, cleaned_data)
     )
     changed_count = (
         count
         if classified is None
         else sum(1 for item in classified.values() if item.status == "changed")
     )
-    wording = (
-        _background_wording(queryset, count)
-        if in_background
-        else action.confirmation_wording(request, queryset, classified, cleaned_data)
-    )
-    confirmation = _BulkConfirmation(
-        count=count,
-        noun=noun,
-        action=action,
-        action_url=action_url,
-        selection=selection,
-        error="",
-        status=200,
-        wording=wording,
-        expected_count=count,
-        confirm_disabled=changed_count == 0,
-        form=picker,
-    )
+
+    def confirmation(status: int = 200, notice: str = "") -> _BulkConfirmation:
+        # The wording's cost grows with the selection, so it is built only
+        # for a response that shows it; a confirmed run never does.
+        wording = (
+            _background_wording(queryset, count)
+            if in_background
+            else action.confirmation_wording(
+                request, queryset, classified, cleaned_data
+            )
+        )
+        return _BulkConfirmation(
+            count=count,
+            noun=noun,
+            action=action,
+            action_url=action_url,
+            selection=selection,
+            error="",
+            status=status,
+            wording=wording,
+            notice=notice,
+            expected_count=count,
+            confirm_disabled=changed_count == 0,
+            form=picker,
+        )
 
     if not confirmed:
-        return _confirmation_response(request, confirmation)
+        return _confirmation_response(request, confirmation())
     if expected_count != count:
         return _confirmation_response(
             request,
-            replace(
-                confirmation,
-                status=422,
-                notice="The selection changed since you opened this.",
-            ),
+            confirmation(422, "The selection changed since you opened this."),
         )
     if changed_count == 0:
-        return _confirmation_response(request, replace(confirmation, status=422))
+        return _confirmation_response(request, confirmation(422))
 
     selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
     outcome = action.execute(request, queryset, cleaned_data)

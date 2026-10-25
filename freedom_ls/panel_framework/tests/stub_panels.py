@@ -215,7 +215,7 @@ class StubClassifyingBulkAction(StubBulkAction):
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:

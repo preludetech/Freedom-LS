@@ -14,6 +14,7 @@ from django.http import Http404
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.educator_interface.bulk_runs import (
+    ACTION_UNAVAILABLE,
     NO_LONGER_EXISTS,
     notify_run_finished,
     run_bulk_action,
@@ -169,6 +170,39 @@ def test_the_task_tells_the_requester_where_a_failed_run_stopped(
     assert _notifications_for(run) == [
         (run.requested_by_id, "Deactivate stopped after 0 of 1 learner.")
     ]
+
+
+def test_a_run_of_an_unregistered_action_fails_and_tells_the_requester(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+):
+    """An action renamed or removed while a run was queued used to raise before
+    the run was marked, leaving it queued forever and nobody told."""
+    run = _run_over(_learner())
+    run.action_name = "renamed_away"
+    run.save(update_fields=["action_name"])
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+
+    run.refresh_from_db()
+    assert (run.status, run.error_message) == (RunStatus.FAILED, ACTION_UNAVAILABLE)
+    assert run.finished_at is not None
+    assert _notifications_for(run) == [
+        (run.requested_by_id, "Renamed away stopped after 0 of 1 row.")
+    ]
+
+
+def test_the_summary_of_a_done_run_survives_its_action_being_unregistered(
+    mock_site_context: Site,
+):
+    run = _run_over(_learner())
+    run.action_name = "renamed_away"
+    run.status = RunStatus.DONE
+    run.result = BulkResult(
+        counts=[BulkCount("changed", "", 1)], entries=[], left_out=0
+    ).to_json()
+
+    assert run_summary(run) == "Renamed away finished: 1 row changed."
 
 
 def test_an_inline_run_raises_no_notification(

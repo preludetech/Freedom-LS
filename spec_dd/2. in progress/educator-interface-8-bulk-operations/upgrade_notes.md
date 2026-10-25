@@ -38,7 +38,12 @@ project that defines its own `BulkAction` subclass:
   override where you can.
 - `Selection.query_string` is gone. The `all_matching` selection mode is now resolved: it means
   every row the table's current search and filters match, across every page, minus `excluded`. An
-  action that only expected `keys` mode can now receive a whole filtered table.
+  action that only expected `keys` mode can now receive a whole filtered table, bounded by
+  `max_rows` unless the action's `runs_in_background(count)` says a task does the work.
+- `classify_all(user, queryset, cleaned_data)` is now `classify_all(request, queryset,
+  cleaned_data)`: it only ever runs inside a request, so it gets the whole request rather than
+  the user alone. `apply(user, obj, cleaned_data)` is unchanged, since a background task calls it
+  with no request.
 
 `educator_interface/interface.html` now only extends the new `educator_interface/_shell.html`; the
 sidebar, content header and breadcrumbs blocks moved there. A project that overrides

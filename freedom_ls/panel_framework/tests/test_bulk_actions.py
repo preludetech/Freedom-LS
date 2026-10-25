@@ -176,22 +176,45 @@ def test_all_matching_never_leaves_the_panels_scope(mock_site_context: Site) -> 
     assert list(queryset) == [kept]
 
 
-def test_all_matching_has_no_row_cap(mock_site_context: Site) -> None:
-    class _LowLimitBulkAction(StubBulkAction):
-        max_rows = 2
-
-    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+def _post_all_matching(action: BulkAction) -> HttpResponse:
     request = RequestFactory().post(
         "/stubs/__actions/stub_bulk", {"mode": "all_matching"}, HTTP_HX_REQUEST="true"
     )
     request.user = make_staff_user()
     panel = _stub_panel(request)
-
-    response = _handle_action(
-        request, _ResolvedAction(_LowLimitBulkAction(), panel.ctx), panel
-    )
-
+    response = _handle_action(request, _ResolvedAction(action, panel.ctx), panel)
     assert isinstance(response, HttpResponse)
+    return response
+
+
+def test_all_matching_over_max_rows_is_422_when_it_would_run_inline(
+    mock_site_context: Site,
+) -> None:
+    class _LowLimitBulkAction(StubBulkAction):
+        max_rows = 2
+
+    for i in range(3):
+        make_stub(name=f"row-{i}")
+
+    response = _post_all_matching(_LowLimitBulkAction())
+
+    assert response.status_code == 422
+    assert "3 matching; the limit is 2" in response.content.decode()
+
+
+def test_all_matching_over_max_rows_is_allowed_when_it_runs_in_background(
+    mock_site_context: Site,
+) -> None:
+    class _LowLimitBackgroundAction(StubBulkAction):
+        max_rows = 2
+
+        def runs_in_background(self, count: int) -> bool:
+            return True
+
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
+
+    response = _post_all_matching(_LowLimitBackgroundAction())
+
     assert response.status_code == 200
     assert f"This will affect {len(stubs)} stub models." in response.content.decode()
 

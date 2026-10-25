@@ -629,6 +629,60 @@ def courses_losing_access(
     return [course for course in _courses_granted_by(removing) if course.pk not in kept]
 
 
+def courses_lost_by_any(learners: QuerySet[Learner], removing: Cohort) -> list[Course]:
+    """Courses at least one of `learners` stops reaching when `removing` stops
+    covering them, ordered by title. The rule per learner is
+    `courses_losing_access`'s; every learner's other registrations are read
+    in a fixed number of queries, so a bulk confirmation costs the same for
+    one learner as for hundreds."""
+    ids = list(learners.values_list("pk", flat=True))
+    granted = list(_courses_granted_by(removing))
+    if not ids or not granted:
+        return []
+    granted_ids = [course.pk for course in granted]
+    reached: set[tuple[UUID, UUID]] = set(
+        LearnerCourseRegistration.objects.filter(
+            learner_id__in=ids, course_id__in=granted_ids, is_active=True
+        ).values_list("learner_id", "course_id")
+    )
+    memberships: list[tuple[UUID, UUID]] = list(
+        CohortMembership.objects.filter(learner_id__in=ids)
+        .exclude(cohort=removing)
+        .values_list("learner_id", "cohort_id")
+    )
+    courses_by_cohort: dict[UUID, set[UUID]] = {}
+    for cohort_id, course_id in (
+        access_granting_cohort_registrations()
+        .filter(
+            cohort_id__in={cohort_id for _, cohort_id in memberships},
+            course_id__in=granted_ids,
+        )
+        .values_list("cohort_id", "course_id")
+    ):
+        courses_by_cohort.setdefault(cohort_id, set()).add(course_id)
+    for learner_id, cohort_id in memberships:
+        reached.update(
+            (learner_id, course_id)
+            for course_id in courses_by_cohort.get(cohort_id, ())
+        )
+    return [
+        course
+        for course in granted
+        if any((learner_id, course.pk) not in reached for learner_id in ids)
+    ]
+
+
+def learners_keeping_access_count(learners: QuerySet[Learner], course: Course) -> int:
+    """How many of `learners` still reach `course` through a cohort they
+    belong to, in one query. The per-learner answer is `other_grants_for`."""
+    granting = access_granting_cohort_registrations().filter(course=course)
+    return (
+        learners.filter(cohortmembership__cohort_id__in=granting.values("cohort_id"))
+        .distinct()
+        .count()
+    )
+
+
 def courses_gaining_access(learner: Learner, adding: Cohort) -> list[Course]:
     """Courses `adding` grants that the learner does not reach today, ordered
     by title. A course already held by an active individual registration or

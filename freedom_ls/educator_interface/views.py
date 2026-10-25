@@ -89,12 +89,17 @@ from freedom_ls.educator_interface.actions import (
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
-    bulk_action_for,
     bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
+    find_bulk_action,
     grantable_roles_for,
     learner_state_actions,
+)
+from freedom_ls.educator_interface.bulk_runs import (
+    run_label,
+    run_summary,
+    stopped_after,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -2100,28 +2105,34 @@ def partial_bulk_action_run_status(
         target=run,
         site_id=scoped.organisation.site_id,
     )
-    action = bulk_action_for(run.table_key, run.action_name)
-    model = action.noun_model
-    noun = str(model._meta.verbose_name_plural)
+    action = find_bulk_action(run.table_key, run.action_name)
     # Not the run's keys: a background run can cover thousands of rows,
     # too many for a header, and only a quick view reads the ids.
     refresh: dict[str, list[str]] = {
         event: [] for event in _list_refresh_events(run.table_key)
     }
-    if run.status == RunStatus.DONE and run.result is not None:
+    if action is not None and run.status == RunStatus.DONE and run.result is not None:
+        model = action.noun_model
         result = BulkResult.from_json(run.result)
         return bulk_result_fragment(
             request,
             action,
             result,
-            noun,
+            str(model._meta.verbose_name_plural),
             f"{count_noun(model, result.changed)} changed.",
             refresh,
         )
+    # A run whose action has since been renamed or removed has no result
+    # template to render, so its stored outcome is summarised instead.
+    summary = (
+        f"Stopped {stopped_after(run, action)}."
+        if run.status == RunStatus.FAILED
+        else run_summary(run)
+    )
     response = render(
         request,
         "educator_interface/modal/bulk_run_stopped.html",
-        {"action": action, "run": run, "total": len(run.keys), "noun": noun},
+        {"label": run_label(run, action), "run": run, "summary": summary},
     )
     response["HX-Trigger"] = build_hx_trigger(refresh)
     return response
@@ -2423,7 +2434,6 @@ def _import_status_context(
         "noun": "rows",
         "total": total,
         "percentage": learner_import.processed_count * 100 // total if total else 100,
-        "progress_text": f"Added {learner_import.processed_count} of {total} rows",
         "status_url": _import_url(
             "learner_import_status", scoped.organisation, import_id
         ),

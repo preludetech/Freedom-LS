@@ -40,8 +40,14 @@ def _check_headers(
     accepted_headers: Sequence[str],
     required_headers: Sequence[str],
 ) -> None:
-    """Reject the headers with one message naming every problem."""
-    unknown = [header for header in headers if header not in accepted_headers]
+    """Reject the headers with one message naming every problem. An empty
+    header is named by its position, since "Unknown column(s): ." says
+    nothing."""
+    unknown = [
+        header or f"unnamed column {position}"
+        for position, header in enumerate(headers, start=1)
+        if header not in accepted_headers
+    ]
     repeated = sorted({header for header in headers if headers.count(header) > 1})
     missing = [header for header in required_headers if header not in headers]
     problems = [
@@ -98,6 +104,10 @@ def parse_csv(
     rows: list[dict[str, str]] = []
     try:
         headers = [header.strip().casefold() for header in next(reader, [])]
+        # Spreadsheets end the header line with a delimiter for an empty last
+        # column; the cells under it are ignored with it.
+        while headers and not headers[-1]:
+            headers.pop()
         _check_headers(headers, accepted_headers, required_headers)
         for cells in reader:
             if not any(cell.strip() for cell in cells):

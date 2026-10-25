@@ -93,6 +93,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkResult
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
@@ -3958,6 +3959,30 @@ def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
 
 
 @pytest.mark.django_db
+def test_a_finished_run_of_an_unregistered_action_answers_its_summary(
+    run_world: SimpleNamespace,
+):
+    """The poll used to look the action up unguarded and 500 once it was
+    renamed or removed."""
+    run_world.run.action_name = "renamed_away"
+    run_world.run.status = RunStatus.DONE
+    run_world.run.result = BulkResult(
+        counts=[BulkCount("changed", "", 2)], entries=[], left_out=0
+    ).to_json()
+    run_world.run.save()
+
+    response = _poll(run_world)
+
+    text = " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+    assert response.status_code == 200
+    assert "Renamed away" in text
+    assert "Renamed away finished: 2 rows changed." in text
+    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
+
+
+@pytest.mark.django_db
 def test_a_finished_run_marks_its_notification_read(
     run_world: SimpleNamespace, mock_site_context: Site
 ):
@@ -4754,7 +4779,7 @@ def test_confirming_above_the_threshold_queues_one_task_and_the_result_page_poll
     assert status.get("hx-get") == _import_url(
         import_world.organisation, "learner_import_status", learner_import
     )
-    assert "Added 0 of 10 rows" in status.text_content()
+    assert "Waiting to start." in status.text_content()
     assert status.cssselect("progress, [role=progressbar]")
 
 
