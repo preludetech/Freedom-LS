@@ -20,7 +20,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.educator_interface.reporting import gathered_figures
 from freedom_ls.learner_management.factories import (
@@ -35,6 +35,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.reports.report_data import ATTENTION_LIST_MAX
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)

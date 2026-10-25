@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.test import override_settings
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -31,6 +31,7 @@ from freedom_ls.reports.screen_cache import (
     cached_cohort_report,
 )
 from freedom_ls.reports.tests.helpers import topic_progress
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)
