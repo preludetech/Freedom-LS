@@ -1,0 +1,27 @@
+{% extends "educator_interface/standalone_page.html" %}
+
+{% block standalone_main %}
+    {% include "educator_interface/partials/import_stepper.html" with step=3 %}
+    <c-panel-card title="Result">
+        <div role="status">
+            {% if learner_import.status == "done" %}
+                <p class="font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}. {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.</p>
+                <ul class="mt-2 list-disc pl-5 text-sm">
+                    {% for item in label_counts %}
+                        <li>{{ item.name }}: {{ item.count }}</li>
+                    {% endfor %}
+                </ul>
+                <p class="mt-2 text-sm">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</p>
+            {% elif learner_import.status == "failed" %}
+                <p class="font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</p>
+                {% if learner_import.error_message %}<p class="mt-2 text-sm">{{ learner_import.error_message }}</p>{% endif %}
+            {% else %}
+                <p>Added {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</p>
+            {% endif %}
+        </div>
+        <p class="mt-4 space-x-4">
+            <a href="{{ learners_url }}">Back to learners</a>
+            <a href="{{ upload_url }}">Import another file</a>
+        </p>
+    </c-panel-card>
+{% endblock standalone_main %}

@@ -19,11 +19,15 @@ from freedom_ls.base.app_settings import AppSettings, Setting
 
 class LearnerManagementConfig(AppSettings):
     BULK_BACKGROUND_THRESHOLD: int
+    LEARNER_IMPORT_MAX_ROWS: int
 
     declared_settings = {
         # A bulk action over more objects than this runs in a background task
         # instead of inside the request.
         "BULK_BACKGROUND_THRESHOLD": Setting(default=250),
+        # The most data rows a learner import file may hold; a larger file is
+        # rejected whole rather than truncated.
+        "LEARNER_IMPORT_MAX_ROWS": Setting(default=2000),
     }
 
 

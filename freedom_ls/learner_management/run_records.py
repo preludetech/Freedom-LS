@@ -8,11 +8,15 @@ from contextlib import contextmanager
 
 from django.utils import timezone
 
-from freedom_ls.learner_management.models import BulkActionRun, RunStatus
+from freedom_ls.learner_management.models import (
+    BulkActionRun,
+    LearnerImport,
+    RunStatus,
+)
 
 
 @contextmanager
-def record_run(record: BulkActionRun) -> Iterator[None]:
+def record_run(record: BulkActionRun | LearnerImport) -> Iterator[None]:
     """Mark the record running, then done or failed, stamping the timestamps.
 
     A try/finally rather than a broad except: the body's own exception still
@@ -29,4 +33,8 @@ def record_run(record: BulkActionRun) -> Iterator[None]:
         if record.status == RunStatus.RUNNING:
             record.status, record.error_message = RunStatus.FAILED, "Unexpected error."
         record.finished_at = timezone.now()
-        record.save(update_fields=["status", "error_message", "finished_at", "result"])
+        fields = ["status", "error_message", "finished_at"]
+        # Only a bulk run carries a result; an import's outcome lives on its rows.
+        if isinstance(record, BulkActionRun):
+            fields.append("result")
+        record.save(update_fields=fields)

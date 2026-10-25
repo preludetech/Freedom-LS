@@ -21,6 +21,10 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
+class LearnerImportForm(forms.Form):
+    file = forms.FileField(label="CSV file")
+
+
 class BulkTargetPickerForm(forms.Form):
     """Picks the one target a bulk action applies to, from every target the
     user may act on in the organisation. `field_name` is "cohort" or "course"."""
