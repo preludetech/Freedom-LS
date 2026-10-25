@@ -4,7 +4,7 @@ import pytest
 
 from django.contrib.sites.models import Site
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import (
     RUN_LABEL_LENGTH,
@@ -15,6 +15,7 @@ from freedom_ls.audit_log.writer import (
     subject_key,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
