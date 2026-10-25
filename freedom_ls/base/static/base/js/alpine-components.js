@@ -179,7 +179,7 @@ document.addEventListener("alpine:init", () => {
 
                     if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
                     if (x < 8) x = 8;
-                    if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight;
+                    if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight - 8;
 
                     panel.style.top = y + "px";
                     panel.style.left = x + "px";
@@ -187,7 +187,9 @@ document.addEventListener("alpine:init", () => {
             }
         },
         init() {
-            this.$watch("open", () => this.positionMenu());
+            // The panel is still display:none when the watcher fires, so it has no
+            // height to flip against until the next tick.
+            this.$watch("open", () => this.$nextTick(() => this.positionMenu()));
             // Options that hx-get into a target outside this dropdown (e.g.
             // the organisation switcher, whose options swap #main-content
             // while the dropdown itself lives in the sidebar) leave the
