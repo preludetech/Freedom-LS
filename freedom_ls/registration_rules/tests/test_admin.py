@@ -120,6 +120,7 @@ def test_organisation_and_course_are_read_only_on_the_change_page(staff_client):
 REGISTRATION_CHANGE = (
     "admin:freedom_ls_learner_management_learnercourseregistration_change"
 )
+LINK_CLASS = 'class="text-primary-600 dark:text-primary-500"'
 RULE_CHANGE = "admin:freedom_ls_registration_rules_registrationrule_change"
 RULE_DELETE = "admin:freedom_ls_registration_rules_registrationrule_delete"
 RULE_CHANGELIST = "admin:freedom_ls_registration_rules_registrationrule_changelist"
@@ -139,7 +140,7 @@ def test_a_rule_made_registration_shows_its_rule_as_a_link(staff_client):
     assert response.status_code == 200
     assert "registration_rule" in response.context["adminform"].readonly_fields
     assert (
-        f'<a href="{reverse(RULE_CHANGE, args=[link.rule.pk])}">{link.rule.name}</a>'
+        f'<a href="{reverse(RULE_CHANGE, args=[link.rule.pk])}" {LINK_CLASS}>{link.rule.name}</a>'
         in response.content.decode()
     )
 
@@ -1610,7 +1611,7 @@ def test_the_change_page_links_each_rule_for_a_user_who_may_view_rules(
 
     # Assert
     assert (
-        f'<a href="{reverse(RULE_CHANGE, args=[made.rule.pk])}">Alpha</a>'
+        f'<a href="{reverse(RULE_CHANGE, args=[made.rule.pk])}" {LINK_CLASS}>Alpha</a>'
         in response.content.decode()
     )
 

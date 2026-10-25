@@ -575,7 +575,7 @@ def registration_rule(
     if link.rule is None:
         return f"{link.rule_name} (deleted)"
     return format_html(
-        '<a href="{}">{}</a>',
+        '<a href="{}" class="text-primary-600 dark:text-primary-500">{}</a>',
         reverse(
             "admin:freedom_ls_registration_rules_registrationrule_change",
             args=[link.rule.pk],
@@ -666,7 +666,7 @@ def registration_rules_display(
             return "Registration rule"
         return format_html_join(
             ", ",
-            '<a href="{}">{}</a>',
+            '<a href="{}" class="text-primary-600 dark:text-primary-500">{}</a>',
             (
                 (
                     reverse(
