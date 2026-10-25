@@ -7,6 +7,7 @@ supplies the schedule (cron, a Kubernetes CronJob, or similar).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import timedelta
 from typing import NamedTuple
 
@@ -21,6 +22,13 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.deployment.config import config
+from freedom_ls.learner_management.config import config as learner_management_config
+from freedom_ls.learner_management.models import (
+    BulkActionRun,
+    ImportStatus,
+    LearnerImport,
+    RunStatus,
+)
 from freedom_ls.reports.models import GeneratedReport
 
 
@@ -211,6 +219,92 @@ def mark_orphaned_running_reports_failed(max_age_seconds: int) -> OrphanReapResu
     return OrphanReapResult(marked_failed=marked_failed, left_running=left_running)
 
 
+# Learner imports and bulk action runs share the lifecycle fields the sweeps use
+# (status, created_at, started_at, finished_at, error_message), so each sweep is
+# written once and takes the model class.
+type BulkRecordModel = type[BulkActionRun] | type[LearnerImport]
+
+BULK_RECORD_MODELS: tuple[BulkRecordModel, ...] = (BulkActionRun, LearnerImport)
+
+STALE_PREVIEW_MAX_AGE = timedelta(hours=24)
+
+
+def delete_stale_previews() -> int:
+    """Delete learner imports left in PREVIEWED for 24 hours, and their rows.
+
+    A preview is only a stage before the reader confirms; one nobody confirmed
+    holds nothing worth keeping. Runs have no preview stage, so only imports are
+    swept.
+
+    _base_manager, not the site-aware `objects`: housekeeping has no request to
+    derive a site from, and every site's rows are in scope.
+    """
+    cutoff = timezone.now() - STALE_PREVIEW_MAX_AGE
+    _, deleted_per_model = LearnerImport._base_manager.filter(
+        status=ImportStatus.PREVIEWED, created_at__lte=cutoff
+    ).delete()
+    return deleted_per_model.get(LearnerImport._meta.label, 0)
+
+
+def mark_unpicked_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> int:
+    """Close every QUEUED record older than max_age_seconds as FAILED.
+
+    A record still QUEUED this long after it was created means no worker ever took
+    its task. The task is not requeued; the reader starts the action again.
+    Returns how many rows were closed.
+    """
+    now = timezone.now()
+    return model._base_manager.filter(
+        status=RunStatus.QUEUED,
+        created_at__lte=now - timedelta(seconds=max_age_seconds),
+    ).update(
+        status=RunStatus.FAILED,
+        error_message=(
+            f"The background task was never picked up within {max_age_seconds}s "
+            f"of being queued, so no worker is consuming. fls_run_housekeeping "
+            f"marked this record failed to say so. Start the action again."
+        ),
+        finished_at=now,
+    )
+
+
+def mark_orphaned_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> int:
+    """Close every RUNNING record started over max_age_seconds ago as FAILED.
+
+    started_at is how long the worker has held the record. A NULL started_at never
+    satisfies the comparison, which is right for a record no worker has begun.
+    The work is not run again: part of it may already have been applied.
+    Returns how many rows were closed.
+    """
+    now = timezone.now()
+    return model._base_manager.filter(
+        status=RunStatus.RUNNING,
+        started_at__lte=now - timedelta(seconds=max_age_seconds),
+    ).update(
+        status=RunStatus.FAILED,
+        error_message=(
+            f"Still running {max_age_seconds}s after it started, so the worker "
+            f"running it died without finishing. fls_run_housekeeping marked this "
+            f"record failed to say so. The work was not run again; check what was "
+            f"applied before starting it again."
+        ),
+        finished_at=now,
+    )
+
+
+def delete_finished_records(model: BulkRecordModel, days: int) -> int:
+    """Delete records that finished more than `days` days ago.
+
+    Records closed by the sweeps above carry a finished_at like any other
+    terminal record, so they are deleted here in their turn. A record that has
+    not finished has a NULL finished_at and is never matched.
+    Returns how many rows were deleted.
+    """
+    cutoff = timezone.now() - timedelta(days=days)
+    _, deleted_per_model = model._base_manager.filter(finished_at__lte=cutoff).delete()
+    return deleted_per_model.get(model._meta.label, 0)
+
+
 # The two ways a sweep can fail without being a bug in this command: the command
 # it delegates to reports failure, or the database refuses the work. Anything else
 # is a bug and propagates, where the management-command machinery turns it into a
@@ -302,6 +396,54 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
                 f"{reaped_reports.left_running} orphaned cohort report(s) could not "
                 f"be closed and are still RUNNING."
             )
+
+    try:
+        previews_deleted = delete_stale_previews()
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"stale import preview sweep failed: {exc}")
+    else:
+        if previews_deleted:
+            notes.append(f"Deleted {previews_deleted} unconfirmed learner import(s).")
+
+    # One try per sweep and model, so a failure on one table leaves the rest run.
+    bulk_sweeps: tuple[tuple[str, str, Callable[[BulkRecordModel], int]], ...] = (
+        (
+            "unpicked bulk record sweep",
+            "Closed {count} {name}(s) never picked up by a worker.",
+            lambda model: mark_unpicked_runs_failed(
+                model, config.HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS
+            ),
+        ),
+        (
+            "orphaned bulk record sweep",
+            "Closed {count} {name}(s) orphaned in RUNNING.",
+            lambda model: mark_orphaned_runs_failed(
+                model, config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS
+            ),
+        ),
+        (
+            "finished bulk record sweep",
+            "Deleted {count} finished {name}(s) past retention.",
+            lambda model: delete_finished_records(
+                model, learner_management_config.BULK_RECORD_RETENTION_DAYS
+            ),
+        ),
+    )
+    for failure_label, note_template, sweep in bulk_sweeps:
+        for model in BULK_RECORD_MODELS:
+            try:
+                count = sweep(model)
+            except DatabaseError as exc:
+                sentry_sdk.capture_exception(exc)
+                sweep_failures.append(
+                    f"{failure_label} failed for {model._meta.label}: {exc}"
+                )
+            else:
+                if count:
+                    notes.append(
+                        note_template.format(count=count, name=model._meta.verbose_name)
+                    )
 
     return HousekeepingOutcome(
         sweep_failures=sweep_failures, findings=findings, notes=notes
