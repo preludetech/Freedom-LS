@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
@@ -168,10 +169,17 @@ class ContentCollectionItemInline(GenericTabularInline):
 
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
-    list_display = ["title", "subtitle", "visibility"]
-    list_filter = ("visibility", ContentTagListFilter)
+    list_display = ["title", "subtitle", "visibility", "organisation_names"]
+    list_filter = ("visibility", "organisations", ContentTagListFilter)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug", "visibility", "dashboard_category", "categories")
+    readonly_fields = (
+        "slug",
+        "visibility",
+        "dashboard_category",
+        "categories",
+        "organisations",
+        "audience",
+    )
     inlines = [ContentCollectionItemInline]
 
     fieldsets = (
@@ -188,6 +196,8 @@ class CourseAdmin(SiteAwareModelAdmin):
                     "visibility",
                     "dashboard_category",
                     "categories",
+                    "organisations",
+                    "audience",
                     "estimated_duration",
                 )
             },
@@ -209,6 +219,14 @@ class CourseAdmin(SiteAwareModelAdmin):
         ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Course]:
+        courses: QuerySet[Course] = super().get_queryset(request)
+        return courses.prefetch_related("organisations")
+
+    @admin.display(description="Organisations")
+    def organisation_names(self, obj: Course) -> str:
+        return ", ".join(org.name for org in obj.organisations.all())
 
     def has_delete_permission(
         self, request: HttpRequest, obj: Course | None = None

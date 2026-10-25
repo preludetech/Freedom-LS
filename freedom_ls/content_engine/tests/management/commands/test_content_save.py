@@ -46,6 +46,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form, FormPage
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
@@ -2944,3 +2945,92 @@ def test_a_topic_file_with_due_fields_saves_without_a_topic_column(
     topic = save_topic(item, mock_site_context, temp_file.parent)
 
     assert topic.title == "Dated"
+
+
+def _write_organisation_course(repo_dir: Path, extra_frontmatter: str = "") -> Path:
+    course_dir = repo_dir / "org_course"
+    course_dir.mkdir(exist_ok=True)
+    course_file = course_dir / "course.md"
+    course_file.write_text(f"""---
+content_type: COURSE
+title: Org Course
+uuid: 70000000-0000-0000-0000-000000000001
+{extra_frontmatter}---
+""")
+    return course_file
+
+
+@pytest.mark.django_db
+def test_organisation_slugs_resolve_to_the_sites_organisations(site, mock_site_context):
+    alpha = OrganisationFactory(name="Alpha", slug="alpha")
+    beta = OrganisationFactory(name="Beta", slug="beta")
+    OrganisationFactory(name="Gamma", slug="gamma")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\n  - beta\naudience: public\n"
+        )
+
+        save_content_to_db(repo_dir, site.name)
+
+    course = Course.objects.get(site=site, title="Org Course")
+    assert set(course.organisations.all()) == {alpha, beta}
+    assert course.audience == "public"
+
+
+@pytest.mark.django_db
+def test_unknown_organisation_slug_fails_naming_slug_file_and_valid_slugs(
+    site, mock_site_context
+):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(repo_dir, "organisations:\n  - nope\n")
+
+        with pytest.raises(ValueError, match="Unknown organisations") as excinfo:
+            save_content_to_db(repo_dir, site.name)
+
+    message = str(excinfo.value)
+    assert "nope" in message
+    assert "course.md" in message
+    assert "alpha" in message
+
+
+@pytest.mark.django_db
+def test_reloading_with_the_organisations_key_removed_clears_the_links(
+    site, mock_site_context
+):
+    OrganisationFactory(name="Alpha", slug="alpha")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        course_file = _write_organisation_course(
+            repo_dir, "organisations:\n  - alpha\n"
+        )
+        save_content_to_db(repo_dir, site.name)
+        course = Course.objects.get(site=site, title="Org Course")
+        assert course.organisations.count() == 1
+
+        course_file.write_text("""---
+content_type: COURSE
+title: Org Course
+uuid: 70000000-0000-0000-0000-000000000001
+---
+""")
+        save_content_to_db(repo_dir, site.name)
+
+    assert course.organisations.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_course_without_the_keys_defaults_to_organisation_learners(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        _write_organisation_course(repo_dir)
+
+        save_content_to_db(repo_dir, site.name)
+
+    course = Course.objects.get(site=site, title="Org Course")
+    assert course.audience == "organisation_learners"
+    assert course.organisations.count() == 0

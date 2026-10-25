@@ -639,3 +639,22 @@ def test_a_topic_file_carries_due_date_fields() -> None:
     )
 
     assert topic.due_date == date(2026, 3, 14)
+
+
+def test_course_audience_defaults_to_organisation_learners():
+    course = Course.model_validate(_course())
+
+    assert course.audience == "organisation_learners"
+    assert course.organisations == []
+
+
+def test_course_audience_and_organisations_validate():
+    course = Course.model_validate(_course(audience="public", organisations=["acme"]))
+
+    assert course.audience == "public"
+    assert course.organisations == ["acme"]
+
+
+def test_course_audience_outside_the_choices_is_rejected():
+    with pytest.raises(ValidationError):
+        Course.model_validate(_course(audience="everyone"))

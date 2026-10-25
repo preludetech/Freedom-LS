@@ -38,6 +38,7 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
 
 CONTENT_ADMINS = [
     (TopicAdmin, Topic),
@@ -321,3 +322,36 @@ def test_the_article_changelist_lists_the_article(staff_client) -> None:
     )
 
     assert "Why we teach in public" in response.content.decode()
+
+
+@pytest.mark.django_db
+class TestCourseAdminOrganisations:
+    def test_organisation_names_joins_the_names_of_the_courses_organisations(
+        self, mock_site_context
+    ) -> None:
+        course = CourseFactory()
+        course.organisations.set(
+            [
+                OrganisationFactory(name="Alpha"),
+                OrganisationFactory(name="Beta"),
+            ]
+        )
+
+        names = CourseAdmin(Course, admin.site).organisation_names(course)
+
+        assert sorted(names.split(", ")) == ["Alpha", "Beta"]
+
+    def test_organisation_names_is_empty_for_a_course_with_none(
+        self, mock_site_context
+    ) -> None:
+        course = CourseFactory()
+
+        assert CourseAdmin(Course, admin.site).organisation_names(course) == ""
+
+    @pytest.mark.parametrize("field", ["organisations", "audience"])
+    def test_organisations_and_audience_are_read_only(
+        self, field: str, mock_site_context
+    ) -> None:
+        course_admin = CourseAdmin(Course, admin.site)
+
+        assert field in course_admin.get_readonly_fields(request=None)

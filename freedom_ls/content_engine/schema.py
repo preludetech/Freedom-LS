@@ -84,6 +84,13 @@ class DifficultyLevel(StrEnum):
     ALL_LEVELS = "all_levels"
 
 
+class CourseAudience(StrEnum):
+    """Who may see an organisation course (mirrors models.CourseAudience)."""
+
+    ORGANISATION_LEARNERS = "organisation_learners"
+    PUBLIC = "public"
+
+
 class CourseVisibility(StrEnum):
     """Course visibility lifecycle state (mirrors models.CourseVisibility)."""
 
@@ -372,6 +379,15 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "Slug of the one category the dashboard places this course in. "
             "Required when categories has more than one entry."
         ),
+    )
+
+    organisations: list[str] = Field(
+        default_factory=list,
+        description="Slugs of the organisations this course belongs to, resolved per site at load.",
+    )
+    audience: CourseAudience = Field(
+        CourseAudience.ORGANISATION_LEARNERS,
+        description="Who may see an organisation course: its organisations' learners, or everyone.",
     )
 
     icon: str | None = Field(

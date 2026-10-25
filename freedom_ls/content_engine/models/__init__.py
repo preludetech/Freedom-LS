@@ -2,6 +2,7 @@ from .articles import Article, ArticleVisibility
 from .courses import (
     ContentCollectionItem,
     Course,
+    CourseAudience,
     CourseCategory,
     CoursePart,
     CourseVisibility,
@@ -17,6 +18,7 @@ __all__ = [
     "ArticleVisibility",
     "ContentCollectionItem",
     "Course",
+    "CourseAudience",
     "CourseCategory",
     "CoursePart",
     "CourseVisibility",

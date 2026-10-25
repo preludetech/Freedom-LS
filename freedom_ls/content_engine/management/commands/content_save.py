@@ -61,6 +61,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionOption,
 )
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
 logger = logging.getLogger(__name__)
@@ -580,9 +581,10 @@ def save_course(item, site, base_path):
     # The access_config written here still carries the author's raw
     # application_form path; the binding pass in save_content_to_db resolves it
     # into the Course.application_form foreign key once every Form is saved.
+    organisations = _resolve_course_organisations(item, site)
     # Written on every load, None included, so that deleting `time_limit_days`
     # from the file removes the limit; a None in the dump would be dropped.
-    return save_with_uuid(
+    course = save_with_uuid(
         Course,
         item,
         site,
@@ -593,11 +595,35 @@ def save_course(item, site, base_path):
             "dashboard_category",
             "price",
             "time_limit_days",
+            "organisations",
         },
         dashboard_category=dashboard_category,
         time_limit_days=item.time_limit_days,
         **price_fields,
     )
+    # A replace, like categories: an absent key clears the link, so the file
+    # stays the single source of which organisations a course belongs to.
+    course.organisations.set(organisations)
+    return course
+
+
+def _resolve_course_organisations(item, site) -> list[Organisation]:
+    """Return the site's organisations named by the course, or raise naming the bad slugs."""
+    if not item.organisations:
+        return []
+    found = list(
+        Organisation._base_manager.filter(site=site, slug__in=item.organisations)
+    )
+    unknown = sorted(set(item.organisations) - {o.slug for o in found})
+    if unknown:
+        valid = sorted(
+            Organisation._base_manager.filter(site=site).values_list("slug", flat=True)
+        )
+        raise ValueError(
+            f"Unknown organisations {unknown} in {item.file_path} on site "
+            f"'{site.name}'. Valid organisation slugs: {valid}"
+        )
+    return found
 
 
 def save_course_part(item, site, base_path):

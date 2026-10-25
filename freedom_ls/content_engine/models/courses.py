@@ -138,6 +138,13 @@ class CourseCategory(TitledContent):
         return self.title
 
 
+class CourseAudience(models.TextChoices):
+    """Who may see an organisation course."""
+
+    ORGANISATION_LEARNERS = "organisation_learners", _("Organisation learners")
+    PUBLIC = "public", _("Public")
+
+
 class Course(MarkdownContent, TitledContent):
     """Course - contains an ordered list of child content."""
 
@@ -154,6 +161,16 @@ class Course(MarkdownContent, TitledContent):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="dashboard_courses",
+    )
+    # Which organisations the course belongs to. Empty means the course is
+    # not an organisation course and `audience` has no effect.
+    organisations = models.ManyToManyField(
+        "freedom_ls_organisations.Organisation", blank=True, related_name="courses"
+    )
+    audience = models.CharField(
+        max_length=32,
+        choices=CourseAudience.choices,
+        default=CourseAudience.ORGANISATION_LEARNERS,
     )
     # BACKEND-PRIVATE: no view, template, or utility may read or branch on access_config
     # directly. All access decisions are made exclusively by the active course-access backend
