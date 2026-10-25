@@ -2620,7 +2620,7 @@ class LearnerStateBulkAction(LearnerBulkAction):
 class DeactivateLearnersBulkAction(LearnerStateBulkAction):
     label = "Deactivate"
     action_name = "deactivate"
-    variant = "destructive"
+    variant = "error"
     target_state = False
     unchanged_reason = "already inactive"
 
@@ -2764,7 +2764,7 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
 class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
     label = "Unregister from course"
     action_name = "unregister_from_course"
-    variant = "destructive"
+    variant = "error"
     capability = CHANGE_LEARNERCOURSEREGISTRATION
     unchanged_reason = "not registered individually"
 
@@ -3013,7 +3013,7 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
 class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
     label = "Unregister from course"
     action_name = "unregister"
-    variant = "destructive"
+    variant = "error"
     capability = CHANGE_COHORTCOURSEREGISTRATION
     unchanged_reason = "not registered"
 
@@ -3075,7 +3075,7 @@ class CohortStateBulkAction(CohortBulkAction):
 class DeactivateCohortsBulkAction(CohortStateBulkAction):
     label = "Deactivate"
     action_name = "deactivate"
-    variant = "destructive"
+    variant = "error"
     target_state = False
     unchanged_reason = "already inactive"
 

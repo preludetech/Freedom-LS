@@ -5524,6 +5524,22 @@ def _bulk_text(response) -> str:
 
 
 @pytest.mark.django_db
+def test_bulk_deactivate_confirm_button_uses_a_defined_destructive_button_variant(
+    staff_client: Client,
+):
+    """The confirm button rendered the undefined `btn-destructive` class, so it looked like plain text."""
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation)]
+
+    response = _bulk_post(staff_client, organisation, "deactivate", learners)
+
+    buttons = lxml.html.fromstring(response.content.decode()).cssselect(
+        "button[type=submit]"
+    )
+    assert any("btn-error" in (button.get("class") or "") for button in buttons)
+
+
+@pytest.mark.django_db
 def test_bulk_deactivate_confirmation_says_what_changes_and_what_is_skipped(
     staff_client: Client,
 ):
