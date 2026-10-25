@@ -12,7 +12,6 @@ from django.core.management import call_command
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -33,6 +32,7 @@ from freedom_ls.deadlines.tests.helpers import (
 )
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request
 
 PART_A = "01. A"

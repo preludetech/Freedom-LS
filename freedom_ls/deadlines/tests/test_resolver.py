@@ -8,7 +8,7 @@ import time_machine
 
 from django.conf import settings
 
-from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
@@ -44,6 +44,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.tests.factories import SiteFactory
 
 JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 AMSTERDAM = ZoneInfo("Europe/Amsterdam")
