@@ -219,7 +219,13 @@ def test_a_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "name", ["learner_import_preview", "learner_import_result", "learner_import_errors"]
+    "name",
+    [
+        "learner_import_preview",
+        "learner_import_result",
+        "learner_import_errors",
+        "learner_import_status",
+    ],
 )
 def test_a_learner_import_route_404s_for_a_user_with_no_access_to_the_organisation(
     mock_site_context, logged_in_client, name: str

@@ -26,6 +26,9 @@
                 <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" data-error-download>Download the {{ error_count }} error row{{ error_count|pluralize }}</c-button>
             </p>
         {% endif %}
+        {% if add_count and in_background %}
+            <p class="mt-4">This import runs in the background. The result page will show progress.</p>
+        {% endif %}
         {% if add_count %}
             <form method="post" class="mt-4">
                 {% csrf_token %}

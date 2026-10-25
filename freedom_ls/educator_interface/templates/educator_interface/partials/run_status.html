@@ -5,7 +5,10 @@ template. While the run is queued or running the element polls itself; once it
 finishes the same element renders without the trigger and polling stops.
 
 Context: run (status, processed_count, error_message), total, percentage,
-status_url, noun, back_url; when done, result_template and what it renders.
+status_url, noun; when done, result_template and what it renders. Optional:
+progress_text replaces the default progress sentence; back_url adds a link back
+to the table; result_on_failure renders result_template when the run failed too,
+for a result body that explains the failure itself.
 {% endcomment %}
 {% if run.status == "queued" or run.status == "running" %}
     <div id="run-status"
@@ -14,7 +17,9 @@ status_url, noun, back_url; when done, result_template and what it renders.
          hx-trigger="every 2s"
          hx-target="this"
          hx-swap="outerHTML">
-        {% if run.status == "queued" %}
+        {% if progress_text %}
+            <p>{{ progress_text }}</p>
+        {% elif run.status == "queued" %}
             <p>Waiting to start.</p>
         {% else %}
             <p>{{ run.processed_count }} of {{ total }} {{ noun }} processed.</p>
@@ -23,12 +28,12 @@ status_url, noun, back_url; when done, result_template and what it renders.
     </div>
 {% else %}
     <div id="run-status" role="status">
-        {% if run.status == "done" %}
+        {% if run.status == "done" or result_on_failure %}
             {% include result_template %}
         {% else %}
             <p>Stopped after {{ run.processed_count }} of {{ total }} {{ noun }}.</p>
             {% if run.error_message %}<p class="mt-2 text-sm">{{ run.error_message }}</p>{% endif %}
         {% endif %}
-        <a href="{{ back_url }}" class="mt-4 inline-block">Back to {{ noun }}</a>
+        {% if back_url %}<a href="{{ back_url }}" class="mt-4 inline-block">Back to {{ noun }}</a>{% endif %}
     </div>
 {% endif %}
