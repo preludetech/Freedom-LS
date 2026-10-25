@@ -170,6 +170,7 @@ class TestReportTab:
             "courses",
             "report",
             "settings",
+            "history",
         ]
 
     def test_a_viewer_without_the_download_capability_gets_the_body_and_no_downloads_panel(
