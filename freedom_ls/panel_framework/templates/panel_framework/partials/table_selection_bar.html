@@ -14,25 +14,30 @@ reach below a long card list.
         assistive technology has a live region to watch before the count changes.
         {% endcomment %}
         <span role="status" class="text-sm">
-            <span x-show="hasSelection">
+            <span x-show="running" x-cloak><span x-text="runLabel"></span> is running…</span>
+            <span x-show="showSelectionCount">
                 <span x-text="count"></span> selected
                 · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
             </span>
         </span>
         <span x-show="showPagePrompt" x-cloak x-transition class="text-sm">
             All {{ page_obj|length }} on this page are selected.
-            <button type="button" class="font-medium text-primary underline" x-on:click="selectAllMatching">
+            <button type="button" class="font-medium text-primary underline" x-on:click="selectAllMatching" x-bind:disabled="running">
                 Select all {{ page_obj.paginator.count }} matching
             </button>
         </span>
         <span x-show="showMatchingPrompt" x-cloak x-transition class="text-sm">
             All <span x-text="count"></span> matching are selected.
-            <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection">
+            <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection" x-bind:disabled="running">
                 Clear selection
             </button>
         </span>
         <span x-ref="excluded" hidden></span>
-        <div x-show="hasSelection" class="flex flex-wrap items-center gap-4">
+        {% comment %}
+        A disabled fieldset disables every button inside it, the "More
+        actions" trigger included, while a background run is going.
+        {% endcomment %}
+        <fieldset x-show="showActions" x-bind:disabled="running" class="flex min-w-0 flex-wrap items-center gap-4">
             {% querystring request.GET as qs %}
             {% for entry in bulk_actions|slice:":2" %}
                 <c-button type="submit"
@@ -41,12 +46,21 @@ reach below a long card list.
                           hx-post="{{ entry.url }}{{ qs }}"
                           hx-target="#app-modal-body"
                           hx-swap="innerHTML">
-                    {{ entry.action.label }}
+                    <span class="inline-flex items-center gap-2">
+                        <span x-show="spinsForRun" data-run-actions="{{ entry.action.action_name }}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+                        {{ entry.action.label }}
+                    </span>
                 </c-button>
             {% endfor %}
             {% with more=bulk_actions|slice:"2:" %}
                 {% if more %}
-                    <c-dropdown-menu trigger="More actions" aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
+                    <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
+                        <c-slot name="trigger">
+                            <span class="inline-flex items-center gap-2">
+                                <span x-show="spinsForRun" data-run-actions="{% for entry in more %}{{ entry.action.action_name }} {% endfor %}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+                                More actions
+                            </span>
+                        </c-slot>
                         {% for entry in more %}
                             <c-button dropdown="true"
                                       type="submit"
@@ -70,7 +84,7 @@ reach below a long card list.
                     </noscript>
                 {% endif %}
             {% endwith %}
-        </div>
+        </fieldset>
     </div>
     <c-pagination :page_obj="page_obj"
                   :base_url="base_url"

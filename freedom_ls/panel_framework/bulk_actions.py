@@ -139,10 +139,11 @@ class BulkResult:
 
 @dataclass(frozen=True)
 class BackgroundRun:
-    """Returned by `execute` when the work continues out of the request; the
-    reader follows `result_url` to watch it."""
+    """Returned by `execute` when the work continues out of the request. The
+    page polls `status_url`, which answers 204 until the run finishes and
+    then the result fragment."""
 
-    result_url: str
+    status_url: str
 
 
 class BulkAction:

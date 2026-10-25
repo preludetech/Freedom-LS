@@ -13,6 +13,7 @@ import json
 
 CLOSE_MODAL_EVENT = "closeModal"
 INSTANCE_TITLE_EVENT = "instanceTitleChanged"
+BULK_RUN_STARTED_EVENT = "bulkRunStarted"
 
 
 def build_hx_trigger(
@@ -20,17 +21,20 @@ def build_hx_trigger(
     *,
     close_modal: bool = False,
     title: str | None = None,
+    signals: dict[str, dict[str, str]] | None = None,
 ) -> str:
     """The JSON body of an HX-Trigger header for a panel action response.
 
     Every action builds its header through this function, so the client
     only ever has to parse one shape: each domain event maps to
     ``{"ids": [...]}``, and the two framework signals are opted into by
-    keyword rather than appearing in `events`.
+    keyword rather than appearing in `events`. `signals` carries any other
+    framework signal with its own detail, such as `bulkRunStarted`.
     """
     payload: dict[str, object] = {name: {"ids": ids} for name, ids in events.items()}
     if close_modal:
         payload[CLOSE_MODAL_EVENT] = {}
     if title is not None:
         payload[INSTANCE_TITLE_EVENT] = {"title": title}
+    payload.update(signals or {})
     return json.dumps(payload)

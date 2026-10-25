@@ -192,7 +192,7 @@ def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("name", ["bulk_action_run", "bulk_action_run_status"])
+@pytest.mark.parametrize("name", ["bulk_action_run_status"])
 def test_a_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
     mock_site_context, logged_in_client, name: str
 ):

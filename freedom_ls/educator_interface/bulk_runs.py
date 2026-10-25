@@ -7,9 +7,11 @@ from collections.abc import Callable
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
+from freedom_ls.comms.notify import raise_notification
 from freedom_ls.educator_interface.actions import bulk_action_for
 from freedom_ls.learner_management.models import BulkActionRun, RunStatus
 from freedom_ls.learner_management.run_records import record_run
+from freedom_ls.panel_framework.actions import count_noun
 from freedom_ls.panel_framework.bulk_actions import (
     RESULT_ENTRY_LIMIT,
     BulkCount,
@@ -82,3 +84,44 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
         result = with_missing_keys(result, run.keys, queryset, NO_LONGER_EXISTS)
         run.result, run.status = result.to_json(), RunStatus.DONE
     return result
+
+
+def run_summary(run: BulkActionRun) -> str:
+    """One sentence on how a finished run went, for someone who was not
+    watching it."""
+    action = bulk_action_for(run.table_key, run.action_name)
+    model = action.noun_model
+    if run.status == RunStatus.FAILED or run.result is None:
+        return (
+            f"{action.label} stopped after {run.processed_count} of "
+            f"{count_noun(model, len(run.keys))}."
+        )
+    result = BulkResult.from_json(run.result)
+    parts = [f"{count_noun(model, result.changed)} changed"]
+    for status in ("skipped", "failed"):
+        count = sum(item.count for item in result.counts if item.status == status)
+        if count:
+            parts.append(f"{count} {status}")
+    return f"{action.label} finished: {', '.join(parts)}."
+
+
+def notify_run_finished(run_id: str, site_id: int) -> None:
+    """Tell the requester a background run is over, however it ended."""
+    run = (
+        BulkActionRun._base_manager.filter(
+            site_id=site_id,
+            pk=run_id,
+            status__in=[RunStatus.DONE, RunStatus.FAILED],
+        )
+        .select_related("organisation", "requested_by")
+        .first()
+    )
+    if run is None:
+        return
+    raise_notification(
+        user=run.requested_by,
+        category="bulk_action.finished",
+        target=run,
+        site_id=site_id,
+        data={"summary": run_summary(run)},
+    )

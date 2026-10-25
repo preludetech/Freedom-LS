@@ -45,7 +45,8 @@
                 <input type="checkbox"
                        aria-label="Select all on this page"
                        data-select-all
-                       x-on:change="toggleAll">
+                       x-on:change="toggleAll"
+                       x-bind:disabled="running">
                 Select all on this page
             </label>
         </div>
@@ -64,7 +65,8 @@
                                 <input type="checkbox"
                                        aria-label="Select all on this page"
                                        data-select-all
-                                       x-on:change="toggleAll">
+                                       x-on:change="toggleAll"
+                       x-bind:disabled="running">
                             </th>
                         {% endif %}
                         {% for header in header_columns %}
@@ -102,7 +104,8 @@
                                                name="keys"
                                                value="{{ row.object.pk }}"
                                                aria-label="Select {{ row.label }}"
-                                               x-on:change="update">
+                                               x-on:change="update"
+                                               x-bind:disabled="running">
                                     </td>
                                 {% endif %}
                                 {% for column in columns %}

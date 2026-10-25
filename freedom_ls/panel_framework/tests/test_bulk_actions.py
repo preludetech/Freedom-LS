@@ -11,6 +11,8 @@ import pytest
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.messages import get_messages
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse
@@ -501,9 +503,9 @@ def test_bulk_result_round_trips_through_json() -> None:
     assert BulkResult.from_json(json.loads(json.dumps(result.to_json()))) == result
 
 
-def test_confirmed_post_redirects_to_result_url_for_background_run(
-    mock_site_context: Site,
-) -> None:
+def _post_background_confirm(
+    htmx: bool,
+) -> tuple[HttpResponse, StubDataTablePanel, HttpRequest]:
     class _BackgroundAction(StubBulkAction):
         def execute(
             self,
@@ -511,7 +513,7 @@ def test_confirmed_post_redirects_to_result_url_for_background_run(
             queryset: QuerySet,
             cleaned_data: dict[str, object],
         ) -> BackgroundRun:
-            return BackgroundRun("/runs/1")
+            return BackgroundRun("/runs/1/status")
 
     stub = make_stub(name="row-x")
     data = {
@@ -520,31 +522,61 @@ def test_confirmed_post_redirects_to_result_url_for_background_run(
         "confirmed": "1",
         "expected_count": "1",
     }
-    responses = []
-    for headers in ({}, {"HTTP_HX_REQUEST": "true"}):
-        request = RequestFactory().post("/stubs/__actions/stub_bulk", data, **headers)
-        request.user = make_staff_user()
-        panel = StubDataTablePanel(
-            PanelContext(
-                request=request,
-                instance=None,
-                base_url="/stubs",
-                name="",
-                config=SectionConfigBase,
-                page_url="/stubs",
-            )
+    headers = {"HTTP_HX_REQUEST": "true"} if htmx else {}
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_bulk?stub-page=2", data, **headers
+    )
+    request.user = make_staff_user()
+    request.session = {}
+    request._messages = FallbackStorage(request)
+    panel = StubDataTablePanel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+            page_url="/stubs",
         )
-        responses.append(
-            _handle_action(
-                request, _ResolvedAction(_BackgroundAction(), panel.ctx), panel
-            )
-        )
+    )
+    response = _handle_action(
+        request, _ResolvedAction(_BackgroundAction(), panel.ctx), panel
+    )
+    assert isinstance(response, HttpResponse)
+    return response, panel, request
 
-    plain, htmx = responses
-    assert isinstance(plain, HttpResponse)
-    assert isinstance(htmx, HttpResponse)
-    assert (plain.status_code, plain["Location"]) == (303, "/runs/1")
-    assert (htmx.status_code, htmx["HX-Redirect"]) == (204, "/runs/1")
+
+def test_background_run_over_htmx_closes_the_modal_and_starts_polling(
+    mock_site_context: Site,
+) -> None:
+    response, panel, _request = _post_background_confirm(htmx=True)
+
+    assert response.status_code == 204
+    assert "HX-Redirect" not in response
+    assert json.loads(response["HX-Trigger"]) == {
+        "closeModal": {},
+        "bulkRunStarted": {
+            "region": panel.region_id,
+            "action": StubBulkAction.action_name,
+            "label": StubBulkAction.label,
+            "status_url": "/runs/1/status",
+        },
+    }
+
+
+def test_background_run_without_javascript_returns_to_the_table_with_a_flash(
+    mock_site_context: Site,
+) -> None:
+    response, _panel, request = _post_background_confirm(htmx=False)
+
+    assert (response.status_code, response["Location"]) == (
+        303,
+        "/stubs?stub-page=2",
+    )
+    assert [str(message) for message in get_messages(request)] == [
+        f"{StubBulkAction.label} is running in the background. "
+        "You'll get a notification when it finishes."
+    ]
 
 
 @pytest.mark.parametrize("htmx", [True, False])

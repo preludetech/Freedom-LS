@@ -637,15 +637,46 @@ document.addEventListener("alpine:init", () => {
         total: 0,
         page: 0,
         allChecked: false,
+        regionId: "",
 
         init() {
             const bar = this.$el.querySelector("[data-total-count]");
             this.total = Number(bar.dataset.totalCount);
             this.page = Number(bar.dataset.pageCount);
+            this.regionId = this.$el.closest("[data-table-region]").id;
         },
 
         get hasSelection() {
             return this.count > 0;
+        },
+
+        // A background run started from this table, kept in the bulkRuns
+        // store because every region swap rebuilds this component.
+        get run() {
+            return Alpine.store("bulkRuns").runs[this.regionId] || null;
+        },
+
+        get running() {
+            return this.run !== null;
+        },
+
+        get runLabel() {
+            return this.running ? this.run.label : "";
+        },
+
+        get showSelectionCount() {
+            return this.hasSelection && !this.running;
+        },
+
+        get showActions() {
+            return this.hasSelection || this.running;
+        },
+
+        // Whether the spinner this x-show sits on belongs to the running
+        // action: its data-run-actions lists the action names it stands for.
+        spinsForRun() {
+            if (!this.running) return false;
+            return this.$el.dataset.runActions.split(/\s+/).includes(this.run.action);
         },
 
         get allOnPageSelected() {
@@ -754,6 +785,58 @@ document.addEventListener("alpine:init", () => {
             this.update(event);
         },
     }));
+
+    // Background bulk runs, keyed by the id of the table region they were
+    // started from. A confirmed run too large for one request answers with
+    // a bulkRunStarted event; the run's status URL is then polled until it
+    // returns the result modal, whose HX-Trigger refreshes the table. A 204
+    // means still running. Leaving the table drops the run here: the
+    // requester gets a notification instead.
+    Alpine.store("bulkRuns", {
+        runs: {},
+        _timers: {},
+
+        init() {
+            document.body.addEventListener("bulkRunStarted", (event) => {
+                this.start(event.detail);
+            });
+            document.addEventListener("htmx:afterRequest", (event) => {
+                const path = event.detail.pathInfo && event.detail.pathInfo.requestPath;
+                const region = Object.keys(this.runs).find(
+                    (key) => this.runs[key].status_url === path,
+                );
+                if (region && event.detail.xhr.status !== 204) this.finish(region);
+            });
+        },
+
+        start(detail) {
+            this.finish(detail.region);
+            this.runs[detail.region] = detail;
+            this._timers[detail.region] = setInterval(() => this._poll(detail.region), 2000);
+        },
+
+        finish(region) {
+            clearInterval(this._timers[region]);
+            delete this._timers[region];
+            delete this.runs[region];
+        },
+
+        _poll(region) {
+            const anchor = document.querySelector(`#${region} [data-table-anchor]`);
+            if (!anchor) {
+                this.finish(region);
+                return;
+            }
+            // Never replace a modal the reader has open, and don't poll a
+            // hidden tab; the next tick tries again.
+            if (document.hidden || document.getElementById("app-modal").open) return;
+            htmx.ajax("GET", this.runs[region].status_url, {
+                source: anchor,
+                target: "#app-modal-body",
+                swap: "innerHTML",
+            });
+        },
+    });
 
     // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
     // Re-fetches the list's table region when a create action's HX-Trigger

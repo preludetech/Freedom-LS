@@ -17,7 +17,8 @@ Cards only exist below md, so every button in one is a 44px touch target.
                    name="keys"
                    value="{{ row.object.pk }}"
                    aria-label="Select {{ row.label }}"
-                   x-on:change="update">
+                   x-on:change="update"
+                   x-bind:disabled="running">
         </label>
     {% endif %}
     <div class="min-w-0 flex-1 py-1">
