@@ -2546,7 +2546,7 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
         cohort = cast(Cohort, cleaned_data["cohort"])
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=f"{count_noun(Learner, count)} will be added to {cohort.name}.",
+            sentence=f"Add {count_noun(Learner, count)} to {cohort.name}.",
             skips=wording.skips,
         )
 
@@ -2594,8 +2594,7 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
         )
         return ConfirmationWording(
             sentence=(
-                f"{count_noun(Learner, len(changed_keys))} will be removed "
-                f"from {cohort.name}."
+                f"Remove {count_noun(Learner, len(changed_keys))} from {cohort.name}."
             ),
             skips=wording.skips,
             consequences=consequences,
@@ -2639,16 +2638,13 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
             request, queryset, classified, cleaned_data
         )
         count = self.changed_count(classified)
-        verb = "loses" if count == 1 else "lose"
         return ConfirmationWording(
-            sentence=(
-                f"{count_noun(Learner, count)} {verb} access to this "
-                "organisation's courses."
-            ),
+            sentence=f"Deactivate {count_noun(Learner, count)}.",
             skips=wording.skips,
             consequences=[
+                "They lose access to this organisation's courses.",
                 "Their cohorts, registrations and progress are kept and "
-                "return when you reactivate them."
+                "return when you reactivate them.",
             ],
         )
 
@@ -2674,13 +2670,12 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
             request, queryset, classified, cleaned_data
         )
         count = self.changed_count(classified)
-        possessive = "learner's" if count == 1 else "learners'"
         return ConfirmationWording(
-            sentence=(
-                f"{count} {possessive} access returns through their existing "
-                "cohorts and registrations."
-            ),
+            sentence=f"Reactivate {count_noun(Learner, count)}.",
             skips=wording.skips,
+            consequences=[
+                "Their access returns through their existing cohorts and registrations."
+            ],
         )
 
 
@@ -2760,9 +2755,7 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
         course = cast(Course, cleaned_data["course"])
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=(
-                f"{count_noun(Learner, count)} will be registered for {course.title}."
-            ),
+            sentence=(f"Register {count_noun(Learner, count)} for {course.title}."),
             skips=wording.skips,
         )
 
@@ -2807,8 +2800,8 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
         verb = "keeps" if keeping == 1 else "keep"
         return ConfirmationWording(
             sentence=(
-                f"{count_noun(Learner, len(changed_keys))} will be "
-                f"unregistered from {course.title}."
+                f"Unregister {count_noun(Learner, len(changed_keys))} "
+                f"from {course.title}."
             ),
             skips=wording.skips,
             consequences=(
@@ -2882,7 +2875,7 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
         )
         return ConfirmationWording(
-            sentence=f"{count_noun(Learner, count)} will be sent a setup email.",
+            sentence=f"Resend the setup email to {count_noun(Learner, count)}.",
             skips=[
                 skip for skip in wording.skips if skip.reason != self.unchanged_reason
             ],
@@ -3011,9 +3004,7 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
         course = cast(Course, cleaned_data["course"])
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=(
-                f"{count_noun(Cohort, count)} will be registered for {course.title}."
-            ),
+            sentence=(f"Register {count_noun(Cohort, count)} for {course.title}."),
             skips=wording.skips,
         )
 
@@ -3059,9 +3050,7 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
         course = cast(Course, cleaned_data["course"])
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=(
-                f"{count_noun(Cohort, count)} will be unregistered from {course.title}."
-            ),
+            sentence=(f"Unregister {count_noun(Cohort, count)} from {course.title}."),
             skips=wording.skips,
             consequences=[
                 "Learners in these cohorts lose access to the course unless "
@@ -3105,7 +3094,7 @@ class DeactivateCohortsBulkAction(CohortStateBulkAction):
         )
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=f"{count_noun(Cohort, count)} will be deactivated.",
+            sentence=f"Deactivate {count_noun(Cohort, count)}.",
             skips=wording.skips,
             consequences=[
                 "Learners stay in their cohorts and keep their progress.",
@@ -3139,9 +3128,11 @@ class ReactivateCohortsBulkAction(CohortStateBulkAction):
         )
         count = self.changed_count(classified)
         return ConfirmationWording(
-            sentence=(
-                f"{count_noun(Cohort, count)} will give access to "
-                f"{'its' if count == 1 else 'their'} courses again."
-            ),
+            sentence=f"Reactivate {count_noun(Cohort, count)}.",
             skips=wording.skips,
+            consequences=[
+                "It gives access to its courses again."
+                if count == 1
+                else "They give access to their courses again."
+            ],
         )

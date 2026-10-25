@@ -5534,7 +5534,8 @@ def test_bulk_deactivate_confirmation_says_what_changes_and_what_is_skipped(
     response = _bulk_post(staff_client, organisation, "deactivate", [*active, inactive])
 
     text = _bulk_text(response)
-    assert "2 learners lose access to this organisation's courses." in text
+    assert "Deactivate 2 learners." in text
+    assert "They lose access to this organisation's courses." in text
     assert "1 is already inactive and will be skipped." in text
 
 
@@ -5607,9 +5608,10 @@ def test_bulk_reactivate_confirmation_pluralises_for_one_learner(
 
     response = _bulk_post(staff_client, organisation, "reactivate", [inactive])
 
+    text = _bulk_text(response)
+    assert "Reactivate 1 learner." in text
     assert (
-        "1 learner's access returns through their existing cohorts and "
-        "registrations." in _bulk_text(response)
+        "Their access returns through their existing cohorts and registrations." in text
     )
 
 
@@ -5825,7 +5827,7 @@ def test_refresh_with_a_cohort_shows_what_the_cohort_would_change(
 
     text = _bulk_text(response)
     assert response.status_code == 200
-    assert "1 learner will be added to Evening." in text
+    assert "Add 1 learner to Evening." in text
     assert "2 are already in the cohort and will be skipped." in text
 
 
@@ -5843,6 +5845,38 @@ def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
     document = lxml.html.fromstring(response.content.decode())
     assert response.status_code == 422
     assert document.cssselect("button[disabled]")
+
+
+@pytest.mark.django_db
+def test_without_javascript_a_picked_cohort_can_be_confirmed(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _bulk_learner(organisation=organisation)
+    url = _learners_bulk_url(organisation, "add_to_cohort")
+
+    preview = staff_client.post(
+        url, {"keys": [str(learner.pk)], "refresh": "1", "cohort": str(cohort.pk)}
+    )
+
+    document = lxml.html.fromstring(preview.content.decode())
+    [confirm_form] = [
+        form
+        for form in document.cssselect("form")
+        if form.cssselect("input[name='confirmed']")
+    ]
+    assert preview.status_code == 200
+    assert not confirm_form.cssselect("button[disabled]")
+    fields = {
+        field.get("name"): field.get("value")
+        for field in confirm_form.cssselect("input[type='hidden']")
+    }
+    assert fields["cohort"] == str(cohort.pk)
+
+    staff_client.post(url, {**fields, "keys": [str(learner.pk)]})
+
+    assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
 
 
 @pytest.mark.django_db
@@ -6178,7 +6212,7 @@ def test_bulk_register_confirmation_counts_changes_and_skips(staff_client: Clien
 
     text = _bulk_text(response)
     assert response.status_code == 200
-    assert "1 learner will be registered for Algebra." in text
+    assert "Register 1 learner for Algebra." in text
     assert "1 is already registered individually and will be skipped." in text
 
 
@@ -6295,7 +6329,7 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
     )
 
     text = _bulk_text(response)
-    assert "2 learners will be unregistered from Algebra." in text
+    assert "Unregister 2 learners from Algebra." in text
     assert "1 keeps access through a cohort." in text
     assert "1 is not registered individually and will be skipped." in text
 
@@ -6335,7 +6369,7 @@ def test_bulk_resend_confirmation_skips_learners_who_set_up_their_account(
     )
 
     text = _bulk_text(response)
-    assert "1 learner will be sent a setup email." in text
+    assert "Resend the setup email to 1 learner." in text
     assert "1 account is already set up and will be skipped." in text
 
 
@@ -6468,7 +6502,7 @@ def test_bulk_cohort_deactivate_confirmation_counts_changes_and_skips(
     )
 
     text = _bulk_text(response)
-    assert "2 cohorts will be deactivated." in text
+    assert "Deactivate 2 cohorts." in text
     assert "1 is already inactive and will be skipped." in text
 
 
@@ -6501,7 +6535,8 @@ def test_bulk_cohort_reactivate_confirmation_counts_changes_and_skips(
     )
 
     text = _bulk_text(response)
-    assert "1 cohort will give access to its courses again." in text
+    assert "Reactivate 1 cohort." in text
+    assert "It gives access to its courses again." in text
     assert "1 is already active and will be skipped." in text
 
 
@@ -6552,7 +6587,7 @@ def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
     )
 
     text = _bulk_text(response)
-    assert "1 cohort will be registered for Algebra." in text
+    assert "Register 1 cohort for Algebra." in text
     assert "1 is already registered and will be skipped." in text
     assert "1 is inactive and will be skipped." in text
 
@@ -6690,7 +6725,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     )
 
     text = _bulk_text(response)
-    assert "1 cohort will be unregistered from Algebra." in text
+    assert "Unregister 1 cohort from Algebra." in text
     assert "1 is not registered and will be skipped." in text
     assert "1 is inactive and will be skipped." in text
 
