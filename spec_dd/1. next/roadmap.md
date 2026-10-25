@@ -502,7 +502,8 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 ### Deadlines
 
-Parent: `deadlines` (source idea, four shared research files). Cut 2026-10-23 into seven specs.
+Parent: `deadlines` (source idea, four shared research files). Cut 2026-10-23 into seven specs;
+spec 8 was added on 2026-10-25 from the review of spec 1's pull request.
 Read this section before starting any of them; each idea assumes you have.
 
 The source idea replaces today's deadlines, which are fixed dates that can only lock an item, with
@@ -520,12 +521,14 @@ is at risk.
 | 5 | `deadlines-5-reminders` | A housekeeping sweep raises reminder notifications to learners (approaching, due today, overdue) and rolled-up overdue notifications to educators, once each, plus a `deadline.missed` webhook. | `deadlines-3-extensions-and-pause` | next |
 | 6 | `deadlines-6-educator-management` | Educator-interface panels and actions on cohort and learner detail: set deadlines, extend (also in bulk), pause and resume, with capabilities and audit log entries. | `deadlines-3-extensions-and-pause`, `educator-interface-8-bulk-operations`, `educator-interface-11-audit-log` | next |
 | 7 | `deadlines-7-educator-at-risk` | Overdue and due-soon learners in the cohort's Needs attention panel and the dashboard list, and an overdue at-risk rule in the cohort report. | `deadlines-2-consequence-policy`, `educator-interface-10-reporting-dashboards` | next |
+| 8 | `deadlines-8-per-placement-dates` | A `children:` entry in `course.md` or `part.yaml` carries a due date for that one placement, so a part or topic shared by two courses can have deadlines in one and none in the other. | `deadlines-1-dates-and-overdue` | next |
 
 ```
-1 dates ── 2 policy ──┬── 3 extensions and pause ──┬── 4 learner self-pause
-                      │                            ├── 5 reminders
-                      │                            └── 6 educator management
-                      └── 7 educator at-risk
+1 dates ──┬── 2 policy ──┬── 3 extensions and pause ──┬── 4 learner self-pause
+          │              │                            ├── 5 reminders
+          │              │                            └── 6 educator management
+          │              └── 7 educator at-risk
+          └── 8 per-placement dates
 ```
 
 External edges: 6 needs `educator-interface-8-bulk-operations` and `educator-interface-11-audit-log`;
@@ -537,6 +540,8 @@ External edges: 6 needs `educator-interface-8-bulk-operations` and `educator-int
   happens when a date passes, 3 moves dates.
 - **4, 5 and 6 run in parallel** once 3 is done. **7 can start once 2 and educator-interface spec
   10 are done**, beside 3 to 6.
+- **8 needs only 1** and runs beside any of 2 to 7. It edits the content loader and the resolver's
+  content layer, which 2 and 3 read but do not change.
 - Shortest path to something usable: 1 then 2. An admin can then give a course a 90-day limit
   that ends access, and close a quiz on a date.
 - Cautions. 1 removes the old deadline code from `learner_interface/utils.py`, `views.py` and
