@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from zoneinfo import ZoneInfo
 
 from django.template import Context, Template
@@ -14,6 +14,18 @@ def _render(**context: object) -> str:
 
 def test_the_datetime_attribute_is_the_utc_instant():
     assert 'datetime="2026-03-15T21:59:00+00:00"' in _render()
+
+
+def test_an_end_of_day_instant_carries_whole_seconds():
+    """A deadline without a time falls due at time.max; six fraction digits are outside
+    the date-time format a browser is promised to parse."""
+    end_of_day = datetime.combine(DUE.date(), time.max, tzinfo=JOHANNESBURG)
+
+    rendered = Template("{% load deadline_tags %}{% local_time due %}").render(
+        Context({"due": end_of_day})
+    )
+
+    assert 'datetime="2026-03-15T21:59:59+00:00"' in rendered
 
 
 def test_the_text_names_the_site_zone():

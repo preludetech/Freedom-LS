@@ -297,6 +297,26 @@ def test_the_read_only_columns_show_the_default_and_the_effective_value(
 
 
 @pytest.mark.django_db
+def test_the_read_only_columns_say_one_day_in_the_singular(
+    staff_client, mock_site_context
+) -> None:
+    registration, item = _registration_with_item()
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=item,
+        kind=DeadlineKind.RELATIVE,
+        due_days_after_registration=1,
+    )
+
+    body = staff_client.get(
+        reverse(CHANGE_URL_NAME, args=[registration.pk])
+    ).content.decode()
+
+    assert "1 day after registration" in body
+    assert "1 days after registration" not in body
+
+
+@pytest.mark.django_db
 def test_the_note_appears_after_the_content_default_changes(
     staff_client, mock_site_context
 ) -> None:

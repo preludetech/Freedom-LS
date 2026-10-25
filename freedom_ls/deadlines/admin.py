@@ -141,7 +141,8 @@ def _value_text(value: DeadlineValue | None, obj: DeadlineOverride) -> str:
     if value.kind == DeadlineKind.FIXED and value.due_date is not None:
         instant = due_instant(value, value.due_date, site_time_zone(obj.site))
         return f"Fixed {site_zone_text(instant)}" if instant is not None else "None"
-    return f"{value.due_days_after_registration} days after registration{at}"
+    days = value.due_days_after_registration
+    return f"{days} day{'' if days == 1 else 's'} after registration{at}"
 
 
 class DeadlineOverrideInline(TabularInline):

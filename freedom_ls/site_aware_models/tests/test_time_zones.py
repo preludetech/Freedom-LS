@@ -101,3 +101,9 @@ def test_site_zone_text_names_the_zone() -> None:
     instant = datetime(2026, 3, 14, 17, 0, tzinfo=ZoneInfo("Africa/Johannesburg"))
 
     assert site_zone_text(instant) == "14 Mar 2026, 17:00 SAST"
+
+
+def test_site_zone_text_writes_a_single_digit_day_without_a_zero() -> None:
+    instant = datetime(2026, 3, 4, 17, 0, tzinfo=ZoneInfo("Africa/Johannesburg"))
+
+    assert site_zone_text(instant) == "4 Mar 2026, 17:00 SAST"

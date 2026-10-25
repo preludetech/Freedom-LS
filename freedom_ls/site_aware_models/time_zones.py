@@ -44,4 +44,4 @@ def shows_time_zone_to_learners(site: Site) -> bool:
 def site_zone_text(instant: datetime) -> str:
     """An instant written in the site zone with the zone named, as the admin shows it and as
     the learner pages show it before the browser rewrites it."""
-    return f"{instant:%-d %b %Y, %H:%M} {instant.tzname()}"
+    return f"{instant.day} {instant:%b %Y, %H:%M} {instant.tzname()}"
