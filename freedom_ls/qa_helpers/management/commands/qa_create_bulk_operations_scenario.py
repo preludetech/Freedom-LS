@@ -36,7 +36,10 @@ from django.db.models import Model, QuerySet
 from freedom_ls.accounts.account_setup import match_or_create_user
 from freedom_ls.accounts.models import SiteSignupPolicy, User
 from freedom_ls.content_engine.models import Course, CourseVisibility
-from freedom_ls.learner_management.learner_actions import deactivate_learner
+from freedom_ls.learner_management.learner_actions import (
+    deactivate_learner,
+    register_for_course,
+)
 from freedom_ls.learner_management.models import (
     BulkActionRun,
     Cohort,
@@ -48,6 +51,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.learner_management.utils import ensure_learner
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
     _ensure_cohort,
@@ -57,7 +61,6 @@ from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_s
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_learner_administration_scenario import (
     _ensure_course,
-    _ensure_individual_registration,
     _ensure_user,
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
@@ -181,6 +184,12 @@ def _purge_stale(
             or (u.email == AWAY_EMAIL and u.site_id == away_site.pk)
         )
     ]
+    # CourseProgress PROTECTs its learner and registration, so it goes first.
+    _delete(
+        "CourseProgress",
+        CourseProgress._base_manager.filter(learner__user_id__in=stale_ids),
+        counts,
+    )
     _delete("User", User._base_manager.filter(pk__in=stale_ids), counts)
 
     expected_learners = {(e, orgs[org].pk) for e, (_, _, org) in LEARNERS.items()}
@@ -189,6 +198,11 @@ def _purge_stale(
         for lr in Learner._base_manager.filter(user__email__iendswith=QA_DOMAIN)
         if (lr.user.email, lr.organisation_id) not in expected_learners
     ]
+    _delete(
+        "CourseProgress",
+        CourseProgress._base_manager.filter(learner_id__in=stale_learners),
+        counts,
+    )
     _delete("Learner", Learner._base_manager.filter(pk__in=stale_learners), counts)
 
     expected_members = {
@@ -224,18 +238,27 @@ def _purge_stale(
         if (r.cohort_id, r.course.title) not in expected_regs
     ]
     _delete(
+        "CourseProgress",
+        CourseProgress._base_manager.filter(cohort_registration_id__in=stale_regs),
+        counts,
+    )
+    _delete(
         "CohortCourseRegistration",
         CohortCourseRegistration._base_manager.filter(pk__in=stale_regs),
         counts,
     )
 
+    stale_learner_regs = LearnerCourseRegistration._base_manager.filter(
+        learner__user__email__iendswith=QA_DOMAIN
+    ).exclude(learner__user__email=SOLO_EMAIL, course__title="Course Pub")
     _delete(
-        "LearnerCourseRegistration",
-        LearnerCourseRegistration._base_manager.filter(
-            learner__user__email__iendswith=QA_DOMAIN
-        ).exclude(learner__user__email=SOLO_EMAIL, course__title="Course Pub"),
+        "CourseProgress",
+        CourseProgress._base_manager.filter(
+            learner_registration__in=stale_learner_regs
+        ),
         counts,
     )
+    _delete("LearnerCourseRegistration", stale_learner_regs, counts)
 
     org_ct = ContentType.objects.get_for_model(Organisation)
     cohort_ct = ContentType.objects.get_for_model(Cohort)
@@ -354,8 +377,8 @@ def _seed(site: Site) -> None:
     deactivate_learner(
         Learner._base_manager.get(user=users[REMOVED_EMAIL], organisation=orgs[NORTH])
     )
-    _ensure_individual_registration(
-        site,
+    # Reactivates solo's registration if an earlier QA run unregistered them.
+    register_for_course(
         Learner._base_manager.get(user=users[SOLO_EMAIL], organisation=orgs[NORTH]),
         courses["Course Pub"],
     )

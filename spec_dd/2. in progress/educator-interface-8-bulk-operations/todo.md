@@ -32,6 +32,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] Fix B6 (TDD: failing test first): change `_check_headers` in base/csv_import.py so one error message lists every unknown, repeated and missing header, then the accepted columns
 - [x] Reword the spec's header-check sentence (1. spec.md, "a missing `email`, an unknown header or a repeated header rejects the file...") to say the error lists every header problem
 - [x] Re-run QA test 2.badhead and confirm it passes against the existing QA plan expectation
+- [ ] (user) Decide what to do about QA bug: Bulk confirmations use passive wording ('2 learners will be added to Cohort C.') where spec R1.3's example and the QA plan say 'Add 2 learners to Cohort C.' (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: A stale keys-mode selection is skipped per row instead of refused with 'The selection changed since you opened this.' as QA plan §6.12 expects; spec R1.4 only refuses when the count changes (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Picker bulk actions (add/remove cohort, register/unregister) cannot be confirmed with JavaScript off, because the picker sits outside the confirm form and only the htmx refresh enables Confirm (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
