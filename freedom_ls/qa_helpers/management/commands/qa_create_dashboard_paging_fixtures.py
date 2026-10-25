@@ -3,7 +3,7 @@
 Idempotently creates, on a single site (default: DemoDev):
 
 A. Four published, free courses -- ``Pagination A`` .. ``Pagination D`` -- each
-   with one topic, both categorised under the existing ``start-here``
+   with one topic, both categorised under the existing ``start-here-demo``
    ``CourseCategory`` (``dashboard_category`` *and* the ``categories`` m2m). With
    the two demo courses already in that category the "Start here" dashboard
    section holds six courses, so it pages at ``SECTION_PAGE_SIZE`` (3).
@@ -82,7 +82,7 @@ from freedom_ls.learner_progress.utils import (
 )
 from freedom_ls.organisations.utils import get_default_organisation
 
-CATEGORY_SLUG = "start-here"
+CATEGORY_SLUG = "start-here-demo"
 
 PAGINATION_LETTERS = ["A", "B", "C", "D"]
 PAGINATION_SLUGS = [f"pagination-{letter.lower()}" for letter in PAGINATION_LETTERS]
