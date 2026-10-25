@@ -1,3 +1,4 @@
+{% load course_icon_tags %}
 {% comment %}
 Dashboard panel: in-flight course applications for the current learner.
 Contributed by ApplicationCourseAccessBackend.get_dashboard_contributions().
@@ -28,38 +29,40 @@ dashboard page loads.
                                   hx_select="#{{ swap_id }}"
                                   hx_select_oob="#applications-status" />
         </div>
-        <ul class="sm:col-span-2 space-y-2 list-none ml-0">
+        <ul class="sm:col-span-2 flex flex-col divide-y divide-border list-none ml-0 rounded-2xl border border-border bg-surface overflow-hidden">
             {% for app in applications %}
-                <li class="flex flex-col gap-2 rounded-lg border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    {% if app.is_submitted %}
-                        <div class="flex items-center gap-3">
-                            <span class="text-primary" aria-hidden="true">
-                                <c-icon name="in_progress" class="size-4" />
-                            </span>
-                            <a href="{% url 'course_applications:status' pk=app.pk %}"
-                               class="font-medium hover:underline">
-                                {{ app.course.title }}
-                            </a>
-                        </div>
-                        <span class="text-sm text-muted">Pending review</span>
-                    {% else %}
-                        <div class="space-y-1">
-                            <div class="flex flex-wrap items-center gap-3">
-                                <a href="{% url 'course_applications:status' pk=app.pk %}"
-                                   class="font-medium hover:underline">
+                {% url 'course_applications:status' pk=app.pk as status_url %}
+                <li class="relative flex items-center gap-4 px-4 py-3">
+                    <div class="course-accent-{{ app.course.accent_slot_key }} flex size-11 shrink-0 items-center justify-center rounded-lg"
+                         aria-hidden="true">
+                        {% course_icon app.course.icon app.course.icon_fallback css_class="size-6" aria_label=app.course.title %}
+                    </div>
+                    <div class="min-w-0 flex-1 space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-medium wrap-break-word">
+                                <a href="{{ status_url }}"
+                                   class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
                                     {{ app.course.title }}
                                 </a>
+                            </h3>
+                            {% if app.is_submitted %}
+                                <c-chip variant="info" size="xs">Pending review</c-chip>
+                            {% else %}
                                 <c-chip variant="warning" size="xs">Incomplete</c-chip>
-                            </div>
-                            <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
+                            {% endif %}
                         </div>
-                        <c-button href="{% url 'course_applications:status' pk=app.pk %}"
-                                  size="small"
-                                  icon_right="next"
-                                  class="shrink-0">
-                            Continue application<span class="sr-only"> for {{ app.course.title }}</span>
-                        </c-button>
-                    {% endif %}
+                        {% if not app.is_submitted %}
+                            <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
+                        {% endif %}
+                    </div>
+                    {% comment %}`relative` lifts the button above the title link's overlay so it hovers and focuses on its own.{% endcomment %}
+                    <c-button href="{{ status_url }}"
+                              size="small"
+                              icon_right="next"
+                              class="relative hidden shrink-0 sm:inline-flex">
+                        {% if app.is_submitted %}View my application{% else %}Continue application{% endif %}<span class="sr-only"> for {{ app.course.title }}</span>
+                    </c-button>
+                    <span class="text-muted sm:hidden" aria-hidden="true"><c-icon name="next" class="size-5" /></span>
                 </li>
             {% endfor %}
         </ul>

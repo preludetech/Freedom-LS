@@ -381,13 +381,17 @@ def test_a_learner_pages_through_their_applications(
     panel = page.locator("#applications-page")
 
     page.goto(dashboard_url)
-    expect(panel.get_by_role("link", name="Gated Course 4")).to_be_visible()
-    expect(panel.get_by_role("link", name="Gated Course 1")).to_have_count(0)
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_have_count(
+        0
+    )
 
     panel.get_by_role("link", name="Next page").click()
 
-    expect(panel.get_by_role("link", name="Gated Course 1")).to_be_visible()
-    expect(panel.get_by_role("link", name="Gated Course 4")).to_have_count(0)
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_have_count(
+        0
+    )
     expect(page.get_by_role("heading", name="Your applications")).to_be_visible()
     expect(page).to_have_url(dashboard_url)
     expect(page.locator("#applications-status")).to_have_text(
@@ -397,8 +401,21 @@ def test_a_learner_pages_through_their_applications(
     # Paging a course section leaves the applications page where it was.
     available = page.locator("#section-page-available")
     available.get_by_role("link", name="Next page").click()
-    expect(panel.get_by_role("link", name="Gated Course 1")).to_be_visible()
-    expect(panel.get_by_role("link", name="Gated Course 4")).to_have_count(0)
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_have_count(
+        0
+    )
+
+    # Below sm the row's button gives way to a chevron.
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.goto(dashboard_url)
+    rows = panel.get_by_role("listitem")
+    expect(panel.get_by_role("link", name="Continue application")).to_be_hidden()
+    expect(panel.get_by_role("link", name="View my application")).to_be_hidden()
+    for index in range(rows.count()):
+        expect(
+            rows.nth(index).locator('> span[aria-hidden="true"]').last.locator("svg")
+        ).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

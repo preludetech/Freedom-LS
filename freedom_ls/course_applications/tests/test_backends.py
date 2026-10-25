@@ -477,6 +477,46 @@ class TestDashboardPartialRendering:
         assert "Pending review" in rendered
         assert "Incomplete" not in rendered
 
+    def test_a_submitted_row_offers_view_my_application(self, mock_site_context):
+        app = _application_with_sitting()
+        app.form_progress.complete()
+
+        rendered = _render_panel(app)
+
+        assert "View my application" in rendered
+        assert "Continue application" not in rendered
+        assert "Finish your application to have it reviewed." not in rendered
+
+    def test_a_draft_row_explains_what_is_left_and_offers_to_continue(
+        self, mock_site_context
+    ):
+        rendered = _render_panel(_application_with_sitting())
+
+        assert "Finish your application to have it reviewed." in rendered
+        assert "Continue application" in rendered
+        assert "View my application" not in rendered
+
+    def test_the_button_names_its_course_for_screen_readers(self, mock_site_context):
+        app = _application_with_sitting()
+
+        rendered = _render_panel(app)
+
+        assert f'<span class="sr-only"> for {app.course.title}</span>' in rendered
+
+    def test_each_row_carries_a_decorative_chevron(self, mock_site_context):
+        rendered = _render_panel(CourseApplicationFactory())
+
+        assert re.search(r'<span[^>]*aria-hidden="true"[^>]*>\s*<svg', rendered)
+
+    def test_a_course_title_is_escaped_in_the_link_the_button_and_the_icon(
+        self, mock_site_context
+    ):
+        course = CourseFactory(title='A <b> "quoted" title')
+        rendered = _render_panel(CourseApplicationFactory(course=course))
+
+        assert "<b>" not in rendered
+        assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 3
+
 
 def _application_with_sitting():
     from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
