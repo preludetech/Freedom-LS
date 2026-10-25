@@ -538,6 +538,16 @@ def test_the_action_choices_are_the_registered_actions_with_labels(audit_request
 
 
 @pytest.mark.django_db
+def test_the_action_choices_include_a_downstream_extra_action(audit_request, settings):
+    request, _ = audit_request
+    settings.AUDIT_LOG_EXTRA_ACTIONS = {"invoice.sent": "Invoice sent"}
+
+    choices = dict(AuditActionFilter().get_choices(request))
+
+    assert choices["invoice.sent"] == "Invoice sent"
+
+
+@pytest.mark.django_db
 def test_the_period_filter_offers_five_presets_and_no_default():
     period = AuditPeriodFilter()
 

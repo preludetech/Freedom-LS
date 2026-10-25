@@ -6,3 +6,6 @@ class AuditLogAppConfig(AppConfig):
     name = "freedom_ls.audit_log"
     label = "freedom_ls_audit_log"
     verbose_name = "Audit log"
+
+    def ready(self) -> None:
+        from freedom_ls.audit_log import checks  # noqa: F401

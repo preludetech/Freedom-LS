@@ -2,6 +2,8 @@ import re
 
 import pytest
 
+from django.test import override_settings
+
 from freedom_ls.audit_log.actions import (
     FLS_AUDIT_ACTIONS,
     SUMMARY_ACTIONS,
@@ -9,6 +11,8 @@ from freedom_ls.audit_log.actions import (
     validate_action,
 )
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
+from freedom_ls.audit_log.writer import record_entry
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 def test_get_audit_action_returns_the_registered_action():
@@ -78,3 +82,27 @@ def test_membership_actions_describe_themselves_from_their_details(
     entry = AuditLogEntryFactory(action=action, details=details)
 
     assert entry.description == expected
+
+
+@pytest.mark.django_db
+def test_record_entry_accepts_an_extra_action_from_settings(mock_site_context):
+    organisation = OrganisationFactory()
+
+    with override_settings(AUDIT_LOG_EXTRA_ACTIONS={"invoice.sent": "Invoice sent"}):
+        entry = record_entry(
+            action="invoice.sent",
+            actor=None,
+            target=organisation,
+            target_label=organisation.name,
+            organisation=organisation,
+        )
+        label = get_audit_action("invoice.sent").label
+
+    assert (entry.action, label) == ("invoice.sent", "Invoice sent")
+
+
+def test_an_fls_code_wins_a_collision_with_an_extra_code():
+    with override_settings(AUDIT_LOG_EXTRA_ACTIONS={"cohort.created": "Mine"}):
+        label = get_audit_action("cohort.created").label
+
+    assert label == "Cohort created"

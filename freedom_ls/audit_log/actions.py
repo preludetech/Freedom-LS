@@ -7,6 +7,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from freedom_ls.audit_log.config import config
+
 if TYPE_CHECKING:
     from freedom_ls.audit_log.models import AuditLogEntry
 
@@ -125,11 +127,15 @@ def register_describe(code: str, describe: Callable[[AuditLogEntry], str]) -> No
 
 def audit_actions() -> dict[str, AuditAction]:
     """Every registered audit action, FLS's own first."""
+    actions = {action.code: action for action in FLS_AUDIT_ACTIONS}
+    # Downstream-defined actions follow FLS's own, so FLS codes keep their order and win any collision.
+    for code, label in config.AUDIT_LOG_EXTRA_ACTIONS.items():
+        actions.setdefault(code, AuditAction(code, label))
     return {
-        action.code: replace(action, describe=_describe_overrides[action.code])
-        if action.code in _describe_overrides
+        code: replace(action, describe=_describe_overrides[code])
+        if code in _describe_overrides
         else action
-        for action in FLS_AUDIT_ACTIONS
+        for code, action in actions.items()
     }
 
 
