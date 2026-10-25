@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from uuid import UUID
 
@@ -51,7 +52,7 @@ from freedom_ls.registration_rules.models import (
     RuleRegistration,
     rules_naming,
 )
-from freedom_ls.registration_rules.signals import solely_held_by
+from freedom_ls.registration_rules.signals import held_only_by
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
 #: Each picker's model, so the narrowed queryset is built from the field name alone.
@@ -516,18 +517,25 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         # page refuse the selection and name them.
         rules = list(objs)
         refusals = {rule.pk: _delete_refusal(rule) for rule in rules}
+        deletable = [rule for rule in rules if refusals[rule.pk] is None]
         to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
-            [rule for rule in rules if refusals[rule.pk] is None], request
+            deletable, request
         )
         refused = [reason for reason in refusals.values() if reason is not None]
-        for rule in rules:
-            if refusals[rule.pk] is not None:
-                continue
-            held = list(solely_held_by(rule))
-            to_delete.extend(f"Recommended course: {item}" for item in held)
-            if held:
-                name = str(RecommendedCourse._meta.verbose_name_plural)
-                model_count[name] = model_count.get(name, 0) + len(held)
+        # The whole selection at once, as the delete itself treats it: a
+        # recommendation two selected rules share goes with them, and is listed once.
+        by_site: dict[int, list[UUID]] = defaultdict(list)
+        for rule in deletable:
+            by_site[rule.site_id].append(rule.pk)
+        held = [
+            item
+            for site_id, rule_ids in by_site.items()
+            for item in held_only_by(site_id, rule_ids).select_related("user", "course")
+        ]
+        to_delete.extend(f"Recommended course: {item}" for item in held)
+        if held:
+            name = str(RecommendedCourse._meta.verbose_name_plural)
+            model_count[name] = model_count.get(name, 0) + len(held)
         return to_delete, model_count, perms_needed, [*protected, *refused]
 
 

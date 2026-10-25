@@ -1355,3 +1355,46 @@ def test_creating_an_inactive_registration_queues_nothing(
 
     # Assert
     assert not _queued_tasks("evaluate_learner_task").exists()
+
+
+@pytest.mark.django_db
+def test_deleting_two_rules_together_deletes_the_recommendation_they_share(
+    mock_site_context,
+):
+    # Arrange
+    first = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    second = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    shared = RuleRecommendationFactory(rule=first)
+    RuleRecommendationFactory(rule=second, recommendation=shared.recommendation)
+
+    # Act
+    RegistrationRule._base_manager.filter(pk__in=[first.pk, second.pk]).delete()
+
+    # Assert
+    assert not RecommendedCourse._base_manager.filter(
+        pk=shared.recommendation_id
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_two_rules_together_leaves_a_recommendation_a_third_rule_holds(
+    mock_site_context,
+):
+    # Arrange
+    first = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    second = RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND)
+    shared = RuleRecommendationFactory(rule=first)
+    RuleRecommendationFactory(rule=second, recommendation=shared.recommendation)
+    third = RuleRecommendationFactory(
+        recommendation=shared.recommendation,
+        rule=RegistrationRuleFactory(outcome=RegistrationRule.Outcome.RECOMMEND),
+    )
+
+    # Act
+    RegistrationRule._base_manager.filter(pk__in=[first.pk, second.pk]).delete()
+
+    # Assert
+    assert RecommendedCourse._base_manager.filter(pk=shared.recommendation_id).exists()
+    assert list(
+        RuleRecommendation._base_manager.filter(recommendation=shared.recommendation)
+    ) == [third]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
@@ -147,27 +147,50 @@ def snapshot_rule_name_before_delete(
     ).update(rule_name=instance.name)
 
 
-def solely_held_by(rule: RegistrationRule) -> QuerySet[RecommendedCourse]:
-    """The recommendations no other rule holds. Explicit site: pre_delete runs with
-    whatever request is ambient, or none."""
-    return RecommendedCourse._base_manager.filter(
-        site_id=rule.site_id, rule_recommendations__rule=rule
-    ).exclude(
-        Exists(
-            RuleRecommendation._base_manager.filter(
-                site_id=rule.site_id, recommendation=OuterRef("pk")
-            ).exclude(rule=rule)
-        )
+def held_only_by(
+    site_id: int, rule_ids: Collection[UUID]
+) -> QuerySet[RecommendedCourse]:
+    """The recommendations one of these rules holds and no rule outside them does.
+
+    Explicit site: pre_delete runs with whatever request is ambient, or none.
+    Two Exists rather than a join, so a recommendation several of the rules
+    hold comes back once and the queryset can be deleted.
+    """
+    links = RuleRecommendation._base_manager.filter(
+        site_id=site_id, recommendation=OuterRef("pk")
     )
+    return RecommendedCourse._base_manager.filter(
+        Exists(links.filter(rule_id__in=rule_ids)), site_id=site_id
+    ).exclude(Exists(links.exclude(rule_id__in=rule_ids)))
+
+
+def _rules_deleted_with(instance: RegistrationRule, origin: object) -> set[UUID]:
+    """Every rule the delete that reached `instance` covers: the queryset a
+    bulk delete started from, else the rule alone. Nothing cascades into a
+    rule, so the origin is always one of the two."""
+    if isinstance(origin, QuerySet) and origin.model is RegistrationRule:
+        return set(origin.values_list("pk", flat=True))
+    return {instance.pk}
 
 
 @receiver(pre_delete, sender=RegistrationRule)
-def delete_solely_held_recommendations_before_delete(
-    sender: type[RegistrationRule], instance: RegistrationRule, **kwargs: object
+def delete_unheld_recommendations_before_delete(
+    sender: type[RegistrationRule],
+    instance: RegistrationRule,
+    origin: object = None,
+    **kwargs: object,
 ) -> None:
-    """Delete the recommendations only this rule holds, before the CASCADE
-    leaves them with no RuleRecommendation and looking staff-made."""
-    solely_held_by(instance).delete()
+    """Delete the recommendations no rule outside this delete holds, before the
+    CASCADE leaves them with no RuleRecommendation and looking staff-made.
+
+    Every rule of a bulk delete still holds its rows when the first pre_delete
+    runs, so "held by this rule alone" would keep a recommendation two of the
+    deleted rules share. The first rule's pre_delete removes it instead, and the
+    other rule's finds nothing left to remove.
+    """
+    held_only_by(instance.site_id, _rules_deleted_with(instance, origin)).filter(
+        rule_recommendations__rule=instance
+    ).delete()
 
 
 @receiver(pre_save, sender=LearnerCourseRegistration)

@@ -10,7 +10,9 @@ import pytest
 import time_machine
 
 from django.contrib.auth.models import Permission
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1238,6 +1240,48 @@ def test_the_delete_page_names_the_recommendations_only_the_rule_holds(staff_cli
     assert f"Recommended course: {sole.recommendation}" in page
     assert f"Recommended course: {shared.recommendation}" not in page
     assert dict(response.context["model_count"])["Recommended courses"] == 1
+
+
+@pytest.mark.django_db
+def test_the_bulk_delete_confirmation_names_a_recommendation_two_selected_rules_share_once(
+    staff_client,
+):
+    # Arrange
+    rule = _disabled_recommend_rule()
+    other = _disabled_recommend_rule()
+    shared = RuleRecommendationFactory(rule=rule)
+    RuleRecommendationFactory(rule=other, recommendation=shared.recommendation)
+    _mark_run_applied(rule)
+    _mark_run_applied(other)
+
+    # Act
+    response = staff_client.post(
+        reverse(RULE_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [str(rule.pk), str(other.pk)],
+        },
+    )
+
+    # Assert
+    page = response.content.decode()
+    assert page.count(f"Recommended course: {shared.recommendation}") == 1
+    assert dict(response.context["model_count"])["Recommended courses"] == 1
+
+
+@pytest.mark.django_db
+def test_the_delete_page_costs_the_same_queries_however_many_recommendations_the_rule_holds(
+    staff_client,
+):
+    def queries_for(count: int) -> int:
+        rule = _disabled_recommend_rule()
+        RuleRecommendationFactory.create_batch(count, rule=rule)
+        _mark_run_applied(rule)
+        with CaptureQueriesContext(connection) as queries:
+            staff_client.get(reverse(RULE_DELETE, args=[rule.pk]))
+        return len(queries)
+
+    assert queries_for(6) == queries_for(1)
 
 
 @pytest.mark.django_db
