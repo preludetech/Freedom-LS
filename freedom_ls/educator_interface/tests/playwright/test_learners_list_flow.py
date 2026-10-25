@@ -287,3 +287,35 @@ def test_bulk_add_to_cohort_with_javascript_off_asks_for_the_cohort_first(
         context.close()
 
     assert CohortMembership.objects.filter(cohort=cohort, learner=learner).exists()
+
+
+def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Below md the fixed selection bar sat over the last cards, so their
+    checkboxes could not be tapped once a row was ticked."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    for _ in range(3):
+        LearnerFactory(organisation=organisation)
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    checkboxes = page.locator("ul input[name='keys']")
+
+    checkboxes.first.check()
+    checkboxes.last.scroll_into_view_if_needed()
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+
+    topmost_is_checkbox = checkboxes.last.evaluate(
+        """el => {
+            const box = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                box.x + box.width / 2, box.y + box.height / 2);
+            return hit === el;
+        }"""
+    )
+    assert topmost_is_checkbox
