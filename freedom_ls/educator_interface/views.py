@@ -10,6 +10,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.core.paginator import Page, Paginator
 from django.db import transaction
 from django.db.models import (
@@ -36,6 +37,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
@@ -950,6 +952,7 @@ class CohortLearnersPanel(DataTablePanel):
         return [
             AddExistingLearnersAction(),
             AddLearnersToCohortAction(),
+            ImportLearnersAction(),
             RemoveFromCohortAction(),
             MoveToCohortAction(),
         ]
@@ -2228,14 +2231,54 @@ def _requested_import_or_404(
     )
 
 
+def _cohort_learners_url(cohort: Cohort) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": cohort.organisation.slug,
+            "path_string": f"cohorts/{cohort.pk}/__tabs/learners",
+        },
+    )
+
+
+def _import_upload_url(learner_import: LearnerImport) -> str:
+    """The upload page that made this import: the cohort's, for a cohort import."""
+    url = _import_url("learner_import", learner_import.organisation)
+    if learner_import.cohort is None:
+        return url
+    return f"{url}?{urlencode({'cohort': str(learner_import.cohort.pk)})}"
+
+
+def _import_cohort_or_404(
+    request: HttpRequest, organisation: Organisation
+) -> Cohort | None:
+    """The cohort named by `?cohort=`, among the cohorts the user can see in
+    the organisation; None when the parameter is absent. A value that is not a
+    cohort id is a 404 like an unknown one."""
+    cohort_id = request.GET.get("cohort")
+    if not cohort_id:
+        return None
+    try:
+        return get_object_or_404(
+            cohorts_visible_to(cast(User, request.user), organisation).select_related(
+                "organisation"
+            ),
+            pk=cohort_id,
+        )
+    except ValidationError as error:
+        raise Http404("No such cohort.") from error
+
+
 @login_required
 def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse:
     """The upload page of a learner import; a valid file becomes a previewed
-    import and the reader is sent to its preview."""
+    import and the reader is sent to its preview. With `?cohort=<id>` the
+    learners are added to that cohort."""
     scoped = scope_request(request, organisation_slug)
     organisation = scoped.organisation
     user = cast(User, request.user)
-    if not check_import_gate(user, organisation, None):
+    cohort = _import_cohort_or_404(request, organisation)
+    if not check_import_gate(user, organisation, cohort):
         return _import_denied(request, scoped)
     form = LearnerImportForm(
         request.POST if request.method == "POST" else None,
@@ -2244,7 +2287,7 @@ def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse
     if request.method == "POST" and form.is_valid():
         try:
             created = create_learner_import(
-                user, organisation, None, form.cleaned_data["file"]
+                user, organisation, cohort, form.cleaned_data["file"]
             )
         except CsvImportError as error:
             form.add_error("file", str(error))
@@ -2258,6 +2301,7 @@ def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse
         "educator_interface/learner_import_upload.html",
         {
             "form": form,
+            "cohort": cohort,
             "headers": ",".join(HEADERS),
             "template_url": _import_url("learner_import_template", organisation),
         },
@@ -2312,7 +2356,7 @@ def learner_import_preview(
             "preview_url": _import_url(
                 "learner_import_preview", scoped.organisation, import_id
             ),
-            "upload_url": _import_url("learner_import", scoped.organisation),
+            "upload_url": _import_upload_url(learner_import),
             "errors_url": _import_url(
                 "learner_import_errors", scoped.organisation, import_id
             ),
@@ -2415,8 +2459,12 @@ def _import_status_context(
         error_count=_count_of(counts, ImportLabel.ERROR),
         errors_url=_import_url("learner_import_errors", scoped.organisation, import_id),
         new_account_count=_count_of(counts, ImportLabel.NEW_ACCOUNT),
-        learners_url=_learners_url(scoped.organisation),
-        upload_url=_import_url("learner_import", scoped.organisation),
+        learners_url=(
+            _cohort_learners_url(learner_import.cohort)
+            if learner_import.cohort
+            else _learners_url(scoped.organisation)
+        ),
+        upload_url=_import_upload_url(learner_import),
     )
     return context
 

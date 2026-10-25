@@ -4076,6 +4076,7 @@ def import_world(logged_in_client: Callable[[User], Client], mock_site_context: 
         organisation=organisation,
         admin=admin,
         client=logged_in_client(admin),
+        cohort=cohort,
         cohort_admin_client=logged_in_client(cohort_admin),
         logged_in_client=logged_in_client,
     )
@@ -4805,3 +4806,161 @@ def test_the_import_status_is_a_404_for_another_user_and_another_organisation(
 
     assert by_other_user.status_code == 404
     assert through_other_slug.status_code == 404
+
+
+# learner import from a cohort
+
+
+def _cohort_import_url(organisation: Organisation, cohort: Cohort) -> str:
+    return f"{_import_url(organisation, 'learner_import')}?cohort={cohort.pk}"
+
+
+def _learners_tab_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners")
+
+
+@pytest.mark.django_db
+def test_the_cohort_upload_page_names_the_cohort_and_says_the_cohort_column_is_ignored(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, name="Accra Jan")
+
+    page = _get_document(
+        import_world.client, _cohort_import_url(import_world.organisation, cohort)
+    )
+
+    text = " ".join(page.text_content().split())
+    assert "Accra Jan" in text
+    assert "The cohort column is ignored" in text
+    assert "is matched by name" not in text
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_the_403_page_from_the_cohort_upload_page(
+    import_world: SimpleNamespace,
+):
+    response = import_world.cohort_admin_client.get(
+        _cohort_import_url(import_world.organisation, import_world.cohort)
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_is_refused_by_the_cohort_upload_page(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, is_active=False)
+
+    response = import_world.client.get(
+        _cohort_import_url(import_world.organisation, cohort)
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "cohort_param", ["not-a-uuid", "00000000-0000-0000-0000-000000000000"]
+)
+def test_an_unknown_cohort_is_a_404_on_the_upload_page(
+    import_world: SimpleNamespace, cohort_param: str
+):
+    response = import_world.client.get(
+        f"{_import_url(import_world.organisation, 'learner_import')}?cohort={cohort_param}"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cohort_in_another_organisation_is_a_404_on_the_upload_page(
+    import_world: SimpleNamespace,
+):
+    foreign = CohortFactory(organisation=OrganisationFactory())
+
+    response = import_world.client.get(
+        _cohort_import_url(import_world.organisation, foreign)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_uploading_from_the_cohort_page_stores_the_cohort_on_the_import(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+
+    response = import_world.client.post(
+        _cohort_import_url(import_world.organisation, cohort),
+        {"file": _csv_upload("a@example.com,Ada,Lovelace,Other cohort")},
+    )
+
+    learner_import = LearnerImport.objects.get()
+    assert response.status_code == 303
+    assert learner_import.cohort == cohort
+
+
+@pytest.mark.django_db
+def test_a_failed_cohort_upload_keeps_the_cohort_for_the_next_attempt(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, name="Accra Jan")
+
+    response = import_world.client.post(
+        _cohort_import_url(import_world.organisation, cohort),
+        {"file": SimpleUploadedFile("learners.csv", b"name\nAda\n")},
+    )
+
+    assert response.status_code == 422
+    assert "Accra Jan" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_result_of_a_cohort_import_links_to_the_cohorts_learners_tab(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+    learner_import = create_learner_import(
+        import_world.admin,
+        import_world.organisation,
+        cohort,
+        _csv_upload("a@example.com,,,"),
+    )
+    run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    hrefs = [link.get("href") for link in page.cssselect("#main-content a")]
+    assert _learners_tab_url(import_world.organisation, cohort) in hrefs
+
+
+@pytest.mark.django_db
+def test_the_cohort_learners_tab_offers_the_import_link_to_an_organisation_admin(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+
+    page = _get_document(
+        import_world.client, _learners_tab_url(import_world.organisation, cohort)
+    )
+
+    hrefs = [link.get("href") for link in page.cssselect("a[href]")]
+    assert _cohort_import_url(import_world.organisation, cohort) in hrefs
+
+
+@pytest.mark.django_db
+def test_the_cohort_learners_tab_hides_the_import_link_from_a_cohort_admin(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.cohort_admin_client,
+        _learners_tab_url(import_world.organisation, import_world.cohort),
+    )
+
+    hrefs = [link.get("href") or "" for link in page.cssselect("a[href]")]
+    assert not [href for href in hrefs if "/learners/import" in href]
