@@ -16,8 +16,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide whether a registration made through a Learner row that is later deactivated keeps access to an organisation course (the QA plan's Scenario 3.2 says yes; the code and test_initiate_access_deactivated_learner_of_the_course_organisation_gets_404 say 404), then align the spec, the QA plan or the code with that decision (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
