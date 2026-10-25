@@ -580,13 +580,22 @@ def save_course(item, site, base_path):
     # The access_config written here still carries the author's raw
     # application_form path; the binding pass in save_content_to_db resolves it
     # into the Course.application_form foreign key once every Form is saved.
+    # Written on every load, None included, so that deleting `time_limit_days`
+    # from the file removes the limit; a None in the dump would be dropped.
     return save_with_uuid(
         Course,
         item,
         site,
         base_path,
-        exclude_fields={"children", "categories", "dashboard_category", "price"},
+        exclude_fields={
+            "children",
+            "categories",
+            "dashboard_category",
+            "price",
+            "time_limit_days",
+        },
         dashboard_category=dashboard_category,
+        time_limit_days=item.time_limit_days,
         **price_fields,
     )
 

@@ -2912,6 +2912,26 @@ def test_time_limit_days_saves_and_an_absent_key_leaves_it_null(
 
 
 @pytest.mark.django_db
+def test_removing_time_limit_days_clears_it_on_the_next_load(
+    make_temp_file, mock_site_context
+) -> None:
+    timed = _save(
+        make_temp_file,
+        mock_site_context,
+        "---\ncontent_type: COURSE\ntitle: Timed\ntime_limit_days: 90\n---\n",
+    )
+
+    reloaded = _save(
+        make_temp_file,
+        mock_site_context,
+        f"---\ncontent_type: COURSE\ntitle: Timed\nuuid: {timed.id}\n---\n",
+    )
+
+    assert reloaded.pk == timed.pk
+    assert reloaded.time_limit_days is None
+
+
+@pytest.mark.django_db
 def test_a_topic_file_with_due_fields_saves_without_a_topic_column(
     make_temp_file, mock_site_context
 ) -> None:
