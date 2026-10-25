@@ -209,6 +209,22 @@ def test_course_part_collection_items_names_same_content_as_children(
 
 
 # ---------------------------------------------------------------------------
+# display_time_limit tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("days", "expected"), [(None, ""), (1, "1 day"), (90, "90 days")]
+)
+def test_display_time_limit_counts_the_days(
+    mock_site_context, days: int | None, expected: str
+):
+    course = CourseFactory(time_limit_days=days)
+    assert course.display_time_limit() == expected
+
+
+# ---------------------------------------------------------------------------
 # display_estimated_duration tests
 # ---------------------------------------------------------------------------
 

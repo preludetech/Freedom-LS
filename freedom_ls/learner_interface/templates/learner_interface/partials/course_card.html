@@ -23,7 +23,7 @@ status duplicate.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-time_limit_overdue, time_limit_end, overdue_count, next_due_at, access_badge,
+missed_deadline, next_deadline, access_badge,
 current_price), user and show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
@@ -63,15 +63,13 @@ current_price), user and show_time_zone_to_learners.
         </p>
     {% endif %}
 
-    {% if course.time_limit_overdue %}
-        <p class="flex items-center gap-2 text-sm text-muted">
-            <c-panel-status-badge tone="error" label="Overdue" />
-            <span>Time limit ended {% local_time course.time_limit_end %}</span>
+    {% if course.missed_deadline %}
+        <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <c-panel-status-badge tone="error" label="Missed deadline" />
+            <span>{{ course.missed_deadline.title }} {% local_time course.missed_deadline.due_at %}</span>
         </p>
-    {% elif course.overdue_count %}
-        <p><c-panel-status-badge tone="error" label="{{ course.overdue_count }} overdue" /></p>
-    {% elif course.next_due_at %}
-        <p class="text-sm text-muted">Next due {% local_time course.next_due_at %}</p>
+    {% elif course.next_deadline %}
+        <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}</p>
     {% endif %}
 
     <div class="flex justify-end mt-auto">

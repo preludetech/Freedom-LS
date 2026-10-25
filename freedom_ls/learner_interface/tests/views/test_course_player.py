@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import patch
 
 import lxml.html
@@ -3879,7 +3879,7 @@ class TestCourseOrganisationChip:
         assert "Renamed Away From The Site" not in response.content.decode()
 
 
-# --- Due dates and overdue in the player sidebar ---
+# --- Deadlines and missed deadlines in the player sidebar ---
 
 
 def _player_html(client: Client, course: Course, index: int = 1) -> str:
@@ -3908,14 +3908,75 @@ def due_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_sidebar_shows_due_and_overdue_for_a_past_due_topic(due_course):
+def test_sidebar_shows_a_missed_deadline_for_a_past_due_topic(due_course):
     course, _first, second, _user, client = due_course
     set_due_date(course, second, due_date=date(2020, 1, 1))
 
     html = _player_html(client, course)
 
-    assert "Overdue" in html
+    assert "Missed deadline" in html
     assert "1 Jan 2020" in html
+    assert "Overdue" not in html
+
+
+@pytest.mark.django_db
+def test_sidebar_labels_the_date_deadline(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    text = " ".join(re.sub(r"<[^>]+>", " ", _player_html(client, course)).split())
+
+    assert re.search(r"Deadline 1 Jan 2999", text)
+    assert "Due " not in text
+
+
+@pytest.mark.django_db
+def test_sidebar_shows_a_relative_deadline_in_the_site_zone(due_course):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    course, _first, second, user, client = due_course
+    set_due_date(course, second, due_days_after_registration=14)
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+
+    assert "15 Mar 2026, 23:59 SAST" in _player_html(client, course)
+
+
+@pytest.mark.django_db
+def test_sidebar_data_show_zone_is_false_when_the_site_has_no_row(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    assert 'data-show-zone="false"' in _player_html(client, course)
+
+
+@pytest.mark.django_db
+def test_sidebar_shows_a_learner_registered_after_a_fixed_date_a_missed_deadline(
+    due_course,
+):
+    course, _first, second, user, client = due_course
+    set_due_date(course, second, due_date=date(2026, 3, 20))
+    course_progress_record(
+        course, user, created_at=datetime(2026, 4, 1, 10, 0, tzinfo=UTC)
+    )
+
+    assert "Missed deadline" in _player_html(client, course)
+
+
+@pytest.mark.django_db
+def test_sidebar_shows_a_part_child_its_deadline(mock_site_context):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    topic = TopicFactory()
+    part.items.create(child=topic, order=0)
+    user = UserFactory()
+    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+
+    assert "1 Jan 2999" in _player_html(client, course)
 
 
 @pytest.mark.django_db
@@ -3931,26 +3992,26 @@ def test_sidebar_data_show_zone_follows_the_site_setting(due_course, show_label)
 
 
 @pytest.mark.django_db
-def test_sidebar_clears_due_and_overdue_when_the_topic_is_completed(due_course):
+def test_sidebar_clears_the_deadline_when_the_topic_is_completed(due_course):
     course, first, _second, user, client = due_course
     set_due_date(course, first, due_date=date(2020, 1, 1))
     topic_completion(course, user, first, complete_time=timezone.now())
 
     html = _player_html(client, course, index=2)
 
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html
     assert "1 Jan 2020" not in html
 
 
 @pytest.mark.django_db
-def test_sidebar_shows_a_future_due_date_without_the_overdue_badge(due_course):
+def test_sidebar_shows_a_future_deadline_without_the_missed_deadline_chip(due_course):
     course, _first, second, _user, client = due_course
     set_due_date(course, second, due_date=date(2999, 1, 1))
 
     html = _player_html(client, course)
 
     assert "1 Jan 2999" in html
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html
 
 
 @pytest.mark.django_db
@@ -4004,7 +4065,7 @@ def test_sidebar_cohort_override_beats_the_content_default(overridden_player):
     html = _player_html(client, course)
 
     assert "1 Jan 2999" in html
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html
 
 
 @pytest.mark.django_db
@@ -4017,7 +4078,7 @@ def test_sidebar_none_override_removes_the_date(overridden_player):
     html = _player_html(client, course)
 
     assert "1 Jan 2020" not in html
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html
 
 
 @pytest.mark.django_db
@@ -4032,7 +4093,7 @@ def test_sidebar_individual_registration_ignores_the_cohort_override(
     html = _player_html(individual_client, course)
 
     assert "1 Jan 2020" in html
-    assert "Overdue" in html
+    assert "Missed deadline" in html
 
 
 # --- Learner deadline overrides in the player sidebar ---
@@ -4062,7 +4123,7 @@ def test_sidebar_learner_override_beats_the_cohort_override_and_the_default(
 
     assert "1 Jan 2999" in html
     assert "1 Jan 2030" not in html
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html
 
 
 @pytest.mark.django_db
@@ -4075,4 +4136,4 @@ def test_sidebar_learner_none_override_removes_the_date(overridden_player):
     html = _player_html(client, course)
 
     assert "1 Jan 2020" not in html
-    assert "Overdue" not in html
+    assert "Missed deadline" not in html

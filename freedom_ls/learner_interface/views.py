@@ -114,37 +114,58 @@ from .utils import (
     stamp_course_access_badge,
 )
 
+TIME_LIMIT_TITLE = "Course time limit"
+
+
+@dataclass(frozen=True)
+class CardDeadline:
+    """One deadline the card names: the item's title and when it is due."""
+
+    title: str
+    due_at: datetime
+
 
 @dataclass(frozen=True)
 class CardDeadlineLine:
-    """What the card's one deadline line says, in the order the template checks it."""
+    """The card's one deadline line: the earliest missed deadline wins over the next one."""
 
-    time_limit_end: datetime | None
-    time_limit_overdue: bool
-    overdue_count: int
-    next_due_at: datetime | None
+    missed: CardDeadline | None
+    next: CardDeadline | None
 
 
 def _card_deadline_line(
     flat: list[dict], course_deadlines: CourseDeadlines | None, now: datetime
 ) -> CardDeadlineLine:
-    # Only leaf rows carry due_at; a completed leaf neither counts as overdue nor sets the
-    # next due date. An in-progress course is never complete, so the time limit's overdue
-    # check takes completed=False.
-    leaves = [row for row in flat if "due_at" in row]
-    open_due_dates = [
-        row["due_at"] for row in leaves if row["due_at"] and row["status"] != COMPLETE
+    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. An
+    # in-progress course is never complete, so the time limit's overdue check takes
+    # completed=False.
+    open_leaves = [
+        row
+        for row in flat
+        if row.get("due_at") is not None and row["status"] != COMPLETE
+    ]
+    missed = [
+        CardDeadline(row["title"], row["due_at"])
+        for row in open_leaves
+        if row["is_overdue"]
+    ]
+    upcoming = [
+        CardDeadline(row["title"], row["due_at"])
+        for row in open_leaves
+        if row["due_at"] > now
     ]
     time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
-    upcoming = [due_at for due_at in open_due_dates if due_at > now]
-    if time_limit.due_at is not None and time_limit.due_at > now:
-        upcoming.append(time_limit.due_at)
-    return CardDeadlineLine(
-        time_limit_end=time_limit.due_at,
-        time_limit_overdue=is_overdue(time_limit, False, now),
-        overdue_count=sum(1 for row in leaves if row["is_overdue"]),
-        next_due_at=min(upcoming, default=None),
-    )
+    if time_limit.due_at is not None:
+        time_limit_deadline = CardDeadline(TIME_LIMIT_TITLE, time_limit.due_at)
+        if is_overdue(time_limit, False, now):
+            missed.append(time_limit_deadline)
+        elif time_limit.due_at > now:
+            upcoming.append(time_limit_deadline)
+
+    def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
+        return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
+
+    return CardDeadlineLine(missed=earliest(missed), next=earliest(upcoming))
 
 
 def _annotate_next_up(
@@ -192,10 +213,8 @@ def _annotate_next_up(
     setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
     line = _card_deadline_line(flat, course_deadlines, now)
-    setattr(course, "time_limit_end", line.time_limit_end)  # noqa: B010
-    setattr(course, "time_limit_overdue", line.time_limit_overdue)  # noqa: B010
-    setattr(course, "overdue_count", line.overdue_count)  # noqa: B010
-    setattr(course, "next_due_at", line.next_due_at)  # noqa: B010
+    setattr(course, "missed_deadline", line.missed)  # noqa: B010
+    setattr(course, "next_deadline", line.next)  # noqa: B010
 
 
 def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
@@ -798,35 +817,19 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     # get_course_index is anonymous-safe (it fetches user-scoped progress
     # only behind its own is_authenticated / can_access_content guards).
-    # Only a registered learner has a record to resolve deadlines against.
+    # No deadlines are resolved: this page reads the same for every viewer, and
+    # deadlines show in the course player.
     course_progress = (
         course_progress_for(cast("User", request.user), course)
         if is_registered
         else None
-    )
-    deadlines = (
-        course_deadlines(course_progress) if course_progress is not None else None
     )
     children = get_course_index(
         user=request.user,
         course=course,
         can_access_content=decision.can_access_content,
         course_progress=course_progress,
-        course_deadlines=deadlines,
     )
-    time_limit_end: datetime | None = None
-    time_limit_overdue = False
-    time_limit_label = ""
-    # A finished course has nothing left to finish by, so its card goes, as a completed
-    # row's due date does.
-    if (
-        course_progress is not None
-        and deadlines is not None
-        and course_progress.completed_time is None
-    ):
-        time_limit_end = deadlines.time_limit.due_at
-        time_limit_overdue = is_overdue(deadlines.time_limit, False, timezone.now())
-        time_limit_label = "Time limit ended" if time_limit_overdue else "Finish by"
     start_url: str | None
     cta_label: str | None
     if is_registered:
@@ -914,11 +917,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "includes_assessments": includes_assessments,
             "meta_description": meta_description,
             "json_ld": json_ld,
-            "time_limit_end": time_limit_end,
-            "time_limit_overdue": time_limit_overdue,
-            "time_limit_label": time_limit_label,
-            "show_time_zone_to_learners": is_registered
-            and shows_time_zone_to_learners(cast(Site, get_cached_site(request))),
         },
     )
 

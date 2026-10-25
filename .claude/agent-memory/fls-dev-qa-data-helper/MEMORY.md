@@ -69,6 +69,8 @@
 - [reference_submit_on_exit_flag_flip.md](reference_submit_on_exit_flag_flip.md) — Form.submit_on_exit has no admin widget: flip it with queryset.update(); it gates the runner's "Leave and submit" button AND makes view_form/form_start auto-finalise any open attempt (finalise_stale_incomplete); content_save reverts it; CourseApplication filters on `user` not `applicant`; the question model is FormQuestion not Question
 - [reference_rearming_the_finish_page.md](reference_rearming_the_finish_page.md) — GA4 course_completed re-arm: null ONLY CourseProgress.completed_time (leave TopicProgress/percentage); the finish page's complete-vs-not branch is outstanding_items, so zero TopicProgress rows already make a "not complete" fixture; course_finish has no unlock gate
 
+- [reference_deadlines_seed_command.md](reference_deadlines_seed_command.md) — qa_create_deadlines_seed: deadlines-1 QA §0.3 seed (tz config, QA Deadlines Cohort, 4 qa_deadline_* learners, back-dated created_at); plain course is "show end with Topic"; on_commit minting never fires in pytest
+
 ## Recurring requests
 
 **"Re-arm the course_completed event for one more page load"** (Sep 2026, google-analytics-setup,

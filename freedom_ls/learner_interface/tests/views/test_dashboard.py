@@ -1437,7 +1437,7 @@ def test_category_section_query_count_does_not_grow_with_categories_per_course(
 def deadline_card(mock_site_context, logged_in_client):
     """A course with two topics, a learner registered on 1 Mar 2026 and their client."""
     course = CourseFactory()
-    topics = [TopicFactory(), TopicFactory()]
+    topics = [TopicFactory(title="First Topic"), TopicFactory(title="Second Topic")]
     for order, topic in enumerate(topics):
         course.items.create(child=topic, order=order)
     user = UserFactory()
@@ -1453,50 +1453,72 @@ def _dashboard_html(client: Client) -> str:
     return response.content.decode()
 
 
+def _dashboard_text(client: Client) -> str:
+    """The dashboard's visible text, tags stripped and whitespace collapsed."""
+    return " ".join(re.sub(r"<[^>]+>", " ", _dashboard_html(client)).split())
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_shows_time_limit_ended_ahead_of_overdue_topics(deadline_card):
+def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
+    deadline_card,
+):
     course, topics, _user, _record, client = deadline_card
     course.time_limit_days = 30
     course.save()
-    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "Time limit ended" in html
-    assert "31 Mar 2026" in html
-    assert "Overdue" in html
-    assert "1 overdue" not in html
-    assert "Next due" not in html
+    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "Course time limit" not in text
+    assert "Next deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_names_a_missed_time_limit_course_time_limit(deadline_card):
+    course, _topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+
+    text = _dashboard_text(client)
+
+    assert "Missed deadline Course time limit 31 Mar 2026" in text
+    assert "Time limit ended" not in text
+    assert "Overdue" not in text
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_shows_the_overdue_count_ahead_of_the_next_due_date(deadline_card):
+def test_card_shows_a_missed_deadline_ahead_of_the_next_deadline(deadline_card):
     course, topics, _user, _record, client = deadline_card
-    set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
-    set_due_date(course, topics[1], due_date=datetime.date(2999, 1, 1))
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "1 overdue" in html
-    assert "Next due" not in html
-    assert "Time limit ended" not in html
+    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "Next deadline" not in text
+    assert "overdue" not in text.lower()
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_counts_every_overdue_topic(deadline_card):
+def test_card_shows_the_earliest_of_several_missed_deadlines(deadline_card):
     course, topics, _user, _record, client = deadline_card
-    for topic in topics:
-        set_due_date(course, topic, due_date=datetime.date(2020, 1, 1))
+    set_due_date(course, topics[0], due_date=datetime.date(2021, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    assert "2 overdue" in _dashboard_html(client)
+    text = _dashboard_text(client)
+
+    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "1 Jan 2021" not in text
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_shows_the_earliest_next_due_date_across_topics_and_time_limit(
+def test_card_shows_the_earliest_next_deadline_across_topics_and_time_limit(
     deadline_card,
 ):
     course, topics, _user, _record, client = deadline_card
@@ -1505,63 +1527,64 @@ def test_card_shows_the_earliest_next_due_date_across_topics_and_time_limit(
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
     set_due_date(course, topics[1], due_date=datetime.date(2998, 1, 1))
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "Next due" in html
-    assert "30 May 2026" in html
-    assert "Overdue" not in html
+    assert "Next deadline: Course time limit 30 May 2026" in text
+    assert "Missed deadline" not in text
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_shows_the_next_due_date_when_nothing_is_overdue(deadline_card):
+def test_card_names_the_topic_of_the_next_deadline(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "Next due" in html
-    assert "1 Jan 2999" in html
-    assert "overdue" not in html.lower()
+    assert "Next deadline: First Topic 1 Jan 2999" in text
+    assert "Next due" not in text
+    assert "overdue" not in text.lower()
 
 
 @pytest.mark.django_db
 def test_card_shows_no_deadline_line_without_deadlines(deadline_card):
     _course, _topics, _user, _record, client = deadline_card
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "Next due" not in html
-    assert "overdue" not in html.lower()
+    assert "Next deadline" not in text
+    assert "Missed deadline" not in text
 
 
 @pytest.mark.django_db
-def test_card_neither_counts_nor_dates_a_completed_topic(deadline_card):
+def test_card_ignores_a_completed_topics_missed_deadline(deadline_card):
     course, topics, user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
     topic_completion(course, user, topics[0], complete_time=timezone.now())
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "overdue" not in html.lower()
-    assert "1 Jan 2020" not in html
+    assert "Missed deadline" not in text
+    assert "1 Jan 2020" not in text
 
 
 @pytest.mark.django_db
-def test_card_ignores_the_due_date_of_a_completed_topic_for_next_due(deadline_card):
+def test_card_ignores_a_completed_topics_deadline_for_the_next_deadline(
+    deadline_card,
+):
     course, topics, user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
     set_due_date(course, topics[1], due_date=datetime.date(2999, 6, 1))
     topic_completion(course, user, topics[0], complete_time=timezone.now())
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "1 Jun 2999" in html
-    assert "1 Jan 2999" not in html
+    assert "Next deadline: Second Topic 1 Jun 2999" in text
+    assert "1 Jan 2999" not in text
 
 
 @pytest.mark.django_db
-def test_card_counts_a_fixed_past_date_for_a_learner_registered_today(
+def test_card_shows_a_learner_registered_today_a_fixed_past_date_missed(
     deadline_card,
 ):
     course, topics, _user, record, client = deadline_card
@@ -1569,7 +1592,7 @@ def test_card_counts_a_fixed_past_date_for_a_learner_registered_today(
     record.save()
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
 
-    assert "1 overdue" in _dashboard_html(client)
+    assert "Missed deadline First Topic" in _dashboard_text(client)
 
 
 @pytest.mark.django_db
@@ -1581,8 +1604,8 @@ def test_card_deadline_line_sits_below_next_up_and_outside_the_eyebrow(
 
     html = _dashboard_html(client)
 
-    assert html.index("Next up:") < html.index("Next due")
-    assert html.count("Next due") == 1
+    assert html.index("Next up:") < html.index("Next deadline")
+    assert html.count("Next deadline") == 1
 
 
 @pytest.mark.django_db
@@ -1616,14 +1639,14 @@ def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
 
     card_count = len(rendered_section(response, "in-progress").courses)
     assert card_count > 1
-    assert response.content.decode().count("1 overdue") == card_count
+    assert response.content.decode().count("Missed deadline") == card_count
 
 
 @pytest.mark.django_db
 def test_card_still_names_the_next_up_topic(deadline_card):
     _course, topics, _user, _record, client = deadline_card
 
-    assert f"Next up: {topics[0].title}" in " ".join(_dashboard_html(client).split())
+    assert f"Next up: {topics[0].title}" in _dashboard_text(client)
 
 
 # --- Cohort deadline overrides on the dashboard card ---
@@ -1650,11 +1673,10 @@ def test_card_cohort_override_beats_the_content_default(overridden_card):
         due_days_after_registration=None,
     )
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "Next due" in html
-    assert "1 Jan 2999" in html
-    assert "1 overdue" not in html
+    assert "Next deadline: First Topic 1 Jan 2999" in text
+    assert "Missed deadline" not in text
 
 
 @pytest.mark.django_db
@@ -1665,10 +1687,10 @@ def test_card_none_override_removes_the_date(overridden_card):
         record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
     )
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "1 overdue" not in html
-    assert "Next due" not in html
+    assert "Missed deadline" not in text
+    assert "Next deadline" not in text
 
 
 @pytest.mark.django_db
@@ -1679,7 +1701,7 @@ def test_card_individual_registration_ignores_the_cohort_override(overridden_car
         record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
     )
 
-    assert "1 overdue" in _dashboard_html(individual_client)
+    assert "Missed deadline First Topic" in _dashboard_text(individual_client)
 
 
 # --- Learner deadline overrides on the dashboard card ---
@@ -1706,11 +1728,11 @@ def test_card_learner_override_beats_the_cohort_override_and_the_default(
         due_days_after_registration=None,
     )
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "1 Jan 2999" in html
-    assert "1 Jan 2030" not in html
-    assert "1 overdue" not in html
+    assert "Next deadline: First Topic 1 Jan 2999" in text
+    assert "1 Jan 2030" not in text
+    assert "Missed deadline" not in text
 
 
 @pytest.mark.django_db
@@ -1721,7 +1743,7 @@ def test_card_learner_none_override_removes_the_date(overridden_card):
         record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
     )
 
-    html = _dashboard_html(client)
+    text = _dashboard_text(client)
 
-    assert "1 overdue" not in html
-    assert "Next due" not in html
+    assert "Missed deadline" not in text
+    assert "Next deadline" not in text

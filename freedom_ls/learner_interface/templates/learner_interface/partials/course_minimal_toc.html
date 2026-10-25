@@ -1,11 +1,15 @@
 {% load course_storage_keys deadline_tags %}
 
 {% partialdef due-date %}
+    {% comment %} Its own line under the title, indented by deadline_indent so it starts
+    under the row's icon. {% endcomment %}
     {% if child.due_at and child.status != "COMPLETE" %}
-        {% if child.is_overdue %}
-            <c-panel-status-badge tone="error" label="Overdue" />
-        {% endif %}
-        <span class="text-xs text-muted whitespace-nowrap">Due {% local_time child.due_at %}</span>
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 {{ deadline_indent }}">
+            {% if child.is_overdue %}
+                <c-panel-status-badge tone="error" label="Missed deadline" />
+            {% endif %}
+            <span class="text-xs text-muted whitespace-nowrap">Deadline {% local_time child.due_at %}</span>
+        </div>
     {% endif %}
 {% endpartialdef %}
 
@@ -95,17 +99,16 @@
                             class="list-none ml-6 mt-1 space-y-1">
                             {% if child.children %}
                                 {% for part_child in child.children %}
-                                    <li class="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
-                                        <div class="flex items-center gap-1 flex-[1_1_8rem] min-w-0">
+                                    <li class="flex flex-col gap-y-0.5 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                                        <div class="flex items-center gap-1 min-w-0">
                                             {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter text_size="text-xs" counter_width="w-8" %}
                                                 {% partial content-row-inner %}
                                             {% endwith %}
                                         </div>
-                                        <div class="flex items-center gap-2 shrink-0">
-                                            {% with child=part_child %}
-                                                {% partial due-date %}
-                                            {% endwith %}
-                                        </div>
+                                        {% comment %} pl-9 = the w-8 counter plus the gap-1 after it. {% endcomment %}
+                                        {% with child=part_child deadline_indent="pl-9" %}
+                                            {% partial due-date %}
+                                        {% endwith %}
                                     </li>
                                 {% endfor %}
                             {% else %}
@@ -117,15 +120,16 @@
                     </li>
                 {% else %}
                     {% comment %} Regular content item (Topic, Form, Course). {% endcomment %}
-                    <li class="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
-                        <div class="flex items-center gap-2 flex-[1_1_8rem] min-w-0">
+                    <li class="flex flex-col gap-y-0.5 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                        <div class="flex items-center gap-2 min-w-0">
                             {% with parent_counter=forloop.counter text_size="text-sm" counter_width="w-5" %}
                                 {% partial content-row-inner %}
                             {% endwith %}
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
+                        {% comment %} pl-7 = the w-5 counter plus the gap-2 after it. {% endcomment %}
+                        {% with deadline_indent="pl-7" %}
                             {% partial due-date %}
-                        </div>
+                        {% endwith %}
                     </li>
                 {% endif %}
             {% endfor %}

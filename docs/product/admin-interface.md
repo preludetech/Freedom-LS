@@ -73,7 +73,7 @@ Course authors set due dates and time limits in the course content; see [content
 - **"No deadline".** An override can remove a due date or time limit altogether, as well as set a fixed date (with optional time) or a number of days after registration.
 - **Who and why.** Each override shows who set it and carries a free-text reason, and a note appears if the content's own value changed after the override was saved, so an administrator can decide whether it still makes sense.
 
-Overrides only change what is shown, in the admin and to [learners](./learner-experience.md#due-dates-and-overdue). They do not lock content, send reminders or grant extensions, and the educator interface has no screen for them.
+Overrides only change what is shown, in the admin and to [learners](./learner-experience.md#deadlines). They do not lock content, send reminders or grant extensions, and the educator interface has no screen for them.
 
 ## Site Time Zone
 

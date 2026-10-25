@@ -14,7 +14,7 @@ _Last updated: 2026-10-25_
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
-- A registered learner sees due dates and an **Overdue** mark on the course's table of contents, its detail page and its dashboard card. Nothing is enforced: an overdue item stays open and completable. See [Due dates and overdue](#due-dates-and-overdue).
+- A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. Nothing is enforced: an item past its deadline stays open and completable. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 - A site has a public blog: an index of its published articles and a page for each article, readable without logging in. An article can carry an image, shown on its page, its cards and its social-sharing preview. See [Blog](#blog).
@@ -282,17 +282,18 @@ Learners can attempt a quiz more than once.
 
 When every item in a course is complete, the learner reaches a finish page and the course moves to the completed section of their dashboard. A quiz the learner has not passed does not count toward that completion — the finish page names what is outstanding and links to the retry. See [learner tracking](./learner-tracking.md#progress-percentage) for how completion is calculated. There is no certificate or downloadable completion evidence.
 
-## Due dates and overdue
+## Deadlines
 
-A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in three places:
+A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
 
-- **Table of contents** (on the course detail page and in the course player's outline) — "Due" and the date beside each incomplete item that has one, with an **Overdue** mark once it has passed. A completed item shows neither.
-- **Course detail page** — "Finish by" and the date where the course has a time limit; once the limit has passed on an unfinished course, "Time limit ended" and the date with the Overdue mark. A learner who has finished the course sees no time limit card. A visitor who is not registered sees no deadlines.
-- **Dashboard course card** — one line above the progress bar: the time limit having ended, else the number of overdue items, else the next date coming up.
+- **Course player outline** — "Deadline" and the date under each incomplete item that has one, with a **Missed deadline** mark once it has passed. A completed item shows neither.
+- **Dashboard course card** — one line above the progress bar: the earliest missed deadline with its title and date, else "Next deadline:" with the title and date of the next one. A passed or coming time limit shows as "Course time limit".
 
-![Course detail page with a passed time limit and overdue items in the table of contents](screenshots/learner_course_detail_due_dates.png)
+The **course detail page** shows no deadlines. It reads the same for everyone, registered or not: where the course has a time limit, a "Time limit" cell gives its length, such as "90 days".
 
-![Dashboard course card showing an ended time limit](screenshots/learner_dashboard_card_overdue.png)
+![Course player outline with a missed deadline](screenshots/learner_course_detail_due_dates.png)
+
+![Dashboard course card showing a missed deadline](screenshots/learner_dashboard_card_overdue.png)
 
 Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 

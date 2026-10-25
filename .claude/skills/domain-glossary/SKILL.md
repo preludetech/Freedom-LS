@@ -70,7 +70,7 @@ for the row and **child** for the resolved object.
 | **content default** | `ContentCollectionItem.due_date` / `due_time` / `due_days_after_registration`, `Course.time_limit_days` | The deadline the course author set. The lowest layer. |
 | **deadline override** | `CohortDeadlineOverride`, `LearnerDeadlineOverride` | A deadline an admin set over the content default. Never `ContentCollectionItem.overrides`. |
 | **time limit end** | `course_deadlines(record).time_limit` | When the course time limit runs out for one learner: registration date plus `time_limit_days`, at the end of that day. |
-| **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. |
+| **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. Learner-facing copy says "Deadline" and "Missed deadline", never "Due" or "Overdue". |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
 | `is_registered_for_course` | `learner_management/utils.py:16` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
 | `ensure_learner` | `learner_management/utils.py:51` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |

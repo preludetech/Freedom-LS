@@ -28,14 +28,10 @@ from freedom_ls.content_engine.models import Course, CoursePart, CourseVisibilit
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
-from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.tests.helpers import (
-    cohort_override,
     form_attempt,
-    learner_override,
-    learner_with_two_grants,
     set_due_date,
     topic_completion,
 )
@@ -54,7 +50,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -1426,7 +1421,7 @@ def test_course_part_row_announces_in_progress_over_completed_children(
     assert outline.count(">Completed<") == 3
 
 
-# --- Due dates and overdue on the table of contents ---
+# --- Deadlines stay off the course detail page ---
 
 
 @pytest.fixture
@@ -1450,129 +1445,60 @@ def _detail_html(client: Client, course: Course) -> str:
 
 
 @pytest.mark.django_db
-def test_toc_shows_a_relative_due_date_in_the_site_zone(due_topic_course):
-    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_days_after_registration=14)
-    course_progress_record(
-        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
-    )
-
-    html = _detail_html(client, course)
-
-    assert "15 Mar 2026, 23:59 SAST" in html
-    assert "Due" in html
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("show_label", [True, False])
-def test_toc_data_show_zone_follows_the_site_setting(due_topic_course, show_label):
-    SiteTimeZoneConfigFactory(show_time_zone_to_learners=show_label)
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2999, 1, 1))
-    course_progress_record(course, user)
-
-    html = _detail_html(client, course)
-
-    assert f'data-show-zone="{str(show_label).lower()}"' in html
-
-
-@pytest.mark.django_db
-def test_toc_data_show_zone_is_false_when_the_site_has_no_row(due_topic_course):
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2999, 1, 1))
-    course_progress_record(course, user)
-
-    assert 'data-show-zone="false"' in _detail_html(client, course)
-
-
-@pytest.mark.django_db
-def test_toc_marks_a_past_due_topic_overdue(due_topic_course):
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2020, 1, 1))
-    course_progress_record(course, user)
-
-    html = _detail_html(client, course)
-
-    assert "Overdue" in html
-    assert "1 Jan 2020" in html
-
-
-@pytest.mark.django_db
-def test_toc_shows_neither_due_nor_overdue_once_the_topic_is_complete(
-    due_topic_course,
+@pytest.mark.parametrize(
+    "due_date", [date(2020, 1, 1), date(2999, 1, 1)], ids=["missed", "upcoming"]
+)
+def test_detail_outline_shows_a_registered_learner_no_deadline(
+    due_topic_course, due_date: date
 ):
+    """Deadlines show in the course player only; the outline reads the same for everyone."""
     course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2020, 1, 1))
-    topic_completion(course, user, topic, complete_time=timezone.now())
-
-    html = _detail_html(client, course)
-
-    assert "Overdue" not in html
-    assert "1 Jan 2020" not in html
-
-
-@pytest.mark.django_db
-def test_toc_shows_a_future_due_date_without_the_overdue_badge(due_topic_course):
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    set_due_date(course, topic, due_date=due_date)
     course_progress_record(course, user)
 
     html = _detail_html(client, course)
 
-    assert "1 Jan 2999" in html
+    assert "<time" not in html
+    assert "Missed deadline" not in html
+    assert "Deadline" not in html
     assert "Overdue" not in html
 
 
 @pytest.mark.django_db
-def test_toc_shows_a_learner_registered_after_a_fixed_date_overdue_at_once(
-    due_topic_course,
-):
-    course, topic, user, client = due_topic_course
-    set_due_date(course, topic, due_date=date(2026, 3, 20))
-    course_progress_record(
-        course, user, created_at=datetime(2026, 4, 1, 10, 0, tzinfo=UTC)
-    )
-
-    assert "Overdue" in _detail_html(client, course)
-
-
-@pytest.mark.django_db
-def test_toc_shows_a_part_row_neither_a_date_nor_the_overdue_badge(mock_site_context):
+def test_detail_outline_shows_a_part_child_no_deadline(mock_site_context):
     course = CourseFactory()
     part = CoursePartFactory()
     course.items.create(child=part, order=0)
     topic = TopicFactory()
     part.items.create(child=topic, order=0)
     user = UserFactory()
-    set_due_date(course, topic, due_date=date(2999, 1, 1))
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
     course_progress_record(course, user)
     client = Client()
     client.force_login(user)
 
-    response = client.get(
-        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
-    )
+    html = _detail_html(client, course)
 
-    (part_row,) = response.context["children"]
-    assert part_row["type"] == "COURSE_PART"
-    assert "due_at" not in part_row
-    assert part_row["children"][0]["due_at"] is not None
-    assert "1 Jan 2999" in response.content.decode()
+    assert "<time" not in html
+    assert "Missed deadline" not in html
 
 
 @pytest.mark.django_db
-def test_toc_shows_an_unregistered_visitor_no_dates(due_topic_course):
+def test_detail_outline_shows_a_visitor_no_deadline(due_topic_course):
     course, topic, _user, _client = due_topic_course
     set_due_date(course, topic, due_date=date(2020, 1, 1))
 
     html = _detail_html(Client(), course)
 
-    assert "Overdue" not in html
-    assert "1 Jan 2020" not in html
+    assert "<time" not in html
+    assert "Missed deadline" not in html
 
 
 # --- Course time limit on the stats strip ---
+
+
+def _stats_strip_text(html: str) -> str:
+    return " ".join(re.sub(r"<[^>]+>", " ", html).split())
 
 
 @pytest.fixture
@@ -1588,53 +1514,50 @@ def time_limit_course(due_topic_course):
 
 
 @pytest.mark.django_db
-@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_course_detail_shows_finish_by_for_a_future_time_limit(time_limit_course):
-    course, _record, client = time_limit_course
-
-    html = _detail_html(client, course)
-
-    assert "Finish by" in html
-    assert "30 May 2026" in html
-    assert "Time limit ended" not in html
-    assert "Overdue" not in html
-
-
-@pytest.mark.django_db
-@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_course_detail_shows_time_limit_ended_and_overdue_once_passed(
-    time_limit_course,
-):
-    course, _record, client = time_limit_course
-
-    html = _detail_html(client, course)
-
-    assert "Time limit ended" in html
-    assert "30 May 2026" in html
-    assert "Overdue" in html
-    assert "Finish by" not in html
-
-
-@pytest.mark.django_db
-@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 @pytest.mark.parametrize(
     "now",
     [datetime(2026, 4, 1, 10, 0, tzinfo=UTC), datetime(2026, 9, 1, 10, 0, tzinfo=UTC)],
     ids=["before_the_end", "after_the_end"],
 )
-def test_course_detail_shows_no_time_limit_card_once_complete(
+def test_course_detail_shows_a_learner_the_time_limit_as_a_duration(
     time_limit_course, now: datetime
+):
+    course, _record, client = time_limit_course
+
+    with time_machine.travel(now, tick=False):
+        text = _stats_strip_text(_detail_html(client, course))
+
+    assert "Time limit 90 days" in text
+    assert "30 May 2026" not in text
+    assert "Finish by" not in text
+    assert "Time limit ended" not in text
+    assert "Overdue" not in text
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+def test_course_detail_shows_the_time_limit_once_the_course_is_complete(
+    time_limit_course,
 ):
     course, record, client = time_limit_course
     record.completed_time = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
     record.save()
 
-    with time_machine.travel(now, tick=False):
-        html = _detail_html(client, course)
+    assert "Time limit 90 days" in _stats_strip_text(_detail_html(client, course))
 
-    assert "Finish by" not in html
-    assert "Time limit ended" not in html
-    assert "Overdue" not in html
+
+@pytest.mark.django_db
+def test_course_detail_shows_a_visitor_the_time_limit(mock_site_context):
+    course = CourseFactory(time_limit_days=90)
+
+    assert "Time limit 90 days" in _stats_strip_text(_detail_html(Client(), course))
+
+
+@pytest.mark.django_db
+def test_course_detail_shows_a_one_day_time_limit_in_the_singular(mock_site_context):
+    course = CourseFactory(time_limit_days=1)
+
+    assert "Time limit 1 day " in _stats_strip_text(_detail_html(Client(), course))
 
 
 @pytest.mark.django_db
@@ -1644,20 +1567,7 @@ def test_course_detail_shows_no_time_limit_cell_without_a_time_limit(
     course, _topic, user, client = due_topic_course
     course_progress_record(course, user)
 
-    html = _detail_html(client, course)
-
-    assert "Finish by" not in html
-    assert "Time limit ended" not in html
-
-
-@pytest.mark.django_db
-def test_course_detail_shows_a_visitor_no_time_limit_cell(mock_site_context):
-    course = CourseFactory(time_limit_days=90)
-
-    html = _detail_html(Client(), course)
-
-    assert "Finish by" not in html
-    assert "Time limit ended" not in html
+    assert "Time limit" not in _detail_html(client, course)
 
 
 @pytest.mark.django_db
@@ -1679,108 +1589,3 @@ def test_detail_page_query_count_does_not_grow_with_items(
         response = client.get(url)
 
     assert response.status_code == 200
-
-
-# --- Cohort deadline overrides on the table of contents ---
-
-
-@pytest.fixture
-def overridden_course(due_topic_course):
-    """A course whose one topic is due in 2020, a cohort learner's client and an individual
-    learner's client."""
-    course, topic, _user, _client = due_topic_course
-    item = set_due_date(course, topic, due_date=date(2020, 1, 1))
-    cohort_user, cohort_record, _ = learner_with_two_grants(course)
-    cohort_client = Client()
-    cohort_client.force_login(cohort_user)
-    individual_user = UserFactory()
-    course_progress_record(course, individual_user)
-    individual_client = Client()
-    individual_client.force_login(individual_user)
-    return course, item, cohort_record, cohort_client, individual_client
-
-
-@pytest.mark.django_db
-def test_toc_cohort_override_beats_the_content_default(overridden_course):
-    course, item, record, client, _ = overridden_course
-    cohort_override(
-        record,
-        item,
-        kind=DeadlineKind.FIXED,
-        due_date=date(2999, 1, 1),
-        due_days_after_registration=None,
-    )
-
-    html = _detail_html(client, course)
-
-    assert "1 Jan 2999" in html
-    assert "Overdue" not in html
-
-
-@pytest.mark.django_db
-def test_toc_none_override_removes_the_date(overridden_course):
-    course, item, record, client, _ = overridden_course
-    cohort_override(
-        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
-    )
-
-    html = _detail_html(client, course)
-
-    assert "1 Jan 2020" not in html
-    assert "Overdue" not in html
-
-
-@pytest.mark.django_db
-def test_toc_individual_registration_ignores_the_cohort_override(overridden_course):
-    course, item, record, _, individual_client = overridden_course
-    cohort_override(
-        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
-    )
-
-    html = _detail_html(individual_client, course)
-
-    assert "1 Jan 2020" in html
-    assert "Overdue" in html
-
-
-# --- Learner deadline overrides on the table of contents ---
-
-
-@pytest.mark.django_db
-def test_toc_learner_override_beats_the_cohort_override_and_the_default(
-    overridden_course,
-):
-    course, item, record, client, _ = overridden_course
-    cohort_override(
-        record,
-        item,
-        kind=DeadlineKind.FIXED,
-        due_date=date(2030, 1, 1),
-        due_days_after_registration=None,
-    )
-    learner_override(
-        record,
-        item,
-        kind=DeadlineKind.FIXED,
-        due_date=date(2999, 1, 1),
-        due_days_after_registration=None,
-    )
-
-    html = _detail_html(client, course)
-
-    assert "1 Jan 2999" in html
-    assert "1 Jan 2030" not in html
-    assert "Overdue" not in html
-
-
-@pytest.mark.django_db
-def test_toc_learner_none_override_removes_the_date(overridden_course):
-    course, item, record, client, _ = overridden_course
-    learner_override(
-        record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
-    )
-
-    html = _detail_html(client, course)
-
-    assert "1 Jan 2020" not in html
-    assert "Overdue" not in html

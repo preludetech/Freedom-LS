@@ -285,6 +285,12 @@ class Course(MarkdownContent, TitledContent):
             parts.append(f"{minutes} min")
         return "~" + " ".join(parts) if parts else ""
 
+    def display_time_limit(self) -> str:
+        """The authored time limit as a whole-day count like '90 days'. '' when unset."""
+        if self.time_limit_days is None:
+            return ""
+        return f"{self.time_limit_days} day{'' if self.time_limit_days == 1 else 's'}"
+
     def iso_estimated_duration(self) -> str:
         """ISO-8601 duration string (e.g. 'PT1H30M'). Returns '' when unset, zero,
         or under half a minute (which would otherwise round to a bare, invalid 'PT')."""

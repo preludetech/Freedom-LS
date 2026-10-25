@@ -149,7 +149,7 @@ Educators can message learners from within FLS; see [Direct Messaging](#direct-m
 
 **Status: Due dates, course time limits and the overdue mark are built; nothing is enforced.**
 
-Authors can give topics and forms a due date and courses a time limit, administrators can override them, and learners see due dates and an overdue mark; see [learner experience](./learner-experience.md#due-dates-and-overdue). Overdue is only a label. Not built:
+Authors can give topics and forms a due date and courses a time limit, administrators can override them, and learners see deadlines and a missed deadline mark; see [learner experience](./learner-experience.md#deadlines). A missed deadline is only a label. Not built:
 
 - **Consequences after a date passes** — nothing is locked, closed or ended.
 - **Extensions and pause** — staff cannot extend a learner's deadlines or pause a course, and learners cannot pause their own.

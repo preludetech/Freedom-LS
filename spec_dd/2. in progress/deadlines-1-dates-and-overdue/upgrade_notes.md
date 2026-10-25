@@ -36,9 +36,10 @@ requires_tailwind_rebuild: true
   to be in `INSTALLED_APPS`. No system check looks for it: if it is missing, the project fails at
   import, and `manage.py check` will not tell you why.
 - **Templates changed.** The `deadline-badges` partial is gone from `course_minimal_toc.html`.
-  The table of contents, `course_detail.html` and `course_card.html` now show due dates and an
-  overdue mark. If you override any of these three, re-apply your changes on top of the new
-  versions.
+  The course player's table of contents shows each item's deadline and a "Missed deadline" chip,
+  `course_card.html` shows the missed or next deadline, and `course_detail.html` shows the course's
+  time limit as a duration. If you override any of these three, re-apply your changes on top of the
+  new versions.
 
 ## Manual steps
 
