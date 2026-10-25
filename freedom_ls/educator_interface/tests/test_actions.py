@@ -6297,7 +6297,7 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
     text = _bulk_text(response)
     assert "2 learners will be unregistered from Algebra." in text
     assert "1 keeps access through a cohort." in text
-    assert "1 is no individual registration and will be skipped." in text
+    assert "1 is not registered individually and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -6390,7 +6390,7 @@ def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
 
     text = _bulk_text(response)
     assert "1 learner changed." in text
-    assert "1 setup email sent recently" in text
+    assert "1 emailed recently" in text
     assert len(mail.outbox) == 1
 
 
@@ -6554,7 +6554,7 @@ def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "1 cohort will be registered for Algebra." in text
     assert "1 is already registered and will be skipped." in text
-    assert "1 is an inactive cohort and will be skipped." in text
+    assert "1 is inactive and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -6666,9 +6666,7 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
         {"course": CourseFactory()},
     )
 
-    assert [(e.status, e.reason) for e in result.entries] == [
-        ("skipped", "an inactive cohort")
-    ]
+    assert [(e.status, e.reason) for e in result.entries] == [("skipped", "inactive")]
 
 
 @pytest.mark.django_db
@@ -6694,7 +6692,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "1 cohort will be unregistered from Algebra." in text
     assert "1 is not registered and will be skipped." in text
-    assert "1 is an inactive cohort and will be skipped." in text
+    assert "1 is inactive and will be skipped." in text
 
 
 @pytest.mark.django_db
