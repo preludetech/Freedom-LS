@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
@@ -15,7 +16,7 @@ from django.db.models.signals import (
     pre_delete,
     pre_save,
 )
-from django.dispatch import receiver
+from django.dispatch import Signal, receiver
 from django.tasks import Task
 from django.utils import timezone
 
@@ -26,8 +27,15 @@ from freedom_ls.hr_attributes.models import (
     Location,
     OrganisationHRSettings,
 )
-from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
-from freedom_ls.registration_rules.evaluation import is_engine_write
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
+    LoadedIsActiveMixin,
+)
+from freedom_ls.registration_rules.evaluation import is_engine_write, switched_on
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
@@ -317,3 +325,163 @@ def evaluate_organisation_on_switch_save(
             (str(instance.organisation_id), instance.site_id),
         )
     )
+
+
+def _recommend_rules_on(
+    site_id: int, course_ids: Iterable[UUID]
+) -> list[RegistrationRule]:
+    """Enabled recommend rules on these courses whose organisation's switch is on."""
+    return list(
+        switched_on(
+            RegistrationRule._base_manager.filter(
+                site_id=site_id,
+                course_id__in=course_ids,
+                is_enabled=True,
+                outcome=RegistrationRule.Outcome.RECOMMEND,
+            ).order_by("pk")
+        )
+    )
+
+
+def _re_recommend_user(site_id: int, user_id: int, course_ids: Iterable[UUID]) -> None:
+    """One evaluate_learner per active Learner of the user in a rule's organisation."""
+    rules = _recommend_rules_on(site_id, course_ids)
+    for learner_id in Learner._base_manager.filter(
+        site_id=site_id,
+        user_id=user_id,
+        is_active=True,
+        organisation_id__in={rule.organisation_id for rule in rules},
+    ).values_list("pk", flat=True):
+        _enqueue_learner(learner_id, site_id)
+
+
+def _re_recommend_cohort(site_id: int, course_ids: Iterable[UUID]) -> None:
+    """A cohort-wide change: one run per rule, not one task per member."""
+    for rule in _recommend_rules_on(site_id, course_ids):
+        _enqueue_rule(rule.pk, site_id)
+
+
+def _user_of_learner(learner_id: UUID) -> int:
+    user_id: int = Learner._base_manager.values_list("user_id", flat=True).get(
+        pk=learner_id
+    )
+    return user_id
+
+
+def _courses_of_cohort(cohort_id: UUID) -> list[UUID]:
+    return list(
+        CohortCourseRegistration._base_manager.filter(cohort_id=cohort_id)
+        .values_list("course_id", flat=True)
+        .distinct()
+    )
+
+
+def _deactivated(
+    instance: LoadedIsActiveMixin, update_fields: frozenset[str] | None
+) -> bool:
+    """A save that turned is_active off. A save that leaves it out of update_fields
+    decides nothing, whatever a stale instance holds."""
+    if update_fields is not None and "is_active" not in update_fields:
+        return False
+    return instance.loaded_is_active is True and not instance.is_active
+
+
+@receiver(post_save, sender=LearnerCourseRegistration)
+@receiver(pre_delete, sender=LearnerCourseRegistration)
+def re_recommend_on_registration_withdrawn(
+    sender: type[LearnerCourseRegistration],
+    instance: LearnerCourseRegistration,
+    signal: Signal,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """A registration that no longer grants its course puts the recommendation back.
+
+    Reads is_active alone: the snapshot is overwritten by another receiver
+    before this one runs.
+    """
+    if raw or (signal is post_save and instance.is_active):
+        return
+    _re_recommend_user(
+        instance.site_id, _user_of_learner(instance.learner_id), [instance.course_id]
+    )
+
+
+@receiver(pre_delete, sender=CohortMembership)
+def re_recommend_on_membership_deleted(
+    sender: type[CohortMembership],
+    instance: CohortMembership,
+    **kwargs: object,
+) -> None:
+    """A member who leaves a cohort loses the courses it held for them."""
+    _re_recommend_user(
+        instance.site_id,
+        _user_of_learner(instance.learner_id),
+        _courses_of_cohort(instance.cohort_id),
+    )
+
+
+@receiver(post_save, sender=Learner)
+@receiver(pre_delete, sender=Learner)
+def re_recommend_on_learner_withdrawn(
+    sender: type[Learner],
+    instance: Learner,
+    signal: Signal,
+    raw: bool = False,
+    update_fields: frozenset[str] | None = None,
+    **kwargs: object,
+) -> None:
+    """A Learner that goes away takes its registrations with it.
+
+    The courses are read before a delete cascades. A deleted Learner also
+    leaves a user with possibly no Learner to evaluate, so every rule that
+    holds one of the user's recommendations runs itself.
+    """
+    deleting = signal is pre_delete
+    if raw or not (deleting or _deactivated(instance, update_fields)):
+        return
+    course_ids = set(
+        LearnerCourseRegistration._base_manager.filter(
+            learner_id=instance.pk, is_active=True
+        ).values_list("course_id", flat=True)
+    ) | set(
+        CohortCourseRegistration._base_manager.filter(
+            cohort__cohortmembership__learner_id=instance.pk, is_active=True
+        ).values_list("course_id", flat=True)
+    )
+    _re_recommend_user(instance.site_id, instance.user_id, course_ids)
+    if deleting:
+        for rule_id in RegistrationRule._base_manager.filter(
+            site_id=instance.site_id,
+            rule_recommendations__recommendation__user_id=instance.user_id,
+        ).values_list("pk", flat=True):
+            _enqueue_rule(rule_id, instance.site_id)
+
+
+@receiver(post_save, sender=CohortCourseRegistration)
+@receiver(pre_delete, sender=CohortCourseRegistration)
+def re_recommend_on_cohort_registration_withdrawn(
+    sender: type[CohortCourseRegistration],
+    instance: CohortCourseRegistration,
+    signal: Signal,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """A cohort that no longer holds a course puts it back in front of its members."""
+    if raw or (signal is post_save and instance.is_active):
+        return
+    _re_recommend_cohort(instance.site_id, [instance.course_id])
+
+
+@receiver(post_save, sender=Cohort)
+def re_recommend_on_cohort_deactivated(
+    sender: type[Cohort],
+    instance: Cohort,
+    raw: bool = False,
+    update_fields: frozenset[str] | None = None,
+    **kwargs: object,
+) -> None:
+    """Deactivating a cohort withdraws every course it holds from its members."""
+    if raw or not _deactivated(instance, update_fields):
+        return
+    _re_recommend_cohort(instance.site_id, _courses_of_cohort(instance.pk))

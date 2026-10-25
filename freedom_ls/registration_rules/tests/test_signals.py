@@ -28,6 +28,7 @@ from freedom_ls.hr_attributes.factories import (
     LearnerHRAttributesFactory,
     OrganisationHRSettingsFactory,
 )
+from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -37,11 +38,16 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.registration_rules.evaluation import evaluate_rule
+from freedom_ls.registration_rules.evaluation import (
+    evaluate_organisation,
+    evaluate_rule,
+)
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
@@ -870,3 +876,392 @@ def test_deactivating_a_learner_in_the_admin_removes_the_rules_recommendation_on
     # Assert
     assert not RecommendedCourse._base_manager.filter(user=learner.user).exists()
     assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.fixture
+def recommend_rule(mock_site_context):
+    rule = RegistrationRuleFactory(
+        is_enabled=True, outcome=RegistrationRule.Outcome.RECOMMEND
+    )
+    OrganisationHRSettingsFactory(
+        organisation=rule.organisation, registration_rules_enabled=True
+    )
+    return rule
+
+
+@pytest.fixture
+def registered_learner(recommend_rule):
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=recommend_rule.course)
+    return learner
+
+
+@pytest.fixture
+def cohort_holding_the_course(recommend_rule):
+    cohort = CohortFactory(organisation=recommend_rule.organisation)
+    CohortCourseRegistrationFactory(cohort=cohort, course=recommend_rule.course)
+    return cohort
+
+
+def _is_recommended(rule, user) -> bool:
+    return RecommendedCourse._base_manager.filter(
+        user=user, course=rule.course
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_deactivating_a_registration_recommends_the_course_again(
+    recommend_rule, registered_learner, django_capture_on_commit_callbacks
+):
+    # Arrange
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.is_active = False
+        registration.save()
+
+    # Assert
+    assert _is_recommended(recommend_rule, registered_learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_registration_recommends_the_course_again(
+    recommend_rule, registered_learner, django_capture_on_commit_callbacks
+):
+    # Arrange
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.delete()
+
+    # Assert
+    assert _is_recommended(recommend_rule, registered_learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_membership_recommends_the_cohorts_course_again(
+    recommend_rule, cohort_holding_the_course, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    membership = CohortMembershipFactory(
+        cohort=cohort_holding_the_course, learner=learner
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        membership.delete()
+
+    # Assert
+    assert _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_deactivating_a_learner_recommends_the_course_through_the_users_other_learner(
+    recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    user_learner = LearnerFactory(organisation=recommend_rule.organisation)
+    registering_learner = LearnerFactory(
+        user=user_learner.user, organisation=OrganisationFactory()
+    )
+    LearnerCourseRegistrationFactory(
+        learner=registering_learner, course=recommend_rule.course
+    )
+    registering_learner = Learner._base_manager.get(pk=registering_learner.pk)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registering_learner.is_active = False
+        registering_learner.save()
+
+    # Assert
+    assert _is_recommended(recommend_rule, user_learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_learner_recommends_the_course_through_the_users_other_learner(
+    recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    user_learner = LearnerFactory(organisation=recommend_rule.organisation)
+    registering_learner = LearnerFactory(
+        user=user_learner.user, organisation=OrganisationFactory()
+    )
+    LearnerCourseRegistrationFactory(
+        learner=registering_learner, course=recommend_rule.course
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registering_learner.delete()
+
+    # Assert
+    assert _is_recommended(recommend_rule, user_learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_users_only_learner_removes_the_rules_recommendation(
+    recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    RuleRecommendationFactory(
+        rule=recommend_rule,
+        recommendation=RecommendedCourseFactory(
+            user=learner.user, course=recommend_rule.course
+        ),
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.delete()
+
+    # Assert
+    assert not _is_recommended(recommend_rule, learner.user)
+    assert not RuleRecommendation._base_manager.exists()
+
+
+@pytest.mark.django_db
+def test_deactivating_a_users_only_learner_removes_the_rules_recommendation(
+    recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    RuleRecommendationFactory(
+        rule=recommend_rule,
+        recommendation=RecommendedCourseFactory(
+            user=learner.user, course=recommend_rule.course
+        ),
+    )
+    learner = Learner._base_manager.get(pk=learner.pk)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.is_active = False
+        learner.save()
+
+    # Assert
+    assert not _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_deactivating_a_cohort_registration_recommends_the_course_to_members_again(
+    recommend_rule, cohort_holding_the_course, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    CohortMembershipFactory(cohort=cohort_holding_the_course, learner=learner)
+    registration = CohortCourseRegistration._base_manager.get(
+        cohort=cohort_holding_the_course
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.is_active = False
+        registration.save()
+
+    # Assert
+    assert _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_cohort_registration_recommends_the_course_to_members_again(
+    recommend_rule, cohort_holding_the_course, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    CohortMembershipFactory(cohort=cohort_holding_the_course, learner=learner)
+    registration = CohortCourseRegistration._base_manager.get(
+        cohort=cohort_holding_the_course
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.delete()
+
+    # Assert
+    assert _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_deactivating_a_cohort_recommends_its_course_to_members_again(
+    recommend_rule, cohort_holding_the_course, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    CohortMembershipFactory(cohort=cohort_holding_the_course, learner=learner)
+    cohort = Cohort._base_manager.get(pk=cohort_holding_the_course.pk)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        cohort.is_active = False
+        cohort.save()
+
+    # Assert
+    assert _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_deleting_a_cohort_recommends_its_course_only_to_members_registered_no_other_way(
+    recommend_rule, cohort_holding_the_course, django_capture_on_commit_callbacks
+):
+    # Arrange
+    only_member = LearnerFactory(organisation=recommend_rule.organisation)
+    also_registered = LearnerFactory(organisation=recommend_rule.organisation)
+    CohortMembershipFactory(cohort=cohort_holding_the_course, learner=only_member)
+    CohortMembershipFactory(cohort=cohort_holding_the_course, learner=also_registered)
+    LearnerCourseRegistrationFactory(
+        learner=also_registered, course=recommend_rule.course
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        cohort_holding_the_course.delete()
+
+    # Assert
+    assert _is_recommended(recommend_rule, only_member.user)
+    assert not _is_recommended(recommend_rule, also_registered.user)
+
+
+@pytest.mark.django_db
+def test_a_withdrawn_registration_does_not_recommend_to_a_user_registered_another_way(
+    recommend_rule,
+    registered_learner,
+    cohort_holding_the_course,
+    django_capture_on_commit_callbacks,
+):
+    # Arrange
+    CohortMembershipFactory(
+        cohort=cohort_holding_the_course, learner=registered_learner
+    )
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.is_active = False
+        registration.save()
+
+    # Assert
+    assert not _is_recommended(recommend_rule, registered_learner.user)
+
+
+@pytest.mark.django_db
+def test_a_register_rule_retracting_a_learner_recommends_the_course_again(
+    recommend_rule, django_capture_on_commit_callbacks
+):
+    # Arrange
+    job_title = JobTitleFactory(organisation=recommend_rule.organisation)
+    register_rule = RegistrationRuleFactory(
+        organisation=recommend_rule.organisation,
+        course=recommend_rule.course,
+        is_enabled=True,
+    )
+    AttributeRuleConditionsFactory(rule=register_rule, job_titles=[job_title])
+    learner = LearnerFactory(organisation=recommend_rule.organisation)
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=recommend_rule.course, self_registered=False
+    )
+    RuleRegistrationFactory(rule=register_rule, registration=registration)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_rule(register_rule.pk, register_rule.site_id)
+
+    # Assert
+    assert _is_recommended(recommend_rule, learner.user)
+
+
+@pytest.mark.django_db
+def test_withdrawing_a_registration_with_the_switch_off_queues_nothing(
+    recommend_rule,
+    registered_learner,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
+):
+    # Arrange
+    OrganisationHRSettings._base_manager.filter(
+        organisation=recommend_rule.organisation
+    ).update(registration_rules_enabled=False)
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        registration.is_active = False
+        registration.save()
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()
+    assert not _is_recommended(recommend_rule, registered_learner.user)
+
+
+@pytest.mark.django_db
+def test_turning_the_switch_on_recommends_to_users_withdrawn_while_it_was_off(
+    recommend_rule, registered_learner, django_capture_on_commit_callbacks
+):
+    # Arrange
+    OrganisationHRSettings._base_manager.filter(
+        organisation=recommend_rule.organisation
+    ).update(registration_rules_enabled=False)
+    registration = LearnerCourseRegistration._base_manager.get(
+        learner=registered_learner
+    )
+    registration.is_active = False
+    registration.save()
+    OrganisationHRSettings._base_manager.filter(
+        organisation=recommend_rule.organisation
+    ).update(registration_rules_enabled=True)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_organisation(recommend_rule.organisation_id, recommend_rule.site_id)
+
+    # Assert
+    assert _is_recommended(recommend_rule, registered_learner.user)
+
+
+@pytest.mark.django_db
+def test_loading_a_deactivated_registration_fixture_queues_nothing(
+    recommend_rule, registered_learner, django_capture_on_commit_callbacks
+):
+    # Arrange
+    LearnerCourseRegistration._base_manager.filter(learner=registered_learner).update(
+        is_active=False
+    )
+    payload = serializers.serialize(
+        "json",
+        [LearnerCourseRegistration._base_manager.get(learner=registered_learner)],
+    )
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        next(iter(serializers.deserialize("json", payload))).save()
+
+    # Assert
+    assert callbacks == []
