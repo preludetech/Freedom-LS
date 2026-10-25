@@ -7,7 +7,7 @@
             <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
             <a href="{{ upload_url }}">Upload a different file</a>
         </p>
-        <ul class="mt-4 flex flex-wrap gap-x-6 gap-y-1">
+        <ul class="mt-4 ml-0 flex list-none flex-wrap gap-x-6 gap-y-1 space-y-0">
             {% for item in label_counts %}
                 <li>
                     <a href="{{ preview_url }}?label={{ item.label }}" data-label-filter{% if item.label == label %} aria-current="true" class="font-semibold"{% endif %}>{{ item.name }}: {{ item.count }}</a>
