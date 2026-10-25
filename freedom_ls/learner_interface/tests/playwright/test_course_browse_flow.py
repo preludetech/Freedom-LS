@@ -618,6 +618,8 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
         pager = _box(section.get_by_role("navigation"))
         first_row = _box(rows.locator("li").first)
         assert pager["y"] + pager["height"] <= first_row["y"]
+        # The rows line up with the heading, not indented by the list's margin.
+        assert first_row["x"] == _box(heading)["x"]
         browse_all = rows.get_by_role("link", name="Browse all courses")
         expect(browse_all).to_be_visible()
         link_box = _box(browse_all)
