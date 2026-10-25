@@ -8,7 +8,7 @@ nothing cleans up.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import cast
@@ -26,15 +26,29 @@ from django.core.management.base import CommandError
 from django.db import DatabaseError
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.deployment.housekeeping import (
+    BulkRecordModel,
     OrphanReapResult,
+    delete_finished_records,
+    delete_stale_previews,
     find_late_unpicked_tasks,
     find_orphaned_running_reports,
     find_orphaned_running_tasks,
     mark_orphaned_running_reports_failed,
     mark_orphaned_running_tasks_failed,
+    mark_orphaned_runs_failed,
+    mark_unpicked_runs_failed,
     run_housekeeping_sweeps,
 )
+from freedom_ls.learner_management.models import (
+    BulkActionRun,
+    ImportStatus,
+    LearnerImport,
+    LearnerImportRow,
+    RunStatus,
+)
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 
@@ -792,3 +806,380 @@ class TestOrphanedReportReporting:
         # Assert
         report.refresh_from_db()
         assert report.status == GeneratedReport.STATUS_FAILED
+
+
+BULK_MODELS = [BulkActionRun, LearnerImport]
+FIXED_NOW = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
+
+
+def _make_bulk_record(
+    model: BulkRecordModel,
+    *,
+    status: str,
+    created_ago: timedelta = timedelta(0),
+    started_ago: timedelta | None = None,
+    finished_ago: timedelta | None = None,
+) -> BulkActionRun | LearnerImport:
+    """A record in `status`, with its timestamps set relative to FIXED_NOW.
+
+    created_at is auto_now_add, so it is set by creating the row while the clock
+    is `created_ago` in the past.
+    """
+    fields: dict[str, object] = {
+        "organisation": OrganisationFactory(),
+        "requested_by": UserFactory(),
+        "status": status,
+        "started_at": None if started_ago is None else FIXED_NOW - started_ago,
+        "finished_at": None if finished_ago is None else FIXED_NOW - finished_ago,
+    }
+    if model is LearnerImport:
+        fields["file_name"] = "learners.csv"
+    else:
+        fields.update(table_key="learners", action_name="deactivate")
+    with time_machine.travel(FIXED_NOW - created_ago, tick=False):
+        return model._base_manager.create(**fields)
+
+
+@pytest.mark.django_db
+class TestDeleteStalePreviews:
+    def test_preview_older_than_a_day_is_deleted(self, mock_site_context) -> None:
+        _make_bulk_record(
+            LearnerImport,
+            status=ImportStatus.PREVIEWED,
+            created_ago=timedelta(hours=24, seconds=1),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            deleted = delete_stale_previews()
+
+        assert (deleted, LearnerImport._base_manager.count()) == (1, 0)
+
+    def test_preview_younger_than_a_day_is_kept(self, mock_site_context) -> None:
+        _make_bulk_record(
+            LearnerImport,
+            status=ImportStatus.PREVIEWED,
+            created_ago=timedelta(hours=23, minutes=59),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_stale_previews()
+
+        assert LearnerImport._base_manager.count() == 1
+
+    def test_old_import_that_was_confirmed_is_kept(self, mock_site_context) -> None:
+        _make_bulk_record(
+            LearnerImport, status=ImportStatus.QUEUED, created_ago=timedelta(days=3)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_stale_previews()
+
+        assert LearnerImport._base_manager.count() == 1
+
+    def test_deleting_a_preview_deletes_its_rows(self, mock_site_context) -> None:
+        learner_import = cast(
+            LearnerImport,
+            _make_bulk_record(
+                LearnerImport,
+                status=ImportStatus.PREVIEWED,
+                created_ago=timedelta(days=2),
+            ),
+        )
+        LearnerImportRow._base_manager.create(
+            site=learner_import.site,
+            learner_import=learner_import,
+            line_number=2,
+            email="a@example.com",
+            preview_label="new_account",
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_stale_previews()
+
+        assert not LearnerImportRow._base_manager.exists()
+
+    def test_previews_of_every_site_are_deleted(self, mock_site_context) -> None:
+        record = _make_bulk_record(
+            LearnerImport,
+            status=ImportStatus.PREVIEWED,
+            created_ago=timedelta(days=2),
+        )
+        LearnerImport._base_manager.filter(pk=record.pk).update(site=SiteFactory())
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_stale_previews()
+
+        assert LearnerImport._base_manager.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model", BULK_MODELS)
+class TestMarkUnpickedRunsFailed:
+    def test_queued_record_older_than_the_window_is_failed(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(seconds=3601)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            closed = mark_unpicked_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert (closed, record.status, record.finished_at) == (
+            1,
+            RunStatus.FAILED,
+            FIXED_NOW,
+        )
+
+    def test_error_message_says_the_task_was_never_picked_up(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_unpicked_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert "never picked up" in record.error_message
+
+    def test_queued_record_inside_the_window_is_left_queued(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(seconds=3599)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_unpicked_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert record.status == RunStatus.QUEUED
+
+    def test_running_record_is_not_touched(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model,
+            status=RunStatus.RUNNING,
+            created_ago=timedelta(hours=5),
+            started_ago=timedelta(minutes=1),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_unpicked_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert record.status == RunStatus.RUNNING
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model", BULK_MODELS)
+class TestMarkOrphanedRunsFailed:
+    def test_running_record_started_before_the_window_is_failed(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.RUNNING, started_ago=timedelta(seconds=3601)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            closed = mark_orphaned_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert (closed, record.status, record.finished_at) == (
+            1,
+            RunStatus.FAILED,
+            FIXED_NOW,
+        )
+
+    def test_error_message_says_housekeeping_closed_it(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_orphaned_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert "fls_run_housekeeping" in record.error_message
+
+    def test_running_record_started_inside_the_window_is_left_running(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.RUNNING, started_ago=timedelta(seconds=3599)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_orphaned_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert record.status == RunStatus.RUNNING
+
+    def test_queued_record_is_not_touched(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        record = _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(hours=5)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_orphaned_runs_failed(model, 3600)
+
+        record.refresh_from_db()
+        assert record.status == RunStatus.QUEUED
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model", BULK_MODELS)
+class TestDeleteFinishedRecords:
+    def test_record_finished_before_the_retention_window_is_deleted(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        _make_bulk_record(
+            model,
+            status=RunStatus.DONE,
+            finished_ago=timedelta(days=30, seconds=1),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            deleted = delete_finished_records(model, 30)
+
+        assert (deleted, model._base_manager.count()) == (1, 0)
+
+    def test_record_finished_inside_the_retention_window_is_kept(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        _make_bulk_record(
+            model,
+            status=RunStatus.DONE,
+            finished_ago=timedelta(days=29, hours=23),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_finished_records(model, 30)
+
+        assert model._base_manager.count() == 1
+
+    def test_unfinished_record_is_kept_however_old(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(days=90)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            delete_finished_records(model, 30)
+
+        assert model._base_manager.count() == 1
+
+    def test_record_failed_by_a_sweep_is_deleted_once_retention_passes(
+        self, model: BulkRecordModel, mock_site_context
+    ) -> None:
+        _make_bulk_record(
+            model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+        )
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_unpicked_runs_failed(model, 3600)
+        within = FIXED_NOW + timedelta(days=29)
+        past = FIXED_NOW + timedelta(days=31)
+
+        with time_machine.travel(within, tick=False):
+            delete_finished_records(model, 30)
+        kept = model._base_manager.count()
+        with time_machine.travel(past, tick=False):
+            delete_finished_records(model, 30)
+
+        assert (kept, model._base_manager.count()) == (1, 0)
+
+
+@pytest.mark.django_db
+class TestRunHousekeepingSweepsBulkRecords:
+    @pytest.fixture(autouse=True)
+    def _no_delegated_commands(self, mocker: MockerFixture) -> None:
+        # The prune command needs a database task backend the default test
+        # settings do not configure; these tests are about the bulk record sweeps.
+        mocker.patch("freedom_ls.deployment.housekeeping.call_command")
+
+    def test_sweeps_close_and_delete_records_of_both_models(
+        self, mock_site_context
+    ) -> None:
+        stuck = [
+            _make_bulk_record(
+                model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+            )
+            for model in BULK_MODELS
+        ]
+        old = [
+            _make_bulk_record(
+                model, status=RunStatus.DONE, finished_ago=timedelta(days=40)
+            )
+            for model in BULK_MODELS
+        ]
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            outcome = run_housekeeping_sweeps()
+
+        statuses = [
+            record.__class__._base_manager.get(pk=record.pk).status for record in stuck
+        ]
+        assert (outcome.sweep_failures, statuses) == ([], [RunStatus.FAILED] * 2)
+        assert not any(
+            record.__class__._base_manager.filter(pk=record.pk).exists()
+            for record in old
+        )
+
+    def test_each_changed_sweep_adds_a_note(self, mock_site_context) -> None:
+        _make_bulk_record(
+            LearnerImport,
+            status=ImportStatus.PREVIEWED,
+            created_ago=timedelta(days=2),
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            outcome = run_housekeeping_sweeps()
+
+        assert len(outcome.notes) == 1
+
+    def test_database_error_in_one_sweep_leaves_the_others_running(
+        self, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_unpicked_runs_failed",
+            side_effect=DatabaseError("unpicked sweep is broken"),
+        )
+        orphan = _make_bulk_record(
+            BulkActionRun, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            outcome = run_housekeeping_sweeps()
+
+        orphan.refresh_from_db()
+        assert (len(outcome.sweep_failures), orphan.status) == (2, RunStatus.FAILED)
+
+    def test_database_error_in_the_preview_sweep_leaves_the_others_running(
+        self, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.delete_stale_previews",
+            side_effect=DatabaseError("preview sweep is broken"),
+        )
+        old = _make_bulk_record(
+            BulkActionRun, status=RunStatus.DONE, finished_ago=timedelta(days=40)
+        )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            outcome = run_housekeeping_sweeps()
+
+        assert (
+            len(outcome.sweep_failures),
+            BulkActionRun._base_manager.filter(pk=old.pk).exists(),
+        ) == (1, False)
