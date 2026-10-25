@@ -188,36 +188,39 @@ def is_organisation_course_expression() -> Exists:
     return Exists(Course.organisations.through.objects.filter(course_id=OuterRef("pk")))
 
 
-def _open_to_everyone_expression() -> Q:
-    # The half both audience rules share: a course that belongs to no
-    # organisation, or one that is public, is open whoever is asking.
+def open_to_everyone_expression() -> Q:
+    """The half both audience rules share, and the embed card's whole rule: a
+    course that belongs to no organisation, or one that is public, is open
+    whoever is asking."""
     return ~is_organisation_course_expression() | Q(audience=CourseAudience.PUBLIC)
 
 
-def in_audience_expression(user: RequestUser) -> Q:
+def in_audience_expression(user: RequestUser, *, registered: Q | None = None) -> Q:
     """Courses this user may see: every course open to everyone, and for a
     signed-in user the courses of the organisations they hold an active
     Learner row in, plus any course they are registered for, so a change to
-    a course's organisations never strands a learner mid-course."""
+    a course's organisations never strands a learner mid-course.
+
+    ``registered`` stands in for the registration clause when the caller has
+    already annotated it onto the queryset, so its subqueries are not built
+    a second time."""
     if not user.is_authenticated:
-        return _open_to_everyone_expression()
+        return open_to_everyone_expression()
     own_organisation_learner = Exists(
         Learner.objects.filter(
             user=user, is_active=True, organisation__courses=OuterRef("pk")
         )
     )
-    return (
-        _open_to_everyone_expression()
-        | own_organisation_learner
-        | is_registered_for_course_expression(user)
-    )
+    if registered is None:
+        registered = is_registered_for_course_expression(user)
+    return open_to_everyone_expression() | own_organisation_learner | registered
 
 
 def open_to_organisation_expression(organisation: Organisation) -> Q:
     """Courses open to this organisation: every course that is not an
     organisation_learners organisation course (so every public one too),
     plus the organisation's own."""
-    return _open_to_everyone_expression() | Q(
+    return open_to_everyone_expression() | Q(
         Exists(
             Course.organisations.through.objects.filter(
                 course_id=OuterRef("pk"), organisation=organisation

@@ -607,7 +607,7 @@ def save_course(item, site, base_path):
     return course
 
 
-def _resolve_course_organisations(item, site) -> list[Organisation]:
+def _resolve_course_organisations(item: CourseSchema, site: Site) -> list[Organisation]:
     """Return the site's organisations named by the course, or raise naming the bad slugs."""
     if not item.organisations:
         return []

@@ -492,7 +492,7 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         return (
             courses.annotate(_is_registered=is_registered_for_course_expression(user))
             .exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
-            .filter(in_audience_expression(user))
+            .filter(in_audience_expression(user, registered=Q(_is_registered=True)))
         )
 
     def validate_course_config(
