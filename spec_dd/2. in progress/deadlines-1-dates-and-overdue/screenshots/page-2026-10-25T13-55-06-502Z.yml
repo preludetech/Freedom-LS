@@ -1,0 +1,205 @@
+- generic [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+      - heading "FirstClass" [level=1] [ref=f2e5]
+    - navigation [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - link "Messages, none unread" [ref=f2e210] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f2e10]
+            - generic [ref=f2e12]: Messages
+          - status:
+            - generic [ref=f2e211]: Messages, none unread
+        - generic [ref=f2e14]:
+          - button "Notifications, none new" [ref=f2e15]:
+            - img "notifications" [ref=f2e17]
+          - status:
+            - generic [ref=f2e19]: Notifications, none new
+        - button "Open user menu for qa_deadline_cohort@email.com" [ref=f2e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e22]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f2e23]:
+    - generic [ref=f2e25]:
+      - dialog "Course outline" [ref=f2e26]:
+        - generic [ref=f2e29]:
+          - generic [ref=f2e30]:
+            - paragraph [ref=f2e31]: Course outline
+            - paragraph [ref=f2e32]: Functionality Demo - Course Parts
+            - generic [ref=f2e34]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f2e35]: 0%
+              - generic [ref=f2e36]: 0% complete
+          - navigation "Course outline" [ref=f2e37]:
+            - list [ref=f2e38]:
+              - listitem [ref=f2e39]:
+                - button "1. course_part Not started Getting Started" [expanded] [active] [ref=f2e40] [cursor=pointer]:
+                  - generic [ref=f2e41]:
+                    - generic [ref=f2e42]: "1."
+                    - generic [ref=f2e43]:
+                      - img "course_part" [ref=f2e44]
+                      - generic [ref=f2e46]: Not started
+                    - generic [ref=f2e47]: Getting Started
+                - list [ref=f2e215]:
+                  - listitem [ref=f2e216]:
+                    - generic [ref=f2e217]:
+                      - generic [ref=f2e218]: "1.1"
+                      - generic [ref=f2e219]:
+                        - img "topic" [ref=f2e220]
+                        - generic [ref=f2e222]: Not started
+                      - link "Welcome" [ref=f2e224] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-course-parts/1/
+                    - generic [ref=f2e225]:
+                      - generic [ref=f2e226]: Missed deadline
+                      - time [ref=f2e228]: Jan 31, 2024, 11:59 PM
+                  - listitem [ref=f2e229]:
+                    - generic [ref=f2e230]:
+                      - generic [ref=f2e231]: "1.2"
+                      - generic [ref=f2e232]:
+                        - img "topic" [ref=f2e233]
+                        - generic [ref=f2e235]: Locked
+                      - generic [ref=f2e236]: What to Expect
+                    - generic [ref=f2e237]:
+                      - generic [ref=f2e238]: Missed deadline
+                      - time [ref=f2e240]: Mar 8, 2026, 11:59 PM
+              - listitem [ref=f2e53]:
+                - button "2. course_part Locked Core Concepts" [ref=f2e54] [cursor=pointer]:
+                  - generic [ref=f2e55]:
+                    - generic [ref=f2e56]: "2."
+                    - generic [ref=f2e57]:
+                      - img "course_part" [ref=f2e58]
+                      - generic [ref=f2e60]: Locked
+                    - generic [ref=f2e61]: Core Concepts
+              - listitem [ref=f2e67]:
+                - button "3. course_part Locked Wrapping Up" [ref=f2e68] [cursor=pointer]:
+                  - generic [ref=f2e69]:
+                    - generic [ref=f2e70]: "3."
+                    - generic [ref=f2e71]:
+                      - img "course_part" [ref=f2e72]
+                      - generic [ref=f2e74]: Locked
+                    - generic [ref=f2e75]: Wrapping Up
+      - generic [ref=f2e81]:
+        - navigation "Breadcrumb" [ref=f2e86]:
+          - list [ref=f2e87]:
+            - listitem [ref=f2e88]:
+              - link "Functionality Demo - Course Parts" [ref=f2e89] [cursor=pointer]:
+                - /url: /courses/functionality-demo-course-parts/detail/
+        - generic [ref=f2e90]:
+          - generic [ref=f2e91]:
+            - img "in_progress" [ref=f2e93]
+            - heading "Not finished yet" [level=1] [ref=f2e95]
+            - paragraph [ref=f2e96]:
+              - text: You have reached the end of
+              - strong [ref=f2e97]: Functionality Demo - Course Parts
+              - text: ", but it does not count as complete until you finish the items below."
+          - generic [ref=f2e98]:
+            - heading "Still to do" [level=2] [ref=f2e99]
+            - list [ref=f2e100]:
+              - listitem [ref=f2e101]:
+                - generic [ref=f2e102]: Welcome
+                - link "Go to item" [ref=f2e103] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f2e107]:
+                - generic [ref=f2e108]: What to Expect
+                - link "Go to item" [ref=f2e109] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/2/
+              - listitem [ref=f2e113]:
+                - generic [ref=f2e114]: Key Ideas
+                - link "Go to item" [ref=f2e115] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/3/
+              - listitem [ref=f2e119]:
+                - generic [ref=f2e120]: Going Deeper
+                - link "Go to item" [ref=f2e121] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/4/
+              - listitem [ref=f2e125]:
+                - generic [ref=f2e126]: Knowledge Check
+                - link "Start quiz" [ref=f2e127] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/5/
+              - listitem [ref=f2e131]:
+                - generic [ref=f2e132]: Summary
+                - link "Go to item" [ref=f2e133] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/6/
+              - listitem [ref=f2e137]:
+                - generic [ref=f2e138]: Course Feedback
+                - link "Start form" [ref=f2e139] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/7/
+          - heading "Course Summary" [level=2] [ref=f2e144]
+          - link "Return to Dashboard" [ref=f2e146] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=f2e150]:
+    - generic [ref=f2e151]:
+      - paragraph [ref=f2e152]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e153]:
+        - link "Terms and Conditions" [ref=f2e154] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e155] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e156] [cursor=pointer]: deadlines-1-dates-and-overdue
+  - list [ref=f2e158]:
+    - listitem [ref=f2e159]:
+      - link "Hide »" [ref=f2e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e161]:
+      - link "Toggle Theme" [ref=f2e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e165]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e166] [cursor=pointer]
+      - link "History /courses/functionality-demo-course-parts/finish/" [ref=f2e167] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e168]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e169] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f2e170] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e171]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e172] [cursor=pointer]
+      - 'link "Time CPU: 190.10ms (318.12ms)" [ref=f2e173] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f2e174]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e175] [cursor=pointer]
+      - link "Settings" [ref=f2e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e177]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e178] [cursor=pointer]
+      - link "Headers" [ref=f2e179] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e180]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e181] [cursor=pointer]
+      - link "Request course_finish" [ref=f2e182] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e183]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e184] [cursor=pointer]
+      - link "SQL 34 queries in 105.12ms" [ref=f2e185] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e186]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e187] [cursor=pointer]
+      - link "Static files 11 files used" [ref=f2e188] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e189]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e190] [cursor=pointer]
+      - link "Templates learner_interface/course_finish.html" [ref=f2e191] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e192]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e193] [cursor=pointer]
+      - link "Alerts" [ref=f2e194] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e195]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e196] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f2e197] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e198]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e199] [cursor=pointer]
+      - link "Signals 102 receivers of 15 signals" [ref=f2e200] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e201]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e202] [cursor=pointer]
+      - link "Community" [ref=f2e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e204]:
+      - checkbox "Enable for next and successive requests" [ref=f2e205] [cursor=pointer]
+      - generic [ref=f2e206]: Intercept redirects
+    - listitem [ref=f2e207]:
+      - checkbox "Enable for next and successive requests" [ref=f2e208] [cursor=pointer]
+      - generic [ref=f2e209]: Profiling
