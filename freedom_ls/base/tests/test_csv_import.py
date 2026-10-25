@@ -72,12 +72,21 @@ def test_parse_fills_missing_trailing_cells_with_blank() -> None:
     assert rows[0]["name"] == ""
 
 
+def test_parse_ignores_an_empty_trailing_header_and_its_cells() -> None:
+    """A trailing delimiter, which spreadsheets write for an empty last column,
+    used to be rejected as an unknown column with no name."""
+    rows = _parse("email,name,\na@example.com,Ann,\n")
+
+    assert rows == [{"email": "a@example.com", "name": "Ann", "_line": "2"}]
+
+
 @pytest.mark.parametrize(
     ("content", "message"),
     [
         (b"PK\x03\x04 binary", "Excel"),
         (b"email\n\xff\xfe\n", "CSV UTF-8 and upload it again"),
         ("email,age\na@example.com,3\n", "Unknown column(s): age"),
+        ("email,,name\na@example.com,,Ann\n", "Unknown column(s): unnamed column 2"),
         ("email,email\na@example.com,b\n", "Repeated column(s): email"),
         ("name\nAnn\n", "Missing required column(s): email"),
         ('email\n"a@example.com\n', "line"),

@@ -31,6 +31,7 @@ reach below a long card list.
             <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection" x-bind:disabled="running">
                 Clear selection
             </button>
+            <span class="text-muted">Changing page, sort or filters clears the selection.</span>
         </span>
         <span x-ref="excluded" hidden></span>
         {% comment %}

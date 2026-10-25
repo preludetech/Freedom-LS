@@ -401,6 +401,9 @@ def test_select_all_matching_spans_every_page(
     select_all_matching.click()
     expect(status).to_contain_text(f"{matching} selected")
     expect(page.get_by_text(f"All {matching} matching are selected.")).to_be_visible()
+    expect(
+        page.get_by_text("Changing page, sort or filters clears the selection.")
+    ).to_be_visible()
 
     # Unticking one row leaves every other matching row selected.
     row_checkboxes.first.uncheck()

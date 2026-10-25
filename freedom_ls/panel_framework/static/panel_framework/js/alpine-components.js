@@ -718,15 +718,11 @@ document.addEventListener("alpine:init", () => {
                 rowBoxes.length > 0 && checkedBoxes.length === rowBoxes.length;
             this.allChecked = allChecked;
             if (this.mode === "all_matching") {
-                // Only this page's rows can change; keys excluded from other
-                // pages stay excluded.
-                const pageKeys = rowBoxes.map((box) => box.value);
-                const unchecked = rowBoxes
+                // Only this page's rows can be unticked: a swap to another
+                // page rebuilds the component and clears the selection.
+                this.excluded = rowBoxes
                     .filter((box) => !box.checked)
                     .map((box) => box.value);
-                this.excluded = this.excluded
-                    .filter((key) => !pageKeys.includes(key))
-                    .concat(unchecked);
                 this._syncExcludedInputs();
                 this.count = this.total - this.excluded.length;
             } else {

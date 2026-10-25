@@ -64,7 +64,7 @@ Cohort admins manage membership and course registrations within the cohorts they
 
 ### Bulk actions
 
-Tick rows in the Learners or Cohorts list and an action bar appears. When every row on the page is ticked and the filter matches more, **Select all N matching** extends the selection to every match, and unticking a row excludes it.
+Tick rows in the Learners or Cohorts list and an action bar appears. When every row on the page is ticked and the filter matches more, **Select all N matching** extends the selection to every match, and unticking a row excludes it. Changing page, sort or filters clears the selection in either mode.
 
 - **Learners** — add to a cohort, remove from a cohort, register for a course, unregister from a course, deactivate, reactivate, and resend the account setup email.
 - **Cohorts** — register for a course, unregister from a course, deactivate and reactivate.

@@ -6,9 +6,9 @@ finishes the same element renders without the trigger and polling stops.
 
 Context: run (status, processed_count, error_message), total, percentage,
 status_url, noun; when done, result_template and what it renders. Optional:
-progress_text replaces the default progress sentence; back_url adds a link back
-to the table; result_on_failure renders result_template when the run failed too,
-for a result body that explains the failure itself.
+back_url adds a link back to the table; result_on_failure renders
+result_template when the run failed too, for a result body that explains the
+failure itself.
 {% endcomment %}
 {% if run.status == "queued" or run.status == "running" %}
     <div id="run-status"
@@ -17,9 +17,7 @@ for a result body that explains the failure itself.
          hx-trigger="every 2s"
          hx-target="this"
          hx-swap="outerHTML">
-        {% if progress_text %}
-            <p>{{ progress_text }}</p>
-        {% elif run.status == "queued" %}
+        {% if run.status == "queued" %}
             <p>Waiting to start.</p>
         {% else %}
             <p>{{ run.processed_count }} of {{ total }} {{ noun }} processed.</p>

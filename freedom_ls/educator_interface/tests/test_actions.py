@@ -15,8 +15,8 @@ from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.db import connection, transaction
-from django.http import Http404, HttpResponse
-from django.test import Client
+from django.http import Http404, HttpRequest, HttpResponse
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -33,7 +33,9 @@ from freedom_ls.educator_interface.actions import (
     DeactivateLearnersBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
+    RemoveFromCohortBulkAction,
     UnregisterCohortFromCourseBulkAction,
+    UnregisterFromCourseBulkAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -45,6 +47,7 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.members import current_role_entries
+from freedom_ls.educator_interface.views import OrganisationScopedRequest
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -5483,6 +5486,15 @@ def _bulk_learner(**fields: object) -> Learner:
     return cast(Learner, LearnerFactory(**fields))
 
 
+def _scoped_request(user: User, organisation: Organisation) -> HttpRequest:
+    """A request as `scope_request` leaves it: the user and the organisation
+    the table's rows belong to."""
+    request = cast(OrganisationScopedRequest, RequestFactory().post("/"))
+    request.user = user
+    request.organisation = organisation
+    return request
+
+
 def _learners_bulk_url(organisation: Organisation, action_name: str) -> str:
     return _interface_url(organisation.slug, f"learners/__actions/{action_name}")
 
@@ -5662,7 +5674,7 @@ def test_classify_all_counts_changed_skipped_and_not_permitted(
     action = DeactivateLearnersBulkAction()
 
     outcomes = action.classify_all(
-        educator,
+        _scoped_request(educator, organisation),
         Learner.objects.filter(pk__in=[member.pk, outsider.pk, inactive_member.pk]),
         {},
     )
@@ -5941,7 +5953,9 @@ def test_classify_all_skips_every_learner_for_a_cohort_the_user_cannot_change(
     learner = _bulk_learner(organisation=organisation)
 
     outcomes = AddToCohortBulkAction().classify_all(
-        educator, Learner.objects.filter(pk=learner.pk), {"cohort": other}
+        _scoped_request(educator, organisation),
+        Learner.objects.filter(pk=learner.pk),
+        {"cohort": other},
     )
 
     assert outcomes == {
@@ -6054,6 +6068,33 @@ def test_bulk_remove_from_cohort_confirmation_names_the_courses_lost(
     )
     assert f"They lose access to: {expected_titles}." in text
     assert "1 is not a member and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_remove_from_cohort_wording_costs_the_same_for_any_selection_size(
+    mock_site_context: Site, django_assert_num_queries
+):
+    """The courses lost used to be read once per selected learner."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 2)
+    members = [_bulk_learner(organisation=organisation) for _ in range(4)]
+    for learner in members:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+    CohortMembershipFactory(
+        cohort=_cohort_with_courses(organisation, 1), learner=members[0]
+    )
+    classified = {str(learner.pk): BulkOutcome("changed") for learner in members}
+
+    with django_assert_num_queries(5):
+        wording = RemoveFromCohortBulkAction().confirmation_wording(
+            RequestFactory().post("/"),
+            Learner.objects.filter(pk__in=[learner.pk for learner in members]),
+            classified,
+            {"cohort": cohort},
+        )
+
+    assert wording.sentence == f"Remove 4 learners from {cohort.name}."
+    assert len(wording.consequences) == 1
 
 
 @pytest.mark.django_db
@@ -6307,7 +6348,7 @@ def test_a_cohort_admin_registers_only_learners_in_their_own_cohorts(
     course = CourseFactory()
 
     outcomes = RegisterForCourseBulkAction().classify_all(
-        educator,
+        _scoped_request(educator, organisation),
         Learner.objects.filter(pk__in=[mine.pk, theirs.pk]),
         {"course": course},
     )
@@ -6348,6 +6389,34 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
     assert "Unregister 2 learners from Algebra." in text
     assert "1 keeps access through a cohort." in text
     assert "1 is not registered individually and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_wording_costs_the_same_for_any_selection_size(
+    mock_site_context: Site, django_assert_num_queries
+):
+    """Who keeps access through a cohort used to be read once per learner."""
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    learners = [_bulk_learner(organisation=organisation) for _ in range(4)]
+    for learner in learners:
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+    for learner in learners[:2]:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+    classified = {str(learner.pk): BulkOutcome("changed") for learner in learners}
+
+    with django_assert_num_queries(1):
+        wording = UnregisterFromCourseBulkAction().confirmation_wording(
+            RequestFactory().post("/"),
+            Learner.objects.filter(pk__in=[learner.pk for learner in learners]),
+            classified,
+            {"course": course},
+        )
+
+    assert wording.sentence == "Unregister 4 learners from Algebra."
+    assert wording.consequences == ["2 keep access through a cohort."]
 
 
 @pytest.mark.django_db
@@ -6683,7 +6752,7 @@ def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site
     course = CourseFactory()
 
     outcomes = RegisterCohortForCourseBulkAction().classify_all(
-        educator,
+        _scoped_request(educator, organisation),
         Cohort.objects.filter(pk__in=[mine.pk, theirs.pk]),
         {"course": course},
     )

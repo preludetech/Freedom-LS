@@ -59,6 +59,7 @@ from freedom_ls.learner_management.queries import (
     colleagues_of,
     courses_gaining_access,
     courses_losing_access,
+    courses_lost_by_any,
     courses_visible_to,
     educators_of,
     holds_registration_for_any_expression,
@@ -70,6 +71,7 @@ from freedom_ls.learner_management.queries import (
     learner_for_course,
     learner_status,
     learner_status_q,
+    learners_keeping_access_count,
     learners_permitted_for,
     learners_visible_to,
     members_keeping_access,
@@ -1849,6 +1851,129 @@ def test_courses_losing_access_runs_a_fixed_number_of_queries(
 
     with django_assert_num_queries(4):
         courses_losing_access(learner, cohort, destination)
+
+
+@pytest.mark.django_db
+def test_courses_lost_by_any_unions_each_learners_losses(mock_site_context) -> None:
+    """One learner keeps Algebra through another cohort and the other keeps
+    Botany individually, so between them both courses are lost."""
+    algebra, botany = CourseFactory(title="Algebra"), CourseFactory(title="Botany")
+    cohort = _make_cohort()
+    other = _make_cohort(organisation=cohort.organisation)
+    first, second = _member_of(cohort), _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=algebra)
+    CohortCourseRegistrationFactory(cohort=cohort, course=botany)
+    CohortMembershipFactory(cohort=other, learner=first)
+    CohortCourseRegistrationFactory(cohort=other, course=algebra)
+    LearnerCourseRegistrationFactory(learner=second, course=botany)
+
+    lost = courses_lost_by_any(
+        Learner.objects.filter(pk__in=[first.pk, second.pk]), cohort
+    )
+
+    assert lost == [algebra, botany]
+
+
+@pytest.mark.django_db
+def test_courses_lost_by_any_skips_a_course_every_learner_keeps(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    other = _make_cohort(organisation=cohort.organisation)
+    through_cohort, individually = _member_of(cohort), _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortMembershipFactory(cohort=other, learner=through_cohort)
+    CohortCourseRegistrationFactory(cohort=other, course=course)
+    LearnerCourseRegistrationFactory(learner=individually, course=course)
+
+    lost = courses_lost_by_any(
+        Learner.objects.filter(pk__in=[through_cohort.pk, individually.pk]), cohort
+    )
+
+    assert lost == []
+
+
+@pytest.mark.django_db
+def test_courses_lost_by_any_ignores_an_inactive_cohort_as_another_registration(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    inactive = cast(
+        Cohort, CohortFactory(organisation=cohort.organisation, is_active=False)
+    )
+    learner = _member_of(cohort)
+    CohortMembershipFactory(cohort=inactive, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortCourseRegistrationFactory(cohort=inactive, course=course)
+
+    assert courses_lost_by_any(Learner.objects.filter(pk=learner.pk), cohort) == [
+        course
+    ]
+
+
+@pytest.mark.django_db
+def test_courses_lost_by_any_agrees_with_courses_losing_access(
+    mock_site_context,
+) -> None:
+    learner, cohort, _destination = _cohorts_granting_three_courses()
+    kept = cohort.course_registrations.first().course
+    LearnerCourseRegistrationFactory(learner=learner, course=kept)
+
+    assert courses_lost_by_any(
+        Learner.objects.filter(pk=learner.pk), cohort
+    ) == courses_losing_access(learner, cohort)
+
+
+@pytest.mark.django_db
+def test_courses_lost_by_any_runs_a_fixed_number_of_queries(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    learner, cohort, destination = _cohorts_granting_three_courses()
+    others = [_member_of(cohort) for _ in range(3)]
+    CohortMembershipFactory(cohort=destination, learner=others[0])
+    learners = Learner.objects.filter(pk__in=[learner.pk, *(o.pk for o in others)])
+
+    with django_assert_num_queries(5):
+        courses_lost_by_any(learners, cohort)
+
+
+@pytest.mark.django_db
+def test_learners_keeping_access_count_counts_each_learner_once(
+    mock_site_context,
+) -> None:
+    """A learner in two cohorts registered for the course is one learner
+    keeping access, and one with no cohort registration is not counted."""
+    course = CourseFactory()
+    first_cohort = _make_cohort()
+    second_cohort = _make_cohort(organisation=first_cohort.organisation)
+    inactive = cast(
+        Cohort, CohortFactory(organisation=first_cohort.organisation, is_active=False)
+    )
+    in_both = _member_of(first_cohort)
+    CohortMembershipFactory(cohort=second_cohort, learner=in_both)
+    only_inactive = _member_of(inactive)
+    nowhere = cast(Learner, LearnerFactory(organisation=first_cohort.organisation))
+    for cohort in (first_cohort, second_cohort, inactive):
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    learners = Learner.objects.filter(pk__in=[in_both.pk, only_inactive.pk, nowhere.pk])
+
+    assert learners_keeping_access_count(learners, course) == 1
+
+
+@pytest.mark.django_db
+def test_learners_keeping_access_count_runs_one_query(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    members = [_member_of(cohort) for _ in range(3)]
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    learners = Learner.objects.filter(pk__in=[m.pk for m in members])
+
+    with django_assert_num_queries(1):
+        assert learners_keeping_access_count(learners, course) == 3
 
 
 @pytest.mark.django_db

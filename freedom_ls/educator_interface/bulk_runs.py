@@ -8,10 +8,10 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from freedom_ls.comms.notify import raise_notification
-from freedom_ls.educator_interface.actions import bulk_action_for
+from freedom_ls.educator_interface.actions import EducatorBulkAction, find_bulk_action
 from freedom_ls.learner_management.models import BulkActionRun, RunStatus
 from freedom_ls.learner_management.run_records import record_run
-from freedom_ls.panel_framework.actions import count_noun
+from freedom_ls.panel_framework.actions import count_noun, count_phrase
 from freedom_ls.panel_framework.bulk_actions import (
     RESULT_ENTRY_LIMIT,
     BulkCount,
@@ -21,6 +21,7 @@ from freedom_ls.panel_framework.bulk_actions import (
 )
 
 NO_LONGER_EXISTS = "no longer exists"
+ACTION_UNAVAILABLE = "This action is no longer available."
 
 
 def save_processed(run: BulkActionRun) -> Callable[[int], None]:
@@ -68,8 +69,11 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
         ),
         pk=run_id,
     )
-    action = bulk_action_for(run.table_key, run.action_name)
     with record_run(run):
+        action = find_bulk_action(run.table_key, run.action_name)
+        if action is None:
+            run.status, run.error_message = RunStatus.FAILED, ACTION_UNAVAILABLE
+            return BulkResult(counts=[], entries=[], left_out=0)
         cleaned_data = action.resolve_target(run.organisation, run.target)
         queryset = action.with_related(
             action.objects_for_keys(run.organisation, run.keys)
@@ -86,23 +90,39 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
     return result
 
 
+def run_label(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
+    """The action's label, or its stored name spelled out when the action is
+    no longer registered."""
+    if action is not None:
+        return action.label
+    return run.action_name.replace("_", " ").capitalize()
+
+
+def _counted(action: EducatorBulkAction | None, count: int) -> str:
+    if action is None:
+        return count_phrase(count, "row", "rows")
+    return count_noun(action.noun_model, count)
+
+
+def stopped_after(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
+    """Where a run that did not finish got to: "after 1 of 2 learners"."""
+    return f"after {run.processed_count} of {_counted(action, len(run.keys))}"
+
+
 def run_summary(run: BulkActionRun) -> str:
     """One sentence on how a finished run went, for someone who was not
     watching it."""
-    action = bulk_action_for(run.table_key, run.action_name)
-    model = action.noun_model
+    action = find_bulk_action(run.table_key, run.action_name)
+    label = run_label(run, action)
     if run.status == RunStatus.FAILED or run.result is None:
-        return (
-            f"{action.label} stopped after {run.processed_count} of "
-            f"{count_noun(model, len(run.keys))}."
-        )
+        return f"{label} stopped {stopped_after(run, action)}."
     result = BulkResult.from_json(run.result)
-    parts = [f"{count_noun(model, result.changed)} changed"]
+    parts = [f"{_counted(action, result.changed)} changed"]
     for status in ("skipped", "failed"):
         count = sum(item.count for item in result.counts if item.status == status)
         if count:
             parts.append(f"{count} {status}")
-    return f"{action.label} finished: {', '.join(parts)}."
+    return f"{label} finished: {', '.join(parts)}."
 
 
 def notify_run_finished(run_id: str, site_id: int) -> None:

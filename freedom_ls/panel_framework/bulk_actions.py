@@ -158,6 +158,9 @@ class BulkAction:
     label: str = ""
     action_name: str = ""
     variant: str = "secondary"
+    #: The most rows one run inside the request handles. A selection the
+    #: action hands to a background task (see `runs_in_background`) is not
+    #: bounded by it.
     max_rows: int = 500
     confirm_template_name: str = "panel_framework/partials/bulk_confirmation.html"
     result_template_name: str = "panel_framework/partials/bulk_result.html"
@@ -196,13 +199,15 @@ class BulkAction:
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
         """What `apply` would do to each row, keyed by `str(pk)`, without
         changing anything. None means the action does not predict, and the
-        confirmation shows the plain count."""
+        confirmation shows the plain count. Unlike `apply`, this only ever
+        runs inside a request, so it gets the whole request and whatever a
+        view has resolved onto it."""
         return None
 
     def confirmation_wording(

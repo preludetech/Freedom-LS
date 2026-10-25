@@ -102,6 +102,8 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     courses_gaining_access,
     courses_losing_access,
+    courses_lost_by_any,
+    learners_keeping_access_count,
     learners_permitted_for,
     learners_visible_to,
     member_assignments,
@@ -2258,8 +2260,11 @@ def register_bulk_action[ActionT: type[EducatorBulkAction]](cls: ActionT) -> Act
     return cls
 
 
-def bulk_action_for(table_key: str, action_name: str) -> EducatorBulkAction:
-    return BULK_ACTIONS[(table_key, action_name)]()
+def find_bulk_action(table_key: str, action_name: str) -> EducatorBulkAction | None:
+    """The action a stored run names, or None once it has been renamed or
+    removed: a run outlives the code that recorded it."""
+    action_class = BULK_ACTIONS.get((table_key, action_name))
+    return None if action_class is None else action_class()
 
 
 def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
@@ -2340,21 +2345,15 @@ class EducatorBulkAction(BulkAction):
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
-        # The table's rows all sit in the one organisation the request is
-        # scoped to, so it can be read back off them.
-        organisation = Organisation.objects.filter(
-            pk__in=queryset.values("organisation_id")
-        ).first()
-        if organisation is None:
-            return {}
+        scoped = cast("OrganisationScopedRequest", request)
         permitted_ids = set(
-            self.permitted(user, organisation, queryset, cleaned_data).values_list(
-                "pk", flat=True
-            )
+            self.permitted(
+                scoped.user, scoped.organisation, queryset, cleaned_data
+            ).values_list("pk", flat=True)
         )
         outcomes: dict[str, BulkOutcome] = {}
         for obj in self.with_related(queryset):
@@ -2431,7 +2430,7 @@ class LearnerBulkAction(EducatorBulkAction):
     noun_model = Learner
 
     def with_related(self, queryset: QuerySet) -> QuerySet:
-        return queryset.select_related("user")
+        return queryset.select_related("user", "organisation")
 
     def row_label(self, obj: Model) -> str:
         return cast(Learner, obj).user.display_name
@@ -2490,7 +2489,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
@@ -2499,7 +2498,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
                 cohort=cleaned_data["cohort"], learner__in=queryset
             ).values_list("learner_id", flat=True)
         )
-        return super().classify_all(user, queryset, cleaned_data)
+        return super().classify_all(request, queryset, cleaned_data)
 
     def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
         return cast(Cohort, cleaned_data["cohort"])
@@ -2582,13 +2581,9 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
             for key, outcome in (classified or {}).items()
             if outcome.status == "changed"
         ]
-        lost = {
-            course.pk: course.title
-            for learner in queryset.filter(pk__in=changed_keys)
-            for course in courses_losing_access(learner, cohort)
-        }
+        lost = courses_lost_by_any(queryset.filter(pk__in=changed_keys), cohort)
         consequences = (
-            [f"They lose access to: {join_prose(sorted(lost.values()))}."]
+            [f"They lose access to: {join_prose([course.title for course in lost])}."]
             if lost
             else []
         )
@@ -2700,7 +2695,7 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
@@ -2709,7 +2704,7 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
                 course=cleaned_data["course"], learner__in=queryset, is_active=True
             ).values_list("learner_id", flat=True)
         )
-        return super().classify_all(user, queryset, cleaned_data)
+        return super().classify_all(request, queryset, cleaned_data)
 
     def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
         return obj
@@ -2792,10 +2787,8 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
             for key, outcome in (classified or {}).items()
             if outcome.status == "changed"
         ]
-        keeping = sum(
-            1
-            for learner in queryset.filter(pk__in=changed_keys)
-            if other_grants_for(learner, course)
+        keeping = learners_keeping_access_count(
+            queryset.filter(pk__in=changed_keys), course
         )
         verb = "keeps" if keeping == 1 else "keep"
         return ConfirmationWording(
@@ -2818,19 +2811,16 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
     unchanged_reason = "account already set up"
     pending_ids: frozenset[object] = frozenset()
 
-    def with_related(self, queryset: QuerySet) -> QuerySet:
-        return queryset.select_related("user", "organisation")
-
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
         self.pending_ids = frozenset(
             queryset.filter(pending_user_q("user__")).values_list("pk", flat=True)
         )
-        return super().classify_all(user, queryset, cleaned_data)
+        return super().classify_all(request, queryset, cleaned_data)
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return None if obj.pk in self.pending_ids else self.unchanged_reason
@@ -2920,9 +2910,6 @@ class CohortCourseBulkAction(CohortBulkAction):
     fixed number of queries however many cohorts are selected."""
 
     form_class = BulkTargetPickerForm
-    # An inactive cohort is skipped; one deactivated after `apply` checked it
-    # and before the service ran fails instead of aborting the run.
-    failure_exceptions = (ValueError,)
     inactive_reason = "inactive"
     registered_ids: frozenset[object] = frozenset()
 
@@ -2933,7 +2920,7 @@ class CohortCourseBulkAction(CohortBulkAction):
 
     def classify_all(
         self,
-        user: AbstractBaseUser | AnonymousUser,
+        request: HttpRequest,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
@@ -2942,7 +2929,7 @@ class CohortCourseBulkAction(CohortBulkAction):
                 course=cleaned_data["course"], cohort__in=queryset, is_active=True
             ).values_list("cohort_id", flat=True)
         )
-        return super().classify_all(user, queryset, cleaned_data)
+        return super().classify_all(request, queryset, cleaned_data)
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         if not cast(Cohort, obj).is_active:
@@ -2986,10 +2973,9 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
         return self.unchanged_reason if is_registered else None
 
     def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        cohort = cast(Cohort, obj)
-        if not cohort.is_active:
-            raise ValueError("The cohort is inactive.")
-        return register_cohort_for_course(cohort, cast(Course, cleaned_data["course"]))
+        return register_cohort_for_course(
+            cast(Cohort, obj), cast(Course, cleaned_data["course"])
+        )
 
     def confirmation_wording(
         self,
@@ -3021,12 +3007,9 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
         return None if is_registered else self.unchanged_reason
 
     def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        cohort = cast(Cohort, obj)
-        if not cohort.is_active:
-            raise ValueError("The cohort is inactive.")
         registration = (
             CohortCourseRegistration._base_manager.filter(
-                cohort=cohort,
+                cohort=cast(Cohort, obj),
                 course=cast(Course, cleaned_data["course"]),
                 is_active=True,
             )
