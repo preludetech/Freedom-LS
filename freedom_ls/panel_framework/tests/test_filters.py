@@ -8,6 +8,8 @@ import pytest
 
 from django.test import RequestFactory
 
+from freedom_ls.panel_framework.filters import ChoiceFilter
+
 from .helpers import make_stub
 from .stub_panels import StubChildDataTable, StubDataTable
 
@@ -25,6 +27,27 @@ def test_choice_filter_narrows_rows() -> None:
     )
 
     assert [row.name for row in rows] == ["alpha-row"]
+
+
+class _OneKindFilter(ChoiceFilter):
+    multiple = False
+
+
+def _one_kind_filter() -> _OneKindFilter:
+    return _OneKindFilter(
+        "kind", "Kind", lookup="kind", choices=[("a", "A"), ("b", "B")]
+    )
+
+
+def test_a_single_select_filter_keeps_only_the_first_valid_value() -> None:
+    request = RequestFactory().get("/")
+
+    assert _one_kind_filter().validate(["nope", "b", "a"], request) == ["b"]
+
+
+def test_a_single_select_filter_toggles_by_replacing_the_selection() -> None:
+    assert _one_kind_filter().toggled(["a"], "b") == ["b"]
+    assert _one_kind_filter().toggled(["a"], "a") == ["a"]
 
 
 def test_boolean_filter_narrows_only_when_1() -> None:

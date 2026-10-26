@@ -495,6 +495,19 @@ def test_the_actor_filter_selects_one_value_at_a_time():
 
 
 @pytest.mark.django_db
+def test_two_actor_values_in_the_query_string_keep_only_the_first(audit_request):
+    request, organisation = audit_request
+    ada = UserFactory()
+    zed = UserFactory()
+    AuditLogEntryFactory(target=organisation, actor=ada)
+    AuditLogEntryFactory(target=organisation, actor=zed)
+
+    kept = AuditActorFilter().validate([str(zed.pk), str(ada.pk)], request)
+
+    assert kept == [str(zed.pk)]
+
+
+@pytest.mark.django_db
 def test_system_matches_entries_with_no_actor_and_no_stored_name(audit_request):
     request, organisation = audit_request
     ada = UserFactory()
@@ -560,6 +573,13 @@ def test_the_period_filter_offers_five_presets_and_no_default():
     ]
     assert period.default == ()
     assert period.toggled(["7d"], "30d") == ["30d"]
+
+
+@pytest.mark.django_db
+def test_two_period_values_in_the_query_string_keep_only_the_first():
+    kept = AuditPeriodFilter().validate(["today", "12m"], RequestFactory().get("/"))
+
+    assert kept == ["today"]
 
 
 def _entry_at(organisation, moment: datetime) -> AuditLogEntry:

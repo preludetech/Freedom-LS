@@ -191,6 +191,7 @@ class AuditActorFilter(TableFilter):
 
     SYSTEM = "system"
     widget = "select"
+    multiple = False
 
     def __init__(self) -> None:
         super().__init__("who", "Who", lookup="")
@@ -206,9 +207,6 @@ class AuditActorFilter(TableFilter):
             (self.SYSTEM, "System"),
             *((str(actor.pk), actor.display_name) for actor in actors),
         ]
-
-    def toggled(self, values: list[str], value: str) -> list[str]:
-        return [value]
 
     def apply(
         self, request: HttpRequest, queryset: QuerySet, values: list[str]
@@ -236,6 +234,7 @@ class AuditPeriodFilter(ChoiceFilter):
     days before it."""
 
     widget = "select"
+    multiple = False
     DAYS = {"today": 1, "7d": 7, "30d": 30, "90d": 90, "12m": 365}
 
     def __init__(self) -> None:
@@ -251,9 +250,6 @@ class AuditPeriodFilter(ChoiceFilter):
                 ("12m", "Last 12 months"),
             ],
         )
-
-    def toggled(self, values: list[str], value: str) -> list[str]:
-        return [value]
 
     def apply(
         self, request: HttpRequest, queryset: QuerySet, values: list[str]

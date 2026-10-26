@@ -27,8 +27,13 @@ class TableFilter:
 
     always_shown: bool = False
     #: How the mobile sheet renders this filter's choices: "chips" for a
-    #: multi-select toggle group, "select" for a single-value <select>.
+    #: toggle group, "select" for a <select>. Only the control; `multiple`
+    #: decides how many values the filter holds.
     widget: Literal["chips", "select"] = "chips"
+    #: Whether several values may be selected at once. A single-select filter
+    #: replaces its selection on toggle and keeps only the first valid value
+    #: from the query string.
+    multiple: bool = True
 
     def __init__(
         self,
@@ -57,11 +62,15 @@ class TableFilter:
         be guessed, stale, or scoped to a request that no longer applies.
         """
         allowed = {value for value, _ in self.get_choices(request)}
-        return [value for value in values if value in allowed]
+        kept = [value for value in values if value in allowed]
+        return kept if self.multiple else kept[:1]
 
     def toggled(self, values: list[str], value: str) -> list[str]:
         """The selection a choice link for `value` leads to: `value` removed
-        if selected, appended if not."""
+        if selected, appended if not; for a single-select filter, `value`
+        alone."""
+        if not self.multiple:
+            return [value]
         if value in values:
             return [existing for existing in values if existing != value]
         return [*values, value]
