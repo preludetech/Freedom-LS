@@ -2187,8 +2187,10 @@ class ReactivateMemberAction(MemberStateAction):
         try:
             with transaction.atomic():
                 # A member with no row has no access, so the row is created
-                # suspended: reactivating it below is then a real change, and
-                # one that writes its entry.
+                # inactive and reactivated below rather than created active:
+                # set_organisation_member_active is the one path that checks
+                # the actor's capability, locks the row and writes the entry,
+                # and it only writes for a real change.
                 row = row or ensure_organisation_member(
                     user, organisation, is_active=False
                 )
