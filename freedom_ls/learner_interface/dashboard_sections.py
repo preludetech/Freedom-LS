@@ -44,16 +44,21 @@ def _page_param_name(slug: str) -> str:
     return f"page_{slug}"
 
 
+def htmx_target(request: HttpRequest) -> str | None:
+    """The element id an htmx request names in ``HX-Target``; ``None`` for any other request."""
+    if request.headers.get("HX-Request") != "true":
+        return None
+    return request.headers.get("HX-Target") or None
+
+
 def requested_section_slug(request: HttpRequest) -> str | None:
     """The slug of the section an htmx page request names in ``HX-Target``.
 
     ``None`` for anything else, including a boosted navigation, which must get
     the whole page.
     """
-    if request.headers.get("HX-Request") != "true":
-        return None
-    target = request.headers.get("HX-Target", "")
-    if not target.startswith(SECTION_SWAP_ID_PREFIX):
+    target = htmx_target(request)
+    if target is None or not target.startswith(SECTION_SWAP_ID_PREFIX):
         return None
     return target[len(SECTION_SWAP_ID_PREFIX) :]
 

@@ -1,4 +1,4 @@
-<c-vars page_obj="" target_id="" page_param_name="" nav_label="" hx_select="" hx_select_oob="" />
+<c-vars page_obj="" target_id="" page_param_name="" nav_label="" />
 
 {% load pagination_tags %}
 
@@ -14,10 +14,6 @@ under their focus as a result of pressing it.
 
 No base_url: page_href builds every link from the request's own path and
 query string, so each link carries every other section's page state untouched.
-
-A pager whose page lives inside a whole-page response names the fragment to
-keep with hx_select, and the live region to refresh with hx_select_oob. The
-course sections, whose view answers with a fragment, pass neither.
 {% endcomment %}
 <nav aria-label="{{ nav_label }}" class="flex items-center gap-1">
     {% if page_obj.has_previous %}
@@ -26,8 +22,6 @@ course sections, whose view answers with a fragment, pass neither.
            hx-get="{{ previous_href }}"
            hx-target="#{{ target_id }}"
            hx-swap="outerHTML"
-           {% if hx_select %}hx-select="{{ hx_select }}"{% endif %}
-           {% if hx_select_oob %}hx-select-oob="{{ hx_select_oob }}"{% endif %}
            data-direction="previous"
            aria-label="Previous page"
            class="btn btn-secondary p-2">
@@ -50,8 +44,6 @@ course sections, whose view answers with a fragment, pass neither.
            hx-get="{{ next_href }}"
            hx-target="#{{ target_id }}"
            hx-swap="outerHTML"
-           {% if hx_select %}hx-select="{{ hx_select }}"{% endif %}
-           {% if hx_select_oob %}hx-select-oob="{{ hx_select_oob }}"{% endif %}
            data-direction="next"
            aria-label="Next page"
            class="btn btn-secondary p-2">

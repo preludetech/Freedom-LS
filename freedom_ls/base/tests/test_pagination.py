@@ -83,3 +83,8 @@ def test_position_text_words_the_range_a_page_shows(rf):
     page = clamped_page(request, PARAM, list(range(4)), 3)
 
     assert position_text(page) == "4 to 4 of 4"
+
+
+def test_without_a_request_a_link_is_the_query_string_alone():
+    assert page_href(None, PARAM, 2) == "?page_available=2"
+    assert page_href(None, PARAM, 1) == ""

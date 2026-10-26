@@ -19,6 +19,7 @@ from freedom_ls.accounts.factories import (
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
@@ -1919,3 +1920,86 @@ def test_anonymous_dashboard_omits_a_submitted_application(mock_site_context, se
     body = client.get(reverse("learner_interface:dashboard")).content.decode()
 
     assert "Your applications" not in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_paging_the_applications_panel_returns_the_panel_alone(
+    mock_site_context, logged_in_client
+):
+    """A swap of the panel's own page never pays for, or carries, the rest of the dashboard."""
+    client = logged_in_client(UserFactory())
+    # Applying to a gated course without a form submits the application outright.
+    for title in ("Cartography", "Metallurgy", "Astronomy", "Botany"):
+        course = CourseFactory(
+            title=title, access_config={"access_type": "application_gated"}
+        )
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+    response = client.get(
+        reverse("learner_interface:dashboard") + "?page_applications=2",
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="applications-page",
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'id="applications-page"' in body
+    assert "<h1" not in body
+    assert 'id="section-page-available"' not in body
+    # Newest first, three per page: the oldest application alone fills page two.
+    assert "Cartography" in body
+    assert "Botany" not in body
+    assert 'id="applications-status"' in body
+    assert 'hx-swap-oob="true"' in body
+    assert "Your applications: showing 4 to 4 of 4" in body
+
+
+# Measured with three registered courses; the next-up walk still fetches each
+# course's own progress maps, so the count grows with registrations, but never
+# re-resolves the record the listing already holds.
+ALL_COURSES_MAX_QUERIES = 26
+
+
+def _three_registered_courses_with_topics(user: User) -> None:
+    for letter in "ABC":
+        course = CourseFactory(
+            title=f"Course {letter}", slug=f"course-{letter.lower()}"
+        )
+        course.items.create(child=TopicFactory(content="content"), order=0)
+        LearnerCourseRegistrationFactory(learner__user=user, course=course)
+
+
+@pytest.mark.django_db
+def test_all_courses_resolves_each_registered_courses_progress_once(
+    mock_site_context, logged_in_client
+):
+    """The listing resolves every record in bulk; the next-up walk reuses them."""
+    from unittest.mock import patch
+
+    user = UserFactory()
+    _three_registered_courses_with_topics(user)
+    client = logged_in_client(user)
+
+    with patch("freedom_ls.learner_interface.utils.course_progress_for") as resolve_one:
+        response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200
+    resolve_one.assert_not_called()
+    assert response.content.decode().count("Next up:") >= 3
+
+
+@pytest.mark.django_db
+def test_all_courses_query_count_stays_within_budget(
+    mock_site_context, logged_in_client, django_assert_max_num_queries
+):
+    user = UserFactory()
+    _three_registered_courses_with_topics(user)
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(ALL_COURSES_MAX_QUERIES):
+        response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200

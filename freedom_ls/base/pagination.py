@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from django.core.paginator import Page, Paginator
+from django.http import QueryDict
 
 if TYPE_CHECKING:
     from django.db.models import Model, QuerySet
@@ -41,20 +42,24 @@ def clamped_page(
     return paginator.get_page(page_value)
 
 
-def page_href(request: HttpRequest, param_name: str, page_number: int) -> str:
+def page_href(request: HttpRequest | None, param_name: str, page_number: int) -> str:
     """The current URL showing ``page_number`` of one pager.
 
     Copies the incoming query string and touches only this pager's key, so
     every other pager's page survives the link and an unrecognised parameter
     passes through with no allowlist to maintain. Page one drops the key.
+
+    With no request there is no URL to copy, so the link is the query string
+    alone, which the browser resolves against the page it is on.
     """
-    query = request.GET.copy()
+    query = request.GET.copy() if request is not None else QueryDict(mutable=True)
+    path = request.path if request is not None else ""
     if page_number <= 1:
         query.pop(param_name, None)
     else:
         query[param_name] = str(page_number)
     encoded = query.urlencode()
-    return f"{request.path}?{encoded}" if encoded else request.path
+    return f"{path}?{encoded}" if encoded else path
 
 
 def position_text(page: Page) -> str:

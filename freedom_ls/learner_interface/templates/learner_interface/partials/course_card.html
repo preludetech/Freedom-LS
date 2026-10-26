@@ -1,4 +1,3 @@
-{% load deadline_tags %}
 {% comment %}
 The single dashboard course card. Renders any course state from one template,
 branching on course.listing_status (CourseListingStatus StrEnum) so there is no
@@ -10,6 +9,7 @@ Standard fields land in standard places via the shared skeleton and partials:
                     status is ever shown; no duplicate chip/badge)
   title + link   -> stretched title link (card_title_link.html)
   details        -> course_details_link.html (own right-aligned line)
+  deadline       -> course_deadline_line.html (missed deadline, else next deadline)
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
 
 Title-link target by status:
@@ -65,14 +65,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
         </p>
     {% endif %}
 
-    {% if course.missed_deadline %}
-        <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-            <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
-            <span>{{ course.missed_deadline.title }} {% local_time course.missed_deadline.due_at %}</span>
-        </p>
-    {% elif course.next_deadline %}
-        <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}</p>
-    {% endif %}
+    {% include "learner_interface/partials/course_deadline_line.html" %}
 
     <div class="flex justify-end mt-auto">
         {% include "learner_interface/partials/course_details_link.html" %}

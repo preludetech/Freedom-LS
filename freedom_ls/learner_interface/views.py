@@ -89,6 +89,7 @@ from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 from .dashboard_sections import (
     BuiltInSection,
     DashboardSection,
+    htmx_target,
     page_for,
     requested_section_slug,
 )
@@ -598,8 +599,9 @@ class _DashboardInputs:
     rest: QuerySet[Course]
 
 
-def _dashboard_inputs(request: HttpRequest) -> _DashboardInputs:
-    backend = get_course_access_backend()
+def _dashboard_inputs(
+    request: HttpRequest, backend: CourseAccessBackend
+) -> _DashboardInputs:
     is_auth = request.user.is_authenticated
 
     # These helpers are all anonymous-safe (return empty lists / querysets for
@@ -739,26 +741,42 @@ def _deadlines_or_none(
     return course_deadlines(course_progress) if course_progress is not None else None
 
 
+def _requested_panel(
+    request: HttpRequest, contributions: list[DashboardContribution]
+) -> DashboardContribution | None:
+    """The backend panel whose own swap an htmx request names in ``HX-Target``."""
+    target = htmx_target(request)
+    if target is None:
+        return None
+    return next((c for c in contributions if c.swap_id == target), None)
+
+
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Dashboard view — authenticated or anonymous, whole page or one section.
+    """Dashboard view — authenticated or anonymous, whole page or one fragment.
 
     Authenticated users see their personalised course lists, backend-contributed
     panels, and the welcome greeting. Anonymous users see a hero, any panel the
     backend contributes for their session, and the discovery sections. An htmx
     request naming a section's swap target in ``HX-Target`` gets that section's
-    page fragment instead of the whole page; any other htmx request, a boosted navigation included, gets the whole page.
+    page fragment, and one naming a backend panel's swap id gets that panel on
+    its own; any other htmx request, a boosted navigation included, gets the
+    whole page.
     """
+    backend = get_course_access_backend()
     slug = requested_section_slug(request)
-    inputs = _dashboard_inputs(request)
-
     if slug is not None:
-        return _section_page_response(request, inputs, slug)
+        return _section_page_response(
+            request, _dashboard_inputs(request, backend), slug
+        )
 
     # Panels come from the active backend, for every visitor: the backend decides
     # what an anonymous session may see of its own.
-    contributions = inputs.backend.get_dashboard_contributions_for_request(
-        request=request
-    )
+    contributions = backend.get_dashboard_contributions_for_request(request=request)
+    panel = _requested_panel(request, contributions)
+    if panel is not None:
+        return render(request, panel.template_name, panel.context)
+
+    inputs = _dashboard_inputs(request, backend)
     dashboard_panels = [
         render_to_string(c.template_name, c.context, request=request)
         for c in contributions
@@ -789,6 +807,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         ),
     )
     courses_with_attrs = []
+    now = timezone.now()
     for entry in entries:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
@@ -798,15 +817,17 @@ def all_courses(request: HttpRequest) -> HttpResponse:
             CourseListingStatus.REGISTERED,
             CourseListingStatus.IN_PROGRESS,
         ):
+            # The listing resolved the record already; the catalogue shows no
+            # deadline line, so none are resolved here.
             _annotate_next_up(
                 course,
                 request.user,
                 can_access_content=backend.get_access(
                     user=request.user, course=course
                 ).can_access_content,
-                course_progress=UNRESOLVED,
+                course_progress=entry.course_progress,
                 course_deadlines=None,
-                now=timezone.now(),
+                now=now,
             )
         courses_with_attrs.append(course)
 
@@ -1923,4 +1944,8 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
+    from freedom_ls.course_access.backends import (
+        CourseAccessBackend,
+        DashboardContribution,
+        RequestUser,
+    )

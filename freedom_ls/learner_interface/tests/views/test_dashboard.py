@@ -1497,6 +1497,12 @@ def _dashboard_text(client: Client) -> str:
     return " ".join(re.sub(r"<[^>]+>", " ", _dashboard_html(client)).split())
 
 
+def _first_card_grid(html: str) -> str:
+    """The first section's card grid, without the row list that repeats each course."""
+    start = html.index('data-testid="section-card-grid"')
+    return html[start : html.index('data-testid="section-row-list"', start)]
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
@@ -1512,6 +1518,20 @@ def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
     assert "Missed deadline Second Topic 1 Jan 2020" in text
     assert "Missed deadline Course " not in text
     assert "Next deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_shows_the_missed_deadline_too(deadline_card):
+    """Below lg the section shows rows, which must carry the card's deadline line."""
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+
+    html = _dashboard_html(client)
+    row_list = html[html.index('data-testid="section-row-list"') :]
+
+    assert "Missed deadline" in row_list
+    assert "Second Topic" in row_list
 
 
 @pytest.mark.django_db
@@ -1671,7 +1691,7 @@ def test_card_deadline_line_sits_below_next_up_and_outside_the_eyebrow(
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
 
-    html = _dashboard_html(client)
+    html = _first_card_grid(_dashboard_html(client))
 
     assert html.index("Next up:") < html.index("Next deadline")
     assert html.count("Next deadline") == 1
@@ -1708,7 +1728,10 @@ def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
 
     card_count = len(rendered_section(response, "in-progress").courses)
     assert card_count > 1
-    assert response.content.decode().count("Missed deadline") == card_count
+    assert (
+        _first_card_grid(response.content.decode()).count("Missed deadline")
+        == card_count
+    )
 
 
 @pytest.mark.django_db

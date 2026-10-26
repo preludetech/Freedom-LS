@@ -1018,6 +1018,8 @@ class TestApplicationsPaging:
     def test_without_a_request_page_one_is_shown_and_not_announced(
         self, mock_site_context
     ):
+        from django.template.loader import render_to_string
+
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
@@ -1028,9 +1030,53 @@ class TestApplicationsPaging:
         contribution = ApplicationCourseAccessBackend().get_dashboard_contributions(
             user=user
         )[0]
+        rendered = render_to_string(contribution.template_name, contribution.context)
 
         assert contribution.context["applications"] == oldest_first[::-1][:3]
         assert contribution.context["announce_page"] is False
+        # No request to copy a URL from, so the pager links by query string alone.
+        assert 'href="?page_applications=2"' in rendered
+
+    def test_a_swap_of_the_panels_own_page_gets_the_page_fragment(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        CourseApplicationFactory(user=user)
+
+        whole_page = _contributions_for(_signed_in_request(user))[0]
+        own_swap = _contributions_for(
+            _signed_in_request(user, HTTP_HX_TARGET="applications-page")
+        )[0]
+
+        assert whole_page.template_name.endswith("dashboard_applications.html")
+        assert own_swap.template_name.endswith("#panel-page-response")
+        assert whole_page.swap_id == own_swap.swap_id == "applications-page"
+
+    def test_a_swap_of_an_emptied_panel_renders_an_empty_boundary(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        request = _signed_in_request(user, HTTP_HX_TARGET="applications-page")
+
+        contributions = _contributions_for(request)
+        rendered = _render_contribution(contributions[0], request)
+
+        assert len(contributions) == 1
+        assert 'id="applications-page"' in rendered
+        assert "Your applications</h2>" not in rendered
+        assert "Your applications: none" in rendered
+
+    def test_only_one_page_of_applications_leaves_the_database(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        user = UserFactory()
+        _applications_created_in_order(user, 7)
+
+        # A count and the one page of rows, each with its course and sitting joined.
+        with django_assert_num_queries(2):
+            contribution = _contributions_for(_signed_in_request(user))[0]
+
+        assert len(contribution.context["applications"]) == 3
 
     def test_no_applications_gives_no_contribution_on_both_entry_points(
         self, mock_site_context

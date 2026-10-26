@@ -11,6 +11,8 @@ Standard fields land in standard places:
   details        -> course_details_link.html, right-aligned inline with the
                     status in the eyebrow slot (top-right of the row)
   title + link   -> stretched title link (card_title_link.html)
+  deadline       -> course_deadline_line.html (missed deadline, else next deadline);
+                    the all-courses page passes no deadlines, so the line is dashboard-only
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
 
 Title-link target by status:
@@ -26,7 +28,8 @@ frees the horizontal space that clipped "Details" off narrow viewports.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-access_badge, current_price) and user.
+missed_deadline, next_deadline, access_badge, current_price), user and
+show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
@@ -69,6 +72,8 @@ access_badge, current_price) and user.
             Next up: {{ course.next_up_title }}
         </p>
     {% endif %}
+
+    {% include "learner_interface/partials/course_deadline_line.html" %}
 
     {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
         <c-slot name="footer">

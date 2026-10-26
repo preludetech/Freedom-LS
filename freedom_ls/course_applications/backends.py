@@ -46,12 +46,14 @@ if TYPE_CHECKING:
 APPLICATION_GATED = "application_gated"
 
 # The dashboard panel shows this many applications at a time. The page lives in
-# its own query parameter so paging it leaves every course section's page alone,
-# and the swap id is what the pager targets and what the server reads back from
-# HX-Target to tell a swap of this panel from any other request.
+# its own query parameter so paging it leaves every course section's page alone.
+# The swap id is what the pager targets; the dashboard view reads it back from
+# HX-Target and answers such a request with the panel alone, so this backend
+# tells a swap of its own panel from any other request the same way.
 APPLICATIONS_PAGE_SIZE = 3
 APPLICATIONS_PAGE_PARAM = "page_applications"
 APPLICATIONS_SWAP_ID = "applications-page"
+APPLICATIONS_PANEL_TEMPLATE = "course_applications/partials/dashboard_applications.html"
 
 
 class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
@@ -254,10 +256,10 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         """
         from freedom_ls.course_applications.queries import get_active_applications
 
-        # Materialise once to avoid a second DB hit when the template iterates.
-        applications = list(get_active_applications(user))
-        page = Paginator(applications, APPLICATIONS_PAGE_SIZE).get_page(1)
-        return self._applications_panel(page, announce_page=False)
+        page = Paginator(
+            get_active_applications(user), APPLICATIONS_PAGE_SIZE
+        ).get_page(1)
+        return self._applications_panel(page, own_swap=False)
 
     def get_dashboard_contributions_for_request(
         self, *, request: HttpRequest
@@ -270,7 +272,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         if request.user.is_authenticated:
             from freedom_ls.course_applications.queries import get_active_applications
 
-            applications = list(get_active_applications(request.user))
+            applications = get_active_applications(request.user)
         else:
             from freedom_ls.course_applications.anonymous_session import (
                 owned_applications,
@@ -278,7 +280,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
 
             # An empty session map makes this an `IN ()` filter, which Django
             # answers without a query.
-            applications = list(
+            applications = (
                 owned_applications(request)
                 .filter(
                     form_progress__isnull=False,
@@ -287,29 +289,41 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
                 .select_related("course", "form_progress")
                 .order_by("-created_at", "pk")
             )
+        # The paginator counts and then fetches one page, so only the three
+        # rows shown ever leave the database.
         page = clamped_page(
             request, APPLICATIONS_PAGE_PARAM, applications, APPLICATIONS_PAGE_SIZE
         )
-        # Only a swap of the panel's own page is announced: a whole-page load
-        # already puts the heading and the position text in front of the reader.
-        announce_page = request.headers.get("HX-Target") == APPLICATIONS_SWAP_ID
-        return self._applications_panel(page, announce_page=announce_page)
+        own_swap = request.headers.get("HX-Target") == APPLICATIONS_SWAP_ID
+        return self._applications_panel(page, own_swap=own_swap)
 
     def _applications_panel(
-        self, page: Page[CourseApplication], *, announce_page: bool
+        self, page: Page[CourseApplication], *, own_swap: bool
     ) -> list[DashboardContribution]:
-        if page.paginator.count == 0:
+        """The panel, or nothing when the learner has no applications to show.
+
+        A swap of the panel's own page gets the page fragment rather than the
+        whole panel, and gets it even when nothing is left: the fragment then
+        empties the panel in place. Only that swap announces its position; a
+        whole-page load already puts the heading and the position text in
+        front of the reader.
+        """
+        if page.paginator.count == 0 and not own_swap:
             return []
+        template_name = APPLICATIONS_PANEL_TEMPLATE
+        if own_swap:
+            template_name += "#panel-page-response"
         return [
             DashboardContribution(
-                template_name="course_applications/partials/dashboard_applications.html",
+                template_name=template_name,
                 context={
                     "applications": list(page.object_list),
                     "applications_page": page,
                     "position_text": position_text(page),
-                    "announce_page": announce_page,
+                    "announce_page": own_swap,
                     "swap_id": APPLICATIONS_SWAP_ID,
                     "page_param_name": APPLICATIONS_PAGE_PARAM,
                 },
+                swap_id=APPLICATIONS_SWAP_ID,
             )
         ]

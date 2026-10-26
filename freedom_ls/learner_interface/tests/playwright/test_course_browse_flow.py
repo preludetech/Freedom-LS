@@ -682,7 +682,48 @@ def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
     page.get_by_role("link", name="Back").click()
     expect(page).to_have_url(dashboard_url)
 
+    # A modified click is the browser's gesture: a new tab, and this one stays put.
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    with page.context.expect_page() as new_page_info:
+        page.get_by_role("link", name="Back").click(modifiers=["ControlOrMeta"])
+    expect(new_page_info.value).to_have_url(dashboard_url)
+    expect(page).to_have_url(detail_url)
+    new_page_info.value.close()
+
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(detail_url)
         assert_no_horizontal_overflow(page)
+
+
+@pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+def test_back_does_not_bounce_between_the_course_and_its_application(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    """Cancelling an application returns to the course; Back must then leave it."""
+    page = logged_in_page
+    course = CourseFactory(
+        title="Gated Back Course",
+        slug="gated-back-course",
+        access_config={"access_type": "application_gated"},
+    )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    detail_url = _detail_url(live_server, course)
+
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Apply now").click()
+    page.get_by_role("link", name="Cancel").click()
+    expect(page).to_have_url(detail_url)
+
+    page.get_by_role("link", name="Back").click()
+
+    expect(page).to_have_url(dashboard_url)
