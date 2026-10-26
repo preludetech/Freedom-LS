@@ -231,11 +231,12 @@ class AuditActionFilter(ChoiceFilter):
 
 
 class AuditPeriodFilter(ChoiceFilter):
-    """Narrows audit entries to those made since a preset point, counted back
-    from local midnight in the project's time zone."""
+    """Narrows audit entries to a preset number of calendar days ending
+    today, in the project's time zone: "Last 7 days" is today and the six
+    days before it."""
 
     widget = "select"
-    DAYS_BACK = {"today": 0, "7d": 7, "30d": 30, "90d": 90, "12m": 365}
+    DAYS = {"today": 1, "7d": 7, "30d": 30, "90d": 90, "12m": 365}
 
     def __init__(self) -> None:
         super().__init__(
@@ -260,5 +261,5 @@ class AuditPeriodFilter(ChoiceFilter):
         midnight = timezone.localtime(timezone.now()).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        start = midnight - timedelta(days=self.DAYS_BACK[values[0]])
+        start = midnight - timedelta(days=self.DAYS[values[0]] - 1)
         return queryset.filter(created_at__gte=start)

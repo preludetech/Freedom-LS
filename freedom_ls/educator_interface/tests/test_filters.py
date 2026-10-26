@@ -569,14 +569,17 @@ def _entry_at(organisation, moment: datetime) -> AuditLogEntry:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("preset", "days_back"),
-    [("today", 0), ("7d", 7), ("30d", 30), ("90d", 90), ("12m", 365)],
+    ("preset", "days"),
+    [("today", 1), ("7d", 7), ("30d", 30), ("90d", 90), ("12m", 365)],
 )
-def test_each_period_preset_starts_that_many_days_before_local_midnight(
-    audit_request, preset: str, days_back: int
+def test_each_period_preset_covers_that_many_calendar_days_ending_today(
+    audit_request, preset: str, days: int
 ):
+    """ "Last 7 days" is today and the six days before it, so the window
+    starts at local midnight `days - 1` days ago."""
     request, organisation = audit_request
     now = datetime(2026, 10, 24, 15, 30, tzinfo=UTC)
+    days_back = days - 1
     inside = _entry_at(
         organisation,
         datetime(2026, 10, 24, 0, 0, tzinfo=UTC) - timedelta(days=days_back),
