@@ -16,7 +16,8 @@ from typing import cast
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
-from django.db import transaction
+from django.db import connection, transaction
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -467,6 +468,54 @@ class TestRegisterCohortForCourse:
 
         registration.refresh_from_db()
         assert registration.is_active is False
+
+    def test_registering_locks_the_cohort_row_before_reading_the_registration(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+
+        with CaptureQueriesContext(connection) as captured:
+            register_cohort_for_course(cohort, CourseFactory())
+
+        assert _locks_row("freedom_ls_learner_management_cohort", captured)
+
+    def test_unregistering_locks_the_registration_row_before_reading_its_state(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory()
+
+        with CaptureQueriesContext(connection) as captured:
+            deactivate_cohort_registration(registration)
+
+        assert _locks_row(
+            "freedom_ls_learner_management_cohortcourseregistration", captured
+        )
+
+    def test_unregistering_from_a_stale_active_instance_writes_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        """The caller's instance says active while another request has already
+        deactivated the row: the stored state decides, so no second entry
+        and no second webhook."""
+        registration = CohortCourseRegistrationFactory()
+        CohortCourseRegistration.objects.filter(pk=registration.pk).update(
+            is_active=False
+        )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            deactivate_cohort_registration(registration)
+
+        assert not AuditLogEntry.unscoped.filter(
+            action="cohort_registration.deactivated"
+        ).exists()
+        assert WebhookEvent._base_manager.count() == 0
+
+
+def _locks_row(table: str, captured: CaptureQueriesContext) -> bool:
+    return any(
+        f'{table}"' in query["sql"] and "FOR UPDATE" in query["sql"]
+        for query in captured.captured_queries
+    )
 
 
 @pytest.mark.django_db

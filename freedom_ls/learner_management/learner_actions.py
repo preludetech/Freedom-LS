@@ -246,6 +246,9 @@ def register_for_course(
     the course is not open to the learner's organisation."""
     require_course_open_to(course, learner.organisation)
     with transaction.atomic():
+        # Locked so two overlapping calls cannot each see no active
+        # registration and each write an entry for the one change.
+        Learner._base_manager.select_for_update().get(pk=learner.pk)
         registration, created = LearnerCourseRegistration._base_manager.get_or_create(
             site=learner.site, learner=learner, course=course
         )
@@ -272,6 +275,7 @@ def deactivate_registration(
     `registration.deactivated` webhook comes from the registration's
     `post_save` receiver."""
     with transaction.atomic():
+        Learner._base_manager.select_for_update().get(pk=learner.pk)
         registration = LearnerCourseRegistration._base_manager.filter(
             learner=learner, course=course, is_active=True
         ).first()

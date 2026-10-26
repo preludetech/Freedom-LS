@@ -190,11 +190,14 @@ def register_cohort_for_course(
     and saves through save() so the post_save fan-out mints a course
     progress record for every member the row does not yet cover.
     """
-    from freedom_ls.learner_management.models import CohortCourseRegistration
+    from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
     from freedom_ls.learner_management.queries import require_course_open_to
 
     require_course_open_to(course, cohort.organisation)
     with transaction.atomic():
+        # Locked so two overlapping calls cannot each find no active
+        # registration and each write an entry and a webhook for the one change.
+        Cohort._base_manager.select_for_update().get(pk=cohort.pk)
         # _base_manager with an explicit site, as ensure_learner does: the
         # site-aware manager only fills site from an ambient request, and this
         # runs from commands and tests as well as views.
@@ -226,8 +229,16 @@ def deactivate_cohort_registration(
 ) -> None:
     """Deactivate the registration. Reversible: the row and every course
     progress record it minted stay."""
+    from freedom_ls.learner_management.models import CohortCourseRegistration
+
     with transaction.atomic():
-        was_active = registration.is_active
+        # The caller's instance may be stale: two overlapping requests would
+        # each see it active and each write an entry and a webhook for the
+        # one change, so the stored row decides.
+        stored = CohortCourseRegistration._base_manager.select_for_update().get(
+            pk=registration.pk
+        )
+        was_active = stored.is_active
         registration.is_active = False
         registration.save(update_fields=["is_active"])
         if was_active:

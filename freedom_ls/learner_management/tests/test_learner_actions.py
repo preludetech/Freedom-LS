@@ -4,7 +4,8 @@ from typing import cast
 
 import pytest
 
-from django.db import transaction
+from django.db import connection, transaction
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -1002,6 +1003,24 @@ class TestRegisterForCourse:
         registration.refresh_from_db()
         assert (changed, registration.is_active) == (True, True)
 
+    def test_locks_the_learner_row_before_deciding_whether_anything_changed(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+
+        with CaptureQueriesContext(connection) as captured:
+            register_for_course(learner, CourseFactory())
+
+        assert _locks_the_learner_row(captured)
+
+
+def _locks_the_learner_row(captured: CaptureQueriesContext) -> bool:
+    return any(
+        'freedom_ls_learner_management_learner"' in query["sql"]
+        and "FOR UPDATE" in query["sql"]
+        for query in captured.captured_queries
+    )
+
 
 @pytest.mark.django_db
 class TestUnregisterFromCourse:
@@ -1012,6 +1031,16 @@ class TestUnregisterFromCourse:
 
         registration.refresh_from_db()
         assert (changed, registration.is_active) == (True, False)
+
+    def test_locks_the_learner_row_before_deciding_whether_anything_changed(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+
+        with CaptureQueriesContext(connection) as captured:
+            deactivate_registration(registration.learner, registration.course)
+
+        assert _locks_the_learner_row(captured)
 
     def test_records_a_course_unregistered_event_with_the_payload(
         self, mock_site_context, django_capture_on_commit_callbacks
