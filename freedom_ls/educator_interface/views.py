@@ -38,7 +38,7 @@ from django.utils import timezone
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
+from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -148,6 +148,7 @@ from freedom_ls.learner_management.queries import (
     site_level_admins,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole
+from freedom_ls.learner_management.utils import record_cohort_entry
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
@@ -1143,13 +1144,8 @@ class CreateCohortAction(CreateInstanceAction):
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         with transaction.atomic():
             response = super().form_valid(request, form)
-            cohort = cast(Cohort, form.instance)
-            record_entry(
-                action="cohort.created",
-                actor=cast(User, request.user),
-                target=cohort,
-                target_label=cohort.name,
-                organisation=self._organisation,
+            record_cohort_entry(
+                cast(Cohort, form.instance), "cohort.created", cast(User, request.user)
             )
         return response
 

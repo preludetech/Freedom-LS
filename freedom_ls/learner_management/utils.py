@@ -7,10 +7,13 @@ from django.db import transaction
 from freedom_ls.audit_log.writer import record_entry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
     from django.contrib.sites.models import Site
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.audit_log.types import JSONValue
     from freedom_ls.content_engine.models import Course
     from freedom_ls.learner_management.models import (
         Cohort,
@@ -156,9 +159,16 @@ def announce_cohort_registration_change(
     )
 
 
-def _record_cohort_registration_entry(
-    cohort: Cohort, action: str, course: Course, actor: User | None, reason: str
+def record_cohort_entry(
+    cohort: Cohort,
+    action: str,
+    actor: User | None,
+    *,
+    reason: str = "",
+    details: Mapping[str, JSONValue] | None = None,
 ) -> None:
+    """Write an entry whose target is the cohort, labelled by its name and
+    scoped to its organisation."""
     record_entry(
         action=action,
         actor=actor,
@@ -166,7 +176,7 @@ def _record_cohort_registration_entry(
         target_label=cohort.name,
         organisation=cohort.organisation,
         reason=reason,
-        details={"course": course.title},
+        details=details,
     )
 
 
@@ -202,7 +212,9 @@ def register_cohort_for_course(
                 else "cohort_registration.reactivated"
             )
             announce_cohort_registration_change(registration, code)
-            _record_cohort_registration_entry(cohort, code, course, actor, reason)
+            record_cohort_entry(
+                cohort, code, actor, reason=reason, details={"course": course.title}
+            )
     return registration
 
 
@@ -222,10 +234,10 @@ def deactivate_cohort_registration(
             announce_cohort_registration_change(
                 registration, "cohort_registration.deactivated"
             )
-            _record_cohort_registration_entry(
+            record_cohort_entry(
                 registration.cohort,
                 "cohort_registration.deactivated",
-                registration.course,
                 actor,
-                reason,
+                reason=reason,
+                details={"course": registration.course.title},
             )

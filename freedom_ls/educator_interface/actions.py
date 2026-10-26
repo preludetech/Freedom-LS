@@ -100,6 +100,7 @@ from freedom_ls.learner_management.role_assignment import (
 from freedom_ls.learner_management.utils import (
     deactivate_cohort_registration,
     ensure_organisation_member,
+    record_cohort_entry,
     register_cohort_for_course,
 )
 from freedom_ls.learner_progress.utils import move_progress_preview
@@ -274,12 +275,10 @@ class EditCohortAction(RequiresActiveCohortMixin, EditAction):
             response = super().form_valid(request, form)
             if "name" in form.changed_data:
                 cohort = cast(Cohort, form.instance)
-                record_entry(
-                    action="cohort.renamed",
-                    actor=cast("User", request.user),
-                    target=cohort,
-                    target_label=cohort.name,
-                    organisation=cohort.organisation,
+                record_cohort_entry(
+                    cohort,
+                    "cohort.renamed",
+                    cast("User", request.user),
                     details={"old": old_name, "new": cohort.name},
                 )
         return response
@@ -355,14 +354,10 @@ class CohortStateAction(PanelAction):
         cohort.is_active = self.target_state
         with transaction.atomic():
             cohort.save(update_fields=["is_active", "updated_at"])
-            record_entry(
-                action="cohort.reactivated"
-                if self.target_state
-                else "cohort.deactivated",
-                actor=cast("User", ctx.request.user),
-                target=cohort,
-                target_label=cohort.name,
-                organisation=cohort.organisation,
+            record_cohort_entry(
+                cohort,
+                "cohort.reactivated" if self.target_state else "cohort.deactivated",
+                cast("User", ctx.request.user),
                 reason=submitted_reason(self, ctx),
             )
         # The page re-renders in full, header included, so no domain event is
@@ -436,14 +431,7 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
         # Written before the delete because the entry reads the pk, which
         # delete() clears. A delete that a protected relation then blocks
         # rolls the entry back with it.
-        record_entry(
-            action="cohort.deleted",
-            actor=actor,
-            target=cohort,
-            target_label=cohort.name,
-            organisation=cohort.organisation,
-            reason=reason,
-        )
+        record_cohort_entry(cohort, "cohort.deleted", actor, reason=reason)
         return None
 
 
