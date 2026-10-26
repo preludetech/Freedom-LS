@@ -54,14 +54,24 @@ class TableFilter:
         """Every value this filter accepts, as `(value, label)` pairs."""
         raise NotImplementedError
 
-    def validate(self, values: list[str], request: HttpRequest) -> list[str]:
+    def validate(
+        self,
+        values: list[str],
+        request: HttpRequest,
+        choices: list[tuple[str, str]] | None = None,
+    ) -> list[str]:
         """The subset of `values` this filter accepts.
 
         A value that isn't one of `get_choices`' own is dropped rather than
         raising, since it reaches here straight from the query string and may
         be guessed, stale, or scoped to a request that no longer applies.
+        `choices` is this request's `get_choices` result when the caller
+        already has it, so a filter whose choices come from a query is not
+        asked again.
         """
-        allowed = {value for value, _ in self.get_choices(request)}
+        if choices is None:
+            choices = self.get_choices(request)
+        allowed = {value for value, _ in choices}
         kept = [value for value in values if value in allowed]
         return kept if self.multiple else kept[:1]
 

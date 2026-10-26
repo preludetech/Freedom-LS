@@ -25,6 +25,9 @@ class TableQuery:
     page: str = "1"  # raw; Paginator.get_page clamps it
     filters: dict[str, list[str]] = field(default_factory=dict)
     default_sort: str = ""  # the table's declared default, same shape as sort
+    #: Each filter's choices for this request, keyed by filter key, so the
+    #: toolbar does not ask a filter whose choices come from a query again.
+    choices: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
 
     def param(self, name: str) -> str:
         """This table's own name for a bare parameter name, e.g. "page"."""
@@ -269,14 +272,18 @@ class DataTable:
         if sort_field not in sortable_fields:
             sort = ""
         filters: dict[str, list[str]] = {}
+        choices: dict[str, list[tuple[str, str]]] = {}
         for table_filter in cls.get_filters():
             values = [
                 value
                 for value in request.GET.getlist(f"{key}-{table_filter.key}")
                 if value
             ]
-            validated = table_filter.validate(values, request) or table_filter.validate(
-                list(table_filter.default), request
+            choices[table_filter.key] = table_filter.get_choices(request)
+            validated = table_filter.validate(
+                values, request, choices[table_filter.key]
+            ) or table_filter.validate(
+                list(table_filter.default), request, choices[table_filter.key]
             )
             if validated:
                 filters[table_filter.key] = validated
@@ -287,6 +294,7 @@ class DataTable:
             page=page,
             filters=filters,
             default_sort=cls.default_sort,
+            choices=choices,
         )
 
     @classmethod
@@ -448,7 +456,10 @@ def _toolbar_entry(
     the choices its disclosure lists, each carrying the changes selecting it
     would make."""
     values = query.filters.get(table_filter.key, [])
-    choices = table_filter.get_choices(request)
+    # A query built by hand, as tests do, carries no choices.
+    choices = query.choices.get(table_filter.key)
+    if choices is None:
+        choices = table_filter.get_choices(request)
     labels = [label for value, label in choices if value in values]
     joined_labels = ", ".join(labels)
     chip_text = (

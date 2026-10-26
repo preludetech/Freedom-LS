@@ -10,7 +10,13 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
-from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    QueryDict,
+    StreamingHttpResponse,
+)
 from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.utils import timezone
@@ -429,6 +435,40 @@ class _ExportOnlyTablePanel(DataTablePanel):
     title = "Export only"
     data_table = _ExportOnlyDataTable
     table_key = "exportonly"
+
+
+class _CountingFilter(ChoiceFilter):
+    """Counts `get_choices` calls, standing in for a filter whose choices
+    come from a query."""
+
+    calls = 0
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        type(self).calls += 1
+        return [("a", "A"), ("b", "B")]
+
+
+class _CountingDataTable(_NoSearchDataTable):
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [_CountingFilter("kind", "Kind", lookup="kind")]
+
+
+class _CountingTablePanel(DataTablePanel):
+    title = "Counting"
+    data_table = _CountingDataTable
+    table_key = "counting"
+
+
+def test_a_filters_choices_are_fetched_once_per_request(
+    mock_site_context: Site,
+) -> None:
+    _CountingFilter.calls = 0
+    panel = _bind_table_panel(_CountingTablePanel)
+
+    panel.get_context_data()
+
+    assert _CountingFilter.calls == 1
 
 
 def _bind_table_panel(panel_class: type[DataTablePanel]) -> DataTablePanel:
