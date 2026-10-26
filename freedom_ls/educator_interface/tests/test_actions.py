@@ -13,9 +13,10 @@ from allauth.account.models import EmailAddress
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
-from django.db import transaction
+from django.db import connection, transaction
 from django.http import HttpResponse
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.config import config
@@ -221,6 +222,36 @@ def test_stale_deactivate_on_an_inactive_cohort_answers_422_and_changes_nothing(
     cohort.refresh_from_db()
     assert response.status_code == 422
     assert cohort.is_active is False
+    assert not AuditLogEntry.unscoped.filter(action="cohort.deactivated").exists()
+
+
+def _locks_the_cohort_row(captured: CaptureQueriesContext) -> bool:
+    return any(
+        'freedom_ls_learner_management_cohort"' in query["sql"]
+        and "FOR UPDATE" in query["sql"]
+        for query in captured.captured_queries
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("is_active", "action_name"), [(True, "deactivate"), (False, "reactivate")]
+)
+def test_a_cohort_state_change_locks_the_cohort_row_before_writing_its_entry(
+    staff_client: Client, is_active: bool, action_name: str
+):
+    """Two overlapping submits must not each see the old state and each write
+    an entry for the one change, so the state is re-read under a row lock."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1, is_active=is_active)
+
+    with CaptureQueriesContext(connection) as captured:
+        response = _post(
+            staff_client, _cohort_url(organisation, cohort, f"/__actions/{action_name}")
+        )
+
+    assert response.status_code == 204
+    assert _locks_the_cohort_row(captured)
 
 
 # reactivate
@@ -266,6 +297,7 @@ def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client):
 
     assert response.status_code == 422
     assert "is already active" in response.content.decode()
+    assert not AuditLogEntry.unscoped.filter(action="cohort.reactivated").exists()
 
 
 @pytest.mark.django_db

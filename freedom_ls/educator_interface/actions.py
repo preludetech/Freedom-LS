@@ -349,10 +349,22 @@ class CohortStateAction(PanelAction):
         context["is_empty"] = not context["not_empty_sentence"]
         return context
 
+    def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
+        """The 422 for a cohort already in `target_state`."""
+        raise NotImplementedError
+
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        cohort = cast(Cohort, ctx.instance)
-        cohort.is_active = self.target_state
         with transaction.atomic():
+            # ctx.instance may be stale: two overlapping submits would each
+            # see the old state and each write an entry for the one change.
+            # The action route authorised ctx.instance; the re-read only
+            # takes the lock.
+            cohort = get_object_or_404(
+                Cohort.objects.select_for_update(), pk=cast(Cohort, ctx.instance).pk
+            )
+            if cohort.is_active == self.target_state:
+                return self.refuse_unchanged(ctx, cohort)
+            cohort.is_active = self.target_state
             cohort.save(update_fields=["is_active", "updated_at"])
             record_cohort_entry(
                 cohort,
@@ -371,6 +383,9 @@ class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortState
     target_state = False
     template_name = "educator_interface/modal/deactivate_confirmation.html"
 
+    def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
+        return inactive_cohort_response(ctx.request, cohort)
+
 
 class ReactivateCohortAction(CohortStateAction):
     label = "Reactivate"
@@ -381,15 +396,13 @@ class ReactivateCohortAction(CohortStateAction):
     def is_offered(self, ctx: PanelContext) -> bool:
         return not cast(Cohort, ctx.instance).is_active
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        if cast(Cohort, ctx.instance).is_active:
-            return render(
-                ctx.request,
-                "educator_interface/modal/cohort_already_active.html",
-                {"cohort": ctx.instance},
-                status=422,
-            )
-        return super().handle_submit(ctx)
+    def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
+        return render(
+            ctx.request,
+            "educator_interface/modal/cohort_already_active.html",
+            {"cohort": cohort},
+            status=422,
+        )
 
 
 class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
