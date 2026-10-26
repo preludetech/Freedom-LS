@@ -72,7 +72,9 @@ not backfilled.
 - **Webhook event types renamed.** The codes below are gone; the new ones are the audit action codes.
   Migration `freedom_ls_webhooks.0002_rename_event_types` rewrites every `WebhookEndpoint.event_types`
   list, subscribing an endpoint to both new codes where one split. Past `WebhookEvent` rows keep the
-  code that was sent, so the admin's history and filters still show old codes for old events. A
+  code that was sent, so the admin's history and filters still show old codes for old events. An
+  event queued under an old code before the migration ran is still delivered to the endpoints now
+  subscribed to its new code(s), with the old code in the envelope. A
   receiver that branches on the envelope's `type`, a body template that reads `event.type`, and a
   downstream `WEBHOOK_EVENT_TYPES` setting that lists codes all need the new names; `fire_webhook_event`
   raises `ValueError` for a code the setting no longer lists. The payloads are unchanged.

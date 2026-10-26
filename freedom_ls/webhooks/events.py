@@ -1,10 +1,11 @@
 from django.contrib.sites.models import Site
+from django.db.models import Q
 from django.tasks import default_task_backend, task
 
 from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
 from freedom_ls.webhooks.delivery import attempt_delivery, check_circuit_breaker
 from freedom_ls.webhooks.models import WebhookDelivery, WebhookEndpoint, WebhookEvent
-from freedom_ls.webhooks.registry import validate_event_type
+from freedom_ls.webhooks.registry import RENAMED_EVENT_TYPES, validate_event_type
 
 
 def fire_webhook_event(
@@ -73,13 +74,15 @@ def dispatch_event(event_id: str, site_id: int) -> None:
         return
 
     # Filter explicitly by site_id since we have no request context.
-    # Only include user-enabled endpoints subscribed to this event type.
+    # Only include user-enabled endpoints subscribed to this event type, or
+    # to a code it was renamed to after the event was queued.
     # Circuit-broken endpoints still have is_active=True; check_circuit_breaker()
     # handles probe gating.
+    subscribed = Q()
+    for code in (event.event_type, *RENAMED_EVENT_TYPES.get(event.event_type, ())):
+        subscribed |= Q(event_types__contains=[code])
     endpoints = WebhookEndpoint.objects.filter(
-        site_id=site_id,
-        is_active=True,
-        event_types__contains=[event.event_type],
+        subscribed, site_id=site_id, is_active=True
     )
 
     for endpoint in endpoints:

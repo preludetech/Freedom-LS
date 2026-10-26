@@ -137,6 +137,24 @@ class TestDispatchEvent:
         assert delivery.status == "pending"
         mock_attempt.assert_called_once_with(delivery)
 
+    def test_an_event_queued_under_a_renamed_code_reaches_the_new_subscription(
+        self, mock_site_context: object
+    ) -> None:
+        """An event recorded before the rename migration ran, and dispatched
+        after it rewrote the endpoint's subscription, is still delivered."""
+        from freedom_ls.webhooks.events import dispatch_event
+
+        endpoint = WebhookEndpointFactory(
+            event_types=["cohort_membership.added"], is_active=True
+        )
+        event = WebhookEventFactory(event_type="cohort.member_added")
+
+        with patch("freedom_ls.webhooks.events.attempt_delivery"):
+            dispatch_event(str(event.pk), mock_site_context.pk)
+
+        delivery = WebhookDelivery.objects.get()
+        assert (delivery.event, delivery.endpoint) == (event, endpoint)
+
     def test_skips_endpoints_not_subscribed_to_event_type(
         self, mock_site_context: object
     ) -> None:

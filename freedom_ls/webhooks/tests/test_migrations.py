@@ -10,6 +10,7 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.webhooks.factories import WebhookEndpointFactory, WebhookEventFactory
 from freedom_ls.webhooks.models import WebhookEndpoint, WebhookEvent
+from freedom_ls.webhooks.registry import RENAMED_EVENT_TYPES
 
 migration = importlib.import_module(
     "freedom_ls.webhooks.migrations.0002_rename_event_types"
@@ -66,6 +67,11 @@ class TestRenameEventTypes:
             ["registration.added", "registration.reactivated"],
             before,
         )
+
+    def test_the_registry_map_matches_the_migration(self) -> None:
+        """dispatch_event matches an event queued under an old code through
+        the registry's copy, which cannot drift from the frozen migration's."""
+        assert RENAMED_EVENT_TYPES == migration.RENAMES
 
     def test_past_events_keep_the_code_that_was_sent(
         self, mock_site_context: Site
