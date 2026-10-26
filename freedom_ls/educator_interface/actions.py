@@ -232,12 +232,17 @@ def submitted_reason(action: PanelAction, ctx: PanelContext) -> str:
     """The reason `action`'s confirm dialog posted, as ReasonForm cleans it.
     Only an action with ReasonMixin has a reason field, so any other ignores
     whatever its POST carries. Actions are shared across requests, so the
-    reason is read from the request rather than kept on the action;
-    ReasonMixin.handle_submit has already refused an invalid one."""
+    reason is read from the request rather than kept on the action.
+    ReasonMixin.handle_submit has already refused an invalid one, so finding
+    one here means the submit bypassed the mixin."""
     if not isinstance(action, ReasonMixin):
         return ""
     form = ReasonForm(ctx.request.POST)
-    return str(form.cleaned_data["reason"]) if form.is_valid() else ""
+    if not form.is_valid():
+        raise ValueError(
+            "ReasonMixin.handle_submit has not validated this request's reason."
+        )
+    return str(form.cleaned_data["reason"])
 
 
 class ReasonMixin(PanelAction):

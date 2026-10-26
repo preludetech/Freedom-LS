@@ -15,7 +15,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.db import connection, transaction
 from django.http import HttpResponse
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -27,8 +27,10 @@ from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.actions import (
+    DeactivateCohortAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
+    submitted_reason,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -37,6 +39,7 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.members import current_role_entries
+from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -63,6 +66,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -317,6 +321,28 @@ def test_a_reason_posted_to_a_dialog_without_a_reason_field_is_ignored(
 
     assert response.status_code == 204
     assert AuditLogEntry.unscoped.get(action="cohort.reactivated").reason == ""
+
+
+@pytest.mark.django_db
+def test_submitted_reason_refuses_a_reason_the_mixin_has_not_validated(
+    mock_site_context: Site,
+):
+    """An action with a reason field reaches submitted_reason only after
+    ReasonMixin refused an invalid one, so an invalid reason here is a wiring
+    error and must not be stored as an empty string."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1)
+    request = RequestFactory().post("/", {"reason": "x" * 600})
+    ctx = PanelContext(
+        request=request,
+        instance=cohort,
+        base_url="",
+        name="settings",
+        config=CohortConfig,
+    )
+
+    with pytest.raises(ValueError, match="ReasonMixin"):
+        submitted_reason(DeactivateCohortAction(), ctx)
 
 
 @pytest.mark.django_db
