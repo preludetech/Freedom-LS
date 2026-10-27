@@ -23,12 +23,8 @@ from django.utils import timezone
 
 from freedom_ls.deployment.config import config
 from freedom_ls.learner_management.config import config as learner_management_config
-from freedom_ls.learner_management.models import (
-    BulkActionRun,
-    ImportStatus,
-    LearnerImport,
-    RunStatus,
-)
+from freedom_ls.learner_management.models import ImportStatus, LearnerImport
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.models import GeneratedReport
 
 

@@ -14,7 +14,7 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/views/_bulk_confirmation_base.html
 requires_settings_change: true
 changed_settings:
-  - BULK_BACKGROUND_THRESHOLD  # optional: default 250
+  - BULK_BACKGROUND_THRESHOLD  # optional: default 250; read by panel_framework's config
   - LEARNER_IMPORT_MAX_ROWS  # optional: default 2000
   - BULK_RECORD_RETENTION_DAYS  # optional: default 30
 requires_package_upgrade: false
@@ -51,8 +51,14 @@ sidebar, content header and breadcrumbs blocks moved there. A project that overr
 
 ## Manual steps
 
-- Run `manage.py migrate`. It applies `learner_management` migrations
-  `0007_bulkactionrun` and `0008_learnerimport_learnerimportrow`.
+- Run `manage.py migrate`. It applies `learner_management` migrations `0008_bulkactionrun`,
+  `0009_learnerimport_learnerimportrow` and `0010_delete_bulkactionrun`, and `panel_framework`'s
+  first migration, `0001_initial`. The bulk run record now belongs to `panel_framework`, with a
+  generic scope in place of an organisation field; no shipped data moves, since the model never
+  reached a release under `learner_management`.
+- A project with its own panel-framework host can record and poll bulk runs by extending
+  `RecordedBulkAction` (`freedom_ls/panel_framework/bulk_actions.py`); the status route
+  `<table url>/__runs/<uuid>` is served by the framework dispatcher.
 - Bulk actions over more than `BULK_BACKGROUND_THRESHOLD` objects, and learner imports above it,
   run as background tasks. They need the `db_worker` process the production `TASKS` setting already
   requires. Without a worker those runs stay queued until `fls_run_housekeeping` marks them failed.

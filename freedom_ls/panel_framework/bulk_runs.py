@@ -6,22 +6,36 @@ from collections.abc import Callable
 
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils.module_loading import import_string
 
-from freedom_ls.comms.notify import raise_notification
-from freedom_ls.educator_interface.actions import EducatorBulkAction, find_bulk_action
-from freedom_ls.learner_management.models import BulkActionRun, RunStatus
-from freedom_ls.learner_management.run_records import record_run
 from freedom_ls.panel_framework.actions import count_noun, count_phrase
 from freedom_ls.panel_framework.bulk_actions import (
     RESULT_ENTRY_LIMIT,
     BulkCount,
     BulkResult,
     BulkResultEntry,
+    RecordedBulkAction,
     run_apply,
 )
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+from freedom_ls.panel_framework.run_records import record_run
 
 NO_LONGER_EXISTS = "no longer exists"
 ACTION_UNAVAILABLE = "This action is no longer available."
+
+
+def action_for(run: BulkActionRun) -> RecordedBulkAction | None:
+    """The action a stored run names, or None once it has been renamed or
+    removed: a run outlives the code that recorded it."""
+    try:
+        action_class = import_string(run.action_path)
+    except ImportError:
+        return None
+    if not (
+        isinstance(action_class, type) and issubclass(action_class, RecordedBulkAction)
+    ):
+        return None
+    return action_class()
 
 
 def save_processed(run: BulkActionRun) -> Callable[[int], None]:
@@ -56,28 +70,30 @@ def with_missing_keys(
     )
 
 
+def _run_on_site(run_id: str, site_id: int) -> QuerySet[BulkActionRun]:
+    """Callable from a background task, which has no request and so no
+    ambient site: the run is read through `_base_manager` filtered on
+    `site_id`."""
+    return (
+        BulkActionRun._base_manager.filter(site_id=site_id, pk=run_id)
+        .select_related("requested_by", "scope_type")
+        .prefetch_related("scope")
+    )
+
+
 def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
     """Apply the run's action to its snapshot of keys and store the result.
 
-    Callable from a background task, which has no request and so no ambient
-    site: the run is read through `_base_manager` filtered on `site_id`. It
-    returns the live result so the inline path never parses its own JSON.
+    It returns the live result so the inline path never parses its own JSON.
     """
-    run = get_object_or_404(
-        BulkActionRun._base_manager.filter(site_id=site_id).select_related(
-            "organisation", "requested_by"
-        ),
-        pk=run_id,
-    )
-    with record_run(run):
-        action = find_bulk_action(run.table_key, run.action_name)
+    run = get_object_or_404(_run_on_site(run_id, site_id))
+    with record_run(run, extra_fields=("result",)):
+        action = action_for(run)
         if action is None:
             run.status, run.error_message = RunStatus.FAILED, ACTION_UNAVAILABLE
             return BulkResult(counts=[], entries=[], left_out=0)
-        cleaned_data = action.resolve_target(run.organisation, run.target)
-        queryset = action.with_related(
-            action.objects_for_keys(run.organisation, run.keys)
-        )
+        cleaned_data = action.resolve_target(run.scope, run.target)
+        queryset = action.with_related(action.objects_for_keys(run.scope, run.keys))
         result = run_apply(
             action,
             run.requested_by,
@@ -90,7 +106,22 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
     return result
 
 
-def run_label(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
+def report_finished(run_id: str, site_id: int) -> None:
+    """Tell the run's action a background run is over, however it ended. A run
+    still queued or running, or one whose action is gone, is left alone."""
+    run = (
+        _run_on_site(run_id, site_id)
+        .filter(status__in=[RunStatus.DONE, RunStatus.FAILED])
+        .first()
+    )
+    if run is None:
+        return
+    action = action_for(run)
+    if action is not None:
+        action.on_finished(run)
+
+
+def run_label(run: BulkActionRun, action: RecordedBulkAction | None) -> str:
     """The action's label, or its stored name spelled out when the action is
     no longer registered."""
     if action is not None:
@@ -98,13 +129,13 @@ def run_label(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
     return run.action_name.replace("_", " ").capitalize()
 
 
-def _counted(action: EducatorBulkAction | None, count: int) -> str:
+def _counted(action: RecordedBulkAction | None, count: int) -> str:
     if action is None:
         return count_phrase(count, "row", "rows")
     return count_noun(action.noun_model, count)
 
 
-def stopped_after(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
+def stopped_after(run: BulkActionRun, action: RecordedBulkAction | None) -> str:
     """Where a run that did not finish got to: "after 1 of 2 learners"."""
     return f"after {run.processed_count} of {_counted(action, len(run.keys))}"
 
@@ -112,7 +143,7 @@ def stopped_after(run: BulkActionRun, action: EducatorBulkAction | None) -> str:
 def run_summary(run: BulkActionRun) -> str:
     """One sentence on how a finished run went, for someone who was not
     watching it."""
-    action = find_bulk_action(run.table_key, run.action_name)
+    action = action_for(run)
     label = run_label(run, action)
     if run.status == RunStatus.FAILED or run.result is None:
         return f"{label} stopped {stopped_after(run, action)}."
@@ -123,25 +154,3 @@ def run_summary(run: BulkActionRun) -> str:
         if count:
             parts.append(f"{count} {status}")
     return f"{label} finished: {', '.join(parts)}."
-
-
-def notify_run_finished(run_id: str, site_id: int) -> None:
-    """Tell the requester a background run is over, however it ended."""
-    run = (
-        BulkActionRun._base_manager.filter(
-            site_id=site_id,
-            pk=run_id,
-            status__in=[RunStatus.DONE, RunStatus.FAILED],
-        )
-        .select_related("organisation", "requested_by")
-        .first()
-    )
-    if run is None:
-        return
-    raise_notification(
-        user=run.requested_by,
-        category="bulk_action.finished",
-        target=run,
-        site_id=site_id,
-        data={"summary": run_summary(run)},
-    )

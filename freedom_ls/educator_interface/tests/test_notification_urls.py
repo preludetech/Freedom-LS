@@ -8,15 +8,15 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.notification_urls import bulk_run_table_url
-from freedom_ls.learner_management.models import BulkActionRun
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.models import BulkActionRun
 
 
 @pytest.mark.django_db
 def test_bulk_run_table_url_is_the_runs_table(mock_site_context) -> None:
     organisation = OrganisationFactory()
     run = BulkActionRun.objects.create(
-        organisation=organisation,
+        scope=organisation,
         requested_by=UserFactory(),
         table_key="cohorts",
         action_name="deactivate",

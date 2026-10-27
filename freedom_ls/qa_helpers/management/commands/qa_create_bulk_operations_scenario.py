@@ -25,13 +25,14 @@ Usage:
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 
 import djclick as click
 from allauth.account.models import EmailAddress
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 
 from freedom_ls.accounts.account_setup import match_or_create_user
 from freedom_ls.accounts.models import SiteSignupPolicy, User
@@ -41,7 +42,6 @@ from freedom_ls.learner_management.learner_actions import (
     register_for_course,
 )
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
@@ -53,6 +53,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.models import BulkActionRun, scope_lookup
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
     _ensure_cohort,
     _ensure_cohort_registration,
@@ -144,6 +145,14 @@ def _other_site(site: Site) -> Site:
     return other
 
 
+def _runs_of(organisations: Iterable[Organisation]) -> Q:
+    """Bulk runs scoped to any of `organisations`."""
+    query = Q(pk__in=[])
+    for organisation in organisations:
+        query |= Q(**scope_lookup(organisation))
+    return query
+
+
 def _delete(label: str, qs: QuerySet[Model], counts: Counter[str]) -> None:
     """Print what goes, delete it, and add the cascade counts to `counts`."""
     rows = list(qs)
@@ -170,7 +179,7 @@ def _purge_stale(
     )
     _delete(
         "BulkActionRun",
-        BulkActionRun._base_manager.filter(organisation_id__in=org_ids),
+        BulkActionRun._base_manager.filter(_runs_of(orgs.values())),
         counts,
     )
 
@@ -433,7 +442,7 @@ def _report(
     click.echo(f"AWAY {away.email} pk={away.pk} site={away.site.name}")
     click.echo(
         f"IMPORTS={LearnerImport._base_manager.filter(organisation__in=orgs).count()} "
-        f"BULK_RUNS={BulkActionRun._base_manager.filter(organisation__in=orgs).count()}"
+        f"BULK_RUNS={BulkActionRun._base_manager.filter(_runs_of(orgs)).count()}"
     )
 
 

@@ -43,6 +43,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] Add a no-JS test for confirming a picker bulk action, and add the picker steps to QA plan step 6.13
 - [x] Re-run QA steps 6.12 and 6.13 (picker, JS off) against the updated QA plan
 
+## 3b. Portable bulk runs (review follow-up)
+
+- [x] (cmd) Move `BulkActionRun`, `RunStatus` and `record_run` into `panel_framework`, with a generic scope and a dotted `action_path` in place of the organisation field and the registry lookup
+- [x] (cmd) Lift the runner, task and `__runs/<uuid>` status route into `panel_framework` as `RecordedBulkAction`, with `on_finished` and `on_result_shown` hooks the educator interface uses for its notification
+- [x] (cmd) Move `BULK_BACKGROUND_THRESHOLD` to `PanelFrameworkConfig`; add `learner_management` 0010 and `panel_framework` 0001 migrations
+- [x] (cmd) Move the run, lifecycle and status tests to `panel_framework/tests/` against stub panels; keep the organisation-scope and notification tests in `educator_interface`
+
 ## 4. Documentation and pull request
 
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks

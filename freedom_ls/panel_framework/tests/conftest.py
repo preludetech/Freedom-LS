@@ -12,6 +12,7 @@ import pytest
 import pytest_django.fixtures
 
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 
 # Relative, not the freedom_ls.-prefixed absolute form: this project's
@@ -49,8 +50,22 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         editor.create_model(StubChild)
         editor.create_model(StubGrandchild)
         editor.create_model(StubProtectedChild)
+    # A content type row made inside a test's transaction is rolled back with
+    # it while ContentType's cache keeps it, so a later test that points a
+    # generic foreign key at a stub would reference a row that is gone. Make
+    # the rows once here, outside any transaction, like post_migrate does for
+    # real models.
+    with django_db_blocker.unblock():
+        ContentType.objects.get_for_models(StubModel, StubChild)
 
     yield
+
+    with django_db_blocker.unblock():
+        ContentType.objects.filter(
+            app_label="freedom_ls_panel_framework",
+            model__in=["stubmodel", "stubchild"],
+        ).delete()
+        ContentType.objects.clear_cache()
 
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
         editor.delete_model(StubProtectedChild)

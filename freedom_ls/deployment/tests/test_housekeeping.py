@@ -42,13 +42,12 @@ from freedom_ls.deployment.housekeeping import (
     run_housekeeping_sweeps,
 )
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     ImportStatus,
     LearnerImport,
     LearnerImportRow,
-    RunStatus,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.tests.factories import SiteFactory
@@ -827,16 +826,20 @@ def _make_bulk_record(
     is `created_ago` in the past.
     """
     fields: dict[str, object] = {
-        "organisation": OrganisationFactory(),
         "requested_by": UserFactory(),
         "status": status,
         "started_at": None if started_ago is None else FIXED_NOW - started_ago,
         "finished_at": None if finished_ago is None else FIXED_NOW - finished_ago,
     }
     if model is LearnerImport:
-        fields["file_name"] = "learners.csv"
+        fields.update(organisation=OrganisationFactory(), file_name="learners.csv")
     else:
-        fields.update(table_key="learners", action_name="deactivate")
+        fields.update(
+            scope=OrganisationFactory(),
+            action_path="nowhere.Deactivate",
+            table_key="learners",
+            action_name="deactivate",
+        )
     with time_machine.travel(FIXED_NOW - created_ago, tick=False):
         return model._base_manager.create(**fields)
 

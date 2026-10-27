@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 User = get_user_model()
@@ -307,53 +308,6 @@ class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
 
     def __str__(self):
         return f"{self.cohort} - {self.course}"
-
-
-class RunStatus(models.TextChoices):
-    QUEUED = "queued", _("Queued")
-    RUNNING = "running", _("Running")
-    DONE = "done", _("Done")
-    FAILED = "failed", _("Failed")
-
-
-class BulkActionRun(SiteAwareModel):
-    """One bulk action applied to a snapshot of keys, and what it did.
-
-    `keys` is the list of primary keys resolved when the action was
-    confirmed, so the run acts on exactly the rows the reader was shown even
-    if the table changes while it runs. `target` holds the action's
-    parameters as JSON (for example the cohort a learner is added to).
-    `result` is a `BulkResult` as JSON, set when the run finishes.
-    """
-
-    organisation = models.ForeignKey(
-        "freedom_ls_organisations.Organisation", on_delete=models.CASCADE
-    )
-    requested_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
-    )
-    table_key = models.CharField(max_length=100)
-    action_name = models.CharField(max_length=100)
-    target = models.JSONField(default=dict, blank=True)
-    keys = models.JSONField(default=list)
-    status = models.CharField(
-        max_length=20,
-        choices=RunStatus.choices,
-        default=RunStatus.QUEUED,
-        db_index=True,
-    )
-    processed_count = models.PositiveIntegerField(default=0)
-    error_message = models.TextField(blank=True, default="")
-    result = models.JSONField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    finished_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return f"{self.table_key} {self.action_name} ({self.status})"
 
 
 class ImportStatus(models.TextChoices):

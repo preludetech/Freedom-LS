@@ -34,7 +34,11 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     PanelAction,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction, BulkOutcome
+from freedom_ls.panel_framework.bulk_actions import (
+    BulkAction,
+    BulkOutcome,
+    RecordedBulkAction,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import (
     BooleanFilter,
@@ -42,6 +46,7 @@ from freedom_ls.panel_framework.filters import (
     RelatedChoiceFilter,
     TableFilter,
 )
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     Panel,
@@ -251,6 +256,38 @@ class StubExportBulkAction(StubBulkAction):
     action_name = "stub_export_bulk"
 
 
+class StubRecordedBulkAction(RecordedBulkAction):
+    """A recorded action over stub rows, with no host behind it: the hooks
+    only note which runs reached them."""
+
+    label = "Deactivate"
+    action_name = "stub_recorded"
+    table_key = "stubs"
+    finished: ClassVar[list[object]] = []
+    shown: ClassVar[list[object]] = []
+
+    def __init__(self) -> None:
+        self.noun_model = _stub_model()
+
+    def row_label(self, obj: Model) -> str:
+        return cast(str, obj.name)
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        type(obj)._default_manager.filter(pk=obj.pk).update(is_active=False)
+        return BulkOutcome("changed")
+
+    def on_finished(self, run: BulkActionRun) -> None:
+        type(self).finished.append(run.pk)
+
+    def on_result_shown(self, request: HttpRequest, run: BulkActionRun) -> None:
+        type(self).shown.append(run.pk)
+
+
 class StubForbiddenBulkAction(BulkAction):
     label = "Forbidden bulk action"
     action_name = "stub_forbidden_bulk"
@@ -452,7 +489,12 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
 
     @classmethod
     def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
-        return [StubBulkAction(), StubArchiveBulkAction(), StubExportBulkAction()]
+        return [
+            StubBulkAction(),
+            StubArchiveBulkAction(),
+            StubExportBulkAction(),
+            StubRecordedBulkAction(),
+        ]
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:

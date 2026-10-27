@@ -5,6 +5,8 @@ off."""
 from __future__ import annotations
 
 import json
+import uuid
+from typing import cast
 
 import lxml.html
 import pytest
@@ -15,7 +17,7 @@ from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.db.models import Model, QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.bulk_actions import (
@@ -29,7 +31,9 @@ from freedom_ls.panel_framework.bulk_actions import (
     Selection,
     resolve_selection,
 )
+from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.views import (
     SectionConfigBase,
     _handle_action,
@@ -38,8 +42,13 @@ from freedom_ls.panel_framework.views import (
 
 from .helpers import make_staff_user, make_stub
 from .stub_models import StubModel
-from .stub_panels import StubBulkAction, StubDataTablePanel
-from .view_helpers import call_view, fetch
+from .stub_panels import (
+    RecordingCapabilityConfig,
+    StubBulkAction,
+    StubDataTablePanel,
+    StubRecordedBulkAction,
+)
+from .view_helpers import call_view, fetch, make_request
 
 pytestmark = pytest.mark.django_db
 
@@ -469,10 +478,18 @@ class _PartlyFailingBulkAction(StubBulkAction):
 def _run_partly_failing(action: BulkAction, stubs: list[StubModel]) -> BulkResult:
     request = RequestFactory().post("/stubs")
     request.user = make_staff_user()
+    ctx = PanelContext(
+        request=request,
+        instance=None,
+        base_url="/stubs",
+        name="",
+        config=SectionConfigBase,
+        page_url="/stubs",
+    )
     queryset = StubModel.objects.filter(pk__in=[stub.pk for stub in stubs]).order_by(
         "pk"
     )
-    result = action.execute(request, queryset, {})
+    result = action.execute(ctx, queryset, {})
     assert isinstance(result, BulkResult)
     return result
 
@@ -532,7 +549,7 @@ def _post_background_confirm(
     class _BackgroundAction(StubBulkAction):
         def execute(
             self,
-            request: HttpRequest,
+            ctx: PanelContext,
             queryset: QuerySet,
             cleaned_data: dict[str, object],
         ) -> BackgroundRun:
@@ -869,3 +886,237 @@ def test_selection_ui_hidden_without_permitted_actions(mock_site_context: Site) 
     (table_b,) = document.cssselect("#b-table")
     assert table_b.cssselect('input[name="keys"]') == []
     assert table_b.cssselect('[aria-live="polite"]') == []
+
+
+# -- recorded runs and their status route ---------------------------------
+
+RECORDED_PATH = f"{StubRecordedBulkAction.__module__}.StubRecordedBulkAction"
+
+
+def _recorded_run(
+    requester: object, *stubs: StubModel, **fields: object
+) -> BulkActionRun:
+    fields.setdefault("action_path", RECORDED_PATH)
+    fields.setdefault("table_key", "stubs")
+    fields.setdefault("action_name", "stub_recorded")
+    return cast(
+        BulkActionRun,
+        BulkActionRun.objects.create(
+            requested_by=requester,
+            keys=[str(stub.pk) for stub in stubs],
+            **fields,
+        ),
+    )
+
+
+def _poll(run: BulkActionRun, user: object | None = None):
+    path = f"stubs/__runs/{run.pk}"
+    request = make_request(path, htmx=True)
+    request.user = run.requested_by if user is None else user
+    return call_view(request, path)
+
+
+def _text(response: HttpResponse) -> str:
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
+def _confirm_recorded(stubs: tuple[StubModel, ...]) -> HttpResponse:
+    path = "stubs/__actions/stub_recorded"
+    data = {
+        "mode": "keys",
+        "keys": [str(stub.pk) for stub in stubs],
+        "confirmed": "1",
+        "expected_count": str(len(stubs)),
+    }
+    response = call_view(make_request(path, method="post", data=data, htmx=True), path)
+    assert isinstance(response, HttpResponse)
+    return response
+
+
+@pytest.fixture
+def two_stubs(mock_site_context: Site) -> tuple[StubModel, StubModel]:
+    return make_stub(name="row-a"), make_stub(name="row-b")
+
+
+@pytest.fixture(autouse=True)
+def _clear_shown_log():
+    StubRecordedBulkAction.shown.clear()
+    yield
+    StubRecordedBulkAction.shown.clear()
+
+
+def test_confirming_a_recorded_action_above_the_threshold_queues_a_run_and_polls_it(
+    two_stubs: tuple[StubModel, StubModel], settings
+) -> None:
+    settings.BULK_BACKGROUND_THRESHOLD = 1
+
+    response = _confirm_recorded(two_stubs)
+
+    run = BulkActionRun.objects.get()
+    # The test task backend runs the queued task at once, so the run is
+    # already done by the time the request answers.
+    assert (response.status_code, run.status, run.scope) == (
+        204,
+        RunStatus.DONE,
+        None,
+    )
+    assert run.action_path == RECORDED_PATH
+    assert sorted(run.keys) == sorted(str(stub.pk) for stub in two_stubs)
+    assert json.loads(response["HX-Trigger"])["bulkRunStarted"]["status_url"] == (
+        f"/test-panel/framework/stubs/__runs/{run.pk}"
+    )
+    assert "2 stub models changed." in _text(_poll(run))
+
+
+def test_a_recorded_run_records_the_sections_scope(
+    two_stubs: tuple[StubModel, StubModel], settings
+) -> None:
+    settings.BULK_BACKGROUND_THRESHOLD = 1
+    scope = make_stub(name="the-scope")
+    RecordingCapabilityConfig.reset(scope=scope)
+
+    _confirm_recorded(two_stubs)
+
+    assert BulkActionRun.objects.get().scope == scope
+
+
+def test_confirming_a_recorded_action_below_the_threshold_runs_it_inline(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    response = _confirm_recorded(two_stubs)
+
+    run = BulkActionRun.objects.get()
+    assert (response.status_code, run.status) == (200, RunStatus.DONE)
+    assert "2 stub models changed." in _text(response)
+    assert not StubModel.objects.filter(is_active=True).exists()
+
+
+@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.RUNNING])
+def test_an_unfinished_run_answers_204(
+    two_stubs: tuple[StubModel, StubModel], status: str
+) -> None:
+    run = _recorded_run(make_staff_user(), *two_stubs, status=status)
+
+    response = _poll(run)
+
+    assert (response.status_code, response.content) == (204, b"")
+    assert StubRecordedBulkAction.shown == []
+
+
+def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
+    two_stubs: tuple[StubModel, StubModel], mock_site_context: Site
+) -> None:
+    run = _recorded_run(make_staff_user(), *two_stubs)
+    run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    response = _poll(run)
+
+    assert response.status_code == 200
+    assert "2 stub models changed." in _text(response)
+    assert json.loads(response["HX-Trigger"]) == {"itemChanged": {"ids": []}}
+    assert StubRecordedBulkAction.shown == [run.pk]
+
+
+def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    run = _recorded_run(
+        make_staff_user(),
+        *two_stubs,
+        status=RunStatus.FAILED,
+        processed_count=1,
+        error_message="Unexpected error.",
+    )
+
+    response = _poll(run)
+
+    text = _text(response)
+    assert "Stopped after 1 of 2 stub models." in text
+    assert "Unexpected error." in text
+    assert json.loads(response["HX-Trigger"]) == {"itemChanged": {"ids": []}}
+
+
+def test_a_finished_run_of_a_removed_action_answers_its_summary(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    """The poll used to look the action up unguarded and 500 once it was
+    renamed or removed."""
+    run = _recorded_run(
+        make_staff_user(),
+        *two_stubs,
+        action_path="nowhere.RenamedAway",
+        action_name="renamed_away",
+        status=RunStatus.DONE,
+        result=BulkResult(
+            counts=[BulkCount("changed", "", 2)], entries=[], left_out=0
+        ).to_json(),
+    )
+
+    response = _poll(run)
+
+    assert response.status_code == 200
+    assert "Renamed away finished: 2 rows changed." in _text(response)
+
+
+def test_a_run_is_a_404_for_another_user(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    run = _recorded_run(make_staff_user(), *two_stubs, status=RunStatus.DONE)
+
+    response = _poll(run, user=make_staff_user())
+
+    assert response.status_code == 404
+
+
+def test_a_run_is_a_404_for_an_anonymous_visitor(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    run = _recorded_run(make_staff_user(), *two_stubs, status=RunStatus.DONE)
+
+    response = _poll(run, user=AnonymousUser())
+
+    assert response.status_code == 404
+
+
+def test_a_run_of_another_scope_is_a_404(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    run = _recorded_run(
+        make_staff_user(), *two_stubs, status=RunStatus.DONE, scope=make_stub()
+    )
+
+    response = _poll(run)
+
+    assert response.status_code == 404
+
+
+def test_a_run_of_another_table_is_a_404(
+    two_stubs: tuple[StubModel, StubModel],
+) -> None:
+    run = _recorded_run(
+        make_staff_user(), *two_stubs, status=RunStatus.DONE, table_key="elsewhere"
+    )
+
+    response = _poll(run)
+
+    assert response.status_code == 404
+
+
+def test_a_malformed_run_id_is_a_404_with_the_unavailable_fragment(
+    mock_site_context: Site,
+) -> None:
+    path = "stubs/__runs/not-a-uuid"
+
+    response = call_view(make_request(path, htmx=True), path)
+
+    assert response.status_code == 404
+    assert "no longer available" in _text(response).lower()
+
+
+def test_a_runs_segment_that_is_not_last_is_a_404(mock_site_context: Site) -> None:
+    path = f"stubs/__runs/{uuid.uuid4()}/__actions/stub_bulk"
+
+    with pytest.raises(Http404):
+        call_view(make_request(path), path)
