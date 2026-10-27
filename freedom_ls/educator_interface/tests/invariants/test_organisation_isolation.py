@@ -43,12 +43,12 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     CohortCourseRegistration,
     CohortMembership,
     LearnerImport,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
@@ -160,12 +160,11 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
-    @pytest.mark.parametrize("name", ["bulk_action_run_status"])
     def test_a_bulk_run_of_organisation_b_404s_through_organisation_as_slug(
-        self, isolation: SimpleNamespace, name: str
+        self, isolation: SimpleNamespace
     ) -> None:
         run = BulkActionRun.objects.create(
-            organisation=isolation.organisation_b,
+            scope=isolation.organisation_b,
             requested_by=isolation.educator,
             table_key="learners",
             action_name="deactivate",
@@ -173,10 +172,10 @@ class TestCrossOrganisationIsolation:
 
         response = isolation.client.get(
             reverse(
-                f"educator_interface:{name}",
+                "educator_interface:interface",
                 kwargs={
                     "organisation_slug": isolation.organisation_a.slug,
-                    "run_id": run.pk,
+                    "path_string": f"learners/__runs/{run.pk}",
                 },
             )
         )

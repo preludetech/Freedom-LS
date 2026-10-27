@@ -35,7 +35,6 @@ from freedom_ls.learner_management.models import (
     ImportStatus,
     LearnerImport,
     LearnerImportRow,
-    RunStatus,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
@@ -43,8 +42,9 @@ from freedom_ls.learner_management.queries import (
     BULK_MANAGE_LEARNERS,
     cohorts_visible_to,
 )
-from freedom_ls.learner_management.run_records import record_run
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.models import RunStatus
+from freedom_ls.panel_framework.run_records import record_run
 
 HEADERS = ("email", "first_name", "last_name", "cohort")
 EMAIL_MAX_LENGTH = 254

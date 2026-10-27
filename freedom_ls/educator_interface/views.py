@@ -62,7 +62,6 @@ from freedom_ls.comms.messaging_views import (
     unreachable_recipient_response,
 )
 from freedom_ls.comms.models import Conversation
-from freedom_ls.comms.notify import mark_notifications_read
 from freedom_ls.comms.templatetags.comms_tags import badge_count
 from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
@@ -92,14 +91,8 @@ from freedom_ls.educator_interface.actions import (
     bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
-    find_bulk_action,
     grantable_roles_for,
     learner_state_actions,
-)
-from freedom_ls.educator_interface.bulk_runs import (
-    run_label,
-    run_summary,
-    stopped_after,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -149,9 +142,7 @@ from freedom_ls.educator_interface.reporting import (
 )
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
@@ -162,7 +153,6 @@ from freedom_ls.learner_management.models import (
     LearnerImport,
     LearnerImportRow,
     OrganisationMember,
-    RunStatus,
 )
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
@@ -186,13 +176,13 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
-    count_noun,
     navigation_response,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction, BulkResult
+from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.config import config as panel_framework_config
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     InstanceDetailsPanel,
@@ -216,7 +206,6 @@ from freedom_ls.panel_framework.views import (
     StatusBadge,
     build_breadcrumbs,
     build_menu_items,
-    bulk_result_fragment,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -2063,81 +2052,6 @@ def standalone_page_context(
     }
 
 
-def _requested_record_or_404[RecordT: (BulkActionRun, LearnerImport)](
-    queryset: QuerySet[RecordT],
-    request: HttpRequest,
-    organisation: Organisation,
-    pk: str,
-) -> RecordT:
-    """The record only its requester may see. Anyone else, and a record of
-    another organisation, gets the 404 a missing one does."""
-    return get_object_or_404(
-        queryset.filter(
-            organisation=organisation, requested_by=cast(User, request.user)
-        ),
-        pk=pk,
-    )
-
-
-def _list_refresh_events(table_key: str) -> tuple[str, ...]:
-    """The events that refresh the list page whose table is `table_key`."""
-    for section in sections_by_url_name(interface_config).values():
-        if issubclass(section, ListViewConfig) and section.table_key == table_key:
-            return section.refresh_events
-    return ()
-
-
-@login_required_htmx_to("educator_interface:root")
-def partial_bulk_action_run_status(
-    request: HttpRequest, organisation_slug: str, run_id: str
-) -> HttpResponse:
-    """Polled by the table a background run was started from: 204 while it
-    runs, then the result modal, which refreshes the table behind it. The
-    requester has now seen the outcome, so its notification is marked read."""
-    scoped = scope_request(request, organisation_slug)
-    run = _requested_record_or_404(
-        BulkActionRun.objects.all(), request, scoped.organisation, run_id
-    )
-    if run.status in (RunStatus.QUEUED, RunStatus.RUNNING):
-        return HttpResponse(status=204)
-    mark_notifications_read(
-        user=cast(User, request.user),
-        target=run,
-        site_id=scoped.organisation.site_id,
-    )
-    action = find_bulk_action(run.table_key, run.action_name)
-    # Not the run's keys: a background run can cover thousands of rows,
-    # too many for a header, and only a quick view reads the ids.
-    refresh: dict[str, list[str]] = {
-        event: [] for event in _list_refresh_events(run.table_key)
-    }
-    if action is not None and run.status == RunStatus.DONE and run.result is not None:
-        model = action.noun_model
-        result = BulkResult.from_json(run.result)
-        return bulk_result_fragment(
-            request,
-            action,
-            result,
-            str(model._meta.verbose_name_plural),
-            f"{count_noun(model, result.changed)} changed.",
-            refresh,
-        )
-    # A run whose action has since been renamed or removed has no result
-    # template to render, so its stored outcome is summarised instead.
-    summary = (
-        f"Stopped {stopped_after(run, action)}."
-        if run.status == RunStatus.FAILED
-        else run_summary(run)
-    )
-    response = render(
-        request,
-        "educator_interface/modal/bulk_run_stopped.html",
-        {"label": run_label(run, action), "run": run, "summary": summary},
-    )
-    response["HX-Trigger"] = build_hx_trigger(refresh)
-    return response
-
-
 def _see_other(url: str) -> HttpResponseRedirect:
     """A 303, so the browser follows a POST with a GET of the next page."""
     return HttpResponseRedirect(url, status=303)
@@ -2219,13 +2133,15 @@ def _count_of(counts: list[dict[str, object]], *labels: str) -> int:
 def _requested_import_or_404(
     request: HttpRequest, scoped: OrganisationScopedRequest, import_id: str
 ) -> LearnerImport:
+    """The import only its requester may see. Anyone else, and an import of
+    another organisation, gets the 404 a missing one does."""
     return cast(
         LearnerImport,
-        _requested_record_or_404(
-            LearnerImport.objects.select_related("organisation", "cohort"),
-            request,
-            scoped.organisation,
-            import_id,
+        get_object_or_404(
+            LearnerImport.objects.select_related("organisation", "cohort").filter(
+                organisation=scoped.organisation, requested_by=cast(User, request.user)
+            ),
+            pk=import_id,
         ),
     )
 
@@ -2324,7 +2240,7 @@ def learner_import_preview(
     rows = LearnerImportRow.objects.filter(learner_import=learner_import)
     counts = _label_counts(rows, "preview_label")
     add_count = learner_import.row_count - _count_of(counts, *NOT_ADDED_LABELS)
-    in_background = add_count > learner_management_config.BULK_BACKGROUND_THRESHOLD
+    in_background = add_count > panel_framework_config.BULK_BACKGROUND_THRESHOLD
     if request.method == "POST":
         # Only one of two simultaneous confirmations changes a row, so only one
         # of them runs or enqueues the import.

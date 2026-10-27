@@ -32,6 +32,7 @@ from freedom_ls.accounts.account_setup import (
 )
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.accounts.models import User, display_name_for
+from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -59,7 +60,6 @@ from freedom_ls.educator_interface.members import (
     current_role_entries,
 )
 from freedom_ls.learner_management.capabilities import can
-from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
@@ -74,14 +74,12 @@ from freedom_ls.learner_management.learner_actions import (
     remove_from_cohort,
 )
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
     OrganisationMember,
-    RunStatus,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTCOURSEREGISTRATION,
@@ -147,15 +145,15 @@ from freedom_ls.panel_framework.actions import (
     navigation_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
-    BackgroundRun,
-    BulkAction,
     BulkOutcome,
-    BulkResult,
     ConfirmationWording,
+    RecordedBulkAction,
     count_outcomes,
 )
+from freedom_ls.panel_framework.bulk_runs import run_summary
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -2260,13 +2258,6 @@ def register_bulk_action[ActionT: type[EducatorBulkAction]](cls: ActionT) -> Act
     return cls
 
 
-def find_bulk_action(table_key: str, action_name: str) -> EducatorBulkAction | None:
-    """The action a stored run names, or None once it has been renamed or
-    removed: a run outlives the code that recorded it."""
-    action_class = BULK_ACTIONS.get((table_key, action_name))
-    return None if action_class is None else action_class()
-
-
 def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
     return [
         action_class()
@@ -2275,17 +2266,16 @@ def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
     ]
 
 
-class EducatorBulkAction(BulkAction):
-    """A bulk action over the rows of an educator-interface table.
+class EducatorBulkAction(RecordedBulkAction):
+    """A bulk action over the rows of an educator-interface table, scoped to
+    the organisation the request was made under.
 
     Each object is checked, previewed and changed with the same capability,
     scope and service its single-object action uses. Subclasses fill in the
     hooks; the defaults suit an action with no target picker.
     """
 
-    table_key: str
     capability: str
-    noun_model: type[Model]
     #: The skip reason when the service reports nothing changed.
     unchanged_reason: str = ""
 
@@ -2303,9 +2293,6 @@ class EducatorBulkAction(BulkAction):
         """`queryset` narrowed to the objects the user may act on."""
         raise NotImplementedError
 
-    def with_related(self, queryset: QuerySet) -> QuerySet:
-        return queryset
-
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         """The reason this permitted object would be skipped, from its
         current state; None when it would change."""
@@ -2319,23 +2306,26 @@ class EducatorBulkAction(BulkAction):
         """Call the service; False when it reports nothing changed."""
         raise NotImplementedError
 
-    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
-        """The picker's choice as JSON, stored on the run."""
-        return {}
-
-    def resolve_target(
-        self, organisation: Organisation, target: dict[str, str]
-    ) -> dict[str, object]:
-        """Rebuild `cleaned_data` from the stored target."""
-        return {}
-
-    def objects_for_keys(self, organisation: Organisation, keys: list[str]) -> QuerySet:
+    def objects_for_keys(self, scope: Model | None, keys: list[str]) -> QuerySet:
+        # Narrowed to the run's organisation, so a key from another one can
+        # never be reached through a stored run.
         return self.noun_model._base_manager.filter(
-            organisation=organisation, pk__in=keys
+            organisation=cast(Organisation, scope), pk__in=keys
         )
 
-    def runs_in_background(self, count: int) -> bool:
-        return count > learner_management_config.BULK_BACKGROUND_THRESHOLD
+    def on_finished(self, run: BulkActionRun) -> None:
+        raise_notification(
+            user=run.requested_by,
+            category="bulk_action.finished",
+            target=run,
+            site_id=run.site_id,
+            data={"summary": run_summary(run)},
+        )
+
+    def on_result_shown(self, request: HttpRequest, run: BulkActionRun) -> None:
+        mark_notifications_read(
+            user=cast("User", request.user), target=run, site_id=run.site_id
+        )
 
     def not_permitted_reason(self) -> str:
         return (
@@ -2384,43 +2374,6 @@ class EducatorBulkAction(BulkAction):
         # The service said nothing changed, so the reason the preview gave
         # applies here too.
         return BulkOutcome("skipped", self.unchanged_reason)
-
-    def execute(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> BulkResult | BackgroundRun:
-        # Imported here because bulk_runs looks actions up in this module, and
-        # tasks imports bulk_runs.
-        from freedom_ls.educator_interface.bulk_runs import run_bulk_action
-        from freedom_ls.educator_interface.tasks import _run_bulk_action_task
-
-        scoped = cast("OrganisationScopedRequest", request)
-        run = BulkActionRun.objects.create(
-            organisation=scoped.organisation,
-            requested_by=cast("User", request.user),
-            table_key=self.table_key,
-            action_name=self.action_name,
-            target=self.target_json(cleaned_data),
-            keys=[str(pk) for pk in queryset.values_list("pk", flat=True)],
-            status=RunStatus.QUEUED,
-        )
-        site_id = scoped.organisation.site_id
-        if self.runs_in_background(len(run.keys)):
-            # A worker, not this request, does the work; the run record is
-            # already queued.
-            _run_bulk_action_task.enqueue(str(run.pk), site_id)
-            return BackgroundRun(
-                status_url=reverse(
-                    "educator_interface:bulk_action_run_status",
-                    kwargs={
-                        "organisation_slug": scoped.organisation.slug,
-                        "run_id": run.pk,
-                    },
-                )
-            )
-        return run_bulk_action(str(run.pk), site_id)
 
 
 class LearnerBulkAction(EducatorBulkAction):
@@ -2507,13 +2460,13 @@ class CohortMembershipBulkAction(LearnerBulkAction):
         return {"cohort": str(cast(Cohort, cleaned_data["cohort"]).pk)}
 
     def resolve_target(
-        self, organisation: Organisation, target: dict[str, str]
+        self, scope: Model | None, target: dict[str, str]
     ) -> dict[str, object]:
         # Scoped to the organisation, so a saved target can never reach
         # another one's cohort.
         return {
             "cohort": get_object_or_404(
-                Cohort._base_manager.filter(organisation=organisation),
+                Cohort._base_manager.filter(organisation=cast(Organisation, scope)),
                 pk=target["cohort"],
             )
         }
@@ -2713,11 +2666,12 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
         return {"course": str(cast(Course, cleaned_data["course"]).pk)}
 
     def resolve_target(
-        self, organisation: Organisation, target: dict[str, str]
+        self, scope: Model | None, target: dict[str, str]
     ) -> dict[str, object]:
         return {
             "course": get_object_or_404(
-                registerable_courses(organisation), pk=target["course"]
+                registerable_courses(cast(Organisation, scope)),
+                pk=target["course"],
             )
         }
 
@@ -2915,7 +2869,12 @@ class CohortCourseBulkAction(CohortBulkAction):
 
     def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
         return BulkTargetPickerForm(
-            data, field_name="course", queryset=registerable_courses(), label="Course"
+            data,
+            field_name="course",
+            queryset=registerable_courses(
+                cast("OrganisationScopedRequest", request).organisation
+            ),
+            label="Course",
         )
 
     def classify_all(
@@ -2955,10 +2914,13 @@ class CohortCourseBulkAction(CohortBulkAction):
         return {"course": str(cast(Course, cleaned_data["course"]).pk)}
 
     def resolve_target(
-        self, organisation: Organisation, target: dict[str, str]
+        self, scope: Model | None, target: dict[str, str]
     ) -> dict[str, object]:
         return {
-            "course": get_object_or_404(registerable_courses(), pk=target["course"])
+            "course": get_object_or_404(
+                registerable_courses(cast(Organisation, scope)),
+                pk=target["course"],
+            )
         }
 
 

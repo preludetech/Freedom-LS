@@ -49,7 +49,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.educator_interface.bulk_runs import run_bulk_action
+from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.learner_import import (
     create_learner_import,
@@ -78,14 +78,12 @@ from freedom_ls.learner_management.learner_actions import (
     register_for_course,
 )
 from freedom_ls.learner_management.models import (
-    BulkActionRun,
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerImport,
     OrganisationMember,
-    RunStatus,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
 from freedom_ls.learner_management.utils import register_cohort_for_course
@@ -93,7 +91,8 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkResult
+from freedom_ls.panel_framework.bulk_runs import run_bulk_action
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
@@ -3874,13 +3873,19 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
 
 
-# bulk run status, polled by the table a background run was started from
+# bulk run status, polled by the table a background run was started from.
+# The route is the framework's; these cover its wiring into this interface
+# (the organisation scope, the refresh event and the notification hooks).
 
 
 def _run_for(user: User, organisation: Organisation, **fields: object):
     return BulkActionRun.objects.create(
-        organisation=organisation,
+        scope=organisation,
         requested_by=user,
+        action_path=(
+            f"{DeactivateLearnersBulkAction.__module__}."
+            f"{DeactivateLearnersBulkAction.__name__}"
+        ),
         table_key="learners",
         action_name="deactivate",
         keys=[str(LearnerFactory(organisation=organisation).pk) for _ in range(2)],
@@ -3890,8 +3895,11 @@ def _run_for(user: User, organisation: Organisation, **fields: object):
 
 def _run_status_url(organisation: Organisation, run: BulkActionRun) -> str:
     return reverse(
-        "educator_interface:bulk_action_run_status",
-        kwargs={"organisation_slug": organisation.slug, "run_id": run.pk},
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"learners/__runs/{run.pk}",
+        },
     )
 
 
@@ -3915,11 +3923,7 @@ def _poll(world: SimpleNamespace) -> _MonkeyPatchedWSGIResponse:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.RUNNING])
-def test_an_unfinished_run_answers_204(run_world: SimpleNamespace, status: str):
-    run_world.run.status = status
-    run_world.run.save()
-
+def test_an_unfinished_run_answers_204(run_world: SimpleNamespace):
     response = _poll(run_world)
 
     assert (response.status_code, response.content) == (204, b"")
@@ -3936,49 +3940,6 @@ def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
     document = lxml.html.fromstring(response.content.decode())
     assert response.status_code == 200
     assert "2 learners changed." in document.text_content()
-    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
-
-
-@pytest.mark.django_db
-def test_a_failed_run_answers_a_modal_saying_where_it_stopped(
-    run_world: SimpleNamespace,
-):
-    run_world.run.status = RunStatus.FAILED
-    run_world.run.processed_count = 1
-    run_world.run.error_message = "Unexpected error."
-    run_world.run.save()
-
-    response = _poll(run_world)
-
-    text = " ".join(
-        lxml.html.fromstring(response.content.decode()).text_content().split()
-    )
-    assert "Stopped after 1 of 2 learners." in text
-    assert "Unexpected error." in text
-    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
-
-
-@pytest.mark.django_db
-def test_a_finished_run_of_an_unregistered_action_answers_its_summary(
-    run_world: SimpleNamespace,
-):
-    """The poll used to look the action up unguarded and 500 once it was
-    renamed or removed."""
-    run_world.run.action_name = "renamed_away"
-    run_world.run.status = RunStatus.DONE
-    run_world.run.result = BulkResult(
-        counts=[BulkCount("changed", "", 2)], entries=[], left_out=0
-    ).to_json()
-    run_world.run.save()
-
-    response = _poll(run_world)
-
-    text = " ".join(
-        lxml.html.fromstring(response.content.decode()).text_content().split()
-    )
-    assert response.status_code == 200
-    assert "Renamed away" in text
-    assert "Renamed away finished: 2 rows changed." in text
     assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
 
 

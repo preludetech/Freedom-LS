@@ -15,7 +15,9 @@ from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
 
+from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 
 if TYPE_CHECKING:
     from freedom_ls.panel_framework.panels import DataTablePanel
@@ -151,8 +153,8 @@ class BulkAction:
 
     Its URL is the table panel's own base_url plus "/__actions/<action_name>",
     the same shape a PanelAction's URL takes. Unlike a PanelAction, it never
-    binds to a single instance: has_permission and execute both work over the
-    request alone and the resolved queryset.
+    binds to a single instance: has_permission works over the request alone,
+    and execute over the panel context and the resolved queryset.
     """
 
     label: str = ""
@@ -236,14 +238,90 @@ class BulkAction:
 
     def execute(
         self,
-        request: HttpRequest,
+        ctx: PanelContext,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> BulkResult | BackgroundRun:
-        return run_apply(self, request.user, queryset, cleaned_data)
+        """Run the action over `queryset`. Takes the panel context rather
+        than the bare request because a run that outlives the request needs
+        the table's scope and URL as well."""
+        return run_apply(self, ctx.request.user, queryset, cleaned_data)
 
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
+
+
+class RecordedBulkAction(BulkAction):
+    """A bulk action whose every run is recorded as a `BulkActionRun`.
+
+    `execute` snapshots the resolved keys into a run and either applies the
+    action inside the request or hands the run to a background task, so the
+    reader can leave the page and the result still lands somewhere. The hooks
+    rebuild what the task needs from the row alone: `resolve_target` turns
+    the stored `target` back into cleaned data, and `objects_for_keys` turns
+    the stored keys back into rows. A host that scopes its tables narrows
+    `objects_for_keys` to its scope object and reacts to `on_finished` and
+    `on_result_shown`, for example by raising and clearing a notification.
+    """
+
+    table_key: str = ""
+    noun_model: type[Model]
+
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset
+
+    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
+        """The picker's choice as JSON, stored on the run."""
+        return {}
+
+    def resolve_target(
+        self, scope: Model | None, target: dict[str, str]
+    ) -> dict[str, object]:
+        """Rebuild `cleaned_data` from the stored target."""
+        return {}
+
+    def objects_for_keys(self, scope: Model | None, keys: list[str]) -> QuerySet:
+        """The rows the stored keys name. The keys were snapshotted from the
+        table's own scoped queryset, so the default trusts them; a host that
+        scopes its tables narrows this to `scope` as well."""
+        return self.noun_model._base_manager.filter(pk__in=keys)
+
+    def runs_in_background(self, count: int) -> bool:
+        return count > config.BULK_BACKGROUND_THRESHOLD
+
+    def on_finished(self, run: BulkActionRun) -> None:
+        """A background run has ended, however it ended. Nothing by default."""
+
+    def on_result_shown(self, request: HttpRequest, run: BulkActionRun) -> None:
+        """The requester has seen a finished run's outcome. Nothing by default."""
+
+    def execute(
+        self,
+        ctx: PanelContext,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> BulkResult | BackgroundRun:
+        # Imported here because bulk_runs builds actions from this module, and
+        # tasks imports bulk_runs.
+        from freedom_ls.panel_framework.bulk_runs import run_bulk_action
+        from freedom_ls.panel_framework.tasks import _run_bulk_action_task
+
+        run = BulkActionRun.objects.create(
+            requested_by=ctx.request.user,
+            scope=ctx.scope,
+            action_path=f"{type(self).__module__}.{type(self).__qualname__}",
+            table_key=self.table_key,
+            action_name=self.action_name,
+            target=self.target_json(cleaned_data),
+            keys=[str(pk) for pk in queryset.values_list("pk", flat=True)],
+            status=RunStatus.QUEUED,
+        )
+        if self.runs_in_background(len(run.keys)):
+            # A worker, not this request, does the work; the run record is
+            # already queued.
+            _run_bulk_action_task.enqueue(str(run.pk), run.site_id)
+            return BackgroundRun(status_url=f"{ctx.base_url}/__runs/{run.pk}")
+        return run_bulk_action(str(run.pk), run.site_id)
 
 
 def run_apply(

@@ -19,11 +19,6 @@ urlpatterns = [
         name="cohort_report_download",
     ),
     re_path(
-        r"^organisations/(?P<organisation_slug>[-\w]+)/bulk-runs/(?P<run_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status/$",
-        views.partial_bulk_action_run_status,
-        name="bulk_action_run_status",
-    ),
-    re_path(
         r"^organisations/(?P<organisation_slug>[-\w]+)/learners/import/$",
         views.learner_import,
         name="learner_import",

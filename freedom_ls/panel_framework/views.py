@@ -47,8 +47,15 @@ from freedom_ls.panel_framework.bulk_actions import (
     parse_selection,
     resolve_selection,
 )
+from freedom_ls.panel_framework.bulk_runs import (
+    action_for,
+    run_label,
+    run_summary,
+    stopped_after,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_trigger
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
@@ -408,6 +415,9 @@ class _Resolved:
     #: than any panel or action, so panel_framework_view can branch to it
     #: before touching the panel tree at all.
     quick_view: bool = False
+    #: The id of the recorded bulk run whose status the path polls, on
+    #: `panel`, the table it was started from.
+    run_id: str | None = None
 
 
 class _NamedAction(Protocol):
@@ -542,7 +552,7 @@ def _resolve_path(
     """Walk the URL path parts down from a section to the panel or action they address.
 
     `__panels/<name>` and `__tabs/<name>` step into a container's children,
-    and `__actions/<name>` must come last.
+    and `__actions/<name>` or `__runs/<id>` must come last.
     """
     try:
         section = sections[parts[0]]
@@ -576,6 +586,7 @@ def _resolve_path(
     current = root
     parents: list[Panel] = []
     action: _ResolvedAction | None = None
+    run_id: str | None = None
     while i < len(parts):
         segment = parts[i]
         if i + 1 >= len(parts):
@@ -585,6 +596,8 @@ def _resolve_path(
             action = _resolve_action(
                 request, section, instance_view, root, current, name
             )
+        elif segment == "__runs" and i + 2 == len(parts):
+            run_id = name
         elif segment in ("__panels", "__tabs") and segment == current.child_segment:
             parents.append(current)
             current = current.child(name)
@@ -600,6 +613,7 @@ def _resolve_path(
         instance_view=instance_view,
         parents=tuple(parents),
         action=action,
+        run_id=run_id,
     )
 
 
@@ -897,7 +911,7 @@ def _handle_bulk_action(
         return _confirmation_response(request, confirmation(422))
 
     selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
-    outcome = action.execute(request, queryset, cleaned_data)
+    outcome = action.execute(ctx, queryset, cleaned_data)
     if isinstance(outcome, BackgroundRun):
         return _background_response(request, panel, action, outcome)
     headline = f"{count_noun(queryset.model, outcome.changed)} changed."
@@ -939,8 +953,66 @@ def _is_htmx_action_request(request: HttpRequest, parts: list[str]) -> bool:
     return (
         request.headers.get("HX-Request") == "true"
         and len(parts) >= 2
-        and parts[-2] == "__actions"
+        and parts[-2] in ("__actions", "__runs")
     )
+
+
+def _handle_run_status(request: HttpRequest, resolved: _Resolved) -> HttpResponse:
+    """Polled by the table a background run was started from: 204 while it
+    runs, then the result modal, which refreshes the table behind it.
+
+    Only the requester sees a run, and only from the table and scope it was
+    started on; anyone else, and a run from elsewhere, gets the 404 a missing
+    one does. The list root binds without `check_request`, so the
+    authentication check is made here rather than assumed.
+    """
+    panel = resolved.panel
+    if not isinstance(panel, DataTablePanel) or not request.user.is_authenticated:
+        raise Http404("No such run")
+    runs = BulkActionRun.objects.filter(
+        requested_by=request.user,
+        table_key=panel.table_key,
+        **scope_lookup(panel.ctx.scope),
+    )
+    try:
+        run = get_object_or_404(runs, pk=resolved.run_id)
+    except ValidationError as err:
+        raise Http404(f"'{resolved.run_id}' is not a valid identifier") from err
+    if run.status in (RunStatus.QUEUED, RunStatus.RUNNING):
+        return HttpResponse(status=204)
+    action = action_for(run)
+    if action is not None:
+        action.on_result_shown(request, run)
+    # Not the run's keys: a background run can cover thousands of rows,
+    # too many for a header, and only a quick view reads the ids.
+    refresh: dict[str, list[str]] = {
+        event: [] for event in _table_refresh_events(panel)
+    }
+    if action is not None and run.status == RunStatus.DONE and run.result is not None:
+        model = action.noun_model
+        result = BulkResult.from_json(run.result)
+        return bulk_result_fragment(
+            request,
+            action,
+            result,
+            str(model._meta.verbose_name_plural),
+            f"{count_noun(model, result.changed)} changed.",
+            refresh,
+        )
+    # A run whose action has since been renamed or removed has no result
+    # template to render, so its stored outcome is summarised instead.
+    summary = (
+        f"Stopped {stopped_after(run, action)}."
+        if run.status == RunStatus.FAILED
+        else run_summary(run)
+    )
+    response = render(
+        request,
+        "panel_framework/partials/bulk_run_stopped.html",
+        {"label": run_label(run, action), "run": run, "summary": summary},
+    )
+    response["HX-Trigger"] = build_hx_trigger(refresh)
+    return response
 
 
 def _handle_quick_view(
@@ -1344,7 +1416,9 @@ def panel_framework_view(
                         resolved.root.ctx.base_url,
                     )
                 )
-            if resolved.action is not None:
+            if resolved.run_id is not None:
+                result = _handle_run_status(request, resolved)
+            elif resolved.action is not None:
                 result = _handle_action(request, resolved.action, resolved.panel)
         except Http404:
             # htmx drops a bare 404, so an action the page offered would

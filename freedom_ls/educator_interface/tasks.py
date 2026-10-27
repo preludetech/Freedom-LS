@@ -8,21 +8,7 @@ from __future__ import annotations
 
 from django.tasks import task
 
-from freedom_ls.educator_interface.bulk_runs import (
-    notify_run_finished,
-    run_bulk_action,
-)
 from freedom_ls.educator_interface.learner_import import run_learner_import
-
-
-@task()
-def _run_bulk_action_task(run_id: str, site_id: int) -> None:
-    # Only a background run notifies: an inline one reports in the modal of
-    # the request that ran it.
-    try:
-        run_bulk_action(run_id, site_id)
-    finally:
-        notify_run_finished(run_id, site_id)
 
 
 @task()
