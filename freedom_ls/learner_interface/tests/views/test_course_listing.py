@@ -1958,9 +1958,10 @@ def test_paging_the_applications_panel_returns_the_panel_alone(
 
 
 # Measured with three registered courses; the next-up walk still fetches each
-# course's own progress maps, so the count grows with registrations, but never
-# re-resolves the record the listing already holds.
-ALL_COURSES_MAX_QUERIES = 26
+# course's own progress maps, and each course's access decision checks its
+# audience, so the count grows with registrations, but never re-resolves the
+# record the listing already holds.
+ALL_COURSES_MAX_QUERIES = 29
 
 
 def _three_registered_courses_with_topics(user: User) -> None:
