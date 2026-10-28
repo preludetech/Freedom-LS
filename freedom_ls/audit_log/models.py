@@ -10,7 +10,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
-from django.db.models import Index
+from django.db.models import Field, Index, QuerySet
+from django.db.models.deletion import Collector
 from django.utils import timezone
 from django.utils.functional import cached_property
 
@@ -21,17 +22,22 @@ from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
 REASON_LENGTH = 500
 
 
+def set_null_by_instance(
+    collector: Collector, field: Field, sub_objs: QuerySet[AuditLogEntry], using: str
+) -> None:
+    """SET_NULL for the actor FK. Django's own hands the collector a queryset,
+    which it nulls through `QuerySet.update()`; the instances go through
+    `sql.UpdateQuery` instead, so `update()` below can refuse every call. The
+    `actor_label` column keeps the entry readable afterwards."""
+    collector.add_field_update(field, None, list(sub_objs.only("pk")))
+
+
 class AuditLogEntryQuerySet(models.QuerySet["AuditLogEntry"]):
     """`create()` and `bulk_create()` work; every call that would change or
-    remove existing rows raises, except the nulling of `actor` on user deletion."""
+    remove existing rows raises."""
 
     def update(self, **kwargs: object) -> int:
-        # Deleting a user nulls `actor` through this method (the deletion
-        # collector's SET_NULL), so exactly that update must pass. The
-        # `actor_label` column keeps the entry readable afterwards.
-        if kwargs != {"actor": None}:
-            raise AppendOnlyError()
-        return super().update(**kwargs)
+        raise AppendOnlyError()
 
     def delete(self) -> tuple[int, dict[str, int]]:
         raise AppendOnlyError()
@@ -82,7 +88,7 @@ class AuditLogEntry(SiteAwareModel):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
-        on_delete=models.SET_NULL,
+        on_delete=set_null_by_instance,
         related_name="+",
     )
     actor_label = models.CharField(blank=True)
@@ -109,6 +115,8 @@ class AuditLogEntry(SiteAwareModel):
         verbose_name_plural = "audit log entries"
         indexes = [
             Index(fields=["organisation", "-created_at"]),
+            # The Who filter lists the actors on an organisation's entries.
+            Index(fields=["organisation", "actor"]),
             Index(fields=["run_id"]),
             GinIndex(fields=["subjects"]),
         ]

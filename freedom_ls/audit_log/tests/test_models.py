@@ -6,6 +6,7 @@ import time_machine
 
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.exceptions import AppendOnlyError
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
@@ -83,11 +84,16 @@ def test_label_is_the_code_and_description_empty_for_an_unregistered_code(
 
 
 @pytest.mark.django_db
-def test_update_may_only_null_the_actor(entry):
-    AuditLogEntry.unscoped.update(actor=None)
+def test_update_refuses_even_nulling_the_actor(mock_site_context):
+    """User deletion nulls the actor without this method, so nothing else
+    may detach entries from their actor."""
+    actor = UserFactory()
+    AuditLogEntryFactory(actor=actor)
 
     with pytest.raises(AppendOnlyError):
-        AuditLogEntry.unscoped.update(actor=None, reason="x")
+        AuditLogEntry.unscoped.update(actor=None)
+
+    assert AuditLogEntry.unscoped.get().actor == actor
 
 
 @pytest.mark.django_db

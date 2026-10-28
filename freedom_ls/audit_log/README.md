@@ -147,8 +147,9 @@ labelled by its code. Extra actions have no `describe` renderer; put what the ro
 
 Three layers refuse changes to existing rows, all raising `AppendOnlyError`:
 
-- `AuditLogEntryQuerySet.update()`, `delete()` and `bulk_update()`. The one update allowed is
-  exactly `update(actor=None)`, which deleting a user needs for the actor FK's `SET_NULL`; the
+- `AuditLogEntryQuerySet.update()`, `delete()` and `bulk_update()`, with no exception. Deleting a
+  user nulls `actor` through `set_null_by_instance`, which hands the deletion collector the
+  entries as instances so it updates them through `sql.UpdateQuery` rather than this queryset; the
   `actor_label` column keeps the entry readable afterwards.
 - `AuditLogEntry.save()` on an existing row, and `AuditLogEntry.delete()`.
 - The admin, which shows every field read-only and allows no add, change or delete.
