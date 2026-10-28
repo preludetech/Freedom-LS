@@ -58,14 +58,17 @@ def _set_learner_active(learner: Learner, is_active: bool, event_type: str) -> b
     return True
 
 
-def _record_learner_entry(
+def record_learner_entry(
     learner: Learner,
     action: str,
     actor: User | None,
-    reason: str,
+    *,
+    reason: str = "",
     subjects: Iterable[Model] = (),
     details: Mapping[str, JSONValue] | None = None,
 ) -> None:
+    """Write an entry whose target is the learner, labelled by their user's
+    display name and scoped to their organisation."""
     record_entry(
         action=action,
         actor=actor,
@@ -91,7 +94,7 @@ def _change_learner_state(
     with transaction.atomic():
         if not _set_learner_active(learner, is_active, event_type=event_type):
             return False
-        _record_learner_entry(learner, action, actor, reason)
+        record_learner_entry(learner, action, actor, reason=reason)
     return True
 
 
@@ -136,11 +139,11 @@ def remove_from_cohort(
         ).delete()
         if deleted:
             _fire("cohort_membership.removed", learner, _cohort_payload(cohort))
-            _record_learner_entry(
+            record_learner_entry(
                 learner,
                 "cohort_membership.removed",
                 actor,
-                reason,
+                reason=reason,
                 subjects=[cohort],
                 details={"cohort": cohort.name},
             )
@@ -169,11 +172,11 @@ def add_to_cohort(
     with transaction.atomic():
         created = _add_membership(learner, cohort)
         if created:
-            _record_learner_entry(
+            record_learner_entry(
                 learner,
                 "cohort_membership.added",
                 actor,
-                reason,
+                reason=reason,
                 subjects=[cohort],
                 details={"cohort": cohort.name},
             )
@@ -221,11 +224,11 @@ def move_between_cohorts(
         )
         _fire("cohort_membership.removed", learner, _cohort_payload(source, move_id))
         _fire("cohort_membership.added", learner, _cohort_payload(destination, move_id))
-        _record_learner_entry(
+        record_learner_entry(
             learner,
             "cohort_membership.moved",
             actor,
-            reason,
+            reason=reason,
             subjects=[source, destination],
             details={
                 "source": source.name,
@@ -249,8 +252,8 @@ def register_for_course(
         change = _ensure_registration(learner, course, self_registered=False)
         if change is None:
             return False
-        _record_learner_entry(
-            learner, change, actor, reason, details={"course": course.title}
+        record_learner_entry(
+            learner, change, actor, reason=reason, details={"course": course.title}
         )
     return True
 
@@ -297,12 +300,10 @@ def self_register(user: User, organisation: Organisation, course: Course) -> boo
         ).first()
         learner = ensure_learner(user, organisation)
         if existing is not None and not existing.is_active:
-            _record_learner_entry(
-                learner, "learner.reactivated", None, "", details=details
-            )
+            record_learner_entry(learner, "learner.reactivated", None, details=details)
         change = _ensure_registration(learner, course, self_registered=True)
         if change == "registration.reactivated":
-            _record_learner_entry(learner, change, None, "", details=details)
+            record_learner_entry(learner, change, None, details=details)
     return change == "registration.added"
 
 
@@ -322,11 +323,11 @@ def deactivate_registration(
             return False
         registration.is_active = False
         registration.save(update_fields=["is_active"])
-        _record_learner_entry(
+        record_learner_entry(
             learner,
             "registration.deactivated",
             actor,
-            reason,
+            reason=reason,
             details={"course": course.title},
         )
     return True
@@ -411,24 +412,34 @@ def _add_one(
         details: dict[str, JSONValue] = {}
         if joined_cohort:
             details["cohort"] = joined_cohort.name
-        _record_learner_entry(
-            learner, "learner.reactivated", actor, reason, cohort_subjects, details
+        record_learner_entry(
+            learner,
+            "learner.reactivated",
+            actor,
+            reason=reason,
+            subjects=cohort_subjects,
+            details=details,
         )
     elif outcome != AddOutcome.ALREADY_LEARNER:
         details = {"outcome": outcome.value}
         if joined_cohort:
             details["cohort"] = joined_cohort.name
-        _record_learner_entry(
-            learner, "learner.added", actor, reason, cohort_subjects, details
+        record_learner_entry(
+            learner,
+            "learner.added",
+            actor,
+            reason=reason,
+            subjects=cohort_subjects,
+            details=details,
         )
     elif joined_cohort:
-        _record_learner_entry(
+        record_learner_entry(
             learner,
             "cohort_membership.added",
             actor,
-            reason,
-            cohort_subjects,
-            {"cohort": joined_cohort.name},
+            reason=reason,
+            subjects=cohort_subjects,
+            details={"cohort": joined_cohort.name},
         )
     return AddLearnerResult(email, outcome, learner, cohort_outcome)
 

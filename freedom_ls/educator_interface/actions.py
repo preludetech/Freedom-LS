@@ -27,7 +27,6 @@ from freedom_ls.accounts.account_setup import (
 )
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.accounts.models import User
-from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -59,6 +58,7 @@ from freedom_ls.learner_management.learner_actions import (
     deactivate_registration,
     move_between_cohorts,
     reactivate_learner,
+    record_learner_entry,
     register_for_course,
     remove_from_cohort,
 )
@@ -313,12 +313,10 @@ class EditLearnerNameAction(EditAction):
         with transaction.atomic():
             response = super().form_valid(request, form)
             if {"first_name", "last_name"} & set(form.changed_data):
-                record_entry(
-                    action="learner.renamed",
-                    actor=cast("User", request.user),
-                    target=self._learner,
-                    target_label=user.display_name,
-                    organisation=self._learner.organisation,
+                record_learner_entry(
+                    self._learner,
+                    "learner.renamed",
+                    cast("User", request.user),
                     details={"old": old_name, "new": user.display_name},
                 )
         return response
@@ -571,12 +569,10 @@ class ResendSetupEmailAction(PanelAction):
                 # The entry goes first: a refused send rolls it back, while
                 # a failed entry must not leave an email sent and the resend
                 # guard set with nothing in the log.
-                record_entry(
-                    action="learner.setup_email_resent",
-                    actor=cast("User", ctx.request.user),
-                    target=learner,
-                    target_label=learner.user.display_name,
-                    organisation=learner.organisation,
+                record_learner_entry(
+                    learner,
+                    "learner.setup_email_resent",
+                    cast("User", ctx.request.user),
                 )
                 resend_account_setup_email(learner.user, learner.organisation.name)
         except SetupEmailRecentlySent:

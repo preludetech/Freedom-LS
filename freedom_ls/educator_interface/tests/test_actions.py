@@ -5236,10 +5236,12 @@ def test_a_failed_entry_sends_no_email_and_leaves_the_resend_open(
     learner = _pending_learner(organisation)
     url = _resend_url(organisation, learner)
 
-    def fail(**kwargs: object) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
         raise _RolledBackError
 
-    monkeypatch.setattr("freedom_ls.educator_interface.actions.record_entry", fail)
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.record_learner_entry", fail
+    )
     with (
         pytest.raises(_RolledBackError),
         django_capture_on_commit_callbacks(execute=True),
