@@ -11,6 +11,8 @@ Standard fields land in standard places:
   details        -> course_details_link.html, right-aligned inline with the
                     status in the eyebrow slot (top-right of the row)
   title + link   -> stretched title link (card_title_link.html)
+  organisation   -> <c-organisation-byline>, only where the view stamps
+                    card_organisation (the dashboard does, the all-courses page does not)
   deadline       -> course_deadline_line.html (missed deadline, else next deadline);
                     the all-courses page passes no deadlines, so the line is dashboard-only
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
@@ -28,7 +30,8 @@ frees the horizontal space that clipped "Details" off narrow viewports.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-missed_deadline, next_deadline, access_badge, current_price), user and
+missed_deadline, next_deadline, access_badge, current_price,
+card_organisation), user and
 show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
@@ -64,6 +67,8 @@ show_time_zone_to_learners.
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
+
+    <c-organisation-byline :organisation="course.card_organisation" />
 
     {% include "learner_interface/partials/course_listing_price.html" %}
 

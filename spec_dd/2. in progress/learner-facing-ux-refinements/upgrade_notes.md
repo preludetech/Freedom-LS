@@ -40,6 +40,10 @@ These only affect a project that overrides a template or imports FLS internals:
   `course_card.html` into the new `partials/course_deadline_line.html`, which `course_row.html`
   includes too. A shadowed `course_card.html` keeps working; shadow the new partial to restyle the
   line in both places.
+- **Dashboard rows name the organisation.** `course_row.html` now renders
+  `<c-organisation-byline :organisation="course.card_organisation" />` under the title, as
+  `course_card.html` does. A shadowed `course_row.html` must add that line, or phones and tablets
+  stop naming a course's organisation on the dashboard.
 - **`dashboard_tags` template library removed.** `{% load dashboard_tags %}` and
   `{% section_page_href … %}` no longer exist. Use `{% load pagination_tags %}` and
   `{% page_href param_name page_number %}`, which takes the same arguments.

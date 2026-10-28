@@ -45,7 +45,7 @@ Every section shows up to three cards at a time, with previous/next controls and
 
 Each course card shows the course title, its registration status, and a progress percentage once the learner has started it, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action. A card does not name the course's category; the [detail page](#course-detail-page) does.
 
-A card for an organisation's course carries a small byline under the title with the organisation's logo and name: on an in-progress card, the organisation the learner studies it through; on other dashboard cards, the organisation that owns the course when there is exactly one. The site's default organisation never gets a byline, and the all-courses list, completed cards and the course detail page show none.
+A card for an organisation's course carries a small byline under the title with the organisation's logo and name: on an in-progress card, the organisation the learner studies it through; on other dashboard cards, the organisation that owns the course when there is exactly one. The compact rows that phones and tablets show carry the same byline. The site's default organisation never gets a byline, and the all-courses list, completed cards and the course detail page show none.
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 

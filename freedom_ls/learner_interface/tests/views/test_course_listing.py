@@ -21,7 +21,7 @@ from freedom_ls.accounts.factories import (
 )
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_interface.tests.helpers import (
@@ -39,6 +39,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
 
@@ -2004,3 +2005,24 @@ def test_all_courses_query_count_stays_within_budget(
         response = client.get(reverse("learner_interface:courses"))
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_all_courses_rows_name_no_organisation(mock_site_context, logged_in_client):
+    user = UserFactory()
+    owned = CourseFactory(title="Owned course", audience=CourseAudience.PUBLIC)
+    owned.organisations.add(OrganisationFactory(name="Owner Academy"))
+    studied = CourseFactory(title="Studied course")
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(name="Study Academy"),
+        course=studied,
+    )
+    course_progress_record(studied, user)
+
+    response = logged_in_client(user).get(reverse("learner_interface:courses"))
+
+    html = response.content.decode()
+    assert "Owned course" in html
+    assert "Owner Academy" not in html
+    assert "Study Academy" not in html

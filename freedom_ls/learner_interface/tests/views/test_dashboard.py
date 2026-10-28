@@ -1503,6 +1503,14 @@ def _first_card_grid(html: str) -> str:
     return html[start : html.index('data-testid="section-row-list"', start)]
 
 
+def _row_lists(html: str) -> str:
+    """Every section's row list, without the card grids that repeat each course."""
+    return "".join(
+        part.split('data-testid="section-card-grid"')[0]
+        for part in html.split('data-testid="section-row-list"')[1:]
+    )
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
@@ -1928,6 +1936,30 @@ def test_in_progress_card_names_the_organisation_of_a_cohort_registration(
     course_progress_record(course, user)
 
     assert "Cohort Academy" in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_discovery_row_names_the_single_organisation(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(name="Solo Academy"))
+
+    assert "Solo Academy" in _row_lists(_dashboard_html())
+
+
+@pytest.mark.django_db
+def test_in_progress_row_names_the_organisation_the_learner_studies_through(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(name="Study Academy"),
+        course=course,
+    )
+    course_progress_record(course, user)
+
+    assert "Study Academy" in _row_lists(_dashboard_html(logged_in_client(user)))
 
 
 @pytest.mark.django_db
