@@ -66,6 +66,15 @@ class UserManager(BaseUserManager["User"]):
         return user
 
 
+def display_name_for(first_name: str, last_name: str, email: str) -> str:
+    """The name a user shows as: both names, either one, or the email."""
+    first = (first_name or "").strip()
+    last = (last_name or "").strip()
+    if first and last:
+        return f"{first} {last}"
+    return first or last or email
+
+
 class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # Deliberately an integer pk, not a UUID: User is the one object whose identity
     # appears in a URL as a small sequential number. Permission checks are keyed on
@@ -101,11 +110,7 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
 
     @property
     def display_name(self) -> str:
-        first = (self.first_name or "").strip()
-        last = (self.last_name or "").strip()
-        if first and last:
-            return f"{first} {last}"
-        return first or last or self.email
+        return display_name_for(self.first_name, self.last_name, self.email)
 
     @property
     def initials(self) -> str | None:

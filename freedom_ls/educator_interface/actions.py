@@ -26,7 +26,7 @@ from freedom_ls.accounts.account_setup import (
     send_account_setup_email,
 )
 from freedom_ls.accounts.config import config as accounts_config
-from freedom_ls.accounts.models import User
+from freedom_ls.accounts.models import User, display_name_for
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -302,14 +302,11 @@ class EditLearnerNameAction(EditAction):
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         # The form has already bound the new names onto the user; its initial
-        # data still holds the stored ones, read here through an unsaved user
-        # so the old name falls back to the email the same way.
+        # data still holds the stored ones.
         user = cast("User", form.instance)
-        old_name = User(
-            first_name=form.initial["first_name"],
-            last_name=form.initial["last_name"],
-            email=user.email,
-        ).display_name
+        old_name = display_name_for(
+            form.initial["first_name"], form.initial["last_name"], user.email
+        )
         with transaction.atomic():
             response = super().form_valid(request, form)
             if {"first_name", "last_name"} & set(form.changed_data):
