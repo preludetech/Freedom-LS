@@ -893,3 +893,52 @@ def test_export_omits_an_anonymous_application_on_another_site(staff_client, sit
     response = staff_client.get(reverse(EXPORT))
 
     assert other.applicant_email not in response.content.decode("utf-8-sig")
+
+
+def test_export_selected_carries_the_question_texts_and_an_answer(staff_client):
+    course, form = gated_course_with_form()
+    sitting = FormProgressFactory(form=form)
+    application = CourseApplicationFactory(course=course, form_progress=sitting)
+    question = FormQuestion.objects.get(form_page__form=form, question="Your name")
+    QuestionAnswerFactory(
+        form_progress=sitting, question=question, text_answer="Ada Lovelace"
+    )
+
+    response = staff_client.post(
+        reverse(CHANGELIST),
+        {
+            "action": "export_admin_action",
+            "select_across": "1",
+            "index": "0",
+            "_selected_action": [str(application.pk)],
+        },
+    )
+
+    body = response.content.decode("utf-8-sig")
+    assert "Your name" in body
+    assert "Ada Lovelace" in body
+
+
+def test_a_view_only_user_sees_on_the_change_page_the_answers_the_export_writes(
+    mock_site_context,
+):
+    course, form = gated_course_with_form()
+    sitting = FormProgressFactory(form=form)
+    application = CourseApplicationFactory(course=course, form_progress=sitting)
+    question = FormQuestion.objects.get(form_page__form=form, question="Your name")
+    QuestionAnswerFactory(
+        form_progress=sitting, question=question, text_answer="Ada Lovelace"
+    )
+    viewer = UserFactory(staff=True)
+    viewer.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="freedom_ls_course_applications",
+            codename="view_courseapplication",
+        )
+    )
+    client = Client()
+    client.force_login(viewer)
+
+    response = client.get(reverse(CHANGE, args=[application.pk]))
+
+    assert "Ada Lovelace" in response.content.decode()

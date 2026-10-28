@@ -42,6 +42,11 @@ FREE_TEXT_QUESTION_TYPES = frozenset(
     }
 )
 
+# Option questions store their answer as selected QuestionOption rows, not text.
+OPTION_QUESTION_TYPES = frozenset(
+    {QuestionType.MULTIPLE_CHOICE, QuestionType.DROPDOWN, QuestionType.CHECKBOXES}
+)
+
 
 class FormStrategy(models.TextChoices):
     """Form strategy enumeration."""
