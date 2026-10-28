@@ -113,9 +113,9 @@ def _coming_soon_course(*, slug: str, title: str) -> Course:
 def test_all_courses_renders_four_distinct_status_labels(
     mock_site_context, courses, logged_in_client
 ):
-    """Each of the four registration states renders its own visible label, so a
-    registered-but-unstarted course is no longer indistinguishable from an
-    unregistered one. The old ambiguous "Not started" label is gone entirely."""
+    """Each enrolled state renders its own visible label, so a
+    registered-but-unstarted course is distinguishable from an unregistered one,
+    which shows no status at all. The old ambiguous "Not started" label is gone."""
     user = UserFactory()
     # courses[0] -> Not registered (left unregistered)
     # courses[1] -> Registered (enrolled, 0% progress)
@@ -139,7 +139,7 @@ def test_all_courses_renders_four_distinct_status_labels(
     assert response.status_code == 200
     body = response.content.decode()
 
-    assert "Not registered" in body
+    assert "Not registered" not in body  # rows carry no not-registered status
     assert "Registered" in body  # the registered-0% row (capital R, standalone)
     assert "In progress" in body
     assert "Completed" in body
@@ -367,7 +367,6 @@ def test_all_courses_status_icons_are_decorative(
     course_progress_record(
         courses[1], user, progress_percentage=100, completed_time=timezone.now()
     )
-    # courses[2] stays unregistered -> exercises the not_started icon.
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -376,7 +375,7 @@ def test_all_courses_status_icons_are_decorative(
     body = response.content.decode()
     # Every status-icon svg (which carries aria-label="<slug>") must sit directly
     # inside an aria-hidden wrapper.
-    for slug in ("in_progress", "not_started", "complete"):
+    for slug in ("in_progress", "complete"):
         assert f'aria-label="{slug}"' in body, f"expected {slug} icon to render"
         assert re.search(
             rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
@@ -599,10 +598,10 @@ def test_all_courses_anonymous_not_registered_row_has_no_not_registered_eyebrow(
 
 
 @pytest.mark.django_db
-def test_all_courses_authenticated_not_registered_row_shows_not_registered_eyebrow(
+def test_all_courses_authenticated_not_registered_row_has_no_not_registered_eyebrow(
     mock_site_context,
 ):
-    """Authenticated users still see the 'Not registered' eyebrow on unregistered rows."""
+    """Authenticated users see no 'Not registered' eyebrow on unregistered rows."""
     from freedom_ls.accounts.factories import UserFactory
 
     CourseFactory(title="Some Course", slug="some-course")
@@ -612,7 +611,7 @@ def test_all_courses_authenticated_not_registered_row_shows_not_registered_eyebr
 
     response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
-    assert "Not registered" in response.content.decode()
+    assert "Not registered" not in response.content.decode()
 
 
 @pytest.mark.django_db

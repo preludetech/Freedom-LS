@@ -10,6 +10,8 @@ changed_template_paths:
   - freedom_ls/learner_interface/templates/learner_interface/partials/course_card.html
   - freedom_ls/learner_interface/templates/learner_interface/partials/course_deadline_line.html
   - freedom_ls/course_applications/templates/course_applications/partials/dashboard_applications.html
+  - freedom_ls/learner_interface/templates/learner_interface/course_form.html
+  - freedom_ls/learner_interface/templates/learner_interface/partials/course_minimal_toc.html
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -51,10 +53,14 @@ These only affect a project that overrides a template or imports FLS internals:
   `freedom_ls.base.pagination.page_href(request, param_name, page_number)`. Clamped paging and the
   "1 to 3 of 7" position text are also in that module now, as `clamped_page` and `position_text`.
 - **Course icon resolver moved.** `freedom_ls.learner_interface.course_icon` is now
-  `freedom_ls.icons.course_icon` (`render_course_icon`, `IconResolutionError`). The
-  `course_icon_tags` template library keeps its name but now lives in the `freedom_ls.icons` app,
-  so `{% load course_icon_tags %}` keeps working as long as `freedom_ls.icons` is in
-  `INSTALLED_APPS`.
+  `freedom_ls.content_engine.course_icon` (`render_course_icon`, `IconResolutionError`). The
+  `course_icon_tags` template library keeps its name but now lives in the
+  `freedom_ls.content_engine` app, so `{% load course_icon_tags %}` keeps working as long as
+  `freedom_ls.content_engine` is in `INSTALLED_APPS`.
+- **`course_part` semantic icon renamed to `folder`.** Replace `<c-icon name="course_part" />` and
+  `{% icon "course_part" %}` with `folder`, including in shadowed `course_form.html` and
+  `course_minimal_toc.html`. Rename any `course_part` key in `FREEDOM_LS_ICON_OVERRIDES` to
+  `folder`. A leftover `course_part` no longer resolves.
 
 ## Manual steps
 

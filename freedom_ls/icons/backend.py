@@ -39,9 +39,9 @@ def build_svg(
 ) -> str:
     """Build an SVG string from an iconify-JSON entry.
 
-    Shared between :class:`DefaultIconBackend` (semantic-name path) and the
-    course-icon resolver (literal-glyph path). Caller is responsible for
-    having already determined the suffixed `lookup_name` to use.
+    Shared between :class:`DefaultIconBackend` (semantic-name path) and
+    :func:`~freedom_ls.icons.render.render_icon` (literal-glyph path). Caller is
+    responsible for having already determined the suffixed `lookup_name` to use.
     """
     data = load_iconify_data(set_name)
     icons = data["icons"]

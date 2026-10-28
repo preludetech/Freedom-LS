@@ -23,7 +23,7 @@
         {% elif child.type == "FORM" %}
             <c-icon name="form" class="size-4" />
         {% elif child.type == "COURSE_PART" %}
-            <c-icon name="course_part" class="size-4" />
+            <c-icon name="folder" class="size-4" />
         {% endif %}
         <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% endif %}</span>
     </span>
