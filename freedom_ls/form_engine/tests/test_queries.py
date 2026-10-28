@@ -10,17 +10,19 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
+    FormContentFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import (
     FINAL_GROUP_TITLE,
     answer_groups,
     attempt_completes_form,
+    form_questions,
     quiz_verdict,
 )
 
@@ -192,3 +194,37 @@ def test_answer_groups_query_count_does_not_grow_with_the_questions(
         answer_groups(small)
     with django_assert_max_num_queries(len(small_queries)):
         answer_groups(large)
+
+
+def _form_with_pages_prefetched(form: Form) -> Form:
+    prefetched: Form = Form.objects.prefetch_related(
+        "pages__text_items", "pages__questions"
+    ).get(pk=form.pk)
+    return prefetched
+
+
+@pytest.mark.django_db
+def test_form_questions_run_page_by_page_in_question_order(mock_site_context):
+    form = FormFactory()
+    second_page = FormPageFactory(form=form, title="Second", order=1)
+    first_page = FormPageFactory(form=form, title="First", order=0)
+    late = FormQuestionFactory(form_page=first_page, order=5)
+    early = FormQuestionFactory(form_page=first_page, order=1)
+    # A content block between two questions takes an order slot but no row.
+    FormContentFactory(form_page=first_page, order=3)
+    other = FormQuestionFactory(form_page=second_page, order=0)
+
+    questions = form_questions(_form_with_pages_prefetched(form))
+
+    assert questions == [early, late, other]
+
+
+@pytest.mark.django_db
+def test_form_questions_skip_a_question_on_another_forms_page(mock_site_context):
+    form = FormFactory()
+    mine = FormQuestionFactory(form_page=FormPageFactory(form=form, order=0))
+    FormQuestionFactory(form_page=FormPageFactory(form=FormFactory(), order=0))
+
+    questions = form_questions(_form_with_pages_prefetched(form))
+
+    assert questions == [mine]

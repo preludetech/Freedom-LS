@@ -79,6 +79,16 @@ def page_questions(form_page: FormPage) -> list[FormQuestion]:
     ]
 
 
+def form_questions(form: Form) -> list[FormQuestion]:
+    """Every question currently on the form, in the order a sitting meets them.
+
+    Pages in their own order, then each page's questions as `page_questions`
+    lays them out. Expects the form's pages, with their questions and text
+    items, to be prefetched; a form read bare costs a query per page.
+    """
+    return [question for page in form.pages.all() for question in page_questions(page)]
+
+
 @dataclass(frozen=True)
 class AnswerRow:
     question: FormQuestion
@@ -105,25 +115,30 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
         "answers__selected_options",
         "answers__answer_file",
         "answers__question",
+        "form__pages__text_items",
+        "form__pages__questions",
     )
     # One dict for the whole sitting rather than existing_answers_dict per page:
     # the final group needs the answers no page accounts for.
     answers = {answer.question_id: answer for answer in form_progress.answers.all()}
-    groups: list[AnswerGroup] = []
-    page_question_ids: set[UUID] = set()
-    pages = form_progress.form.pages.prefetch_related("text_items", "questions")
-    for page in pages:
-        questions = page_questions(page)
-        page_question_ids.update(question.id for question in questions)
-        groups.append(
-            AnswerGroup(
-                title=page.title,
-                rows=[
-                    AnswerRow(question, answers.get(question.id))
-                    for question in questions
-                ],
-            )
+    questions_by_page: dict[UUID, list[FormQuestion]] = {}
+    for question in form_questions(form_progress.form):
+        questions_by_page.setdefault(question.form_page_id, []).append(question)
+    groups = [
+        AnswerGroup(
+            title=page.title,
+            rows=[
+                AnswerRow(question, answers.get(question.id))
+                for question in questions_by_page.get(page.id, [])
+            ],
         )
+        for page in form_progress.form.pages.all()
+    ]
+    page_question_ids = {
+        question.id
+        for questions in questions_by_page.values()
+        for question in questions
+    }
     # A question can leave every page but never be deleted while answered (the
     # answer's FK protects it), so an answer with no page is still an answer.
     off_page_rows = [
