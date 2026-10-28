@@ -32,7 +32,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `test-organisation-and-hygene-8-learner-management-and-progress`
 - `test-organisation-and-hygene-9-form-engine`
 - `user-communication-6-moderation`
-- `user-communication-ux-improve`
 
 ## Needs work on main first
 
@@ -660,7 +659,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
 | `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
-| `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | next | |
+| `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | in progress | |
 | `user-profile-upgrades` | Redesign the user profile page and add phone number and date of birth, some possibly required at signup. | `phone-number-form-field` | next | |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
