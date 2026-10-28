@@ -8,9 +8,13 @@ from django.contrib.auth.models import Group
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import (
+    SiteAwareExportModelAdmin,
+    SiteAwareModelAdmin,
+)
 
 from .models import LegalConsent, SiteSignupPolicy, User
+from .resources import UserResource
 
 # Admins for these models deny delete on their own pages so nobody can thin
 # out an audit trail row by row. Erasing an account is the one path that must
@@ -98,7 +102,9 @@ class LegalConsentAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(User)
-class UserAdmin(SiteAwareModelAdmin):
+class UserAdmin(SiteAwareExportModelAdmin):
+    resource_classes = [UserResource]
+
     # Forms loaded from `unfold.forms`
     form = UserChangeForm
     add_form = UserCreationForm
