@@ -22,7 +22,8 @@ record_entry(
 )
 ```
 
-`record_entry` raises `ValueError` for a code no registry knows. It takes the site from the `site`
+`record_entry` raises `ValueError` for a code no registry knows and for a reason longer than
+`REASON_LENGTH` (500 characters), the one length `ReasonForm` also enforces. It takes the site from the `site`
 argument or from the target, never from the request, so it works in a management command or a
 background task. It opens no transaction: call it inside the `transaction.atomic()` that makes the
 change, and a rolled-back change leaves no entry. Write only when state changed; a no-op writes

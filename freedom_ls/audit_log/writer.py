@@ -11,7 +11,7 @@ from django.db.models import Model
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS, validate_action
-from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.audit_log.types import JSONValue
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.models import SiteAwareModelBase, site_of
@@ -44,8 +44,13 @@ def record_entry(
     site: Site | None = None,
 ) -> AuditLogEntry:
     """Write one entry. Opens no transaction: the caller's decides whether the
-    row survives, so a rolled-back change leaves no entry."""
+    row survives, so a rolled-back change leaves no entry. Raises ValueError
+    for an unknown action or a reason longer than REASON_LENGTH, so a caller
+    that skipped ReasonForm fails before the insert rather than in it."""
     validate_action(action)
+    reason = reason.strip()
+    if len(reason) > REASON_LENGTH:
+        raise ValueError(f"reason is longer than {REASON_LENGTH} characters.")
     return AuditLogEntry.unscoped.create(
         # Explicit, never from the request: this also runs in commands and
         # background tasks, and a site role's entry belongs to the role's site
@@ -59,7 +64,7 @@ def record_entry(
         target_object_id=str(target.pk),
         target_label=target_label,
         subjects=[subject_key(target), *(subject_key(s) for s in subjects)],
-        reason=reason.strip(),
+        reason=reason,
         details=dict(details or {}),
         run_id=run_id,
     )

@@ -5,7 +5,7 @@ import pytest
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.audit_log.writer import (
     RUN_LABEL_LENGTH,
     RUN_ROWS_KEPT,
@@ -121,6 +121,21 @@ def test_the_reason_is_stripped(mock_site_context):
     entry = _record(OrganisationFactory(), reason="  left the company \n")
 
     assert entry.reason == "left the company"
+
+
+@pytest.mark.django_db
+def test_a_reason_at_the_length_limit_is_stored(mock_site_context):
+    entry = _record(OrganisationFactory(), reason="x" * REASON_LENGTH)
+
+    assert len(entry.reason) == REASON_LENGTH
+
+
+@pytest.mark.django_db
+def test_a_reason_over_the_length_limit_raises_and_writes_nothing(mock_site_context):
+    with pytest.raises(ValueError, match="longer than"):
+        _record(OrganisationFactory(), reason="x" * (REASON_LENGTH + 1))
+
+    assert AuditLogEntry.unscoped.count() == 0
 
 
 def _summary(organisation, **overrides):

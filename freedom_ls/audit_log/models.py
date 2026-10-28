@@ -18,6 +18,8 @@ from freedom_ls.audit_log.actions import AuditAction, get_audit_action
 from freedom_ls.audit_log.exceptions import AppendOnlyError
 from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
 
+REASON_LENGTH = 500
+
 
 class AuditLogEntryQuerySet(models.QuerySet["AuditLogEntry"]):
     """`create()` and `bulk_create()` work; every call that would change or
@@ -92,7 +94,7 @@ class AuditLogEntry(SiteAwareModel):
     target = GenericForeignKey("target_content_type", "target_object_id")
     target_label = models.CharField()
     subjects = ArrayField(models.CharField(max_length=300))
-    reason = models.CharField(max_length=500, blank=True)
+    reason = models.CharField(max_length=REASON_LENGTH, blank=True)
     details = models.JSONField(default=dict, blank=True)
     run_id = models.UUIDField(null=True, blank=True)
 
