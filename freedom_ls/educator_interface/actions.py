@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
 
@@ -228,29 +229,13 @@ class RequiresActiveCohortMixin(PanelAction):
         return super().handle_submit(ctx)
 
 
-def submitted_reason(action: PanelAction, ctx: PanelContext) -> str:
-    """The reason `action`'s confirm dialog posted, as ReasonForm cleans it.
-    Only an action with ReasonMixin has a reason field, so any other ignores
-    whatever its POST carries. Actions are shared across requests, so the
-    reason is read from the request rather than kept on the action.
-    ReasonMixin.handle_submit has already refused an invalid one, so finding
-    one here means the submit bypassed the mixin."""
-    if not isinstance(action, ReasonMixin):
-        return ""
-    form = ReasonForm(ctx.request.POST)
-    if not form.is_valid():
-        raise ValueError(
-            "ReasonMixin.handle_submit has not validated this request's reason."
-        )
-    return str(form.cleaned_data["reason"])
-
-
 class ReasonMixin(PanelAction):
-    """A confirm dialog that takes an optional reason. List it first in the
-    bases, as RequiresActiveCohortMixin is, so the reason is validated before
-    any other submit handling. An action with its own submit overrides
-    handle_confirmed_submit, never handle_submit, and one that builds its own
-    context calls super().get_context_data so the reason field is in it."""
+    """A confirm dialog that takes an optional reason, which the submit reads
+    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
+    is, so the reason is validated before any other submit handling. An
+    action with its own submit overrides handle_confirmed_submit, never
+    handle_submit, and one that builds its own context calls
+    super().get_context_data so the reason field is in it."""
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         context = super().get_context_data(ctx)
@@ -263,11 +248,13 @@ class ReasonMixin(PanelAction):
             context = {**self.get_context_data(ctx), "reason_form": form}
             html = render_to_string(self.template_name, context, request=ctx.request)
             return HttpResponse(html, status=422)
-        return self.handle_confirmed_submit(ctx)
+        return self.handle_confirmed_submit(
+            replace(ctx, reason=str(form.cleaned_data["reason"]))
+        )
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
-        """The submit once the reason is valid: the next handle_submit in the
-        MRO."""
+        """The submit once the reason is valid and on `ctx`: the next
+        handle_submit in the MRO."""
         return super().handle_submit(ctx)
 
 
@@ -375,7 +362,7 @@ class CohortStateAction(PanelAction):
                 cohort,
                 "cohort.reactivated" if self.target_state else "cohort.deactivated",
                 cast("User", ctx.request.user),
-                reason=submitted_reason(self, ctx),
+                reason=ctx.reason,
             )
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
@@ -442,7 +429,7 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
         if not_empty:
             return self._blocked_response(ctx, cohort, not_empty)
         actor = cast("User", ctx.request.user)
-        reason = submitted_reason(self, ctx)
+        reason = ctx.reason
         # The roles go here rather than in the pre_delete receiver, which
         # has no request and would log their removal as the system.
         delete_role_rows_for(cohort, removed_by=actor, reason=reason)
@@ -522,9 +509,7 @@ class LearnerStateAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
-        if not self.perform(
-            learner, cast("User", ctx.request.user), submitted_reason(self, ctx)
-        ):
+        if not self.perform(learner, cast("User", ctx.request.user), ctx.reason):
             return render(
                 ctx.request,
                 "educator_interface/modal/learner_already_in_state.html",
@@ -668,7 +653,7 @@ class DeactivateCohortRegistrationAction(
         deactivate_cohort_registration(
             self._registration(ctx),
             actor=cast("User", ctx.request.user),
-            reason=submitted_reason(self, ctx),
+            reason=ctx.reason,
         )
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
@@ -788,7 +773,7 @@ class DeactivateRegistrationAction(ReasonMixin, PanelAction):
             learner,
             self._registration(ctx).course,
             actor=cast("User", ctx.request.user),
-            reason=submitted_reason(self, ctx),
+            reason=ctx.reason,
         )
         return _registration_changed_response(learner)
 
@@ -948,9 +933,7 @@ class MembershipAction(PanelAction):
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
             return inactive_cohort_response(ctx.request, cohort)
-        self.perform(
-            learner, cohort, cast("User", ctx.request.user), submitted_reason(self, ctx)
-        )
+        self.perform(learner, cohort, cast("User", ctx.request.user), ctx.reason)
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
 
@@ -1957,7 +1940,7 @@ class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
                         user,
                         entry.role,
                         target,
-                        reason=submitted_reason(self, ctx),
+                        reason=ctx.reason,
                     )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
@@ -2155,7 +2138,7 @@ class DeactivateMemberAction(ReasonMixin, MemberStateAction):
                 cast("User", ctx.request.user),
                 row,
                 False,
-                reason=submitted_reason(self, ctx),
+                reason=ctx.reason,
             )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)

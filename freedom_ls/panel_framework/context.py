@@ -37,6 +37,9 @@ class PanelContext:
     config: type[SectionConfigBase]
     scope: Model | None = None
     page_url: str = ""
+    # The reason a confirm dialog posted, set by the action that validated
+    # it; empty for an action that takes none.
+    reason: str = ""
 
     def scope_object(self) -> Model | None:
         """The object a permission check runs against: the bound instance,
