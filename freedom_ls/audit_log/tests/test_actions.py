@@ -77,6 +77,17 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
         ("learner.reactivated", {}, ""),
         ("learner.reactivated", {"cohort": "Year 10"}, "Added to Year 10"),
         (
+            "learner.reactivated",
+            {"course": "Algebra", "self_service": True},
+            "Self-registered for Algebra",
+        ),
+        ("registration.reactivated", {"course": "Algebra"}, "Algebra"),
+        (
+            "registration.reactivated",
+            {"course": "Algebra", "self_service": True},
+            "Algebra (self-registered)",
+        ),
+        (
             "role.assigned",
             {"role": "cohort_admin", "role_label": "Cohort admin", "scope": "Cohort A"},
             "Cohort admin on Cohort A",

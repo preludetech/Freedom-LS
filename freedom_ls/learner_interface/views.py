@@ -64,13 +64,12 @@ from freedom_ls.form_engine.page_flow import (
 )
 from freedom_ls.form_engine.paging import answered_counts, resume_page_number
 from freedom_ls.form_engine.queries import count_form_questions
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.learner_actions import self_register
 from freedom_ls.learner_management.queries import (
     is_course_open_to_organisation,
     learner_for_course,
     own_organisation_for_course,
 )
-from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.attempts import (
     completed_attempts,
     finalise_stale_incomplete,
@@ -1055,8 +1054,8 @@ def initiate_course_access(request, course_slug):
     # a row it lands on the Site's default Organisation, guaranteed to exist by
     # the post_save receiver that gives every Site one. That fallback is reached
     # for a public organisation course and a course with no organisations; the
-    # audience gate already 404s everyone else. ensure_learner
-    # reactivates a deactivated learner, so re-registering is a live signal of
+    # audience gate already 404s everyone else. self_register reactivates a
+    # deactivated learner, so re-registering is a live signal of
     # re-association.
     organisation = own_organisation_for_course(
         request.user, course
@@ -1072,18 +1071,7 @@ def initiate_course_access(request, course_slug):
     # is not open to.
     if not is_course_open_to_organisation(course, organisation):
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    learner = ensure_learner(request.user, organisation)
-    # update_or_create, not get_or_create: defaults only apply on create, so a
-    # registration an admin had deactivated would stay inactive and the learner
-    # would be bounced back out of the course they just asked to enter.
-    # self_registered only on create: reactivating an admin's registration
-    # doesn't change who made it.
-    _, created = LearnerCourseRegistration.objects.update_or_create(
-        learner=learner,
-        course=course,
-        defaults={"is_active": True},
-        create_defaults={"is_active": True, "self_registered": True},
-    )
+    created = self_register(request.user, organisation, course)
     # Only a new registration. Reactivating one an admin had switched off is
     # not a second registration, and a repeat visit to this URL is not one either.
     if created:

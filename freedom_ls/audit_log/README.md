@@ -74,13 +74,13 @@ entry's `details` into one line. The noun is what the entry is about, the verb w
 | `learner.added` | Learner added | learner | cohort, if one was given | `outcome` (`created`, `joined`), `cohort` |
 | `learner.renamed` | Learner renamed | learner | | `old`, `new` |
 | `learner.deactivated` | Learner deactivated | learner | | |
-| `learner.reactivated` | Learner reactivated | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one |
+| `learner.reactivated` | Learner reactivated | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one; `course`, `self_service`, when a self-registration did |
 | `learner.setup_email_resent` | Setup email resent | learner | | |
 | `cohort_membership.added` | Added to cohort | learner | cohort | `cohort` |
 | `cohort_membership.removed` | Removed from cohort | learner | cohort | `cohort` |
 | `cohort_membership.moved` | Moved between cohorts | learner | both cohorts | `source`, `destination`, `move_id` |
 | `registration.added` | Registered for course | learner | | `course` |
-| `registration.reactivated` | Registration reactivated | learner | | `course` |
+| `registration.reactivated` | Registration reactivated | learner | | `course`; `self_service`, when a self-registration did it |
 | `registration.deactivated` | Registration deactivated | learner | | `course` |
 | `cohort.created` | Cohort created | cohort | | |
 | `cohort.renamed` | Cohort renamed | cohort | | `old`, `new` |
@@ -121,7 +121,9 @@ that save the row.
 Two differences remain. `cohort_membership.moved` is one entry but two webhook events,
 `cohort_membership.removed` then `cohort_membership.added`, sharing a `move_id`. And a self-
 registration fires `registration.added` with no entry, because the audit log records staff
-actions only. Renames, cohort lifecycle, roles, member deactivation and the summary actions fire
+actions only; where it reactivates a deactivated learner or an inactive registration it undoes
+one, so `self_register` writes `learner.reactivated` or `registration.reactivated` as the system,
+with `self_service` in the details. Renames, cohort lifecycle, roles, member deactivation and the summary actions fire
 no webhook; `user.signed_up` and `course.completed` are webhook-only.
 
 ### Adding your own

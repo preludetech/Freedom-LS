@@ -32,6 +32,7 @@ from freedom_ls.learner_management.learner_actions import (
     reactivate_learner,
     register_for_course,
     remove_from_cohort,
+    self_register,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -426,6 +427,105 @@ class TestRegistrationAudit:
         with pytest.raises(RuntimeError, match="rolled back"):
             run_then_fail()
 
+        assert AuditLogEntry.unscoped.count() == 0
+
+
+@pytest.mark.django_db
+class TestSelfRegisterAudit:
+    """A learner's own registration is not a staff action, so only the
+    reactivations it does, which undo one, reach the log."""
+
+    def test_a_new_registration_is_self_registered_and_writes_nothing(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        course = CourseFactory()
+
+        created = self_register(learner.user, learner.organisation, course)
+
+        registration = LearnerCourseRegistration.objects.get(
+            learner=learner, course=course
+        )
+        assert created
+        assert registration.is_active
+        assert registration.self_registered
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_an_active_registration_is_left_alone_and_writes_nothing(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+
+        created = self_register(
+            registration.learner.user,
+            registration.learner.organisation,
+            registration.course,
+        )
+
+        assert not created
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_reactivating_a_registration_writes_a_system_entry_naming_the_course(
+        self, mock_site_context
+    ):
+        registration = LearnerCourseRegistrationFactory(
+            is_active=False, self_registered=False
+        )
+        learner = registration.learner
+
+        created = self_register(learner.user, learner.organisation, registration.course)
+
+        registration.refresh_from_db()
+        assert not created
+        assert registration.is_active
+        assert not registration.self_registered
+        assert_entry(
+            action="registration.reactivated",
+            actor=None,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            details={"course": registration.course.title, "self_service": True},
+        )
+
+    def test_reactivating_the_learner_writes_a_system_entry_naming_the_course(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory(is_active=False)
+        course = CourseFactory(title="Algebra")
+
+        self_register(learner.user, learner.organisation, course)
+
+        learner.refresh_from_db()
+        assert learner.is_active
+        assert_entry(
+            action="learner.reactivated",
+            actor=None,
+            target=learner,
+            target_label=learner.user.display_name,
+            organisation=learner.organisation,
+            details={"course": "Algebra", "self_service": True},
+        )
+
+    def test_a_new_learner_writes_nothing(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+
+        self_register(user, organisation, CourseFactory())
+
+        assert Learner.objects.get(user=user, organisation=organisation).is_active
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_closed_course_is_refused_and_changes_nothing(self, mock_site_context):
+        organisation = OrganisationFactory()
+        course = CourseFactory(audience=CourseAudience.ORGANISATION_LEARNERS)
+        course.organisations.add(OrganisationFactory())
+        user = UserFactory()
+
+        with pytest.raises(CourseNotOpenError):
+            self_register(user, organisation, course)
+
+        assert not Learner.objects.filter(user=user).exists()
         assert AuditLogEntry.unscoped.count() == 0
 
 

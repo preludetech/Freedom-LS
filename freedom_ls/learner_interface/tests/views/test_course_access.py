@@ -183,6 +183,47 @@ def test_initiate_access_after_an_admin_deactivation_deletes_the_recommendation(
     ).exists()
 
 
+@pytest.mark.django_db
+def test_initiate_access_reactivates_a_deactivated_registration_and_keeps_its_maker(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    """Reactivation goes through self_register, whose own tests cover the
+    history entry it writes; here the registration comes back as the
+    admin's, not as a self-registration."""
+    course = course_with_topic(access_type="free")
+    learner = LearnerFactory(organisation=get_default_organisation(mock_site_context))
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=False, self_registered=False
+    )
+
+    _initiate_access(logged_in_client(learner.user), course)
+
+    registration.refresh_from_db()
+    assert registration.is_active
+    assert not registration.self_registered
+
+
+@pytest.mark.django_db
+def test_initiate_access_reactivates_a_deactivated_learner_of_the_default_organisation(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    learner = LearnerFactory(
+        user=user,
+        organisation=get_default_organisation(mock_site_context),
+        is_active=False,
+    )
+
+    _initiate_access(logged_in_client(user), course)
+
+    learner.refresh_from_db()
+    assert learner.is_active
+    assert LearnerCourseRegistration.objects.get(
+        learner=learner, course=course
+    ).is_active
+
+
 def _initiate_access(client: Client, course) -> None:
     client.post(
         reverse(

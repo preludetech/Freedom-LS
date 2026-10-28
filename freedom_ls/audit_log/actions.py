@@ -38,13 +38,20 @@ def _describe_cohort(entry: AuditLogEntry) -> str:
 
 
 def _describe_joined_cohort(entry: AuditLogEntry) -> str:
-    """The cohort a learner joined in the same change, when there was one."""
+    """The cohort a learner joined in the same change, when there was one,
+    or the course a learner's own registration reactivated them for."""
+    course = entry.details.get("course")
+    if course:
+        return f"Self-registered for {course}"
     cohort = entry.details.get("cohort")
     return f"Added to {cohort}" if cohort else ""
 
 
 def _describe_course(entry: AuditLogEntry) -> str:
-    return str(entry.details.get("course", ""))
+    course = str(entry.details.get("course", ""))
+    if entry.details.get("self_service"):
+        return f"{course} (self-registered)"
+    return course
 
 
 def _describe_move(entry: AuditLogEntry) -> str:
