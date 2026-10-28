@@ -14,7 +14,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
-- `deadlines-2-consequence-policy`
 - `deadlines-8-per-placement-dates`
 - `failed-login-follow-up`
 - `file-scanning`
@@ -516,7 +515,7 @@ is at risk.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 2 | `deadlines-2-consequence-policy` | A deadline policy chosen per site, organisation, cohort, course or registration: grace window, close the item, end course access, flag educators. Enforced in the player and the access check. | `deadlines-1-dates-and-overdue` | next |
+| 2 | `deadlines-2-consequence-policy` | A deadline policy chosen per site, organisation, cohort, course or registration: grace window, close the item, end course access, flag educators. Enforced in the player and the access check. | `deadlines-1-dates-and-overdue` | in progress |
 | 3 | `deadlines-3-extensions-and-pause` | Staff extend a learner's deadlines and pause or resume their course in the admin. The clock stops, dates shift, content locks while paused; webhooks for each. | `deadlines-2-consequence-policy` | next |
 | 4 | `deadlines-4-learner-self-pause` | Learners pause and resume their own course from the learner interface, within the policy's limits, with a reason. | `deadlines-3-extensions-and-pause` | next |
 | 5 | `deadlines-5-reminders` | A housekeeping sweep raises reminder notifications to learners (approaching, due today, overdue) and rolled-up overdue notifications to educators, once each, plus a `deadline.missed` webhook. | `deadlines-3-extensions-and-pause` | next |
