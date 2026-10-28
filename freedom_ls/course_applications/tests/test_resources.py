@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.resources import (
@@ -25,7 +26,10 @@ from freedom_ls.course_applications.resources import (
 )
 from freedom_ls.course_applications.tests.helpers import gated_course_with_form
 from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
     FormProgressFactory,
+    FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
@@ -330,3 +334,35 @@ def test_export_query_count_does_not_grow_with_the_number_of_applications(
 
     with django_assert_max_num_queries(len(captured)):
         CourseApplicationResource().export(CourseApplication.objects.all())
+
+
+def test_applications_to_two_courses_leave_the_other_forms_columns_empty(
+    staff_client,
+):
+    first_course, first_form = gated_course_with_form()
+    second_form = FormFactory(title="Zeta form")
+    FormQuestionFactory(
+        form_page=FormPageFactory(form=second_form),
+        type="short_text",
+        question="Favourite colour",
+    )
+    second_course = CourseFactory(access_config={"access_type": "application_gated"})
+    second_course.application_form = second_form
+    second_course.save(update_fields=["application_form"])
+    first = _application_for(first_course, first_form)
+    second = _application_for(second_course, second_form)
+    _answer(first, _form_questions(first_form)[0], text_answer="Ada")
+    _answer(second, _form_questions(second_form)[0], text_answer="Green")
+
+    response = _export_selected(
+        staff_client, "courseapplication", [str(first.pk), str(second.pk)]
+    )
+
+    header, rows = _rows(response)
+    by_id = {row[0]: dict(zip(header, row, strict=True)) for row in rows}
+    assert "Favourite colour" in header
+    assert "Your name" in header
+    assert by_id[str(first.pk)]["Your name"] == "Ada"
+    assert by_id[str(first.pk)]["Favourite colour"] == ""
+    assert by_id[str(second.pk)]["Your name"] == ""
+    assert by_id[str(second.pk)]["Favourite colour"] == "Green"

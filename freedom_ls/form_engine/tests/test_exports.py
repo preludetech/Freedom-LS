@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
 from freedom_ls.form_engine.exports import answer_cell, answer_columns
@@ -105,3 +107,89 @@ def test_answer_cell_of_a_long_text_answer_keeps_its_newlines(mock_site_context)
     answer = _answer("long_text", text_answer="line one\nline two\n")
 
     assert answer_cell(answer) == "line one\nline two\n"
+
+
+def _sitting_of(title: str, *question_texts: str) -> FormProgress:
+    form = FormFactory(title=title, slug=f"{title}-{uuid4()}")
+    page = FormPageFactory(form=form)
+    for order, text in enumerate(question_texts):
+        FormQuestionFactory(form_page=page, order=order, question=text)
+    sitting: FormProgress = FormProgressFactory(form=form)
+    return sitting
+
+
+def test_answer_columns_of_several_forms_are_ordered_by_form_title(
+    mock_site_context,
+):
+    b_sitting = _sitting_of("B form", "B question")
+    a_sitting = _sitting_of("A form", "A question")
+
+    columns = answer_columns([b_sitting, a_sitting])
+
+    assert [column.header for column in columns] == ["A question", "B question"]
+
+
+def test_an_answered_question_off_every_page_gets_a_column_after_the_page_questions(
+    mock_site_context,
+):
+    form = FormFactory()
+    FormQuestionFactory(form_page=FormPageFactory(form=form), question="On page")
+    moved = FormQuestionFactory(
+        form_page=FormPageFactory(form=FormFactory()), question="Moved"
+    )
+    sitting: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=sitting, question=moved)
+
+    columns = answer_columns([sitting])
+
+    assert [column.header for column in columns] == ["On page", "Moved"]
+    assert columns[-1].question == moved
+
+
+def test_forms_asking_the_same_question_get_their_form_title_in_the_header(
+    mock_site_context,
+):
+    sittings = [_sitting_of("B form", "Why?"), _sitting_of("A form", "Why?")]
+
+    columns = answer_columns(sittings)
+
+    assert [column.header for column in columns] == ["Why? (A form)", "Why? (B form)"]
+
+
+def test_one_form_asking_the_same_question_twice_gets_column_positions_in_the_header(
+    mock_site_context,
+):
+    sitting = _sitting_of("Only form", "Why?", "Why?")
+
+    columns = answer_columns([sitting])
+
+    assert [column.header for column in columns] == ["Why? (1)", "Why? (2)"]
+
+
+def test_forms_with_the_same_title_asking_the_same_question_get_both_suffixes(
+    mock_site_context,
+):
+    sittings = [_sitting_of("Same", "Why?"), _sitting_of("Same", "Why?")]
+
+    columns = answer_columns(sittings)
+
+    assert [column.header for column in columns] == [
+        "Why? (Same) (1)",
+        "Why? (Same) (2)",
+    ]
+
+
+def test_a_question_text_used_by_one_form_only_keeps_its_bare_header(
+    mock_site_context,
+):
+    sittings = [_sitting_of("A form", "Unique", "Twice", "Twice")]
+    sittings.append(_sitting_of("B form", "Other"))
+
+    columns = answer_columns(sittings)
+
+    assert [column.header for column in columns] == [
+        "Unique",
+        "Twice (2)",
+        "Twice (3)",
+        "Other",
+    ]
