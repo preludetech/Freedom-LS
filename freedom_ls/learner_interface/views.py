@@ -21,6 +21,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.views.decorators.vary import vary_on_headers
 
 from freedom_ls.accounts.decorators import acquisition_login_required
 from freedom_ls.content_engine.models import (
@@ -751,6 +752,7 @@ def _requested_panel(
     return next((c for c in contributions if c.swap_id == target), None)
 
 
+@vary_on_headers("HX-Request", "HX-Target")
 def dashboard(request: HttpRequest) -> HttpResponse:
     """Dashboard view — authenticated or anonymous, whole page or one fragment.
 

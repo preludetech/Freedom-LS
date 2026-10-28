@@ -70,6 +70,21 @@ from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("headers", [{}, {"HTTP_HX_REQUEST": "true"}])
+def test_dashboard_response_varies_on_htmx_headers(
+    mock_site_context, courses, logged_in_client, headers
+):
+    """A fragment and the full page share a URL, so the cache must key on htmx headers.
+
+    Without ``Vary``, Back restored the cached section fragment as the whole page.
+    """
+    client = logged_in_client(UserFactory())
+    response = client.get(reverse("learner_interface:dashboard"), **headers)
+    vary = {h.strip().lower() for h in response["Vary"].split(",")}
+    assert {"hx-request", "hx-target"} <= vary
+
+
+@pytest.mark.django_db
 def test_dashboard_authenticated_returns_200_with_user_label(
     mock_site_context, courses, logged_in_client
 ):
