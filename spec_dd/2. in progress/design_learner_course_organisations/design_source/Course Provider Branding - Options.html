@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Course provider branding — options</title>
+<link rel="stylesheet" href="design-system/kit.css" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles-overview.css" />
+<link rel="stylesheet" href="styles-ato.css" />
+<link rel="stylesheet" href="styles-provider.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>body{margin:0;background:#ECEEF3}#root{min-height:100vh}.dc-section-title{font-family:var(--font-heading)!important}a{color:var(--color-primary)}a:hover{color:var(--color-primary-900)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="components/Primitives.jsx"></script>
+<script type="text/babel" src="components/TopBar.jsx"></script>
+<script type="text/babel" src="components/Dashboard.jsx"></script>
+<script type="text/babel" src="components/CourseOverview.jsx"></script>
+<script type="text/babel" src="components/ProviderOptions.jsx"></script>
+<script type="text/babel" src="components/ProviderIndex.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+const DASH_H = 2360;
+const DETAIL_H = 2160;
+const IDX_H = 1240;
+function App() {
+  return (
+    <DesignCanvas initialZoom={0.26} background="#ECEEF3">
+      <DCSection id="cards" title="Dashboard cards — RPAS Training Academy runs RPAS Standard, Radiotelephony, Airspace, Photogrammetry and Examiner Pathway" subtitle="Courses without a provider stay as they are, so the mark only appears where it means something.">
+        <DCArtboard id="a" label="A · Pill on the thumbnail — badge + short name, top-left" width={1180} height={DASH_H}>
+          <PvDashboardFrame brand={brandThumb} />
+        </DCArtboard>
+        <DCArtboard id="b" label="B · Provider row — badge + full name replaces the eyebrow" width={1180} height={DASH_H}>
+          <PvDashboardFrame brand={brandRow} />
+        </DCArtboard>
+        <DCArtboard id="c" label="C · 'Offered by' footer — full horizontal logo" width={1180} height={DASH_H + 120}>
+          <PvDashboardFrame brand={brandFoot} />
+        </DCArtboard>
+        <DCArtboard id="cd" label="D · Provider band — gradient logo across the foot of the thumbnail" width={1180} height={DASH_H}>
+          <PvDashboardFrame brand={brandBand} />
+        </DCArtboard>
+        <DCArtboard id="ce" label="E · Avatar — badge overlaps the thumbnail edge, name beside it" width={1180} height={DASH_H + 60}>
+          <PvDashboardFrame brand={brandAvatar} />
+        </DCArtboard>
+        <DCArtboard id="cf" label="F · Badge only — round mark top-left, name on hover" width={1180} height={DASH_H}>
+          <PvDashboardFrame brand={brandCorner} />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="index" title="Course index — long-format rows" subtitle="Same treatments on a catalogue list, plus a provider filter chip. Night Operations and Aviation Weather have no provider.">
+        <DCArtboard id="ia" label="A · Pill on the thumbnail" width={1180} height={IDX_H}><PvIndexFrame brand={brandThumb} /></DCArtboard>
+        <DCArtboard id="ib" label="B · Provider row — replaces the eyebrow" width={1180} height={IDX_H}><PvIndexFrame brand={brandRow} /></DCArtboard>
+        <DCArtboard id="ig" label="G · Provider + level — badge, name and level on one line" width={1180} height={IDX_H}><PvIndexFrame brand={pvSplitRow} /></DCArtboard>
+        <DCArtboard id="ig2" label="G2 · Provider + level — tag top-right, Details button bottom-right, no divider" width={1180} height={IDX_H}><PvIndexFrame brand={pvSplitRow} layout="tagged" /></DCArtboard>
+        <DCArtboard id="id" label="D · Provider band across the thumbnail" width={1180} height={IDX_H}><PvIndexFrame brand={brandBand} /></DCArtboard>
+        <DCArtboard id="ih" label="H · Logo in the action column — full horizontal logo above price" width={1180} height={IDX_H}><PvIndexFrame side={pvSideLogo} /></DCArtboard>
+        <DCArtboard id="ic" label="C · 'Offered by' footer" width={1180} height={IDX_H + 120}><PvIndexFrame brand={brandFoot} /></DCArtboard>
+      </DCSection>
+      <DCSection id="detail" title="Course detail — Airspace Classes for sub-25kg RPAS">
+        <DCArtboard id="d1" label="1 · Provider bar — badge + name as a ruled header row inside the hero" width={1180} height={DETAIL_H}>
+          <PvDetailFrame header="bar" />
+        </DCArtboard>
+        <DCArtboard id="d2" label="2 · Provider-themed hero — their navy, their logo as the hero art" width={1180} height={DETAIL_H}>
+          <PvDetailFrame header="theme" />
+        </DCArtboard>
+        <DCArtboard id="d3" label="3 · Masthead — white band above the hero, logo in its native colours" width={1180} height={DETAIL_H + 90}>
+          <PvDetailFrame header="masthead" />
+        </DCArtboard>
+        <DCArtboard id="d4" label="4 · Title badge — large round mark set beside the course title" width={1180} height={DETAIL_H}>
+          <PvDetailFrame header="title" />
+        </DCArtboard>
+        <DCArtboard id="d5" label="5 · Glass card — 'Offered by' card on the right of the hero" width={1180} height={DETAIL_H}>
+          <PvDetailFrame header="card" />
+        </DCArtboard>
+        <DCArtboard id="d6" label="6 · Sidebar panel only — hero untouched, provider under the enrol card" width={1180} height={DETAIL_H}>
+          <PvDetailFrame panel />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="stack" title="Suggested pairing — B on cards, 1 + 6 on detail" subtitle="The name is readable at card size; the detail page states the provider in the hero and explains their role in the sidebar.">
+        <DCArtboard id="s1" label="Dashboard — provider row" width={1180} height={DASH_H}>
+          <PvDashboardFrame brand={brandRow} />
+        </DCArtboard>
+        <DCArtboard id="s2" label="Course detail — provider bar + sidebar panel" width={1180} height={DETAIL_H}>
+          <PvDetailFrame header="bar" panel />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+/* ATO attribution — placement options. All classes ato-* so nothing collides. */
+
+/* ---------- frame chrome (a slice of the real app, for context) ---------- */
+.ato-frame{display:flex;flex-direction:column;height:100%;background:var(--bg);overflow:hidden}
+.ato-frame .ato-body{flex:1;min-height:0;overflow:hidden}
+.ato-pad{padding:28px 36px 0}
+.ato-pad-b{padding-bottom:28px}
+
+/* keep the borrowed top bar from crowding at frame width */
+.ato-frame .fc-topbar{gap:16px}
+.ato-frame .fc-topbar .left{min-width:0;gap:20px}
+.ato-frame .fc-topbar .logo span,.ato-frame .fc-nav a{white-space:nowrap}
+.ato-frame .fc-search{width:250px;flex:0 0 auto}
+.ato-frame .fc-search input{min-width:0;flex:1 1 0}
+.ato-frame.has-lockup .fc-search{width:190px}
+.ato-frame.has-lockup .fc-search kbd{display:none}
+
+/* ---------- the shared partner primitives ---------- */
+.ato-mark{height:26px;width:auto;display:block}
+.ato-mark.rev{filter:brightness(0) invert(1)}
+.ato-mark.sm{height:18px}
+.ato-mark.lg{height:34px}
+
+.ato-num{font-family:var(--font-mono);font-size:12px;font-weight:500;letter-spacing:.02em;color:var(--fg-1);background:var(--grey-100);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.ato-num.rev{color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22)}
+.ato-num.tiny{font-size:11px;padding:1px 6px}
+
+.ato-eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--fg-3)}
+.ato-eyebrow.rev{color:rgba(255,255,255,.6)}
+
+/* B — top-bar co-brand lockup */
+.ato-lockup{display:flex;align-items:center;gap:12px}
+.ato-lockup .with{font-size:12px;color:var(--fg-3)}
+.ato-rule{width:1px;height:26px;background:var(--border)}
+
+/* C — accreditation strip under the top bar */
+.ato-strip{display:flex;align-items:center;gap:18px;padding:12px 36px;background:var(--bg-elev);border-bottom:1px solid var(--border)}
+.ato-strip .txt{font-size:13px;color:var(--fg-2);max-width:78ch;margin:0}
+.ato-strip .txt strong{color:var(--fg-1);font-weight:600}
+.ato-strip .spacer{flex:1}
+.ato-strip a{font-size:13px;font-weight:600;color:var(--color-primary);text-decoration:none;white-space:nowrap}
+.ato-strip a:hover{color:var(--color-primary-900)}
+
+/* D — per-course attribution line inside cards */
+.ato-cardline{display:flex;align-items:center;gap:7px;padding-top:10px;margin-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--fg-2);line-height:1.3}
+.ato-cardline i{font-size:14px;color:var(--fg-4);flex-shrink:0}
+.ato-cardline .no{font-family:var(--font-mono);color:var(--fg-2)}
+
+/* E — course-detail provider panel */
+.ato-panel{background:var(--bg-elev);border:1px solid var(--border);border-radius:12px;padding:20px}
+.ato-panel .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.ato-panel .nm{font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1);margin:14px 0 4px;line-height:1.3}
+.ato-panel .sub{font-size:13px;color:var(--fg-2);margin:0 0 14px}
+.ato-panel .rows{display:flex;flex-direction:column;gap:9px;padding:14px 0;border-top:1px solid var(--border)}
+.ato-panel .row{display:grid;grid-template-columns:18px 1fr;gap:9px;font-size:13px;color:var(--fg-2);line-height:1.45}
+.ato-panel .row i{font-size:16px;color:var(--color-primary)}
+.ato-panel .lnk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--color-primary);text-decoration:none}
+
+/* F — accreditation band under the course title */
+.ato-band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;padding:12px 16px;background:var(--grey-50);border:1px solid var(--border);border-radius:10px}
+.ato-band .lbl{font-size:12.5px;color:var(--fg-2)}
+.ato-band .lbl strong{color:var(--fg-1);font-weight:600}
+.ato-band .dot{width:4px;height:4px;border-radius:50%;background:var(--border-strong)}
+
+/* A — global platform footer */
+.ato-footer{background:var(--grey-900);color:#fff;padding:26px 36px 20px}
+.ato-footer.light{background:var(--bg-elev);color:var(--fg-1);border-top:1px solid var(--border)}
+.ato-footer .cols{display:grid;grid-template-columns:1fr 1.25fr;gap:56px;align-items:start}
+.ato-footer .fc-mark{display:flex;align-items:center;gap:9px;font-family:var(--font-heading);font-weight:700;font-size:16px;letter-spacing:-.01em}
+.ato-footer .fc-mark img{height:24px;width:auto}
+.ato-footer .blurb{font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.62);margin:10px 0 0;max-width:38ch}
+.ato-footer.light .blurb{color:var(--fg-3)}
+.ato-footer .links{display:flex;gap:16px;margin-top:14px;font-size:12px}
+.ato-footer .links a{color:rgba(255,255,255,.72);text-decoration:none}
+.ato-footer .links a:hover{color:#fff}
+.ato-footer.light .links a{color:var(--fg-2)}
+.ato-footer.light .links a:hover{color:var(--color-primary)}
+.ato-footer .p-name{font-family:var(--font-heading);font-weight:600;font-size:16px;margin:12px 0 4px}
+.ato-footer .p-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:rgba(255,255,255,.62)}
+.ato-footer.light .p-line{color:var(--fg-3)}
+.ato-footer .p-stmt{font-size:12.5px;line-height:1.6;color:rgba(255,255,255,.72);margin:12px 0 0;max-width:64ch}
+.ato-footer.light .p-stmt{color:var(--fg-2)}
+.ato-footer .base{margin-top:22px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.45)}
+.ato-footer.light .base{border-top-color:var(--border);color:var(--fg-3)}
+
+/* real views inside a fixed frame */
+.ato-frame .fc-topbar{position:static}
+.ato-frame .lxo-aside{position:static}
+.lxo-atoband{max-width:1180px;margin:0 auto;padding:24px clamp(20px,4vw,56px) 0}
+.lxo-atoband .ato-band{margin-top:0}
+.fc-hero .ato-cardline,.fc-card-body .ato-cardline{width:100%}
+
+/* ---------- canvas note cards ---------- */
+.ato-note{font-family:var(--font-body);font-size:12.5px;line-height:1.5;color:var(--fg-2)}
+a{color:var(--color-primary)}
+a:hover{color:var(--color-primary-900)}

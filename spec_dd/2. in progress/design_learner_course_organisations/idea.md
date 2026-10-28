@@ -30,3 +30,7 @@ Details button bottom right, but have a text-only button, not a button with a bo
 # Data
 
 Orgs can upload a "profile" image logo for use here. Otherwise use their default logo
+
+# Resources
+
+- `spec_dd/2. in progress/design_learner_course_organisations/design.md`: the Claude Design design for the dashboard course cards, the course detail page header and organisation card, and the long-format course rows (including applications), a visual reference only. Read it as that file says.
