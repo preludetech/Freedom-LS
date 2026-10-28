@@ -160,6 +160,36 @@ class TestIsSubmitted:
 
 
 @pytest.mark.django_db
+class TestSubmittedTime:
+    def test_an_application_with_no_sitting_was_submitted_when_created(
+        self, mock_site_context
+    ):
+        app = CourseApplicationFactory()
+
+        assert app.submitted_time == app.created_at
+
+    def test_an_open_sitting_has_no_submitted_time(self, mock_site_context):
+        user = UserFactory()
+        app = CourseApplicationFactory(
+            user=user, form_progress=FormProgressFactory(user=user)
+        )
+
+        assert app.submitted_time is None
+
+    def test_a_completed_sitting_is_submitted_when_it_completed(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        app = CourseApplicationFactory(
+            user=user, form_progress=FormProgressFactory(user=user)
+        )
+        app.form_progress.complete()
+
+        assert app.submitted_time == app.form_progress.completed_time
+        assert app.submitted_time is not None
+
+
+@pytest.mark.django_db
 class TestAnonymousApplications:
     def test_signed_in_application_is_email_verified(self, mock_site_context):
         assert CourseApplicationFactory().is_email_verified is True

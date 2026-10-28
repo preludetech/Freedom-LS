@@ -9,7 +9,7 @@ themselves live in form_engine.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from allauth.account import app_settings as allauth_account_settings
 
@@ -166,6 +166,14 @@ class CourseApplication(SiteAwareModel):
         return (
             self.form_progress is None or self.form_progress.completed_time is not None
         )
+
+    @property
+    def submitted_time(self) -> datetime | None:
+        """When the applicant asked for a place; None while the sitting is a draft."""
+        # An application with no sitting was submitted the moment it was created.
+        if self.form_progress is None:
+            return self.created_at
+        return self.form_progress.completed_time
 
     @property
     def is_email_verified(self) -> bool:

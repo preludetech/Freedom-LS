@@ -43,6 +43,8 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     QuestionAnswerFile,
 )
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 pytestmark = pytest.mark.django_db
 
@@ -50,6 +52,7 @@ CHANGELIST = "admin:freedom_ls_course_applications_courseapplication_changelist"
 ADD = "admin:freedom_ls_course_applications_courseapplication_add"
 CHANGE = "admin:freedom_ls_course_applications_courseapplication_change"
 DELETE = "admin:freedom_ls_course_applications_courseapplication_delete"
+EXPORT = "admin:freedom_ls_course_applications_courseapplication_export"
 
 
 def _draft() -> CourseApplication:
@@ -805,3 +808,88 @@ def test_changelist_shows_a_changed_address_as_unverified(staff_client):
         row.applicant_email,
         CourseApplicationAdmin(CourseApplication, None).is_email_verified(row),
     ) == ("corrected@example.com", False)
+
+
+def test_changelist_offers_the_export_action_and_button(staff_client):
+    response = staff_client.get(reverse(CHANGELIST))
+
+    assert b"export_admin_action" in response.content
+    assert reverse(EXPORT).encode() in response.content
+
+
+def test_export_honours_the_course_filter(staff_client):
+    wanted = CourseApplicationFactory()
+    other = CourseApplicationFactory()
+
+    response = staff_client.get(
+        reverse(EXPORT), {"course__id__exact": wanted.course.pk}
+    )
+
+    body = response.content.decode("utf-8-sig")
+    assert wanted.applicant_email in body
+    assert other.applicant_email not in body
+
+
+def test_export_honours_the_submitted_filter(staff_client):
+    draft = _draft()
+    submitted = _submitted()
+
+    response = staff_client.get(reverse(EXPORT), {"submitted": "draft"})
+
+    body = response.content.decode("utf-8-sig")
+    assert draft.applicant_email in body
+    assert submitted.applicant_email not in body
+
+
+def test_export_returns_403_without_any_course_applications_permission(
+    mock_site_context,
+):
+    client = Client()
+    client.force_login(UserFactory(staff=True))
+
+    assert client.get(reverse(EXPORT)).status_code == 403
+
+
+def test_changelist_submitted_time_shows_created_at_for_an_application_with_no_sitting(
+    staff_client,
+):
+    application = CourseApplicationFactory()
+
+    response = staff_client.get(reverse(CHANGELIST))
+
+    (row,) = response.context["cl"].result_list
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+    assert model_admin.submitted_time(row) == application.created_at
+
+
+def test_changelist_submitted_time_shows_completed_time_for_a_completed_sitting(
+    staff_client,
+):
+    application = _submitted()
+    assert application.form_progress is not None
+
+    response = staff_client.get(reverse(CHANGELIST))
+
+    (row,) = response.context["cl"].result_list
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+    assert model_admin.submitted_time(row) == application.form_progress.completed_time
+
+
+def test_export_omits_a_user_held_application_on_another_site(staff_client, site):
+    other_site = SiteFactory()
+    with site_context(other_site):
+        other = CourseApplicationFactory()
+
+    response = staff_client.get(reverse(EXPORT))
+
+    assert other.applicant_email not in response.content.decode("utf-8-sig")
+
+
+def test_export_omits_an_anonymous_application_on_another_site(staff_client, site):
+    other_site = SiteFactory()
+    with site_context(other_site):
+        other = CourseApplicationFactory(anonymous=True)
+
+    response = staff_client.get(reverse(EXPORT))
+
+    assert other.applicant_email not in response.content.decode("utf-8-sig")

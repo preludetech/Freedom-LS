@@ -14,11 +14,16 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.form_engine.admin import answers_context
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
+from freedom_ls.site_aware_models.admin import (
+    SiteAwareExportModelAdmin,
+    SiteAwareModelAdmin,
+    admin_change_link,
+)
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 
 from .erasure import erase_anonymous_applicant
 from .models import AnonymousApplicant, CourseApplication
+from .resources import CourseApplicationResource
 
 # The admin below denies delete so nobody can thin out applications one by one.
 # Erasing the applicant is the one path that must take them along, and the User
@@ -80,7 +85,7 @@ class EmailVerifiedFilter(admin.SimpleListFilter):
 
 
 @admin.register(CourseApplication)
-class CourseApplicationAdmin(SiteAwareModelAdmin):
+class CourseApplicationAdmin(SiteAwareExportModelAdmin):
     """Find an application and read it. Nothing here writes.
 
     Applications are created only by the apply flow, which also creates the
@@ -88,6 +93,8 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     rule that the sitting is the applicant's own sitting of that course's form,
     and deleting one would leave its sitting and files with no owner.
     """
+
+    resource_classes = [CourseApplicationResource]
 
     list_display = [
         "applicant_email",
@@ -206,10 +213,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Submitted time")
     def submitted_time(self, obj: CourseApplication) -> datetime | None:
-        # An application with no sitting was submitted the moment it was created.
-        if obj.form_progress is None:
-            return obj.created_at
-        return obj.form_progress.completed_time
+        return obj.submitted_time
 
     @admin.display(description="Submitted time")
     def submitted_time_display(self, obj: CourseApplication) -> str:
@@ -218,7 +222,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         Unfold prints a callable's datetime with ``str()``, skipping the
         formatting that the changelist and model fields get.
         """
-        submitted_time = self.submitted_time(obj)
+        submitted_time = obj.submitted_time
         if submitted_time is None:
             return str(self.get_empty_value_display())
         return formats.localize(timezone.localtime(submitted_time))
