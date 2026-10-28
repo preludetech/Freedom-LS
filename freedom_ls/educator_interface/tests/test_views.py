@@ -2335,6 +2335,22 @@ def test_the_educators_panel_refreshes_on_member_changes(staff_client: Client):
     assert "memberChanged" in lxml.html.tostring(card).decode()
 
 
+@pytest.mark.django_db
+def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Client):
+    """Adding an educator from the Educators panel writes a role.assigned
+    entry with the cohort as subject and answers with memberChanged alone."""
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    document = _get_document(
+        staff_client,
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"),
+    )
+
+    (card,) = document.cssselect("section[data-panel='history']")
+    assert "memberChanged from:body" in card.get("hx-trigger")
+
+
 def _remove_triggers(row) -> list[str]:
     return [
         button.get("hx-get")

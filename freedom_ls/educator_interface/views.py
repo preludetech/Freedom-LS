@@ -1071,7 +1071,8 @@ class CohortOverviewStack(PanelStack):
 class CohortHistoryPanel(HistoryPanel):
     model = Cohort
     data_table = TargetedAuditLogEntryTable
-    refresh_events = (COHORT_CHANGED,)
+    # A role assigned from the Educators panel is a cohort entry too.
+    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
     empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
 
 
