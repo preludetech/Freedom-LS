@@ -74,6 +74,7 @@ flowchart TB
     course_access --> content_engine
     course_access --> learner_management
     course_applications --> accounts
+    course_applications --> base
     course_applications --> content_engine
     course_applications --> course_access
     course_applications --> form_engine
@@ -126,6 +127,7 @@ flowchart TB
     hr_attributes --> site_aware_models
     icons --> base
     learner_interface --> accounts
+    learner_interface --> base
     learner_interface --> content_base
     learner_interface --> content_engine
     learner_interface --> course_access
@@ -133,7 +135,6 @@ flowchart TB
     learner_interface --> course_recommendations
     learner_interface --> deadlines
     learner_interface --> form_engine
-    learner_interface --> icons
     learner_interface --> learner_management
     learner_interface --> learner_progress
     learner_interface --> organisations
@@ -269,7 +270,7 @@ flowchart TB
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, organisations, site_aware_models | — |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
-| course_applications | accounts, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
+| course_applications | accounts, base, content_engine, course_access, form_engine, learner_management, mail, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |
 | deadlines | accounts, content_engine, learner_management, learner_progress, site_aware_models | — |
@@ -281,7 +282,7 @@ flowchart TB
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
-| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
+| learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
 | learner_management | accounts, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |

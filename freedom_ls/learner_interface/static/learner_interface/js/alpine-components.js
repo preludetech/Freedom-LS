@@ -504,4 +504,36 @@ document.addEventListener("alpine:init", () => {
             this.$el.removeEventListener("htmx:afterSwap", this._onAfterSwap);
         },
     }));
+
+    // The Back link on the course detail page. Stepping back through history
+    // returns the learner to whichever page sent them here; the link's href is
+    // the dashboard, used when there is no such page. document.referrer can be
+    // stale after an htmx-boosted navigation, which is accepted.
+    //
+    // data-forward-path is the page this page's call to action leads to. A
+    // learner returning from it, or from any page beneath it, has already been
+    // here, so stepping back would only bounce them between the two pages;
+    // the href takes them to the dashboard instead.
+    //
+    // A modified click or a non-primary button is the browser's own gesture
+    // (open in a new tab, and so on) and is left alone.
+    Alpine.data("historyBackLink", () => ({
+        goBack(event) {
+            if (event.defaultPrevented || event.button !== 0) return;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+            if (!this.cameFromAnotherPageHere()) return;
+            event.preventDefault();
+            history.back();
+        },
+        cameFromAnotherPageHere() {
+            if (history.length <= 1 || !document.referrer) return false;
+            const referrer = new URL(document.referrer, location.href);
+            if (referrer.origin !== location.origin) return false;
+            if (referrer.pathname === location.pathname) return false;
+            const forwardPath = this.$el.dataset.forwardPath;
+            return !(forwardPath && referrer.pathname.startsWith(forwardPath));
+        },
+    }));
 });

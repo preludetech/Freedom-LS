@@ -1,5 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django import template
 from django.utils.http import urlencode
+
+from freedom_ls.base import pagination
+
+if TYPE_CHECKING:
+    from django.template.context import Context
 
 register = template.Library()
 
@@ -45,3 +54,12 @@ def pagination_suffix(
     if not pieces:
         return ""
     return "&" + "&".join(pieces)
+
+
+@register.simple_tag(takes_context=True)
+def page_href(context: Context, param_name: str, page_number: int) -> str:
+    """The current URL showing ``page_number`` of the pager keyed ``param_name``.
+
+    A template rendered without a request gets a link by query string alone.
+    """
+    return pagination.page_href(context.get("request"), param_name, page_number)

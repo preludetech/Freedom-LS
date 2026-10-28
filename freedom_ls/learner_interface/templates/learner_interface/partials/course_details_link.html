@@ -10,8 +10,7 @@ overlay so it is independently clickable and keyboard-focusable. The chevron
 (icon_right="next") is supplied by the button component.
 
 Context: course (needs course.slug). Placement/alignment is the caller's job:
-cards wrap this on its own right-aligned footer line; rows render it inline,
-right-aligned in the eyebrow slot.
+cards and rows both wrap this on its own right-aligned footer line.
 {% endcomment %}
 <c-button href="{% url 'learner_interface:course_detail' course_slug=course.slug %}"
           variant="link"

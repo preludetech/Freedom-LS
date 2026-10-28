@@ -591,3 +591,139 @@ def test_learner_browses_a_grid_of_article_and_course_cards(
                 kwargs={"course_slug": "alpha-course"},
             )
         )
+
+
+def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    page = logged_in_page
+    for letter in "ABCD":
+        CourseFactory(
+            title=f"Free Course {letter}",
+            slug=f"free-course-{letter.lower()}",
+            access_config={"access_type": "free"},
+        )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    section = page.locator("#section-page-available")
+    heading = page.get_by_role("heading", name="Available courses")
+
+    for width in (375, 768):
+        page.set_viewport_size({"width": width, "height": 900})
+        page.goto(dashboard_url)
+        rows = section.get_by_test_id("section-row-list")
+        expect(rows).to_be_visible()
+        expect(section.get_by_test_id("section-card-grid")).to_be_hidden()
+        pager = _box(section.get_by_role("navigation"))
+        first_row = _box(rows.locator("li").first)
+        assert pager["y"] + pager["height"] <= first_row["y"]
+        # The rows line up with the heading, not indented by the list's margin.
+        assert first_row["x"] == _box(heading)["x"]
+        browse_all = rows.get_by_role("link", name="Browse all courses")
+        expect(browse_all).to_be_visible()
+        link_box = _box(browse_all)
+        section_box = _box(page.locator("#section-page-available").locator(".."))
+        link_centre = link_box["x"] + link_box["width"] / 2
+        assert abs(link_centre - (section_box["x"] + section_box["width"] / 2)) <= 4
+
+    page.set_viewport_size({"width": 375, "height": 900})
+    page.goto(dashboard_url)
+    expect(
+        section.get_by_test_id("section-row-list").get_by_text("Free Course D")
+    ).to_have_count(0)
+    section.get_by_role("link", name="Next page").click()
+    expect(
+        section.get_by_test_id("section-row-list").get_by_role(
+            "link", name="Free Course D"
+        )
+    ).to_be_visible()
+    expect(heading).to_be_visible()
+
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(dashboard_url)
+    expect(section.get_by_test_id("section-card-grid")).to_be_visible()
+    expect(section.get_by_test_id("section-row-list")).to_be_hidden()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(dashboard_url)
+        assert_no_horizontal_overflow(page)
+
+
+def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    page = logged_in_page
+    course = CourseFactory(
+        title="Back Link Course",
+        slug="back-link-course",
+        access_config={"access_type": "free"},
+    )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    courses_url = str(reverse_url(live_server, "learner_interface:courses"))
+    detail_url = _detail_url(live_server, course)
+
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(dashboard_url)
+
+    page.goto(courses_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(courses_url)
+
+    page.goto(detail_url)
+    page.get_by_role("link", name="Back").click()
+    expect(page).to_have_url(dashboard_url)
+
+    # A modified click is the browser's gesture: a new tab, and this one stays put.
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    with page.context.expect_page() as new_page_info:
+        page.get_by_role("link", name="Back").click(modifiers=["ControlOrMeta"])
+    expect(new_page_info.value).to_have_url(dashboard_url)
+    expect(page).to_have_url(detail_url)
+    new_page_info.value.close()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(detail_url)
+        assert_no_horizontal_overflow(page)
+
+
+@pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+def test_back_does_not_bounce_between_the_course_and_its_application(
+    live_server,
+    logged_in_page: Page,
+    mock_site_context,
+) -> None:
+    """Cancelling an application returns to the course; Back must then leave it."""
+    page = logged_in_page
+    course = CourseFactory(
+        title="Gated Back Course",
+        slug="gated-back-course",
+        access_config={"access_type": "application_gated"},
+    )
+    dashboard_url = str(reverse_url(live_server, "learner_interface:dashboard"))
+    detail_url = _detail_url(live_server, course)
+
+    page.goto(dashboard_url)
+    page.get_by_role("link", name="Details").first.click()
+    expect(page).to_have_url(detail_url)
+    page.get_by_role("link", name="Apply now").click()
+    page.get_by_role("link", name="Cancel").click()
+    expect(page).to_have_url(detail_url)
+
+    page.get_by_role("link", name="Back").click()
+
+    expect(page).to_have_url(dashboard_url)

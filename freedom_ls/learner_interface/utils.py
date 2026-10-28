@@ -112,6 +112,10 @@ class CourseListingEntry:
     status: CourseListingStatus
     progress_percentage: int
     access_badge: AccessBadge | None = None
+    # The record the status was read from, handed on so the view that stamps
+    # the next-up item does not resolve it again per course. None when the
+    # learner holds no registration, and always for an anonymous visitor.
+    course_progress: CourseProgress | None = None
 
 
 def derive_listing_status(
@@ -1012,5 +1016,9 @@ def get_course_listing(
             is_complete=bool(record and record.completed_time is not None),
             progress_percentage=pct,
         )
-        entries.append(CourseListingEntry(course, status, pct, access_badge))
+        entries.append(
+            CourseListingEntry(
+                course, status, pct, access_badge, course_progress=record
+            )
+        )
     return entries

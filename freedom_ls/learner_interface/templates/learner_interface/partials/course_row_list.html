@@ -1,20 +1,26 @@
 {% comment %}
-Row-list wrapper for the all-courses page.
+Course rows, shared by the all-courses page and the dashboard's narrow layout.
 
-`all-courses-rows` is the full-page list — flat, no grouping, no special
-ordering. Each row is course_row.html, the single row template, which branches
-internally on course.listing_status. Consumed by all_courses.html.
+`course-rows` is the list itself, taking `courses`. `all-courses-rows` is the
+all-courses page's full list — flat, no grouping, no special ordering — with
+its empty state. Each row is course_row.html, the single row template, which
+branches internally on course.listing_status. Consumed by all_courses.html and
+course_list.html.
 {% endcomment %}
+
+{% partialdef course-rows %}
+    <ul class="flex flex-col divide-y divide-gray-100 list-none ml-0">
+        {% for course in courses %}
+            <li class="relative">
+                {% include "learner_interface/partials/course_row.html" %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endpartialdef %}
 
 {% partialdef all-courses-rows %}
     {% if all_courses %}
-        <ul class="flex flex-col divide-y divide-gray-100 list-none">
-            {% for course in all_courses %}
-                <li class="relative">
-                    {% include "learner_interface/partials/course_row.html" %}
-                </li>
-            {% endfor %}
-        </ul>
+        {% include "learner_interface/partials/course_row_list.html#course-rows" with courses=all_courses %}
     {% else %}
         <p class="text-muted/50">
             No courses available yet.

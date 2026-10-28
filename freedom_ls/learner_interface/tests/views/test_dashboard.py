@@ -30,7 +30,6 @@ from freedom_ls.course_access.backends import (
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.deadlines.models import DeadlineKind
-from freedom_ls.learner_interface.dashboard_sections import section_page_href
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
     learner_override,
@@ -68,6 +67,21 @@ from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 #
 # Sections reach the template as one ordered ``sections`` list, so tests read
 # them through ``section_by_slug``.
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("headers", [{}, {"HTTP_HX_REQUEST": "true"}])
+def test_dashboard_response_varies_on_htmx_headers(
+    mock_site_context, courses, logged_in_client, headers
+):
+    """A fragment and the full page share a URL, so the cache must key on htmx headers.
+
+    Without ``Vary``, Back restored the cached section fragment as the whole page.
+    """
+    client = logged_in_client(UserFactory())
+    response = client.get(reverse("learner_interface:dashboard"), **headers)
+    vary = {h.strip().lower() for h in response["Vary"].split(",")}
+    assert {"hx-request", "hx-target"} <= vary
 
 
 @pytest.mark.django_db
@@ -951,6 +965,72 @@ def test_page_one_renders_three_and_reports_the_position(four_available_courses)
     assert available.position_text == "1 to 3 of 4"
 
 
+def _fragment(client: Client, slug: str, **params: str) -> str:
+    response = client.get(
+        reverse("learner_interface:dashboard"),
+        params,
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET=f"section-page-{slug}",
+    )
+    return response.content.decode()
+
+
+@pytest.mark.django_db
+def test_each_section_renders_the_card_grid_and_the_row_list_with_the_same_courses(
+    four_available_courses,
+):
+    body = _fragment(Client(), "available")
+
+    assert body.count('data-testid="section-card-grid"') == 1
+    assert body.count('data-testid="section-row-list"') == 1
+    for course in four_available_courses[:3]:
+        assert len(re.findall(rf">\s*{course.title}\s*</a>", body)) == 2
+
+
+@pytest.mark.django_db
+def test_browse_all_courses_renders_once_per_layout(
+    mock_site_context, logged_in_client
+):
+    CourseFactory(
+        title="Not Yet Course",
+        slug="not-yet-course",
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user, course=CourseFactory(title="Mine", slug="mine")
+    )
+    client = logged_in_client(user)
+
+    assert _fragment(client, "coming-soon").count("Browse all courses") == 2
+    assert _fragment(client, "in-progress").count("Browse all courses") == 0
+
+
+@pytest.mark.django_db
+def test_an_in_progress_row_resumes_at_the_next_item(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory(title="Course A", slug="course-a")
+    first = TopicFactory(title="Opening topic", slug="opening", content="content")
+    second = TopicFactory(title="Second topic", slug="second", content="content")
+    course.items.create(child=first, order=0)
+    course.items.create(child=second, order=1)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    topic_completion(course, user, first, complete_time=timezone.now())
+    client = logged_in_client(user)
+
+    body = _fragment(client, "in-progress")
+
+    row_list = body.split('data-testid="section-row-list"')[1]
+    item_url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    assert f'href="{item_url}"' in row_list
+    assert "Next up: Second topic" in row_list
+
+
 @pytest.mark.django_db
 def test_page_two_renders_the_fourth_course(four_available_courses):
     response = Client().get(
@@ -1035,43 +1115,6 @@ def test_in_progress_pages(mock_site_context, logged_in_client):
     in_progress = rendered_section(response, "in-progress")
     assert len(in_progress.courses) == 3
     assert in_progress.position_text == "1 to 3 of 4"
-
-
-@pytest.mark.django_db
-def test_a_link_preserves_every_other_sections_page(rf):
-    request = rf.get(DASHBOARD_URL, {"page_available": "2", "page_history": "3"})
-
-    href = section_page_href(request, "page_available", 3)
-
-    assert "page_available=3" in href
-    assert "page_history=3" in href
-
-
-@pytest.mark.django_db
-def test_a_page_one_link_drops_its_own_parameter(rf):
-    request = rf.get(DASHBOARD_URL, {"page_available": "2", "page_history": "3"})
-
-    href = section_page_href(request, "page_available", 1)
-
-    assert "page_available" not in href
-    assert "page_history=3" in href
-
-
-@pytest.mark.django_db
-def test_a_link_carries_an_unrecognised_parameter_through(rf):
-    request = rf.get(DASHBOARD_URL, {"utm_source": "newsletter"})
-
-    href = section_page_href(request, "page_available", 2)
-
-    assert "utm_source=newsletter" in href
-    assert "page_available=2" in href
-
-
-@pytest.mark.django_db
-def test_a_page_one_link_with_nothing_else_is_the_bare_path(rf):
-    request = rf.get(DASHBOARD_URL)
-
-    assert section_page_href(request, "page_available", 1) == DASHBOARD_URL
 
 
 @pytest.mark.django_db
@@ -1469,6 +1512,20 @@ def _dashboard_text(client: Client) -> str:
     return " ".join(re.sub(r"<[^>]+>", " ", _dashboard_html(client)).split())
 
 
+def _first_card_grid(html: str) -> str:
+    """The first section's card grid, without the row list that repeats each course."""
+    start = html.index('data-testid="section-card-grid"')
+    return html[start : html.index('data-testid="section-row-list"', start)]
+
+
+def _row_lists(html: str) -> str:
+    """Every section's row list, without the card grids that repeat each course."""
+    return "".join(
+        part.split('data-testid="section-card-grid"')[0]
+        for part in html.split('data-testid="section-row-list"')[1:]
+    )
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
@@ -1484,6 +1541,20 @@ def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
     assert "Missed deadline Second Topic 1 Jan 2020" in text
     assert "Missed deadline Course " not in text
     assert "Next deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_shows_the_missed_deadline_too(deadline_card):
+    """Below lg the section shows rows, which must carry the card's deadline line."""
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+
+    html = _dashboard_html(client)
+    row_list = html[html.index('data-testid="section-row-list"') :]
+
+    assert "Missed deadline" in row_list
+    assert "Second Topic" in row_list
 
 
 @pytest.mark.django_db
@@ -1643,7 +1714,7 @@ def test_card_deadline_line_sits_below_next_up_and_outside_the_eyebrow(
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
 
-    html = _dashboard_html(client)
+    html = _first_card_grid(_dashboard_html(client))
 
     assert html.index("Next up:") < html.index("Next deadline")
     assert html.count("Next deadline") == 1
@@ -1680,7 +1751,10 @@ def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
 
     card_count = len(rendered_section(response, "in-progress").courses)
     assert card_count > 1
-    assert response.content.decode().count("Missed deadline") == card_count
+    assert (
+        _first_card_grid(response.content.decode()).count("Missed deadline")
+        == card_count
+    )
 
 
 @pytest.mark.django_db
@@ -1877,6 +1951,30 @@ def test_in_progress_card_names_the_organisation_of_a_cohort_registration(
     course_progress_record(course, user)
 
     assert "Cohort Academy" in _dashboard_html(logged_in_client(user))
+
+
+@pytest.mark.django_db
+def test_discovery_row_names_the_single_organisation(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(name="Solo Academy"))
+
+    assert "Solo Academy" in _row_lists(_dashboard_html())
+
+
+@pytest.mark.django_db
+def test_in_progress_row_names_the_organisation_the_learner_studies_through(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(name="Study Academy"),
+        course=course,
+    )
+    course_progress_record(course, user)
+
+    assert "Study Academy" in _row_lists(_dashboard_html(logged_in_client(user)))
 
 
 @pytest.mark.django_db

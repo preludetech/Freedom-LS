@@ -187,7 +187,9 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
 
     # Assert
     expect(
-        page.locator("#recommended-courses").get_by_text(course.title)
+        page.locator("#recommended-courses")
+        .get_by_test_id("section-card-grid")
+        .get_by_text(course.title)
     ).to_be_visible()
 
     # Act: the learner registers for the course.

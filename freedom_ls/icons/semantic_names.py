@@ -39,7 +39,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     # Content types
     "topic",
     "form",
-    "course_part",
+    "folder",
     # User/system
     "user",
     "cohort",

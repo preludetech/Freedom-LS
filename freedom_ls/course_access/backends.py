@@ -88,6 +88,10 @@ class DashboardContribution:
     # Deliberate Any: context is an opaque render-ready dict whose keys are
     # backend-owned; course_access never inspects them.
     context: dict[str, Any]  # render-ready context for that partial
+    # The id of the element a pager inside the panel swaps. An htmx request
+    # naming it in HX-Target gets this contribution rendered on its own rather
+    # than the whole dashboard. Empty when the panel has no swap of its own.
+    swap_id: str = ""
 
 
 # ---------------------------------------------------------------------------

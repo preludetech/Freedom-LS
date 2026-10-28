@@ -1,3 +1,4 @@
+{% load course_icon_tags %}
 {% comment %}
 Dashboard panel: in-flight course applications for the current learner.
 Contributed by ApplicationCourseAccessBackend.get_dashboard_contributions().
@@ -6,43 +7,91 @@ reads context keys and never imports course_applications.
 
 The status link resumes a draft at the page the applicant left, so the same
 URL serves both rows.
-{% endcomment %}
-<section class="space-y-3">
-    <h2 class="text-lg font-semibold">Your applications</h2>
 
-    <ul class="space-y-2 list-none ml-0">
-        {% for app in applications %}
-            <li class="flex flex-col gap-2 rounded-lg border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                {% if app.is_submitted %}
-                    <div class="flex items-center gap-3">
-                        <span class="text-primary" aria-hidden="true">
-                            <c-icon name="in_progress" class="size-4" />
-                        </span>
-                        <a href="{% url 'course_applications:status' pk=app.pk %}"
-                           class="font-medium hover:underline">
-                            {{ app.course.title }}
-                        </a>
-                    </div>
-                    <span class="text-sm text-muted">Pending review</span>
-                {% else %}
-                    <div class="space-y-1">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <a href="{% url 'course_applications:status' pk=app.pk %}"
-                               class="font-medium hover:underline">
-                                {{ app.course.title }}
-                            </a>
-                            <c-chip variant="warning" size="xs">Incomplete</c-chip>
+Paging: `panel-page` is the htmx swap boundary. The pager fetches the
+dashboard URL; the view sees this panel's swap id in HX-Target and answers
+with `panel-page-response`, this boundary plus the status region that
+announces the new position. The heading sits inside the boundary so a panel
+that has emptied since the page rendered leaves nothing behind. Focus
+restoration comes from the courseSectionPagination component on the section,
+which outlives the swap.
+{% endcomment %}
+
+{% partialdef panel-page %}
+    <div id="{{ swap_id }}" class="contents">
+        {% if applications %}
+            <h2 tabindex="-1" class="text-base sm:text-lg lg:text-xl font-semibold">Your applications</h2>
+
+            <div class="flex items-center justify-between gap-4 sm:justify-self-end">
+                <span class="text-sm text-muted tabular-nums">{{ position_text }}</span>
+                <c-section-pagination :page_obj="applications_page"
+                                      target_id="{{ swap_id }}"
+                                      page_param_name="{{ page_param_name }}"
+                                      nav_label="Your applications pages" />
+            </div>
+            <ul class="sm:col-span-2 flex flex-col divide-y divide-border list-none ml-0 rounded-2xl border border-border bg-surface overflow-hidden">
+                {% for app in applications %}
+                    {% url 'course_applications:status' pk=app.pk as status_url %}
+                    <li class="relative flex items-center gap-4 px-4 py-3">
+                        <div class="course-accent-{{ app.course.accent_slot_key }} flex size-11 shrink-0 items-center justify-center rounded-lg"
+                             aria-hidden="true">
+                            {% course_icon app.course.icon app.course.icon_fallback css_class="size-6" aria_label=app.course.title %}
                         </div>
-                        <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
-                    </div>
-                    <c-button href="{% url 'course_applications:status' pk=app.pk %}"
-                              size="small"
-                              icon_right="next"
-                              class="shrink-0">
-                        Continue application<span class="sr-only"> for {{ app.course.title }}</span>
-                    </c-button>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+                        <div class="min-w-0 flex-1 space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="font-medium wrap-break-word">
+                                    <a href="{{ status_url }}"
+                                       class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
+                                        {{ app.course.title }}
+                                    </a>
+                                </h3>
+                                {% if app.is_submitted %}
+                                    <c-chip variant="info" size="xs">Pending review</c-chip>
+                                {% else %}
+                                    <c-chip variant="warning" size="xs">Incomplete</c-chip>
+                                {% endif %}
+                            </div>
+                            {% if not app.is_submitted %}
+                                <p class="text-sm text-muted">Finish your application to have it reviewed.</p>
+                            {% endif %}
+                        </div>
+                        {% comment %}`relative` lifts the button above the title link's overlay so it hovers and focuses on its own.{% endcomment %}
+                        <c-button href="{{ status_url }}"
+                                  size="small"
+                                  icon_right="next"
+                                  class="relative hidden shrink-0 sm:inline-flex">
+                            {% if app.is_submitted %}View my application{% else %}Continue application{% endif %}<span class="sr-only"> for {{ app.course.title }}</span>
+                        </c-button>
+                        <span class="text-muted sm:hidden" aria-hidden="true"><c-icon name="next" class="size-5" /></span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endpartialdef %}
+
+{% comment %}
+The panel's live region. Only the htmx fragment carries hx-swap-oob and text:
+a region inserted by a swap is frequently never announced, so the whole page
+renders it empty and the fragment refreshes it in place.
+{% endcomment %}
+{% partialdef panel-status %}
+    <div id="applications-status"
+         role="status"
+         aria-atomic="true"
+         class="sr-only"
+         {% if announce_page %}hx-swap-oob="true"{% endif %}>
+        {% if announce_page %}Your applications: {% if applications %}showing {{ position_text }}{% else %}none{% endif %}{% endif %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef panel-page-response %}
+    {% partial panel-page %}
+    {% partial panel-status %}
+{% endpartialdef %}
+
+<section x-data="courseSectionPagination"
+         class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-3 items-center">
+    {% partial panel-page %}
+    {% partial panel-status %}
 </section>

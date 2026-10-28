@@ -19,8 +19,9 @@ from freedom_ls.accounts.factories import (
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_interface.tests.helpers import (
@@ -38,6 +39,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
 
@@ -45,8 +47,8 @@ from freedom_ls.tests.factories import SiteFactory
 #
 # These exercise the status/annotation logic the view attaches to each course
 # object it puts in the ``all_courses`` context: listing_status, progress
-# percentage, accent slot, and the absence of next_up_*
-# annotations. Rendered-HTML row assertions follow further down.
+# percentage, accent slot, and the next_up_* annotations on registered and
+# in-progress courses.
 
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -111,9 +113,9 @@ def _coming_soon_course(*, slug: str, title: str) -> Course:
 def test_all_courses_renders_four_distinct_status_labels(
     mock_site_context, courses, logged_in_client
 ):
-    """Each of the four registration states renders its own visible label, so a
-    registered-but-unstarted course is no longer indistinguishable from an
-    unregistered one. The old ambiguous "Not started" label is gone entirely."""
+    """Each enrolled state renders its own visible label, so a
+    registered-but-unstarted course is distinguishable from an unregistered one,
+    which shows no status at all. The old ambiguous "Not started" label is gone."""
     user = UserFactory()
     # courses[0] -> Not registered (left unregistered)
     # courses[1] -> Registered (enrolled, 0% progress)
@@ -137,7 +139,7 @@ def test_all_courses_renders_four_distinct_status_labels(
     assert response.status_code == 200
     body = response.content.decode()
 
-    assert "Not registered" in body
+    assert "Not registered" not in body  # rows carry no not-registered status
     assert "Registered" in body  # the registered-0% row (capital R, standalone)
     assert "In progress" in body
     assert "Completed" in body
@@ -184,23 +186,27 @@ def test_all_courses_not_registered_row_has_no_progress_bar(
 
 
 @pytest.mark.django_db
-def test_all_courses_registered_zero_percent_row_links_to_first_item(
-    mock_site_context, courses, logged_in_client
+def test_all_courses_registered_row_links_to_next_up_item_and_names_it(
+    mock_site_context, logged_in_client
 ):
-    """A registered-0% row links to view_course_item at index=1."""
+    """A registered row's title links to its first item and shows "Next up: <title>"."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    course = CourseFactory(title="Course A", slug="course-a")
+    first = TopicFactory(title="Opening topic", slug="opening", content="content")
+    course.items.create(child=first, order=0)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
 
+    assert response.status_code == 200
+    body = response.content.decode()
     item_url = reverse(
         "learner_interface:view_course_item",
-        kwargs={"course_slug": courses[0].slug, "index": 1},
+        kwargs={"course_slug": course.slug, "index": 1},
     )
-    body = response.content.decode()
-    assert item_url in body
+    assert f'href="{item_url}"' in body
+    assert "Next up: Opening topic" in body
 
 
 @pytest.mark.django_db
@@ -226,26 +232,52 @@ def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
 
 
 @pytest.mark.django_db
-def test_all_courses_in_progress_row_links_to_first_item(
-    mock_site_context, courses, logged_in_client
+def test_all_courses_in_progress_row_links_to_the_item_in_progress(
+    mock_site_context, logged_in_client
 ):
-    """An in-progress row links to view_course_item at index=1."""
+    """An in-progress row links to the item the learner is partway through, not index 1."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
-    course_progress_record(
-        courses[0], user, progress_percentage=55, completed_time=None
-    )
+    course = CourseFactory(title="Course A", slug="course-a")
+    done = TopicFactory(title="Finished topic", slug="finished", content="content")
+    current = TopicFactory(title="Current topic", slug="current", content="content")
+    course.items.create(child=done, order=0)
+    course.items.create(child=current, order=1)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    topic_completion(course, user, done, complete_time=timezone.now())
+    topic_completion(course, user, current, complete_time=None)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
 
+    assert response.status_code == 200
+    body = response.content.decode()
     item_url = reverse(
         "learner_interface:view_course_item",
-        kwargs={"course_slug": courses[0].slug, "index": 1},
+        kwargs={"course_slug": course.slug, "index": 2},
     )
+    assert f'href="{item_url}"' in body
+    assert "Next up: Current topic" in body
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_course_without_items_links_to_course_home(
+    mock_site_context, logged_in_client
+):
+    """With nothing to resume, a registered row's title links to the course home."""
+    user = UserFactory()
+    course = CourseFactory(title="Empty course", slug="empty-course")
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
+    client = logged_in_client(user)
+
+    response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200
     body = response.content.decode()
-    assert item_url in body
+    home_url = reverse(
+        "learner_interface:course_home", kwargs={"course_slug": course.slug}
+    )
+    assert f'href="{home_url}"' in body
+    assert "Next up:" not in body
 
 
 @pytest.mark.django_db
@@ -335,7 +367,6 @@ def test_all_courses_status_icons_are_decorative(
     course_progress_record(
         courses[1], user, progress_percentage=100, completed_time=timezone.now()
     )
-    # courses[2] stays unregistered -> exercises the not_started icon.
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -344,7 +375,7 @@ def test_all_courses_status_icons_are_decorative(
     body = response.content.decode()
     # Every status-icon svg (which carries aria-label="<slug>") must sit directly
     # inside an aria-hidden wrapper.
-    for slug in ("in_progress", "not_started", "complete"):
+    for slug in ("in_progress", "complete"):
         assert f'aria-label="{slug}"' in body, f"expected {slug} icon to render"
         assert re.search(
             rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
@@ -567,10 +598,10 @@ def test_all_courses_anonymous_not_registered_row_has_no_not_registered_eyebrow(
 
 
 @pytest.mark.django_db
-def test_all_courses_authenticated_not_registered_row_shows_not_registered_eyebrow(
+def test_all_courses_authenticated_not_registered_row_has_no_not_registered_eyebrow(
     mock_site_context,
 ):
-    """Authenticated users still see the 'Not registered' eyebrow on unregistered rows."""
+    """Authenticated users see no 'Not registered' eyebrow on unregistered rows."""
     from freedom_ls.accounts.factories import UserFactory
 
     CourseFactory(title="Some Course", slug="some-course")
@@ -580,7 +611,7 @@ def test_all_courses_authenticated_not_registered_row_shows_not_registered_eyebr
 
     response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
-    assert "Not registered" in response.content.decode()
+    assert "Not registered" not in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -1373,25 +1404,45 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     assert first_item_url in body
 
 
+def _detail_back_link_href(body: str) -> str | None:
+    assert 'aria-label="Breadcrumb"' not in body
+    anchors = re.findall(r"<a\b([^>]*)>(.*?)</a>", body, flags=re.DOTALL)
+    texts = [re.sub(r"<[^>]+>", "", inner).strip() for _, inner in anchors]
+    assert "All courses" not in texts
+    for (attrs, _), text in zip(anchors, texts, strict=True):
+        if text == "Back":
+            href = re.search(r'href="([^"]*)"', attrs)
+            return href.group(1) if href else None
+    return None
+
+
 @pytest.mark.django_db
-def test_course_detail_renders_breadcrumbs(
+def test_course_detail_offers_a_back_link_to_the_dashboard(
     mock_site_context, course_with_topics, logged_in_client
 ):
-    """The detail page renders breadcrumbs including the 'All courses' link
-    and the current course title."""
-    user = UserFactory()
-    client = logged_in_client(user)
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
+    client = logged_in_client(UserFactory())
+    url = reverse(
+        "learner_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
     )
-    body = response.content.decode()
-    all_courses_url = reverse("learner_interface:courses")
-    assert all_courses_url in body
-    assert "All courses" in body
-    assert course_with_topics.title in body
+
+    href = _detail_back_link_href(client.get(url).content.decode())
+
+    assert href == reverse("learner_interface:dashboard")
+
+
+@pytest.mark.django_db
+def test_course_detail_offers_an_anonymous_visitor_a_back_link_to_the_dashboard(
+    mock_site_context, course_with_topics
+):
+    url = reverse(
+        "learner_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+
+    href = _detail_back_link_href(Client().get(url).content.decode())
+
+    assert href == reverse("learner_interface:dashboard")
 
 
 @pytest.mark.django_db
@@ -1869,3 +1920,108 @@ def test_anonymous_dashboard_omits_a_submitted_application(mock_site_context, se
     body = client.get(reverse("learner_interface:dashboard")).content.decode()
 
     assert "Your applications" not in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_paging_the_applications_panel_returns_the_panel_alone(
+    mock_site_context, logged_in_client
+):
+    """A swap of the panel's own page never pays for, or carries, the rest of the dashboard."""
+    client = logged_in_client(UserFactory())
+    # Applying to a gated course without a form submits the application outright.
+    for title in ("Cartography", "Metallurgy", "Astronomy", "Botany"):
+        course = CourseFactory(
+            title=title, access_config={"access_type": "application_gated"}
+        )
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+    response = client.get(
+        reverse("learner_interface:dashboard") + "?page_applications=2",
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="applications-page",
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'id="applications-page"' in body
+    assert "<h1" not in body
+    assert 'id="section-page-available"' not in body
+    # Newest first, three per page: the oldest application alone fills page two.
+    assert "Cartography" in body
+    assert "Botany" not in body
+    assert 'id="applications-status"' in body
+    assert 'hx-swap-oob="true"' in body
+    assert "Your applications: showing 4 to 4 of 4" in body
+
+
+# Measured with three registered courses; the next-up walk still fetches each
+# course's own progress maps, and each course's access decision checks its
+# audience, so the count grows with registrations, but never re-resolves the
+# record the listing already holds.
+ALL_COURSES_MAX_QUERIES = 29
+
+
+def _three_registered_courses_with_topics(user: User) -> None:
+    for letter in "ABC":
+        course = CourseFactory(
+            title=f"Course {letter}", slug=f"course-{letter.lower()}"
+        )
+        course.items.create(child=TopicFactory(content="content"), order=0)
+        LearnerCourseRegistrationFactory(learner__user=user, course=course)
+
+
+@pytest.mark.django_db
+def test_all_courses_resolves_each_registered_courses_progress_once(
+    mock_site_context, logged_in_client
+):
+    """The listing resolves every record in bulk; the next-up walk reuses them."""
+    from unittest.mock import patch
+
+    user = UserFactory()
+    _three_registered_courses_with_topics(user)
+    client = logged_in_client(user)
+
+    with patch("freedom_ls.learner_interface.utils.course_progress_for") as resolve_one:
+        response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200
+    resolve_one.assert_not_called()
+    assert response.content.decode().count("Next up:") >= 3
+
+
+@pytest.mark.django_db
+def test_all_courses_query_count_stays_within_budget(
+    mock_site_context, logged_in_client, django_assert_max_num_queries
+):
+    user = UserFactory()
+    _three_registered_courses_with_topics(user)
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(ALL_COURSES_MAX_QUERIES):
+        response = client.get(reverse("learner_interface:courses"))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_all_courses_rows_name_no_organisation(mock_site_context, logged_in_client):
+    user = UserFactory()
+    owned = CourseFactory(title="Owned course", audience=CourseAudience.PUBLIC)
+    owned.organisations.add(OrganisationFactory(name="Owner Academy"))
+    studied = CourseFactory(title="Studied course")
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(name="Study Academy"),
+        course=studied,
+    )
+    course_progress_record(studied, user)
+
+    response = logged_in_client(user).get(reverse("learner_interface:courses"))
+
+    html = response.content.decode()
+    assert "Owned course" in html
+    assert "Owner Academy" not in html
+    assert "Study Academy" not in html

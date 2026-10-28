@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from django.core.paginator import Paginator
+from freedom_ls.base import pagination
 
 if TYPE_CHECKING:
     from django.core.paginator import Page
@@ -44,16 +44,21 @@ def _page_param_name(slug: str) -> str:
     return f"page_{slug}"
 
 
+def htmx_target(request: HttpRequest) -> str | None:
+    """The element id an htmx request names in ``HX-Target``; ``None`` for any other request."""
+    if request.headers.get("HX-Request") != "true":
+        return None
+    return request.headers.get("HX-Target") or None
+
+
 def requested_section_slug(request: HttpRequest) -> str | None:
     """The slug of the section an htmx page request names in ``HX-Target``.
 
     ``None`` for anything else, including a boosted navigation, which must get
     the whole page.
     """
-    if request.headers.get("HX-Request") != "true":
-        return None
-    target = request.headers.get("HX-Target", "")
-    if not target.startswith(SECTION_SWAP_ID_PREFIX):
+    target = htmx_target(request)
+    if target is None or not target.startswith(SECTION_SWAP_ID_PREFIX):
         return None
     return target[len(SECTION_SWAP_ID_PREFIX) :]
 
@@ -100,10 +105,7 @@ class DashboardSection:
     def position_text(self) -> str:
         if self.is_empty:
             return ""
-        return (
-            f"{self.page_obj.start_index()} to {self.page_obj.end_index()} "
-            f"of {self.page_obj.paginator.count}"
-        )
+        return pagination.position_text(self.page_obj)
 
     @property
     def status_text(self) -> str:
@@ -122,40 +124,7 @@ def page_for(
     slug: str,
     object_list: QuerySet[Course] | list[Course] | list[RecommendedCourse],
 ) -> Page:
-    """This section's page of ``object_list``, clamped to a valid page.
-
-    ``get_page`` rather than ``page``: a home page must not 500 on a stale
-    bookmark or a hand-edited query string, so a junk page number clamps.
-
-    ``get_page`` on its own clamps a non-integer to page one but clamps
-    anything below page one to the *last* page (Django's ``EmptyPage``
-    covers both "too high" and "too low", and ``get_page`` maps every
-    ``EmptyPage`` to ``num_pages``). A below-range page number is treated
-    here the same as a non-integer: it clamps to page one.
-    """
-    paginator = Paginator(object_list, SECTION_PAGE_SIZE)
-    raw_value = request.GET.get(_page_param_name(slug))
-    page_value: str | None = raw_value
-    if raw_value is not None:
-        try:
-            if int(raw_value) < 1:
-                page_value = "1"
-        except ValueError:
-            pass
-    return paginator.get_page(page_value)
-
-
-def section_page_href(request: HttpRequest, param_name: str, page_number: int) -> str:
-    """The dashboard URL showing ``page_number`` of one section.
-
-    Copies the incoming query string and touches only this section's key, so
-    every other section's page survives the link and an unrecognised parameter
-    passes through with no allowlist to maintain. Page one drops the key.
-    """
-    query = request.GET.copy()
-    if page_number <= 1:
-        query.pop(param_name, None)
-    else:
-        query[param_name] = str(page_number)
-    encoded = query.urlencode()
-    return f"{request.path}?{encoded}" if encoded else request.path
+    """This section's page of ``object_list``, clamped to a valid page."""
+    return pagination.clamped_page(
+        request, _page_param_name(slug), object_list, SECTION_PAGE_SIZE
+    )

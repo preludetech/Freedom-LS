@@ -41,7 +41,10 @@ def get_application_for_course(
 
 
 def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
-    """Return all applications for this user on the current site.
+    """Return all applications for this user on the current site, newest first.
+
+    The primary key breaks ties, so applications created in the same instant
+    keep one stable order from page to page.
 
     Returns an empty queryset immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager. With no terminal states
@@ -52,6 +55,8 @@ def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
 
     if not user.is_authenticated:
         return CourseApplication.objects.none()
-    return CourseApplication.objects.filter(user=user).select_related(
-        "course", "form_progress"
+    return (
+        CourseApplication.objects.filter(user=user)
+        .select_related("course", "form_progress")
+        .order_by("-created_at", "pk")
     )

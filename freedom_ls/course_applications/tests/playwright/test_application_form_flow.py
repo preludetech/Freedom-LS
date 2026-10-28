@@ -8,14 +8,18 @@ client test can prove work.
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import Page, expect
 
 from django.core import mail
+from django.utils import timezone
 
 from freedom_ls.conftest import reverse_url
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.form_engine.uploads import MAX_UPLOAD_BYTES
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.images import png_bytes
@@ -26,6 +30,8 @@ from freedom_ls.tests.playwright_helpers import (
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
+
+from freedom_ls.course_applications.models import CourseApplication
 
 from ..helpers import gated_course_with_form
 
@@ -344,3 +350,74 @@ def test_send_again_from_the_notice_says_a_new_link_went(
     expect(notice.get_by_role("button", name="Send again")).to_have_count(0)
     assert page.url == form_page_url
     assert len(mail.outbox) == 1
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_learner_pages_through_their_applications(
+    live_server, logged_in_page: Page, logged_in_user, mock_site_context
+):
+    page = logged_in_page
+    applications = []
+    now = timezone.now()
+    for index in range(4):
+        course = CourseFactory(
+            title=f"Gated Course {index + 1}",
+            slug=f"gated-course-{index + 1}",
+            access_config={"access_type": "application_gated"},
+        )
+        application = CourseApplicationFactory(user=logged_in_user, course=course)
+        CourseApplication.objects.filter(pk=application.pk).update(
+            created_at=now - timedelta(days=4 - index)
+        )
+        applications.append(application)
+    for letter in "ABCD":
+        CourseFactory(
+            title=f"Free Course {letter}",
+            slug=f"free-course-{letter.lower()}",
+            access_config={"access_type": "free"},
+        )
+    dashboard_url = reverse_url(live_server, "learner_interface:dashboard")
+    panel = page.locator("#applications-page")
+
+    page.goto(dashboard_url)
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_have_count(
+        0
+    )
+
+    panel.get_by_role("link", name="Next page").click()
+
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_have_count(
+        0
+    )
+    expect(page.get_by_role("heading", name="Your applications")).to_be_visible()
+    expect(page).to_have_url(dashboard_url)
+    expect(page.locator("#applications-status")).to_have_text(
+        "Your applications: showing 4 to 4 of 4"
+    )
+
+    # Paging a course section leaves the applications page where it was.
+    available = page.locator("#section-page-available")
+    available.get_by_role("link", name="Next page").click()
+    expect(panel.get_by_role("link", name="Gated Course 1", exact=True)).to_be_visible()
+    expect(panel.get_by_role("link", name="Gated Course 4", exact=True)).to_have_count(
+        0
+    )
+
+    # Below sm the row's button gives way to a chevron.
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.goto(dashboard_url)
+    rows = panel.get_by_role("listitem")
+    expect(panel.get_by_role("link", name="Continue application")).to_be_hidden()
+    expect(panel.get_by_role("link", name="View my application")).to_be_hidden()
+    for index in range(rows.count()):
+        expect(
+            rows.nth(index).locator('> span[aria-hidden="true"]').last.locator("svg")
+        ).to_be_visible()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(dashboard_url)
+        assert_no_horizontal_overflow(page)

@@ -7,31 +7,40 @@ contract and shared partials, different shell/layout.
 Standard fields land in standard places:
   icon + colour  -> <c-course-row-shell> accent panel (accent_slot_key, icon)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
-                    status is ever shown; no duplicate chip/badge)
-  details        -> course_details_link.html, right-aligned inline with the
-                    status in the eyebrow slot (top-right of the row)
+                    status is ever shown; no duplicate chip/badge). Rows show no
+                    "Not registered" status: an unregistered row has no eyebrow
+  details        -> course_details_link.html, on its own right-aligned line in
+                    the footer slot (bottom-right of the row, below everything)
   title + link   -> stretched title link (card_title_link.html)
-  progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
+  organisation   -> <c-organisation-byline>, only where the view stamps
+                    card_organisation (the dashboard does, the all-courses page does not)
+  deadline       -> course_deadline_line.html (missed deadline, else next deadline);
+                    the all-courses page passes no deadlines, so the line is dashboard-only
+  progress       -> footer slot (<c-course-progress-bar>), registered/in_progress
+                    only, above the details link
 
 Title-link target by status:
   complete                 -> course_finish
-  registered / in_progress -> view_course_item index=1
+  registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
-in place of the registration eyebrow.
+in the eyebrow slot.
 
 Removing the old "Coming soon" chip (status is now only in the eyebrow) also
 frees the horizontal space that clipped "Details" off narrow viewports.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
-icon_fallback, title, progress_percentage, access_badge, current_price) and
-user.
+icon_fallback, title, progress_percentage, next_up_url, next_up_title,
+missed_deadline, next_deadline, access_badge, current_price,
+card_organisation), user and
+show_time_zone_to_learners.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "registered" or course.listing_status == "in_progress" %}
-    {% url 'learner_interface:view_course_item' course_slug=course.slug index=1 as title_url %}
+    {% url 'learner_interface:course_home' course_slug=course.slug as home_url %}
+    {% firstof course.next_up_url home_url as title_url %}
 {% else %}
     {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
 {% endif %}
@@ -40,36 +49,42 @@ user.
                     icon="{{ course.icon }}"
                     icon_fallback="{{ course.icon_fallback }}"
                     title="{{ course.title }}">
-    <c-slot name="eyebrow">
-        <div class="flex items-center justify-between gap-2">
-            <div>
-                {% if course.listing_status == "not_registered" %}
-                    {% if user.is_authenticated %}
-                        {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-                    {% elif course.access_badge %}
-                        <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
-                    {% endif %}
-                {% else %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
-                {% endif %}
-            </div>
-            {% include "learner_interface/partials/course_details_link.html" %}
-        </div>
-    </c-slot>
+    {% if course.listing_status != "not_registered" %}
+        <c-slot name="eyebrow">
+            {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+        </c-slot>
+    {% elif not user.is_authenticated and course.access_badge %}
+        <c-slot name="eyebrow">
+            <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
+        </c-slot>
+    {% endif %}
 
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
 
+    <c-organisation-byline :organisation="course.card_organisation" />
+
     {% include "learner_interface/partials/course_listing_price.html" %}
 
-    {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
-        <c-slot name="footer">
+    {% if course.next_up_title %}
+        <p class="text-sm text-muted">
+            Next up: {{ course.next_up_title }}
+        </p>
+    {% endif %}
+
+    {% include "learner_interface/partials/course_deadline_line.html" %}
+
+    <c-slot name="footer">
+        {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
             <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
                                    accent_slot_key="{{ course.accent_slot_key }}"
                                    label="Progress for {{ course.title }}"
                                    bar_class="h-1.5"
                                    label_class="text-xs font-medium tabular-nums text-muted" />
-        </c-slot>
-    {% endif %}
+        {% endif %}
+        <div class="flex justify-end">
+            {% include "learner_interface/partials/course_details_link.html" %}
+        </div>
+    </c-slot>
 </c-course-row-shell>

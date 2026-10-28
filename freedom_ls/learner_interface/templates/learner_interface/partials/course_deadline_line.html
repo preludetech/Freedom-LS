@@ -1,0 +1,16 @@
+{% load deadline_tags %}
+{% comment %}
+The one deadline line a course card or row shows: the earliest missed deadline
+wins over the next one. Shared by course_card.html and course_row.html.
+
+Required context: course (missed_deadline, next_deadline) and
+show_time_zone_to_learners.
+{% endcomment %}
+{% if course.missed_deadline %}
+    <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+        <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
+        <span>{{ course.missed_deadline.title }} {% local_time course.missed_deadline.due_at %}</span>
+    </p>
+{% elif course.next_deadline %}
+    <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}</p>
+{% endif %}

@@ -9,12 +9,12 @@ import pytest
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
-from freedom_ls.icons.backend import get_icon_backend
-from freedom_ls.icons.loader import load_iconify_data
-from freedom_ls.learner_interface.course_icon import (
+from freedom_ls.content_engine.course_icon import (
     IconResolutionError,
     render_course_icon,
 )
+from freedom_ls.icons.backend import get_icon_backend
+from freedom_ls.icons.loader import load_iconify_data
 
 
 @pytest.fixture(autouse=True)

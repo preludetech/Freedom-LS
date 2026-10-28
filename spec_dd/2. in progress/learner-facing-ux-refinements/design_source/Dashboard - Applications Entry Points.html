@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard → My applications · entry points</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles-mobile.css" />
+<link rel="stylesheet" href="styles-overview.css" />
+<link rel="stylesheet" href="styles-application.css" />
+<link rel="stylesheet" href="styles-app-manage.css" />
+<link rel="stylesheet" href="styles-dash-apps.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+body{margin:0;background:#ECEEF3;font-family:var(--font-body)}
+#root{min-height:100vh}
+a{color:var(--color-primary)}a:hover{color:var(--color-primary-900)}
+.dc-section-title{font-family:var(--font-heading)!important}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="components/Primitives.jsx"></script>
+<script type="text/babel" src="components/TopBar.jsx"></script>
+<script type="text/babel" src="components/Dashboard.jsx"></script>
+<script type="text/babel" src="components/Mobile.jsx"></script>
+<script type="text/babel" src="components/ApplicationData.jsx"></script>
+<script type="text/babel" src="components/ApplicationForm.jsx"></script>
+<script type="text/babel" src="components/ApplicationStatus.jsx"></script>
+<script type="text/babel" src="components/AppManage.jsx"></script>
+<script type="text/babel" src="components/DashApps.jsx"></script>
+<script type="text/babel" src="browser-window.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+const win = (id, label, h, child) => (
+  <DCArtboard key={id} id={id} label={label} width={1440} height={h}>
+    <ChromeWindow tabs={[{ title: "Dashboard · First Class" }]} url="firstclass.aero" width={1440} height={h}>{child}</ChromeWindow>
+  </DCArtboard>
+);
+const phone = (id, label, child) => (
+  <DCArtboard key={id} id={id} label={label} width={460} height={920}>
+    <IOSDevice width={402} height={874}>{child}</IOSDevice>
+  </DCArtboard>
+);
+const ac = { emergency: { id: "irc" } };
+
+function App() {
+  return (
+    <DesignCanvas initialZoom={0.4} background="#ECEEF3">
+      <DCSection id="proto" title="Clickable · click a card, “All applications”, “My applications”, the bell or the avatar">
+        {win("proto", "Dashboard with all three entry points", 1400, <DaProto />)}
+      </DCSection>
+
+      <DCSection id="strip" title="1 · “Your applications” strip — sits under the hero, only when something is open">
+        <DCArtboard id="strip-states" label="Strip states" width={1280} height={760}>
+          <div className="da-pad">
+            <div><div className="da-cap">FOUR ACTIVE · ONE NEEDS ACTION — ACTION-NEEDED FIRST, MAX TWO SHOWN</div><DaStrip /></div>
+            <div><div className="da-cap">ONE ACTIVE — FULL-WIDTH CARD</div><DaStrip ids={["exp"]} /></div>
+            <div><div className="da-cap">NONE ACTIVE — STRIP IS NOT RENDERED; PROFILE MENU STILL LEADS TO PAST APPLICATIONS</div><div className="da-none">“In progress” sits directly under the hero, as on today's dashboard.</div></div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="apply" title="2 · “Apply to enroll” — link in the header, applied courses show their status">
+        <DCArtboard id="apply-cards" label="Applied (under review) and draft, side by side" width={1280} height={640}>
+          <div className="da-pad">
+            <div className="fc-section-header" style={{ marginBottom: 0 }}>
+              <div><h3>Apply to enroll</h3><p>Cohort-based and advanced courses with prerequisites</p></div>
+              <a href="#" className="da-link">My applications<i className="ph ph-arrow-right"></i></a>
+            </div>
+            <div className="fc-grid-2" style={{ gap: 16 }}>
+              <AppliedCard c={{ title: "Examiner Pathway", subtitle: "12 modules · 22 hrs · Cohort starts Apr 6", img: "examiner", tag: "Advanced" }} app={{ id: "exp" }} />
+              <AppliedCard c={{ title: "Emergency Response Operations", subtitle: "8 modules · 14 hrs · Limited seats", img: "emergency", tag: "Advanced" }} app={{ id: "irc" }} />
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="global" title="3 · Always reachable — profile menu and notifications">
+        {win("menu", "Avatar menu · My applications with count and what needs action", 760, <DaDesktop overlay="menu" />)}
+        {win("notif", "Notifications · deep-link to the specific application", 760, <DaDesktop overlay="notif" />)}
+      </DCSection>
+
+      <DCSection id="phone" title="4 · Phone">
+        {phone("p-dash", "Dashboard · strip under the stats", <DaMobileDash />)}
+        {phone("p-apply", "Apply to enroll · link + applied status", <DaMobileDash scrollTo="Apply to enroll" />)}
+        {phone("p-profile", "Profile tab · My applications", <DaMobileProfile />)}
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

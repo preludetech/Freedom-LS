@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from typing import cast
 
@@ -445,16 +446,11 @@ class TestDashboardPartialRendering:
 
     def test_partial_renders_status_link(self, client, mock_site_context):
         """Dashboard applications partial renders a link to the application status page."""
-        from django.template.loader import render_to_string
-
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
 
         expected_url = reverse("course_applications:status", kwargs={"pk": app.pk})
-        rendered = render_to_string(
-            "course_applications/partials/dashboard_applications.html",
-            {"applications": [app]},
-        )
+        rendered = _render_panel(app)
 
         assert expected_url in rendered
 
@@ -481,6 +477,46 @@ class TestDashboardPartialRendering:
         assert "Pending review" in rendered
         assert "Incomplete" not in rendered
 
+    def test_a_submitted_row_offers_view_my_application(self, mock_site_context):
+        app = _application_with_sitting()
+        app.form_progress.complete()
+
+        rendered = _render_panel(app)
+
+        assert "View my application" in rendered
+        assert "Continue application" not in rendered
+        assert "Finish your application to have it reviewed." not in rendered
+
+    def test_a_draft_row_explains_what_is_left_and_offers_to_continue(
+        self, mock_site_context
+    ):
+        rendered = _render_panel(_application_with_sitting())
+
+        assert "Finish your application to have it reviewed." in rendered
+        assert "Continue application" in rendered
+        assert "View my application" not in rendered
+
+    def test_the_button_names_its_course_for_screen_readers(self, mock_site_context):
+        app = _application_with_sitting()
+
+        rendered = _render_panel(app)
+
+        assert f'<span class="sr-only"> for {app.course.title}</span>' in rendered
+
+    def test_each_row_carries_a_decorative_chevron(self, mock_site_context):
+        rendered = _render_panel(CourseApplicationFactory())
+
+        assert re.search(r'<span[^>]*aria-hidden="true"[^>]*>\s*<svg', rendered)
+
+    def test_a_course_title_is_escaped_in_the_link_the_button_and_the_icon(
+        self, mock_site_context
+    ):
+        course = CourseFactory(title='A <b> "quoted" title')
+        rendered = _render_panel(CourseApplicationFactory(course=course))
+
+        assert "<b>" not in rendered
+        assert rendered.count("A &lt;b&gt; &quot;quoted&quot; title") >= 3
+
 
 def _application_with_sitting():
     from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
@@ -496,9 +532,15 @@ def _application_with_sitting():
 def _render_panel(app) -> str:
     from django.template.loader import render_to_string
 
+    from freedom_ls.course_applications.backends import ApplicationCourseAccessBackend
+
+    contribution = ApplicationCourseAccessBackend().get_dashboard_contributions(
+        user=app.user
+    )[0]
     return render_to_string(
-        "course_applications/partials/dashboard_applications.html",
-        {"applications": [app]},
+        contribution.template_name,
+        contribution.context,
+        request=RequestFactory().get("/dashboard/"),
     )
 
 
@@ -872,3 +914,220 @@ class TestGetDashboardContributionsForRequest:
         request.user = application.user
 
         assert _contributed_applications(request) == [application]
+
+
+def _signed_in_request(user, query: str = "", **headers: str):
+    request = RequestFactory().get(f"/{query}", **headers)
+    request.user = user
+    return request
+
+
+def _contributions_for(request):
+    from freedom_ls.course_applications.backends import ApplicationCourseAccessBackend
+
+    return ApplicationCourseAccessBackend().get_dashboard_contributions_for_request(
+        request=request
+    )
+
+
+def _render_contribution(contribution, request=None) -> str:
+    from django.template.loader import render_to_string
+
+    return render_to_string(
+        contribution.template_name,
+        contribution.context,
+        request=request or RequestFactory().get("/dashboard/"),
+    )
+
+
+def _applications_created_in_order(user, count: int) -> list[CourseApplication]:
+    """Applications for one user, oldest first, with distinct creation times."""
+    now = timezone.now()
+    applications = []
+    for index in range(count):
+        application = CourseApplicationFactory(user=user)
+        CourseApplication.objects.filter(pk=application.pk).update(
+            created_at=now - timedelta(days=count - index)
+        )
+        applications.append(cast(CourseApplication, application))
+    return applications
+
+
+@pytest.mark.django_db
+class TestApplicationsPaging:
+    """The Your applications panel pages three at a time, newest first."""
+
+    def test_page_one_holds_the_three_newest(self, mock_site_context):
+        user = UserFactory()
+        oldest_first = _applications_created_in_order(user, 7)
+
+        contribution = _contributions_for(_signed_in_request(user))[0]
+
+        assert contribution.context["applications"] == oldest_first[::-1][:3]
+        assert contribution.context["applications_page"].paginator.num_pages == 3
+
+    def test_the_last_page_holds_the_remainder(self, mock_site_context):
+        user = UserFactory()
+        oldest_first = _applications_created_in_order(user, 7)
+
+        contribution = _contributions_for(
+            _signed_in_request(user, "?page_applications=3")
+        )[0]
+
+        assert contribution.context["applications"] == [oldest_first[0]]
+
+    def test_a_junk_page_number_gives_page_one(self, mock_site_context):
+        user = UserFactory()
+        _applications_created_in_order(user, 7)
+
+        contribution = _contributions_for(
+            _signed_in_request(user, "?page_applications=junk")
+        )[0]
+
+        assert contribution.context["applications_page"].number == 1
+
+    def test_anonymous_drafts_page_the_same_way(self, mock_site_context):
+        drafts = [_anonymous_draft() for _ in range(7)]
+        request = _anonymous_request(*(d.anonymous_applicant for d in drafts))
+        request.GET = request.GET.copy()
+        request.GET["page_applications"] = "3"
+
+        contribution = _contributions_for(request)[0]
+
+        assert len(contribution.context["applications"]) == 1
+        assert contribution.context["applications_page"].paginator.num_pages == 3
+
+    @pytest.mark.parametrize(
+        ("headers", "expected"),
+        [
+            ({}, False),
+            ({"HTTP_HX_TARGET": "section-page-available"}, False),
+            ({"HTTP_HX_TARGET": "applications-page"}, True),
+        ],
+    )
+    def test_only_a_swap_of_the_panels_own_page_is_announced(
+        self, mock_site_context, headers, expected
+    ):
+        user = UserFactory()
+        CourseApplicationFactory(user=user)
+
+        contribution = _contributions_for(_signed_in_request(user, **headers))[0]
+
+        assert contribution.context["announce_page"] is expected
+
+    def test_without_a_request_page_one_is_shown_and_not_announced(
+        self, mock_site_context
+    ):
+        from django.template.loader import render_to_string
+
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        oldest_first = _applications_created_in_order(user, 4)
+
+        contribution = ApplicationCourseAccessBackend().get_dashboard_contributions(
+            user=user
+        )[0]
+        rendered = render_to_string(contribution.template_name, contribution.context)
+
+        assert contribution.context["applications"] == oldest_first[::-1][:3]
+        assert contribution.context["announce_page"] is False
+        # No request to copy a URL from, so the pager links by query string alone.
+        assert 'href="?page_applications=2"' in rendered
+
+    def test_a_swap_of_the_panels_own_page_gets_the_page_fragment(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        CourseApplicationFactory(user=user)
+
+        whole_page = _contributions_for(_signed_in_request(user))[0]
+        own_swap = _contributions_for(
+            _signed_in_request(user, HTTP_HX_TARGET="applications-page")
+        )[0]
+
+        assert whole_page.template_name.endswith("dashboard_applications.html")
+        assert own_swap.template_name.endswith("#panel-page-response")
+        assert whole_page.swap_id == own_swap.swap_id == "applications-page"
+
+    def test_a_swap_of_an_emptied_panel_renders_an_empty_boundary(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        request = _signed_in_request(user, HTTP_HX_TARGET="applications-page")
+
+        contributions = _contributions_for(request)
+        rendered = _render_contribution(contributions[0], request)
+
+        assert len(contributions) == 1
+        assert 'id="applications-page"' in rendered
+        assert "Your applications</h2>" not in rendered
+        assert "Your applications: none" in rendered
+
+    def test_only_one_page_of_applications_leaves_the_database(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        user = UserFactory()
+        _applications_created_in_order(user, 7)
+
+        # A count and the one page of rows, each with its course and sitting joined.
+        with django_assert_num_queries(2):
+            contribution = _contributions_for(_signed_in_request(user))[0]
+
+        assert len(contribution.context["applications"]) == 3
+
+    def test_no_applications_gives_no_contribution_on_both_entry_points(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+
+        assert (
+            ApplicationCourseAccessBackend().get_dashboard_contributions(user=user)
+            == []
+        )
+        assert _contributions_for(_signed_in_request(user)) == []
+
+    def test_the_rendered_panel_states_its_position_and_disables_both_controls(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        CourseApplicationFactory.create_batch(2, user=user)
+
+        rendered = _render_contribution(_contributions_for(_signed_in_request(user))[0])
+
+        assert "1 to 2 of 2" in rendered
+        assert rendered.count('aria-disabled="true"') == 2
+        assert 'aria-label="Your applications pages"' in rendered
+
+    def test_the_status_region_is_filled_only_when_announcing(self, mock_site_context):
+        user = UserFactory()
+        CourseApplicationFactory.create_batch(2, user=user)
+        announced = _contributions_for(
+            _signed_in_request(user, HTTP_HX_TARGET="applications-page")
+        )[0]
+        silent = _contributions_for(_signed_in_request(user))[0]
+
+        announced_html = _render_contribution(announced)
+        silent_html = _render_contribution(silent)
+
+        assert "Your applications: showing 1 to 2 of 2" in announced_html
+        assert "Your applications: showing" not in silent_html
+        assert 'id="applications-status"' in silent_html
+
+    def test_the_next_control_keeps_another_sections_page(self, mock_site_context):
+        user = UserFactory()
+        CourseApplicationFactory.create_batch(4, user=user)
+        request = _signed_in_request(user, "?page_available=2")
+
+        rendered = _render_contribution(_contributions_for(request)[0], request)
+
+        next_control = re.search(r'<a [^>]*data-direction="next"[^>]*>', rendered)
+        assert next_control is not None
+        assert "page_available=2" in next_control.group(0)
+        assert "page_applications=2" in next_control.group(0)

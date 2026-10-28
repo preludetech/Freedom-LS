@@ -21,6 +21,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.views.decorators.vary import vary_on_headers
 
 from freedom_ls.accounts.decorators import acquisition_login_required
 from freedom_ls.content_engine.models import (
@@ -89,6 +90,7 @@ from freedom_ls.site_aware_models.time_zones import shows_time_zone_to_learners
 from .dashboard_sections import (
     BuiltInSection,
     DashboardSection,
+    htmx_target,
     page_for,
     requested_section_slug,
 )
@@ -98,6 +100,7 @@ from .utils import (
     IN_PROGRESS,
     READY,
     UNRESOLVED,
+    CourseListingStatus,
     Unresolved,
     current_entry_status,
     derive_listing_status,
@@ -176,7 +179,7 @@ def _annotate_next_up(
     user,
     *,
     can_access_content: bool,
-    course_progress: CourseProgress | None,
+    course_progress: CourseProgress | None | Unresolved,
     course_deadlines: CourseDeadlines | None,
     now: datetime,
 ) -> None:
@@ -597,8 +600,9 @@ class _DashboardInputs:
     rest: QuerySet[Course]
 
 
-def _dashboard_inputs(request: HttpRequest) -> _DashboardInputs:
-    backend = get_course_access_backend()
+def _dashboard_inputs(
+    request: HttpRequest, backend: CourseAccessBackend
+) -> _DashboardInputs:
     is_auth = request.user.is_authenticated
 
     # These helpers are all anonymous-safe (return empty lists / querysets for
@@ -738,26 +742,43 @@ def _deadlines_or_none(
     return course_deadlines(course_progress) if course_progress is not None else None
 
 
+def _requested_panel(
+    request: HttpRequest, contributions: list[DashboardContribution]
+) -> DashboardContribution | None:
+    """The backend panel whose own swap an htmx request names in ``HX-Target``."""
+    target = htmx_target(request)
+    if target is None:
+        return None
+    return next((c for c in contributions if c.swap_id == target), None)
+
+
+@vary_on_headers("HX-Request", "HX-Target")
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Dashboard view — authenticated or anonymous, whole page or one section.
+    """Dashboard view — authenticated or anonymous, whole page or one fragment.
 
     Authenticated users see their personalised course lists, backend-contributed
     panels, and the welcome greeting. Anonymous users see a hero, any panel the
     backend contributes for their session, and the discovery sections. An htmx
     request naming a section's swap target in ``HX-Target`` gets that section's
-    page fragment instead of the whole page; any other htmx request, a boosted navigation included, gets the whole page.
+    page fragment, and one naming a backend panel's swap id gets that panel on
+    its own; any other htmx request, a boosted navigation included, gets the
+    whole page.
     """
+    backend = get_course_access_backend()
     slug = requested_section_slug(request)
-    inputs = _dashboard_inputs(request)
-
     if slug is not None:
-        return _section_page_response(request, inputs, slug)
+        return _section_page_response(
+            request, _dashboard_inputs(request, backend), slug
+        )
 
     # Panels come from the active backend, for every visitor: the backend decides
     # what an anonymous session may see of its own.
-    contributions = inputs.backend.get_dashboard_contributions_for_request(
-        request=request
-    )
+    contributions = backend.get_dashboard_contributions_for_request(request=request)
+    panel = _requested_panel(request, contributions)
+    if panel is not None:
+        return render(request, panel.template_name, panel.context)
+
+    inputs = _dashboard_inputs(request, backend)
     dashboard_panels = [
         render_to_string(c.template_name, c.context, request=request)
         for c in contributions
@@ -788,11 +809,28 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         ),
     )
     courses_with_attrs = []
+    now = timezone.now()
     for entry in entries:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
         stamp_course_access_badge(course, badge=entry.access_badge)
+        if entry.status in (
+            CourseListingStatus.REGISTERED,
+            CourseListingStatus.IN_PROGRESS,
+        ):
+            # The listing resolved the record already; the catalogue shows no
+            # deadline line, so none are resolved here.
+            _annotate_next_up(
+                course,
+                request.user,
+                can_access_content=backend.get_access(
+                    user=request.user, course=course
+                ).can_access_content,
+                course_progress=entry.course_progress,
+                course_deadlines=None,
+                now=now,
+            )
         courses_with_attrs.append(course)
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
@@ -879,10 +917,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     is_coming_soon = is_coming_soon_for_display(course)
     if is_coming_soon and not is_registered:
         stamp_interest(request.user, [course])
-    breadcrumbs = [
-        {"label": "All courses", "url": reverse("learner_interface:courses")},
-        {"label": course.title},
-    ]
     viewable = course.viewable_items()
     # "Lessons" counts content items only — assessments (Form children) are
     # surfaced separately via ``includes_assessments``, so exclude them here.
@@ -937,7 +971,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "enrolment_summary": decision.enrolment_summary,
             "acquisition_heading": decision.acquisition_heading,
             "acquisition_subtext": decision.acquisition_subtext,
-            "breadcrumbs": breadcrumbs,
             "lesson_count": lesson_count,
             "lesson_count_label": lesson_count_label,
             "includes_assessments": includes_assessments,
@@ -1913,4 +1946,8 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
+    from freedom_ls.course_access.backends import (
+        CourseAccessBackend,
+        DashboardContribution,
+        RequestUser,
+    )
