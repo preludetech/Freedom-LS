@@ -17,6 +17,15 @@ def test_a_malformed_code_produces_e001():
     assert [error.id for error in errors] == ["freedom_ls_audit_log.E001"]
 
 
+def test_a_code_with_a_trailing_newline_produces_e001():
+    """`$` would match before the newline and let a code through that no
+    caller's string ever equals."""
+    with override_settings(AUDIT_LOG_EXTRA_ACTIONS={"invoice.sent\n": "Sent"}):
+        errors = check_extra_audit_actions(None)
+
+    assert [error.id for error in errors] == ["freedom_ls_audit_log.E001"]
+
+
 def test_a_clean_setting_produces_no_error():
     with override_settings(AUDIT_LOG_EXTRA_ACTIONS={"invoice.sent": "Invoice sent"}):
         errors = check_extra_audit_actions(None)

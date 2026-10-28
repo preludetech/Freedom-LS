@@ -15,7 +15,7 @@ from django.core.checks import CheckMessage, Error, register
 from freedom_ls.audit_log.actions import FLS_AUDIT_ACTIONS
 from freedom_ls.audit_log.config import config
 
-_CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+_CODE_PATTERN = re.compile(r"[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*")
 
 
 @register()
@@ -27,7 +27,7 @@ def check_extra_audit_actions(
     for code in config.AUDIT_LOG_EXTRA_ACTIONS:
         if code in fls_codes:
             problem = "is already an FLS audit action code"
-        elif not _CODE_PATTERN.match(code):
+        elif not _CODE_PATTERN.fullmatch(code):
             problem = "is not a lower-case noun.verb code"
         else:
             continue
