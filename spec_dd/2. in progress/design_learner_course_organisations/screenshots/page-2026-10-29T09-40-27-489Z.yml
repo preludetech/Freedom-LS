@@ -1,0 +1,96 @@
+- generic [active] [ref=f65e1]:
+  - banner [ref=f65e2]:
+    - link [ref=f65e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f65e4]
+      - heading "FirstClass" [level=1] [ref=f65e5]
+    - navigation [ref=f65e6]:
+      - generic [ref=f65e7]:
+        - link "Login" [ref=f65e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f65e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f65e10]:
+    - generic [ref=f65e12]:
+      - link "Back" [ref=f65e13] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f65e18]:
+        - paragraph [ref=f65e19]:
+          - generic "Coastal Flight School" [ref=f65e21]
+        - generic [ref=f65e23]: Assessment
+        - heading "Functionality Demo - show end with Quiz" [level=1] [ref=f65e24]
+        - paragraph [ref=f65e25]: A tour of the content system
+        - generic [ref=f65e27]:
+          - generic [ref=f65e28]:
+            - img "topic" [ref=f65e29]
+            - generic [ref=f65e31]:
+              - paragraph [ref=f65e32]: Lessons
+              - paragraph [ref=f65e33]: 2 lessons
+          - generic [ref=f65e34]:
+            - img "check" [ref=f65e35]
+            - generic [ref=f65e37]:
+              - paragraph [ref=f65e38]: Enrolment
+              - paragraph [ref=f65e39]: Free · open
+      - generic [ref=f65e40]:
+        - complementary [ref=f65e41]:
+          - generic [ref=f65e42]:
+            - generic [ref=f65e43]:
+              - generic [ref=f65e44]:
+                - paragraph [ref=f65e45]: Free · open to everyone
+                - paragraph [ref=f65e46]: One click. No credit card.
+              - link "Enrol for free" [ref=f65e47] [cursor=pointer]:
+                - /url: /courses/functionality-demo-show-end-with-quiz/access/
+              - generic [ref=f65e48]:
+                - heading "This course includes" [level=3] [ref=f65e49]
+                - list [ref=f65e50]:
+                  - listitem [ref=f65e51]: 2 lessons
+                  - listitem [ref=f65e52]: Includes assessments
+            - paragraph [ref=f65e56]: Coastal Flight School
+        - generic [ref=f65e57]:
+          - generic [ref=f65e58]:
+            - heading "About this course" [level=2] [ref=f65e59]
+            - paragraph [ref=f65e61]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f65e62]:
+            - heading "Course content" [level=2] [ref=f65e63]
+            - navigation "Course outline" [ref=f65e65]:
+              - list [ref=f65e66]:
+                - listitem [ref=f65e67]:
+                  - generic [ref=f65e68]:
+                    - generic [ref=f65e69]: "1."
+                    - generic [ref=f65e70]:
+                      - img "topic" [ref=f65e71]
+                      - generic [ref=f65e73]: Locked
+                    - generic [ref=f65e74]: Content title 2 - Before Quiz
+                - listitem [ref=f65e75]:
+                  - generic [ref=f65e76]:
+                    - generic [ref=f65e77]: "2."
+                    - generic [ref=f65e78]:
+                      - img "form" [ref=f65e79]
+                      - generic [ref=f65e81]: Locked
+                    - generic [ref=f65e82]: Mid course Quiz
+                - listitem [ref=f65e83]:
+                  - generic [ref=f65e84]:
+                    - generic [ref=f65e85]: "3."
+                    - generic [ref=f65e86]:
+                      - img "topic" [ref=f65e87]
+                      - generic [ref=f65e89]: Locked
+                    - generic [ref=f65e90]: Content title 4 - After quiz
+                - listitem [ref=f65e91]:
+                  - generic [ref=f65e92]:
+                    - generic [ref=f65e93]: "4."
+                    - generic [ref=f65e94]:
+                      - img "form" [ref=f65e95]
+                      - generic [ref=f65e97]: Locked
+                    - generic [ref=f65e98]: End course Quiz
+  - contentinfo [ref=f65e99]:
+    - generic [ref=f65e100]:
+      - paragraph [ref=f65e101]: © 2026 FirstClass
+      - navigation "Legal" [ref=f65e102]:
+        - link "Terms and Conditions" [ref=f65e103] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f65e104] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f65e105] [cursor=pointer]: design_learner_course_organisations

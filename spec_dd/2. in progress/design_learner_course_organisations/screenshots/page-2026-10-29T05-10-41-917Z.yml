@@ -1,0 +1,100 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - link "Messages" [ref=f5e9] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f5e10]
+          - status:
+            - generic [ref=f5e13]: Messages
+        - generic [ref=f5e14]:
+          - button "Notifications, 1 new" [ref=f5e15]:
+            - img "notifications" [ref=f5e17]
+          - status:
+            - generic [ref=f5e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f5e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f5e22] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f5e23]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e24]:
+    - generic [ref=f5e26]:
+      - link "Back" [ref=f5e27] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f5e32]:
+        - generic [ref=f5e33]: Reference
+        - heading "Functionality Demo - Course Parts" [level=1] [ref=f5e34]
+        - paragraph [ref=f5e35]: Demonstrating course organisation with parts
+        - generic [ref=f5e37]:
+          - generic [ref=f5e38]:
+            - img "topic" [ref=f5e39]
+            - generic [ref=f5e41]:
+              - paragraph [ref=f5e42]: Lessons
+              - paragraph [ref=f5e43]: 5 lessons
+          - generic [ref=f5e44]:
+            - img "deadline" [ref=f5e45]
+            - generic [ref=f5e47]:
+              - paragraph [ref=f5e48]: Time limit
+              - paragraph [ref=f5e49]: 90 days
+          - generic [ref=f5e50]:
+            - img "check" [ref=f5e51]
+            - generic [ref=f5e53]:
+              - paragraph [ref=f5e54]: Enrolment
+              - paragraph [ref=f5e55]: Free · open
+      - generic [ref=f5e56]:
+        - complementary [ref=f5e57]:
+          - generic [ref=f5e59]:
+            - generic [ref=f5e60]:
+              - paragraph [ref=f5e61]: Free · open to everyone
+              - paragraph [ref=f5e62]: One click. No credit card.
+            - link "Enrol for free" [ref=f5e63] [cursor=pointer]:
+              - /url: /courses/functionality-demo-course-parts/access/
+            - generic [ref=f5e64]:
+              - heading "This course includes" [level=3] [ref=f5e65]
+              - list [ref=f5e66]:
+                - listitem [ref=f5e67]: 5 lessons
+                - listitem [ref=f5e68]: Includes assessments
+        - generic [ref=f5e70]:
+          - heading "Course content" [level=2] [ref=f5e71]
+          - navigation "Course outline" [ref=f5e73]:
+            - list [ref=f5e74]:
+              - listitem [ref=f5e75]:
+                - button "1. folder Locked Getting Started" [ref=f5e76] [cursor=pointer]:
+                  - generic [ref=f5e77]:
+                    - generic [ref=f5e78]: "1."
+                    - generic [ref=f5e79]:
+                      - img "folder" [ref=f5e80]
+                      - generic [ref=f5e82]: Locked
+                    - generic [ref=f5e83]: Getting Started
+              - listitem [ref=f5e89]:
+                - button "2. folder Locked Core Concepts" [ref=f5e90] [cursor=pointer]:
+                  - generic [ref=f5e91]:
+                    - generic [ref=f5e92]: "2."
+                    - generic [ref=f5e93]:
+                      - img "folder" [ref=f5e94]
+                      - generic [ref=f5e96]: Locked
+                    - generic [ref=f5e97]: Core Concepts
+              - listitem [ref=f5e103]:
+                - button "3. folder Locked Wrapping Up" [ref=f5e104] [cursor=pointer]:
+                  - generic [ref=f5e105]:
+                    - generic [ref=f5e106]: "3."
+                    - generic [ref=f5e107]:
+                      - img "folder" [ref=f5e108]
+                      - generic [ref=f5e110]: Locked
+                    - generic [ref=f5e111]: Wrapping Up
+  - contentinfo [ref=f5e117]:
+    - generic [ref=f5e118]:
+      - paragraph [ref=f5e119]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e120]:
+        - link "Terms and Conditions" [ref=f5e121] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e122] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e123] [cursor=pointer]: design_learner_course_organisations
+  - generic "Show toolbar" [ref=f5e125]: DJDT

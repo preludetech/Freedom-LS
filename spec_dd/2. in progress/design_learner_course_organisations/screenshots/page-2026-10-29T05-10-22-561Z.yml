@@ -1,0 +1,128 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - link [ref=f3e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f3e4]
+      - heading "FirstClass" [level=1] [ref=f3e5]
+    - navigation [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]:
+          - link "Messages" [ref=f3e9] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f3e10]
+          - status:
+            - generic [ref=f3e13]: Messages
+        - generic [ref=f3e14]:
+          - button "Notifications, 1 new" [ref=f3e15]:
+            - img "notifications" [ref=f3e17]
+          - status:
+            - generic [ref=f3e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f3e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f3e22] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f3e23]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f3e24]:
+    - generic [ref=f3e26]:
+      - link "Back" [ref=f3e27] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f3e32]:
+        - paragraph [ref=f3e33]:
+          - generic "RPAS Training" [ref=f3e35]
+        - generic [ref=f3e37]: Start here
+        - heading "Functionality Demo - show end with Topic" [level=1] [ref=f3e38]
+        - paragraph [ref=f3e39]: A tour of the content system
+        - generic [ref=f3e41]:
+          - generic [ref=f3e42]:
+            - img "topic" [ref=f3e43]
+            - generic [ref=f3e45]:
+              - paragraph [ref=f3e46]: Lessons
+              - paragraph [ref=f3e47]: 6 lessons
+          - generic [ref=f3e48]:
+            - img "check" [ref=f3e49]
+            - generic [ref=f3e51]:
+              - paragraph [ref=f3e52]: Enrolment
+              - paragraph [ref=f3e53]: Free · open
+      - generic [ref=f3e54]:
+        - complementary [ref=f3e55]:
+          - generic [ref=f3e56]:
+            - generic [ref=f3e57]:
+              - generic [ref=f3e58]:
+                - paragraph [ref=f3e59]: Free · open to everyone
+                - paragraph [ref=f3e60]: One click. No credit card.
+              - link "Enrol for free" [ref=f3e61] [cursor=pointer]:
+                - /url: /courses/functionality-demo-show-end-with-topic/access/
+              - generic [ref=f3e62]:
+                - heading "This course includes" [level=3] [ref=f3e63]
+                - list [ref=f3e64]:
+                  - listitem [ref=f3e65]: 6 lessons
+                  - listitem [ref=f3e66]: Includes assessments
+            - paragraph [ref=f3e70]: RPAS Training
+        - generic [ref=f3e71]:
+          - generic [ref=f3e72]:
+            - heading "About this course" [level=2] [ref=f3e73]
+            - paragraph [ref=f3e75]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f3e76]:
+            - heading "Course content" [level=2] [ref=f3e77]
+            - navigation "Course outline" [ref=f3e79]:
+              - list [ref=f3e80]:
+                - listitem [ref=f3e81]:
+                  - generic [ref=f3e82]:
+                    - generic [ref=f3e83]: "1."
+                    - generic [ref=f3e84]:
+                      - img "topic" [ref=f3e85]
+                      - generic [ref=f3e87]: Locked
+                    - generic [ref=f3e88]: Content title 1
+                - listitem [ref=f3e89]:
+                  - generic [ref=f3e90]:
+                    - generic [ref=f3e91]: "2."
+                    - generic [ref=f3e92]:
+                      - img "topic" [ref=f3e93]
+                      - generic [ref=f3e95]: Locked
+                    - generic [ref=f3e96]: Callouts
+                - listitem [ref=f3e97]:
+                  - generic [ref=f3e98]:
+                    - generic [ref=f3e99]: "3."
+                    - generic [ref=f3e100]:
+                      - img "form" [ref=f3e101]
+                      - generic [ref=f3e103]: Locked
+                    - generic [ref=f3e104]: Course Feedback Survey
+                - listitem [ref=f3e105]:
+                  - generic [ref=f3e106]:
+                    - generic [ref=f3e107]: "4."
+                    - generic [ref=f3e108]:
+                      - img "topic" [ref=f3e109]
+                      - generic [ref=f3e111]: Locked
+                    - generic [ref=f3e112]: Pictures
+                - listitem [ref=f3e113]:
+                  - generic [ref=f3e114]:
+                    - generic [ref=f3e115]: "5."
+                    - generic [ref=f3e116]:
+                      - img "topic" [ref=f3e117]
+                      - generic [ref=f3e119]: Locked
+                    - generic [ref=f3e120]: YouTube Videos
+                - listitem [ref=f3e121]:
+                  - generic [ref=f3e122]:
+                    - generic [ref=f3e123]: "6."
+                    - generic [ref=f3e124]:
+                      - img "topic" [ref=f3e125]
+                      - generic [ref=f3e127]: Locked
+                    - generic [ref=f3e128]: Markdown Tables
+                - listitem [ref=f3e129]:
+                  - generic [ref=f3e130]:
+                    - generic [ref=f3e131]: "7."
+                    - generic [ref=f3e132]:
+                      - img "topic" [ref=f3e133]
+                      - generic [ref=f3e135]: Locked
+                    - generic [ref=f3e136]: Code Snippets
+  - contentinfo [ref=f3e137]:
+    - generic [ref=f3e138]:
+      - paragraph [ref=f3e139]: © 2026 FirstClass
+      - navigation "Legal" [ref=f3e140]:
+        - link "Terms and Conditions" [ref=f3e141] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f3e142] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f3e143] [cursor=pointer]: design_learner_course_organisations
+  - generic "Show toolbar" [ref=f3e145]: DJDT

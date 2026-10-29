@@ -1,0 +1,91 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - link "Messages" [ref=f4e9] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f4e10]
+          - status:
+            - generic [ref=f4e13]: Messages
+        - generic [ref=f4e14]:
+          - button "Notifications, 1 new" [ref=f4e15]:
+            - img "notifications" [ref=f4e17]
+          - status:
+            - generic [ref=f4e19]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f4e20]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f4e22] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e23]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e24]:
+    - generic [ref=f4e26]:
+      - link "Back" [ref=f4e27] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f4e32]:
+        - paragraph [ref=f4e33]:
+          - generic [aria-hidden] [ref=f4e35]: HC
+          - generic "Harbour College" [ref=f4e36]
+        - generic [ref=f4e38]: Start here
+        - heading "Workplace Safety Essentials" [level=1] [ref=f4e39]
+        - paragraph [ref=f4e40]: An organisation course
+        - generic [ref=f4e42]:
+          - generic [ref=f4e43]:
+            - img "topic" [ref=f4e44]
+            - generic [ref=f4e46]:
+              - paragraph [ref=f4e47]: Lessons
+              - paragraph [ref=f4e48]: 1 lesson
+          - generic [ref=f4e49]:
+            - img "check" [ref=f4e50]
+            - generic [ref=f4e52]:
+              - paragraph [ref=f4e53]: Enrolment
+              - paragraph [ref=f4e54]: Free · open
+      - generic [ref=f4e55]:
+        - complementary [ref=f4e56]:
+          - generic [ref=f4e57]:
+            - generic [ref=f4e58]:
+              - generic [ref=f4e59]:
+                - paragraph [ref=f4e60]: Free · open to everyone
+                - paragraph [ref=f4e61]: One click. No credit card.
+              - link "Continue" [ref=f4e62] [cursor=pointer]:
+                - /url: /courses/workplace-safety-essentials/1/
+              - generic [ref=f4e63]:
+                - heading "This course includes" [level=3] [ref=f4e64]
+                - list [ref=f4e65]:
+                  - listitem [ref=f4e66]: 1 lesson
+            - generic [ref=f4e67]:
+              - generic [ref=f4e68]:
+                - generic [aria-hidden] [ref=f4e70]: HC
+                - paragraph [ref=f4e71]: Harbour College
+              - paragraph [ref=f4e72]: Harbour College trains people for safe, skilled work on the waterfront and beyond. Our short courses are written by working instructors and built around real sites.
+        - generic [ref=f4e73]:
+          - generic [ref=f4e74]:
+            - heading "About this course" [level=2] [ref=f4e75]
+            - paragraph [ref=f4e77]: Two organisations each publish a course with this title. Which one a learner sees depends on the organisation they belong to.
+          - generic [ref=f4e78]:
+            - heading "Course content" [level=2] [ref=f4e79]
+            - navigation "Course outline" [ref=f4e81]:
+              - list [ref=f4e82]:
+                - listitem [ref=f4e83]:
+                  - generic [ref=f4e84]:
+                    - generic [ref=f4e85]: "1."
+                    - generic [ref=f4e86]:
+                      - img "topic" [ref=f4e87]
+                      - generic [ref=f4e89]: In progress
+                    - link "Safety on site" [ref=f4e91] [cursor=pointer]:
+                      - /url: /courses/workplace-safety-essentials/1/
+  - contentinfo [ref=f4e92]:
+    - generic [ref=f4e93]:
+      - paragraph [ref=f4e94]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e95]:
+        - link "Terms and Conditions" [ref=f4e96] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e97] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e98] [cursor=pointer]: design_learner_course_organisations
+  - generic "Show toolbar" [ref=f4e100]: DJDT

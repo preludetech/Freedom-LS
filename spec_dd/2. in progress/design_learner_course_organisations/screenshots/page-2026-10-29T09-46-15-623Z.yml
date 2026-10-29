@@ -1,0 +1,338 @@
+- generic [active] [ref=f127e1]:
+  - banner [ref=f127e2]:
+    - link [ref=f127e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f127e4]
+    - navigation [ref=f127e5]:
+      - generic [ref=f127e6]:
+        - generic [ref=f127e7]:
+          - link "Messages" [ref=f127e8] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f127e9]
+          - status:
+            - generic [ref=f127e11]: Messages
+        - generic [ref=f127e12]:
+          - button "Notifications, 2 new" [ref=f127e13]:
+            - img "notifications" [ref=f127e15]
+          - status:
+            - generic [ref=f127e17]: Notifications, 2 new
+            - generic [aria-hidden] [ref=f127e18]: "2"
+        - button "Open user menu for demodev@email.com" [ref=f127e20] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f127e21]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f127e22]:
+    - generic [ref=f127e24]:
+      - generic [ref=f127e25]:
+        - paragraph [ref=f127e26]: Thursday, October 29, 2026
+        - heading "Welcome back, demodev@email.com" [level=1] [ref=f127e27]:
+          - generic [ref=f127e28]: Welcome back,
+          - generic [ref=f127e29]: demodev@email.com
+      - generic [ref=f127e30]:
+        - generic [ref=f127e31]:
+          - heading "Your applications" [level=2] [ref=f127e32]
+          - generic [ref=f127e33]:
+            - generic [ref=f127e34]: 1 to 3 of 7
+            - navigation "Your applications pages" [ref=f127e35]:
+              - link "Previous page" [disabled] [ref=f127e36] [cursor=pointer]:
+                - img "previous" [ref=f127e37]
+              - link "Next page" [ref=f127e39] [cursor=pointer]:
+                - /url: /?page_applications=2
+                - img "next" [ref=f127e40]
+          - list [ref=f127e42]:
+            - listitem [ref=f127e43]:
+              - article [ref=f127e44]:
+                - generic [ref=f127e48]:
+                  - generic [ref=f127e49]:
+                    - generic [ref=f127e50]:
+                      - paragraph [ref=f127e51]:
+                        - generic "Skyline Aviation" [ref=f127e53]
+                      - generic [aria-hidden] [ref=f127e54]: ·
+                      - generic [ref=f127e55]: Beginner
+                    - generic [ref=f127e56]: Incomplete
+                  - heading [level=3] [ref=f127e58]:
+                    - link "Cybersecurity Incident Response" [ref=f127e59] [cursor=pointer]:
+                      - /url: /applications/status/701f516d-150a-4feb-a556-b92507fe11b9/
+                  - paragraph [ref=f127e60]: Finish your application to have it reviewed.
+                  - link "Details for Cybersecurity Incident Response" [ref=f127e62] [cursor=pointer]:
+                    - /url: /courses/qa-cybersecurity-incident-response/detail/
+                    - text: Details
+                    - generic [ref=f127e63]: for Cybersecurity Incident Response
+            - listitem [ref=f127e70]:
+              - article [ref=f127e71]:
+                - generic [ref=f127e75]:
+                  - generic [ref=f127e76]: Pending review
+                  - heading [level=3] [ref=f127e79]:
+                    - link "Applied Machine Learning Bootcamp" [ref=f127e80] [cursor=pointer]:
+                      - /url: /applications/status/2d104e96-4b3e-4190-b59e-bcbc418fd735/
+                  - link "Details for Applied Machine Learning Bootcamp" [ref=f127e82] [cursor=pointer]:
+                    - /url: /courses/qa-applied-machine-learning-bootcamp/detail/
+                    - text: Details
+                    - generic [ref=f127e83]: for Applied Machine Learning Bootcamp
+            - listitem [ref=f127e90]:
+              - article [ref=f127e91]:
+                - generic [ref=f127e95]:
+                  - generic [ref=f127e96]: Incomplete
+                  - heading [level=3] [ref=f127e99]:
+                    - link "Sustainable Urban Design Studio" [ref=f127e100] [cursor=pointer]:
+                      - /url: /applications/status/6746121f-3000-47d2-aec9-e393e16da288/
+                  - paragraph [ref=f127e101]: Finish your application to have it reviewed.
+                  - link "Details for Sustainable Urban Design Studio" [ref=f127e103] [cursor=pointer]:
+                    - /url: /courses/qa-sustainable-urban-design-studio/detail/
+                    - text: Details
+                    - generic [ref=f127e104]: for Sustainable Urban Design Studio
+        - status [ref=f127e111]
+      - status [ref=f127e112]
+      - generic [ref=f127e114]:
+        - generic [ref=f127e115]:
+          - heading "In progress" [level=2] [ref=f127e117]
+          - generic [ref=f127e118]:
+            - generic [ref=f127e119]:
+              - generic [ref=f127e120]: 1 to 2 of 2
+              - navigation "In progress pages" [ref=f127e122]:
+                - link "Previous page" [disabled] [ref=f127e123] [cursor=pointer]:
+                  - img "previous" [ref=f127e124]
+                - link "Next page" [disabled] [ref=f127e126] [cursor=pointer]:
+                  - img "next" [ref=f127e127]
+            - list [ref=f127e130]:
+              - listitem [ref=f127e131]:
+                - article [ref=f127e132]:
+                  - generic [ref=f127e136]:
+                    - generic [ref=f127e137]:
+                      - generic [ref=f127e138]: Beginner
+                      - generic [ref=f127e140]: Registered
+                    - heading [level=3] [ref=f127e145]:
+                      - link "Functionality Demo - show end with Topic" [ref=f127e146] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-show-end-with-topic/1/
+                    - paragraph [ref=f127e147]: "Next up: Content title 1"
+                    - generic [ref=f127e148]:
+                      - progressbar "Progress for Functionality Demo - show end with Topic" [ref=f127e149]: 0%
+                      - generic [ref=f127e150]: 0%
+                    - link "Details for Functionality Demo - show end with Topic" [ref=f127e152] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-topic/detail/
+                      - text: Details
+                      - generic [ref=f127e153]: for Functionality Demo - show end with Topic
+              - listitem [ref=f127e157]:
+                - article [ref=f127e158]:
+                  - generic [ref=f127e162]:
+                    - generic [ref=f127e163]:
+                      - paragraph [ref=f127e165]:
+                        - generic [aria-hidden] [ref=f127e167]: HC
+                        - generic "Harbour College" [ref=f127e168]
+                      - generic [ref=f127e169]: In progress
+                    - heading [level=3] [ref=f127e174]:
+                      - link "Workplace Safety Essentials" [ref=f127e175] [cursor=pointer]:
+                        - /url: /courses/workplace-safety-essentials/1/
+                    - paragraph [ref=f127e176]: "Next up: Safety on site"
+                    - generic [ref=f127e177]:
+                      - progressbar "Progress for Workplace Safety Essentials" [ref=f127e178]: 50%
+                      - generic [ref=f127e179]: 50%
+                    - link "Details for Workplace Safety Essentials" [ref=f127e181] [cursor=pointer]:
+                      - /url: /courses/workplace-safety-essentials/detail/
+                      - text: Details
+                      - generic [ref=f127e182]: for Workplace Safety Essentials
+        - generic [ref=f127e186]:
+          - generic [ref=f127e187]:
+            - heading "Start here" [level=2] [ref=f127e188]
+            - paragraph [ref=f127e189]: New to the platform? Begin with these.
+          - generic [ref=f127e190]:
+            - generic [ref=f127e191]:
+              - generic [ref=f127e192]: 1 to 2 of 2
+              - navigation "Start here pages" [ref=f127e194]:
+                - link "Previous page" [disabled] [ref=f127e195] [cursor=pointer]:
+                  - img "previous" [ref=f127e196]
+                - link "Next page" [disabled] [ref=f127e198] [cursor=pointer]:
+                  - img "next" [ref=f127e199]
+            - generic [ref=f127e201]:
+              - list [ref=f127e202]:
+                - listitem [ref=f127e203]:
+                  - article [ref=f127e204]:
+                    - generic [ref=f127e208]:
+                      - generic [ref=f127e209]: Intermediate
+                      - heading [level=3] [ref=f127e212]:
+                        - link "Standard Markdown - Demo Finance" [ref=f127e213] [cursor=pointer]:
+                          - /url: /courses/standard-markdown-demo-finance/detail/
+                      - link "Details for Standard Markdown - Demo Finance" [ref=f127e215] [cursor=pointer]:
+                        - /url: /courses/standard-markdown-demo-finance/detail/
+                        - text: Details
+                        - generic [ref=f127e216]: for Standard Markdown - Demo Finance
+                - listitem [ref=f127e220]:
+                  - article [ref=f127e221]:
+                    - generic [ref=f127e225]:
+                      - paragraph [ref=f127e228]:
+                        - generic [aria-hidden] [ref=f127e230]: NL
+                        - generic "Northwind Logistics" [ref=f127e231]
+                      - heading [level=3] [ref=f127e232]:
+                        - link "Workplace Safety Essentials" [ref=f127e233] [cursor=pointer]:
+                          - /url: /courses/workplace-safety-essentials-2/detail/
+                      - link "Details for Workplace Safety Essentials" [ref=f127e235] [cursor=pointer]:
+                        - /url: /courses/workplace-safety-essentials-2/detail/
+                        - text: Details
+                        - generic [ref=f127e236]: for Workplace Safety Essentials
+              - link "Browse all courses" [ref=f127e241] [cursor=pointer]:
+                - /url: /courses/
+        - generic [ref=f127e245]:
+          - generic [ref=f127e246]:
+            - heading "Assessment" [level=2] [ref=f127e247]
+            - paragraph [ref=f127e248]: Courses that end in a graded quiz.
+          - generic [ref=f127e249]:
+            - generic [ref=f127e250]:
+              - generic [ref=f127e251]: 1 to 1 of 1
+              - navigation "Assessment pages" [ref=f127e253]:
+                - link "Previous page" [disabled] [ref=f127e254] [cursor=pointer]:
+                  - img "previous" [ref=f127e255]
+                - link "Next page" [disabled] [ref=f127e257] [cursor=pointer]:
+                  - img "next" [ref=f127e258]
+            - generic [ref=f127e260]:
+              - list [ref=f127e261]:
+                - listitem [ref=f127e262]:
+                  - article [ref=f127e263]:
+                    - generic [ref=f127e267]:
+                      - paragraph [ref=f127e270]:
+                        - generic "Coastal Flight School" [ref=f127e272]
+                      - heading [level=3] [ref=f127e273]:
+                        - link "Functionality Demo - show end with Quiz" [ref=f127e274] [cursor=pointer]:
+                          - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+                      - link "Details for Functionality Demo - show end with Quiz" [ref=f127e276] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+                        - text: Details
+                        - generic [ref=f127e277]: for Functionality Demo - show end with Quiz
+              - link "Browse all courses" [ref=f127e282] [cursor=pointer]:
+                - /url: /courses/
+        - generic [ref=f127e286]:
+          - generic [ref=f127e287]:
+            - heading "Pricing" [level=2] [ref=f127e288]
+            - paragraph [ref=f127e289]: One small course for each way a course can be priced.
+          - generic [ref=f127e290]:
+            - generic [ref=f127e291]:
+              - generic [ref=f127e292]: 1 to 3 of 7
+              - navigation "Pricing pages" [ref=f127e294]:
+                - link "Previous page" [disabled] [ref=f127e295] [cursor=pointer]:
+                  - img "previous" [ref=f127e296]
+                - link "Next page" [ref=f127e298] [cursor=pointer]:
+                  - /url: /?page_pricing-demo=2
+                  - img "next" [ref=f127e299]
+            - generic [ref=f127e301]:
+              - list [ref=f127e302]:
+                - listitem [ref=f127e303]:
+                  - article [ref=f127e304]:
+                    - generic [ref=f127e308]:
+                      - generic [ref=f127e309]:
+                        - paragraph [ref=f127e311]:
+                          - generic "RPAS Training" [ref=f127e313]
+                        - generic [ref=f127e314]: ¥15,000
+                      - heading [level=3] [ref=f127e317]:
+                        - 'link "Functionality Demo - Price: currency without cents" [ref=f127e318] [cursor=pointer]':
+                          - /url: /courses/functionality-demo-price-currency-without-cents/detail/
+                      - 'link "Details for Functionality Demo - Price: currency without cents" [ref=f127e320] [cursor=pointer]':
+                        - /url: /courses/functionality-demo-price-currency-without-cents/detail/
+                        - text: Details
+                        - generic [ref=f127e321]: "for Functionality Demo - Price: currency without cents"
+                - listitem [ref=f127e325]:
+                  - article [ref=f127e326]:
+                    - generic [ref=f127e330]:
+                      - generic [ref=f127e331]: ZAR800.00
+                      - heading [level=3] [ref=f127e335]:
+                        - 'link "Functionality Demo - Price: expired sale" [ref=f127e336] [cursor=pointer]':
+                          - /url: /courses/functionality-demo-price-expired-sale/detail/
+                      - 'link "Details for Functionality Demo - Price: expired sale" [ref=f127e338] [cursor=pointer]':
+                        - /url: /courses/functionality-demo-price-expired-sale/detail/
+                        - text: Details
+                        - generic [ref=f127e339]: "for Functionality Demo - Price: expired sale"
+                - listitem [ref=f127e343]:
+                  - article [ref=f127e344]:
+                    - generic [ref=f127e348]:
+                      - generic [ref=f127e349]:
+                        - paragraph [ref=f127e351]:
+                          - generic [aria-hidden] [ref=f127e353]: "NO"
+                          - generic "Northside" [ref=f127e354]
+                        - generic [ref=f127e355]: $250.00
+                      - heading [level=3] [ref=f127e358]:
+                        - 'link "Functionality Demo - Price: fixed" [ref=f127e359] [cursor=pointer]':
+                          - /url: /courses/functionality-demo-price-fixed/detail/
+                      - 'link "Details for Functionality Demo - Price: fixed" [ref=f127e361] [cursor=pointer]':
+                        - /url: /courses/functionality-demo-price-fixed/detail/
+                        - text: Details
+                        - generic [ref=f127e362]: "for Functionality Demo - Price: fixed"
+              - link "Browse all courses" [ref=f127e367] [cursor=pointer]:
+                - /url: /courses/
+        - generic [ref=f127e371]:
+          - heading "Available courses" [level=2] [ref=f127e373]
+          - generic [ref=f127e374]:
+            - generic [ref=f127e375]:
+              - generic [ref=f127e376]: 1 to 3 of 10
+              - navigation "Available courses pages" [ref=f127e378]:
+                - link "Previous page" [disabled] [ref=f127e379] [cursor=pointer]:
+                  - img "previous" [ref=f127e380]
+                - link "Next page" [ref=f127e382] [cursor=pointer]:
+                  - /url: /?page_available=2
+                  - img "next" [ref=f127e383]
+            - generic [ref=f127e385]:
+              - list [ref=f127e386]:
+                - listitem [ref=f127e387]:
+                  - article [ref=f127e388]:
+                    - generic [ref=f127e392]:
+                      - heading [level=3] [ref=f127e393]:
+                        - link "Advanced Data Visualisation" [ref=f127e394] [cursor=pointer]:
+                          - /url: /courses/qa-advanced-data-visualisation/detail/
+                      - link "Details for Advanced Data Visualisation" [ref=f127e396] [cursor=pointer]:
+                        - /url: /courses/qa-advanced-data-visualisation/detail/
+                        - text: Details
+                        - generic [ref=f127e397]: for Advanced Data Visualisation
+                - listitem [ref=f127e401]:
+                  - article [ref=f127e402]:
+                    - generic [ref=f127e406]:
+                      - heading [level=3] [ref=f127e407]:
+                        - link "Applied Machine Learning Bootcamp" [ref=f127e408] [cursor=pointer]:
+                          - /url: /courses/qa-applied-machine-learning-bootcamp/detail/
+                      - link "Details for Applied Machine Learning Bootcamp" [ref=f127e410] [cursor=pointer]:
+                        - /url: /courses/qa-applied-machine-learning-bootcamp/detail/
+                        - text: Details
+                        - generic [ref=f127e411]: for Applied Machine Learning Bootcamp
+                - listitem [ref=f127e415]:
+                  - article [ref=f127e416]:
+                    - generic [ref=f127e420]:
+                      - heading [level=3] [ref=f127e421]:
+                        - link "Clinical Research Fundamentals" [ref=f127e422] [cursor=pointer]:
+                          - /url: /courses/qa-clinical-research-fundamentals/detail/
+                      - link "Details for Clinical Research Fundamentals" [ref=f127e424] [cursor=pointer]:
+                        - /url: /courses/qa-clinical-research-fundamentals/detail/
+                        - text: Details
+                        - generic [ref=f127e425]: for Clinical Research Fundamentals
+              - link "Browse all courses" [ref=f127e430] [cursor=pointer]:
+                - /url: /courses/
+        - generic [ref=f127e434]:
+          - heading "Coming soon" [level=2] [ref=f127e436]
+          - generic [ref=f127e437]:
+            - generic [ref=f127e438]:
+              - generic [ref=f127e439]: 1 to 1 of 1
+              - navigation "Coming soon pages" [ref=f127e441]:
+                - link "Previous page" [disabled] [ref=f127e442] [cursor=pointer]:
+                  - img "previous" [ref=f127e443]
+                - link "Next page" [disabled] [ref=f127e445] [cursor=pointer]:
+                  - img "next" [ref=f127e446]
+            - generic [ref=f127e448]:
+              - list [ref=f127e449]:
+                - listitem [ref=f127e450]:
+                  - article [ref=f127e451]:
+                    - generic [ref=f127e455]:
+                      - generic [ref=f127e456]: Coming soon
+                      - heading [level=3] [ref=f127e462]:
+                        - link "Content Widgets - Demo Reference" [ref=f127e463] [cursor=pointer]:
+                          - /url: /courses/content-widgets-demo-reference/detail/
+                      - link "Details for Content Widgets - Demo Reference" [ref=f127e465] [cursor=pointer]:
+                        - /url: /courses/content-widgets-demo-reference/detail/
+                        - text: Details
+                        - generic [ref=f127e466]: for Content Widgets - Demo Reference
+              - link "Browse all courses" [ref=f127e471] [cursor=pointer]:
+                - /url: /courses/
+  - contentinfo [ref=f127e475]:
+    - generic [ref=f127e476]:
+      - paragraph [ref=f127e477]: © 2026 FirstClass
+      - navigation "Legal" [ref=f127e478]:
+        - link "Terms and Conditions" [ref=f127e479] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f127e480] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f127e481] [cursor=pointer]: design_learner_course_organisations
