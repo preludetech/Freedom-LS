@@ -12,6 +12,6 @@ panel-page-header, swapped along with it above. This fragment only keeps
 #page-title's id and OOB wiring stable; it carries no title text of its own.
 {% endcomment %}
 {% include "partials/page_title.html" with oob=True only %}
-{% include "panel_framework/partials/document_title.html" with heading=heading site_name=site_name request=request only %}
+{% include "panel_framework/partials/document_title.html" with heading=heading site_name=site_name request=request with_site_name=True only %}
 {% if announcement %}{% include "panel_framework/partials/announcer.html" with message=announcement oob=True only %}{% endif %}
 {% for extra_template_name in extra_oob %}{% include extra_template_name with oob=True request=request only %}{% endfor %}

@@ -14,10 +14,7 @@
               content="{% block meta_description %}{{ meta_description|default:'Learning management system' }}{% endblock meta_description %}" />
         <meta name="keywords"
               content="{% block meta_keywords %}learning, education, courses{% endblock meta_keywords %}" />
-        <title>
-            {% block head_title %}
-            {% endblock head_title %}
-        </title>
+        <title>{% document_title %}{% block head_title %}{% endblock head_title %}{% enddocument_title %}</title>
 
         {% comment %}
         Error pages replace this whole block with a bare noindex: the canonical

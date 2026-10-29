@@ -17,5 +17,10 @@ panel_framework passes no context for the middle segment: like the announcer's
 message, the fragment sources it from the request. A host app that scopes its
 interface names the current scope in request.panel_scope_name; a host with no
 such concept sets nothing and the segment is dropped, leaving no stray dash.
+
+The site name is appended only when `with_site_name` is set. The OOB fragment
+sets it because its <title> is the whole string; a hosting page template leaves
+it off because the base template's document_title tag adds the site name to
+whatever head_title renders.
 {% endcomment %}
-{% partialdef document-title %}{% if heading %}{{ heading }} — {% endif %}{% if request.panel_scope_name %}{{ request.panel_scope_name }} — {% endif %}{{ site_name }}{% endpartialdef %}<title>{% partial document-title %}</title>
+{% partialdef document-title %}{% if heading %}{{ heading }}{% endif %}{% if request.panel_scope_name %}{% if heading %} — {% endif %}{{ request.panel_scope_name }}{% endif %}{% if with_site_name %}{% if heading or request.panel_scope_name %} — {% endif %}{{ site_name }}{% endif %}{% endpartialdef %}<title>{% partial document-title %}</title>

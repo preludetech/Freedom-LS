@@ -15,6 +15,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 # Tests for basic SEO / discoverability.
 #
@@ -507,12 +508,15 @@ def _extract_title(body: str) -> str:
 def test_dashboard_title_tag_says_dashboard(
     mock_site_context, courses, logged_in_client
 ):
-    """The dashboard's browser-tab title is 'Dashboard'."""
+    """The dashboard's browser-tab title is 'Dashboard' then the site name."""
     user = UserFactory()
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    assert _extract_title(response.content.decode()) == "Dashboard"
+    assert (
+        _extract_title(response.content.decode())
+        == f"Dashboard — {mock_site_context.name}"
+    )
 
 
 @pytest.mark.django_db
@@ -526,7 +530,7 @@ def test_all_courses_title_tag_says_all_courses(
     assert response.status_code == 200
     title = _extract_title(response.content.decode())
     assert "All Courses" in title
-    assert mock_site_context.name in title
+    assert title.count(mock_site_context.name) == 1
 
 
 @pytest.mark.django_db
@@ -542,4 +546,28 @@ def test_course_detail_title_tag_uses_course_title(
         )
     )
     assert response.status_code == 200
-    assert _extract_title(response.content.decode()) == courses[0].title
+    assert (
+        _extract_title(response.content.decode())
+        == f"{courses[0].title} — {mock_site_context.name}"
+    )
+
+
+@pytest.mark.django_db
+def test_course_item_title_tag_names_item_course_and_site_once(
+    mock_site_context, courses, logged_in_client
+):
+    """A course item page's title reads item, course, site, with the site name once."""
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    client = logged_in_client(user)
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": courses[0].slug, "index": 1},
+        )
+    )
+    assert response.status_code == 200
+    assert (
+        _extract_title(response.content.decode())
+        == f"Topic 0 — {courses[0].title} — {mock_site_context.name}"
+    )

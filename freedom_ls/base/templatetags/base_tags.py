@@ -2,8 +2,32 @@ import uuid
 
 from django import template
 from django.http import HttpRequest
+from django.utils.html import conditional_escape
 
 register = template.Library()
+
+
+class DocumentTitleNode(template.Node):
+    """The browser tab title: the page name, then the site name, or the site name alone."""
+
+    def __init__(self, nodelist: template.NodeList) -> None:
+        # Under this attribute name so {% block %} tags inside the body are still
+        # found by block resolution and a child template can override them.
+        self.nodelist = nodelist
+
+    def render(self, context: template.Context) -> str:
+        page = self.nodelist.render(context).strip()
+        site_name = conditional_escape(str(context.get("site_name", "")))
+        return f"{page} — {site_name}" if page else site_name
+
+
+@register.tag
+def document_title(
+    parser: template.base.Parser, token: template.base.Token
+) -> DocumentTitleNode:
+    nodelist = parser.parse(("enddocument_title",))
+    parser.delete_first_token()
+    return DocumentTitleNode(nodelist)
 
 
 @register.simple_tag

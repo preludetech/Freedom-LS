@@ -162,7 +162,7 @@ def test_article_page_title_is_the_article_title(client, mock_site_context):
     body = _get_article_page(client, article)
 
     # Assert
-    assert _title(body) == "Why we teach"
+    assert _title(body) == f"Why we teach — {mock_site_context.name}"
 
 
 @pytest.mark.django_db
@@ -445,7 +445,7 @@ def test_index_heading_title_and_back_link_use_the_configured_blog_name(
 
     # Assert
     assert re.search(r"<h1>\s*Posts\s*</h1>", index)
-    assert _title(index).startswith("Posts")
+    assert _title(index) == f"Posts — {mock_site_context.name}"
     assert re.search(
         rf'<a href="{reverse("blog:index")}"[^>]*>.*?Posts\s*</a>', detail, re.DOTALL
     )
