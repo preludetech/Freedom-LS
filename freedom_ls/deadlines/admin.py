@@ -57,6 +57,9 @@ VALUE_FIELDS = frozenset(
     {"collection_item", "kind", "due_date", "due_time", "due_days_after_registration"}
 )
 TIME_LIMIT_DUPLICATE = "The course time limit already has an override here."
+TIME_LIMIT_HELP = (
+    "A fixed date or a number of days on the course time limit restores ended access."
+)
 ITEM_DUPLICATE = "This item already has an override here."
 
 
@@ -259,6 +262,7 @@ class DeadlineOverrideInline(TabularInline):
             # are listed once here; left to the field, every row's widget would run the
             # picker query again.
             field.empty_label = "Course time limit"
+            field.help_text = TIME_LIMIT_HELP
             field.choices = [
                 ("", field.empty_label),
                 *((item.pk, field.label_from_instance(item)) for item in items),

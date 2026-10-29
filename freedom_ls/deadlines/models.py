@@ -55,10 +55,6 @@ def _validate_deadline_override(
     ):
         errors["kind"] = "No deadline takes no date, time or days."
     if collection_item is None:
-        if kind == DeadlineKind.FIXED:
-            errors["kind"] = (
-                "The course time limit is counted in days after registration."
-            )
         if due_time is not None:
             errors["due_time"] = "The course time limit ends at the end of its day."
     elif collection_item not in course.viewable_collection_items():
