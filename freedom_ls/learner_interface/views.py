@@ -143,7 +143,11 @@ class CardDeadline:
 
 @dataclass(frozen=True)
 class CardDeadlineLine:
-    """The card's one deadline line: the earliest missed deadline wins over the next one."""
+    """The card's one deadline line: the earliest past deadline wins over the next one.
+
+    ``missed`` is the earliest past, unfinished deadline; its ``is_overdue`` says whether
+    it carries the "Missed deadline" chip, which ``mark_overdue`` off withholds.
+    """
 
     missed: CardDeadline | None
     next: CardDeadline | None
@@ -157,8 +161,9 @@ def _card_deadline_line(
     now: datetime,
 ) -> CardDeadlineLine:
     # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A closed
-    # leaf counts as missed. An in-progress course is never complete, so the time limit's
-    # overdue check takes completed=False.
+    # leaf, and a past one that mark_overdue off leaves unmarked, counts as missed. An
+    # in-progress course is never complete, so the time limit's overdue check takes
+    # completed=False.
     open_leaves = [
         row
         for row in flat
@@ -168,13 +173,13 @@ def _card_deadline_line(
         CardDeadline(
             row["title"],
             row["due_at"],
-            True,
+            row["is_overdue"],
             row["status"],
             row["closes_at"],
             row["is_closed"],
         )
         for row in open_leaves
-        if row["is_overdue"] or row["is_closed"]
+        if row["is_overdue"] or row["is_closed"] or row["due_at"] <= now
     ]
     upcoming = [
         CardDeadline(
@@ -197,7 +202,13 @@ def _card_deadline_line(
                     COURSE_DEADLINE_TITLE, time_limit.due_at, True, IN_PROGRESS
                 )
             )
-        elif time_limit.due_at > now:
+        elif time_limit.due_at <= now:
+            missed.append(
+                CardDeadline(
+                    COURSE_DEADLINE_TITLE, time_limit.due_at, False, IN_PROGRESS
+                )
+            )
+        else:
             upcoming.append(
                 CardDeadline(
                     COURSE_DEADLINE_TITLE, time_limit.due_at, False, IN_PROGRESS
