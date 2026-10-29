@@ -2069,13 +2069,22 @@ def test_all_courses_rows_name_no_study_organisation(
 
 
 @pytest.mark.django_db
-def test_all_courses_row_shows_the_byline_and_the_difficulty(mock_site_context):
+def test_all_courses_row_shows_the_byline(mock_site_context):
     course = CourseFactory(audience=CourseAudience.PUBLIC, difficulty="advanced")
     course.organisations.add(OrganisationFactory(name="Owner Academy"))
 
     html = Client().get(reverse("learner_interface:courses")).content.decode()
 
     assert html.count('data-testid="organisation-byline"') == 1
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_the_difficulty(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC, difficulty="advanced")
+    course.organisations.add(OrganisationFactory(name="Owner Academy"))
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
     assert "Advanced" in html
 
 
