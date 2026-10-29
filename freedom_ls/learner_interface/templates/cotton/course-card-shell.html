@@ -9,6 +9,9 @@ pattern (an anchor with a ::before overlay) to make the whole card a
 click target. Pass `clickable="true"` for the modal-trigger variant so
 the cursor signals the card opens something.
 
+The accent block is inset by the article's padding and rounded, so the card
+reads as a frame around it; the body's text starts at the block's left edge.
+
 Named slots:
   eyebrow — rendered above the default slot (e.g. status label)
   footer  — rendered below the default slot (e.g. progress bar)
@@ -16,13 +19,13 @@ Named slots:
 Mergeable `class` prop allows callers to append extra utility classes
 to the article element without forking the shell.
 {% endcomment %}
-<article class="course-card surface border-gray-200 h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}{{ class }}">
-    <div class="course-accent-{{ accent_slot_key }} h-28 flex items-center justify-center"
+<article class="course-card surface border-gray-200 h-full relative p-3 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}{{ class }}">
+    <div class="course-accent-{{ accent_slot_key }} h-28 flex items-center justify-center rounded-xl"
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-12" aria_label=title %}
     </div>
 
-    <div class="p-4 flex-1 flex flex-col space-y-2">
+    <div class="pt-3 flex-1 flex flex-col space-y-2">
         {% comment %}Wrapper keeps the eyebrow's content in block flow: as a direct
         flex child an inline chip is blockified and stretched to the card width.{% endcomment %}
         {% if eyebrow %}<div>{{ eyebrow }}</div>{% endif %}

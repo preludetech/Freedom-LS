@@ -2011,6 +2011,32 @@ def test_card_byline_renders_the_monogram_when_the_organisation_has_no_logo(
     )
 
 
+@pytest.mark.django_db
+def test_card_byline_precedes_the_status_and_the_title(
+    mock_site_context, logged_in_client
+):
+    CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
+        OrganisationFactory(name="Plain Academy")
+    )
+    user = UserFactory()
+
+    html = _dashboard_html(logged_in_client(user))
+
+    byline = html.index('data-testid="organisation-byline"')
+    assert byline < html.index('data-testid="course-status-')
+    assert byline < html.index('<h3 class="wrap-break-word">')
+
+
+@pytest.mark.django_db
+def test_card_shell_article_has_no_zero_padding(mock_site_context):
+    CourseFactory(audience=CourseAudience.PUBLIC)
+
+    html = _dashboard_html()
+
+    article = html.split('<article class="course-card', 1)[1].split(">", 1)[0]
+    assert "p-0" not in article.split()
+
+
 BYLINE_DASHBOARD_MAX_QUERIES = 48
 
 

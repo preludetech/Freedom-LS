@@ -5,6 +5,8 @@ per-status leaf template.
 
 Standard fields land in standard places via the shared skeleton and partials:
   icon + colour  -> <c-course-card-shell> hero (accent_slot_key, icon)
+  organisation   -> eyebrow slot, first, above the status (order: byline,
+                    status, title)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
                     status is ever shown; no duplicate chip/badge)
   title + link   -> stretched title link (card_title_link.html)
@@ -40,22 +42,23 @@ current_price, card_organisation), user and show_time_zone_to_learners.
                      icon_fallback="{{ course.icon_fallback }}"
                      title="{{ course.title }}">
     <c-slot name="eyebrow">
-        {% if course.listing_status == "not_registered" %}
-            {% if user.is_authenticated %}
-                {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-            {% elif course.access_badge %}
-                <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
+        <div class="space-y-1">
+            <c-organisation-byline :organisation="course.card_organisation" />
+            {% if course.listing_status == "not_registered" %}
+                {% if user.is_authenticated %}
+                    {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
+                {% elif course.access_badge %}
+                    <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
+                {% endif %}
+            {% else %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
             {% endif %}
-        {% else %}
-            {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
-        {% endif %}
+        </div>
     </c-slot>
 
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
-
-    <c-organisation-byline :organisation="course.card_organisation" />
 
     {% include "learner_interface/partials/course_listing_price.html" %}
 

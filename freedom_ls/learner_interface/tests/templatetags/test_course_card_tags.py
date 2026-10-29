@@ -216,3 +216,13 @@ class TestCourseCardWidget:
         assert _render(_card(variant="compact"), source_topic) != _render(
             _card(variant="row"), source_topic
         )
+
+    def test_compact_card_renders_no_organisation_byline(
+        self, source_topic: Topic
+    ) -> None:
+        course = CourseFactory(file_path="course/course.md")
+        course.organisations.add(OrganisationFactory())
+
+        result = _render(_card(variant="compact"), source_topic)
+
+        assert 'data-testid="organisation-byline"' not in result
