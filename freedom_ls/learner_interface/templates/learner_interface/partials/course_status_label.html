@@ -1,0 +1,24 @@
+{% comment %}
+The one place the five status labels and their icons are written. Both roots of
+course_status_eyebrow.html include it, so neither repeats them.
+
+Params:
+  status    — one of: not_registered | registered | in_progress | complete | coming_soon
+  with_icon — include the reinforcement icon
+{% endcomment %}
+{% if status == "coming_soon" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
+    Coming soon
+{% elif status == "complete" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>{% endif %}
+    Completed
+{% elif status == "in_progress" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>{% endif %}
+    In progress
+{% elif status == "registered" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>{% endif %}
+    Registered
+{% else %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>{% endif %}
+    Not registered
+{% endif %}

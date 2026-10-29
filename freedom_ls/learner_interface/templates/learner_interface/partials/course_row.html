@@ -12,6 +12,7 @@ Standard fields land in standard places:
   details        -> course_details_link.html, on its own right-aligned line in
                     the footer slot (bottom-right of the row, below everything)
   title + link   -> stretched title link (card_title_link.html)
+  price          -> eyebrow right, as a muted chip
   organisation   -> eyebrow, left, with the difficulty
                     (course_row_eyebrow_left.html); the byline renders only
                     where the view stamps card_organisation
@@ -54,18 +55,17 @@ show_time_zone_to_learners.
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
             {% if course.listing_status != "not_registered" %}
-                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
             {% elif not user.is_authenticated and course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
+            {% include "learner_interface/partials/course_listing_price.html" with as_chip=True %}
         </div>
     </c-slot>
 
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
-
-    {% include "learner_interface/partials/course_listing_price.html" %}
 
     {% if course.next_up_title %}
         <p class="text-sm text-muted">

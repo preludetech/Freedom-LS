@@ -12,6 +12,7 @@ labels and their icons. Every row leaf (all-courses page) and card leaf
 Params:
   status    — one of: not_registered | registered | in_progress | complete | coming_soon
   with_icon — include the reinforcement icon (rows: True; dashboard cards: False)
+  as_chip   — render as a muted chip (rows); without it the eyebrow line (cards)
 
 The data-testid carries the status the eyebrow resolved to, so a test can tell
 which card variant rendered without matching the label text — several of those
@@ -20,22 +21,13 @@ labels also appear as section headings on the dashboard.
 WCAG 1.4.1: the text label is always present; the icon (and any colour) is
 reinforcement only — never the sole indicator of state.
 {% endcomment %}
-<p data-testid="course-status-{{ status|default:'not_registered' }}"
-   class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
-    {% if status == "coming_soon" %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
-        Coming soon
-    {% elif status == "complete" %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>{% endif %}
-        Completed
-    {% elif status == "in_progress" %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>{% endif %}
-        In progress
-    {% elif status == "registered" %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>{% endif %}
-        Registered
-    {% else %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>{% endif %}
-        Not registered
-    {% endif %}
-</p>
+{% if as_chip %}
+    <c-chip variant="muted" size="xs" data-testid="course-status-{{ status|default:'not_registered' }}">
+        {% include "learner_interface/partials/course_status_label.html" %}
+    </c-chip>
+{% else %}
+    <p data-testid="course-status-{{ status|default:'not_registered' }}"
+       class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
+        {% include "learner_interface/partials/course_status_label.html" %}
+    </p>
+{% endif %}

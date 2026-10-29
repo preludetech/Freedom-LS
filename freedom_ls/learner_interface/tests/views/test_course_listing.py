@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from typing import cast
 
 import pytest
@@ -2110,3 +2111,82 @@ def test_all_courses_details_link_name_ends_with_the_course_title(mock_site_cont
     assert re.search(
         r"Details\s*<span class=\"sr-only\"> for Zebra Handling</span>", html
     )
+
+
+STATUS_CHIP = re.compile(
+    r'<span[^>]*class="[^"]*\bchip\b[^"]*"[^>]*data-testid="course-status-[^"]*"'
+    r'|<span[^>]*data-testid="course-status-[^"]*"[^>]*class="[^"]*\bchip\b[^"]*"'
+)
+
+
+def _registered_course_row_html(logged_in_client) -> str:
+    user = UserFactory()
+    course = CourseFactory(title="Registered course")
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(),
+        course=course,
+    )
+    course_progress_record(course, user)
+    response = cast(
+        HttpResponse, logged_in_client(user).get(reverse("learner_interface:courses"))
+    )
+    return response.content.decode()
+
+
+def _priced_row_html() -> str:
+    CourseFactory(
+        audience=CourseAudience.PUBLIC,
+        price_kind="fixed",
+        price_amount=Decimal("1499.00"),
+        price_currency="ZAR",
+    )
+    return Client().get(reverse("learner_interface:courses")).content.decode()
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_its_status_as_one_chip(
+    mock_site_context, logged_in_client
+):
+    html = _registered_course_row_html(logged_in_client)
+
+    assert len(STATUS_CHIP.findall(html)) == 1
+
+
+@pytest.mark.django_db
+def test_all_courses_row_status_chip_holds_the_status_icon(
+    mock_site_context, logged_in_client
+):
+    html = _registered_course_row_html(logged_in_client)
+
+    chip = re.search(
+        r'data-testid="course-status-[^"]*".*?(?:In progress|Registered)',
+        html,
+        re.DOTALL,
+    )
+    assert chip is not None
+    assert "<svg" in chip.group(0)
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_the_price_once(mock_site_context):
+    html = _priced_row_html()
+
+    assert html.count('data-testid="course-price"') == 1
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_the_price_as_a_chip(mock_site_context):
+    html = _priced_row_html()
+
+    assert re.search(
+        r'class="[^"]*\bchip-muted\b[^"]*"[^>]*>\s*<span data-testid="course-price"',
+        html,
+    )
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_the_price_line_nowhere(mock_site_context):
+    html = _priced_row_html()
+
+    assert '<p class="text-sm font-semibold">' not in html
