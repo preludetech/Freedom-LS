@@ -1,159 +1,143 @@
 # Frontend QA report: educator-interface-11-audit-log
 
-All 18 tests passed across desktop, mobile and tablet. No bugs were found and no design states were tested. The test plan was corrected in place during the run (URLs, action labels, control names and a few expectations that had drifted from the spec and code).
-
 ## Methodology
 
-- Tool: Playwright MCP, driving the dev server on port 8315 against the `educator-interface-11-audit-log` branch.
-- Personas come from the test plan: Orla (organisation admin), Cole (cohort admin), Vera (cohort viewer), Sid (Southside admin) and demodev (site admin).
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there.
-- Setup: the pre-step rebase replayed 52 commits onto origin/main. Conflicts were only in the generated `docs/app_structure.md` and `test_organisation/import_contracts.toml`, resolved by re-running `generate_app_map.py`. The lost-change check passed, the full tier ran 10140 passed, pre-commit was clean, and the branch was force-pushed. The upstream-change review found nothing changed. The rebase's front-end check was folded into this QA run (same pages, same three viewports). The dev DB carried residue from earlier QA runs (Sol in Cohorts A/B/C, 177 old audit rows) that broke section 4, so it was fully wiped and reseeded (`create_demo_data --yes`, then `qa_create_learner_administration_scenario`).
+Playwright MCP drove a live dev server for this branch on a freshly wiped and seeded dev DB (`create_demo_data --yes`, then `qa_create_learner_administration_scenario`). The branch was rebased onto main first; upstream had changed only spec docs. Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there. Viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
 
 ## Diff scoping
 
-Class: FULL.
-
-Changed front-end files (all under `freedom_ls/educator_interface/templates/educator_interface/`):
-
-- `data-table-cells/`: `audit_details.html`, `audit_what.html`, `audit_when.html`, `audit_who.html`, `deactivate_registration.html`, `member.html`, `member_actions.html`, `member_roles.html`, `unregister.html`
-- `modal/`: `add_member.html`, `change_cohorts.html`, `deactivate_cohort_registration_confirmation.html`, `deactivate_confirmation.html`, `deactivate_learner_confirmation.html`, `deactivate_member_confirmation.html`, `deactivate_registration_confirmation.html`, `deactivate_role_confirmation.html`, `delete_cohort_confirmation.html`, `reactivate_registration_confirmation.html`, `remove_from_cohort_confirmation.html`, `remove_role_confirmation.html`, `suspend_member_confirmation.html`, `unregister_confirmation.html`, `unregister_from_course_confirmation.html`
-- `panels/`: `learner_history.html`, `learner_registrations.html`
-- `partials/`: `audit_history_empty.html`, `audit_log_card.html`, `audit_log_empty.html`, `reason_field.html`
-
-Desktop, mobile and tablet all ran. Nothing was skipped.
+Class: FULL. Changed front-end files (30 of 277 changed files) include the audit cell templates (`audit_details.html`, `audit_what.html`, `audit_when.html`, `audit_who.html`), the data-table cells (`deactivate_registration.html`, `member.html`, `member_actions.html`, `member_roles.html`, `unregister.html`) and the modal templates (`add_member.html`, `change_cohorts.html`, the deactivate confirmation modals), all under `freedom_ls/educator_interface/templates/educator_interface/`. Everything ran; nothing was skipped.
 
 ## Smoke gate
 
-Pass. Pages checked: `/` and `/educator/organisations/northside/audit-log`.
+Pass. Pages checked: `/`, `/educator/organisations/northside/audit-log`, `/educator/organisations/northside/learners`.
 
 ## Results
 
-| Test | Viewport | Status | Notes |
+| Test | Viewport | Status | Note |
 |---|---|---|---|
-| 1 | desktop | pass | History tab empty state; Reason (optional) with help text; deactivate row with reason by Orla Admin; reactivate row newest first with empty details; reactivate dialog has no reason field; direct `__tabs/history` URL shows both rows. |
-| 2 | desktop | pass | Input has maxlength=500. A 501-char value set via JS got POST 422, the dialog stayed open with the max-length error, Ada stayed Active. 500 chars stored in full and wrap in Details. Ada reactivated. |
-| 3 | desktop | pass | Stale first tab got "already changed / Nothing changed" after a second tab deactivated Ada; exactly one new Learner deactivated row. Own member row shows no controls. Controls are labelled Deactivate role / Deactivate (plan said Remove / Suspend). |
-| 4 | desktop | pass | Add to cohort, Move, Remove from cohort with reason, learner and cohort registration deactivate/reactivate/register, org and cohort Add learners. All rows correct on learner and cohort History tabs. Labels follow the spec, not the plan. |
-| 5 | desktop | pass | Cohort created, renamed, no-change save wrote no row, deactivated, reactivated, deleted with reason. All rows remain in the org Audit log after delete. Target is the name at write time. Cohort A Settings shows no Delete and explains why. |
-| 6.2-6.3 | desktop | pass | Resend setup email wrote a row; immediate second send was refused (try again in 15 minutes) and wrote no row. Nameless learner rows show; org log Target reads nameless@qa.test. |
-| 7 | desktop | pass | Deactivate role wrote two Role deactivated rows with reason. Add member (two-step) wrote Role assigned. Change cohorts add/remove wrote matching rows. Member deactivate/reactivate wrote rows. Cohort A History has only Cohort A role rows. Labels follow the spec. |
-| 8 | desktop | pass | Sidebar Administration: Members then Audit log. Columns When/Who/What/Target/Details, newest first, no search/sort/checkboxes/export. Who, What (multi-select), When filters narrow correctly; pagination 25 + 14. Plan combo replaced by System + Cohort deleted (empty state with Clear filters). Tampered params render the unfiltered list. |
-| 9 | desktop | pass | Cole and Vera see no History tab; history URLs and `/audit-log` return 404; no Audit log/Members in the sidebar. Sid sees only Southside rows; Northside log 404. As demodev, each org log holds only its own rows. Org switcher dropdown not exercised. |
-| 6.1 | desktop | pass | Run as demodev (Edit name needs `change_user`, held only by site_admin, same on main). Rename and rename back wrote rows; no-change save wrote none. Who shows demodev@email.com. |
-| 10 | desktop | pass | HTML/script payloads in cohort name and reason render as literal text in the org log and cohort History: no injected elements, no alert, no console errors. |
-| 12 | desktop | pass | Admin index lists Audit log entries. No Add link; columns, filters and search work. Change page has 13 read-only fields, no inputs, no Save/Delete. `/add/` and `/delete/` both 403. Action column shows raw codes. |
-| 2.5 | desktop | pass | Reason (optional) with staff-only help text on all seven other dialogs. |
-| 13.3 | desktop | pass | No Reason field on Reactivate member, Move, Change cohorts, Add to cohort (also none on learner Reactivate, cohort Reactivate, Register, Resend setup email). |
-| 13 | desktop | pass | Learners, cohorts, members and learner Overview/Courses render with no console errors. Typed reason then Cancel shows a Discard changes? guard; nothing submitted. |
-| 11.1 | mobile | pass | Ada History at 375px: cards with What first, then When, Who, Details; 500-char reason wraps; no horizontal scroll. Empty Details label still printed. |
-| 11.2 | mobile | pass | Org Audit log at 375px: cards, no horizontal scroll. Filter opens the Filter & sort sheet (Who/When selects, What chips). Who = System narrows to five rows. |
-| 11-dialog | mobile | pass | Deactivate dialog with Reason fits 375px; input full width; buttons 42px tall. |
-| 11.3 | tablet | pass | Org Audit log at 768px: full table fits, no horizontal scroll; Details column narrow but readable. Drawer shows Members and Audit log. Cohort A History table and tabs fit. |
+| 1 | desktop | pass | Learner History tab, empty state, reason dialog, deactivate/reactivate rows |
+| 2 | desktop | pass | 501 chars rejected with 422; 500 chars accepted and wraps cleanly |
+| 3 | desktop | pass | Stale second tab got 422, exactly one row written; own row has no deactivate controls |
+| 4 | desktop | pass | Cohort membership, move, remove, registration and bulk-add rows correct on learner and cohort History |
+| 5 | desktop | pass | Cohort create/rename/deactivate/reactivate/delete logged; no-change save writes nothing |
+| 6 | desktop | pass | Rename, resend setup email and nameless learner logged; resend throttle writes no row |
+| 7 | desktop | pass | Member role and membership actions logged with correct cohort scoping |
+| 8 | desktop | pass | Org audit log columns, Who/What/When filters, empty state, pagination (25 + 16), tampered params |
+| 9 | desktop | pass | Role gating (404s, no sidebar entry) and org scoping between Northside and Southside |
+| 10 | desktop | pass | Markup in names and reasons renders as literal text |
+| 11.1 | mobile | pass | Ada History as cards, no horizontal scroll |
+| 11.2 | mobile | pass | Org log cards, filter sheet, nav drawer |
+| 11.3 | tablet | pass | Tables render at 718px, no horizontal scroll, dialog centred |
+| 12 | desktop | pass | Django admin audit log is read-only |
+| 13 | desktop | pass | Regression pages load; dirty-cancel guard; no reason field on other dialogs |
 
-### Screenshots by test
+### §1 Learner History and reason dialogs
 
-**Test 1 (desktop)**
+![](screenshots/page-2026-10-29T05-34-57-459Z.png)
 
-![](screenshots/page-2026-10-28T16-55-42-505Z.png)
-Test 1: History tab with deactivate and reactivate rows.
+History tab present; empty state text exact (checked on Pat Pick). The Deactivate dialog has "Reason (optional)" with help text and maxlength=500. The row shows Learner deactivated / Orla Admin / "Left the programme". The Reactivate dialog has no reason; the reactivated row is newest first with empty Details. The direct `__tabs/history` URL shows the same rows.
 
-![](screenshots/page-2026-10-28T16-55-34-302Z.png)
-Test 1: deactivate dialog with Reason (optional) field.
+### §2 Reason length limit
 
-**Test 2 (desktop)**
+![](screenshots/page-2026-10-29T05-35-29-982Z.png)
+![](screenshots/page-2026-10-29T05-35-42-517Z.png)
 
-![](screenshots/page-2026-10-28T16-56-23-267Z.png)
-Test 2: 501-character reason rejected with 422, dialog stays open.
+501 chars (via JS) returned 422; the dialog stayed open with "Ensure this value has at most 500 characters (it has 501)." and Ada stayed Active. 500 chars succeeded and the full text shows in History, wrapping cleanly. Ada was reactivated.
 
-![](screenshots/page-2026-10-28T16-56-33-594Z.png)
-Test 2: 500-character reason wrapping in the Details cell.
+### §3 Stale tab and self-protection
 
-**Test 3 (desktop)**
+![](screenshots/page-s3-already.png)
 
-![](screenshots/page-2026-10-28T16-56-54-734Z.png)
-Test 3: stale tab shows "already changed / Nothing changed".
+The second-tab deactivate wrote one row. The stale tab got 422 "Ada Lovelace was already changed / Nothing changed...". History went from 4 to 5 rows (one Learner deactivated). The own row on Members shows no Deactivate role/Deactivate controls ("You can't ...").
 
-**Test 4 (desktop)**
+### §4 Cohort membership and registration rows
 
-![](screenshots/page-2026-10-28T16-59-25-292Z.png)
-Test 4: org Add learners result.
+![](screenshots/page-2026-10-29T05-38-13-524Z.png)
+![](screenshots/page-s4-sol-history.png)
+![](screenshots/page-s4-ben-removed.png)
+![](screenshots/page-s4-add-results.png)
 
-![](screenshots/page-2026-10-28T16-58-03-467Z.png)
-Test 4: Ben history.
+- 4.1: Sol "Added to cohort" / Cohort A on the learner and Cohort A History. Cohort History has a Target column naming Sol Solo (the B3 decision). Ada's deactivations are absent from the cohort.
+- 4.3-4.4: "Moved between cohorts", "From Cohort B to Cohort A", on Ben and both cohorts.
+- 4.5: The Remove dialog has a reason (maxlength 500). Details show "Cohort A" with the reason on its own line.
+- 4.6: Registration deactivated (reason), reactivated, and "Registered for course" Course Hid.
+- 4.7: Cohort C registered, deactivated ("Wrong cohort"), reactivated.
+- 4.8: One "Learner added" row plus "Added to cohort" for Ada on Cohort B; Ada has no "Learner added" row.
+- 4.9: "Added to cohort" for Ben and Pat, no summary row.
 
-![](screenshots/page-2026-10-28T16-58-29-295Z.png)
-Test 4: Sol history.
+### §5 Cohort lifecycle
 
-![](screenshots/page-2026-10-28T16-58-56-036Z.png)
-Test 4: Cohort C history.
+![](screenshots/page-s5-auditlog.png)
 
-**Test 5 (desktop)**
+Cohort created and renamed (From QA Audit Cohort to QA Audit Cohort 2). A no-change save wrote nothing. The deactivate dialog has a reason (Pilot ended) and the page shows Inactive; reactivate has no reason field. The Delete dialog has a reason and lands on the cohorts list, and the cohort is gone. The org log shows "Cohort deleted" with Target "QA Audit Cohort 2" and "Created for QA", and "Cohort created" with Target "QA Audit Cohort". Cohort A Settings shows "can't be deleted while it has 7 learners..." and no Delete.
 
-![](screenshots/page-2026-10-28T17-00-22-971Z.png)
-Test 5: cohort lifecycle rows remaining in the org Audit log after delete.
+### §6 Learner administration
 
-**Test 8 (desktop)**
+![](screenshots/page-2026-10-29T05-40-08-562Z.png)
 
-![](screenshots/page-2026-10-28T17-03-22-647Z.png)
-Test 8: org Audit log with columns and filters.
+As demodev: Edit name gave Learner renamed "From Ada Lovelace to Ada Lovelace-Byron" and back; a no-change save wrote nothing. Who shows `demodev@email.com`. "Resend setup email" logged "Setup email resent"; a second resend said "Setup email sent recently... Try again in 15 minutes" with no new row. Nameless learner deactivate/reactivate rows appear on History; the org log Target reads nameless@qa.test.
 
-![](screenshots/page-2026-10-28T17-03-53-492Z.png)
-Test 8: What multi-select with chip "What: a, b, c".
+### §7 Member administration
 
-![](screenshots/page-2026-10-28T17-04-25-975Z.png)
-Test 8: empty state "No entries match these filters." with Clear filters.
+![](screenshots/page-2026-10-29T05-41-28-590Z.png)
 
-**Test 9 (desktop)**
+Deactivate role (reason "Changing teams") wrote two Role deactivated rows (Cohort admin on Cohort A and Cohort B). Add member (lookup, role, Cohort A, summary confirm) wrote one Role assigned for Cohort A. Change cohorts: adding B wrote Role assigned B with no deactivation; removing B wrote Role deactivated B. Member Deactivate (On leave) wrote Member deactivated; Reactivate (no reason field) wrote Member reactivated. Cohort A History shows Cohort A role rows only, none for Cohort B.
 
-![](screenshots/page-2026-10-28T17-05-05-183Z.png)
-Test 9: role-restricted views (cohort admin / viewer, no History tab).
+### §8 Organisation audit log
 
-![](screenshots/page-2026-10-28T17-05-32-047Z.png)
-Test 9: Southside log showing Sid Admin deactivating Sam South.
+![](screenshots/page-s8-what-filter.png)
+![](screenshots/page-s8-empty-filters.png)
 
-**Test 10 (desktop)**
+Sidebar Administration lists Members then Audit log. Columns: When/Who/What/Target/Details, newest first; no search, no sort links, no checkboxes, no Export. Who options: System, demodev@email.com, Orla Admin. Who=Orla shows only Orla rows; Who=System shows seed role grants and the Rae Removed deactivation only. What multi-select Learner deactivated + reactivated gave 9 rows, plus Cohort deleted gave 10. When presets Today/7d/30d/90d/12m each keep all rows; the chip shows one preset. System + Cohort deleted gives "No entries match these filters." and Clear filters returns to the unfiltered URL. Pagination (§8.7): 41 rows, 25 on page 1 and 16 on page 2, no repeats, continuing in time order. Tampered `?audit_log-who=not-a-pk&audit_log-when=yesterday` returned 200, unfiltered, no chips.
 
-![](screenshots/page-2026-10-28T17-06-28-546Z.png)
-Test 10: HTML and script payloads rendered as literal text.
+### §9 Permissions and organisation scoping
 
-**Test 12 (desktop)**
+![](screenshots/page-s9-southside.png)
 
-![](screenshots/page-2026-10-28T17-06-58-653Z.png)
-Test 12: Django admin audit log entries changelist.
+Cole (cohort admin) and Vera (viewer): Ada tabs are Overview/Courses only; Ada and Cohort A `__tabs/history` return 404; the sidebar has no Administration/Audit log; `/audit-log` is 404. Sid: the Southside log shows only its seed role grant, and the Northside log is 404. Deactivating Sam South (Southside check) shows in the Southside log and not in Orla's Northside log. demodev via the org switcher: the Southside log shows the Sam South deactivation by Sid Admin; the Northside log has no Southside rows.
 
-**Test 11.1 (mobile)**
+### §10 Markup escaping
 
-![](screenshots/page-2026-10-28T17-07-44-826Z.png)
-Test 11.1: Ada History cards at 375px.
+![](screenshots/page-s10-orglog.png)
+![](screenshots/page-s10-history.png)
 
-**Test 11.2 (mobile)**
+Cohort `<b>Bold</b> cohort` was renamed to `<img src=x onerror=alert(1)> cohort` and deactivated with reason `<script>alert(2)</script>`. The org log and cohort History show literal text in Target/Details; no `<b>`, `<img>` or `<script>` elements in tbody and no dialog fired. The cohort was then deleted with an empty reason (the Cohort deleted row was seen in admin).
 
-![](screenshots/page-2026-10-28T17-07-54-604Z.png)
-Test 11.2: org Audit log cards at 375px.
+### §11.1 Mobile: learner History
 
-![](screenshots/page-2026-10-28T17-08-01-116Z.png)
-Test 11.2: Filter & sort sheet.
+![](screenshots/page-2026-10-29T05-48-09-332Z.png)
 
-**Test 11-dialog (mobile)**
+Ada History at 375x812: no table; cards with the What label first then labelled When/Who/Details lines. scrollWidth 375 = clientWidth. The 500-char reason wraps inside the card. Cards with no details still show an empty "Details" label.
 
-![](screenshots/page-2026-10-28T17-08-17-502Z.png)
-Test 11-dialog: deactivate dialog with Reason at 375px.
+### §11.2 Mobile: organisation log
 
-**Test 11.3 (tablet)**
+![](screenshots/page-s11-mobile-log.png)
+![](screenshots/page-s11-mobile-sheet.png)
+![](screenshots/page-s11-mobile-nav.png)
 
-![](screenshots/page-2026-10-28T17-08-32-347Z.png)
-Test 11.3: org Audit log table at 768px.
+Cards have a first line "What Target" (e.g. "Cohort deleted <img...> cohort", markup literal) and no horizontal scroll. The Filter button opens the "Filter & sort" sheet: Who and When are selects, What is a checkbox list; Who=System + Show results narrows to the 5 System rows as on desktop. The nav drawer ("Open navigation panel") lists all sections including Audit log, with links 343x36.
 
-![](screenshots/page-2026-10-28T17-08-40-794Z.png)
-Test 11.3: hamburger drawer with Members and Audit log.
+### §11.3 Tablet
 
-![](screenshots/page-2026-10-28T17-08-45-287Z.png)
-Test 11.3: Cohort A History at 768px.
+![](screenshots/page-tablet-log.png)
+![](screenshots/page-tablet-hist.png)
+![](screenshots/page-tablet-cohortHist.png)
+![](screenshots/page-tablet-dialog.png)
 
-Tests 6.2-6.3, 7, 6.1, 2.5, 13.3 and 13 have no screenshots.
+At 768x1024 the org log, Ada History and Cohort A History all render as a 718px table with no horizontal scroll (scrollWidth 768); the sidebar collapses to the hamburger drawer. Details is the narrowest column, so long details wrap to several lines but stay readable. The Deactivate dialog with reason renders at 512px, centred.
 
-![](screenshots/page-2026-10-28T16-54-37-535Z.png)
-Smoke gate: the organisation Audit log as Orla, also the per-run capture check (file written to qa-screenshots/, no image bytes returned).
+### §12 Django admin
+
+![](screenshots/page-s12-admin-detail.png)
+
+The admin index lists Audit log > Audit log entries. The changelist has no Add button; columns Created at, Actor label, Action, Target label, Organisation; filters by action and organisation; a search box; `q=Lovelace` returns Ada's rows. The entry detail has no editable inputs, no Save, no Delete. `/add/` returns 403.
+
+### §13 Regression and dirty-cancel
+
+![](screenshots/page-s13-dirty-cancel.png)
+
+As Orla: learners/cohorts/members lists, Ada Overview and Courses all return 200 with content and no console errors. On the Deactivate dialog, Cancel with an empty reason closes at once; Cancel after typing a reason shows the existing "Discard changes?" guard, and Discard closes it. No History row was written either way (9 -> 9). No Reason field on the Reactivate member, Move, Change cohorts or Add to cohort dialogs.
 
 ## Design check
 
@@ -161,33 +145,23 @@ No design states tested.
 
 ## Bugs
 
-No bugs were found.
+No bugs found.
 
 ## Bug status
 
-No bugs this run.
-
-## Plan corrections
-
-- Educator URLs are `/educator/organisations/<slug>/...` (plan wrote `/educator/<slug>/`).
-- Section 0.2 now names `create_demo_data --yes` as the prerequisite after a wipe.
-- Action labels updated to the spec and code: Role assigned / Role deactivated / Member deactivated / Registration deactivated|reactivated / Cohort registration deactivated|reactivated (plan had Role granted / Role removed / Member suspended / Unregistered / Re-registered).
-- Control names updated: Deactivate role, Deactivate, Deactivate registration.
-- 6.1 runs as demodev because Edit name needs `change_user`, which only site_admin holds (same on main).
-- 5.5 Target wording clarified: Target is the name at write time.
-- 8.6 empty-state combo changed to System + Cohort deleted because the seed writes a System Learner deactivated row for Rae.
-- 2.5 notes the maxlength=500 attribute.
-- 7.3 notes the confirm step on Add member.
+No bugs recorded this run.
 
 ## General notes
 
-No defects found. Observations with no action attached:
+- The plan's §4.2 wording ("Sol Solo is not shown as a column here") is stale. Cohort History now has a Target column naming the learner/member (the B3 decision), and the plan's own intro says so.
+- The superuser has no name, so Who shows `demodev@email.com`.
+- Mobile History/log cards show an empty "Details" label when a row has no details.
+- On mobile org-log cards, the What label and the Target sit on one bold line with no separator, so for a cohort named with markup they read as one run of text.
+- The mobile filter sheet is titled "Filter & sort", but the audit log has no sort (shared component wording).
+- Cancel on a reason dialog after typing triggers the existing "Discard changes?" guard. That is expected, and no row is written.
+- The learner "Register for course" and cohort "Register" dialogs list "Course Other", which belongs to Southside's Cohort S. Course scoping is outside this branch's scope.
+- Django admin pages log many report-only CSP "Evaluating a string as JavaScript" info messages. These are unrelated to this branch.
+- The Southside empty-state copy ("Nothing has been recorded for this organisation yet.") was not seen, because the seed writes a role-grant row for Sid.
+- §8.7 pagination was exercised: 41 rows, 25 on page 1 and 16 on page 2.
 
-- On mobile cards and the desktop History table, rows without details still print an empty Details label/cell.
-- At 768px the org log Details column is narrow and wraps heavily but remains readable.
-- The Django admin changelist shows raw action codes (`learner.renamed`) in the Action column and its filter, not labels.
-- The organisation switcher dropdown was not exercised (orgs opened by URL).
-- The Django debug toolbar panel opens by default in dev and intercepts clicks until hidden (`djdt=hide` cookie plus localStorage `djdt.show=false`).
-- Screenshot snapshot `.yml` and console `.log` files the MCP server wrote into `qa-screenshots/` were deleted before the collect, so only the 25 PNGs reached the spec dir.
-
-status: ok · reason: 0 bugs, nothing to fix; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented
