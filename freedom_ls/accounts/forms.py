@@ -55,6 +55,12 @@ class HoneypotInput(forms.TextInput):
     def is_hidden(self) -> bool:
         return True
 
+    def format_value(self, value: object) -> None:
+        # A bot's value must never come back in the re-rendered form: a person
+        # who then submits it would be rejected again with no way to clear a
+        # field they cannot see.
+        return None
+
 
 HONEYPOT_SIGNUP_MESSAGE = _(
     "We couldn't process this sign-up. If you used autofill or a password manager, "

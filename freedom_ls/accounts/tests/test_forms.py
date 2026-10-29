@@ -304,6 +304,15 @@ def test_honeypot_rejects_submission_with_form_level_error(
 
 
 @pytest.mark.django_db
+def test_filled_honeypot_is_not_rendered_back_with_a_value(
+    allauth_request_ctx, mock_site_context
+):
+    form = SiteAwareSignupForm(data=_signup_data(**{HONEYPOT_FIELD: BOT_VALUE}))
+
+    assert "value=" not in str(form[HONEYPOT_FIELD])
+
+
+@pytest.mark.django_db
 def test_honeypot_trip_logs_one_warning_without_pii(
     allauth_request_ctx, mock_site_context, settings, caplog
 ):
@@ -359,7 +368,9 @@ def test_filled_honeypot_rerenders_signup_page_with_message_and_no_user(
     )
 
     assert response.status_code == 200
-    assert "try typing your details in by hand" in response.content.decode()
+    body = response.content.decode()
+    assert "try typing your details in by hand" in body
+    assert BOT_VALUE not in body
     assert not User.objects.filter(email="honeypot@example.com").exists()
 
 

@@ -189,6 +189,18 @@ def test_email_form_refuses_a_filled_honeypot_with_the_application_message(
     assert form.non_field_errors() == [str(HONEYPOT_APPLICATION_MESSAGE)]
 
 
+def test_details_form_does_not_rerender_a_filled_honeypot_value(request_for_site):
+    form = _form(request_for_site, fax_number="bot")
+
+    assert "value=" not in str(form["fax_number"])
+
+
+def test_email_form_does_not_rerender_a_filled_honeypot_value(request_for_site):
+    form = _email_form(request_for_site, fax_number="bot")
+
+    assert "value=" not in str(form["fax_number"])
+
+
 def test_email_form_refuses_an_invalid_address(request_for_site):
     form = _email_form(request_for_site, email="not-an-address")
 
