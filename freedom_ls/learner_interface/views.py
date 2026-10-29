@@ -297,11 +297,7 @@ def _visible_recommendations(
 
 
 def _stamp_single_organisation(course: Course) -> None:
-    # Exactly one organisation names the version; zero or several say nothing.
-    organisations = course.organisations.all()
-    stamp_card_organisation(
-        course, organisations[0] if len(organisations) == 1 else None
-    )
+    stamp_card_organisation(course, course.single_organisation())
 
 
 def _annotate_registered_courses(
@@ -404,7 +400,6 @@ def _discovery_courses(
         backend.filter_visible(user=user, courses=get_all_courses())
         .exclude(pk__in=excluded_ids)
         .select_related("dashboard_category")
-        .prefetch_related("organisations")
     )
 
 
@@ -814,6 +809,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
         stamp_course_access_badge(course, badge=entry.access_badge)
+        _stamp_single_organisation(course)
         if entry.status in (
             CourseListingStatus.REGISTERED,
             CourseListingStatus.IN_PROGRESS,

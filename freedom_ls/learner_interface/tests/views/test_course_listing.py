@@ -40,6 +40,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
 
@@ -2007,10 +2008,51 @@ def test_all_courses_query_count_stays_within_budget(
 
 
 @pytest.mark.django_db
-def test_all_courses_rows_name_no_organisation(mock_site_context, logged_in_client):
-    user = UserFactory()
+def test_all_courses_row_names_the_single_organisation(mock_site_context):
     owned = CourseFactory(title="Owned course", audience=CourseAudience.PUBLIC)
     owned.organisations.add(OrganisationFactory(name="Owner Academy"))
+
+    response = Client().get(reverse("learner_interface:courses"))
+
+    assert "Owner Academy" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_all_courses_row_names_no_organisation_for_a_course_with_several(
+    mock_site_context,
+):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(
+        OrganisationFactory(name="First Academy"),
+        OrganisationFactory(name="Second Academy"),
+    )
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
+    assert "First Academy" not in html
+    assert "Second Academy" not in html
+
+
+@pytest.mark.django_db
+def test_all_courses_row_names_no_organisation_for_the_default_organisation(
+    mock_site_context,
+):
+    default = get_default_organisation(mock_site_context)
+    default.name = "Site Default Academy"
+    default.save()
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(default)
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
+    assert "Site Default Academy" not in html
+
+
+@pytest.mark.django_db
+def test_all_courses_rows_name_no_study_organisation(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
     studied = CourseFactory(title="Studied course")
     LearnerCourseRegistrationFactory(
         learner__user=user,
@@ -2022,6 +2064,5 @@ def test_all_courses_rows_name_no_organisation(mock_site_context, logged_in_clie
     response = logged_in_client(user).get(reverse("learner_interface:courses"))
 
     html = response.content.decode()
-    assert "Owned course" in html
-    assert "Owner Academy" not in html
+    assert "Studied course" in html
     assert "Study Academy" not in html

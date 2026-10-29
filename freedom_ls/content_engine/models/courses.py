@@ -19,6 +19,7 @@ from ..course_accent import PALETTE
 
 if TYPE_CHECKING:
     from freedom_ls.content_engine.prices import CoursePrice
+    from freedom_ls.organisations.models import Organisation
 
 
 class DifficultyLevel(models.TextChoices):
@@ -388,6 +389,20 @@ class Course(MarkdownContent, TitledContent):
             raise ValidationError(
                 {"price_kind": "Choose a price kind, or clear the price fields."}
             )
+
+    def single_organisation(self) -> Organisation | None:
+        """The one organisation this course belongs to, or None.
+
+        None for a course with no organisation or with several, and for the
+        site's default organisation: it stands for the site itself, which the
+        page chrome already brands, so no surface names it again. Reads the
+        prefetched organisations when a caller supplied them and issues one
+        query otherwise.
+        """
+        organisations = list(self.organisations.all())
+        if len(organisations) != 1 or organisations[0].is_default:
+            return None
+        return organisations[0]
 
     def current_price(self) -> CoursePrice | None:
         """The price this course shows today, with an expired sale turned fixed.

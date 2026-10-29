@@ -775,8 +775,12 @@ def form_start_page_buttons(
 
 
 def get_all_courses() -> QuerySet[Course]:
-    """Get all courses."""
-    return Course.objects.all()
+    """Get all courses, with their organisations prefetched.
+
+    Every listing names a course's organisation, so the prefetch lives on the
+    shared base.
+    """
+    return Course.objects.prefetch_related("organisations")
 
 
 def get_completed_courses(user: RequestUser) -> list[Course]:

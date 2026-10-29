@@ -35,6 +35,8 @@ from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.tests.factories import SiteFactory
 
 # CourseCategory: per-site uniqueness, Course ordering, and the dashboard_category FK.
@@ -1128,3 +1130,67 @@ def test_iso_estimated_duration_large_duration(mock_site_context):
     """iso_estimated_duration() handles 3 hours 15 minutes correctly."""
     course = CourseFactory(estimated_duration=timedelta(hours=3, minutes=15))
     assert course.iso_estimated_duration() == "PT3H15M"
+
+
+@pytest.mark.django_db
+def test_single_organisation_is_none_for_a_course_with_none(mock_site_context) -> None:
+    course = CourseFactory()
+
+    assert course.single_organisation() is None
+
+
+@pytest.mark.django_db
+def test_single_organisation_is_none_for_a_course_with_several(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    course.organisations.add(OrganisationFactory(), OrganisationFactory())
+
+    assert course.single_organisation() is None
+
+
+@pytest.mark.django_db
+def test_single_organisation_is_none_for_the_default_organisation_alone(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    course.organisations.add(get_default_organisation(mock_site_context))
+
+    assert course.single_organisation() is None
+
+
+@pytest.mark.django_db
+def test_single_organisation_is_the_one_non_default_organisation(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+
+    assert course.single_organisation() == organisation
+
+
+@pytest.mark.django_db
+def test_single_organisation_reads_prefetched_organisations_without_a_query(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    course = CourseFactory()
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+    prefetched = Course.objects.prefetch_related("organisations").get(pk=course.pk)
+
+    with django_assert_num_queries(0):
+        named = prefetched.single_organisation()
+
+    assert named == organisation
+
+
+@pytest.mark.django_db
+def test_single_organisation_without_a_prefetch_gives_the_same_answer(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+
+    assert Course.objects.get(pk=course.pk).single_organisation() == organisation
