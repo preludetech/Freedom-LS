@@ -66,3 +66,19 @@ def test_a_reflected_query_value_is_encoded_never_raw():
     assert "utm=a%22%3Cb" in next_control
     assert 'a"<b' not in next_control
     assert "a<b" not in next_control
+
+
+def test_the_next_control_replaces_the_url():
+    assert 'hx-replace-url="true"' in _control(_render(), "next")
+
+
+def test_the_previous_control_replaces_the_url():
+    assert 'hx-replace-url="true"' in _control(_render(page=2), "previous")
+
+
+def test_the_disabled_previous_control_has_no_hx_replace_url():
+    assert "hx-replace-url" not in _control(_render(), "previous")
+
+
+def test_the_disabled_next_control_has_no_hx_replace_url():
+    assert "hx-replace-url" not in _control(_render(page=3), "next")

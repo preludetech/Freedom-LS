@@ -22,6 +22,7 @@ query string, so each link carries every other section's page state untouched.
            hx-get="{{ previous_href }}"
            hx-target="#{{ target_id }}"
            hx-swap="outerHTML"
+           hx-replace-url="true"
            data-direction="previous"
            aria-label="Previous page"
            class="btn btn-secondary p-2">
@@ -44,6 +45,7 @@ query string, so each link carries every other section's page state untouched.
            hx-get="{{ next_href }}"
            hx-target="#{{ target_id }}"
            hx-swap="outerHTML"
+           hx-replace-url="true"
            data-direction="next"
            aria-label="Next page"
            class="btn btn-secondary p-2">
