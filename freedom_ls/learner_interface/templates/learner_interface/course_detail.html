@@ -87,6 +87,10 @@
                 {% comment %}Inner well — matches c-page's max-width + horizontal padding so the
                 hero content lines up with the Back link and the content below.{% endcomment %}
                 <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-white">
+                    {% if organisation %}
+                        <c-organisation-byline :organisation="organisation" size="md" class="text-white" />
+                        <div class="mt-3 mb-4 border-b border-white/20" aria-hidden="true"></div>
+                    {% endif %}
                     {% if course.dashboard_category %}
                         <span data-testid="course-category-chip" class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
                             {{ course.dashboard_category.title }}
@@ -158,7 +162,13 @@
 
                 {% comment %}Sign-up panel — order-first on mobile so CTA is near the top{% endcomment %}
                 <aside class="order-first lg:order-last lg:col-span-1 pt-6">
-                    <div class="signup-panel p-6 rounded-xl border border-border lg:sticky lg:top-6 space-y-4">
+                    {% comment %}One sticky wrapper for the panel and the organisation card: a card
+                    placed after a sticky sibling is slid over by it. The wrapper is capped at the
+                    viewport and scrolls inside itself so a long bio on a short screen is reachable;
+                    the 1px padding and negative margin keep the scroll box from clipping the
+                    panel's focus rings.{% endcomment %}
+                    <div class="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:p-1 lg:-m-1">
+                    <div class="signup-panel p-6 rounded-xl border border-border space-y-4">
                         {% if not is_registered %}
                             {% with price=course.current_price %}
                                 {% if price %}
@@ -213,6 +223,21 @@
                                 </ul>
                             </div>
                         {% endif %}
+                    </div>
+                    {% if organisation %}
+                        {% comment %}Utilities win over the component layer, so the card takes the
+                        sign-up panel's padding and radius on top of .surface and the two read as
+                        one column.{% endcomment %}
+                        <div class="surface p-6 rounded-xl space-y-3" data-testid="course-organisation-card">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <c-organisation-mark :organisation="organisation" size="lg" />
+                                <p class="font-semibold wrap-break-word min-w-0">{{ organisation.name }}</p>
+                            </div>
+                            {% if organisation.bio %}
+                                <p class="text-sm text-muted" data-testid="course-organisation-bio">{{ organisation.bio|linebreaksbr }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                     </div>
                 </aside>
 

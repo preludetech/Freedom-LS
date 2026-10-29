@@ -12,6 +12,7 @@ import pytest
 import time_machine
 from django_cotton.compiler_regex import CottonCompiler
 
+from django.http import HttpResponse
 from django.template import Context, Template
 from django.test import Client, override_settings
 from django.urls import reverse
@@ -24,7 +25,12 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CoursePart, CourseVisibility
+from freedom_ls.content_engine.models import (
+    Course,
+    CourseAudience,
+    CoursePart,
+    CourseVisibility,
+)
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
@@ -50,6 +56,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.tests.app_guards import app_not_installed
 
 # The wrapper the express-interest partial renders around its call to action.
@@ -1610,6 +1617,133 @@ def test_course_detail_shows_no_time_limit_cell_without_a_time_limit(
     course_progress_record(course, user)
 
     assert "Time limit" not in _detail_html(client, course)
+
+
+def _detail_response(course: Course) -> HttpResponse:
+    url = reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    return cast(HttpResponse, Client().get(url))
+
+
+def _hero_between_byline_and_chip(html: str) -> str:
+    start = html.index('data-testid="organisation-byline"')
+    return html[start : html.index('data-testid="course-category-chip"', start)]
+
+
+@pytest.mark.django_db
+def test_context_organisation_is_the_named_organisation_for_a_single_organisation(
+    mock_site_context,
+):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    organisation = OrganisationFactory()
+    course.organisations.add(organisation)
+
+    response = _detail_response(course)
+
+    assert response.context["organisation"] == organisation
+
+
+@pytest.mark.django_db
+def test_context_organisation_is_none_for_a_multi_organisation_course(
+    mock_site_context,
+):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(), OrganisationFactory())
+
+    response = _detail_response(course)
+
+    assert response.context["organisation"] is None
+
+
+@pytest.mark.django_db
+def test_single_organisation_course_shows_byline_and_card_to_anonymous_visitor(
+    mock_site_context,
+):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(name="Solo Academy"))
+
+    html = _detail_response(course).content.decode()
+
+    assert html.count('data-testid="organisation-byline"') == 1
+    assert html.count('data-testid="course-organisation-card"') == 1
+
+
+@pytest.mark.django_db
+def test_multi_organisation_course_shows_no_byline_or_card(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(), OrganisationFactory())
+
+    html = _detail_response(course).content.decode()
+
+    assert 'data-testid="organisation-byline"' not in html
+    assert 'data-testid="course-organisation-card"' not in html
+
+
+@pytest.mark.django_db
+def test_default_organisation_course_shows_no_byline_or_card(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(Organisation.objects.get(is_default=True))
+
+    html = _detail_response(course).content.decode()
+
+    assert 'data-testid="organisation-byline"' not in html
+    assert 'data-testid="course-organisation-card"' not in html
+
+
+@pytest.mark.django_db
+def test_organisation_card_shows_the_bio_when_set(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(bio="We teach carpentry."))
+
+    html = _detail_response(course).content.decode()
+
+    assert 'data-testid="course-organisation-bio"' in html
+    assert "We teach carpentry." in html
+
+
+@pytest.mark.django_db
+def test_organisation_card_omits_the_bio_paragraph_when_empty(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(bio=""))
+
+    html = _detail_response(course).content.decode()
+
+    assert 'data-testid="course-organisation-card"' in html
+    assert 'data-testid="course-organisation-bio"' not in html
+
+
+@pytest.mark.django_db
+def test_organisation_bio_markup_is_escaped(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(bio="Learn <b>bold</b> things"))
+
+    html = _detail_response(course).content.decode()
+
+    assert "Learn &lt;b&gt;bold&lt;/b&gt; things" in html
+    assert "<b>bold</b>" not in html
+
+
+@pytest.mark.django_db
+def test_organisation_bio_newline_renders_a_line_break(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory(bio="First line\nSecond line"))
+
+    html = _detail_response(course).content.decode()
+
+    assert "First line<br>Second line" in html
+
+
+@pytest.mark.django_db
+def test_hero_byline_is_not_a_link(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC)
+    course.organisations.add(OrganisationFactory())
+    course.dashboard_category = CourseCategoryFactory()
+    course.save()
+
+    html = _detail_response(course).content.decode()
+
+    assert "<a" not in _hero_between_byline_and_chip(html)
 
 
 @pytest.mark.django_db

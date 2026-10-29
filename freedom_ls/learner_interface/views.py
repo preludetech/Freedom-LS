@@ -861,7 +861,10 @@ def all_courses(request: HttpRequest) -> HttpResponse:
 def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(
-        Course.objects.select_related("dashboard_category"), slug=course_slug
+        Course.objects.select_related("dashboard_category").prefetch_related(
+            "organisations"
+        ),
+        slug=course_slug,
     )
     # Two distinct registration signals, intentionally both fetched: is_registered
     # drives the template (TOC partialdef) and the three-state CTA vocabulary, while
@@ -955,6 +958,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         "learner_interface/course_detail.html",
         {
             "course": course,
+            "organisation": course.single_organisation(),
             "children": children,
             "is_registered": is_registered,
             "is_coming_soon": is_coming_soon,
