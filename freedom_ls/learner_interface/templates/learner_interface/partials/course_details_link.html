@@ -9,7 +9,10 @@ consistent with the "Browse all courses" link that uses the same variant.
 overlay so it is independently clickable and keyboard-focusable. The chevron
 (icon_right="next") is supplied by the button component.
 
-Context: course (needs course.slug). Placement/alignment is the caller's job:
+Repeated identical links need distinct accessible names, so the visually
+hidden suffix carries the course title.
+
+Context: course (needs course.slug, course.title). Placement/alignment is the caller's job:
 cards and rows both wrap this on its own right-aligned footer line.
 {% endcomment %}
 <c-button href="{% url 'learner_interface:course_detail' course_slug=course.slug %}"
@@ -17,5 +20,5 @@ cards and rows both wrap this on its own right-aligned footer line.
           size="small"
           icon_right="next"
           class="relative z-10 whitespace-nowrap">
-    Details
+    Details<span class="sr-only"> for {{ course.title }}</span>
 </c-button>

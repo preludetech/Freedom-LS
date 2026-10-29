@@ -1,0 +1,14 @@
+{% comment %}
+The left half of a row's eyebrow: the organisation byline, then the course's
+difficulty, separated by a middle dot. The dot hides itself when it is the
+first child, which is how the difficulty stands alone when the byline rendered
+nothing (no organisation, or the site's default one) without repeating the
+byline's own guard here.
+{% endcomment %}
+<div class="flex min-w-0 items-center gap-2">
+    <c-organisation-byline :organisation="organisation" />
+    {% if course.difficulty %}
+        <span class="text-muted first:hidden" aria-hidden="true">·</span>
+        <span class="text-xs text-muted uppercase tracking-wide whitespace-nowrap">{{ course.get_difficulty_display }}</span>
+    {% endif %}
+</div>

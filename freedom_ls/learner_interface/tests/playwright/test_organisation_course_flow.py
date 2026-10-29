@@ -64,7 +64,7 @@ def test_learner_sees_only_their_organisations_course_with_its_byline(
 
     page.goto(str(reverse_url(live_server, "learner_interface:dashboard")))
 
-    expect(page.get_by_role("link", name=SHARED_TITLE)).to_have_count(1)
+    expect(page.get_by_role("link", name=SHARED_TITLE, exact=True)).to_have_count(1)
     expect(page.get_by_text("Harbour College").first).to_be_visible()
     expect(page.get_by_text("Northwind Logistics")).to_have_count(0)
 
@@ -83,7 +83,7 @@ def test_learner_sees_only_their_organisations_course_with_its_byline(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(str(reverse_url(live_server, "learner_interface:dashboard")))
-        expect(page.get_by_role("link", name=SHARED_TITLE)).to_have_count(1)
+        expect(page.get_by_role("link", name=SHARED_TITLE, exact=True)).to_have_count(1)
         expect(
             page.get_by_text("Harbour College").locator("visible=true")
         ).to_be_visible()

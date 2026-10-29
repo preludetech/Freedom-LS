@@ -2070,3 +2070,14 @@ def _single_organisation_course() -> Course:
     course: Course = CourseFactory(audience=CourseAudience.PUBLIC)
     course.organisations.add(OrganisationFactory())
     return course
+
+
+@pytest.mark.django_db
+def test_narrow_row_shows_the_byline_and_the_difficulty(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC, difficulty="intermediate")
+    course.organisations.add(OrganisationFactory(name="Solo Academy"))
+
+    row_lists = _row_lists(_dashboard_html())
+
+    assert 'data-testid="organisation-byline"' in row_lists
+    assert "Intermediate" in row_lists

@@ -635,7 +635,7 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     section.get_by_role("link", name="Next page").click()
     expect(
         section.get_by_test_id("section-row-list").get_by_role(
-            "link", name="Free Course D"
+            "link", name="Free Course D", exact=True
         )
     ).to_be_visible()
     expect(heading).to_be_visible()

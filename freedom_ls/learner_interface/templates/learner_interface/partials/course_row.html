@@ -12,8 +12,9 @@ Standard fields land in standard places:
   details        -> course_details_link.html, on its own right-aligned line in
                     the footer slot (bottom-right of the row, below everything)
   title + link   -> stretched title link (card_title_link.html)
-  organisation   -> <c-organisation-byline>, only where the view stamps
-                    card_organisation
+  organisation   -> eyebrow, left, with the difficulty
+                    (course_row_eyebrow_left.html); the byline renders only
+                    where the view stamps card_organisation
   deadline       -> course_deadline_line.html (missed deadline, else next deadline);
                     the all-courses page passes no deadlines, so the line is dashboard-only
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress
@@ -49,21 +50,20 @@ show_time_zone_to_learners.
                     icon="{{ course.icon }}"
                     icon_fallback="{{ course.icon_fallback }}"
                     title="{{ course.title }}">
-    {% if course.listing_status != "not_registered" %}
-        <c-slot name="eyebrow">
-            {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
-        </c-slot>
-    {% elif not user.is_authenticated and course.access_badge %}
-        <c-slot name="eyebrow">
-            <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
-        </c-slot>
-    {% endif %}
+    <c-slot name="eyebrow">
+        {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            {% if course.listing_status != "not_registered" %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+            {% elif not user.is_authenticated and course.access_badge %}
+                <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
+            {% endif %}
+        </div>
+    </c-slot>
 
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
-
-    <c-organisation-byline :organisation="course.card_organisation" />
 
     {% include "learner_interface/partials/course_listing_price.html" %}
 

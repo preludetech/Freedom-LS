@@ -21,7 +21,11 @@ same named slot contract as course-card-shell so leaves are straightforward
 to read side-by-side.
 
 Named slots:
-  eyebrow — rendered above the default slot (e.g. status label + icon)
+  eyebrow — rendered above the default slot (e.g. status label + icon). A
+            caller passes two child `div`s, left and right; a caller that
+            passes a single child (the markdown embed card's row variant
+            passes one chip) gets it on the left, since the slot never
+            pushes a lone child right.
   footer  — rendered below the default slot (e.g. progress bar)
 
 Mergeable `class` prop allows callers to append extra utility classes to
@@ -44,7 +48,7 @@ the stretched link.
 
     <div class="p-4 flex-1 min-w-0 space-y-1">
         {% if eyebrow %}
-            {{ eyebrow }}
+            <div class="flex items-start justify-between gap-3">{{ eyebrow }}</div>
         {% endif %}
         {{ slot }}
         {% if footer %}

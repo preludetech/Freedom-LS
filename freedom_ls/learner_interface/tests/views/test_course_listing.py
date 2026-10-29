@@ -2066,3 +2066,38 @@ def test_all_courses_rows_name_no_study_organisation(
     html = response.content.decode()
     assert "Studied course" in html
     assert "Study Academy" not in html
+
+
+@pytest.mark.django_db
+def test_all_courses_row_shows_the_byline_and_the_difficulty(mock_site_context):
+    course = CourseFactory(audience=CourseAudience.PUBLIC, difficulty="advanced")
+    course.organisations.add(OrganisationFactory(name="Owner Academy"))
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
+    assert html.count('data-testid="organisation-byline"') == 1
+    assert "Advanced" in html
+
+
+@pytest.mark.django_db
+def test_all_courses_row_without_organisation_or_difficulty_shows_neither(
+    mock_site_context,
+):
+    CourseFactory(audience=CourseAudience.PUBLIC, difficulty="")
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
+    assert 'data-testid="organisation-byline"' not in html
+    assert "Beginner" not in html
+    assert "Advanced" not in html
+
+
+@pytest.mark.django_db
+def test_all_courses_details_link_name_ends_with_the_course_title(mock_site_context):
+    CourseFactory(audience=CourseAudience.PUBLIC, title="Zebra Handling")
+
+    html = Client().get(reverse("learner_interface:courses")).content.decode()
+
+    assert re.search(
+        r"Details\s*<span class=\"sr-only\"> for Zebra Handling</span>", html
+    )
