@@ -121,24 +121,20 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
     # One dict for the whole sitting rather than existing_answers_dict per page:
     # the final group needs the answers no page accounts for.
     answers = {answer.question_id: answer for answer in form_progress.answers.all()}
-    questions_by_page: dict[UUID, list[FormQuestion]] = {}
-    for question in form_questions(form_progress.form):
-        questions_by_page.setdefault(question.form_page_id, []).append(question)
-    groups = [
-        AnswerGroup(
-            title=page.title,
-            rows=[
-                AnswerRow(question, answers.get(question.id))
-                for question in questions_by_page.get(page.id, [])
-            ],
+    groups: list[AnswerGroup] = []
+    page_question_ids: set[UUID] = set()
+    for page in form_progress.form.pages.all():
+        questions = page_questions(page)
+        page_question_ids.update(question.id for question in questions)
+        groups.append(
+            AnswerGroup(
+                title=page.title,
+                rows=[
+                    AnswerRow(question, answers.get(question.id))
+                    for question in questions
+                ],
+            )
         )
-        for page in form_progress.form.pages.all()
-    ]
-    page_question_ids = {
-        question.id
-        for questions in questions_by_page.values()
-        for question in questions
-    }
     # A question can leave every page but never be deleted while answered (the
     # answer's FK protects it), so an answer with no page is still an answer.
     off_page_rows = [

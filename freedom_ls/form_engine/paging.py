@@ -15,7 +15,7 @@ from django.http import QueryDict
 
 from .enums import QuestionType
 from .models import Form, FormPage, FormProgress, FormQuestion
-from .queries import count_form_questions, page_questions
+from .queries import count_form_questions, form_questions
 from .submissions import has_submitted_answer
 
 
@@ -126,8 +126,7 @@ def unanswered_required_in_form(form_progress: FormProgress) -> list[FormQuestio
     answered_ids = set(form_progress.answers.values_list("question_id", flat=True))
     return [
         question
-        for page in form_progress.form.pages.all()
-        for question in page_questions(page)
+        for question in form_questions(form_progress.form)
         if question.required and question.id not in answered_ids
     ]
 

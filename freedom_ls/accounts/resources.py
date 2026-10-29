@@ -5,7 +5,6 @@ from __future__ import annotations
 from allauth.account.models import EmailAddress
 from import_export.fields import Field
 
-from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, QuerySet
 
 from freedom_ls.site_aware_models.admin_exports import (
@@ -36,18 +35,15 @@ class UserResource(SiteAwareModelResource):
     the columns are an explicit whitelist.
     """
 
-    WIDGETS_MAP = {
-        **SiteAwareModelResource.WIDGETS_MAP,
-        "BooleanField": SpreadsheetBooleanWidget,
-    }
     # Annotated in filter_export, so the changelist query is unchanged and no
-    # row costs a query.
+    # row costs a query. An annotation is not a model field, so the widget map
+    # does not reach it.
     email_verified = Field(
         attribute="email_verified", widget=SpreadsheetBooleanWidget()
     )
 
     class Meta:
-        model = get_user_model()
+        model = User
         fields = USER_EXPORT_FIELDS
         export_order = USER_EXPORT_FIELDS
 

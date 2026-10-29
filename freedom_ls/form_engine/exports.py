@@ -25,14 +25,20 @@ class AnswerColumn:
     header: str
 
 
-def answer_columns(form_progresses: Collection[FormProgress]) -> list[AnswerColumn]:
+def answer_columns(
+    form_progresses: Collection[FormProgress], reserved_headers: Collection[str] = ()
+) -> list[AnswerColumn]:
     """The answer columns for these sittings, one per question of each form sat.
 
     Forms are ordered by title, then id, so an export mixing courses keeps each
     form's questions together. Each form contributes the questions currently
-    on its pages, then any question off every page that one of these sittings
-    answered. Expects each sitting's form and answers, with their questions,
-    to be prefetched.
+    on its pages, then any answered question on no page of any form in the
+    export. A question has one column however many forms it has sat under:
+    the form whose page it is on now, else the first form by order that
+    answered it. `reserved_headers` are the headers the caller already uses;
+    a question with the same text is qualified so the two never clash.
+    Expects each sitting's form and answers, with their questions, to be
+    prefetched.
     """
     forms = {
         form_progress.form_id: form_progress.form for form_progress in form_progresses
@@ -43,19 +49,22 @@ def answer_columns(form_progresses: Collection[FormProgress]) -> list[AnswerColu
     ordered_forms = sorted(forms.values(), key=lambda form: (form.title, form.id))
     # Pages load once per form here, not once per sitting.
     prefetch_related_objects(ordered_forms, "pages__text_items", "pages__questions")
+    on_page_by_form = {form.id: form_questions(form) for form in ordered_forms}
+    claimed = {
+        question.id for on_page in on_page_by_form.values() for question in on_page
+    }
     questions: list[tuple[Form, FormQuestion]] = []
     for form in ordered_forms:
-        on_page = form_questions(form)
-        on_page_ids = {question.id for question in on_page}
-        questions.extend((form, question) for question in on_page)
+        questions.extend((form, question) for question in on_page_by_form[form.id])
         # A question can leave every page but never be deleted while answered
         # (the answer's FK protects it), so its answers still get a column.
         off_page = {
             answer.question_id: answer.question
             for form_progress in sittings_by_form[form.id]
             for answer in form_progress.answers.all()
-            if answer.question_id not in on_page_ids
+            if answer.question_id not in claimed
         }
+        claimed.update(off_page)
         questions.extend(
             (form, question)
             for question in sorted(off_page.values(), key=lambda q: (q.order, q.id))
@@ -64,25 +73,37 @@ def answer_columns(form_progresses: Collection[FormProgress]) -> list[AnswerColu
         [question.question for _, question in questions],
         [form.title for form, _ in questions],
         [form.id for form, _ in questions],
+        reserved_headers,
     )
     positions = [str(n) for n in range(1, len(headers) + 1)]
-    headers = _qualified(headers, positions, positions)
+    headers = _qualified(headers, positions, positions, reserved_headers)
     return [
         AnswerColumn(question, header)
         for (_, question), header in zip(questions, headers, strict=True)
     ]
 
 
+# The scope a reserved header is counted under: never one a question has.
+_RESERVED = object()
+
+
 def _qualified(
-    headers: list[str], suffixes: list[str], scopes: Sequence[Hashable]
+    headers: list[str],
+    suffixes: list[str],
+    scopes: Sequence[Hashable],
+    reserved: Collection[str],
 ) -> list[str]:
     """`headers`, with the suffix appended to each one that another scope repeats.
 
     Called twice: first with form titles scoped by form, which tells apart two
     forms asking the same thing, then with column positions scoped by column,
-    the last resort for one form asking the same thing twice.
+    the last resort for one form asking the same thing twice. A header in
+    `reserved` counts as already taken, so a question repeating one is
+    suffixed too.
     """
-    scopes_by_header: dict[str, set[Hashable]] = {}
+    scopes_by_header: dict[str, set[Hashable]] = {
+        header: {_RESERVED} for header in reserved
+    }
     for header, scope in zip(headers, scopes, strict=True):
         scopes_by_header.setdefault(header, set()).add(scope)
     return [

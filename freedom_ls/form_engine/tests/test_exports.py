@@ -146,6 +146,45 @@ def test_an_answered_question_off_every_page_gets_a_column_after_the_page_questi
     assert columns[-1].question == moved
 
 
+def test_a_question_moved_to_another_exported_form_gets_one_column_under_that_form(
+    mock_site_context,
+):
+    old_sitting = _sitting_of("A form", "Stays")
+    new_sitting = _sitting_of("B form", "Moved")
+    moved = new_sitting.form.pages.get().questions.get()
+    QuestionAnswerFactory(form_progress=old_sitting, question=moved)
+
+    columns = answer_columns([old_sitting, new_sitting])
+
+    assert [column.header for column in columns] == ["Stays", "Moved"]
+    assert columns[-1].question == moved
+
+
+def test_a_question_off_every_page_answered_under_two_forms_gets_one_column(
+    mock_site_context,
+):
+    sittings = [_sitting_of("A form", "A question"), _sitting_of("B form")]
+    gone = FormQuestionFactory(
+        form_page=FormPageFactory(form=FormFactory()), question="Gone"
+    )
+    for sitting in sittings:
+        QuestionAnswerFactory(form_progress=sitting, question=gone)
+
+    columns = answer_columns(sittings)
+
+    assert [column.header for column in columns] == ["A question", "Gone"]
+
+
+def test_a_question_titled_like_a_reserved_header_gets_its_form_title_appended(
+    mock_site_context,
+):
+    sitting = _sitting_of("Only form", "course", "Why?")
+
+    columns = answer_columns([sitting], reserved_headers=["course", "id"])
+
+    assert [column.header for column in columns] == ["course (Only form)", "Why?"]
+
+
 def test_forms_asking_the_same_question_get_their_form_title_in_the_header(
     mock_site_context,
 ):

@@ -91,19 +91,6 @@ def test_is_submitted_column(mock_site_context):
     assert model_admin.is_submitted(CourseApplicationFactory()) is True
 
 
-def test_submitted_time_is_sitting_completed_time(mock_site_context):
-    model_admin = CourseApplicationAdmin(CourseApplication, None)
-    submitted = _submitted()
-    no_form = CourseApplicationFactory()
-
-    assert submitted.form_progress is not None
-    assert model_admin.submitted_time(submitted) == (
-        submitted.form_progress.completed_time
-    )
-    assert model_admin.submitted_time(no_form) == no_form.created_at
-    assert model_admin.submitted_time(_draft()) is None
-
-
 def test_add_view_is_forbidden(staff_client):
     assert staff_client.get(reverse(ADD)).status_code == 403
 
@@ -848,31 +835,6 @@ def test_export_returns_403_without_any_course_applications_permission(
     client.force_login(UserFactory(staff=True))
 
     assert client.get(reverse(EXPORT)).status_code == 403
-
-
-def test_changelist_submitted_time_shows_created_at_for_an_application_with_no_sitting(
-    staff_client,
-):
-    application = CourseApplicationFactory()
-
-    response = staff_client.get(reverse(CHANGELIST))
-
-    (row,) = response.context["cl"].result_list
-    model_admin = CourseApplicationAdmin(CourseApplication, None)
-    assert model_admin.submitted_time(row) == application.created_at
-
-
-def test_changelist_submitted_time_shows_completed_time_for_a_completed_sitting(
-    staff_client,
-):
-    application = _submitted()
-    assert application.form_progress is not None
-
-    response = staff_client.get(reverse(CHANGELIST))
-
-    (row,) = response.context["cl"].result_list
-    model_admin = CourseApplicationAdmin(CourseApplication, None)
-    assert model_admin.submitted_time(row) == application.form_progress.completed_time
 
 
 def test_export_omits_a_user_held_application_on_another_site(staff_client, site):

@@ -260,6 +260,19 @@ def test_referral_code_export_downloads(staff_client, mock_site_context):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(("flag", "expected"), [(True, "TRUE"), (False, "FALSE")])
+def test_referral_code_export_writes_is_active_as_a_spreadsheet_boolean(
+    staff_client, mock_site_context, flag, expected
+):
+    row = ReferralCodeFactory(is_active=flag)
+
+    response = _export_selected(staff_client, "referralcode", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("is_active")] == expected
+
+
+@pytest.mark.django_db
 def test_referral_code_export_omits_site(staff_client, mock_site_context):
     row = ReferralCodeFactory()
 

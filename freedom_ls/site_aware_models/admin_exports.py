@@ -76,13 +76,15 @@ class SiteAwareModelResource(ModelResource):
     """Resource base for site-aware models.
 
     Drops the ``site`` column, which is constant within one tenant's export,
-    and swaps the date widgets for the ISO 8601 ones.
+    swaps the date widgets for the ISO 8601 ones and the boolean widget for
+    the TRUE/FALSE one.
     """
 
     WIDGETS_MAP = {
         **ModelResource.WIDGETS_MAP,
         "DateTimeField": IsoDateTimeWidget,
         "DateField": IsoDateWidget,
+        "BooleanField": SpreadsheetBooleanWidget,
     }
 
     class Meta:

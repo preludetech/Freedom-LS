@@ -310,6 +310,20 @@ def test_a_reworded_question_keeps_one_column_holding_the_earlier_answer(
     assert dict(zip(header, rows[0], strict=True))["Your full name"] == "Ada"
 
 
+def test_a_question_titled_like_a_fixed_column_keeps_its_own_column(staff_client):
+    course, form = gated_course_with_form()
+    application = _application_for(course, form)
+    question = _form_questions(form)[0]
+    question.question = "course"
+    question.save(update_fields=["question"])
+    _answer(application, question, text_answer="Ada")
+
+    row = _export_row(staff_client, application)
+
+    assert row["course"] == course.title
+    assert row[f"course ({form.title})"] == "Ada"
+
+
 def _answered_application(course, form) -> CourseApplication:
     application = _application_for(course, form, completed_time=timezone.now())
     name, years, choice, why, upload = _form_questions(form)

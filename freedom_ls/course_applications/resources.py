@@ -87,7 +87,9 @@ class CourseApplicationResource(SiteAwareModelResource):
             sitting.pk: {answer.question_id: answer for answer in sitting.answers.all()}
             for sitting in sittings
         }
-        for column in answer_columns(sittings):
+        # A question titled like a fixed column must not share its header: the
+        # package drops a field whose column name is already in the order.
+        for column in answer_columns(sittings, APPLICATION_EXPORT_FIELDS):
             self.fields[f"question_{column.question.id}"] = Field(
                 column_name=column.header,
                 dehydrate_method=partial(

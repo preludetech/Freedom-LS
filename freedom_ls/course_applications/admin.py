@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
@@ -210,10 +208,6 @@ class CourseApplicationAdmin(SiteAwareExportModelAdmin):
     @admin.display(boolean=True, description="Submitted")
     def is_submitted(self, obj: CourseApplication) -> bool:
         return obj.is_submitted
-
-    @admin.display(description="Submitted time")
-    def submitted_time(self, obj: CourseApplication) -> datetime | None:
-        return obj.submitted_time
 
     @admin.display(description="Submitted time")
     def submitted_time_display(self, obj: CourseApplication) -> str:
