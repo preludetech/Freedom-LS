@@ -114,6 +114,11 @@
     <body class="min-h-dvh flex flex-col"
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
+        <a href="#page-main"
+           class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-on-surface focus:outline-2 focus:outline-focus-ring">
+            Skip to main content
+        </a>
+
         {% block header %}
             {% include "partials/header_bar.html" %}
 
@@ -121,7 +126,7 @@
 
         {% include "partials/messages.html" %}
 
-        <main class="grow">
+        <main id="page-main" tabindex="-1" class="grow">
             {% block body %}
                 {% block pre-content %}
                 {% endblock pre-content %}

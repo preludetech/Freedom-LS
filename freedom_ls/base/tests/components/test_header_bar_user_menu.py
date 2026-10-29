@@ -108,3 +108,10 @@ class TestAnonymousHeader:
 
         assert 'href="/accounts/login/?next=%2Fsome%2Fpath%2F"' in rendered
         assert 'href="/accounts/signup/?next=%2Fsome%2Fpath%2F"' in rendered
+
+
+@pytest.mark.django_db
+def test_header_has_no_h1_so_the_page_heading_is_the_only_one(mock_site_context):
+    rendered = _render_header(AnonymousUser())
+
+    assert "<h1" not in rendered

@@ -7,6 +7,7 @@ import re
 from dataclasses import replace
 from datetime import UTC
 
+import lxml.html
 import pytest
 import time_machine
 
@@ -2042,3 +2043,11 @@ def _single_organisation_course() -> Course:
     course: Course = CourseFactory(audience=CourseAudience.PUBLIC)
     course.organisations.add(OrganisationFactory())
     return course
+
+
+@pytest.mark.django_db
+def test_dashboard_has_exactly_one_h1(mock_site_context, courses, logged_in_client):
+    client = logged_in_client(UserFactory())
+    response = client.get(reverse("learner_interface:dashboard"))
+    document = lxml.html.fromstring(response.content)
+    assert len(document.xpath("//h1")) == 1
