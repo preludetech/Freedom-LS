@@ -4252,6 +4252,17 @@ def test_a_topic_past_its_close_instant_opens_as_a_closed_notice(closing_topic_c
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
+def test_the_closed_notice_sits_in_the_reading_column(closing_topic_course):
+    course, _first, _second, _user, client = closing_topic_course
+
+    html = _player_html(client, course)
+    notice_box = html[: html.index(CLOSED_NOTICE)].rsplit("<div", 2)[-2]
+
+    assert "mx-auto max-w-reading" in notice_box
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
 def test_a_closed_topic_row_reads_closed_in_the_outline_and_keeps_its_link(
     closing_topic_course,
 ):
