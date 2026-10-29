@@ -52,6 +52,7 @@ from freedom_ls.learner_interface.tests.helpers import (
     learner_with_two_grants,
     rendered_section,
     set_due_date,
+    topic_completion,
 )
 from freedom_ls.learner_interface.utils import BLOCKED
 from freedom_ls.learner_management.factories import (
@@ -1024,7 +1025,7 @@ REGISTERED_AT = datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC)
 AFTER_END = datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC)
 
 
-def _ended_course() -> tuple:
+def _ended_course(after_access_ended: str = AfterAccessEnded.NOTHING) -> tuple:
     """A time-limited course (a topic, then a form) whose access ends under its policy."""
     course = CourseFactory(time_limit_days=30)
     course.items.create(child=TopicFactory(), order=0)
@@ -1033,7 +1034,7 @@ def _ended_course() -> tuple:
     CourseDeadlineConfigFactory(
         course=course,
         end_course_access="on",
-        after_access_ended=AfterAccessEnded.NOTHING,
+        after_access_ended=after_access_ended,
     )
     return course, form
 
@@ -1275,3 +1276,137 @@ def test_a_closed_item_stays_closed_after_access_is_restored(mock_site_context):
     assert "learner_interface/course_item_closed.html" in [
         template.name for template in response.templates
     ]
+
+
+def _ended_outline_course() -> tuple:
+    """An ended course that keeps its outline and results."""
+    return _ended_course(AfterAccessEnded.OUTLINE_AND_RESULTS)
+
+
+def _complete_topic(course, user) -> None:
+    topic_completion(
+        course, user, course.viewable_items()[0], complete_time=REGISTERED_AT
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_topic_opens_for_an_ended_learner_who_keeps_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_form_opens_its_start_page_and_results_for_an_ended_learner(
+    mock_site_context,
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+    kwargs = {"course_slug": course.slug, "index": 2}
+
+    start_page = client.get(
+        reverse("learner_interface:view_course_item", kwargs=kwargs)
+    )
+    results = client.get(_player_urls(course)["course_form_complete"])
+
+    assert start_page.status_code == 200
+    assert results.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_an_incomplete_item_redirects_an_ended_learner_who_keeps_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    _user, _record, client = _ended_learner(course)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+@pytest.mark.parametrize("route", ["form_start", "form_fill_page", "course_finish"])
+def test_an_ended_learner_cannot_start_refill_or_finish_even_with_the_outline(
+    mock_site_context, route
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)[route])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_topic_stays_shut_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_course_detail_shows_no_outline_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.context["children"] == []
+    assert "Course content" not in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_course_detail_links_only_completed_rows_for_an_ended_learner_with_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_detail_url(course))
+
+    topic_row, form_row = response.context["children"]
+    assert topic_row["url"] is not None
+    assert form_row["url"] is None
+    assert "Course content" in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_player_outline_keeps_urls_only_on_completed_rows(mock_site_context):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=None)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    topic_row, form_row = response.context["course_index"]
+    assert topic_row["url"] is not None
+    assert form_row["url"] is None

@@ -486,6 +486,7 @@ def get_course_index(
     course_deadlines: CourseDeadlines | None = None,
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
+    access_ended_outline: bool = False,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -515,7 +516,7 @@ def get_course_index(
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}
-    if can_access_content and user.is_authenticated:
+    if (can_access_content or access_ended_outline) and user.is_authenticated:
         if isinstance(course_progress, Unresolved):
             # can_access_content implies an authenticated, registered user (it
             # comes from the backend decision), so the cast to User is safe here.
@@ -544,6 +545,7 @@ def get_course_index(
             course_deadlines=course_deadlines,
             deadline_policy=deadline_policy,
             now=now,
+            access_ended_outline=access_ended_outline,
         )
         children.append(child_dict)
         global_index += items_added
@@ -651,6 +653,7 @@ def create_child_dict_with_flattened_index(
     course_deadlines: CourseDeadlines | None = None,
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
+    access_ended_outline: bool = False,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -662,6 +665,9 @@ def create_child_dict_with_flattened_index(
     item dict is marked ``is_current=True`` and the containing CoursePart dict is
     marked ``contains_current=True`` so the TOC can highlight the current item
     and auto-expand its part.
+
+    ``access_ended_outline`` reads progress without content access and withholds
+    every row that is not COMPLETE, so only finished items stay linked.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
@@ -683,7 +689,7 @@ def create_child_dict_with_flattened_index(
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
-            if can_access_content:
+            if can_access_content or access_ended_outline:
                 child_status, part_next_status = get_content_status(
                     part_item,
                     part_next_status,
@@ -700,6 +706,8 @@ def create_child_dict_with_flattened_index(
             else:
                 child_status = BLOCKED
                 child_url = ""
+            if access_ended_outline and child_status != COMPLETE:
+                child_status = BLOCKED
 
             keys = _deadline_keys(
                 part_item, child_status, course_deadlines, deadline_policy, now
@@ -743,7 +751,14 @@ def create_child_dict_with_flattened_index(
             failed_child = next(
                 (c for c in part_children_dicts if c["status"] == FAILED), None
             )
-            if in_progress_child:
+            if access_ended_outline:
+                # Only COMPLETE children carry a url here, so the part opens the
+                # first finished one and nothing when none is.
+                complete_child = next(
+                    (c for c in part_children_dicts if c["status"] == COMPLETE), None
+                )
+                url = complete_child["url"] if complete_child else ""
+            elif in_progress_child:
                 url = in_progress_child["url"]
             elif ready_child:
                 url = ready_child["url"]
@@ -772,7 +787,7 @@ def create_child_dict_with_flattened_index(
     else:
         # Regular content item (Topic, Form, etc.)
         items_added = 1
-        if can_access_content:
+        if can_access_content or access_ended_outline:
             status, next_status = get_content_status(
                 collection_item, next_status, topic_progress_map, form_placement_map
             )
@@ -783,6 +798,8 @@ def create_child_dict_with_flattened_index(
         else:
             status = BLOCKED
             url = ""
+        if access_ended_outline and status != COMPLETE:
+            status = BLOCKED
 
         keys = _deadline_keys(
             collection_item, status, course_deadlines, deadline_policy, now
