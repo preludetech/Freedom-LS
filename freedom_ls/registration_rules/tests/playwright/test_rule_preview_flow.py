@@ -189,7 +189,7 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
     expect(
         page.locator("#recommended-courses")
         .get_by_test_id("section-card-grid")
-        .get_by_text(course.title)
+        .get_by_text(course.title, exact=True)
     ).to_be_visible()
 
     # Act: the learner registers for the course.
@@ -200,9 +200,9 @@ def test_a_recommend_rule_shows_the_course_as_recommended_until_the_learner_regi
     page.goto(dashboard)
 
     # Assert
-    expect(page.get_by_text(course.title).first).to_be_visible()
+    expect(page.get_by_text(course.title, exact=True).first).to_be_visible()
     expect(
-        page.locator("#recommended-courses").get_by_text(course.title)
+        page.locator("#recommended-courses").get_by_text(course.title, exact=True)
     ).to_have_count(0)
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
