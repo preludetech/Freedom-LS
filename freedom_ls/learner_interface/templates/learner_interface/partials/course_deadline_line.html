@@ -8,8 +8,7 @@ show_time_zone_to_learners.
 {% endcomment %}
 {% if course.missed_deadline %}
     <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-        <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
-        <span>{{ course.missed_deadline.title }} {% local_time course.missed_deadline.due_at %}</span>
+        {% include "learner_interface/partials/deadline_labels.html" with child=course.missed_deadline title=course.missed_deadline.title %}
     </p>
 {% elif course.next_deadline %}
     <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}</p>

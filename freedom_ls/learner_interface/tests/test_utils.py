@@ -15,6 +15,8 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.models import AfterAccessEnded
+from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
     CourseDeadlines,
@@ -23,6 +25,7 @@ from freedom_ls.deadlines.resolver import (
 )
 from freedom_ls.learner_interface.tests.helpers import topic_completion
 from freedom_ls.learner_interface.utils import (
+    current_entry,
     get_all_courses,
     get_completed_courses,
     get_course_index,
@@ -165,6 +168,18 @@ def test_get_current_courses_have_progress_percentage(mock_site_context):
 # --- get_course_index deadline keys ---
 
 
+def _policy(*, mark_overdue: bool = True) -> ResolvedDeadlinePolicy:
+    return ResolvedDeadlinePolicy(
+        mark_overdue=mark_overdue,
+        close_items=False,
+        end_course_access=False,
+        notify_educators=False,
+        grace_window=timedelta(0),
+        after_access_ended=AfterAccessEnded.OUTLINE_AND_RESULTS,
+        sources={},
+    )
+
+
 def _resolved(due_at: datetime | None) -> ResolvedDeadline:
     return ResolvedDeadline(due_at, DeadlineSource.CONTENT)
 
@@ -189,6 +204,7 @@ def test_get_course_index_rows_carry_the_collection_item_id_and_deadline(
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due + timedelta(days=1),
     )
 
@@ -215,6 +231,7 @@ def test_get_course_index_row_is_not_overdue_before_the_due_instant(mock_site_co
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due - timedelta(days=1),
     )
 
@@ -241,6 +258,7 @@ def test_get_course_index_completed_row_is_not_overdue(mock_site_context):
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due + timedelta(days=1),
     )
 
@@ -283,6 +301,7 @@ def test_get_course_index_part_rows_carry_no_due_at_but_their_children_do(
         course_deadlines=CourseDeadlines(
             items={topic_item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due,
     )
 
@@ -337,3 +356,48 @@ def test_get_current_courses_query_count_does_not_grow_with_courses(
 
     with django_assert_max_num_queries(GET_CURRENT_COURSES_MAX_QUERIES):
         get_current_courses(user)
+
+
+@pytest.mark.django_db
+def test_get_course_index_row_is_not_overdue_when_the_policy_does_not_mark_overdue(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topic)
+    due = datetime(2026, 3, 20, tzinfo=UTC)
+
+    (row,) = get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=CourseDeadlines(
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+        ),
+        deadline_policy=_policy(mark_overdue=False),
+        now=due + timedelta(days=1),
+    )
+
+    assert row["due_at"] == due
+    assert row["is_overdue"] is False
+
+
+def test_current_entry_finds_a_top_level_row():
+    index = [{"title": "A"}, {"title": "B", "is_current": True}]
+
+    assert current_entry(index) == {"title": "B", "is_current": True}
+
+
+def test_current_entry_finds_a_row_nested_in_a_part():
+    nested = {"title": "Inner", "is_current": True}
+    index = [{"title": "A"}, {"title": "Part", "children": [{"title": "X"}, nested]}]
+
+    assert current_entry(index) is nested
+
+
+def test_current_entry_is_none_when_no_row_is_current():
+    assert current_entry([{"title": "A", "children": [{"title": "B"}]}]) is None

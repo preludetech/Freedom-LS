@@ -29,6 +29,7 @@ from freedom_ls.course_access.backends import (
 )
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
@@ -2090,3 +2091,40 @@ def test_narrow_row_shows_the_difficulty(mock_site_context):
     row_lists = _row_lists(_dashboard_html())
 
     assert "Intermediate" in row_lists
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_drops_the_missed_item_chip_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_drops_the_missed_time_limit_chip_when_mark_overdue_is_off(deadline_card):
+    course, _topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_drops_the_missed_chip_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    html = _dashboard_html(client)
+
+    assert "Missed deadline" not in _row_lists(html)
