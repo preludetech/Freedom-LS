@@ -30,12 +30,13 @@ from .utils import (
 def edit_profile(request):
     user = request.user
     if request.method == "POST":
-        form = forms.UserForm(request.POST, instance=user)
+        form = forms.UserForm(request.POST, request=request, instance=user)
         if form.is_valid():
             form.save()
             messages.add_message(request, messages.SUCCESS, "Profile saved")
+            return redirect("accounts:account_profile")
     else:
-        form = forms.UserForm(instance=user)
+        form = forms.UserForm(request=request, instance=user)
     context = {"form": form}
     return render(request, "accounts/profile.html", context=context)
 

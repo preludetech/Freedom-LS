@@ -929,3 +929,51 @@ class TestSignUpAnalyticsEventEndToEnd:
             """gtag('event', 'sign_up', {"method": "email"})"""
             in response.content.decode()
         )
+
+
+@pytest.mark.django_db
+def test_valid_profile_post_redirects_to_the_profile_page(
+    mock_site_context, site, logged_in_client
+):
+    SiteSignupPolicyFactory(site=site, require_name=True)
+    client = logged_in_client(UserFactory())
+
+    response = client.post(
+        reverse("accounts:account_profile"),
+        {"first_name": "Ada", "last_name": "Lovelace"},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("accounts:account_profile")
+
+
+@pytest.mark.django_db
+def test_profile_page_shows_saved_message_after_a_valid_post(
+    mock_site_context, site, logged_in_client
+):
+    SiteSignupPolicyFactory(site=site, require_name=True)
+    client = logged_in_client(UserFactory())
+
+    response = client.post(
+        reverse("accounts:account_profile"),
+        {"first_name": "Ada", "last_name": "Lovelace"},
+        follow=True,
+    )
+
+    assert "Profile saved" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_invalid_profile_post_renders_the_error_beside_the_field(
+    mock_site_context, site, logged_in_client
+):
+    SiteSignupPolicyFactory(site=site, require_name=True)
+    client = logged_in_client(UserFactory())
+
+    response = client.post(
+        reverse("accounts:account_profile"),
+        {"first_name": "", "last_name": "Lovelace"},
+    )
+
+    assert response.status_code == 200
+    assert "This field is required." in response.content.decode()

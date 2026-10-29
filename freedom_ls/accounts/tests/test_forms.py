@@ -16,6 +16,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import (
     SiteAwareSignupForm,
+    UserForm,
     accepted_legal_docs,
     apply_signup_name_policy,
     honeypot_field,
@@ -456,3 +457,42 @@ def test_tripped_honeypot_is_false_when_the_field_is_empty():
     form = _cleaned_form("")
 
     assert tripped_honeypot(form) is False
+
+
+def _profile_form(rf, data: dict[str, str]) -> UserForm:
+    request = rf.get("/")
+    return UserForm(data, request=request, instance=UserFactory())
+
+
+@pytest.mark.django_db
+def test_profile_form_rejects_blank_first_name_when_policy_requires_name(
+    mock_site_context, site, rf
+):
+    SiteSignupPolicyFactory(site=site, require_name=True)
+
+    form = _profile_form(rf, {"first_name": "", "last_name": "Doe"})
+
+    assert form.is_valid() is False
+    assert form.errors["first_name"] == ["This field is required."]
+
+
+@pytest.mark.django_db
+def test_profile_form_rejects_whitespace_first_name_when_policy_requires_name(
+    mock_site_context, site, rf
+):
+    SiteSignupPolicyFactory(site=site, require_name=True)
+
+    form = _profile_form(rf, {"first_name": "   ", "last_name": "Doe"})
+
+    assert form.errors["first_name"] == ["This field is required."]
+
+
+@pytest.mark.django_db
+def test_profile_form_accepts_blank_first_name_when_policy_does_not_require_name(
+    mock_site_context, site, rf
+):
+    SiteSignupPolicyFactory(site=site, require_name=False)
+
+    form = _profile_form(rf, {"first_name": "", "last_name": ""})
+
+    assert form.is_valid() is True

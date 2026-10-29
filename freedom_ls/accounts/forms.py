@@ -11,7 +11,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db import transaction
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from .legal_docs import LegalDoc
     from .models import SiteSignupPolicy
+    from .models import User as UserModel
 
 User = get_user_model()
 
@@ -28,11 +29,29 @@ logger = logging.getLogger(__name__)
 
 
 class UserForm(forms.ModelForm):
+    # Declared, not taken from the model, so the site's signup policy can
+    # decide whether a name is required (the model field is blank=True).
+    first_name = forms.CharField(max_length=200, required=True)
+    last_name = forms.CharField(max_length=200, required=False)
+
     class Meta:
         model = User
         # TODO: allow the user to upload a profile picture
 
         fields = ["first_name", "last_name"]
+
+    def __init__(
+        self,
+        data: QueryDict | None = None,
+        *,
+        request: HttpRequest,
+        instance: UserModel | None = None,
+    ) -> None:
+        super().__init__(data, instance=instance)
+        # Local import: utils imports the models this module's forms are built on.
+        from .utils import get_signup_policy_for_request
+
+        apply_signup_name_policy(self, get_signup_policy_for_request(request))
 
 
 def _get_request_or_none():

@@ -11,7 +11,17 @@
 
  <form method="POST" >
         {% csrf_token %}
-        {{form}}
+        {% for field in form.visible_fields %}
+            {% if field.errors %}
+                <p class="text-error text-sm">{{ field.errors.0 }}</p>
+            {% endif %}
+            <p>
+                {{ field.label_tag }} {{ field }}
+            </p>
+            {% if field.help_text %}
+                <span>{{ field.help_text }}</span>
+            {% endif %}
+        {% endfor %}
 
         <c-button type="submit">
             Save
