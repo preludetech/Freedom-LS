@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, time, timedelta
 
 import pytest
 
@@ -11,10 +11,17 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
+    CohortCourseRegistrationDeadlineConfigFactory,
+    CohortDeadlineConfigFactory,
     CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
+    LearnerCourseRegistrationDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
+    OrganisationDeadlineConfigFactory,
+    SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
+    SWITCH_FIELDS,
     CohortDeadlineOverride,
     DeadlineKind,
     LearnerDeadlineOverride,
@@ -372,3 +379,86 @@ def test_a_new_record_does_not_carry_the_old_records_overrides(
 
     assert record.deadline_overrides.count() == 1
     assert moved.deadline_overrides.count() == 0
+
+
+CONFIG_FACTORIES = [
+    SiteDeadlineConfigFactory,
+    OrganisationDeadlineConfigFactory,
+    CourseDeadlineConfigFactory,
+    CohortDeadlineConfigFactory,
+    CohortCourseRegistrationDeadlineConfigFactory,
+    LearnerCourseRegistrationDeadlineConfigFactory,
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+@pytest.mark.parametrize(
+    "bad_values",
+    [
+        {"mark_overdue": "maybe"},
+        {"close_items": "maybe"},
+        {"end_course_access": "maybe"},
+        {"notify_educators": "maybe"},
+        {"after_access_ended": "everything"},
+        {"grace_window": timedelta(seconds=-1)},
+    ],
+)
+def test_config_row_with_an_invalid_value_is_refused_by_the_database(
+    mock_site_context, config_factory, bad_values
+) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(**bad_values)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+def test_config_row_with_a_zero_grace_window_saves(
+    mock_site_context, config_factory
+) -> None:
+    row = config_factory(grace_window=timedelta(0))
+
+    row.refresh_from_db()
+    assert row.grace_window == timedelta(0)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+def test_config_row_defaults_to_inherit_everywhere(
+    mock_site_context, config_factory
+) -> None:
+    row = config_factory()
+
+    assert [getattr(row, name) for name in SWITCH_FIELDS] == ["inherit"] * 4
+    assert row.after_access_ended == "inherit"
+    assert row.grace_window is None
+
+
+@pytest.mark.django_db
+def test_second_site_config_row_is_refused_by_the_database(
+    mock_site_context,
+) -> None:
+    SiteDeadlineConfigFactory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        SiteDeadlineConfigFactory()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("config_factory", "owner_field"),
+    [
+        (OrganisationDeadlineConfigFactory, "organisation"),
+        (CourseDeadlineConfigFactory, "course"),
+        (CohortDeadlineConfigFactory, "cohort"),
+        (CohortCourseRegistrationDeadlineConfigFactory, "cohort_registration"),
+        (LearnerCourseRegistrationDeadlineConfigFactory, "learner_registration"),
+    ],
+)
+def test_second_config_row_for_one_owner_is_refused_by_the_database(
+    mock_site_context, config_factory, owner_field
+) -> None:
+    first = config_factory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(**{owner_field: getattr(first, owner_field)})

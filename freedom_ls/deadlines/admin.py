@@ -20,9 +20,17 @@ from django.utils.safestring import SafeString
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.deadlines.models import (
+    CONFIG_FIELDS,
+    SWITCH_FIELDS,
+    CohortCourseRegistrationDeadlineConfig,
+    CohortDeadlineConfig,
     CohortDeadlineOverride,
+    CourseDeadlineConfig,
     DeadlineKind,
+    LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
+    OrganisationDeadlineConfig,
+    SiteDeadlineConfig,
 )
 from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
 from freedom_ls.deadlines.resolver import (
@@ -36,6 +44,7 @@ from freedom_ls.deadlines.resolver import (
 from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
 
@@ -370,3 +379,64 @@ setattr(  # noqa: B010
         ("Deadlines", {"fields": ("effective_deadlines",)}),
     ),
 )
+
+
+class SiteDeadlineConfigForm(ConstraintValidationFormMixin):
+    # site is not a form field: SiteAwareModelAdmin fills it from the request before
+    # validation, and un-excluding it here only lets the one-per-site constraint run.
+    constraint_fields = ("site",)
+
+    class Meta:
+        model = SiteDeadlineConfig
+        fields = list(CONFIG_FIELDS)
+
+
+class _DeadlineConfigAdmin(SiteAwareModelAdmin):
+    """Attributes every deadline config admin shares. Not registered itself."""
+
+    list_display = ["__str__", *CONFIG_FIELDS]
+    list_filter = list(SWITCH_FIELDS)
+
+
+@admin.register(SiteDeadlineConfig)
+class SiteDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    form = SiteDeadlineConfigForm
+    list_select_related = ["site"]
+
+
+@admin.register(OrganisationDeadlineConfig)
+class OrganisationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["organisation"]
+    autocomplete_fields = ["organisation"]
+    search_fields = ["organisation__name"]
+
+
+@admin.register(CourseDeadlineConfig)
+class CourseDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["course"]
+    autocomplete_fields = ["course"]
+    search_fields = ["course__title"]
+
+
+@admin.register(CohortDeadlineConfig)
+class CohortDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["cohort"]
+    autocomplete_fields = ["cohort"]
+    search_fields = ["cohort__name"]
+
+
+@admin.register(CohortCourseRegistrationDeadlineConfig)
+class CohortCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["cohort_registration__cohort", "cohort_registration__course"]
+    autocomplete_fields = ["cohort_registration"]
+    search_fields = ["cohort_registration__cohort__name"]
+
+
+@admin.register(LearnerCourseRegistrationDeadlineConfig)
+class LearnerCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = [
+        "learner_registration__learner__user",
+        "learner_registration__course",
+    ]
+    autocomplete_fields = ["learner_registration"]
+    search_fields = ["learner_registration__learner__user__email"]
