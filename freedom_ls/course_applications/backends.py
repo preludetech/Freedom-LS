@@ -287,6 +287,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
                     form_progress__completed_time__isnull=True,
                 )
                 .select_related("course", "form_progress")
+                .prefetch_related("course__organisations")
                 .order_by("-created_at", "pk")
             )
         # The paginator counts and then fetches one page, so only the three

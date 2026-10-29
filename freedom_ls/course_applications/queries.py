@@ -58,5 +58,6 @@ def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
     return (
         CourseApplication.objects.filter(user=user)
         .select_related("course", "form_progress")
+        .prefetch_related("course__organisations")
         .order_by("-created_at", "pk")
     )

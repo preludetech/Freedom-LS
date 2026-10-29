@@ -953,6 +953,109 @@ def _applications_created_in_order(user, count: int) -> list[CourseApplication]:
     return applications
 
 
+def _course_with_organisation_and_difficulty() -> Course:
+    from freedom_ls.content_engine.models import DifficultyLevel
+
+    course = _gated_course()
+    course.difficulty = DifficultyLevel.ADVANCED
+    course.save()
+    course.organisations.create(
+        name=f"Provider {course.pk}", slug=f"provider-{course.pk}"
+    )
+    return course
+
+
+def _signed_in_row() -> tuple[str, Course]:
+    course = _course_with_organisation_and_difficulty()
+    user = UserFactory()
+    CourseApplicationFactory(user=user, course=course)
+    contribution = _contributions_for(_signed_in_request(user))[0]
+    return _render_contribution(contribution), course
+
+
+def _anonymous_row() -> tuple[str, Course]:
+    course = _course_with_organisation_and_difficulty()
+    application = CourseApplicationFactory(
+        anonymous=True,
+        course=course,
+        form_progress=FormProgressFactory(user=None),
+    )
+    request = _anonymous_request(application.anonymous_applicant)
+    return _render_contribution(_contributions_for(request)[0]), course
+
+
+@pytest.mark.django_db
+class TestApplicationRowShell:
+    """Each application row carries the byline, difficulty, status and links."""
+
+    @pytest.fixture(params=[_signed_in_row, _anonymous_row])
+    def row(self, request, mock_site_context) -> tuple[str, Course]:
+        rendered, course = request.param()
+        return rendered, course
+
+    def test_the_row_shows_the_organisation_byline(self, row):
+        rendered, course = row
+
+        assert 'data-testid="organisation-byline"' in rendered
+        assert course.single_organisation().name in rendered
+
+    def test_the_row_shows_the_difficulty_label(self, row):
+        rendered, _ = row
+
+        assert "Advanced" in rendered
+
+    def test_the_row_shows_the_application_status_chip(self, row):
+        rendered, _ = row
+
+        assert "Pending review" in rendered or "Incomplete" in rendered
+
+    def test_the_details_link_points_at_the_course_page(self, row):
+        rendered, course = row
+        details_url = reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+
+        assert f'href="{details_url}"' in rendered
+
+    def test_the_details_link_names_its_course_for_screen_readers(self, row):
+        rendered, course = row
+
+        assert f'Details<span class="sr-only"> for {course.title}</span>' in rendered
+
+    def test_the_application_button_names_its_course_for_screen_readers(self, row):
+        rendered, course = row
+
+        assert f'<span class="sr-only"> for {course.title}</span>' in rendered
+
+
+@pytest.mark.django_db
+class TestApplicationsPanelQueries:
+    def test_three_applications_cost_no_more_queries_than_one(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def render_panel_for(user) -> None:
+            _render_contribution(_contributions_for(_signed_in_request(user))[0])
+
+        one_user = UserFactory()
+        CourseApplicationFactory(
+            user=one_user, course=_course_with_organisation_and_difficulty()
+        )
+        with CaptureQueriesContext(connection) as one_application:
+            render_panel_for(one_user)
+
+        three_user = UserFactory()
+        for _ in range(3):
+            CourseApplicationFactory(
+                user=three_user, course=_course_with_organisation_and_difficulty()
+            )
+
+        with django_assert_max_num_queries(len(one_application)):
+            render_panel_for(three_user)
+
+
 @pytest.mark.django_db
 class TestApplicationsPaging:
     """The Your applications panel pages three at a time, newest first."""
@@ -1072,8 +1175,9 @@ class TestApplicationsPaging:
         user = UserFactory()
         _applications_created_in_order(user, 7)
 
-        # A count and the one page of rows, each with its course and sitting joined.
-        with django_assert_num_queries(2):
+        # A count, the one page of rows with their course and sitting joined,
+        # and one prefetch of the courses' organisations.
+        with django_assert_num_queries(3):
             contribution = _contributions_for(_signed_in_request(user))[0]
 
         assert len(contribution.context["applications"]) == 3
