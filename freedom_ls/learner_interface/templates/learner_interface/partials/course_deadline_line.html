@@ -3,7 +3,7 @@
 The one deadline line a course card or row shows: the earliest missed deadline
 wins over the next one. Shared by course_card.html and course_row.html.
 
-Required context: course (missed_deadline, next_deadline) and
+Required context: course (missed_deadline, next_deadline, access_ends_at) and
 show_time_zone_to_learners.
 {% endcomment %}
 {% if course.missed_deadline %}
@@ -12,4 +12,7 @@ show_time_zone_to_learners.
     </p>
 {% elif course.next_deadline %}
     <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}{% if course.next_deadline.closes_at %} Closes {% local_time course.next_deadline.closes_at %}.{% endif %}</p>
+{% endif %}
+{% if course.access_ends_at %}
+    <p class="text-sm text-muted">Access ends {% local_time course.access_ends_at %}.</p>
 {% endif %}

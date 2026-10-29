@@ -4,6 +4,7 @@ import contextlib
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
@@ -45,8 +46,9 @@ from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.deadlines.consequences import shows_overdue
+from freedom_ls.deadlines.consequences import access_end_instant, shows_overdue
 from freedom_ls.deadlines.loader import get_deadline_policy
+from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
@@ -144,6 +146,7 @@ class CardDeadlineLine:
 
     missed: CardDeadline | None
     next: CardDeadline | None
+    access_ends_at: datetime | None = None
 
 
 def _card_deadline_line(
@@ -203,7 +206,20 @@ def _card_deadline_line(
     def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
         return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
 
-    return CardDeadlineLine(missed=earliest(missed), next=earliest(upcoming))
+    # Only an end still ahead is announced; one already past has ended the access, and the
+    # card then reads "Access ended" instead of carrying a deadline line.
+    access_ends_at = (
+        access_end_instant(time_limit, deadline_policy)
+        if deadline_policy is not None
+        else None
+    )
+    if access_ends_at is not None and access_ends_at <= now:
+        access_ends_at = None
+    return CardDeadlineLine(
+        missed=earliest(missed),
+        next=earliest(upcoming),
+        access_ends_at=access_ends_at,
+    )
 
 
 def _annotate_next_up(
@@ -255,6 +271,7 @@ def _annotate_next_up(
     line = _card_deadline_line(flat, course_deadlines, deadline_policy, now)
     setattr(course, "missed_deadline", line.missed)  # noqa: B010
     setattr(course, "next_deadline", line.next)  # noqa: B010
+    setattr(course, "access_ends_at", line.access_ends_at)  # noqa: B010
 
 
 def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
@@ -348,6 +365,7 @@ def _annotate_registered_courses(
     deadlines_by_record = course_deadlines_for(records.values())
     policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     now = timezone.now()
+    decisions = backend.get_access_many(user=user, courses=courses)
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
         setattr(  # noqa: B010
@@ -364,7 +382,8 @@ def _annotate_registered_courses(
         # backend (e.g. subscription-gated) could revoke access without a
         # separate check. Without content access the index carries no
         # progress, so a finished item would read as missed: no deadlines then.
-        course_decision = backend.get_access(user=user, course=course)
+        course_decision = decisions[course.pk]
+        setattr(course, "access_ended_at", course_decision.access_ended_at)  # noqa: B010
         record = records.get(course.pk)
         _annotate_next_up(
             course,
@@ -854,24 +873,24 @@ def all_courses(request: HttpRequest) -> HttpResponse:
     )
     courses_with_attrs = []
     now = timezone.now()
+    in_player = (CourseListingStatus.REGISTERED, CourseListingStatus.IN_PROGRESS)
+    decisions = backend.get_access_many(
+        user=request.user,
+        courses=[entry.course for entry in entries if entry.status in in_player],
+    )
     for entry in entries:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
         stamp_course_access_badge(course, badge=entry.access_badge)
         _stamp_single_organisation(course)
-        if entry.status in (
-            CourseListingStatus.REGISTERED,
-            CourseListingStatus.IN_PROGRESS,
-        ):
+        if entry.status in in_player:
             # The listing resolved the record already; the catalogue shows no
             # deadline line, so none are resolved here.
             _annotate_next_up(
                 course,
                 request.user,
-                can_access_content=backend.get_access(
-                    user=request.user, course=course
-                ).can_access_content,
+                can_access_content=decisions[course.pk].can_access_content,
                 course_progress=entry.course_progress,
                 course_deadlines=None,
                 deadline_policy=None,
@@ -945,7 +964,12 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     start_url: str | None
     cta_label: str | None
-    if is_registered:
+    access_ended = decision.access_ended_at is not None
+    if access_ended:
+        # An ended learner is offered nothing to start, continue or register for.
+        start_url = None
+        cta_label = None
+    elif is_registered:
         # Registered learners get the richer progress-aware helpers: "Start course",
         # "Continue", "Review course". Do NOT route registered learners through
         # decision.cta_label — it would regress the three-state vocabulary to "Continue".
@@ -1015,6 +1039,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "is_coming_soon": is_coming_soon,
             "start_url": start_url,
             "cta_label": cta_label,
+            "access_ended_at": decision.access_ended_at,
+            **_time_zone_context(request),
             # Acquisition-funnel copy is access-type-specific and comes from the
             # backend decision (not the CTA-state helpers above), so it is correct
             # for gated courses as well as free ones.
@@ -1133,20 +1159,78 @@ def initiate_course_access(request, course_slug):
     return redirect("learner_interface:course_home", course_slug=course_slug)
 
 
-def _course_access_redirect(
-    user: RequestUser, course: Course
-) -> HttpResponseRedirect | None:
-    """Turn away anyone the course itself is closed to, or None if it is open.
+class PlayerRoute(StrEnum):
+    """The kinds of player route, which an ended learner may or may not still reach."""
 
-    The same pair of gates for every route that serves or accepts a course item:
-    a hidden course must 404 rather than 302 (a redirect would confirm it exists),
-    and the access backend decides whether this learner may see content at all.
-    """
+    ITEM = "item"
+    FORM_RESULTS = "form_results"
+    SUBMIT_AND_EXIT = "submit_and_exit"
+    FINISH = "finish"
+
+
+def _course_access_decision(user: RequestUser, course: Course) -> CourseAccessDecision:
+    """A hidden course 404s before the backend is asked, so a redirect never confirms it exists."""
     raise_404_if_unavailable(user, course)
-    decision = get_course_access_backend().get_access(user=user, course=course)
-    if not decision.can_access_content:
+    return get_course_access_backend().get_access(user=user, course=course)
+
+
+def _course_access_redirect(
+    decision: CourseAccessDecision,
+    course: Course,
+    *,
+    route: PlayerRoute,
+    collection_item: ContentCollectionItem | None = None,
+    course_progress: CourseProgress | None = None,
+) -> HttpResponseRedirect | None:
+    """Turn away anyone the course is closed to, or None if this route is open to them.
+
+    The same gate for every route that serves or accepts a course item: the access
+    backend decides whether this learner may see content at all. A learner whose access
+    ended is turned away too, except from the routes ``_ended_route_redirect`` leaves open.
+    """
+    if decision.can_access_content:
+        return None
+    if decision.access_ended_at is None:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    return None
+    return _ended_route_redirect(
+        course,
+        route=route,
+        collection_item=collection_item,
+        course_progress=course_progress,
+    )
+
+
+def _ended_route_redirect(
+    course: Course,
+    *,
+    route: PlayerRoute,
+    collection_item: ContentCollectionItem | None,
+    course_progress: CourseProgress | None,
+) -> HttpResponseRedirect | None:
+    """What a learner whose access ended may still reach, else a redirect to the detail page.
+
+    A learner is always entitled to the score they earned, so finalising an open attempt
+    and a completed attempt's results stay open (a completed attempt is not the same as a
+    completed item: a failed sitting still has a score to show).
+    """
+    if route is PlayerRoute.SUBMIT_AND_EXIT:
+        return None
+    if (
+        route is PlayerRoute.FORM_RESULTS
+        and course_progress is not None
+        and collection_item is not None
+        and completed_attempts(course_progress, collection_item).exists()
+    ):
+        return None
+    return redirect("learner_interface:course_detail", course_slug=course.slug)
+
+
+def _shows_ended_outline(decision: CourseAccessDecision) -> bool:
+    """Whether a learner whose access ended still sees the course outline and results."""
+    return (
+        decision.access_ended_at is not None
+        and decision.after_access_ended == AfterAccessEnded.OUTLINE_AND_RESULTS
+    )
 
 
 def _blocked_item_redirect(
@@ -1255,14 +1339,20 @@ def view_course_item(request, course_slug, index):
     # Hidden-course 404 plus the content-access gate. Closes the hole where an
     # unregistered learner could view a free course's content by guessing the URL
     # (the TOC hides the links as BLOCKED, but the URL was previously unguarded).
-    no_access = _course_access_redirect(request.user, course)
-    if no_access is not None:
-        return no_access
+    decision = _course_access_decision(request.user, course)
 
     viewable_collection_items = course.viewable_collection_items()
     if index < 1 or index > len(viewable_collection_items):
         raise Http404("No course item at this index.")
     current_collection_item = viewable_collection_items[index - 1]
+    no_access = _course_access_redirect(
+        decision,
+        course,
+        route=PlayerRoute.ITEM,
+        collection_item=current_collection_item,
+    )
+    if no_access is not None:
+        return no_access
     current_item = current_collection_item.child
     viewable_items = [item.child for item in viewable_collection_items]
 
@@ -1595,10 +1685,13 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
-    no_access = _course_access_redirect(request.user, course)
+    decision = _course_access_decision(request.user, course)
+    collection_item = get_form_collection_item_for_index(course, index)
+    no_access = _course_access_redirect(
+        decision, course, route=PlayerRoute.ITEM, collection_item=collection_item
+    )
     if no_access is not None:
         return no_access
-    collection_item = get_form_collection_item_for_index(course, index)
     course_progress = _ensure_player_course_progress(request.user, course)
 
     # Minting the attempt is what would flip a locked quiz to IN_PROGRESS, so the
@@ -1718,10 +1811,13 @@ def form_fill_page(
     request: HttpRequest, course_slug: str, index: int, page_number: int
 ) -> HttpResponse:
     course = get_object_or_404(Course, slug=course_slug)
-    no_access = _course_access_redirect(request.user, course)
+    decision = _course_access_decision(request.user, course)
+    collection_item = get_form_collection_item_for_index(course, index)
+    no_access = _course_access_redirect(
+        decision, course, route=PlayerRoute.ITEM, collection_item=collection_item
+    )
     if no_access is not None:
         return no_access
-    collection_item = get_form_collection_item_for_index(course, index)
     form = cast("Form", collection_item.child)
     course_progress = _ensure_player_course_progress(request.user, course)
 
@@ -1788,9 +1884,7 @@ def form_fill_page(
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    no_access = _course_access_redirect(request.user, course)
-    if no_access is not None:
-        return no_access
+    decision = _course_access_decision(request.user, course)
     # No sequential-unlock gate here, deliberately: this page only reads back a
     # sitting the learner already made, and a learner is always entitled to the
     # score they earned — including after the quiz itself has been withheld.
@@ -1803,6 +1897,15 @@ def course_form_complete(request, course_slug, index):
     form = cast("Form", collection_item.child)
 
     course_progress = course_progress_for(request.user, course)
+    no_access = _course_access_redirect(
+        decision,
+        course,
+        route=PlayerRoute.FORM_RESULTS,
+        collection_item=collection_item,
+        course_progress=course_progress,
+    )
+    if no_access is not None:
+        return no_access
 
     # Get the most recent completed attempt at this placement
     form_progress = (
@@ -1910,6 +2013,13 @@ def course_finish(request, course_slug):
     """Mark the course progress as complete for this user and render a completion page."""
 
     course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(
+        _course_access_decision(request.user, course),
+        course,
+        route=PlayerRoute.FINISH,
+    )
+    if no_access is not None:
+        return no_access
 
     # The record the learner's registration granted, minted here if it is
     # missing -- the same self-healing path the rest of the player takes, so a
@@ -2007,10 +2117,16 @@ def form_submit_and_exit(
     leave nowhere to put it right. That one sends the learner back to the page.
     """
     course = get_object_or_404(Course, slug=course_slug)
-    no_access = _course_access_redirect(request.user, course)
+    decision = _course_access_decision(request.user, course)
+    collection_item = get_form_collection_item_for_index(course, index)
+    no_access = _course_access_redirect(
+        decision,
+        course,
+        route=PlayerRoute.SUBMIT_AND_EXIT,
+        collection_item=collection_item,
+    )
     if no_access is not None:
         return no_access
-    collection_item = get_form_collection_item_for_index(course, index)
     form = cast("Form", collection_item.child)
 
     # No sequential-unlock gate here, deliberately: this finalises an attempt the
@@ -2076,6 +2192,7 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.course_access.backends import (
         CourseAccessBackend,
+        CourseAccessDecision,
         DashboardContribution,
         RequestUser,
     )

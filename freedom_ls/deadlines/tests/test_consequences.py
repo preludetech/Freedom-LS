@@ -7,6 +7,7 @@ import pytest
 from freedom_ls.deadlines.consequences import (
     access_end_instant,
     close_instant,
+    has_access_ended,
     is_closed,
     shows_overdue,
 )
@@ -140,3 +141,28 @@ def test_is_closed_is_false_when_the_policy_does_not_close_items():
     now = DUE + timedelta(days=1)
 
     assert is_closed(_resolved(DUE), _policy(close_items=False), False, now) is False
+
+
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [
+        (timedelta(seconds=-1), False),
+        (timedelta(0), False),
+        (timedelta(seconds=1), True),
+    ],
+)
+def test_has_access_ended_turns_on_after_the_time_limit_plus_grace(offset, expected):
+    grace = timedelta(days=2)
+    policy = _policy(end_course_access=True, grace_window=grace)
+
+    assert has_access_ended(_resolved(DUE), policy, DUE + grace + offset) is expected
+
+
+def test_has_access_ended_is_false_when_the_policy_does_not_end_access():
+    assert has_access_ended(_resolved(DUE), _policy(), DUE + timedelta(days=9)) is False
+
+
+def test_has_access_ended_is_false_without_a_time_limit():
+    policy = _policy(end_course_access=True)
+
+    assert has_access_ended(NO_DEADLINE, policy, DUE + timedelta(days=9)) is False
