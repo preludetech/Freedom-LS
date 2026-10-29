@@ -82,6 +82,7 @@ from freedom_ls.learner_progress.attempts import (
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.queries import (
+    completed_collection_item_ids,
     course_progress_by_course_for,
     course_progress_for,
 )
@@ -956,11 +957,17 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         if is_registered
         else None
     )
-    children = get_course_index(
-        user=request.user,
-        course=course,
-        can_access_content=decision.can_access_content,
-        course_progress=course_progress,
+    shows_ended_outline = _shows_ended_outline(decision)
+    children = (
+        []
+        if decision.access_ended_at is not None and not shows_ended_outline
+        else get_course_index(
+            user=request.user,
+            course=course,
+            can_access_content=decision.can_access_content,
+            course_progress=course_progress,
+            access_ended_outline=shows_ended_outline,
+        )
     )
     start_url: str | None
     cta_label: str | None
@@ -1193,6 +1200,7 @@ def _course_access_redirect(
     if decision.access_ended_at is None:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     return _ended_route_redirect(
+        decision,
         course,
         route=route,
         collection_item=collection_item,
@@ -1200,7 +1208,18 @@ def _course_access_redirect(
     )
 
 
+def _is_complete_for_learner(
+    course_progress: CourseProgress | None, collection_item: ContentCollectionItem
+) -> bool:
+    """One rule for "this item is complete for this learner": the stored one the percentage reads."""
+    return (
+        course_progress is not None
+        and collection_item.pk in completed_collection_item_ids(course_progress)
+    )
+
+
 def _ended_route_redirect(
+    decision: CourseAccessDecision,
     course: Course,
     *,
     route: PlayerRoute,
@@ -1211,7 +1230,9 @@ def _ended_route_redirect(
 
     A learner is always entitled to the score they earned, so finalising an open attempt
     and a completed attempt's results stay open (a completed attempt is not the same as a
-    completed item: a failed sitting still has a score to show).
+    completed item: a failed sitting still has a score to show). When the policy keeps the
+    outline and results, a finished item opens too; a form's start and fill-in routes stay
+    shut, so a complete form is not re-sat.
     """
     if route is PlayerRoute.SUBMIT_AND_EXIT:
         return None
@@ -1220,6 +1241,13 @@ def _ended_route_redirect(
         and course_progress is not None
         and collection_item is not None
         and completed_attempts(course_progress, collection_item).exists()
+    ):
+        return None
+    if (
+        route is PlayerRoute.ITEM
+        and _shows_ended_outline(decision)
+        and collection_item is not None
+        and _is_complete_for_learner(course_progress, collection_item)
     ):
         return None
     return redirect("learner_interface:course_detail", course_slug=course.slug)
@@ -1277,9 +1305,14 @@ def _player_course_index(
     course: Course,
     index: int,
     course_progress: CourseProgress | None,
+    *,
+    access_ended_outline: bool = False,
 ) -> list[dict]:
     """The outline the player gates and chrome both read, with deadlines resolved from the
-    record so every gate sees blocking and closing as the learner's table of contents does."""
+    record so every gate sees blocking and closing as the learner's table of contents does.
+
+    ``access_ended_outline`` is for a learner whose access ended but who keeps the outline:
+    only finished items stay linked."""
     return get_course_index(
         user=user,
         course=course,
@@ -1288,6 +1321,7 @@ def _player_course_index(
         course_progress=course_progress,
         course_deadlines=_deadlines_or_none(course_progress),
         deadline_policy=_deadline_policy_or_none(course_progress),
+        access_ended_outline=access_ended_outline,
     )
 
 
@@ -1350,6 +1384,13 @@ def view_course_item(request, course_slug, index):
         course,
         route=PlayerRoute.ITEM,
         collection_item=current_collection_item,
+        # Only an ended learner's gate reads the record; everyone else is decided
+        # by the decision alone, so nothing is fetched for them.
+        course_progress=(
+            course_progress_for(cast("User", request.user), course)
+            if decision.access_ended_at is not None
+            else None
+        ),
     )
     if no_access is not None:
         return no_access
@@ -1365,7 +1406,13 @@ def view_course_item(request, course_slug, index):
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
-    course_index = _player_course_index(request.user, course, index, course_progress)
+    course_index = _player_course_index(
+        request.user,
+        course,
+        index,
+        course_progress,
+        access_ended_outline=_shows_ended_outline(decision),
+    )
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
     )
@@ -1504,6 +1551,7 @@ def _player_chrome_context(
     viewable_items: list | None = None,
     course_index: list[dict] | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
+    access_ended_outline: bool = False,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
@@ -1512,6 +1560,9 @@ def _player_chrome_context(
     all three to run its gates and its write) to avoid doing the work twice;
     callers that have not let them default. Passing ``course_progress=None``
     means "there is no record", and is not the same as leaving it out.
+
+    ``access_ended_outline`` shapes the outline it builds for a learner whose access
+    ended but who keeps the outline; it is ignored when ``course_index`` is passed in.
     """
     user = request.user
     if viewable_items is None:
@@ -1544,7 +1595,13 @@ def _player_chrome_context(
         # can_access_content=True: every caller runs the content-access gate
         # before reaching here, so the learner is confirmed to have content
         # access at this point.
-        course_index = _player_course_index(user, course, index, course_progress)
+        course_index = _player_course_index(
+            user,
+            course,
+            index,
+            course_progress,
+            access_ended_outline=access_ended_outline,
+        )
 
     return {
         "course_index": course_index,
@@ -1996,7 +2053,12 @@ def course_form_complete(request, course_slug, index):
         "retry_url": retry_url,
         # Player chrome (outline panel + breadcrumb).
         **_player_chrome_context(
-            request, course, form, index, course_progress=course_progress
+            request,
+            course,
+            form,
+            index,
+            course_progress=course_progress,
+            access_ended_outline=_shows_ended_outline(decision),
         ),
     }
 

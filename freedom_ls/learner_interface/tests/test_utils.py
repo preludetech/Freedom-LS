@@ -580,3 +580,91 @@ def test_closes_at_moves_with_a_learner_override_of_the_due_date(mock_site_conte
 
     assert first["closes_at"].date() == new_due + timedelta(days=2)
     assert first["is_closed"] is False
+
+
+def _ended_outline_course() -> tuple:
+    """A learner with a course of part[done, todo], then a lone todo topic."""
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    done, todo, lone = TopicFactory(), TopicFactory(), TopicFactory()
+    course.items.create(child=part, order=0)
+    part.items.create(child=done, order=0)
+    part.items.create(child=todo, order=1)
+    course.items.create(child=lone, order=1)
+    record = course_progress_record(course, user)
+    topic_completion(course, user, done, complete_time=timezone.now())
+    return user, course, record
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_marks_incomplete_rows_blocked_and_keeps_complete_urls(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    done_row, todo_row = part_row["children"]
+    assert (done_row["status"], todo_row["status"]) == (COMPLETE, BLOCKED)
+    assert done_row["url"] is not None
+    assert todo_row["url"] is None
+    assert (lone_row["status"], lone_row["url"]) == (BLOCKED, None)
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_links_a_part_to_its_first_complete_child(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, _lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    assert part_row["url"] == part_row["children"][0]["url"]
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_leaves_a_part_without_complete_children_unlinked(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    part.items.create(child=TopicFactory(), order=0)
+    record = course_progress_record(course, user)
+
+    (part_row,) = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    assert part_row["url"] is None
+
+
+@pytest.mark.django_db
+def test_without_access_ended_outline_no_access_leaves_every_row_blocked(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    rows = get_course_index(
+        user, course, can_access_content=False, course_progress=record
+    )
+
+    assert all(row["status"] == BLOCKED and row["url"] is None for row in rows)
