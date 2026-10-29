@@ -15,6 +15,13 @@
                 <p>Closed on {% local_time entry.closes_at %}. Ask your educator if you need more time.</p>
             </c-callout>
 
+            {% if submit_and_exit_url %}
+                <form method="post" action="{{ submit_and_exit_url }}" class="mx-auto max-w-reading">
+                    {% csrf_token %}
+                    <c-button type="submit">Submit your answers</c-button>
+                </form>
+            {% endif %}
+
             <c-player-footer :previous_url="previous_url" class="mx-auto max-w-reading">
                 {% if next_url %}
                     <c-button href="{{ next_url }}" icon_right="next" size="small">
