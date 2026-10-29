@@ -6013,7 +6013,7 @@ def test_bulk_add_to_cohort_fires_one_event_per_changed_learner(
 
     fired = [(call.args[0], call.args[1].pk) for call in fire.call_args_list]
     assert sorted(fired, key=str) == sorted(
-        [("cohort.member_added", learner.pk) for learner in fresh], key=str
+        [("cohort_membership.added", learner.pk) for learner in fresh], key=str
     )
 
 
@@ -6754,7 +6754,7 @@ def test_bulk_cohort_register_fires_one_course_registered_event_per_changed_coho
 
     fired = [(call.args[0], call.args[1]["cohort_id"]) for call in fire.call_args_list]
     assert sorted(fired) == sorted(
-        ("cohort.course_registered", str(cohort.pk)) for cohort in fresh
+        ("cohort_registration.added", str(cohort.pk)) for cohort in fresh
     )
 
 
@@ -6854,7 +6854,7 @@ def test_bulk_cohort_unregister_deactivates_the_active_registration(
     assert "1 cohort changed." in _bulk_text(response)
     assert registration.is_active is False
     assert [call.args[0] for call in fire.call_args_list] == [
-        "cohort.course_unregistered"
+        "cohort_registration.deactivated"
     ]
 
 
