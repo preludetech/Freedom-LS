@@ -1,17 +1,27 @@
 {% load deadline_tags %}
 {% comment %}
-The deadline labels of one index row: the "Missed deadline" chip with its date when the row
-shows overdue, otherwise the deadline date. A completed row or a row without a due date
-renders nothing.
+The deadline labels of one index row. A closed row shows the "Closed" chip with when it
+closed. Otherwise a row that shows overdue gets the "Missed deadline" chip with its date, and
+any other row its deadline date; either one adds when the row closes, if it will. A completed
+row or a row without a due date renders nothing.
 
-Required context: child (due_at, is_overdue, status) and show_time_zone_to_learners.
+Required context: child (due_at, closes_at, is_overdue, is_closed, status) and
+show_time_zone_to_learners.
 Optional: title, a prefix placed before the date.
 {% endcomment %}
 {% if child.due_at and child.status != "COMPLETE" %}
-    {% if child.is_overdue %}
+    {% if child.is_closed %}
+        <c-chip variant="error" size="xs" icon="deadline" class="forced-colors:border">Closed {% local_time child.closes_at %}</c-chip>
+    {% elif child.is_overdue %}
         <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
         <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">{% if title %}{{ title }} {% endif %}{% local_time child.due_at %}</span>
+        {% if child.closes_at %}
+            <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Closes {% local_time child.closes_at %}.</span>
+        {% endif %}
     {% else %}
         <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Deadline {% if title %}{{ title }} {% endif %}{% local_time child.due_at %}.</span>
+        {% if child.closes_at %}
+            <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Closes {% local_time child.closes_at %}.</span>
+        {% endif %}
     {% endif %}
 {% endif %}

@@ -11,5 +11,5 @@ show_time_zone_to_learners.
         {% include "learner_interface/partials/deadline_labels.html" with child=course.missed_deadline title=course.missed_deadline.title %}
     </p>
 {% elif course.next_deadline %}
-    <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}</p>
+    <p class="text-sm text-muted">Next deadline: {{ course.next_deadline.title }} {% local_time course.next_deadline.due_at %}{% if course.next_deadline.closes_at %} Closes {% local_time course.next_deadline.closes_at %}.{% endif %}</p>
 {% endif %}

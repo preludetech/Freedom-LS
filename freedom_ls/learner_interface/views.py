@@ -97,6 +97,7 @@ from .dashboard_sections import (
 )
 from .utils import (
     BLOCKED,
+    CLOSED,
     COMPLETE,
     IN_PROGRESS,
     READY,
@@ -133,6 +134,8 @@ class CardDeadline:
     due_at: datetime
     is_overdue: bool
     status: str
+    closes_at: datetime | None = None
+    is_closed: bool = False
 
 
 @dataclass(frozen=True)
@@ -149,21 +152,34 @@ def _card_deadline_line(
     deadline_policy: ResolvedDeadlinePolicy | None,
     now: datetime,
 ) -> CardDeadlineLine:
-    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. An
-    # in-progress course is never complete, so the time limit's overdue check takes
-    # completed=False.
+    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A closed
+    # leaf counts as missed. An in-progress course is never complete, so the time limit's
+    # overdue check takes completed=False.
     open_leaves = [
         row
         for row in flat
         if row.get("due_at") is not None and row["status"] != COMPLETE
     ]
     missed = [
-        CardDeadline(row["title"], row["due_at"], True, row["status"])
+        CardDeadline(
+            row["title"],
+            row["due_at"],
+            True,
+            row["status"],
+            row["closes_at"],
+            row["is_closed"],
+        )
         for row in open_leaves
-        if row["is_overdue"]
+        if row["is_overdue"] or row["is_closed"]
     ]
     upcoming = [
-        CardDeadline(row["title"], row["due_at"], False, row["status"])
+        CardDeadline(
+            row["title"],
+            row["due_at"],
+            False,
+            row["status"],
+            row["closes_at"],
+        )
         for row in open_leaves
         if row["due_at"] > now
     ]
@@ -1140,8 +1156,13 @@ def _blocked_item_redirect(
     *,
     course_index: list[dict] | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
+    refuse_closed: bool = False,
 ) -> HttpResponseRedirect | None:
     """Turn away an item the course index shows as BLOCKED, or None if it is open.
+
+    With ``refuse_closed`` a CLOSED item is turned away too. The routes that start or
+    fill in a form set it; the player page does not, because it renders a closed notice
+    at the item's own URL instead of redirecting.
 
     Sequential unlock used to live only in the table of contents, which drew a
     locked item as unlinked text and left its URL open. Reading the decision off
@@ -1159,11 +1180,57 @@ def _blocked_item_redirect(
             can_access_content=True,
             course_progress=course_progress,
         )
-    if current_entry_status(course_index) == BLOCKED:
+    status = current_entry_status(course_index)
+    if status == BLOCKED or (refuse_closed and status == CLOSED):
         # course_detail, never course_home: course_home resumes to the last item
         # accessed, which would bounce straight back here.
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     return None
+
+
+def _player_course_index(
+    user: RequestUser,
+    course: Course,
+    index: int,
+    course_progress: CourseProgress | None,
+) -> list[dict]:
+    """The outline the player gates and chrome both read, with deadlines resolved from the
+    record so every gate sees blocking and closing as the learner's table of contents does."""
+    return get_course_index(
+        user=user,
+        course=course,
+        current_index=index,
+        can_access_content=True,
+        course_progress=course_progress,
+        course_deadlines=_deadlines_or_none(course_progress),
+        deadline_policy=_deadline_policy_or_none(course_progress),
+    )
+
+
+def _render_closed_notice(
+    request: HttpRequest,
+    *,
+    course: Course,
+    entry: dict,
+    next_url: str | None,
+    previous_url: str | None,
+    player_context: dict,
+) -> HttpResponse:
+    """Render the notice an item shows once it has closed, in place of its content.
+
+    Writes nothing: opening a closed item is not a visit, so it moves neither the resume
+    point nor the course's start time."""
+    return render(
+        request,
+        "learner_interface/course_item_closed.html",
+        {
+            "course": course,
+            "entry": entry,
+            "next_url": next_url,
+            "previous_url": previous_url,
+            **player_context,
+        },
+    )
 
 
 @login_required
@@ -1192,15 +1259,7 @@ def view_course_item(request, course_slug, index):
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
-    course_index = get_course_index(
-        user=request.user,
-        course=course,
-        current_index=index,
-        can_access_content=True,
-        course_progress=course_progress,
-        course_deadlines=_deadlines_or_none(course_progress),
-        deadline_policy=_deadline_policy_or_none(course_progress),
-    )
+    course_index = _player_course_index(request.user, course, index, course_progress)
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
     )
@@ -1208,6 +1267,50 @@ def view_course_item(request, course_slug, index):
         return blocked
 
     total = len(viewable_items)
+    is_last_item = index >= total
+    next_url = (
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course_slug, "index": index + 1},
+        )
+        if index < total
+        else None
+    )
+    previous_url = (
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course_slug, "index": index - 1},
+        )
+        if index > 1
+        else None
+    )
+
+    # Player chrome context shared by topic and form item pages: the outline
+    # with the current item marked, the containing part (for breadcrumb / title),
+    # the CourseProgress (for the header progress bar / %), and the 1-based index.
+    # Reuse the viewable_items already resolved above so the chrome helper does
+    # not re-traverse the course a second time. It only reads, so a closed item
+    # can render it before anything is written.
+    player_context = _player_chrome_context(
+        request,
+        course,
+        current_item,
+        index,
+        viewable_items=viewable_items,
+        course_index=course_index,
+        course_progress=course_progress,
+    )
+
+    entry = current_entry(course_index)
+    if entry is not None and entry["status"] == CLOSED:
+        return _render_closed_notice(
+            request,
+            entry=entry,
+            next_url=next_url,
+            previous_url=previous_url,
+            player_context=player_context,
+            course=course,
+        )
 
     # Record this collection item as the resume target. This is the single
     # write point for both topics and forms, so resume no longer depends on
@@ -1231,40 +1334,6 @@ def view_course_item(request, course_slug, index):
         course_progress.save(
             update_fields=["last_accessed_item", "last_accessed_time", "started_at"]
         )
-
-    # Calculate navigation URLs
-    is_last_item = index >= total
-    next_url = (
-        reverse(
-            "learner_interface:view_course_item",
-            kwargs={"course_slug": course_slug, "index": index + 1},
-        )
-        if index < total
-        else None
-    )
-    previous_url = (
-        reverse(
-            "learner_interface:view_course_item",
-            kwargs={"course_slug": course_slug, "index": index - 1},
-        )
-        if index > 1
-        else None
-    )
-
-    # Player chrome context shared by topic and form item pages: the outline
-    # with the current item marked, the containing part (for breadcrumb / title),
-    # the CourseProgress (for the header progress bar / %), and the 1-based index.
-    # Reuse the viewable_items already resolved above so the chrome helper does
-    # not re-traverse the course a second time.
-    player_context = _player_chrome_context(
-        request,
-        course,
-        current_item,
-        index,
-        viewable_items=viewable_items,
-        course_index=course_index,
-        course_progress=course_progress,
-    )
 
     if isinstance(current_item, Topic):
         return view_topic(
@@ -1365,15 +1434,7 @@ def _player_chrome_context(
         # can_access_content=True: every caller runs the content-access gate
         # before reaching here, so the learner is confirmed to have content
         # access at this point.
-        course_index = get_course_index(
-            user=user,
-            course=course,
-            current_index=index,
-            can_access_content=True,
-            course_progress=course_progress,
-            course_deadlines=_deadlines_or_none(course_progress),
-            deadline_policy=_deadline_policy_or_none(course_progress),
-        )
+        course_index = _player_course_index(user, course, index, course_progress)
 
     return {
         "course_index": course_index,
@@ -1523,8 +1584,14 @@ def form_start(request, course_slug, index):
     # Minting the attempt is what would flip a locked quiz to IN_PROGRESS, so the
     # gate has to come before it — and before finalise_stale_incomplete, which
     # writes too. Minting the course progress record above changes no status.
+    # A closed form is refused here as well: starting it would open an attempt
+    # the learner can no longer fill in.
     blocked = _blocked_item_redirect(
-        request.user, course, index, course_progress=course_progress
+        request.user,
+        course,
+        index,
+        course_index=_player_course_index(request.user, course, index, course_progress),
+        refuse_closed=True,
     )
     if blocked is not None:
         return blocked
@@ -1639,9 +1706,14 @@ def form_fill_page(
     course_progress = _ensure_player_course_progress(request.user, course)
 
     # Gated ahead of the POST branch below, which saves answers and can complete
-    # the attempt: a refused page must write nothing at all.
+    # the attempt: a refused page must write nothing at all. Closed forms are
+    # refused too, so an attempt cannot be continued past the close instant.
     blocked = _blocked_item_redirect(
-        request.user, course, index, course_progress=course_progress
+        request.user,
+        course,
+        index,
+        course_index=_player_course_index(request.user, course, index, course_progress),
+        refuse_closed=True,
     )
     if blocked is not None:
         return blocked

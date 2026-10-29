@@ -12,7 +12,7 @@
 
 {% partialdef content-icon %}
     {% comment %} Type icon, coloured by status; status also announced via sr-only text. {% endcomment %}
-    <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
+    <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "CLOSED" %}text-muted{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
         {% if child.type == "TOPIC" %}
             <c-icon name="topic" class="size-4" />
         {% elif child.type == "FORM" %}
@@ -20,7 +20,7 @@
         {% elif child.type == "COURSE_PART" %}
             <c-icon name="folder" class="size-4" />
         {% endif %}
-        <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% endif %}</span>
+        <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% elif child.status == "CLOSED" %}Closed{% endif %}</span>
     </span>
 {% endpartialdef %}
 
