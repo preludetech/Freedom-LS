@@ -32,6 +32,7 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
     form = OrganisationAdminForm
     list_display = ["name", "slug"]
     search_fields = ["name"]
+    ordering = ["name"]
     readonly_fields = ["slug", SUMMARIES_FIELD]
     fields = ["name", "slug", "logo", "logo_on_dark", SUMMARIES_FIELD]
     # Added to by other apps, for the reason given on ORGANISATION_SUMMARIES: a
