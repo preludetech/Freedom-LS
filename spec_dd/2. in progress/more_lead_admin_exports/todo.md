@@ -18,6 +18,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: Referral code export now writes is_active as TRUE/FALSE, contradicting the spec's 1/0 promise (TDD: failing test first, then fix)
+- [ ] (user) Decide whether the referral exports keep 1/0 as spec line 66 and plan line 108 say, or switch to TRUE/FALSE as the code-review fix-up (commit 73dfcc590) made every export do, then either update the spec, plan and upgrade_notes.md to the shared-base behaviour or move SpreadsheetBooleanWidget back to the users and course-applications resources and drop the referral TRUE/FALSE test
 
 ## 4. Documentation and pull request
 
