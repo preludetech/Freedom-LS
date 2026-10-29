@@ -5,7 +5,7 @@
     <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
 {% endblock extra_alpine_components %}
 
-{% block head_title %}Dashboard{% endblock head_title %}
+{% block head_title %}{% if user.is_authenticated %}Dashboard{% endif %}{% endblock head_title %}
 
 {% block content %}
     <c-page>

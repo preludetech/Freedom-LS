@@ -187,10 +187,12 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     discard.get_by_role("button", name="Discard").click()
     expect(dialog).to_be_hidden()
 
-    # On a fresh desktop page the first Tab reaches the site header.
+    # On a fresh desktop page the first Tab reaches the skip link and the next
+    # one reaches the site header.
     page.goto(cohorts_url)
     expect(sheet).to_be_visible()
     assert page.evaluate("document.activeElement === document.body")
+    page.keyboard.press("Tab")
     page.keyboard.press("Tab")
     assert page.evaluate(
         "document.querySelector('header.header').contains(document.activeElement)"

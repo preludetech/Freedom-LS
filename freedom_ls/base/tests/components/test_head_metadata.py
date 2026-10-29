@@ -14,6 +14,7 @@ import pytest
 
 from django.template.loader import render_to_string
 from django.test import RequestFactory
+from django.urls import reverse
 
 GENERIC_DESCRIPTION = "Learning management system"
 
@@ -135,3 +136,41 @@ def test_lockout_page_is_noindex_via_the_robots_block(mock_site_context):
     body = render_to_string("accounts/lockout.html", request=request)
     assert _meta_name(body, "robots") == "noindex"
     assert _canonical(body) == "http://testserver/accounts/login/"
+
+
+@pytest.mark.django_db
+def test_configured_meta_description_renders_on_the_home_page(
+    mock_site_context, settings
+):
+    settings.META_DESCRIPTION = "Courses for pilots"
+    body = _render("/")
+    assert _meta_name(body, "description") == "Courses for pilots"
+    assert _meta_property(body, "og:description") == "Courses for pilots"
+
+
+@pytest.mark.django_db
+def test_view_supplied_meta_description_wins_over_the_configured_one(
+    mock_site_context, settings
+):
+    settings.META_DESCRIPTION = "Courses for pilots"
+    body = _render(meta_description="A thorough introduction to Python.")
+    assert _meta_name(body, "description") == "A thorough introduction to Python."
+
+
+@pytest.mark.django_db
+def test_course_detail_keeps_its_own_description_when_one_is_configured(
+    mock_site_context, settings, course_with_topic, client
+):
+    settings.META_DESCRIPTION = "Courses for pilots"
+    course = course_with_topic(description="Learn to fly a glider.")
+    response = client.get(
+        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    )
+    assert (
+        _meta_name(response.content.decode(), "description") == "Learn to fly a glider."
+    )
+
+
+@pytest.mark.django_db
+def test_unset_meta_description_keeps_the_generic_default(mock_site_context):
+    assert _meta_name(_render("/"), "description") == GENERIC_DESCRIPTION

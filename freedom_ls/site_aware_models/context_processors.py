@@ -28,4 +28,5 @@ def site_config(request):
         "favicon_static_path": config.FAVICON_STATIC_PATH,
         "header_title": config.HEADER_TITLE or site_title,
         "header_title_style": config.HEADER_TITLE_STYLE,
+        "meta_description": config.META_DESCRIPTION,
     }

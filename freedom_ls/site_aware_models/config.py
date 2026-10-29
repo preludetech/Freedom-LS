@@ -11,6 +11,7 @@ class SiteAwareModelsConfig(AppSettings):
     HEADER_TITLE: str | None
     HEADER_TITLE_STYLE: str | None
     EMAIL_LOGO_STATIC_PATH: str | None
+    META_DESCRIPTION: str | None
 
     declared_settings = {
         "FORCE_SITE_NAME": Setting(default=None),
@@ -20,6 +21,7 @@ class SiteAwareModelsConfig(AppSettings):
         "HEADER_TITLE": Setting(default=None),
         "HEADER_TITLE_STYLE": Setting(default=None),
         "EMAIL_LOGO_STATIC_PATH": Setting(default=None),
+        "META_DESCRIPTION": Setting(default=None),
     }
 
 

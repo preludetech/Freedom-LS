@@ -520,6 +520,14 @@ def test_dashboard_title_tag_says_dashboard(
 
 
 @pytest.mark.django_db
+def test_anonymous_home_page_title_is_the_site_name(mock_site_context, courses):
+    """Visitors who are not signed in see no 'Dashboard' label in the tab title."""
+    response = Client().get(reverse("learner_interface:dashboard"))
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == mock_site_context.name
+
+
+@pytest.mark.django_db
 def test_all_courses_title_tag_says_all_courses(
     mock_site_context, courses, logged_in_client
 ):
