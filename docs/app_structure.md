@@ -301,8 +301,8 @@ flowchart TB
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
-| learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
-| learner_management | accounts, audit_log, base, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
+| learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
+| learner_management | accounts, audit_log, base, content_engine, organisations, panel_framework, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
