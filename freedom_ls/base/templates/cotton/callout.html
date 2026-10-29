@@ -1,4 +1,4 @@
-<c-vars level="info" title="" />
+<c-vars level="info" title="" class="" />
 
 {% comment %}
 Callout component for displaying informational alerts and notices.
@@ -6,7 +6,7 @@ Supports levels: info, warning, error, success
 {% endcomment %}
 
 {% partialdef callout_box %}
-<div class="my-6 p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg">
+<div class="my-6 p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg{% if class %} {{ class }}{% endif %}">
     {% if title %}
     <h4 class="text-xl font-semibold {{ title_color }} mb-2">
         <c-icon :name="icon" class="size-5 mr-2" />{{ title }}

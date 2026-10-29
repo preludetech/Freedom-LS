@@ -20,3 +20,11 @@ def test_callout_text_is_not_the_background_only_status_colour(level: str) -> No
     assert f'class="text-{level}' not in result
     assert f"text-xl font-semibold text-{level} " not in result
     assert f"text-on-{level}-light" in result
+
+
+def test_callout_puts_a_passed_class_on_its_box() -> None:
+    result = _render(
+        '<c-callout level="warning" class="mx-auto max-w-reading">Body</c-callout>'
+    )
+
+    assert "rounded-r-lg mx-auto max-w-reading" in result

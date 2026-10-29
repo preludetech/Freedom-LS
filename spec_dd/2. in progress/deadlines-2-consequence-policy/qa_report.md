@@ -134,9 +134,9 @@ Actual: `<c-callout>` does not render a class attribute, so the notice spans wid
 |---|---|
 | B1 | **FIXED** (commit: a05f2afd6) — Negative grace window shows the raw constraint name instead of a field error. Re-verified: "The grace window cannot be negative." on the Grace window field. ![](screenshots/page-b1-reverify.png) |
 | B2 | **FIXED** (commit: b160b6563) — Rows withheld by sequential unlock still show a Closed chip. Re-verified: locked rows now read "Missed deadline … Closes …" with no Closed chip; offered closed rows keep theirs; dashboard card and player header unchanged. ![](screenshots/page-b2-reverify.png) |
-| B3 | **UNRESOLVED** — With mark_overdue off the dashboard card drops a past deadline's date (reason: spec says the card keeps the date, the plan's 2.1.4 accepts dropping it; which one is right is a product decision) |
+| B3 | **FIXED** — With mark_overdue off the dashboard card drops a past deadline's date. Decided to follow the spec: the card keeps the past date without the chip ("Deadline <title> <date>."), item and time limit; QA plan 2.1.4 updated to match. |
 | B4 | **FIXED** (commit: 2c780cb11) — Access-ended message on course detail is yellow text on pale yellow (about 1.3:1 contrast). Re-verified: text is now #744210 (text-on-warning-light), about 7.5:1; the player's closed notice is unaffected. ![](screenshots/page-b4-reverify.png) |
-| B5 | **UNRESOLVED** — Closed notice in the player is not aligned to the reading column (reason: fix budget exhausted this run) |
+| B5 | **FIXED** — Closed notice in the player is not aligned to the reading column. `<c-callout>` now renders a passed `class` on its box. |
 
 ## General notes
 

@@ -18,8 +18,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: with mark_overdue off the dashboard card drops a past deadline's date — the spec says the date stays, the test plan's 2.1.4 accepts dropping it (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: the player's closed notice is not aligned to the reading column because <c-callout> drops its class attribute (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: with mark_overdue off the dashboard card drops a past deadline's date — the spec says the date stays, the test plan's 2.1.4 accepts dropping it (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: the player's closed notice is not aligned to the reading column because <c-callout> drops its class attribute (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
