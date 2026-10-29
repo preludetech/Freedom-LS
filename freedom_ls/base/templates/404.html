@@ -11,7 +11,11 @@
            Check the address for mistakes.</p>
         <div class="flex flex-wrap justify-center gap-3 pt-3">
             {% if dashboard_url %}
-                <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
+                {% if user.is_authenticated %}
+                    <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
+                {% else %}
+                    <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to the home page</c-button>
+                {% endif %}
             {% endif %}
             {% if courses_url %}
                 <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>

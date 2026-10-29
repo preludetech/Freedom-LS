@@ -75,6 +75,17 @@ def test_404_renders_the_error_page(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+def test_404_offers_the_dashboard_to_a_signed_in_user(mock_site_context) -> None:
+    client = Client()
+    client.force_login(UserFactory())
+
+    body = client.get("/no-such-page/").content.decode()
+
+    assert "Go to your dashboard" in body
+    assert "Go to the home page" not in body
+
+
+@pytest.mark.django_db
 @override_settings(ROOT_URLCONF=ERROR_PAGES_URLCONF)
 def test_403_renders_the_error_page(mock_site_context) -> None:
     response = Client().get(reverse("test_403"))
@@ -394,7 +405,7 @@ PAGE_RENDERERS: dict[str, Callable[[], tuple[int, str, str]]] = {
 # renders already carries buttons of its own, so a class assertion passes on
 # every shell page whether or not the panel offers anything at all.
 PAGE_ACTIONS: dict[str, tuple[str, ...]] = {
-    "404": ("Go to your dashboard", "Browse courses"),
+    "404": ("Go to the home page", "Browse courses"),
     "403": ("Browse courses", "Sign in as a different account"),
     "400": ("Go to your dashboard",),
     "403_csrf": ("Reload the form", "Sign in again"),
