@@ -64,7 +64,7 @@ A helper that tests import by hand goes in `helpers.py` beside the tests: `conte
 
 ### Stub-model technique
 
-The FLS instance is `panel_framework/tests/`. `stub_models.py` holds `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), `helpers.py` their `_make_stub*` constructors, and `conftest.py` the fixtures that create their tables. A new foundational app's stub models go in a plain `stub_models.py` the same way.
+The FLS instance is `panel_framework/tests/`. `stub_models.py` holds `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), `helpers.py` their `_make_stub*` constructors, and `conftest.py` the fixtures that create their tables. A new foundational app's stub models go in a plain `stub_models.py` the same way. The migration-drift probe, `contrib/conformance/test_migrations.py`, skips models defined under a `tests` package, so stubs stay out of it when their app has real migrations.
 
 `panel_framework/tests/stub_panels.py` shows the double-import hazard. Django's URL resolver loads it under a different module path from the one pytest gives the conftest, so it fetches `StubModel` with `apps.get_model` at call time. Its docstring explains why.
 
