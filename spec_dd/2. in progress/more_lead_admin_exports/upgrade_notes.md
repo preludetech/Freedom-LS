@@ -15,7 +15,11 @@ requires_tailwind_rebuild: false
 
 ## Breaking changes
 
-None.
+Every export built on `SiteAwareModelResource` now writes boolean cells as `TRUE`/`FALSE`
+instead of `1`/`0`. That includes the existing referral exports: signup attributions,
+first-touch counts, referral codes and referral code hits. A script or sheet that reads those
+CSVs and expects `1`/`0` needs updating. A custom resource that must keep `1`/`0` can map
+`"BooleanField"` back to `import_export.widgets.BooleanWidget` in its own `WIDGETS_MAP`.
 
 Two admin classes now have a different base. `freedom_ls.accounts.admin.UserAdmin` and
 `freedom_ls.course_applications.admin.CourseApplicationAdmin` now extend

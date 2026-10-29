@@ -108,7 +108,7 @@ Manifestations:
 
 ## Bug status
 
-- **UNRESOLVED** — Referral code export now writes is_active as TRUE/FALSE, contradicting the spec's 1/0 promise (reason: red lane, no fix attempted. The spec, the plan and the QA plan say the referral exports keep `1`/`0`; the code-review fix-up commit 73dfcc590 deliberately made every export agree on `TRUE`/`FALSE` and tests that. Choosing which is intended is a product decision: either keep the shared-base behaviour and update spec line 66, plan line 108 and the upgrade notes, or move `SpreadsheetBooleanWidget` back to the two new resources and drop the referral test.)
+- **RESOLVED BY DECISION** (keep TRUE/FALSE in every export; spec, plan, QA plan and upgrade notes updated to match). Was: Referral code export now writes is_active as TRUE/FALSE, contradicting the spec's 1/0 promise (reason: red lane, no fix attempted. The spec, the plan and the QA plan say the referral exports keep `1`/`0`; the code-review fix-up commit 73dfcc590 deliberately made every export agree on `TRUE`/`FALSE` and tests that. Choosing which is intended is a product decision: either keep the shared-base behaviour and update spec line 66, plan line 108 and the upgrade notes, or move `SpreadsheetBooleanWidget` back to the two new resources and drop the referral test.)
 
 ## General notes
 
