@@ -13,17 +13,22 @@ from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     LearnerDeadlineOverrideFactory,
+    SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    CourseDeadlineConfig,
     DeadlineKind,
     LearnerDeadlineOverride,
+    SiteDeadlineConfig,
 )
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohortcourseregistration_change"
 ADD_URL_NAME = "admin:freedom_ls_learner_management_cohortcourseregistration_add"
@@ -725,3 +730,57 @@ def test_the_course_progress_page_query_count_does_not_grow_with_learner_rows(
     assert _progress_page_query_count(
         staff_client, large
     ) == _progress_page_query_count(staff_client, small)
+
+
+SITE_CONFIG_ADD = "admin:freedom_ls_deadlines_sitedeadlineconfig_add"
+COURSE_CONFIG_ADD = "admin:freedom_ls_deadlines_coursedeadlineconfig_add"
+INHERIT_POST = {
+    "mark_overdue": "inherit",
+    "close_items": "inherit",
+    "end_course_access": "inherit",
+    "notify_educators": "inherit",
+    "grace_window": "",
+    "after_access_ended": "inherit",
+}
+
+
+@pytest.mark.django_db
+def test_site_config_add_with_every_select_at_inherit_stores_inherit_and_none(
+    staff_client, mock_site_context
+) -> None:
+    response = staff_client.post(reverse(SITE_CONFIG_ADD), INHERIT_POST)
+
+    row = SiteDeadlineConfig.objects.get()
+    assert response.status_code == 302
+    assert row.close_items == "inherit"
+    assert row.grace_window is None
+
+
+@pytest.mark.django_db
+def test_second_site_config_post_is_a_form_error_and_creates_no_row(
+    staff_client, mock_site_context
+) -> None:
+    SiteDeadlineConfigFactory()
+
+    response = staff_client.post(reverse(SITE_CONFIG_ADD), INHERIT_POST)
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.non_field_errors()
+    assert SiteDeadlineConfig.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_course_config_post_for_another_sites_course_is_refused(
+    staff_client, mock_site_context
+) -> None:
+    other_site = SiteFactory()
+    with site_context(other_site):
+        foreign_course = CourseFactory()
+
+    response = staff_client.post(
+        reverse(COURSE_CONFIG_ADD), {**INHERIT_POST, "course": str(foreign_course.pk)}
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["course"]
+    assert CourseDeadlineConfig.objects.count() == 0
