@@ -92,3 +92,72 @@ def test_url_with_next_reads_next_from_the_post_body(rf):
     assert rendered == (
         "/accounts/signup/?next=%2Fapplications%2Fapply%2Fx%2F&amp;email=a%40b.example"
     )
+
+
+def _render_url_back_here(request, **context: object) -> str:
+    template = Template('{% load accounts_tags %}{% url_back_here "account_login" %}')
+    with request_context(request):
+        return template.render(Context({"request": request, **context}))
+
+
+def test_url_back_here_carries_the_current_path_as_next(rf):
+    request = rf.get("/courses/intro/detail/")
+
+    rendered = _render_url_back_here(request)
+
+    assert rendered == "/accounts/login/?next=%2Fcourses%2Fintro%2Fdetail%2F"
+
+
+def test_url_back_here_url_encodes_the_query_string_into_next(rf):
+    request = rf.get("/courses/intro/detail/", {"page": "2"})
+
+    rendered = _render_url_back_here(request)
+
+    assert rendered == (
+        "/accounts/login/?next=%2Fcourses%2Fintro%2Fdetail%2F%3Fpage%3D2"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/", "/accounts/login/", "/applications/claim/some-token/"],
+    ids=["home", "account_page", "claim_page"],
+)
+def test_url_back_here_is_bare_where_returning_makes_no_sense(rf, path):
+    request = rf.get(path)
+
+    rendered = _render_url_back_here(request)
+
+    assert rendered == "/accounts/login/"
+
+
+def test_url_back_here_is_bare_on_an_error_page(rf):
+    request = rf.get("/courses/missing/detail/")
+
+    rendered = _render_url_back_here(request, is_error_page=True)
+
+    assert rendered == "/accounts/login/"
+
+
+def test_url_back_here_is_bare_for_a_post_request(rf):
+    request = rf.post("/courses/intro/detail/")
+
+    rendered = _render_url_back_here(request)
+
+    assert rendered == "/accounts/login/"
+
+
+def test_url_back_here_passes_a_request_next_through_unchanged(rf):
+    request = rf.get("/courses/intro/detail/", {"next": "/x/"})
+
+    rendered = _render_url_back_here(request)
+
+    assert rendered == "/accounts/login/?next=%2Fx%2F"
+
+
+def test_url_back_here_is_bare_with_no_request_in_context():
+    template = Template('{% load accounts_tags %}{% url_back_here "account_login" %}')
+
+    rendered = template.render(Context({}))
+
+    assert rendered == "/accounts/login/"

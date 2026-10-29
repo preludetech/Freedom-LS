@@ -14,4 +14,10 @@ itself fails. The footer reverses accounts:legal_doc and reads header_title
 from site_config, either of which could depend on a resolvable site, so it is
 blanked for every error page.
 {% endcomment %}
+{% comment %}
+The header's log in and sign up links stay bare on an error page, because the
+requested path is not a page worth returning to.
+{% endcomment %}
+{% block header %}{% include "partials/header_bar.html" with is_error_page=True %}{% endblock header %}
+
 {% block footer %}{% endblock footer %}
