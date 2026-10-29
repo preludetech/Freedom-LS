@@ -140,6 +140,20 @@ def _clear_messaging_policy_cache():
     get_messaging_policy.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _clear_deadline_policy_cache():
+    """Reset the cached deadline policy before and after each test.
+
+    get_deadline_policy() is @functools.cache'd for the process lifetime, so a
+    test that overrides DEADLINE_POLICY would otherwise leak its instance.
+    """
+    from freedom_ls.deadlines.loader import get_deadline_policy
+
+    get_deadline_policy.cache_clear()
+    yield
+    get_deadline_policy.cache_clear()
+
+
 def reverse_url(
     live_server: "LiveServer",
     viewname: str,

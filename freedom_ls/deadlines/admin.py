@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 from uuid import UUID
 
@@ -19,6 +20,7 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
     SWITCH_FIELDS,
@@ -351,6 +353,32 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
     )
 
 
+def _policy_value_text(value: bool | timedelta | str) -> str:
+    if isinstance(value, bool):
+        return "On" if value else "Off"
+    if isinstance(value, timedelta):
+        return str(value)
+    return value.replace("_", " ").capitalize()
+
+
+@admin.display(description="Effective deadline policy")
+def effective_deadline_policy(
+    model_admin: ModelAdmin, record: CourseProgress
+) -> SafeString:
+    """Each setting, its resolved value and the layer that set it, from the same resolver
+    the learner pages read. Values are plain text, so every line goes through format_html."""
+    if record._state.adding:
+        return format_html("{}", "")
+    policy = get_deadline_policy().resolve(record)
+    lines = [
+        (field, _policy_value_text(getattr(policy, field)), policy.sources[field])
+        for field in CONFIG_FIELDS
+    ]
+    return format_html(
+        "<ul>{}</ul>", format_html_join("", "<li>{}: {} ({})</li>", lines)
+    )
+
+
 # This change page belongs to an app below this one in docs/app_structure.md, so the override
 # inline is added from here rather than imported there. The seam adds rather than replaces.
 CohortCourseRegistrationAdmin.inlines = [
@@ -367,16 +395,26 @@ CourseProgressAdmin.inlines = [
 ]
 setattr(CourseProgressAdmin, "effective_deadlines", effective_deadlines)  # noqa: B010
 setattr(  # noqa: B010
+    CourseProgressAdmin, "effective_deadline_policy", effective_deadline_policy
+)
+setattr(  # noqa: B010
     CourseProgressAdmin,
     "readonly_fields",
-    (*CourseProgressAdmin.readonly_fields, "effective_deadlines"),
+    (
+        *CourseProgressAdmin.readonly_fields,
+        "effective_deadlines",
+        "effective_deadline_policy",
+    ),
 )
 setattr(  # noqa: B010
     CourseProgressAdmin,
     "fieldsets",
     (
         *CourseProgressAdmin.fieldsets,
-        ("Deadlines", {"fields": ("effective_deadlines",)}),
+        (
+            "Deadlines",
+            {"fields": ("effective_deadlines", "effective_deadline_policy")},
+        ),
     ),
 )
 

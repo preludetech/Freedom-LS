@@ -12,6 +12,7 @@ from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
     SiteDeadlineConfigFactory,
 )
@@ -784,3 +785,29 @@ def test_course_config_post_for_another_sites_course_is_refused(
     assert response.status_code == 200
     assert response.context["adminform"].form.errors["course"]
     assert CourseDeadlineConfig.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_shows_the_layer_that_set_each_value(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CourseDeadlineConfigFactory(course=record.course, close_items="on")
+
+    response = _progress_page(staff_client, record)
+
+    content = response.content.decode()
+    assert "<li>close_items: On (course)</li>" in content
+    assert "<li>mark_overdue: On (settings)</li>" in content
+
+
+@pytest.mark.django_db
+def test_the_course_progress_add_page_renders_without_a_policy(
+    staff_client, mock_site_context
+) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_learner_progress_courseprogress_add")
+    )
+
+    assert response.status_code == 200
+    assert "close_items:" not in response.content.decode()
