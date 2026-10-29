@@ -845,7 +845,7 @@ def learners_permitted_for(
     """Learners the user may apply `capability` to: every visible learner for
     an organisation-level grant, otherwise the members of the cohorts that
     grant it."""
-    visible = learners_visible_to(user, organisation, include_removed=True)
+    visible = learners_visible_to(user, organisation, include_inactive=True)
     if can(user, capability, organisation):
         return visible
     cohorts = cohorts_visible_to(user, organisation, capability=capability)
