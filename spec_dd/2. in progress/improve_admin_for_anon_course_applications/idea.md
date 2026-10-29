@@ -1,1 +1,0 @@
- The course applications admin lets me see the answers to form questions, or that application, but the anonymous applications do not. I want to be able to see the answers to the questions in the application form.

@@ -29,8 +29,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `test-organisation-and-hygene-5-foundational-apps`
 - `test-organisation-and-hygene-6-small-apps`
 - `test-organisation-and-hygene-7-course-access-and-applications`
-- `test-organisation-and-hygene-8-learner-management-and-progress`
-- `test-organisation-and-hygene-9-form-engine`
 - `user-communication-6-moderation`
 
 ## Needs work on main first
@@ -268,7 +266,8 @@ them; each idea assumes you have.
 The source idea asks for tests that sit where a reader expects them and import only what their
 app depends on. SDD should write and review to that standard and tidy what it touches as it goes.
 The existing mess gets cleaned up in many small specs rather than one big one. Specs 1 to 3 set the
-standard up. Specs 4 to 15 clean up to it.
+standard up. Specs 4 to 15 clean up to it. Specs 8 (`learner_management` and `learner_progress`) and 9
+(`form_engine`) were dropped on 2026-10-28: other work had already cleared both apps' baseline lines.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
@@ -276,8 +275,6 @@ standard up. Specs 4 to 15 clean up to it.
 | 5 | `test-organisation-and-hygene-5-foundational-apps` | `site_aware_models`, `role_based_permissions`, `organisations`, `base`: local stub models replace borrowed downstream models. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 6 | `test-organisation-and-hygene-6-small-apps` | The apps with one violation or none: `health`, `content_base`, `icons`, `qa_helpers`, `webhooks`, `mail`, `google_tag`, `dev_tools`, `course_interest`, `course_recommendations`, `deployment`, `referral_tracking`, `contrib/conformance`. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 7 | `test-organisation-and-hygene-7-course-access-and-applications` | The `course_access` tests that import `course_applications` against the runtime edge, `course_applications`' `learner_progress` import and its conftest helper. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
-| 8 | `test-organisation-and-hygene-8-learner-management-and-progress` | The `learner_management` tests that import `learner_progress` against the runtime edge, and both apps' remaining edges. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
-| 9 | `test-organisation-and-hygene-9-form-engine` | `form_engine`'s template tag tests mirrored into a subdirectory, its import-independence test documented, its baseline lines removed. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 10 | `test-organisation-and-hygene-10-content-engine-and-markdown-rendering` | The `content_engine` demo-content and KaTeX test files re-homed, and `markdown_rendering`'s tests stop reaching up into `content_engine`. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 11 | `test-organisation-and-hygene-11-reports` | `reports`: five conftest helpers moved out of `conftest.py`, the `role_based_permissions` imports. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 12 | `test-organisation-and-hygene-12-accounts` | `accounts`' tests that reach up into seven apps; its integration tests move to an app that depends on everything they touch. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
@@ -290,8 +287,6 @@ standard up. Specs 4 to 15 clean up to it.
               └── 3 checks ── 4 shared infra ──┬── 5 foundational apps
                                                ├── 6 small apps
                                                ├── 7 course access + applications
-                                               ├── 8 learner management + progress
-                                               ├── 9 form engine
                                                ├── 10 content engine + markdown rendering
                                                ├── 11 reports
                                                ├── 12 accounts
@@ -400,10 +395,9 @@ External edges: 4 needs `educator-interface-7-learner-administration`; 5 needs
 - Shortest path to something usable: 1 then 2. An organisation admin can then write "everyone in
   Finance is registered for Budgeting Basics" in the Django admin.
 - Cautions. Spec 1 adds no columns or migrations to `learner_management`, but it appends an inline
-  to `LearnerAdmin` while `educator-interface-7-learner-administration`,
-  `educator-interface-8-bulk-operations` and
-  `test-organisation-and-hygene-8-learner-management-and-progress` also work in
-  `learner_management`, so whoever lands second rebases. Spec 2 adds provenance to
+  to `LearnerAdmin` while `educator-interface-7-learner-administration` and
+  `educator-interface-8-bulk-operations` also work in `learner_management`, so whoever lands
+  second rebases. Spec 2 adds provenance to
   `LearnerCourseRegistration`, and educator-interface spec 7 shows a registration's source on the
   learner detail page: whichever lands second adds the rule as a source. Spec 3 edits the
   self-registration view in `learner_interface`.
