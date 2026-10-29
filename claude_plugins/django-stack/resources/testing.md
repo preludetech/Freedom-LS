@@ -109,6 +109,8 @@ When a foundational app's tests need "any model with this mixin" or "some object
 
 The app's `conftest.py` imports the model and creates its table with `connection.schema_editor()` in a session-scoped fixture. Test files import the model and the helper from `stub_models.py`, never from `conftest.py`, which keeps the conftest rule above.
 
+A stub never gets a migration, so any check that diffs models against migration files must skip models whose module lives under a `tests` package. Without that skip, the check reports the stubs as drift the moment the app that owns them gains a real migration.
+
 Import the stub module under one module path only. Use relative imports (`from .stub_models import StubModel`) in both the conftest and the test files. If the same file gets imported under two module names, Django registers the model twice and raises "Conflicting 'stubmodel' models". Code that Django loads under a different path, such as a test-only URLconf, looks the model up with `apps.get_model(app_label, model_name)` at call time instead of importing it.
 
 This is the fix for a foundational app's tests reaching for a real downstream model instead of a stub; see "Deciding an allowed exception" above.
