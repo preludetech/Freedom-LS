@@ -2,13 +2,36 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from django import forms
+from django.core.files.uploadedfile import UploadedFile
+from django.utils.datastructures import MultiValueDict
 
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 from .models import LOGO_FIELD_NAMES, Organisation
 
 INVALID_IMAGE_MESSAGE = "File is not a readable image. Use PNG, JPEG or WebP."
+
+
+class LineBreakNormalisingTextarea(forms.Textarea):
+    """A textarea whose submitted value uses ``\\n`` for every line break.
+
+    Browsers submit each break as ``\\r\\n``, which would count as two characters
+    against a field's ``max_length`` while the browser counts one.
+    """
+
+    def value_from_datadict(
+        self,
+        data: Mapping[str, object],
+        files: MultiValueDict[str, UploadedFile],
+        name: str,
+    ) -> str | None:
+        value = super().value_from_datadict(data, files, name)
+        if not isinstance(value, str):
+            return None
+        return value.replace("\r\n", "\n").replace("\r", "\n")
 
 
 class OrganisationAdminForm(ConstraintValidationFormMixin):
@@ -26,7 +49,7 @@ class OrganisationAdminForm(ConstraintValidationFormMixin):
     class Meta:
         model = Organisation
         fields = ["name", "logo", "logo_on_dark", "profile_logo", "bio"]
-        widgets = {"bio": forms.Textarea(attrs={"rows": 4})}
+        widgets = {"bio": LineBreakNormalisingTextarea(attrs={"rows": 4})}
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

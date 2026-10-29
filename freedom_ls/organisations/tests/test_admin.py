@@ -260,6 +260,21 @@ class TestOrganisationAdminBio:
 
         assert "bio" in response.context["adminform"].form.errors
 
+    def test_a_500_character_multi_line_bio_submitted_with_crlf_saves_with_lf(
+        self, staff_client
+    ):
+        """A multi-line 500-character bio posted with CRLF breaks was rejected as too long."""
+        url = reverse(ADD_URL_NAME)
+        visible_bio = "\n".join(["a" * 96] * 5 + ["b" * 15])[:500]
+        assert len(visible_bio) == 500
+
+        response = staff_client.post(
+            url, {"name": "Westbrook", "bio": visible_bio.replace("\n", "\r\n")}
+        )
+
+        assert response.status_code == 302
+        assert Organisation.objects.get(name="Westbrook").bio == visible_bio
+
     def test_a_500_character_bio_saves(self, staff_client):
         url = reverse(ADD_URL_NAME)
 
