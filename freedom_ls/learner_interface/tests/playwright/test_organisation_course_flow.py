@@ -3,6 +3,8 @@ its title with another organisation's course."""
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -13,7 +15,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import CourseAudience
+from freedom_ls.content_engine.models import CourseAudience, DifficultyLevel, PriceKind
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.playwright_helpers import (
@@ -88,3 +90,69 @@ def test_learner_sees_only_their_organisations_course_with_its_byline(
             page.get_by_text("Harbour College").locator("visible=true")
         ).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+# Each chip's box, the difficulty's box and the byline name's width, read from
+# the first row on the page.
+ROW_EYEBROW_GEOMETRY = """() => {
+    const row = document.querySelector('article.course-card');
+    const line = row.querySelector('div.flex.items-start.justify-between');
+    const rect = (el) => el.getBoundingClientRect();
+    const chips = [...line.lastElementChild.children].map(rect);
+    const difficulty = [...line.querySelectorAll('span')].find(
+        (s) => s.textContent.trim() === 'BEGINNER' || s.textContent.trim() === 'Beginner'
+    );
+    const name = line.querySelector('[data-testid="organisation-byline"] span.truncate');
+    return {
+        articleOverflow: row.scrollWidth - row.clientWidth,
+        lineRight: rect(line).right,
+        chips: chips.map((r) => ({left: r.left, right: r.right, top: r.top, bottom: r.bottom})),
+        difficulty: (() => { const r = rect(difficulty); return {left: r.left, right: r.right, top: r.top, bottom: r.bottom}; })(),
+        nameWidth: rect(name).width,
+    };
+}"""
+
+
+def test_row_eyebrow_chips_wrap_without_overlapping_or_clipping_on_a_phone(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """A phone-width row's price and status chips used to stay on one line,
+    overlapping the difficulty, running past the card edge and squeezing the
+    organisation name to nothing."""
+    page = logged_in_page
+    organisation = OrganisationFactory(name="Skyline Aviation")
+    course = CourseFactory(
+        title="Row With Many Chips",
+        slug="row-with-many-chips",
+        audience=CourseAudience.ORGANISATION_LEARNERS,
+        access_config={"access_type": "free"},
+        difficulty=DifficultyLevel.BEGINNER,
+        price_kind=PriceKind.DISCOUNTED,
+        price_amount=Decimal("1499.00"),
+        price_sale_amount=Decimal("999.00"),
+        price_currency="ZAR",
+    )
+    course.organisations.add(organisation)
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user,
+        learner__organisation=organisation,
+        course=course,
+        is_active=True,
+    )
+    page.set_viewport_size({"width": 375, "height": 812})
+
+    page.goto(str(reverse_url(live_server, "learner_interface:courses")))
+    geometry = page.evaluate(ROW_EYEBROW_GEOMETRY)
+
+    assert geometry["articleOverflow"] <= 0
+    assert geometry["nameWidth"] > 0
+    assert all(chip["right"] <= geometry["lineRight"] + 1 for chip in geometry["chips"])
+    difficulty = geometry["difficulty"]
+    assert all(
+        chip["left"] >= difficulty["right"]
+        or chip["top"] >= difficulty["bottom"]
+        or chip["bottom"] <= difficulty["top"]
+        for chip in geometry["chips"]
+    )

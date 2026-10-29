@@ -53,7 +53,7 @@ show_time_zone_to_learners.
                     title="{{ course.title }}">
     <c-slot name="eyebrow">
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
-        <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             {% if course.listing_status != "not_registered" %}
                 {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
             {% elif not user.is_authenticated and course.access_badge %}

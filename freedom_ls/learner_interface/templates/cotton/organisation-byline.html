@@ -20,6 +20,6 @@ Params:
     <p data-testid="organisation-byline"
        class="flex min-w-0 items-center gap-2 text-sm {% if class %}{{ class }}{% else %}text-muted{% endif %}">
         <c-organisation-mark :organisation="organisation" :size="size" />
-        <span class="truncate" title="{{ organisation.name }}">{{ organisation.name }}</span>
+        <span class="min-w-12 truncate" title="{{ organisation.name }}">{{ organisation.name }}</span>
     </p>
 {% endif %}
