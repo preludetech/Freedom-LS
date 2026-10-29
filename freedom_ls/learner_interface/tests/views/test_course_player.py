@@ -4295,6 +4295,20 @@ def test_the_item_after_a_closed_one_stays_locked(closing_topic_course):
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_locked_row_past_its_close_instant_shows_no_closed_chip(
+    closing_topic_course,
+):
+    """A row sequential unlock withheld drew a Closed chip beside its Locked text."""
+    course, _first, second, _user, client = closing_topic_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    toc = _toc_text(_player_html(client, course))
+
+    assert toc.count("Closed 4 Jan 2020") == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
 def test_a_completed_topic_past_its_close_instant_still_opens(closing_topic_course):
     course, first, _second, user, client = closing_topic_course
     topic_completion(course, user, first, complete_time=timezone.now())

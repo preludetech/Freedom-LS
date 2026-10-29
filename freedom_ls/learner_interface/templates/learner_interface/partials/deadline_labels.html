@@ -7,10 +7,11 @@ row or a row without a due date renders nothing.
 
 Required context: child (due_at, closes_at, is_overdue, is_closed, status) and
 show_time_zone_to_learners.
-Optional: title, a prefix placed before the date.
+Optional: title, a prefix placed before the date; withheld, true for a row sequential unlock
+withholds, which stays locked past its close instant and so gets no "Closed" chip.
 {% endcomment %}
 {% if child.due_at and child.status != "COMPLETE" %}
-    {% if child.is_closed %}
+    {% if child.is_closed and not withheld %}
         <c-chip variant="error" size="xs" icon="deadline" class="forced-colors:border">Closed {% local_time child.closes_at %}</c-chip>
     {% elif child.is_overdue %}
         <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
