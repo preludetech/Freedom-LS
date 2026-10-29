@@ -2128,3 +2128,50 @@ def test_the_compact_row_drops_the_missed_chip_when_mark_overdue_is_off(deadline
     html = _dashboard_html(client)
 
     assert "Missed deadline" not in _row_lists(html)
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_when_the_next_deadline_closes(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2026, 10, 1))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=datetime.timedelta(days=3)
+    )
+
+    text = _dashboard_text(client)
+
+    assert (
+        "Next deadline: Second Topic 1 Oct 2026, 23:59 UTC Closes 4 Oct 2026, 23:59 UTC ."
+        in text
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_closed_once_a_deadline_has_closed(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+
+    text = _dashboard_text(client)
+
+    assert "Closed 1 Jan 2020" in text
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_when_a_missed_deadline_closes(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2026, 8, 30))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=datetime.timedelta(days=7)
+    )
+
+    text = _dashboard_text(client)
+
+    assert (
+        "Missed deadline Second Topic 30 Aug 2026, 23:59 UTC Closes 6 Sep 2026, 23:59 UTC ."
+        in text
+    )

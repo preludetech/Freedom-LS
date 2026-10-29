@@ -24,3 +24,25 @@ def access_end_instant(
     if not policy.end_course_access or time_limit.due_at is None:
         return None
     return time_limit.due_at + policy.grace_window
+
+
+def close_instant(
+    resolved: ResolvedDeadline, policy: ResolvedDeadlinePolicy
+) -> datetime | None:
+    """When an incomplete item closes: the due instant plus the grace window. None when the
+    policy does not close items or the item has no due instant."""
+    if not policy.close_items or resolved.due_at is None:
+        return None
+    return resolved.due_at + policy.grace_window
+
+
+def is_closed(
+    resolved: ResolvedDeadline,
+    policy: ResolvedDeadlinePolicy,
+    completed: bool,
+    now: datetime,
+) -> bool:
+    """Whether the item is closed: incomplete and past its close instant. A completed item
+    never closes."""
+    instant = close_instant(resolved, policy)
+    return instant is not None and not completed and now > instant
