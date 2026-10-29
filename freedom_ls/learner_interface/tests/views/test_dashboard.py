@@ -1996,7 +1996,7 @@ def test_cards_name_nothing_for_the_default_organisation(
 
 
 @pytest.mark.django_db
-def test_card_byline_renders_the_name_alone_when_the_organisation_has_no_logo(
+def test_card_byline_renders_the_monogram_when_the_organisation_has_no_logo(
     mock_site_context,
 ):
     CourseFactory(audience=CourseAudience.PUBLIC).organisations.add(
@@ -2006,7 +2006,9 @@ def test_card_byline_renders_the_name_alone_when_the_organisation_has_no_logo(
     html = _dashboard_html()
 
     assert "Plain Academy" in html
-    assert 'alt=""' not in html.split("Plain Academy")[0].rsplit("<p", 1)[-1]
+    assert (
+        "PA" in html.split('data-testid="organisation-byline"', 1)[1].split("</p>")[0]
+    )
 
 
 BYLINE_DASHBOARD_MAX_QUERIES = 48

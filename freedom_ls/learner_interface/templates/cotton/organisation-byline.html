@@ -1,22 +1,25 @@
+<c-vars organisation="" size="sm" class="" />
 {% comment %}
-Card-sized line naming the organisation a course belongs to or is studied
-through: the logo in a small opaque surface box, then the name as text, so
-the logo is decorative and carries an empty alt. Nothing renders for the
-site's default organisation, which the surrounding chrome already brands.
-No element id: a list repeats this component once per card.
+One line naming the organisation a course belongs to or is studied through:
+the organisation mark, then the name. The name carries the accessible name;
+the mark is decorative. Nothing renders for the site's default organisation,
+which the surrounding chrome already brands, so a caller passing the
+organisation a learner studies through need not check it.
+
+The line is muted only when the caller passes no class: a surface with its
+own text colour (the course page hero) passes that colour and nothing else
+fights it. A caller that wants the muted colour and a layout class passes
+both.
 
 Params:
-  organisation — the organisation to name; nothing renders without it, nor
-    for the Site's default organisation
+  organisation — the organisation to name
+  size — passed through to the mark
+  class — classes that replace the muted text colour
 {% endcomment %}
-<c-vars organisation="" />
 {% if organisation and not organisation.is_default %}
-    <p class="flex items-center gap-2 text-sm text-muted min-w-0">
-        {% if organisation.logo %}
-            <span class="inline-flex h-6 shrink-0 items-center rounded-md bg-surface px-1">
-                <img src="{{ organisation.logo.url }}" alt="" class="h-full w-auto object-contain" />
-            </span>
-        {% endif %}
-        <span class="truncate">{{ organisation.name }}</span>
+    <p data-testid="organisation-byline"
+       class="flex min-w-0 items-center gap-2 text-sm {% if class %}{{ class }}{% else %}text-muted{% endif %}">
+        <c-organisation-mark :organisation="organisation" :size="size" />
+        <span class="truncate" title="{{ organisation.name }}">{{ organisation.name }}</span>
     </p>
 {% endif %}

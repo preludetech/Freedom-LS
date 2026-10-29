@@ -25,7 +25,28 @@ def _render(organisation: object) -> str:
 
 
 @pytest.mark.django_db
-def test_renders_the_logo_and_the_name(mock_site_context):
+def test_renders_the_name_beside_the_mark_with_a_title(mock_site_context):
+    organisation = OrganisationFactory(name="Acme Academy")
+
+    result = _render(organisation)
+
+    assert "Acme Academy" in result
+    assert 'title="Acme Academy"' in result
+    assert 'data-testid="organisation-mark"' in result
+
+
+@pytest.mark.django_db
+def test_renders_the_monogram_when_there_is_no_logo(mock_site_context):
+    organisation = OrganisationFactory(name="Acme Academy")
+
+    result = _render(organisation)
+
+    assert "<img" not in result
+    assert "AA" in result
+
+
+@pytest.mark.django_db
+def test_renders_the_logo_image_as_decorative(mock_site_context):
     organisation = OrganisationFactory(
         name="Acme Academy",
         logo=SimpleUploadedFile("logo.gif", _ONE_PIXEL_GIF, content_type="image/gif"),
@@ -33,19 +54,31 @@ def test_renders_the_logo_and_the_name(mock_site_context):
 
     result = _render(organisation)
 
-    assert "Acme Academy" in result
     assert "<img" in result
     assert 'alt=""' in result
 
 
 @pytest.mark.django_db
-def test_renders_the_name_only_without_a_logo(mock_site_context):
+def test_text_muted_is_dropped_when_a_class_is_passed(mock_site_context):
+    organisation = OrganisationFactory(name="Acme Academy")
+    processed = _cotton_compiler.process(
+        '<c-organisation-byline :organisation="organisation" class="text-white" />'
+    )
+
+    result = Template(processed).render(Context({"organisation": organisation}))
+    paragraph = result.split("<p", 1)[1].split(">", 1)[0]
+
+    assert "text-white" in paragraph
+    assert "text-muted" not in paragraph
+
+
+@pytest.mark.django_db
+def test_text_muted_applies_when_no_class_is_passed(mock_site_context):
     organisation = OrganisationFactory(name="Acme Academy")
 
     result = _render(organisation)
 
-    assert "Acme Academy" in result
-    assert "<img" not in result
+    assert "text-muted" in result.split("<p", 1)[1].split(">", 1)[0]
 
 
 @pytest.mark.django_db

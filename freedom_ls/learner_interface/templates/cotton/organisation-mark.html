@@ -1,0 +1,37 @@
+<c-vars organisation="" size="sm" class="" />
+{% comment %}
+The circle that stands for an organisation: its profile logo, else its logo,
+else an initials monogram, else a generic icon. The mark never carries the
+accessible name; the name rendered beside it does, so the image is decorative
+and the monogram is hidden from assistive technology.
+
+A profile logo is uploaded for this circle and may be cropped to it
+(object-cover); a logo is usually a wordmark and must not be (object-contain).
+The fill is opaque so a transparent logo stays legible on any background.
+
+The circle's font size scales the monogram and the icon with it, so each size
+is declared once.
+
+Params:
+  organisation — the organisation to draw
+  size — sm (cards and rows, the default), md (the course page hero),
+    lg (the course page organisation card)
+  class — extra classes merged onto the circle
+{% endcomment %}
+<span data-testid="organisation-mark"
+      class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border {% if size == 'lg' %}size-12 text-lg{% elif size == 'md' %}size-8 text-sm{% else %}size-6 text-xs{% endif %} {{ class }}">
+    {% if organisation.profile_logo %}
+        <img src="{{ organisation.profile_logo.url }}" alt="" class="size-full object-cover" />
+    {% elif organisation.logo %}
+        <img src="{{ organisation.logo.url }}" alt="" class="size-full object-contain p-1" />
+    {% elif organisation.initials %}
+        <span aria-hidden="true"
+              class="flex size-full select-none items-center justify-center bg-surface-2 font-semibold text-on-surface">
+            {{ organisation.initials }}
+        </span>
+    {% else %}
+        <span aria-hidden="true" class="flex size-full items-center justify-center bg-surface-2 text-on-surface">
+            <c-icon name="unknown" class="size-[1.25em]" />
+        </span>
+    {% endif %}
+</span>
