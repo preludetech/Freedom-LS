@@ -432,7 +432,18 @@ setattr(  # noqa: B010
 )
 
 
-class SiteDeadlineConfigForm(ConstraintValidationFormMixin):
+class DeadlineConfigForm(forms.ModelForm):
+    """Refuses a negative grace window as an error on that field, in place of the
+    database constraint's name."""
+
+    def clean_grace_window(self) -> timedelta | None:
+        grace_window: timedelta | None = self.cleaned_data["grace_window"]
+        if grace_window is not None and grace_window < timedelta(0):
+            raise ValidationError("The grace window cannot be negative.")
+        return grace_window
+
+
+class SiteDeadlineConfigForm(DeadlineConfigForm, ConstraintValidationFormMixin):
     # site is not a form field: SiteAwareModelAdmin fills it from the request before
     # validation, and un-excluding it here only lets the one-per-site constraint run.
     constraint_fields = ("site",)
@@ -445,6 +456,7 @@ class SiteDeadlineConfigForm(ConstraintValidationFormMixin):
 class _DeadlineConfigAdmin(SiteAwareModelAdmin):
     """Attributes every deadline config admin shares. Not registered itself."""
 
+    form = DeadlineConfigForm
     list_display = ["__str__", *CONFIG_FIELDS]
     list_filter = list(SWITCH_FIELDS)
 
