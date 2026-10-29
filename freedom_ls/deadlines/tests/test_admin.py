@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from django.db import connection
@@ -10,6 +12,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.admin import TIME_LIMIT_HELP
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
@@ -838,3 +841,62 @@ def test_the_course_progress_page_has_no_access_end_line_when_access_does_not_en
     body = _progress_page(staff_client, record).content.decode()
 
     assert "Access ends" not in body
+
+
+@pytest.mark.django_db
+def test_a_cohort_fixed_date_time_limit_row_is_accepted(
+    staff_client, mock_site_context
+) -> None:
+    registration, _ = _registration_with_item()
+
+    response = _post(
+        staff_client,
+        registration,
+        [
+            {
+                "collection_item": "",
+                "kind": DeadlineKind.FIXED,
+                "due_date": "2026-03-01",
+            }
+        ],
+    )
+
+    row = CohortDeadlineOverride.objects.get()
+    assert response.status_code == 302
+    assert row.collection_item_id is None
+    assert row.due_date == date(2026, 3, 1)
+
+
+@pytest.mark.django_db
+def test_a_learner_fixed_date_time_limit_row_is_accepted(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+
+    response = _learner_post(
+        staff_client,
+        record,
+        [
+            {
+                "collection_item": "",
+                "kind": DeadlineKind.FIXED,
+                "due_date": "2026-03-01",
+            }
+        ],
+    )
+
+    row = LearnerDeadlineOverride.objects.get()
+    assert response.status_code == 302
+    assert row.collection_item_id is None
+    assert row.due_date == date(2026, 3, 1)
+
+
+@pytest.mark.django_db
+def test_the_override_inline_explains_that_a_time_limit_row_restores_ended_access(
+    staff_client, mock_site_context
+) -> None:
+    registration, _ = _registration_with_item()
+
+    page = staff_client.get(reverse(CHANGE_URL_NAME, args=[registration.pk]))
+
+    assert TIME_LIMIT_HELP in page.content.decode()
