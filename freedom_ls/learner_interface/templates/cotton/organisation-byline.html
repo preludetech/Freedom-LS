@@ -1,4 +1,4 @@
-<c-vars organisation="" size="sm" class="" />
+<c-vars organisation="" size="sm" overlap="" class="" />
 {% comment %}
 One line naming the organisation a course belongs to or is studied through:
 the organisation mark, then the name. The name carries the accessible name;
@@ -11,15 +11,25 @@ own text colour (the course page hero) passes that colour and nothing else
 fights it. A caller that wants the muted colour and a layout class passes
 both.
 
+With overlap, the line is the course card's avatar: a large raised mark pulled
+up over the bottom of the card header, the name beside its lower half. The
+negative margin lives here, behind the default-organisation guard, so a card
+with no organisation to show keeps its normal spacing.
+
 Params:
   organisation — the organisation to name
-  size — passed through to the mark
+  size — passed through to the mark; ignored with overlap
+  overlap — draw the course card avatar that overlaps the header above it
   class — classes that replace the muted text colour
 {% endcomment %}
 {% if organisation and not organisation.is_default %}
     <p data-testid="organisation-byline"
-       class="flex min-w-0 items-center gap-2 text-sm {% if class %}{{ class }}{% else %}text-muted{% endif %}">
-        <c-organisation-mark :organisation="organisation" :size="size" />
-        <span class="min-w-12 truncate" title="{{ organisation.name }}">{{ organisation.name }}</span>
+       class="flex min-w-0 gap-2 text-sm {% if overlap %}relative z-10 -mt-5 items-end{% else %}items-center{% endif %} {% if class %}{{ class }}{% else %}text-muted{% endif %}">
+        {% if overlap %}
+            <c-organisation-mark :organisation="organisation" size="xl" raised="true" />
+        {% else %}
+            <c-organisation-mark :organisation="organisation" :size="size" />
+        {% endif %}
+        <span class="min-w-12 truncate {% if overlap %}pb-0.5 font-semibold{% endif %}" title="{{ organisation.name }}">{{ organisation.name }}</span>
     </p>
 {% endif %}

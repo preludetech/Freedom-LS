@@ -90,3 +90,32 @@ def test_renders_nothing_for_the_default_organisation(mock_site_context):
 
 def test_renders_nothing_for_an_empty_value():
     assert _render(None).strip() == ""
+
+
+def _render_overlap(organisation: object) -> str:
+    processed = _cotton_compiler.process(
+        '<c-organisation-byline :organisation="organisation" overlap="true" />'
+    )
+    return Template(processed).render(Context({"organisation": organisation}))
+
+
+@pytest.mark.django_db
+def test_overlap_pulls_a_raised_large_mark_up_over_the_card_header(
+    mock_site_context,
+):
+    organisation = OrganisationFactory(name="Acme Academy")
+
+    result = _render_overlap(organisation)
+    paragraph = result.split("<p", 1)[1].split(">", 1)[0]
+
+    assert "-mt-5" in paragraph
+    assert "items-end" in paragraph
+    assert "size-11" in result
+    assert "ring-surface" in result
+
+
+@pytest.mark.django_db
+def test_overlap_renders_nothing_for_the_default_organisation(mock_site_context):
+    organisation = get_default_organisation(mock_site_context)
+
+    assert _render_overlap(organisation).strip() == ""

@@ -1,5 +1,5 @@
 {% load course_icon_tags %}
-<c-vars accent_slot_key="" icon="" icon_fallback="" title="" clickable="" class="" />
+<c-vars accent_slot_key="" icon="" icon_fallback="" title="" organisation="" clickable="" class="" />
 
 {% comment %}
 Shared skeleton for every course card (in-progress / not-started /
@@ -11,6 +11,9 @@ the cursor signals the card opens something.
 
 The accent block is inset by the article's padding and rounded, so the card
 reads as a frame around it; the body's text starts at the block's left edge.
+
+Pass `organisation` to draw its avatar overlapping the bottom of the accent
+block; nothing is drawn for the site's default organisation.
 
 Named slots:
   eyebrow — rendered above the default slot (e.g. status label)
@@ -24,6 +27,8 @@ to the article element without forking the shell.
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-12" aria_label=title %}
     </div>
+
+    <c-organisation-byline :organisation="organisation" overlap="true" class="ml-2 text-on-surface" />
 
     <div class="pt-3 flex-1 flex flex-col space-y-2">
         {% comment %}Wrapper keeps the eyebrow's content in block flow: as a direct

@@ -67,12 +67,12 @@ so nobody mistakes them for an oversight.
 
 | Screen or state | Idea section | Built by |
 |---|---|---|
-| `cards__b`: dashboard, provider row (round logo and full name under the card header) | Learner dashboard | `design_learner_course_organisations` |
+| `cards__ce`: dashboard, avatar overlapping the thumbnail (raised round logo over the card header, name beside it) | Learner dashboard | `design_learner_course_organisations` |
+| `cards__b`: dashboard, provider row (round logo and full name under the card header), kept for the long-format rows | Learner dashboard | `design_learner_course_organisations` |
 | `stack__s1`: dashboard, provider row (the suggested pairing, same as `cards__b`) | Learner dashboard | `design_learner_course_organisations` |
 | `cards__a`: dashboard, pill on the thumbnail | Learner dashboard | none (out of scope) |
 | `cards__c`: dashboard, "Offered by" footer | Learner dashboard | none (out of scope) |
 | `cards__cd`: dashboard, provider band across the thumbnail | Learner dashboard | none (out of scope) |
-| `cards__ce`: dashboard, avatar overlapping the thumbnail | Learner dashboard | none (out of scope) |
 | `cards__cf`: dashboard, badge only | Learner dashboard | none (out of scope) |
 | `detail__d1`: course detail, provider bar in the hero (round logo and name above a rule) | Course details page | `design_learner_course_organisations` |
 | `detail__d6`: course detail, provider panel under the enrol card | Course details page | `design_learner_course_organisations` |

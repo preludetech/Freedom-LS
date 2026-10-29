@@ -101,7 +101,7 @@ class Organisation(SiteAwareModel, TimestampedModel):
         help_text=_(
             "Shown in a circle beside the organisation's name on course cards and "
             "the course page. A square image of at least 128 by 128 pixels works "
-            "best; other shapes are cropped to the circle. Without one, the "
+            "best; other shapes are scaled down to fit inside it. Without one, the "
             "light-background logo is shown instead."
         ),
     )

@@ -21,15 +21,15 @@ def _gif(name: str) -> SimpleUploadedFile:
     return SimpleUploadedFile(name, _ONE_PIXEL_GIF, content_type="image/gif")
 
 
-def _render(organisation: Organisation) -> str:
+def _render(organisation: Organisation, attrs: str = "") -> str:
     processed = _cotton_compiler.process(
-        '<c-organisation-mark :organisation="organisation" />'
+        f'<c-organisation-mark :organisation="organisation" {attrs} />'
     )
     return Template(processed).render(Context({"organisation": organisation}))
 
 
 @pytest.mark.django_db
-def test_profile_logo_wins_over_the_logo_and_is_cropped_to_the_circle(
+def test_profile_logo_wins_over_the_logo_and_is_fitted_inside_the_circle(
     mock_site_context,
 ):
     organisation = OrganisationFactory(
@@ -40,7 +40,8 @@ def test_profile_logo_wins_over_the_logo_and_is_cropped_to_the_circle(
 
     assert result.count("<img") == 1
     assert f'src="{organisation.profile_logo.url}"' in result
-    assert "object-cover" in result
+    assert "object-contain" in result
+    assert "object-cover" not in result
 
 
 @pytest.mark.django_db
@@ -82,3 +83,24 @@ def test_logo_images_are_decorative(mock_site_context, field_name):
     organisation = OrganisationFactory(**{field_name: _gif("image.gif")})
 
     assert 'alt=""' in _render(organisation)
+
+
+@pytest.mark.django_db
+def test_raised_mark_has_a_surface_ring_instead_of_a_border_ring(mock_site_context):
+    organisation = OrganisationFactory(name="Acme Academy")
+
+    mark = _render(organisation, 'size="xl" raised="true"').split(">", 1)[0]
+
+    assert "size-11" in mark
+    assert "ring-surface" in mark
+    assert "ring-border" not in mark
+
+
+@pytest.mark.django_db
+def test_flat_mark_has_a_border_ring(mock_site_context):
+    organisation = OrganisationFactory(name="Acme Academy")
+
+    mark = _render(organisation).split(">", 1)[0]
+
+    assert "ring-border" in mark
+    assert "ring-surface" not in mark

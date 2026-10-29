@@ -1,12 +1,13 @@
-<c-vars organisation="" size="sm" class="" />
+<c-vars organisation="" size="sm" raised="" class="" />
 {% comment %}
 The circle that stands for an organisation: its profile logo, else its logo,
 else an initials monogram, else a generic icon. The mark never carries the
 accessible name; the name rendered beside it does, so the image is decorative
 and the monogram is hidden from assistive technology.
 
-A profile logo is uploaded for this circle and may be cropped to it
-(object-cover); a logo is usually a wordmark and must not be (object-contain).
+A profile logo is fitted inside the circle (object-contain): a square one
+fills it, and any other shape is scaled down rather than cropped. A logo is
+usually a wordmark, so it is fitted with a little padding.
 The fill is opaque so a transparent logo stays legible on any background.
 
 The circle's font size scales the monogram and the icon with it, so each size
@@ -15,13 +16,16 @@ is declared once.
 Params:
   organisation — the organisation to draw
   size — sm (cards and rows, the default), md (the course page hero),
-    lg (the course page organisation card)
+    lg (the course page organisation card), xl (the course card avatar that
+    overlaps the card header)
+  raised — swaps the hairline border for a thick surface-coloured ring and a
+    shadow, so the circle stands off a coloured surface it overlaps
   class — extra classes merged onto the circle
 {% endcomment %}
 <span data-testid="organisation-mark"
-      class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border {% if size == 'lg' %}size-12 text-lg{% elif size == 'md' %}size-8 text-sm{% else %}size-6 text-xs{% endif %} {{ class }}">
+      class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface {% if raised %}ring-3 ring-surface shadow-md{% else %}ring-1 ring-border{% endif %} {% if size == 'xl' %}size-11 text-base{% elif size == 'lg' %}size-12 text-lg{% elif size == 'md' %}size-10 text-base{% else %}size-8 text-sm{% endif %} {{ class }}">
     {% if organisation.profile_logo %}
-        <img src="{{ organisation.profile_logo.url }}" alt="" class="size-full object-cover" />
+        <img src="{{ organisation.profile_logo.url }}" alt="" class="size-full object-contain" />
     {% elif organisation.logo %}
         <img src="{{ organisation.logo.url }}" alt="" class="size-full object-contain p-1" />
     {% elif organisation.initials %}

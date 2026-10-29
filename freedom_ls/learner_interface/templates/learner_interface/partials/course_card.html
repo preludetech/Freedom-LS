@@ -5,8 +5,8 @@ per-status leaf template.
 
 Standard fields land in standard places via the shared skeleton and partials:
   icon + colour  -> <c-course-card-shell> hero (accent_slot_key, icon)
-  organisation   -> eyebrow slot, first, above the status (order: byline,
-                    status, title)
+  organisation   -> <c-course-card-shell> avatar overlapping the bottom of
+                    the hero (card_organisation)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
                     status is ever shown; no duplicate chip/badge)
   title + link   -> stretched title link (card_title_link.html)
@@ -40,10 +40,10 @@ current_price, card_organisation), user and show_time_zone_to_learners.
 <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
                      icon="{{ course.icon }}"
                      icon_fallback="{{ course.icon_fallback }}"
-                     title="{{ course.title }}">
+                     title="{{ course.title }}"
+                     :organisation="course.card_organisation">
     <c-slot name="eyebrow">
         <div class="space-y-1">
-            <c-organisation-byline :organisation="course.card_organisation" />
             {% if course.listing_status == "not_registered" %}
                 {% if user.is_authenticated %}
                     {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
