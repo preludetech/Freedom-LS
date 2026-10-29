@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.management import call_command
 
-if "freedom_ls.qa_helpers" not in settings.INSTALLED_APPS:  # pragma: no cover
+from freedom_ls.tests.app_guards import app_not_installed
+
+if app_not_installed("freedom_ls.qa_helpers"):
     pytest.skip("qa_helpers not installed", allow_module_level=True)
 
 from freedom_ls.organisations.models import Organisation
