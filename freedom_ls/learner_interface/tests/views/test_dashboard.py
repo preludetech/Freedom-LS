@@ -2132,6 +2132,46 @@ def test_the_compact_row_drops_the_missed_chip_when_mark_overdue_is_off(deadline
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_keeps_the_past_item_date_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Deadline Second Topic 1 Jan 2020" in text
+    assert "Next deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_keeps_the_past_time_limit_date_when_mark_overdue_is_off(deadline_card):
+    course, _topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Deadline Course 31 Mar 2026" in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_keeps_the_past_date_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    rows = " ".join(
+        re.sub(r"<[^>]+>", " ", _row_lists(_dashboard_html(client))).split()
+    )
+
+    assert "Deadline Second Topic 1 Jan 2020" in rows
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_card_says_when_the_next_deadline_closes(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2026, 10, 1))
