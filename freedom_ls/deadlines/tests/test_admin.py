@@ -900,3 +900,29 @@ def test_the_override_inline_explains_that_a_time_limit_row_restores_ended_acces
     page = staff_client.get(reverse(CHANGE_URL_NAME, args=[registration.pk]))
 
     assert TIME_LIMIT_HELP in page.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "sitedeadlineconfig",
+        "organisationdeadlineconfig",
+        "coursedeadlineconfig",
+        "cohortdeadlineconfig",
+        "cohortcourseregistrationdeadlineconfig",
+        "learnercourseregistrationdeadlineconfig",
+    ],
+)
+def test_a_negative_grace_window_is_a_field_error_on_every_config_admin(
+    staff_client, mock_site_context, model_name
+) -> None:
+    """A negative grace window used to surface only as the raw constraint name."""
+    url = reverse(f"admin:freedom_ls_deadlines_{model_name}_add")
+
+    response = staff_client.post(url, {**INHERIT_POST, "grace_window": "-1 00:00:00"})
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["grace_window"] == [
+        "The grace window cannot be negative."
+    ]
