@@ -135,6 +135,18 @@ def _bounds_error[T: (date, time, Decimal)](
     return None
 
 
+# Interim rule until libphonenumber validation lands; delete with it.
+PHONE_MIN_DIGITS = 7
+_PHONE_PUNCTUATION = re.compile(r"[\s\-.()\[\]]")
+
+
+def _phone_error(text: str) -> str | None:
+    digits = _PHONE_PUNCTUATION.sub("", text).removeprefix("+")
+    if digits.isascii() and digits.isdigit() and len(digits) >= PHONE_MIN_DIGITS:
+        return None
+    return f'You entered "{text}". Enter a phone number with at least {PHONE_MIN_DIGITS} digits.'
+
+
 def answer_error(question: FormQuestion, text: str) -> str | None:
     """Why `text` is not a valid answer to `question`, or None when it is."""
     if question.type == QuestionType.DATE:
@@ -172,8 +184,10 @@ def answer_error(question: FormQuestion, text: str) -> str | None:
             return f'You entered "{text}". Enter a valid web address.'
         return None
 
-    # phone, short_text, long_text: nothing to check. Real phone validation
-    # needs libphonenumber and a country, which is a different piece of work.
+    if question.type == QuestionType.PHONE:
+        return _phone_error(text)
+
+    # short_text, long_text: nothing to check.
     return None
 
 

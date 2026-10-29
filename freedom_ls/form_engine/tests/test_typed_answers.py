@@ -325,18 +325,24 @@ def test_invalid_url_is_rejected_naming_value():
 # phone
 
 
-def test_any_phone_text_is_accepted():
+@pytest.mark.parametrize(
+    "text", ["hello", "12345", "\u00b2\u00b2\u00b2\u00b2\u00b2\u00b2\u00b2"]
+)
+def test_phone_without_seven_ascii_digits_is_rejected_naming_value(text):
     question = _StubQuestion(type="phone")
 
-    assert answer_error(question, "+1 555 0100") is None
+    message = answer_error(question, text)
+
+    assert message == (
+        f'You entered "{text}". Enter a phone number with at least 7 digits.'
+    )
 
 
-def test_phone_text_with_letters_is_still_accepted():
-    """Real phone validation needs `libphonenumber` and a country; this
-    type checks only that something is present, which is enforced elsewhere."""
+@pytest.mark.parametrize("text", ["+27 (0)82 123-4567", "0123456789"])
+def test_phone_with_seven_or_more_digits_is_accepted(text):
     question = _StubQuestion(type="phone")
 
-    assert answer_error(question, "call me maybe") is None
+    assert answer_error(question, text) is None
 
 
 # min/max on a real FormQuestion
