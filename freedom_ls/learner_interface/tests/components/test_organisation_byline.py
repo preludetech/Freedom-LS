@@ -108,9 +108,9 @@ def test_overlap_pulls_a_raised_large_mark_up_over_the_card_header(
     result = _render_overlap(organisation)
     paragraph = result.split("<p", 1)[1].split(">", 1)[0]
 
-    assert "-mt-5" in paragraph
+    assert "-mt-6" in paragraph
     assert "items-end" in paragraph
-    assert "size-11" in result
+    assert "size-12" in result
     assert "ring-surface" in result
 
 

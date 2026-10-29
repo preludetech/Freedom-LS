@@ -24,9 +24,9 @@ Params:
 {% endcomment %}
 {% if organisation and not organisation.is_default %}
     <p data-testid="organisation-byline"
-       class="flex min-w-0 gap-2 text-sm {% if overlap %}relative z-10 -mt-5 items-end{% else %}items-center{% endif %} {% if class %}{{ class }}{% else %}text-muted{% endif %}">
+       class="flex min-w-0 gap-2 text-sm {% if overlap %}relative z-10 -mt-6 items-end{% else %}items-center{% endif %} {% if class %}{{ class }}{% else %}text-muted{% endif %}">
         {% if overlap %}
-            <c-organisation-mark :organisation="organisation" size="xl" raised="true" />
+            <c-organisation-mark :organisation="organisation" size="lg" raised="true" />
         {% else %}
             <c-organisation-mark :organisation="organisation" :size="size" />
         {% endif %}

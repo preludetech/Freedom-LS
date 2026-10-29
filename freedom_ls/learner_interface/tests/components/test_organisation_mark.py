@@ -41,6 +41,7 @@ def test_profile_logo_wins_over_the_logo_and_is_fitted_inside_the_circle(
     assert result.count("<img") == 1
     assert f'src="{organisation.profile_logo.url}"' in result
     assert "object-contain" in result
+    assert "p-[8%]" in result
     assert "object-cover" not in result
 
 
@@ -89,9 +90,9 @@ def test_logo_images_are_decorative(mock_site_context, field_name):
 def test_raised_mark_has_a_surface_ring_instead_of_a_border_ring(mock_site_context):
     organisation = OrganisationFactory(name="Acme Academy")
 
-    mark = _render(organisation, 'size="xl" raised="true"').split(">", 1)[0]
+    mark = _render(organisation, 'size="lg" raised="true"').split(">", 1)[0]
 
-    assert "size-11" in mark
+    assert "size-12" in mark
     assert "ring-surface" in mark
     assert "ring-border" not in mark
 
