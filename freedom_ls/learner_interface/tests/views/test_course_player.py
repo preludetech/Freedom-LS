@@ -31,6 +31,7 @@ from freedom_ls.course_access.backends import (
     FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -4150,3 +4151,42 @@ def test_sidebar_learner_none_override_removes_the_date(overridden_player):
 
     assert "1 Jan 2020" not in html
     assert "Missed deadline" not in html
+
+
+# --- The mark_overdue switch in the player ---
+
+
+def _header_deadline_text(html: str) -> str:
+    """The visible text of the item header's deadline labels, empty when it has none."""
+    nodes = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
+    return " ".join(nodes[0].text_content().split()) if nodes else ""
+
+
+@pytest.mark.django_db
+def test_player_keeps_the_missed_deadline_chip_when_mark_overdue_is_inherited(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course)
+
+    html = _player_html(client, course)
+
+    assert _header_deadline_text(html).startswith("Missed deadline 1 Jan 2020")
+    assert "Missed deadline" in html
+
+
+@pytest.mark.django_db
+def test_player_toc_and_header_keep_the_date_but_drop_the_chip_when_mark_overdue_is_off(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    html = _player_html(client, course)
+    text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert "Missed deadline" not in html
+    assert _header_deadline_text(html).startswith("Deadline 1 Jan 2020")
+    assert "Deadline 1 Jan 2020" in text

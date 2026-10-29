@@ -20,6 +20,7 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines.consequences import access_end_instant
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
@@ -374,8 +375,16 @@ def effective_deadline_policy(
         (field, _policy_value_text(getattr(policy, field)), policy.sources[field])
         for field in CONFIG_FIELDS
     ]
+    ends_at = access_end_instant(course_deadlines(record).time_limit, policy)
+    ends_line = (
+        format_html("<li>Access ends: {}</li>", site_zone_text(ends_at))
+        if ends_at is not None
+        else ""
+    )
     return format_html(
-        "<ul>{}</ul>", format_html_join("", "<li>{}: {} ({})</li>", lines)
+        "<ul>{}{}</ul>",
+        format_html_join("", "<li>{}: {} ({})</li>", lines),
+        ends_line,
     )
 
 

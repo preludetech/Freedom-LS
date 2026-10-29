@@ -45,12 +45,14 @@ from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
+from freedom_ls.deadlines.consequences import shows_overdue
+from freedom_ls.deadlines.loader import get_deadline_policy
+from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
     CourseDeadlines,
     course_deadlines,
     course_deadlines_for,
-    is_overdue,
 )
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
@@ -101,6 +103,7 @@ from .utils import (
     UNRESOLVED,
     CourseListingStatus,
     Unresolved,
+    current_entry,
     current_entry_status,
     derive_listing_status,
     form_start_page_buttons,
@@ -128,6 +131,8 @@ class CardDeadline:
 
     title: str
     due_at: datetime
+    is_overdue: bool
+    status: str
 
 
 @dataclass(frozen=True)
@@ -139,7 +144,10 @@ class CardDeadlineLine:
 
 
 def _card_deadline_line(
-    flat: list[dict], course_deadlines: CourseDeadlines | None, now: datetime
+    flat: list[dict],
+    course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
+    now: datetime,
 ) -> CardDeadlineLine:
     # Only leaf rows carry due_at; a completed leaf is neither missed nor next. An
     # in-progress course is never complete, so the time limit's overdue check takes
@@ -150,22 +158,31 @@ def _card_deadline_line(
         if row.get("due_at") is not None and row["status"] != COMPLETE
     ]
     missed = [
-        CardDeadline(row["title"], row["due_at"])
+        CardDeadline(row["title"], row["due_at"], True, row["status"])
         for row in open_leaves
         if row["is_overdue"]
     ]
     upcoming = [
-        CardDeadline(row["title"], row["due_at"])
+        CardDeadline(row["title"], row["due_at"], False, row["status"])
         for row in open_leaves
         if row["due_at"] > now
     ]
     time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
     if time_limit.due_at is not None:
-        time_limit_deadline = CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at)
-        if is_overdue(time_limit, False, now):
-            missed.append(time_limit_deadline)
+        if deadline_policy is not None and shows_overdue(
+            time_limit, deadline_policy, False, now
+        ):
+            missed.append(
+                CardDeadline(
+                    COURSE_DEADLINE_TITLE, time_limit.due_at, True, IN_PROGRESS
+                )
+            )
         elif time_limit.due_at > now:
-            upcoming.append(time_limit_deadline)
+            upcoming.append(
+                CardDeadline(
+                    COURSE_DEADLINE_TITLE, time_limit.due_at, False, IN_PROGRESS
+                )
+            )
 
     def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
         return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
@@ -180,6 +197,7 @@ def _annotate_next_up(
     can_access_content: bool,
     course_progress: CourseProgress | None | Unresolved,
     course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
     now: datetime,
 ) -> None:
     """Pick the first IN_PROGRESS child (then READY) and stamp it on the course.
@@ -192,8 +210,8 @@ def _annotate_next_up(
     ``can_access_content`` is passed through from the dashboard's per-course
     backend decision so that get_course_index is not called with a stale value.
 
-    ``course_progress`` and ``course_deadlines`` are the resolved record and its
-    deadlines, handed on so neither is resolved again per course. The same walk
+    ``course_progress``, ``course_deadlines`` and ``deadline_policy`` are the resolved
+    record, its deadlines and its policy, handed on so none is resolved again per course. The same walk
     stamps the card's deadline line.
     """
     children = get_course_index(
@@ -202,6 +220,7 @@ def _annotate_next_up(
         can_access_content=can_access_content,
         course_progress=course_progress,
         course_deadlines=course_deadlines,
+        deadline_policy=deadline_policy,
         now=now,
     )
     flat = []
@@ -217,7 +236,7 @@ def _annotate_next_up(
     )
     setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
-    line = _card_deadline_line(flat, course_deadlines, now)
+    line = _card_deadline_line(flat, course_deadlines, deadline_policy, now)
     setattr(course, "missed_deadline", line.missed)  # noqa: B010
     setattr(course, "next_deadline", line.next)  # noqa: B010
 
@@ -311,6 +330,7 @@ def _annotate_registered_courses(
     """
     records = course_progress_by_course_for(user, courses)
     deadlines_by_record = course_deadlines_for(records.values())
+    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     now = timezone.now()
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
@@ -337,6 +357,11 @@ def _annotate_registered_courses(
             course_progress=record,
             course_deadlines=(
                 deadlines_by_record.get(record.pk)
+                if record is not None and course_decision.can_access_content
+                else None
+            ),
+            deadline_policy=(
+                policies_by_record.get(record.pk)
                 if record is not None and course_decision.can_access_content
                 else None
             ),
@@ -729,6 +754,15 @@ def _time_zone_context(request: HttpRequest) -> dict[str, bool]:
     }
 
 
+def _deadline_policy_or_none(
+    course_progress: CourseProgress | None,
+) -> ResolvedDeadlinePolicy | None:
+    """The record's resolved deadline policy, or None when nothing grants the course."""
+    if course_progress is None:
+        return None
+    return get_deadline_policy().resolve(course_progress)
+
+
 def _deadlines_or_none(
     course_progress: CourseProgress | None,
 ) -> CourseDeadlines | None:
@@ -824,6 +858,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
                 ).can_access_content,
                 course_progress=entry.course_progress,
                 course_deadlines=None,
+                deadline_policy=None,
                 now=now,
             )
         courses_with_attrs.append(course)
@@ -1164,6 +1199,7 @@ def view_course_item(request, course_slug, index):
         can_access_content=True,
         course_progress=course_progress,
         course_deadlines=_deadlines_or_none(course_progress),
+        deadline_policy=_deadline_policy_or_none(course_progress),
     )
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
@@ -1336,10 +1372,12 @@ def _player_chrome_context(
             can_access_content=True,
             course_progress=course_progress,
             course_deadlines=_deadlines_or_none(course_progress),
+            deadline_policy=_deadline_policy_or_none(course_progress),
         )
 
     return {
         "course_index": course_index,
+        "current_entry": current_entry(course_index),
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -1836,6 +1874,7 @@ def course_finish(request, course_slug):
             can_access_content=True,
             course_progress=course_progress,
             course_deadlines=_deadlines_or_none(course_progress),
+            deadline_policy=_deadline_policy_or_none(course_progress),
         ),
         **_time_zone_context(request),
     }

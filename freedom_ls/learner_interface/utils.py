@@ -16,7 +16,9 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
-from freedom_ls.deadlines.resolver import CourseDeadlines, is_overdue
+from freedom_ls.deadlines.consequences import shows_overdue
+from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
+from freedom_ls.deadlines.resolver import CourseDeadlines
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
@@ -476,6 +478,7 @@ def get_course_index(
     can_access_content: bool,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     course_deadlines: CourseDeadlines | None = None,
+    deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
 ) -> list[dict]:
     """
@@ -493,7 +496,9 @@ def get_course_index(
 
     ``course_deadlines`` is the learner's resolved deadlines for the course; each
     item row carries its ``due_at`` and ``is_overdue`` against ``now`` (defaulting
-    to the current time). Without it no row carries a date.
+    to the current time). Without it no row carries a date. ``deadline_policy`` is
+    the policy resolved for the same record, and decides whether ``is_overdue``
+    shows; a caller passes both or neither.
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
@@ -531,12 +536,28 @@ def get_course_index(
             form_placement_map,
             current_index=current_index,
             course_deadlines=course_deadlines,
+            deadline_policy=deadline_policy,
             now=now,
         )
         children.append(child_dict)
         global_index += items_added
 
     return children
+
+
+def current_entry(course_index: list[dict]) -> dict | None:
+    """The row ``get_course_index`` marked ``is_current``, or None.
+
+    Searches the top level and one level into a CoursePart's children, the only two
+    places is_current is ever set.
+    """
+    for entry in course_index:
+        if entry.get("is_current"):
+            return entry
+        for child in entry.get("children", []):
+            if child.get("is_current"):
+                return cast("dict", child)
+    return None
 
 
 def current_entry_status(course_index: list[dict]) -> str | None:
@@ -552,13 +573,8 @@ def current_entry_status(course_index: list[dict]) -> str | None:
     the access backend owns that -- so an unexpected index shape must never strand
     a learner outside their own course.
     """
-    for entry in course_index:
-        if entry.get("is_current"):
-            return cast("str", entry["status"])
-        for child in entry.get("children", []):
-            if child.get("is_current"):
-                return cast("str", child["status"])
-    return None
+    entry = current_entry(course_index)
+    return cast("str", entry["status"]) if entry is not None else None
 
 
 class DeadlineKeys(TypedDict):
@@ -571,6 +587,7 @@ def _deadline_keys(
     collection_item: ContentCollectionItem,
     status: str,
     course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
     now: datetime,
 ) -> DeadlineKeys:
     """The due instant and overdue flag for one row. A completed row is never overdue, and a
@@ -582,8 +599,14 @@ def _deadline_keys(
         course_deadlines.items.get(collection_item.pk) if course_deadlines else None
     )
     if resolved is not None:
+        if deadline_policy is None:
+            raise ValueError(
+                "Deadlines are resolved from a record, so its policy comes too."
+            )
         keys["due_at"] = resolved.due_at
-        keys["is_overdue"] = is_overdue(resolved, status == COMPLETE, now)
+        keys["is_overdue"] = shows_overdue(
+            resolved, deadline_policy, status == COMPLETE, now
+        )
     return keys
 
 
@@ -597,6 +620,7 @@ def create_child_dict_with_flattened_index(
     form_placement_map: dict[uuid.UUID, FormPlacementProgress],
     current_index: int | None = None,
     course_deadlines: CourseDeadlines | None = None,
+    deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
 ) -> tuple[dict, str, int]:
     """
@@ -655,7 +679,9 @@ def create_child_dict_with_flattened_index(
                 "url": child_url if child_status != BLOCKED else None,
                 "status": child_status,
                 "is_current": current_index == part_child_index,
-                **_deadline_keys(part_item, child_status, course_deadlines, now),
+                **_deadline_keys(
+                    part_item, child_status, course_deadlines, deadline_policy, now
+                ),
             }
             part_children_dicts.append(part_child_dict)
             items_added += 1
@@ -731,7 +757,9 @@ def create_child_dict_with_flattened_index(
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "is_current": current_index == start_index + 1,
-            **_deadline_keys(collection_item, status, course_deadlines, now),
+            **_deadline_keys(
+                collection_item, status, course_deadlines, deadline_policy, now
+            ),
         }
 
     return child_dict, next_status, items_added

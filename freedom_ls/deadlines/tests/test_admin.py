@@ -811,3 +811,30 @@ def test_the_course_progress_add_page_renders_without_a_policy(
 
     assert response.status_code == 200
     assert "close_items:" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_shows_when_access_ends(
+    staff_client, mock_site_context
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, _ = _record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    CourseDeadlineConfigFactory(course=record.course, end_course_access="on")
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Access ends: " in body
+    assert "SAST" in body.split("Access ends: ")[1].split("</li>")[0]
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_has_no_access_end_line_when_access_does_not_end(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Access ends" not in body

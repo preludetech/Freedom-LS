@@ -1,0 +1,17 @@
+{% load deadline_tags %}
+{% comment %}
+The deadline labels of one index row: the "Missed deadline" chip with its date when the row
+shows overdue, otherwise the deadline date. A completed row or a row without a due date
+renders nothing.
+
+Required context: child (due_at, is_overdue, status) and show_time_zone_to_learners.
+Optional: title, a prefix placed before the date.
+{% endcomment %}
+{% if child.due_at and child.status != "COMPLETE" %}
+    {% if child.is_overdue %}
+        <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
+        <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">{% if title %}{{ title }} {% endif %}{% local_time child.due_at %}</span>
+    {% else %}
+        <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Deadline {% if title %}{{ title }} {% endif %}{% local_time child.due_at %}.</span>
+    {% endif %}
+{% endif %}
