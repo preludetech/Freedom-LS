@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 import lxml.html
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -18,24 +19,45 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
+def sidebar_for(
+    mock_site_context: Site,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    settings: SettingsWrapper,
+) -> Callable[[bool], tuple[lxml.html.HtmlElement, str]]:
+    """Build the educator sidebar with messaging on or off.
+
+    Each call sets ``MESSAGING_ENABLED``, so a test calls it once.
+    """
+
+    def build(messaging_enabled: bool) -> tuple[lxml.html.HtmlElement, str]:
+        settings.MESSAGING_ENABLED = messaging_enabled
+        organisation = OrganisationFactory()
+        user = UserFactory(
+            staff=True, first_name="Ada", last_name="Lovelace", email="ada@example.com"
+        )
+        assign_object_role(user, organisation, "organisation_admin")
+        response = logged_in_client(user).get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "cohorts",
+                },
+            )
+        )
+        document = lxml.html.fromstring(response.content)
+        (nav,) = document.cssselect("#sidebar-nav")
+        return nav, response.content.decode()
+
+    return build
+
+
+@pytest.fixture
 def sidebar(
-    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+    sidebar_for: Callable[[bool], tuple[lxml.html.HtmlElement, str]],
 ) -> tuple[lxml.html.HtmlElement, str]:
     """The rendered #sidebar-nav and the whole page, for a logged-in educator."""
-    organisation = OrganisationFactory()
-    user = UserFactory(
-        staff=True, first_name="Ada", last_name="Lovelace", email="ada@example.com"
-    )
-    assign_object_role(user, organisation, "organisation_admin")
-    response = logged_in_client(user).get(
-        reverse(
-            "educator_interface:interface",
-            kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
-        )
-    )
-    document = lxml.html.fromstring(response.content)
-    (nav,) = document.cssselect("#sidebar-nav")
-    return nav, response.content.decode()
+    return sidebar_for(True)
 
 
 @pytest.mark.django_db
@@ -186,3 +208,20 @@ def test_a_user_with_no_name_shows_their_email_once(
     assert user_block.text_content().count("nameless@example.com") == 1
     (avatar,) = user_block.cssselect("[aria-hidden='true'].rounded-full")
     assert avatar.text_content().strip() == "NA"
+
+
+@pytest.mark.django_db
+def test_sidebar_omits_messages_when_messaging_is_off(
+    sidebar_for: Callable[[bool], tuple[lxml.html.HtmlElement, str]],
+) -> None:
+    nav, _page = sidebar_for(False)
+
+    links = nav.cssselect("ul > li > a")
+
+    assert [link.text_content().strip() for link in links] == [
+        "Dashboard",
+        "Cohorts",
+        "Learners",
+        "Courses",
+        "Members",
+    ]

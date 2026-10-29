@@ -89,11 +89,13 @@ class TestDefaultIconBackendRender:
         assert re.search(r'viewBox="0 0 \d+ \d+"', result)
         assert "</svg>" in result
 
-    def test_svg_has_intrinsic_width_and_height(self) -> None:
+    @pytest.mark.parametrize("icon_set", ["heroicons", "phosphor"])
+    def test_svg_has_intrinsic_width_and_height(self, icon_set: str) -> None:
         """Without a stylesheet, only the width/height attributes bound the icon."""
-        result = render_icon("success")
-        assert 'width="24"' in result
-        assert 'height="24"' in result
+        with override_settings(FREEDOM_LS_ICON_SET=icon_set):
+            result = render_icon("success")
+        assert re.search(r'width="\d+"', result)
+        assert re.search(r'height="\d+"', result)
 
     @override_settings(FREEDOM_LS_ICON_SET="heroicons")
     def test_intrinsic_size_tracks_the_icon_sets_own_dimensions(
