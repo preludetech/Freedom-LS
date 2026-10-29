@@ -19,6 +19,7 @@ from freedom_ls.organisations.models import (
     Organisation,
     organisation_logo_on_dark_upload_to,
     organisation_logo_upload_to,
+    organisation_profile_logo_upload_to,
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
@@ -83,13 +84,33 @@ class TestLogoUploadPath:
 
         assert path == f"organisations/{organisation.pk}-on-dark.png"
 
-    def test_the_two_variants_never_share_a_path(self) -> None:
+    def test_the_profile_logo_takes_a_suffix_of_its_own(self) -> None:
+        organisation = Organisation(name="Acme")
+
+        path = organisation_profile_logo_upload_to(organisation, "whatever.PNG")
+
+        assert path == f"organisations/{organisation.pk}-profile.png"
+
+    def test_traversal_in_the_profile_logos_filename_is_discarded(self) -> None:
+        organisation = Organisation(name="Acme")
+
+        path = organisation_profile_logo_upload_to(
+            organisation, "../../../etc/passwd.png"
+        )
+
+        assert path == f"organisations/{organisation.pk}-profile.png"
+
+    def test_the_three_variants_never_share_a_path(self) -> None:
         """Without the suffix the second upload would overwrite the first."""
         organisation = Organisation(name="Acme")
 
-        assert organisation_logo_upload_to(
-            organisation, "logo.png"
-        ) != organisation_logo_on_dark_upload_to(organisation, "logo.png")
+        paths = {
+            organisation_logo_upload_to(organisation, "logo.png"),
+            organisation_logo_on_dark_upload_to(organisation, "logo.png"),
+            organisation_profile_logo_upload_to(organisation, "logo.png"),
+        }
+
+        assert len(paths) == 3
 
 
 @pytest.mark.django_db
@@ -252,6 +273,57 @@ class TestLogoReplacement:
         organisation.logo.save("light.jpg", ContentFile(b"new-light"), save=True)
 
         assert Path(organisation.logo_on_dark.path).read_bytes() == b"dark-logo"
+
+    def test_replacing_the_profile_logo_with_another_extension_leaves_one_object(
+        self, mock_site_context: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.profile_logo.save(
+            "first.png", ContentFile(b"first-logo"), save=True
+        )
+
+        organisation.profile_logo.save(
+            "second.jpg", ContentFile(b"second-logo"), save=True
+        )
+
+        directory = Path(organisation.profile_logo.path).parent
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}-profile.jpg"
+        ]
+
+    def test_replacing_the_profile_logo_leaves_the_other_logos_alone(
+        self, mock_site_context: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("light.png", ContentFile(b"light-logo"), save=True)
+        organisation.logo_on_dark.save("dark.png", ContentFile(b"dark-logo"), save=True)
+        organisation.profile_logo.save(
+            "first.png", ContentFile(b"first-profile"), save=True
+        )
+
+        organisation.profile_logo.save(
+            "second.jpg", ContentFile(b"second-profile"), save=True
+        )
+
+        assert Path(organisation.logo.path).read_bytes() == b"light-logo"
+        assert Path(organisation.logo_on_dark.path).read_bytes() == b"dark-logo"
+
+    def test_clearing_the_profile_logo_removes_only_its_object(
+        self, mock_site_context: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("light.png", ContentFile(b"light-logo"), save=True)
+        organisation.profile_logo.save(
+            "first.png", ContentFile(b"first-profile"), save=True
+        )
+        directory = Path(organisation.profile_logo.path).parent
+
+        organisation.profile_logo = None
+        organisation.save()
+
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}.png"
+        ]
 
 
 @pytest.mark.django_db

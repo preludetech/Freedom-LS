@@ -34,7 +34,15 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
     search_fields = ["name"]
     ordering = ["name"]
     readonly_fields = ["slug", SUMMARIES_FIELD]
-    fields = ["name", "slug", "logo", "logo_on_dark", SUMMARIES_FIELD]
+    fields = [
+        "name",
+        "slug",
+        "logo",
+        "logo_on_dark",
+        "profile_logo",
+        "bio",
+        SUMMARIES_FIELD,
+    ]
     # Added to by other apps, for the reason given on ORGANISATION_SUMMARIES: a
     # contributor keeps what is already here rather than replacing it. Declared
     # on this class rather than inherited so nothing reaches the list shared

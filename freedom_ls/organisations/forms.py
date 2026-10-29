@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from django import forms
+
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
-from .models import Organisation
+from .models import LOGO_FIELD_NAMES, Organisation
 
 INVALID_IMAGE_MESSAGE = "File is not a readable image. Use PNG, JPEG or WebP."
 
@@ -23,11 +25,12 @@ class OrganisationAdminForm(ConstraintValidationFormMixin):
 
     class Meta:
         model = Organisation
-        fields = ["name", "logo", "logo_on_dark"]
+        fields = ["name", "logo", "logo_on_dark", "profile_logo", "bio"]
+        widgets = {"bio": forms.Textarea(attrs={"rows": 4})}
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        for field_name in ("logo", "logo_on_dark"):
+        for field_name in LOGO_FIELD_NAMES:
             field = self.fields.get(field_name)
             if field is not None:
                 # ImageField.to_python rejects a non-image before the model's

@@ -24,7 +24,7 @@ def _logo_upload_path(instance: Organisation, filename: str, variant: str) -> st
     traversal, overwrite collisions and leaking the uploader's local paths.
     SiteAwareModel.id defaults at instantiation, so the pk always exists here.
 
-    The variant suffix is what keeps the two logo fields off each other's
+    The variant suffix is what keeps the logo fields off each other's
     paths: without it both would resolve to `organisations/<pk>.png` and the
     second upload would overwrite the first.
     """
@@ -42,10 +42,15 @@ def organisation_logo_on_dark_upload_to(instance: Organisation, filename: str) -
     return _logo_upload_path(instance, filename, "-on-dark")
 
 
-#: The logo fields, in one place: save() sweeps every one of them, and the two
-#: variants land in the same public bucket, so a field added here without the
-#: sweep following would abandon its superseded objects there.
-LOGO_FIELD_NAMES = ("logo", "logo_on_dark")
+def organisation_profile_logo_upload_to(instance: Organisation, filename: str) -> str:
+    """Storage path for the profile logo drawn in the organisation mark."""
+    return _logo_upload_path(instance, filename, "-profile")
+
+
+#: The logo fields, in one place: save() sweeps every one of them, and they all
+#: land in the same public bucket, so a field added here without the sweep
+#: following would abandon its superseded objects there.
+LOGO_FIELD_NAMES = ("logo", "logo_on_dark", "profile_logo")
 
 
 def get_organisation_logo_storage() -> Storage:
@@ -87,6 +92,27 @@ class Organisation(SiteAwareModel, TimestampedModel):
             "to the organisation's name."
         ),
     )
+    profile_logo = models.ImageField(
+        _("profile logo"),
+        upload_to=organisation_profile_logo_upload_to,
+        storage=get_organisation_logo_storage,
+        blank=True,
+        validators=[validate_organisation_logo_extension, validate_organisation_logo],
+        help_text=_(
+            "Shown in a circle beside the organisation's name on course cards and "
+            "the course page. A square image of at least 128 by 128 pixels works "
+            "best; other shapes are cropped to the circle. Without one, the "
+            "light-background logo is shown instead."
+        ),
+    )
+    bio = models.CharField(
+        _("bio"),
+        max_length=500,
+        blank=True,
+        help_text=_(
+            "A short plain-text description shown on the course page, up to 500 characters."
+        ),
+    )
     #: Marks the one Organisation a Site falls back to when nothing narrower is
     #: in scope. Set only by the post_save receiver on Site — never exposed in
     #: the admin, so the flag cannot be moved to a different Organisation.
@@ -124,7 +150,7 @@ class Organisation(SiteAwareModel, TimestampedModel):
         normalising the extension away, because the key's extension is what gives
         the object its Content-Type.
 
-        Both variants go to that same public bucket, so both need the sweep.
+        Every logo field goes to that same public bucket, so each needs the sweep.
         """
         superseded = self._stored_logo_names()
         super().save(*args, **kwargs)

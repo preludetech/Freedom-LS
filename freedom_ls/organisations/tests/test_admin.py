@@ -215,6 +215,19 @@ class TestOrganisationAdminLogoUpload:
         assert "JPEG" in message
         assert "WebP" in message
 
+    def test_the_profile_logo_is_validated_like_the_others(self, staff_client):
+        url = reverse(ADD_URL_NAME)
+        upload = SimpleUploadedFile(
+            "notes.txt", b"definitely not an image", content_type="text/plain"
+        )
+
+        response = staff_client.post(url, {"name": "Westbrook", "profile_logo": upload})
+
+        message = " ".join(response.context["adminform"].form.errors["profile_logo"])
+        assert "PNG" in message
+        assert "JPEG" in message
+        assert "WebP" in message
+
     def test_both_variants_upload_together(self, staff_client, png_bytes):
         """Uploaded in one submission, they must not land on each other's path."""
         url = reverse(ADD_URL_NAME)
@@ -236,6 +249,24 @@ class TestOrganisationAdminLogoUpload:
         organisation = Organisation.objects.get(name="Westbrook")
         assert organisation.logo.name != organisation.logo_on_dark.name
         assert organisation.logo_on_dark.name.endswith("-on-dark.png")
+
+
+@pytest.mark.django_db
+class TestOrganisationAdminBio:
+    def test_a_501_character_bio_is_rejected(self, staff_client):
+        url = reverse(ADD_URL_NAME)
+
+        response = staff_client.post(url, {"name": "Westbrook", "bio": "a" * 501})
+
+        assert "bio" in response.context["adminform"].form.errors
+
+    def test_a_500_character_bio_saves(self, staff_client):
+        url = reverse(ADD_URL_NAME)
+
+        response = staff_client.post(url, {"name": "Westbrook", "bio": "a" * 500})
+
+        assert response.status_code == 302
+        assert len(Organisation.objects.get(name="Westbrook").bio) == 500
 
 
 @pytest.mark.django_db
