@@ -46,3 +46,12 @@ def is_closed(
     never closes."""
     instant = close_instant(resolved, policy)
     return instant is not None and not completed and now > instant
+
+
+def has_access_ended(
+    time_limit: ResolvedDeadline, policy: ResolvedDeadlinePolicy, now: datetime
+) -> bool:
+    """Whether the learner's access has ended: the policy ends access and ``now`` is past the
+    time limit plus the grace window."""
+    instant = access_end_instant(time_limit, policy)
+    return instant is not None and now > instant

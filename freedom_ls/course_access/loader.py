@@ -15,6 +15,7 @@ from django.utils.module_loading import import_string
 
 from freedom_ls.course_access.backends import (
     CourseAccessBackend,
+    DeadlineEnforcingBackend,
     VisibilityEnforcingBackend,
 )
 from freedom_ls.course_access.config import config
@@ -24,8 +25,9 @@ from freedom_ls.course_access.config import config
 def get_course_access_backend() -> CourseAccessBackend:
     """Return the configured course-access backend (cached for the process lifetime).
 
-    Always wraps the configured backend in a VisibilityEnforcingBackend so that
-    no backend (present or future) can bypass coming-soon / hidden enforcement.
+    Always wraps the configured backend in a DeadlineEnforcingBackend, inside a
+    VisibilityEnforcingBackend, so that no backend (present or future) can bypass
+    coming-soon / hidden enforcement or the end of access under a deadline policy.
 
     Resolves config.COURSE_ACCESS_BACKEND via import_string and instantiates it.
 
@@ -34,7 +36,7 @@ def get_course_access_backend() -> CourseAccessBackend:
     overridden setting takes effect and the cache is restored afterward.
     """
     inner_class: type[CourseAccessBackend] = import_string(config.COURSE_ACCESS_BACKEND)
-    return VisibilityEnforcingBackend(inner_class())
+    return VisibilityEnforcingBackend(DeadlineEnforcingBackend(inner_class()))
 
 
 def validate_course_access_config(

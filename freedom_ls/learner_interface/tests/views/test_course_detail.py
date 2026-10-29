@@ -34,6 +34,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.tests.helpers import (
@@ -1761,7 +1762,72 @@ def test_detail_page_query_count_does_not_grow_with_items(
         "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
-    with django_assert_max_num_queries(29):
+    with django_assert_max_num_queries(33):
         response = client.get(url)
 
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# A learner whose access ended
+# ---------------------------------------------------------------------------
+
+ACCESS_ENDED_AT = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
+
+
+def _ended_learner_detail(client: Client, **course_fields: object) -> Course:
+    """A 30-day course whose policy ends access, for a learner registered in March."""
+    course = cast(Course, CourseFactory(time_limit_days=30, **course_fields))
+    course.items.create(child=TopicFactory(), order=0)
+    CourseDeadlineConfigFactory(course=course, end_course_access="on")
+    user = UserFactory()
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    client.force_login(user)
+    return course
+
+
+def _detail_response(client: Client, course: Course):
+    return client.get(
+        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(ACCESS_ENDED_AT, tick=False)
+def test_an_ended_learner_is_told_their_access_ended(mock_site_context, client):
+    course = _ended_learner_detail(client)
+
+    text = " ".join(
+        re.sub(
+            r"<[^>]+>", " ", _detail_response(client, course).content.decode()
+        ).split()
+    )
+
+    assert (
+        "Your access to this course ended on 31 Mar 2026, 23:59 UTC . "
+        "Your progress is saved. Ask your educator to restore it." in text
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(ACCESS_ENDED_AT, tick=False)
+def test_an_ended_learner_is_offered_no_start_continue_or_register_action(
+    mock_site_context, client
+):
+    course = _ended_learner_detail(client)
+
+    response = _detail_response(client, course)
+
+    assert response.context["start_url"] is None
+    assert response.context["cta_label"] is None
+    assert "Start course" not in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(ACCESS_ENDED_AT, tick=False)
+def test_an_ended_learner_still_reaches_a_hidden_course(mock_site_context, client):
+    course = _ended_learner_detail(client, visibility=CourseVisibility.HIDDEN)
+
+    assert _detail_response(client, course).status_code == 200

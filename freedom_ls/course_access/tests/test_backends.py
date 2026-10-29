@@ -2,19 +2,41 @@
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
+
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import RequestFactory
+from django.db import connection
+from django.test import RequestFactory, override_settings
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course
+from freedom_ls.course_access.backends import (
+    CourseAccessBackend,
+    DeadlineEnforcingBackend,
+    FreeOnlyCourseAccessBackend,
+    VisibilityEnforcingBackend,
+)
+from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
+    LearnerDeadlineOverrideFactory,
+)
+from freedom_ls.deadlines.models import AfterAccessEnded, DeadlineKind
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
 )
+from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 class TestCourseAccessBackend:
@@ -398,3 +420,300 @@ class TestGetAccessType:
         course = CourseFactory(access_config={"access_type": "free"})
 
         assert FreeOnlyCourseAccessBackend().get_access_type(course=course) == "free"
+
+
+REGISTERED_AT = datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+BEFORE_END = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
+AFTER_END = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
+
+
+def _time_limited_course(*, items: int = 1, end_access: str = "on") -> Course:
+    """A course with a 30-day time limit whose policy sets ``end_course_access``."""
+    course: Course = CourseFactory(time_limit_days=30)
+    for order in range(items):
+        course.items.create(child=TopicFactory(), order=order)
+    CourseDeadlineConfigFactory(
+        course=course,
+        end_course_access=end_access,
+        after_access_ended=AfterAccessEnded.NOTHING,
+    )
+    return course
+
+
+def _registered_learner(course: Course) -> User:
+    user: User = UserFactory()
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    return user
+
+
+def _deadline_backend() -> DeadlineEnforcingBackend:
+    return DeadlineEnforcingBackend(FreeOnlyCourseAccessBackend())
+
+
+def test_deadline_wrapper_overrides_every_backend_method():
+    """A method the wrapper does not override falls back to the base default,
+    skipping the inner backend's own logic without any error."""
+    backend_methods = {
+        name
+        for name, value in vars(CourseAccessBackend).items()
+        if callable(value) and not name.startswith("_")
+    }
+
+    assert backend_methods - set(vars(DeadlineEnforcingBackend)) == set()
+
+
+@pytest.mark.django_db
+def test_loader_wraps_the_deadline_backend_inside_the_visibility_backend(
+    mock_site_context,
+):
+    get_course_access_backend.cache_clear()
+
+    backend = get_course_access_backend()
+
+    assert isinstance(backend, VisibilityEnforcingBackend)
+    assert isinstance(backend._inner, DeadlineEnforcingBackend)
+
+
+@pytest.mark.django_db
+class TestDeadlineEnforcingBackendGetAccess:
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_an_ended_learner_loses_content_and_every_affordance(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is False
+        assert decision.can_self_register is False
+        assert decision.cta_label is None
+        assert decision.cta_url is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_an_ended_decision_names_the_end_and_what_follows(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.access_ended_at == datetime(
+            2026, 3, 31, 23, 59, 59, 999999, tzinfo=UTC
+        )
+        assert decision.after_access_ended == AfterAccessEnded.NOTHING
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_an_ended_decision_keeps_the_inner_funnel_copy(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        inner = FreeOnlyCourseAccessBackend().get_access(user=user, course=course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.enrolment_summary == inner.enrolment_summary
+        assert decision.acquisition_heading == inner.acquisition_heading
+        assert decision.acquisition_subtext == inner.acquisition_subtext
+
+    @time_machine.travel(BEFORE_END, tick=False)
+    def test_before_the_end_the_inner_decision_stands(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision == FreeOnlyCourseAccessBackend().get_access(
+            user=user, course=course
+        )
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_the_inner_decision_stands_while_ending_access_is_off(
+        self, mock_site_context
+    ):
+        course = _time_limited_course(end_access="off")
+        user = _registered_learner(course)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+        assert decision.access_ended_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_completed_course_never_ends(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        course_progress_record(course, user, completed_time=BEFORE_END)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_deactivated_registration_gets_the_inner_decision(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        LearnerCourseRegistration.objects.update(is_active=False)
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision == FreeOnlyCourseAccessBackend().get_access(
+            user=user, course=course
+        )
+        assert decision.access_ended_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_an_unregistered_user_gets_the_inner_decision(self, mock_site_context):
+        course = _time_limited_course()
+
+        decision = _deadline_backend().get_access(user=UserFactory(), course=course)
+
+        assert decision.access_ended_at is None
+        assert decision.can_self_register is True
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_the_free_override_bypasses_the_deadline_wrapper(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+
+        with override_settings(OVERRIDE_COURSE_ACCESS_TO_FREE=True):
+            get_course_access_backend.cache_clear()
+            decision = get_course_access_backend().get_access(user=user, course=course)
+        get_course_access_backend.cache_clear()
+
+        assert decision.can_access_content is True
+        assert decision.access_ended_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_get_access_for_request_sees_the_ended_state(self, mock_site_context):
+        course = _time_limited_course()
+        request = RequestFactory().get("/")
+        request.user = _registered_learner(course)
+
+        decision = _deadline_backend().get_access_for_request(
+            request=request, course=course
+        )
+
+        assert decision.can_access_content is False
+        assert decision.access_ended_at is not None
+
+    def test_an_anonymous_request_goes_straight_to_the_inner_backend(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        decision = _deadline_backend().get_access_for_request(
+            request=request, course=course
+        )
+
+        assert decision == FreeOnlyCourseAccessBackend().get_access_for_request(
+            request=request, course=course
+        )
+
+    @time_machine.travel(AFTER_END, tick=False)
+    @pytest.mark.parametrize("items", [1, 30])
+    def test_get_access_stays_within_a_fixed_query_budget(
+        self, mock_site_context, django_assert_max_num_queries, items
+    ):
+        course = _time_limited_course(items=items)
+        user = _registered_learner(course)
+
+        with django_assert_max_num_queries(18):
+            _deadline_backend().get_access(user=user, course=course)
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_refused_decision_costs_no_more_than_the_inner_backend(
+        self, mock_site_context
+    ):
+        course = _time_limited_course()
+        user = UserFactory()
+        with CaptureQueriesContext(connection) as inner_queries:
+            FreeOnlyCourseAccessBackend().get_access(user=user, course=course)
+
+        with CaptureQueriesContext(connection) as wrapped_queries:
+            _deadline_backend().get_access(user=user, course=course)
+
+        assert len(wrapped_queries) <= len(inner_queries)
+
+
+@pytest.mark.django_db
+class TestDeadlineEnforcingBackendGetAccessMany:
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_each_course_gets_the_decision_get_access_would_give(
+        self, mock_site_context
+    ):
+        ending = _time_limited_course()
+        open_ended = _time_limited_course(end_access="off")
+        user = _registered_learner(ending)
+        course_progress_record(open_ended, user, created_at=REGISTERED_AT)
+        unregistered = CourseFactory()
+        courses = [ending, open_ended, unregistered]
+        backend = _deadline_backend()
+
+        many = backend.get_access_many(user=user, courses=courses)
+
+        assert many == {
+            course.pk: backend.get_access(user=user, course=course)
+            for course in courses
+        }
+        assert many[ending.pk].access_ended_at is not None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_query_count_does_not_grow_with_the_number_of_courses(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        user = UserFactory()
+        courses = []
+        for _ in range(6):
+            course = _time_limited_course()
+            course_progress_record(course, user, created_at=REGISTERED_AT)
+            courses.append(course)
+
+        with django_assert_max_num_queries(25):
+            _deadline_backend().get_access_many(user=user, courses=courses)
+
+
+@pytest.mark.django_db
+class TestDeadlineEnforcingBackendRestore:
+    """A later fixed-date time limit restores access with no write to the record."""
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_learner_override_restores_access(self, mock_site_context):
+        course = _time_limited_course()
+        user = _registered_learner(course)
+        record = course_progress_record(course, user)
+        LearnerDeadlineOverrideFactory(
+            course_progress=record,
+            kind=DeadlineKind.FIXED,
+            due_date=date(2999, 1, 1),
+            due_days_after_registration=None,
+        )
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+        assert decision.access_ended_at is None
+
+    @time_machine.travel(AFTER_END, tick=False)
+    def test_a_cohort_override_restores_a_cohort_member(self, mock_site_context):
+        course = _time_limited_course()
+        cohort = CohortFactory()
+        user = UserFactory()
+        CohortMembershipFactory(
+            learner__user=user, learner__organisation=cohort.organisation, cohort=cohort
+        )
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        course_progress_record(course, user, created_at=REGISTERED_AT)
+        assert _deadline_backend().get_access(user=user, course=course).access_ended_at
+        CohortDeadlineOverrideFactory(
+            cohort_registration=registration,
+            kind=DeadlineKind.FIXED,
+            due_date=date(2999, 1, 1),
+            due_days_after_registration=None,
+        )
+
+        decision = _deadline_backend().get_access(user=user, course=course)
+
+        assert decision.can_access_content is True

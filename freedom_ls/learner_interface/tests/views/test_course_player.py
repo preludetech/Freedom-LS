@@ -1464,12 +1464,12 @@ def test_player_page_query_count_is_bounded(
     ``CoursePart.children`` memoize per instance, so the repeated chrome
     traversals share one resolution -- and (b) bulk-fetches all topic/form
     progress into maps via ``_fetch_player_progress_maps`` instead of one query
-    per item. The ceiling is 46, well below what a reintroduced full traversal
+    per item. The ceiling is 50, well below what a reintroduced full traversal
     or a per-item progress N+1 would cost. See
     ``test_player_page_query_count_does_not_grow_with_items``, which runs the
     same budget over a course three times the size.
 
-    46 is the cold number. Some of these queries are served from caches that
+    50 is the cold number. Some of these queries are served from caches that
     outlive a single test -- the header asks whether this user may enter the
     educator interface, and Django caches content types for the process -- so
     the same page costs 43 once an earlier test has warmed them. The ceiling is
@@ -1483,7 +1483,7 @@ def test_player_page_query_count_is_bounded(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
-    with django_assert_max_num_queries(46):
+    with django_assert_max_num_queries(50):
         response = client.get(url)
     assert response.status_code == 200
 
