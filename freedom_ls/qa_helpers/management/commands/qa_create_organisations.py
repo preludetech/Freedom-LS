@@ -1,10 +1,10 @@
-"""Seed four Organisations for QA of the switcher and logo/monogram rendering.
+"""Seed six Organisations for QA of the switcher and logo/monogram rendering.
 
 Superseded for a full QA pass by ``qa_create_organisation_scenarios``, which
 also seeds the cohorts and personas; this command remains as the smallest
 possible organisations-only seed.
 
-Creates (idempotently) four Organisations on the given site, in addition to
+Creates (idempotently) six Organisations on the given site, in addition to
 the site's own default Organisation:
 
 1. "RPAS Training" — carries a logo, so the logo rendering path is exercised.
@@ -17,6 +17,11 @@ the site's own default Organisation:
    the render shows real glyphs rather than tofu boxes, isolating the
    download-filename behaviour for a non-Latin name from a missing-glyph
    render.
+5. "Skyline Aviation" — carries a profile logo and a bio, so the round mark
+   and the organisation card's bio line are exercised.
+6. "Coastal Flight School" — carries a wide logo, no profile logo and no bio,
+   so the mark's fallback to the light-background logo and the card without a
+   bio are exercised.
 
 Usage:
     uv run python manage.py qa_create_organisations
@@ -48,12 +53,20 @@ LONG_NAME = (
     "and Vocational Training Academies for Professional and Continuing Education"
 )
 NON_LATIN_NAME = "Восточно-Европейская Академия Непрерывного Образования"
+WITH_PROFILE_LOGO_NAME = "Skyline Aviation"
+WITH_PROFILE_LOGO_BIO = (
+    "Skyline Aviation trains remote pilots for commercial survey work. "
+    "Its courses cover airspace rules, flight planning and safe operations."
+)
+WIDE_LOGO_NAME = "Coastal Flight School"
+PROFILE_LOGO_PATH = _FIXTURES / "dronex-logo.png"
+WIDE_LOGO_PATH = _FIXTURES / "fc-light-bg.png"
 
 
 @click.command()
 @click.argument("site_name", default="DemoDev")
 def command(site_name: str) -> None:
-    """Seed four QA Organisations on SITE_NAME (default: DemoDev)."""
+    """Seed six QA Organisations on SITE_NAME (default: DemoDev)."""
     try:
         site = Site.objects.get(name=site_name)
     except Site.DoesNotExist as e:
@@ -88,5 +101,30 @@ def command(site_name: str) -> None:
     verb = "Created" if created else "Reused"
     click.secho(
         f"{verb} organisation '{NON_LATIN_NAME}' (non-Latin name — unicode download filename)",
+        fg="green",
+    )
+
+    with_profile_logo, created = ensure_organisation(site, WITH_PROFILE_LOGO_NAME)
+    if not with_profile_logo.profile_logo:
+        with PROFILE_LOGO_PATH.open("rb") as fh:
+            with_profile_logo.profile_logo.save(
+                PROFILE_LOGO_PATH.name, File(fh), save=True
+            )
+    if not with_profile_logo.bio:
+        with_profile_logo.bio = WITH_PROFILE_LOGO_BIO
+        with_profile_logo.save(update_fields=["bio"])
+    verb = "Created" if created else "Reused"
+    click.secho(
+        f"{verb} organisation '{WITH_PROFILE_LOGO_NAME}' (profile logo and bio)",
+        fg="green",
+    )
+
+    wide_logo, created = ensure_organisation(site, WIDE_LOGO_NAME)
+    if not wide_logo.logo:
+        with WIDE_LOGO_PATH.open("rb") as fh:
+            wide_logo.logo.save(WIDE_LOGO_PATH.name, File(fh), save=True)
+    verb = "Created" if created else "Reused"
+    click.secho(
+        f"{verb} organisation '{WIDE_LOGO_NAME}' (wide logo, no profile logo, no bio)",
         fg="green",
     )
