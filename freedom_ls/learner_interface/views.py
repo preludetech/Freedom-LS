@@ -1212,6 +1212,10 @@ def _render_closed_notice(
     *,
     course: Course,
     entry: dict,
+    current_item: Topic | Form,
+    collection_item: ContentCollectionItem,
+    course_progress: CourseProgress | None,
+    index: int,
     next_url: str | None,
     previous_url: str | None,
     player_context: dict,
@@ -1219,13 +1223,25 @@ def _render_closed_notice(
     """Render the notice an item shows once it has closed, in place of its content.
 
     Writes nothing: opening a closed item is not a visit, so it moves neither the resume
-    point nor the course's start time."""
+    point nor the course's start time. A form with an open attempt also carries the URL
+    that submits the attempt as it stands, since continuing it is refused."""
+    submit_and_exit_url = None
+    if (
+        isinstance(current_item, Form)
+        and course_progress is not None
+        and get_latest_incomplete(course_progress, collection_item) is not None
+    ):
+        submit_and_exit_url = reverse(
+            "learner_interface:form_submit_and_exit",
+            kwargs={"course_slug": course.slug, "index": index},
+        )
     return render(
         request,
         "learner_interface/course_item_closed.html",
         {
             "course": course,
             "entry": entry,
+            "submit_and_exit_url": submit_and_exit_url,
             "next_url": next_url,
             "previous_url": previous_url,
             **player_context,
@@ -1310,6 +1326,10 @@ def view_course_item(request, course_slug, index):
             previous_url=previous_url,
             player_context=player_context,
             course=course,
+            current_item=current_item,
+            collection_item=current_collection_item,
+            course_progress=course_progress,
+            index=index,
         )
 
     # Record this collection item as the resume target. This is the single
@@ -2001,22 +2021,31 @@ def form_submit_and_exit(
     # endpoint is reachable directly. Save-on-exit forms promise the attempt is
     # saved (resumable), not scored, so never finalise one here — send the
     # learner back to the form start screen instead.
-    if not form.submit_on_exit:
+    course_progress = _ensure_player_course_progress(request.user, course)
+    # A closed form can no longer be continued, so its open attempt is finalised
+    # whatever its exit strategy; the learner would otherwise be stuck with it.
+    closed = (
+        current_entry_status(
+            _player_course_index(request.user, course, index, course_progress)
+        )
+        == CLOSED
+    )
+    if not form.submit_on_exit and not closed:
         return redirect(
             "learner_interface:view_course_item",
             course_slug=course_slug,
             index=index,
         )
 
-    course_progress = _ensure_player_course_progress(request.user, course)
     form_progress = (
         get_latest_incomplete(course_progress, collection_item)
         if course_progress is not None
         else None
     )
     if form_progress is not None:
+        # Nothing posted is saved once closed: the item has no later to resume in.
         # Save before completing, so score() sees the page the learner was on.
-        posted = _posted_page(form, request.POST)
+        posted = None if closed else _posted_page(form, request.POST)
         if posted is not None:
             submission = submit_page(
                 posted, request.POST, form_progress, require_answers=False
