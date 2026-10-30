@@ -4,7 +4,11 @@
 
 {% block content %}
     <c-page width="narrow">
-        <h1>New message</h1>
+        <a href="{% url 'conversations:inbox' %}" class="inline-flex items-center gap-1 text-sm">
+            <c-icon name="previous" class="size-4" />
+            Back to messages
+        </a>
+        <h1 class="mt-2">New message</h1>
         {% if recipient %}
             <p class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>To <span class="font-semibold">{{ recipient.display_name }}</span></span>

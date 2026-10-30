@@ -806,6 +806,74 @@ class TestStartPage:
         assert tree.get_element_by_id("recipient-picker").xpath(".//form")
         assert not tree.xpath("//form[@id='composer']")
 
+    def test_a_pane_request_without_a_recipient_returns_the_picker_fragment(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        tree = html.fromstring(response.content)
+        assert response.status_code == 200
+        assert "<html" not in response.content.decode()
+        assert tree.xpath("//*[@id='recipient-picker']//form")
+        assert not tree.xpath("//form[@id='composer']")
+
+    def test_a_pane_request_with_a_recipient_returns_the_composer_fragment(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        other = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(),
+            {"recipient": other.pk},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="thread-pane",
+        )
+
+        tree = html.fromstring(response.content)
+        assert "<html" not in response.content.decode()
+        assert "To Kai Ngata" in " ".join(tree.text_content().split())
+        assert tree.xpath("//form[@id='composer']")
+
+    def test_the_full_page_links_back_to_the_messages_page(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        back = tree.xpath("//main//a[contains(normalize-space(.), 'Back to messages')]")
+        assert back[0].get("href") == reverse("conversations:inbox")
+
+    def test_choosing_someone_with_a_conversation_redirects_to_it(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(start_url(), {"recipient": other.pk})
+
+        assert response.status_code == 302
+        assert response["Location"] == thread_url(conversation)
+
+    def test_choosing_someone_with_a_conversation_from_the_pane_loads_the_thread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(
+            start_url(),
+            {"recipient": other.pk},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="thread-pane",
+        )
+
+        assert response.status_code == 204
+        assert json.loads(response["HX-Location"]) == {"path": thread_url(conversation)}
+
     def test_a_recipient_outside_the_recipients_is_404(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
@@ -1033,6 +1101,31 @@ class TestMessagesPageNewMessage:
         tree = html.fromstring(response.content)
         assert tree.xpath(f"//a[@href='{start_url()}']")
 
+    def test_the_new_message_controls_show_beside_a_selected_thread(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        tree = html.fromstring(response.content)
+        assert len(tree.xpath(f"//aside//a[@href='{start_url()}']")) == 2
+
+    def test_the_wide_control_loads_the_picker_into_the_thread_pane(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        UserFactory()
+
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        wide = tree.xpath(f"//aside//a[@href='{start_url()}'][@hx-get]")
+        assert len(wide) == 1
+        assert wide[0].get("hx-target") == "#thread-pane"
+        assert wide[0].get("hx-swap") == "innerHTML"
+        assert wide[0].get("hx-push-url") == "true"
+
     def test_the_button_is_absent_without_recipients(
         self, mock_site_context, logged_in_client, closed_policy
     ) -> None:
@@ -1097,6 +1190,31 @@ class TestRecipientPicker:
         assert tree.xpath("//*[@role='group']")
         link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
         assert link.get("href") == f"{start_url()}?recipient={kai.pk}"
+
+    def test_in_pane_results_target_the_thread_pane(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        kai = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-get") == f"{start_url()}?recipient={kai.pk}"
+        assert link.get("hx-target") == "#thread-pane"
+
+    def test_results_outside_the_pane_do_not_target_it(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-target") is None
 
     def test_the_search_fragment_has_no_page_wrapper(
         self, mock_site_context, logged_in_client

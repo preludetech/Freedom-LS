@@ -22,6 +22,7 @@ from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging import (
     SendResult,
     closed_note_copy,
+    conversation_between,
     decode_cursor,
     encode_cursor,
     entry_for_message,
@@ -367,6 +368,30 @@ def unreachable_recipient_response(request: HttpRequest) -> HttpResponse:
     return response
 
 
+THREAD_PANE_ID = "thread-pane"
+
+
+def _targets_thread_pane(request: HttpRequest) -> bool:
+    """Whether htmx asked on behalf of the messages page's thread pane."""
+    return (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-Target") == THREAD_PANE_ID
+    )
+
+
+def _open_thread_response(
+    request: HttpRequest, conversation: Conversation
+) -> HttpResponse:
+    """Take the browser to the conversation's thread: a redirect for a plain
+    request, a 204 with HX-Location for htmx so the whole page loads."""
+    thread_url = reverse("conversations:thread", kwargs={"pk": conversation.pk})
+    if request.headers.get("HX-Request") != "true":
+        return redirect(thread_url)
+    response = HttpResponse(status=204)
+    response["HX-Location"] = json.dumps({"path": thread_url})
+    return response
+
+
 def _send_response(
     request: HttpRequest,
     result: SendResult,
@@ -393,13 +418,8 @@ def _send_response(
         )
     if result.message is not None:
         sent_to = cast("Conversation", result.conversation)
-        thread_url = reverse("conversations:thread", kwargs={"pk": sent_to.pk})
-        if not is_htmx:
-            return redirect(thread_url)
-        if recipient is not None:
-            response = HttpResponse(status=204)
-            response["HX-Location"] = json.dumps({"path": thread_url})
-            return response
+        if not is_htmx or recipient is not None:
+            return _open_thread_response(request, sent_to)
         cursor = decode_cursor(request.POST.get("after", ""))
         new = messages_after(sent_to, cursor) if cursor is not None else []
         if new:
@@ -507,8 +527,14 @@ def _offered_recipients(request: HttpRequest) -> QuerySet[User]:
     )
 
 
-def _picker_context(request: HttpRequest, term: str) -> dict[str, object]:
-    """What the picker partial needs: the search outcome and the URLs it links to."""
+def _picker_context(
+    request: HttpRequest, term: str, in_pane: bool = False
+) -> dict[str, object]:
+    """What the picker partial needs: the search outcome and the URLs it links to.
+
+    ``in_pane`` makes each result load the composer into the messages page's
+    thread pane instead of navigating.
+    """
     site = cast("Site", get_cached_site(request))
     return {
         "search": search_recipients(
@@ -521,27 +547,36 @@ def _picker_context(request: HttpRequest, term: str) -> dict[str, object]:
         "include_email": False,
         "search_url": reverse("conversations:recipient_search"),
         "choose_url": reverse("conversations:start"),
+        "in_pane": in_pane,
     }
 
 
 def _start_get(request: HttpRequest) -> HttpResponse:
+    in_pane = _targets_thread_pane(request)
+    template = (
+        "comms/partials/new_conversation_pane.html" if in_pane else "comms/start.html"
+    )
     raw = request.GET.get("recipient")
     if raw is None:
-        return render(
-            request,
-            "comms/start.html",
-            {"recipient": None, **_picker_context(request, request.GET.get("q", ""))},
-        )
+        context = {
+            "recipient": None,
+            "in_pane": in_pane,
+            **_picker_context(request, request.GET.get("q", ""), in_pane=in_pane),
+        }
+        return render(request, template, context)
     recipient = get_object_or_404(_offered_recipients(request), pk=recipient_pk(raw))
-    return render(
-        request,
-        "comms/start.html",
-        {
-            "recipient": recipient,
-            "other": recipient,
-            "composer": composer_context(client_key=uuid4(), recipient=recipient),
-        },
-    )
+    site = cast("Site", get_cached_site(request))
+    existing = conversation_between(cast("User", request.user), recipient, site)
+    if existing is not None:
+        # One conversation per pair: choosing the person again opens it.
+        return _open_thread_response(request, existing)
+    context = {
+        "recipient": recipient,
+        "other": recipient,
+        "in_pane": in_pane,
+        "composer": composer_context(client_key=uuid4(), recipient=recipient),
+    }
+    return render(request, template, context)
 
 
 def _start_post(request: HttpRequest) -> HttpResponse:
