@@ -523,6 +523,28 @@ def test_an_item_that_sequential_unlock_withholds_stays_blocked_past_its_close_i
 
 
 @pytest.mark.django_db
+def test_a_withheld_item_past_its_close_instant_names_no_close_instant(
+    mock_site_context,
+):
+    """A locked row past its close instant used to carry a close instant, so the outline
+    read "Closes <past date>." for it."""
+    user, course, topics, record = _closing_course()
+    second_item = collection_item_for(course, topics[1])
+
+    _first, second = _closing_index(
+        user,
+        course,
+        record,
+        {second_item.pk: DUE},
+        now=DUE + timedelta(days=10),
+        grace=timedelta(days=3),
+    )
+
+    assert second["status"] == BLOCKED
+    assert second["closes_at"] is None
+
+
+@pytest.mark.django_db
 def test_a_completed_item_past_its_close_instant_stays_complete(mock_site_context):
     user, course, topics, _record = _closing_course()
     topic_completion(course, user, topics[0], complete_time=timezone.now())

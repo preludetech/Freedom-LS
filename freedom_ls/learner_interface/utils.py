@@ -623,12 +623,15 @@ def _deadline_keys(
             resolved, deadline_policy, status == COMPLETE, now
         )
         closes_at = close_instant(resolved, deadline_policy)
-        keys["closes_at"] = closes_at
         # Only a row sequential unlock offers can close; a withheld row stays locked
         # past its close instant and carries no closed mark anywhere it is drawn.
         keys["is_closed"] = status in (READY, IN_PROGRESS, FAILED) and is_closed(
             resolved, deadline_policy, status == COMPLETE, now
         )
+        # A close instant already behind us is only worth naming on a closed row, so a
+        # withheld row past it is not told it "Closes" in the past.
+        if keys["is_closed"] or (closes_at is not None and closes_at > now):
+            keys["closes_at"] = closes_at
     return keys
 
 
