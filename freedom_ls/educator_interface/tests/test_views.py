@@ -3934,6 +3934,19 @@ class TestLearnerMessagesTab:
         assert composer.get("hx-target") == f"#{region_id}"
         assert composer.get("hx-swap") == "outerHTML"
 
+    def test_the_tab_composer_carries_the_disclosure_line(self, msg_client_for):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        composer = document.xpath("//form[@id='composer']")[0]
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(composer.text_content().split())
+        )
+
     def test_opening_the_tab_moves_the_educators_read_marker(self, msg_client_for):
         organisation = OrganisationFactory()
         educator = _msg_educator(organisation)
