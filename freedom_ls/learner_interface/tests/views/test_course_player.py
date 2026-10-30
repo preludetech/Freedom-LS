@@ -3087,6 +3087,25 @@ def test_the_completion_is_recorded_against_the_resolved_record(
 
 
 @pytest.mark.django_db
+def test_marking_a_complete_topic_again_keeps_its_first_completion_time(
+    mock_site_context, client
+):
+    course = _course_with_titled_topics("Only Topic")
+    user = UserFactory()
+    register_user_for_course(course, user)
+    first_completion = datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+    completion = topic_completion(
+        course, user, course.viewable_items()[0], complete_time=first_completion
+    )
+    client.force_login(user)
+
+    client.post(_item_url(course, 1), {"mark_complete": "1"})
+
+    completion.refresh_from_db()
+    assert completion.complete_time == first_completion
+
+
+@pytest.mark.django_db
 def test_the_finish_page_mints_the_record_a_bare_registration_never_had(
     mock_site_context, client
 ):
@@ -4381,7 +4400,8 @@ def test_a_closed_form_cannot_be_started(closing_form_course):
     )
 
     assert response.url == reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
     )
     assert not FormProgress.objects.filter(form=form).exists()
 
@@ -4402,7 +4422,8 @@ def test_a_closed_form_page_is_refused_and_writes_nothing(closing_form_course, m
     )
 
     assert response.url == reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
     )
     assert not FormProgress.objects.filter(form=form).exists()
     assert not QuestionAnswer.objects.filter(question=question).exists()

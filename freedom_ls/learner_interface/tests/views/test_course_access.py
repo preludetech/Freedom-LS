@@ -40,7 +40,11 @@ from freedom_ls.deadlines.models import (
     CourseDeadlineConfig,
     DeadlineKind,
 )
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+)
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -1025,11 +1029,13 @@ REGISTERED_AT = datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC)
 AFTER_END = datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC)
 
 
-def _ended_course(after_access_ended: str = AfterAccessEnded.NOTHING) -> tuple:
+def _ended_course(
+    after_access_ended: str = AfterAccessEnded.NOTHING, *, submit_on_exit: bool = True
+) -> tuple:
     """A time-limited course (a topic, then a form) whose access ends under its policy."""
     course = CourseFactory(time_limit_days=30)
     course.items.create(child=TopicFactory(), order=0)
-    form = FormFactory(submit_on_exit=True)
+    form = FormFactory(submit_on_exit=submit_on_exit)
     course.items.create(child=form, order=1)
     CourseDeadlineConfigFactory(
         course=course,
@@ -1114,17 +1120,41 @@ def test_an_ended_learner_cannot_finish_the_course(mock_site_context):
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_END, tick=False)
+@pytest.mark.parametrize("submit_on_exit", [True, False])
 def test_submit_and_exit_finalises_an_open_attempt_for_an_ended_learner(
-    mock_site_context,
+    mock_site_context, submit_on_exit
 ):
-    course, form = _ended_course()
+    course, form = _ended_course(submit_on_exit=submit_on_exit)
     user, _record, client = _ended_learner(course)
     attempt = form_attempt(course, user, form)
 
-    client.post(_player_urls(course)["form_submit_and_exit"])
+    response = client.post(_player_urls(course)["form_submit_and_exit"])
+
+    attempt.refresh_from_db()
+    assert response["Location"] == _player_urls(course)["course_form_complete"]
+    assert attempt.completed_time is not None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_submit_and_exit_saves_no_posted_answers_for_an_ended_learner(
+    mock_site_context,
+):
+    """Ended access has no later to resume in: the attempt is scored as it stands."""
+    course, form = _ended_course()
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="short_text", order=0)
+    user, _record, client = _ended_learner(course)
+    attempt = form_attempt(course, user, form)
+
+    client.post(
+        _player_urls(course)["form_submit_and_exit"],
+        {"page_number": "1", f"question_{question.id}": "late answer"},
+    )
 
     attempt.refresh_from_db()
     assert attempt.completed_time is not None
+    assert not attempt.answers.exists()
 
 
 @pytest.mark.django_db
@@ -1139,6 +1169,25 @@ def test_results_of_a_completed_attempt_stay_open_to_an_ended_learner(
     response = client.get(_player_urls(course)["course_form_complete"])
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_shows_no_outline_or_next_step_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    html = response.content.decode()
+    urls = _player_urls(course)
+    assert response.context["course_index"] == []
+    assert f'href="{urls["form_start"]}"' not in html
+    assert f'href="{urls["view_course_item"]}"' not in html
+    assert f'href="{urls["course_finish"]}"' not in html
 
 
 @pytest.mark.django_db
@@ -1410,3 +1459,22 @@ def test_the_player_outline_keeps_urls_only_on_completed_rows(mock_site_context)
     topic_row, form_row = response.context["course_index"]
     assert topic_row["url"] is not None
     assert form_row["url"] is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_keeps_the_outline_for_an_ended_learner_who_keeps_it(
+    mock_site_context,
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    html = response.content.decode()
+    topic_row, _form_row = response.context["course_index"]
+    assert topic_row["url"] is not None
+    assert f'href="{_player_urls(course)["form_start"]}"' not in html
+    assert f'href="{_player_urls(course)["course_finish"]}"' not in html

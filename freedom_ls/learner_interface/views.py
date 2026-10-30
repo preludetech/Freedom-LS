@@ -46,7 +46,11 @@ from freedom_ls.course_access.visibility import raise_404_if_unavailable
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.deadlines.consequences import access_end_instant, shows_overdue
+from freedom_ls.deadlines.consequences import (
+    access_end_instant,
+    is_closed,
+    shows_overdue,
+)
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
@@ -160,8 +164,8 @@ def _card_deadline_line(
     deadline_policy: ResolvedDeadlinePolicy | None,
     now: datetime,
 ) -> CardDeadlineLine:
-    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A closed
-    # leaf, and a past one that mark_overdue off leaves unmarked, counts as missed. An
+    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A past
+    # leaf counts as missed whether or not it carries the overdue mark or has closed. An
     # in-progress course is never complete, so the time limit's overdue check takes
     # completed=False.
     open_leaves = [
@@ -179,7 +183,7 @@ def _card_deadline_line(
             row["is_closed"],
         )
         for row in open_leaves
-        if row["is_overdue"] or row["is_closed"] or row["due_at"] <= now
+        if row["due_at"] <= now
     ]
     upcoming = [
         CardDeadline(
@@ -194,26 +198,12 @@ def _card_deadline_line(
     ]
     time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
     if time_limit.due_at is not None:
-        if deadline_policy is not None and shows_overdue(
+        overdue = deadline_policy is not None and shows_overdue(
             time_limit, deadline_policy, False, now
-        ):
-            missed.append(
-                CardDeadline(
-                    COURSE_DEADLINE_TITLE, time_limit.due_at, True, IN_PROGRESS
-                )
-            )
-        elif time_limit.due_at <= now:
-            missed.append(
-                CardDeadline(
-                    COURSE_DEADLINE_TITLE, time_limit.due_at, False, IN_PROGRESS
-                )
-            )
-        else:
-            upcoming.append(
-                CardDeadline(
-                    COURSE_DEADLINE_TITLE, time_limit.due_at, False, IN_PROGRESS
-                )
-            )
+        )
+        (missed if time_limit.due_at <= now else upcoming).append(
+            CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at, overdue, IN_PROGRESS)
+        )
 
     def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
         return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
@@ -897,12 +887,14 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         stamp_course_access_badge(course, badge=entry.access_badge)
         _stamp_single_organisation(course)
         if entry.status in in_player:
+            decision = decisions[course.pk]
+            setattr(course, "access_ended_at", decision.access_ended_at)  # noqa: B010
             # The listing resolved the record already; the catalogue shows no
             # deadline line, so none are resolved here.
             _annotate_next_up(
                 course,
                 request.user,
-                can_access_content=decisions[course.pk].can_access_content,
+                can_access_content=decision.can_access_content,
                 course_progress=entry.course_progress,
                 course_deadlines=None,
                 deadline_policy=None,
@@ -1229,6 +1221,26 @@ def _is_complete_for_learner(
     )
 
 
+def _is_closed_for_learner(
+    course_progress: CourseProgress | None,
+    collection_item: ContentCollectionItem,
+    now: datetime,
+) -> bool:
+    """Whether this placement has closed for this learner: its own deadline and the
+    record's policy, with no course index built."""
+    if course_progress is None:
+        return False
+    resolved = course_deadlines(course_progress).items.get(collection_item.pk)
+    if resolved is None:
+        return False
+    return is_closed(
+        resolved,
+        get_deadline_policy().resolve(course_progress),
+        _is_complete_for_learner(course_progress, collection_item),
+        now,
+    )
+
+
 def _ended_route_redirect(
     decision: CourseAccessDecision,
     course: Course,
@@ -1283,9 +1295,9 @@ def _blocked_item_redirect(
 ) -> HttpResponseRedirect | None:
     """Turn away an item the course index shows as BLOCKED, or None if it is open.
 
-    With ``refuse_closed`` a CLOSED item is turned away too. The routes that start or
-    fill in a form set it; the player page does not, because it renders a closed notice
-    at the item's own URL instead of redirecting.
+    With ``refuse_closed`` a CLOSED item is sent to its own player page, which renders
+    the closed notice instead of the item. The routes that start or fill in a form set
+    it; the player page does not, since it is the page that draws the notice.
 
     Sequential unlock used to live only in the table of contents, which drew a
     locked item as unlinked text and left its URL open. Reading the decision off
@@ -1304,10 +1316,16 @@ def _blocked_item_redirect(
             course_progress=course_progress,
         )
     status = current_entry_status(course_index)
-    if status == BLOCKED or (refuse_closed and status == CLOSED):
+    if status == BLOCKED:
         # course_detail, never course_home: course_home resumes to the last item
         # accessed, which would bounce straight back here.
         return redirect("learner_interface:course_detail", course_slug=course.slug)
+    if refuse_closed and status == CLOSED:
+        # The item's own page draws the closed notice, with the submit button for
+        # an open attempt. It records no visit, so nothing resumes back here.
+        return redirect(
+            "learner_interface:view_course_item", course_slug=course.slug, index=index
+        )
     return None
 
 
@@ -1655,8 +1673,10 @@ def view_topic(
     if request.method == "POST" and "mark_complete" in request.POST:
         if topic_progress is None:
             raise Http404("No course progress record to record this completion in.")
-        topic_progress.complete_time = timezone.now()
-        topic_progress.save()
+        # The first completion is the one that counts; a re-post keeps its time.
+        if topic_progress.complete_time is None:
+            topic_progress.complete_time = timezone.now()
+            topic_progress.save()
 
         if next_url:
             return redirect(next_url)
@@ -1974,6 +1994,8 @@ def course_form_complete(request, course_slug, index):
     )
     if no_access is not None:
         return no_access
+    access_ended = decision.access_ended_at is not None
+    keeps_outline = _shows_ended_outline(decision)
 
     # Get the most recent completed attempt at this placement
     form_progress = (
@@ -2040,13 +2062,13 @@ def course_form_complete(request, course_slug, index):
 
     # Previous means the item before this one in the course, the same as it does
     # in every other player footer. Stepping back into this form is the retry
-    # button's job, not this one's.
+    # button's job, not this one's. An ended learner gets no footer at all.
     previous_url = (
         reverse(
             "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index - 1},
         )
-        if index > 1
+        if index > 1 and not access_ended
         else None
     )
 
@@ -2062,14 +2084,18 @@ def course_form_complete(request, course_slug, index):
         "next_url": next_url,
         "previous_url": previous_url,
         "retry_url": retry_url,
-        # Player chrome (outline panel + breadcrumb).
+        "access_ended": access_ended,
+        # Player chrome (outline panel + breadcrumb). Under "nothing" this is the one
+        # player page an ended learner still reaches, and it carries no outline, so
+        # the chrome is handed an empty index to draw.
         **_player_chrome_context(
             request,
             course,
             form,
             index,
+            course_index=[] if access_ended and not keeps_outline else None,
             course_progress=course_progress,
-            access_ended_outline=_shows_ended_outline(decision),
+            access_ended_outline=keeps_outline,
         ),
     }
 
@@ -2211,13 +2237,11 @@ def form_submit_and_exit(
     # saved (resumable), not scored, so never finalise one here — send the
     # learner back to the form start screen instead.
     course_progress = _ensure_player_course_progress(request.user, course)
-    # A closed form can no longer be continued, so its open attempt is finalised
-    # whatever its exit strategy; the learner would otherwise be stuck with it.
-    closed = (
-        current_entry_status(
-            _player_course_index(request.user, course, index, course_progress)
-        )
-        == CLOSED
+    # A closed form, or one whose learner's access has ended, can no longer be
+    # continued, so its open attempt is finalised whatever its exit strategy; the
+    # learner would otherwise be stuck with it.
+    closed = decision.access_ended_at is not None or _is_closed_for_learner(
+        course_progress, collection_item, timezone.now()
     )
     if not form.submit_on_exit and not closed:
         return redirect(

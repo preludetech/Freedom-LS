@@ -77,9 +77,14 @@ docked outline panel carries its own progress, so the header stays uncluttered.
     <div id="course-toc-region">
         {% include "learner_interface/partials/course_toc_header.html" %}
 
-        {% with children=course_index %}
-            {% include "learner_interface/partials/course_minimal_toc.html#course-children" %}
-
-        {% endwith %}
+        {% comment %}
+        An ended learner whose policy keeps no outline gets an empty index: the
+        header stays, the rows do not.
+        {% endcomment %}
+        {% if course_index %}
+            {% with children=course_index %}
+                {% include "learner_interface/partials/course_minimal_toc.html#course-children" %}
+            {% endwith %}
+        {% endif %}
     </div>
 {% endblock sidebar_content %}

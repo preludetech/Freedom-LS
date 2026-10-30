@@ -5,11 +5,7 @@
     under the row's icon. {% endcomment %}
     {% if child.due_at and child.status != "COMPLETE" %}
         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 {{ deadline_indent }}">
-            {% if child.status == "BLOCKED" %}
-                {% include "learner_interface/partials/deadline_labels.html" with withheld=True %}
-            {% else %}
-                {% include "learner_interface/partials/deadline_labels.html" %}
-            {% endif %}
+            {% include "learner_interface/partials/deadline_labels.html" %}
         </div>
     {% endif %}
 {% endpartialdef %}
