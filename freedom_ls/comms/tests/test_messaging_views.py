@@ -1410,6 +1410,31 @@ class TestRecipientPicker:
         assert link.get("hx-get") == f"{start_url()}?recipient={kai.pk}"
         assert link.get("hx-target") == "#thread-pane"
 
+    def test_searching_from_the_pane_keeps_results_targeting_the_thread_pane(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        """A search made from the pane re-rendered links that navigated away."""
+        kai = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            search_url(), {"q": "kai", "in_pane": "1"}, HTTP_HX_REQUEST="true"
+        )
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-get") == f"{start_url()}?recipient={kai.pk}"
+        assert link.get("hx-target") == "#thread-pane"
+
+    def test_the_pane_picker_search_form_asks_for_in_pane_results(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        form = html.fromstring(response.content).get_element_by_id("recipient-search")
+        assert json.loads(form.get("hx-vals")) == {"in_pane": "1"}
+
     def test_results_outside_the_pane_do_not_target_it(
         self, mock_site_context, logged_in_client
     ) -> None:

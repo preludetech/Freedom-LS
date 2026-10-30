@@ -672,7 +672,9 @@ def partial_recipient_search(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "comms/partials/recipient_picker.html#results",
-        _picker_context(request, request.GET.get("q", "")),
+        _picker_context(
+            request, request.GET.get("q", ""), in_pane=request.GET.get("in_pane") == "1"
+        ),
     )
 
 

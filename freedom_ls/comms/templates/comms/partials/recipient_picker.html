@@ -11,6 +11,7 @@ state into the messages page's #thread-pane instead of navigating.
       hx-get="{{ search_url }}"
       hx-trigger="submit, input changed delay:300ms from:#recipient-q, search from:#recipient-q"
       hx-sync="this:replace"
+      {% if in_pane %}hx-vals='{"in_pane": "1"}'{% endif %}
       hx-target="#recipient-results"
       hx-select="#recipient-results"
       hx-swap="outerHTML">
