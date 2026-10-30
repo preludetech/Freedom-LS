@@ -74,7 +74,6 @@ def test_sidebar_lists_the_seven_sections_each_with_an_icon(
         "Cohorts",
         "Learners",
         "Courses",
-        "Messages",
         "Members",
         "Audit log",
     ]
@@ -211,3 +210,28 @@ def test_a_user_with_no_name_shows_their_email_once(
     assert user_block.text_content().count("nameless@example.com") == 1
     (avatar,) = user_block.cssselect("[aria-hidden='true'].rounded-full")
     assert avatar.text_content().strip() == "NA"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("messaging_enabled", [True, False])
+def test_sidebar_has_no_messages_item(
+    mock_site_context: Site,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    settings,
+    messaging_enabled: bool,
+) -> None:
+    settings.MESSAGING_ENABLED = messaging_enabled
+    organisation = OrganisationFactory()
+    user = UserFactory(staff=True)
+    assign_object_role(user, organisation, "organisation_admin")
+    response = logged_in_client(user).get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
+        )
+    )
+    (nav,) = lxml.html.fromstring(response.content).cssselect("#sidebar-nav")
+
+    labels = [link.text_content().strip() for link in nav.cssselect("ul > li > a")]
+
+    assert "Messages" not in labels

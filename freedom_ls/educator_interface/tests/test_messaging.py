@@ -1,4 +1,4 @@
-"""Which of an educator's conversations belong to an organisation's section."""
+"""The educator's own conversation with a learner."""
 
 from __future__ import annotations
 
@@ -18,12 +18,9 @@ from freedom_ls.comms.messaging_policy import (
 )
 from freedom_ls.comms.models import Conversation
 from freedom_ls.educator_interface.messaging import (
-    conversations_in_organisation,
     own_conversation_with,
 )
 from freedom_ls.learner_management.factories import (
-    CohortFactory,
-    CohortMembershipFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, Learner
@@ -68,99 +65,6 @@ def _educator(organisation: Organisation) -> User:
     educator = cast(User, UserFactory(staff=True))
     _grant(educator, "organisation_admin", organisation)
     return educator
-
-
-def test_lists_the_educators_conversations_with_a_visible_learner():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    conversation = _conversation(educator, _learner(organisation).user)
-
-    assert list(conversations_in_organisation(educator, organisation)) == [conversation]
-
-
-def test_leaves_out_a_conversation_with_a_learner_of_another_organisation():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    _conversation(educator, _learner(OrganisationFactory()).user)
-
-    assert not conversations_in_organisation(educator, organisation).exists()
-
-
-def test_leaves_out_conversations_between_other_people():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    colleague = _educator(organisation)
-    _conversation(colleague, _learner(organisation).user)
-
-    assert not conversations_in_organisation(educator, organisation).exists()
-
-
-def test_leaves_out_a_conversation_with_another_educator():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    _conversation(educator, _educator(organisation))
-
-    assert not conversations_in_organisation(educator, organisation).exists()
-
-
-def test_a_cohort_viewer_does_not_see_a_conversation_with_a_learner_outside_their_cohort():
-    organisation = OrganisationFactory()
-    cohort = CohortFactory(organisation=organisation)
-    cohort_educator = cast(User, UserFactory(staff=True))
-    _grant(cohort_educator, "cohort_admin", cohort)
-    learner = _learner(organisation)
-    CohortMembershipFactory(cohort=cohort, learner=_learner(organisation))
-    _conversation(cohort_educator, learner.user)
-
-    assert not conversations_in_organisation(cohort_educator, organisation).exists()
-
-
-def test_a_cohort_viewer_sees_a_conversation_with_a_learner_in_their_cohort():
-    organisation = OrganisationFactory()
-    cohort = CohortFactory(organisation=organisation)
-    cohort_educator = cast(User, UserFactory(staff=True))
-    _grant(cohort_educator, "cohort_admin", cohort)
-    learner = _learner(organisation)
-    CohortMembershipFactory(cohort=cohort, learner=learner)
-    conversation = _conversation(cohort_educator, learner.user)
-
-    assert list(conversations_in_organisation(cohort_educator, organisation)) == [
-        conversation
-    ]
-
-
-def test_a_cohort_viewer_does_not_see_a_cohort_admins_conversation_with_the_same_learner():
-    organisation = OrganisationFactory()
-    cohort = CohortFactory(organisation=organisation)
-    learner = _learner(organisation)
-    CohortMembershipFactory(cohort=cohort, learner=learner)
-    admin = cast(User, UserFactory(staff=True))
-    _grant(admin, "cohort_admin", cohort)
-    viewer = cast(User, UserFactory(staff=True))
-    _grant(viewer, "cohort_viewer", cohort)
-    _conversation(admin, learner.user)
-
-    assert not conversations_in_organisation(viewer, organisation).exists()
-
-
-def test_a_conversation_whose_learner_was_deleted_is_left_out():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    learner = _learner(organisation)
-    _conversation(educator, learner.user)
-    learner.user.delete()
-
-    assert not conversations_in_organisation(educator, organisation).exists()
-
-
-def test_keeps_the_inbox_annotations():
-    organisation = OrganisationFactory()
-    educator = _educator(organisation)
-    _conversation(educator, _learner(organisation).user)
-
-    conversation = conversations_in_organisation(educator, organisation).get()
-
-    assert conversation.is_unread is False
 
 
 def test_own_conversation_with_returns_the_shared_conversation_and_the_reply_decision(
