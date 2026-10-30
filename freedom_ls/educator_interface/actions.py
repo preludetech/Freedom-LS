@@ -703,7 +703,7 @@ class RegisterLearnerForCourseAction(FormPanelAction):
     """Registers the learner on the page for a course they hold no active
     individual registration for."""
 
-    label = "Register for course"
+    label = "Register for a course"
     action_name = "register_for_course"
     capability = "freedom_ls_learner_management.add_learnercourseregistration"
     submit_buttons = [
@@ -2702,7 +2702,7 @@ class CourseRegistrationBulkAction(CoursePickerMixin, LearnerBulkAction):
 
 @register_bulk_action
 class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
-    label = "Register for course"
+    label = "Register for a course"
     action_name = "register_for_course"
     capability = ADD_LEARNERCOURSEREGISTRATION
     unchanged_reason = "already registered individually"
@@ -2722,7 +2722,7 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
 
 @register_bulk_action
 class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
-    label = "Unregister from course"
+    label = "Unregister from a course"
     action_name = "unregister_from_course"
     variant = "error"
     capability = CHANGE_LEARNERCOURSEREGISTRATION
@@ -2899,7 +2899,7 @@ class CohortCourseBulkAction(CoursePickerMixin, CohortBulkAction):
 
 @register_bulk_action
 class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
-    label = "Register for course"
+    label = "Register for a course"
     action_name = "register"
     capability = ADD_COHORTCOURSEREGISTRATION
     unchanged_reason = "already registered"
@@ -2919,7 +2919,7 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
 
 @register_bulk_action
 class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
-    label = "Unregister from course"
+    label = "Unregister from a course"
     action_name = "unregister"
     variant = "error"
     capability = CHANGE_COHORTCOURSEREGISTRATION
