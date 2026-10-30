@@ -42,10 +42,18 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] Rewrite QA plan's 'Stale selections' bullet and step 6.12 to match spec R1.4 (keys mode skips a changed row; a count change gives the 422)
 - [x] Add a no-JS test for confirming a picker bulk action, and add the picker steps to QA plan step 6.13
 - [x] Re-run QA steps 6.12 and 6.13 (picker, JS off) against the updated QA plan
-- [ ] (user) Decide what to do about QA bug: the import pages show no breadcrumb/back link to Learners, which the QA plan expects and the spec does not require (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: course bulk actions read 'Register for course' / 'Unregister from course' (matching main's single-learner action) where the spec says 'Register for a course' / 'Unregister from a course' (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: bulk result and skip wording ('2 already in the cohort', '1 is inactive', 'emailed recently') differs from the QA plan's sentences, which the spec does not fix (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: the selection bar is fixed to the bottom only below md, so at 768px it sits under the table where the QA plan expects it fixed (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: the import pages show no breadcrumb/back link to Learners, which the QA plan expects and the spec does not require (TDD: failing test first, then fix)
+  - Decision: fix it. Every import page gets the "← Learners" back link an instance page gets.
+- [x] (user) Decide what to do about QA bug: course bulk actions read 'Register for course' / 'Unregister from course' (matching main's single-learner action) where the spec says 'Register for a course' / 'Unregister from a course' (TDD: failing test first, then fix)
+  - Decision: fix it, the single-learner action included.
+- [x] (user) Decide what to do about QA bug: bulk result and skip wording ('2 already in the cohort', '1 is inactive', 'emailed recently') differs from the QA plan's sentences, which the spec does not fix (TDD: failing test first, then fix)
+  - Decision: fix it. Result lines become past-tense sentences; the cohort skip reads 'an inactive cohort'; the resend skip reads 'setup email sent recently'.
+- [x] (user) Decide what to do about QA bug: the selection bar is fixed to the bottom only below md, so at 768px it sits under the table where the QA plan expects it fixed (TDD: failing test first, then fix)
+  - Decision: fix it. The bar stays fixed until the sidebar docks at lg.
+- [x] Fix the import pages (TDD: failing test first): every import page shows a back link to Learners, and spec R5.1 says so
+- [ ] Fix the course action labels (TDD: failing test first): 'Register for a course' and 'Unregister from a course' on both lists and the learner page
+- [ ] Fix the bulk result wording (TDD: failing test first): each skip count reads as a sentence ('2 were already in the cohort.'), the cohort skip reads 'an inactive cohort', the resend skip reads 'setup email sent recently'; update spec R1.3, QA plan §6.11 and the upgrade notes
+- [ ] Fix the selection bar (TDD: failing test first): fixed to the bottom below lg, with the table padded so the bar covers no row
 
 ## 3b. Portable bulk runs (review follow-up)
 
