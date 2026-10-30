@@ -16,7 +16,10 @@ up over the bottom of the card header, the name beside its lower half. The
 negative margin lives here, behind the default-organisation guard, so a card
 with no organisation to show keeps its normal spacing. The line is positioned
 so it paints over the header, but carries no z-index: the card's stretched
-title link overlays it, so a click on the avatar still opens the course.
+title link overlays it, so a click on the avatar still opens the course. Only
+the name is lifted above that link, so its title tooltip can show; it hands
+its click to the surrounding article's first link so the name still opens the
+course.
 
 Params:
   organisation — the organisation to name
@@ -32,6 +35,6 @@ Params:
         {% else %}
             <c-organisation-mark :organisation="organisation" :size="size" />
         {% endif %}
-        <span class="min-w-12 truncate {% if overlap %}pb-0.5 font-semibold{% endif %}" title="{{ organisation.name }}">{{ organisation.name }}</span>
+        <span x-data="stretchedLinkProxy" @click="open" class="relative z-10 min-w-12 truncate {% if overlap %}pb-0.5 font-semibold{% endif %}" title="{{ organisation.name }}">{{ organisation.name }}</span>
     </p>
 {% endif %}

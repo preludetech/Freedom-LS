@@ -110,7 +110,7 @@ def test_overlap_pulls_a_raised_large_mark_up_over_the_card_header(
 
     assert "-mt-6" in paragraph
     assert "items-end" in paragraph
-    # No z-index: the card's stretched title link must stay on top of the line.
+    # No z-index on the line: the avatar stays under the stretched title link.
     assert "z-" not in paragraph
     assert "size-12" in result
     assert "ring-surface" in result
@@ -121,3 +121,20 @@ def test_overlap_renders_nothing_for_the_default_organisation(mock_site_context)
     organisation = get_default_organisation(mock_site_context)
 
     assert _render_overlap(organisation).strip() == ""
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("overlap", ["", "true"])
+def test_name_span_is_lifted_above_the_stretched_title_link(mock_site_context, overlap):
+    """The titled name used to sit under the stretched link, so its tooltip never showed."""
+    organisation = OrganisationFactory(name="Acme Academy")
+    processed = _cotton_compiler.process(
+        f'<c-organisation-byline :organisation="organisation" overlap="{overlap}" />'
+    )
+
+    result = Template(processed).render(Context({"organisation": organisation}))
+    span = result.split("<span")[-1].split(">", 1)[0]
+
+    assert 'title="Acme Academy"' in span
+    assert "@click" in span
+    assert "relative z-10" in span

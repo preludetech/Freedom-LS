@@ -66,6 +66,17 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Hands a click to the stretched title link of the surrounding card or row
+    // (cotton/organisation-byline.html). The organisation name sits above that
+    // link so its title tooltip can show, which would otherwise swallow the
+    // click.
+    Alpine.data("stretchedLinkProxy", () => ({
+        open() {
+            const link = this.$el.closest("article")?.querySelector("a");
+            if (link) link.click();
+        },
+    }));
+
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
         open: false,
