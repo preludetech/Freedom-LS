@@ -129,6 +129,7 @@
       "Bash(git -C * submodule update*)",
       "Bash(uv run --directory * python manage.py check*)",
       "Bash(uv run --directory * python manage.py makemigrations --check*)",
+      "Bash(uv run --directory * python manage.py shell -c \"from django.conf import settings as s; print(list(s.INSTALLED_APPS)); print([str(d) for t in s.TEMPLATES for d in t.get('DIRS', [])])\")",
       "Bash(uv run --directory * git commit *)",
       "Bash(uv sync --directory *)",
       "Bash(npm --prefix * run tailwind_build*)"

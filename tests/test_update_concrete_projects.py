@@ -69,6 +69,9 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(uv sync --directory *)",
         "Bash(npm --prefix * run tailwind_build*)",
         "Bash(uv run --directory * python manage.py runserver*)",
+        "Bash(uv run --directory * python manage.py shell -c "
+        '"from django.conf import settings as s; print(list(s.INSTALLED_APPS)); '
+        "print([str(d) for t in s.TEMPLATES for d in t.get('DIRS', [])])\")",
     ],
 )
 def test_every_new_allow_verb_matches_a_spelled_command_form(entry: str) -> None:
@@ -182,3 +185,22 @@ def test_project_root_manage_and_pytest_forms_carry_directory() -> None:
         for b in bullets
         if re.search(r"manage\.py|pytest", b) and "--directory" not in b
     ] == []
+
+
+@pytest.mark.parametrize(
+    "spelled",
+    [
+        "Skill(fls-dev:do_qa)",
+        "project-root:",
+        "diff-range:",
+        "update_concrete_settings_",
+    ],
+)
+def test_qa_cell_names_do_qa_project_root_mode(spelled: str) -> None:
+    assert spelled in COMMAND.read_text()
+
+
+def test_command_never_uses_diffsettings() -> None:
+    fragments = code_fragments(COMMAND.read_text())
+
+    assert [f for f in fragments if "diffsettings" in f] == []
