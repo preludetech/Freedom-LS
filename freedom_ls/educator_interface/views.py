@@ -41,25 +41,15 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
-    inbox_for,
-    other_participant,
     refusal_alert_copy,
-    reply_decisions,
-    search_recipients,
     send_message,
 )
-from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import (
     CONVERSATION_CHANGED,
     composer_context,
     posted_client_key,
-    recipient_pk,
     thread_context,
-    unreachable_recipient_response,
 )
-from freedom_ls.comms.models import Conversation
-from freedom_ls.comms.templatetags.comms_tags import badge_count
-from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -109,8 +99,6 @@ from freedom_ls.educator_interface.filters import (
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
-    ConversationRow,
-    conversations_in_organisation,
     own_conversation_with,
 )
 from freedom_ls.educator_interface.paths import interface_path
@@ -156,7 +144,6 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
-    navigation_response,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
@@ -1288,247 +1275,6 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
             raise OrganisationScopeDenied
 
 
-class ConversationDataTable(DataTable):
-    """The educator's conversations with learners of the organisation.
-
-    Rows are ConversationRow objects: the Status column needs each row's reply
-    decision, which is decided for the whole page in one policy call so the
-    query count does not follow the number of rows.
-    """
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet:
-        scoped = cast(OrganisationScopedRequest, request)
-        return conversations_in_organisation(
-            cast(User, request.user), scoped.organisation
-        )
-
-    @staticmethod
-    def get_columns() -> list[Column]:
-        return [
-            Column(
-                header="With",
-                template="educator_interface/data-table-cells/conversation_with.html",
-                text_attr="other.display_name",
-                url_name="educator_interface:interface",
-                url_path_template="messages/{conversation.pk}",
-                htmx_nav=True,
-                card="primary",
-            ),
-            Column(
-                header="Last message",
-                template="educator_interface/data-table-cells/conversation_last_message.html",
-            ),
-            Column(
-                header="Status",
-                template="educator_interface/data-table-cells/conversation_state.html",
-            ),
-        ]
-
-    @classmethod
-    def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
-    ) -> Page:
-        page = super().get_rows(request, queryset, query)
-        viewer = cast(User, request.user)
-        conversations = list(page.object_list)
-        decisions = reply_decisions(viewer=viewer, conversations=conversations)
-        page.object_list = [
-            ConversationRow(
-                conversation=conversation,
-                other=other_participant(conversation, viewer),
-                can_reply=decisions[conversation.pk].allowed,
-            )
-            for conversation in conversations
-        ]
-        return page
-
-
-class ConversationThreadPanel(Panel):
-    """The conversation's thread, with its composer, inside the interface card."""
-
-    model = Conversation
-    template_name = "educator_interface/panels/conversation_thread.html"
-    card_flush = True
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context.update(thread_context(self.request, cast(Conversation, self.instance)))
-        organisation = cast(OrganisationScopedRequest, self.request).organisation
-        context["back_url"] = interface_path(organisation, "messages")
-        return context
-
-
-class NewMessageAction(PanelAction):
-    """Starts a conversation with a learner of the organisation, in the app modal.
-
-    The picker offers only learners the sender can see in this organisation
-    and the policy lets them message, so a learner elsewhere looks the same as
-    a name that does not exist.
-    """
-
-    label = "New message"
-    action_name = "new_message"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/new_message.html"
-
-    def _candidates(self, ctx: PanelContext) -> QuerySet[User]:
-        user = cast(User, ctx.request.user)
-        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
-        site = cast(Site, get_cached_site(ctx.request))
-        return (
-            get_messaging_policy()
-            .recipients_for(sender=user, site=site)
-            .filter(pk__in=learners_visible_to(user, organisation).values("user_id"))
-        )
-
-    def _modal_context(
-        self,
-        ctx: PanelContext,
-        recipient: User | None,
-        *,
-        client_key: UUID | None = None,
-        draft: str = "",
-        alert: str = "",
-    ) -> dict[str, object]:
-        action_url = self.get_action_url(ctx)
-        context: dict[str, object] = {
-            "recipient": recipient,
-            "other": recipient,
-            "search_url": action_url,
-            "choose_url": action_url,
-            "include_email": True,
-            "in_modal": True,
-        }
-        if recipient is None:
-            term = ctx.request.GET.get("q", "")
-            context["term"] = term.strip()
-            context["search"] = search_recipients(
-                sender=cast(User, ctx.request.user),
-                site=cast(Site, get_cached_site(ctx.request)),
-                term=term,
-                candidates=self._candidates(ctx),
-                include_email=True,
-                scope=cast(OrganisationScopedRequest, ctx.request).organisation,
-            )
-        else:
-            context["composer"] = composer_context(
-                client_key=client_key or uuid4(),
-                draft=draft,
-                alert=alert,
-                recipient=recipient,
-                action_url=action_url,
-                in_modal=True,
-            )
-        return context
-
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        raw = ctx.request.GET.get("recipient")
-        if raw is None:
-            return self._modal_context(ctx, None)
-        recipient = get_object_or_404(self._candidates(ctx), pk=recipient_pk(raw))
-        return self._modal_context(ctx, recipient)
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        request = ctx.request
-        client_key = posted_client_key(request)
-        recipient = (
-            self._candidates(ctx)
-            .filter(pk=recipient_pk(request.POST.get("recipient")))
-            .first()
-        )
-        if recipient is None:
-            return unreachable_recipient_response(request)
-        draft = request.POST.get("body", "")
-        result = send_message(
-            sender=cast(User, request.user),
-            body=draft,
-            client_key=client_key,
-            site=cast(Site, get_cached_site(request)),
-            recipient=recipient,
-        )
-        if result.message is not None:
-            organisation = cast(OrganisationScopedRequest, request).organisation
-            conversation = cast(Conversation, result.conversation)
-            return navigation_response(
-                interface_path(organisation, f"messages/{conversation.pk}")
-            )
-        alert = result.body_error or refusal_alert_copy(result.refusal, recipient)
-        return render(
-            request,
-            self.template_name,
-            self._modal_context(
-                ctx, recipient, client_key=client_key, draft=draft, alert=alert
-            ),
-            status=422,
-        )
-
-
-class ConversationInstanceView(InstanceView):
-    panel = ConversationThreadPanel
-
-    def get_actions(self) -> list[PanelAction]:
-        return [NewMessageAction()]
-
-
-class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
-    url_name = "messages"
-    menu_label = "Messages"
-    icon = "message"
-    model = Conversation
-    list_view = ConversationDataTable
-    table_key = "conversations"
-    instance_view = ConversationInstanceView
-
-    @classmethod
-    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [NewMessageAction()]
-
-    @classmethod
-    def is_available(cls, request: HttpRequest) -> bool:
-        return comms_config.MESSAGING_ENABLED
-
-    @classmethod
-    def get_menu_count_url(cls, request: HttpRequest) -> str | None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        return reverse(
-            "educator_interface:messages_unread_count",
-            kwargs={"organisation_slug": organisation.slug},
-        )
-
-    @classmethod
-    def get_menu_count_poll_seconds(cls) -> int:
-        return comms_config.MESSAGE_INBOX_POLL_SECONDS
-
-    @classmethod
-    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
-        """The instance view over the educator's own copy of the conversation.
-
-        Loaded through the inbox query after authorisation, so the other
-        participant is already on the instance for the heading and the thread.
-        """
-        authorised = super().get_instance_view(request, pk)
-        conversation = inbox_for(cast(User, request.user)).get(
-            pk=authorised.instance.pk
-        )
-        return cls.instance_view(conversation)
-
-    @classmethod
-    def get_instance_label(cls, instance: Model) -> str:
-        participants = getattr(instance, "other_participants", None)
-        return participants[0].user.display_name if participants else "Deleted user"
-
-    @classmethod
-    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        if (
-            not conversations_in_organisation(cast(User, request.user), organisation)
-            .filter(pk=instance.pk)
-            .exists()
-        ):
-            raise OrganisationScopeDenied
-
-
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -1938,7 +1684,7 @@ class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):
 interface_config = [
     NavGroup(
         "Teaching",
-        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig, MessagesConfig],
+        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig],
     ),
     NavGroup("Administration", [MemberConfig, AuditLogConfig]),
 ]
@@ -2013,24 +1759,6 @@ def cohort_report_download(
     if not can(request.user, DOWNLOAD_COHORT_REPORT, cohort):
         raise Http404
     return report_file_response(report)
-
-
-@login_required_htmx_to("educator_interface:root")
-def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpResponse:
-    """The Messages nav item's count: the unread conversations of the organisation.
-
-    The body is empty for zero so the sidebar shows no badge.
-    """
-    if not comms_config.MESSAGING_ENABLED:
-        raise Http404
-    user = cast(User, request.user)
-    organisation = _resolve_organisation(user, organisation_slug)
-    unread = (
-        conversations_in_organisation(user, organisation)
-        .filter(Q(is_unread=True))
-        .count()
-    )
-    return HttpResponse(badge_count(unread) if unread else "")
 
 
 @login_required

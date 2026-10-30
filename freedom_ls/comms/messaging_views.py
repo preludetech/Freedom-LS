@@ -135,7 +135,6 @@ def composer_context(
     conversation: Conversation | None = None,
     recipient: User | None = None,
     action_url: str | None = None,
-    in_modal: bool = False,
     in_quick_view: bool = False,
     swap_target: str | None = None,
 ) -> dict[str, object]:
@@ -144,9 +143,7 @@ def composer_context(
     A composer for an existing conversation posts to its ``send`` URL and
     appends the new message to the log. A composer for a first message posts to
     ``start`` with the recipient, and replaces itself when refused. ``action_url``
-    posts somewhere else instead, and ``in_modal`` makes the answer replace the
-    whole app modal body, which is where a first message composed in the modal
-    sends its refusal. ``in_quick_view`` makes the answer replace the quick-view
+    posts somewhere else instead. ``in_quick_view`` makes the answer replace the quick-view
     box instead, so the drawer around it stays open. ``swap_target`` is the id
     of a host page's region that the answer replaces whole.
     """
@@ -163,7 +160,6 @@ def composer_context(
         "counter_from": max(0, config.MESSAGE_MAX_LENGTH - COUNTER_MARGIN),
         "action_url": action_url,
         "recipient": recipient,
-        "in_modal": in_modal,
         "in_quick_view": in_quick_view,
         "swap_target": swap_target,
     }

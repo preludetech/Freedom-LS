@@ -1,8 +1,0 @@
-{% load comms_tags %}
-{% with sent_at=object.conversation.last_message_at %}
-    {% if sent_at %}
-        <time datetime="{{ sent_at|date:'c' }}" title="{{ sent_at }}">{{ sent_at|relative_time }}</time>
-    {% else %}
-        -
-    {% endif %}
-{% endwith %}

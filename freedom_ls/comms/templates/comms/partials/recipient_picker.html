@@ -2,9 +2,8 @@
 The recipient picker: a search field and the grouped results. It is rendered
 whole inside #recipient-picker on the new-message page, and as just the
 "results" partial when the search field asks for fresh matches. Each result
-links to choose_url with the person's id; with in_modal it loads the
-chosen state into the app modal body instead of navigating, and with in_pane
-it loads it into the messages page's #thread-pane.
+links to choose_url with the person's id; with in_pane it loads the chosen
+state into the messages page's #thread-pane instead of navigating.
 {% endcomment %}
 <form id="recipient-search"
       method="get"
@@ -15,7 +14,7 @@ it loads it into the messages page's #thread-pane.
       hx-target="#recipient-results"
       hx-select="#recipient-results"
       hx-swap="outerHTML">
-    <c-panel-search-field name="q" id="recipient-q" value="{{ term }}" label="To" placeholder="Search by name" autofocus="{% if in_modal %}true{% endif %}" hx-preserve />
+    <c-panel-search-field name="q" id="recipient-q" value="{{ term }}" label="To" placeholder="Search by name" hx-preserve />
 </form>
 {% partialdef results inline %}
     <div id="recipient-results" class="mt-4">
@@ -32,7 +31,7 @@ it loads it into the messages page's #thread-pane.
                         {% for user in group.users %}
                             <li>
                                 <a href="{{ choose_url }}?recipient={{ user.pk }}"
-                                   {% if in_modal %}hx-get="{{ choose_url }}?recipient={{ user.pk }}" hx-target="#app-modal-body" hx-swap="innerHTML"{% elif in_pane %}hx-get="{{ choose_url }}?recipient={{ user.pk }}" hx-target="#thread-pane" hx-swap="innerHTML" hx-push-url="true"{% endif %}
+                                   {% if in_pane %}hx-get="{{ choose_url }}?recipient={{ user.pk }}" hx-target="#thread-pane" hx-swap="innerHTML" hx-push-url="true"{% endif %}
                                    class="block min-h-6 px-3 py-2 hover:bg-surface-2">
                                     <c-panel-avatar-chip name="{{ user.display_name }}"
                                                          user_id="{{ user.pk }}"

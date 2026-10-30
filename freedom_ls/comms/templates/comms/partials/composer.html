@@ -21,9 +21,6 @@ message.
       {% elif composer.in_quick_view %}
           hx-target="#quick-view-message-box"
           hx-swap="outerHTML"
-      {% elif composer.in_modal %}
-          hx-target="#app-modal-body"
-          hx-swap="innerHTML"
       {% elif composer.recipient %}
           hx-target="this"
           hx-swap="outerHTML"
@@ -32,7 +29,7 @@ message.
           hx-swap="beforeend"
           hx-include="#thread-cursor"
       {% endif %}
-      hx-sync="{% if composer.swap_target or composer.in_quick_view or composer.in_modal or composer.recipient %}this:drop{% else %}#thread-log:replace{% endif %}"
+      hx-sync="{% if composer.swap_target or composer.in_quick_view or composer.recipient %}this:drop{% else %}#thread-log:replace{% endif %}"
       hx-disabled-elt="find button[type=submit]"
       data-max-length="{{ composer.max_length }}"
       data-counter-from="{{ composer.counter_from }}"
@@ -88,7 +85,6 @@ message.
           aria-describedby="composer-error"
           {% if composer.alert %}aria-invalid="true"{% endif %}
           x-bind:aria-invalid="failed || {{ composer.alert|yesno:'true,false' }}"
-          {% if composer.in_modal %}autofocus{% endif %}
           class="min-h-[2.5rem] w-full flex-1 rounded-lg border border-border bg-surface px-3 py-2 aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error">{{ composer.draft }}</textarea>
 {% endpartialdef %}
 
