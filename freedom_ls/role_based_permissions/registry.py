@@ -76,6 +76,8 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_learner_management.delete_organisationmember": "Can delete organisation member",
     "freedom_ls_learner_management.bulk_manage_learners": "Can bulk manage learners",
     "freedom_ls_learner_management.download_cohort_report": "Can download cohort report",
+    # --- comms app (label: freedom_ls_comms) ---
+    "freedom_ls_comms.view_conversation": "Can view conversation",
     # --- role_based_permissions app (label: freedom_ls_role_based_permissions) ---
     # ACTIVE — used in the checked assignment utilities
     "freedom_ls_role_based_permissions.assign_site_admin": "Can grant or remove the site_admin role",
