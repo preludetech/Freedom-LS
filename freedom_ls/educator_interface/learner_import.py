@@ -285,7 +285,10 @@ def commit_rows(learner_import: LearnerImport, user: User) -> None:
             if check.entry is not None:
                 try:
                     result = add_learner(
-                        learner_import.organisation, check.entry, check.cohort
+                        learner_import.organisation,
+                        check.entry,
+                        check.cohort,
+                        actor=user,
                     )
                 except ValueError:
                     reason_override = COHORT_UNAVAILABLE_REASON

@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.base.csv_import import CsvImportError
 from freedom_ls.educator_interface.learner_import import (
     PERMISSION_LOST_MESSAGE,
@@ -356,3 +357,19 @@ def test_the_task_path_with_no_ambient_site_writes_site_on_every_row(
     assert [row.final_label for row in rows] == [ImportLabel.NEW_ACCOUNT] * 2
     assert Learner._base_manager.filter(organisation=other).count() == 1
     assert Learner._base_manager.get(pk=bystander.pk).is_active
+
+
+def test_a_committed_import_attributes_its_entries_to_the_importer(
+    organisation: Organisation, admin: User, mock_site_context: Site
+) -> None:
+    """The commit called add_learner without an actor, so the entries an
+    import wrote said nobody added the learners."""
+    learner_import = create_learner_import(
+        admin, organisation, None, _file("a@example.com,,,", "b@example.com,,,")
+    )
+
+    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+
+    entries = AuditLogEntry.unscoped.filter(action="learner.added")
+    assert entries.count() == 2
+    assert {entry.actor for entry in entries} == {admin}

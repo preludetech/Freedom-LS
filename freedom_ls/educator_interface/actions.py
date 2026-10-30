@@ -569,6 +569,17 @@ def learner_state_actions() -> list[PanelAction]:
     return [DeactivateLearnerAction(), ReactivateLearnerAction()]
 
 
+def record_and_resend_setup_email(learner: Learner, actor: User) -> None:
+    """Send the learner the account setup email again and record who asked
+    for it. Raises what `resend_account_setup_email` raises."""
+    with transaction.atomic():
+        # The entry goes first: a refused send rolls it back, while a failed
+        # entry must not leave an email sent and the resend guard set with
+        # nothing in the log.
+        record_learner_entry(learner, "learner.setup_email_resent", actor)
+        resend_account_setup_email(learner.user, learner.organisation.name)
+
+
 class ResendSetupEmailAction(PanelAction):
     """Sends a pending learner the account setup email again, after confirmation."""
 
@@ -590,16 +601,7 @@ class ResendSetupEmailAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner = cast(Learner, ctx.instance)
         try:
-            with transaction.atomic():
-                # The entry goes first: a refused send rolls it back, while
-                # a failed entry must not leave an email sent and the resend
-                # guard set with nothing in the log.
-                record_learner_entry(
-                    learner,
-                    "learner.setup_email_resent",
-                    cast("User", ctx.request.user),
-                )
-                resend_account_setup_email(learner.user, learner.organisation.name)
+            record_and_resend_setup_email(learner, cast("User", ctx.request.user))
         except SetupEmailRecentlySent:
             return render(
                 ctx.request,
@@ -2302,7 +2304,7 @@ class EducatorBulkAction(RecordedBulkAction):
         """What the single-object action asks `can` about before acting."""
         raise NotImplementedError
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         """Call the service; False when it reports nothing changed."""
         raise NotImplementedError
 
@@ -2369,7 +2371,7 @@ class EducatorBulkAction(RecordedBulkAction):
     ) -> BulkOutcome:
         if not can(user, self.capability, self.scope_object(obj, cleaned_data)):
             return BulkOutcome("skipped", self.not_permitted_reason())
-        if self.perform(obj, cleaned_data):
+        if self.perform(obj, cleaned_data, cast("User", user)):
             return BulkOutcome("changed")
         # The service said nothing changed, so the reason the preview gave
         # applies here too.
@@ -2482,8 +2484,10 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return self.unchanged_reason if obj.pk in self.member_ids else None
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        return add_to_cohort(cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]))
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        return add_to_cohort(
+            cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
+        )
 
     def confirmation_wording(
         self,
@@ -2513,9 +2517,9 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return None if obj.pk in self.member_ids else self.unchanged_reason
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return remove_from_cohort(
-            cast(Learner, obj), cast(Cohort, cleaned_data["cohort"])
+            cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
         )
 
     def confirmation_wording(
@@ -2572,8 +2576,8 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
     target_state = False
     unchanged_reason = "already inactive"
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        return deactivate_learner(cast(Learner, obj))
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        return deactivate_learner(cast(Learner, obj), actor=actor)
 
     def confirmation_wording(
         self,
@@ -2604,8 +2608,8 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
     target_state = True
     unchanged_reason = "already active"
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        return reactivate_learner(cast(Learner, obj))
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        return reactivate_learner(cast(Learner, obj), actor=actor)
 
     def confirmation_wording(
         self,
@@ -2686,9 +2690,9 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return self.unchanged_reason if obj.pk in self.registered_ids else None
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return register_for_course(
-            cast(Learner, obj), cast(Course, cleaned_data["course"])
+            cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
     def confirmation_wording(
@@ -2720,9 +2724,9 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return None if obj.pk in self.registered_ids else self.unchanged_reason
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return deactivate_registration(
-            cast(Learner, obj), cast(Course, cleaned_data["course"])
+            cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
     def confirmation_wording(
@@ -2782,9 +2786,8 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
     def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
         return obj
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        learner = cast(Learner, obj)
-        resend_account_setup_email(learner.user, learner.organisation.name)
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        record_and_resend_setup_email(cast(Learner, obj), actor)
         return True
 
     def apply(
@@ -2934,9 +2937,9 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
     def state_skip_reason(self, is_registered: bool) -> str | None:
         return self.unchanged_reason if is_registered else None
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return register_cohort_for_course(
-            cast(Cohort, obj), cast(Course, cleaned_data["course"])
+            cast(Cohort, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
     def confirmation_wording(
@@ -2968,7 +2971,7 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
     def state_skip_reason(self, is_registered: bool) -> str | None:
         return None if is_registered else self.unchanged_reason
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         registration = (
             CohortCourseRegistration._base_manager.filter(
                 cohort=cast(Cohort, obj),
@@ -2980,7 +2983,7 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
         )
         if registration is None:
             return False
-        return deactivate_cohort_registration(registration)
+        return deactivate_cohort_registration(registration, actor=actor)
 
     def confirmation_wording(
         self,
@@ -3024,8 +3027,8 @@ class DeactivateCohortsBulkAction(CohortStateBulkAction):
     target_state = False
     unchanged_reason = "already inactive"
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        return deactivate_cohort(cast(Cohort, obj))
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        return deactivate_cohort(cast(Cohort, obj), actor=actor)
 
     def confirmation_wording(
         self,
@@ -3058,8 +3061,8 @@ class ReactivateCohortsBulkAction(CohortStateBulkAction):
     target_state = True
     unchanged_reason = "already active"
 
-    def perform(self, obj: Model, cleaned_data: dict[str, object]) -> bool:
-        return reactivate_cohort(cast(Cohort, obj))
+    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
+        return reactivate_cohort(cast(Cohort, obj), actor=actor)
 
     def confirmation_wording(
         self,

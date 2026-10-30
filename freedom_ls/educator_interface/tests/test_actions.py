@@ -6528,6 +6528,50 @@ def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
     assert len(mail.outbox) == 1
 
 
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_records_one_entry_per_email_sent_naming_the_sender(
+    mock_site_context: Site, logged_in_client, django_capture_on_commit_callbacks
+):
+    """The bulk resend sent the emails but wrote no audit entry, while the
+    single-learner resend records one; the audit log said nothing happened."""
+    organisation = OrganisationFactory()
+    pending = [_bulk_pending_learner(organisation) for _ in range(2)]
+    done = _bulk_learner(organisation=organisation)
+    sender = UserFactory(superuser=True)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm(
+            logged_in_client(sender),
+            organisation,
+            "resend_setup_email",
+            [*pending, done],
+        )
+
+    entries = AuditLogEntry.unscoped.filter(action="learner.setup_email_resent")
+    assert {entry.target_object_id for entry in entries} == {
+        str(learner.pk) for learner in pending
+    }
+    assert {entry.actor for entry in entries} == {sender}
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_entries_name_the_educator_who_ran_it(
+    mock_site_context: Site, logged_in_client
+):
+    """Bulk runs called the services without an actor, so every entry a bulk
+    change wrote was attributed to nobody."""
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    educator = UserFactory(superuser=True)
+
+    _bulk_confirm(logged_in_client(educator), organisation, "deactivate", learners)
+
+    entries = AuditLogEntry.unscoped.filter(action="learner.deactivated")
+    assert entries.count() == 2
+    assert {entry.actor for entry in entries} == {educator}
+
+
 # cohort bulk actions
 
 
