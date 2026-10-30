@@ -110,7 +110,7 @@ No design states tested.
 | Bug | Status |
 |---|---|
 | B1 | **FIXED** (commit: 4f906e60d) — Picking a recipient after searching leaves the messages page |
-| B2 | **UNRESOLVED** — Picker with nobody to offer says "No one you can message matches ''" (reason: needs a copy decision for the empty state of a sender with nobody to message) |
+| B2 | **FIXED** (commit: 09c331fd9) — Picker with nobody to offer says "No one you can message matches ''"; it now reads "There's no one you can message here." |
 
 ## General notes
 
@@ -126,4 +126,4 @@ Observations that are not bugs. The plan should be corrected for the plan-wordin
 - Gus (inactive) is not listed under `?status=inactive` on the learners list. His page was opened by URL.
 - Dev-only: the django-debug-toolbar handle overlaps the admin Save button in a fresh browser context.
 
-status: ok · reason: 2 bugs — 1 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 2 bugs — 2 fixed; report rendered, screenshots verified
