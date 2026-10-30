@@ -12,6 +12,8 @@ import pytest
 from lxml import html
 
 from django.conf import settings as django_settings
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -767,6 +769,156 @@ class TestUnreadBadge:
         response = logged_in_client(UserFactory()).get(unread_badge_url(), **HTMX)
 
         assert response.status_code == 404
+
+
+def recent_url() -> str:
+    return reverse("conversations:recent")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestRecentConversations:
+    def test_it_lists_at_most_five_newest_first(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        now = timezone.now()
+        conversations = []
+        for index in range(6):
+            other = UserFactory()
+            conversation = ConversationFactory(between=(user, other))
+            message = MessageFactory(conversation=conversation, sender=other)
+            Message.objects.filter(pk=message.pk).update(
+                created_at=now - timedelta(minutes=10 - index)
+            )
+            Conversation.objects.filter(pk=conversation.pk).update(
+                last_message_at=now - timedelta(minutes=10 - index)
+            )
+            conversations.append(conversation)
+
+        response = logged_in_client(user).get(recent_url(), **HTMX)
+
+        hrefs = [
+            a.get("href") for a in html.fromstring(response.content).xpath("//li/a")
+        ]
+        assert hrefs == [thread_url(c) for c in reversed(conversations[1:])]
+
+    def test_it_lists_only_the_viewers_conversations(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, mine = pair
+        MessageFactory(conversation=mine, sender=other)
+        ConversationFactory(between=(UserFactory(), UserFactory()))
+
+        response = logged_in_client(user).get(recent_url(), **HTMX)
+
+        hrefs = [
+            a.get("href") for a in html.fromstring(response.content).xpath("//li/a")
+        ]
+        assert hrefs == [thread_url(mine)]
+
+    def test_an_unread_row_carries_the_marker_and_the_screen_reader_prefix(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, _ = pair
+        MessageFactory(conversation=pair[2], sender=other)
+
+        row = html.fromstring(
+            logged_in_client(user).get(recent_url(), **HTMX).content
+        ).xpath("//li")[0]
+
+        text = " ".join(row.text_content().split())
+        assert "Unread. " in text
+        assert text.endswith("Unread")
+        assert row.xpath(".//span[contains(@class, 'sr-only')]")
+
+    def test_a_read_row_has_no_unread_marker(self, pair, logged_in_client) -> None:
+        user, other, conversation = pair
+        message = MessageFactory(conversation=conversation, sender=other)
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=message.created_at
+        )
+
+        content = logged_in_client(user).get(recent_url(), **HTMX).content.decode()
+
+        assert "Unread" not in content
+
+    def test_the_excerpt_is_the_newest_messages_body(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="Earlier words")
+        MessageFactory(conversation=conversation, sender=other, body="Latest words")
+
+        content = logged_in_client(user).get(recent_url(), **HTMX).content.decode()
+
+        assert "Latest words" in content
+        assert "Earlier words" not in content
+
+    def test_a_conversation_with_no_message_has_no_excerpt(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, _ = pair
+
+        tree = html.fromstring(logged_in_client(user).get(recent_url(), **HTMX).content)
+
+        assert tree.xpath("//li")
+        assert not tree.xpath("//li//*[contains(@class, 'line-clamp-1')]")
+
+    def test_the_empty_state_offers_new_message_when_there_are_recipients(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory()
+
+        content = (
+            logged_in_client(UserFactory()).get(recent_url(), **HTMX).content.decode()
+        )
+
+        assert "No messages yet." in content
+        assert content.count(f'href="{start_url()}"') == 2
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_the_empty_state_has_no_new_message_without_recipients(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        content = (
+            logged_in_client(UserFactory()).get(recent_url(), **HTMX).content.decode()
+        )
+
+        assert "No messages yet." in content
+        assert start_url() not in content
+        assert reverse("conversations:inbox") in content
+
+    def test_it_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(recent_url(), **HTMX)
+
+        assert response.status_code == 404
+
+    def test_the_query_count_does_not_grow_with_the_rows(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        for _ in range(5):
+            other = UserFactory()
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, other)), sender=other
+            )
+        client = logged_in_client(user)
+        client.get(recent_url(), **HTMX)
+
+        with CaptureQueriesContext(connection) as five:
+            client.get(recent_url(), **HTMX)
+        other = UserFactory()
+        extra = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=extra, sender=other)
+        with CaptureQueriesContext(connection) as six:
+            client.get(recent_url(), **HTMX)
+
+        assert len(six) == len(five)
 
 
 def start_url() -> str:

@@ -37,74 +37,129 @@ function visibilityPoller(seconds, target) {
     };
 }
 
+/**
+ * Shared by the header bell and the header messages button: one disclosure
+ * panel whose content loads each time it opens. Only one header panel is open
+ * at a time: opening one announces itself on window and the other closes.
+ *
+ * Components are built as Object.assign(headerPanel(name), {...}) so the
+ * contentVisible getter stays a live getter (an object spread would evaluate
+ * it once).
+ */
+function headerPanel(name) {
+    // A closure, not reactive state: Alpine must not proxy the listener.
+    let onOtherOpened = null;
+    return {
+        open: false,
+        loading: false,
+        failed: false,
+        initPanel() {
+            const content = this.$refs.content;
+            // Only the panel's own content load drives loading/failed. Events
+            // bubbling from elements inside the content (row actions) must not
+            // flip them: hiding the content for those would lose keyboard focus.
+            const onPanelLoad = (handler) => (event) => {
+                if (event.detail.elt === content) handler();
+            };
+            content.addEventListener("htmx:beforeRequest", onPanelLoad(() => {
+                this.loading = true;
+            }));
+            content.addEventListener("htmx:afterSwap", onPanelLoad(() => {
+                this.loading = false;
+            }));
+            const onFailure = onPanelLoad(() => {
+                this.loading = false;
+                this.failed = true;
+            });
+            content.addEventListener("htmx:responseError", onFailure);
+            content.addEventListener("htmx:sendError", onFailure);
+            onOtherOpened = (event) => {
+                if (event.detail !== name && this.open) this.close();
+            };
+            window.addEventListener("header-panel-opened", onOtherOpened);
+        },
+        destroyPanel() {
+            window.removeEventListener("header-panel-opened", onOtherOpened);
+        },
+        get contentVisible() {
+            return !this.loading && !this.failed;
+        },
+        toggle() {
+            if (this.open) {
+                this.close();
+            } else {
+                this.openPanel();
+            }
+        },
+        openPanel() {
+            this.open = true;
+            this.failed = false;
+            window.dispatchEvent(new CustomEvent("header-panel-opened", { detail: name }));
+            this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
+        },
+        close() {
+            const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
+            const focusWasOnTrigger = document.activeElement === this.$refs.trigger;
+            this.open = false;
+            if (focusWasInPanel || focusWasOnTrigger) {
+                this.$refs.trigger.focus();
+            }
+        },
+        // The trigger sits outside the panel, so a click on it counts as a
+        // click away. While the panel is still fading out that would close it
+        // again straight after the click reopened it; the trigger's own
+        // toggle handles that click.
+        closeOnClickAway(event) {
+            if (this.$refs.trigger.contains(event.target)) return;
+            this.close();
+        },
+        retry() {
+            this.openPanel();
+        },
+    };
+}
+
 document.addEventListener("alpine:init", () => {
     // Header bell (comms/partials/notification_bell.html).
     //
-    // Its badge poll timer comes from visibilityPoller.
-    //
-    // `open`, `loading` and `failed` also drive the panel: it loads from
-    // notification_panel each time it opens (openPanel), not once up front,
-    // so the eight rows and the unread count are never stale.
+    // Its badge poll timer comes from visibilityPoller. The panel loads from
+    // notification_panel each time it opens (headerPanel.openPanel), not once
+    // up front, so the eight rows and the unread count are never stale.
     Alpine.data("notificationBell", () => {
         // A closure, not reactive state: Alpine must not proxy the timer object.
         let poller = null;
-        return {
-            open: false,
-            loading: false,
-            failed: false,
+        return Object.assign(headerPanel("notifications"), {
             init() {
                 poller = visibilityPoller(Number(this.$el.dataset.pollSeconds), this.$refs.badge);
-
-                // Only the panel's own load drives loading/failed. Mark-all and row
-                // actions bubble their htmx events up through the same element,
-                // and hiding the content for those would lose keyboard focus.
-                const content = this.$refs.content;
-                const onPanelLoad = (handler) => (event) => {
-                    if (event.detail.elt === content) handler();
-                };
-                content.addEventListener("htmx:beforeRequest", onPanelLoad(() => {
-                    this.loading = true;
-                }));
-                content.addEventListener("htmx:afterSwap", onPanelLoad(() => {
-                    this.loading = false;
-                }));
-                const onFailure = onPanelLoad(() => {
-                    this.loading = false;
-                    this.failed = true;
-                });
-                content.addEventListener("htmx:responseError", onFailure);
-                content.addEventListener("htmx:sendError", onFailure);
-            },
-            get contentVisible() {
-                return !this.loading && !this.failed;
-            },
-            toggle() {
-                if (this.open) {
-                    this.close();
-                } else {
-                    this.openPanel();
-                }
-            },
-            openPanel() {
-                this.open = true;
-                this.failed = false;
-                this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
-            },
-            close() {
-                const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
-                const focusWasOnBell = document.activeElement === this.$refs.bell;
-                this.open = false;
-                if (focusWasInPanel || focusWasOnBell) {
-                    this.$refs.bell.focus();
-                }
-            },
-            retry() {
-                this.openPanel();
+                this.initPanel();
             },
             destroy() {
                 poller.destroy();
+                this.destroyPanel();
             },
-        };
+        });
+    });
+
+    // Header messages button (comms/partials/messages_button.html).
+    //
+    // The panel loads the newest conversations each time it opens. A reply
+    // landing while it is open refreshes its rows; closed, the next open
+    // loads afresh anyway.
+    Alpine.data("messagesPanel", () => {
+        let onConversationChanged = null;
+        return Object.assign(headerPanel("messages"), {
+            init() {
+                this.initPanel();
+                onConversationChanged = () => {
+                    if (this.open) this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
+                };
+                document.body.addEventListener("conversationChanged", onConversationChanged);
+            },
+            destroy() {
+                document.body.removeEventListener("conversationChanged", onConversationChanged);
+                this.destroyPanel();
+            },
+        });
     });
 
     // The header Messages badge (comms/partials/messages_button.html): polls

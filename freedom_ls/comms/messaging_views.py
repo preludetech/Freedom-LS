@@ -34,6 +34,7 @@ from freedom_ls.comms.messaging import (
     new_messages_announcement,
     other_participant,
     page_before,
+    recent_conversations_for,
     refusal_alert_copy,
     render_message_entries,
     reply_decision,
@@ -60,6 +61,9 @@ CONVERSATION_CHANGED = json.dumps({"conversationChanged": {}})
 # The id of the region a quick-view composer swaps, which is also the value
 # htmx sends in ``HX-Target`` when a send comes from there.
 QUICK_VIEW_BOX_ID = "quick-view-message-box"
+
+# How many conversations the header messages panel lists.
+RECENT_CONVERSATION_COUNT = 5
 
 # How many of the conversation's newest messages the quick-view box shows.
 QUICK_VIEW_MESSAGE_COUNT = 3
@@ -610,6 +614,22 @@ def start(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         return _start_post(request)
     return _start_get(request)
+
+
+@messaging_view
+def partial_recent_conversations(request: HttpRequest) -> HttpResponse:
+    """The messages panel's content: the newest conversations, loaded when the panel opens."""
+    viewer = cast("User", request.user)
+    conversations = list(recent_conversations_for(viewer, RECENT_CONVERSATION_COUNT))
+    rows = [
+        (conversation, other_participant(conversation, viewer))
+        for conversation in conversations
+    ]
+    return render(
+        request,
+        "comms/partials/messages_panel.html",
+        {"rows": rows, "has_recipients": _has_recipients(request)},
+    )
 
 
 @messaging_view

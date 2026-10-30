@@ -36,6 +36,7 @@ from freedom_ls.comms.messaging import (
     other_participant,
     page_before,
     pair_key_for,
+    recent_conversations_for,
     refusal_alert_copy,
     render_message_entries,
     reply_decision,
@@ -747,6 +748,54 @@ class TestInboxFor:
         MessageFactory(conversation=conversation, sender=other)
 
         assert inbox_for(user).get(pk=conversation.pk).is_unread is True
+
+
+@pytest.mark.django_db
+class TestRecentConversationsFor:
+    def test_it_orders_by_activity_and_annotates_the_newest_body(
+        self, mock_site_context
+    ) -> None:
+        user = UserFactory()
+        older = ConversationFactory(between=(user, UserFactory()))
+        newer = ConversationFactory(between=(user, UserFactory()))
+        at = timezone.now()
+        _stamped(
+            older,
+            older.participants.exclude(user=user).get().user,
+            at - timedelta(hours=2),
+            "first",
+        )
+        _stamped(
+            newer,
+            newer.participants.exclude(user=user).get().user,
+            at - timedelta(hours=1),
+            "old reply",
+        )
+        _stamped(newer, user, at, "newest reply")
+        Conversation.objects.filter(pk=newer.pk).update(last_message_at=at)
+        Conversation.objects.filter(pk=older.pk).update(
+            last_message_at=at - timedelta(hours=2)
+        )
+
+        rows = list(recent_conversations_for(user, 5))
+
+        assert [row.pk for row in rows] == [newer.pk, older.pk]
+        assert [row.last_message_body for row in rows] == ["newest reply", "first"]
+
+    def test_it_stops_at_the_limit(self, mock_site_context) -> None:
+        user = UserFactory()
+        for _ in range(3):
+            ConversationFactory(between=(user, UserFactory()))
+
+        assert len(recent_conversations_for(user, 2)) == 2
+
+    def test_inbox_for_carries_no_excerpt_annotation(self, mock_site_context) -> None:
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
+
+        row = inbox_for(user).get()
+
+        assert not hasattr(row, "last_message_body")
 
 
 @pytest.mark.django_db
