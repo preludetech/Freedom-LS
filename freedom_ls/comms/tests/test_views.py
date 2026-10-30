@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import pytest
 from lxml import html
+from pytest_django.fixtures import SettingsWrapper
 
 from django.db import connection
 from django.test import Client
@@ -13,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.comms.factories import (
     ConversationFactory,
     CourseFactory,
@@ -21,7 +23,17 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.messaging import mark_conversation_read, unread_conversation_count
 from freedom_ls.comms.models import Notification
+from freedom_ls.comms.tests.helpers import ROLLUP_TEST_CATEGORY
 from freedom_ls.tests.factories import SiteFactory
+
+
+@pytest.fixture(autouse=True)
+def _rollup_category(settings: SettingsWrapper) -> None:
+    settings.NOTIFICATION_CATEGORIES = [
+        *FLS_NOTIFICATION_CATEGORIES,
+        ROLLUP_TEST_CATEGORY,
+    ]
+
 
 BADGE_URL_NAME = "comms:notification_badge"
 PANEL_URL_NAME = "comms:notification_panel"
@@ -1211,7 +1223,7 @@ class TestLoginRequiredHtmx:
 def _message_notification(user, conversation, **extra):
     return NotificationFactory(
         user=user,
-        category="message.received",
+        category=ROLLUP_TEST_CATEGORY.key,
         target=conversation,
         data={"sender_name": "Sam"},
         **extra,
@@ -1294,44 +1306,3 @@ class TestNotificationAndConversationReadStateAreIndependent:
         )
 
         assert unread_conversation_count(user) == 0
-
-
-@pytest.mark.django_db
-class TestOpeningAThreadReadsItsNotification:
-    @pytest.fixture(autouse=True)
-    def _allow_policy(self, settings) -> None:
-        settings.MESSAGING_POLICY = (
-            "freedom_ls.comms.tests.test_messaging_views.AllowPolicy"
-        )
-
-    def test_opening_the_thread_marks_the_notification_read(
-        self, mock_site_context, logged_in_client
-    ) -> None:
-        user, other = UserFactory(), UserFactory()
-        conversation = ConversationFactory(between=(user, other))
-        MessageFactory(conversation=conversation, sender=other)
-        row = _message_notification(user, conversation)
-
-        logged_in_client(user).get(
-            reverse("conversations:thread", kwargs={"pk": conversation.pk})
-        )
-
-        row.refresh_from_db()
-        assert row.read_at is not None
-
-    def test_a_poll_with_incoming_messages_marks_the_notification_read(
-        self, mock_site_context, logged_in_client
-    ) -> None:
-        user, other = UserFactory(), UserFactory()
-        conversation = ConversationFactory(between=(user, other))
-        MessageFactory(conversation=conversation, sender=other)
-        row = _message_notification(user, conversation)
-
-        logged_in_client(user).get(
-            reverse("conversations:thread_poll", kwargs={"pk": conversation.pk})
-            + "?after=&composer=open&draft=0",
-            HTTP_HX_REQUEST="true",
-        )
-
-        row.refresh_from_db()
-        assert row.read_at is not None

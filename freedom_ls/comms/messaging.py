@@ -15,7 +15,6 @@ from django.db import IntegrityError, transaction
 from django.db.models import (
     BooleanField,
     Case,
-    Exists,
     F,
     FilteredRelation,
     Prefetch,
@@ -36,7 +35,6 @@ from freedom_ls.comms.messaging_policy import (
     RecipientGroup,
 )
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
-from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -208,26 +206,12 @@ def mark_conversation_read(
 
     Returns whether the marker moved, so a caller can tell the page its unread
     counts changed.
-
-    The conversation's notification is marked read too, unless a message from
-    someone else is newer than ``up_to``: that message has refreshed the
-    notification and has not been shown. The reverse does not hold: reading or
-    unreading a notification leaves the marker alone.
     """
     moved = ConversationParticipant.objects.filter(
         Q(last_read_at__isnull=True) | Q(last_read_at__lt=up_to),
         conversation=conversation,
         user=user,
     ).update(last_read_at=up_to)
-    newer_incoming = Message.objects.filter(
-        conversation=conversation, created_at__gt=up_to
-    ).exclude(sender=user)
-    mark_notifications_read(
-        user=user,
-        target=conversation,
-        site_id=conversation.site_id,
-        condition=~Q(Exists(newer_incoming)),
-    )
     return moved > 0
 
 
@@ -323,15 +307,6 @@ def send_message(
         if not _has_unread_incoming(locked, sender):
             mark_conversation_read(
                 user=sender, conversation=locked, up_to=message.created_at
-            )
-        other = other_participant(locked, sender)
-        if other is not None:
-            raise_notification(
-                user=other,
-                category="message.received",
-                target=locked,
-                site_id=locked.site_id,
-                data={"sender_name": sender.display_name},
             )
     return SendResult(message=message, conversation=locked)
 

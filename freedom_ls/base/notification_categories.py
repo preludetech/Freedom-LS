@@ -45,12 +45,4 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         message=_("You've been registered for %(course_title)s"),
         url_builder="freedom_ls.learner_interface.notification_urls.course_home_url",
     ),
-    NotificationCategory(
-        key="message.received",
-        label=_("Direct message"),
-        icon="message",
-        message=_("New message from %(sender_name)s"),
-        url_builder="freedom_ls.comms.notification_urls.conversation_url",
-        rollup=True,
-    ),
 ]
