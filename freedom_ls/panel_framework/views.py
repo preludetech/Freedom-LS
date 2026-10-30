@@ -665,6 +665,13 @@ class _BulkResultPage:
     page_url: str
 
 
+#: The most row ids a bulk result's refresh events carry. Only a quick view
+#: reads them, and a header of hundreds of UUIDs, once per event, can exceed
+#: a proxy's header buffer; past this the events carry none, as a background
+#: run's do.
+REFRESH_IDS_LIMIT = 50
+
+
 def _result_response(
     request: HttpRequest,
     panel: DataTablePanel,
@@ -672,7 +679,7 @@ def _result_response(
     result: BulkResult,
     noun: str,
     headline: str,
-    changed_keys: list[str],
+    selected_keys: list[str],
 ) -> HttpResponse | _BulkResultPage:
     """The summary of a finished run.
 
@@ -684,13 +691,14 @@ def _result_response(
         return _BulkResultPage(
             action, result, noun, headline, _history_url(panel, request)
         )
+    ids = selected_keys if len(selected_keys) <= REFRESH_IDS_LIMIT else []
     return bulk_result_fragment(
         request,
         action,
         result,
         noun,
         headline,
-        dict.fromkeys(_table_refresh_events(panel), changed_keys),
+        dict.fromkeys(_table_refresh_events(panel), ids),
     )
 
 
@@ -984,7 +992,7 @@ def _handle_run_status(request: HttpRequest, resolved: _Resolved) -> HttpRespons
     if action is not None:
         action.on_result_shown(request, run)
     # Not the run's keys: a background run can cover thousands of rows,
-    # too many for a header, and only a quick view reads the ids.
+    # more than REFRESH_IDS_LIMIT allows, and only a quick view reads the ids.
     refresh: dict[str, list[str]] = {
         event: [] for event in _table_refresh_events(panel)
     }
