@@ -1788,10 +1788,11 @@ def _ended_learner_detail(client: Client, **course_fields: object) -> Course:
     return course
 
 
-def _detail_response(client: Client, course: Course):
-    return client.get(
-        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+def _detail_response_as(client: Client, course: Course) -> HttpResponse:
+    url = reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
+    return cast(HttpResponse, client.get(url))
 
 
 @pytest.mark.django_db
@@ -1801,7 +1802,7 @@ def test_an_ended_learner_is_told_their_access_ended(mock_site_context, client):
 
     text = " ".join(
         re.sub(
-            r"<[^>]+>", " ", _detail_response(client, course).content.decode()
+            r"<[^>]+>", " ", _detail_response_as(client, course).content.decode()
         ).split()
     )
 
@@ -1818,7 +1819,7 @@ def test_an_ended_learner_is_offered_no_start_continue_or_register_action(
 ):
     course = _ended_learner_detail(client)
 
-    response = _detail_response(client, course)
+    response = _detail_response_as(client, course)
 
     assert response.context["start_url"] is None
     assert response.context["cta_label"] is None
@@ -1830,4 +1831,4 @@ def test_an_ended_learner_is_offered_no_start_continue_or_register_action(
 def test_an_ended_learner_still_reaches_a_hidden_course(mock_site_context, client):
     course = _ended_learner_detail(client, visibility=CourseVisibility.HIDDEN)
 
-    assert _detail_response(client, course).status_code == 200
+    assert _detail_response_as(client, course).status_code == 200
