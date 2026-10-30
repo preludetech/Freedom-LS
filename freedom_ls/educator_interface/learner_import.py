@@ -158,6 +158,41 @@ def create_learner_import(
 
 
 @dataclass(frozen=True)
+class CohortLookup:
+    """The cohorts a file's cohort cells may name. A cell matches by exact
+    name first, then by case-insensitive name when only one cohort has it:
+    cohort names are unique only case-sensitively, so a folded name alone
+    could land a row in the wrong cohort."""
+
+    by_name: dict[str, Cohort]
+    by_folded_name: dict[str, list[Cohort]]
+
+    @classmethod
+    def build(cls, cohorts: Iterable[Cohort]) -> CohortLookup:
+        by_name: dict[str, Cohort] = {}
+        by_folded_name: dict[str, list[Cohort]] = defaultdict(list)
+        for cohort in cohorts:
+            by_name[cohort.name] = cohort
+            by_folded_name[cohort.name.casefold()].append(cohort)
+        return cls(by_name, by_folded_name)
+
+    def resolve(self, cohort_name: str) -> tuple[Cohort | None, str]:
+        """The cohort the cell names and no error, or None and why."""
+        if cohort_name in self.by_name:
+            return self.by_name[cohort_name], ""
+        folded = self.by_folded_name.get(cohort_name.casefold(), [])
+        if len(folded) == 1:
+            return folded[0], ""
+        if folded:
+            return None, (
+                f"'{cohort_name}' matches more than one cohort. Use its exact name."
+            )
+        return None, (
+            f"No active cohort called '{cohort_name}' that you can add learners to."
+        )
+
+
+@dataclass(frozen=True)
 class RowCheck:
     row: LearnerImportRow
     entry: LearnerEntry | None
@@ -192,13 +227,13 @@ def check_rows(
     resolution. An import made from a cohort's page uses that cohort for every
     row and never reads the cohort cell."""
     first_line_of: dict[str, int] = {}
+    cohorts: CohortLookup | None = None
     for line_number, email in (
         LearnerImportRow._base_manager.filter(learner_import=learner_import)
         .order_by("line_number")
         .values_list("line_number", "email")
     ):
         first_line_of.setdefault(_clean_email(email).lower(), line_number)
-    cohorts: dict[str, Cohort] | None = None
     for row in rows:
         email = _clean_email(row.email)
         error = _length_error(email, row) if email else "Email is empty."
@@ -208,20 +243,14 @@ def check_rows(
         cohort_name = row.cohort_name.strip()
         if not error and cohort is None and cohort_name:
             if cohorts is None:
-                cohorts = {
-                    candidate.name.lower(): candidate
-                    for candidate in cohorts_visible_to(
+                cohorts = CohortLookup.build(
+                    cohorts_visible_to(
                         user,
                         learner_import.organisation,
                         capability=ADD_COHORTMEMBERSHIP,
                     ).filter(is_active=True)
-                }
-            cohort = cohorts.get(cohort_name.lower())
-            if cohort is None:
-                error = (
-                    f"No active cohort called '{cohort_name}' that you can "
-                    "add learners to."
                 )
+            cohort, error = cohorts.resolve(cohort_name)
         entry = (
             None
             if error

@@ -43,7 +43,12 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, CohortMembership
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    ImportStatus,
+    LearnerImport,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -154,6 +159,60 @@ def test_the_settings_tab_says_why_delete_is_unavailable(
 
     assert cohort_not_empty_sentence(cohort) in html.unescape(body)
     assert f'hx-get="{url}"' not in body
+
+
+def _import_into(cohort: Cohort, status: str) -> LearnerImport:
+    learner_import: LearnerImport = LearnerImport.objects.create(
+        organisation=cohort.organisation,
+        cohort=cohort,
+        requested_by=UserFactory(superuser=True),
+        status=status,
+        file_name="learners.csv",
+    )
+    return learner_import
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status", [ImportStatus.PREVIEWED, ImportStatus.QUEUED, ImportStatus.RUNNING]
+)
+def test_an_unfinished_import_into_the_cohort_blocks_the_delete(
+    mock_site_context: Site,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    status: str,
+) -> None:
+    """LearnerImport.cohort is SET_NULL, so deleting the cohort under a
+    previewed import silently turned it into an import into the organisation."""
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Importing")
+    _import_into(cohort, status)
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+    sentence = (
+        "Importing can't be deleted while a learner import into it is in progress."
+    )
+
+    settings_tab = client.get(f"{_panel_url(cohort)}/__tabs/settings").content.decode()
+    response = client.delete(url)
+
+    assert sentence in html.unescape(settings_tab)
+    assert f'hx-get="{url}"' not in settings_tab
+    assert response.status_code == 422
+    assert sentence in html.unescape(response.content.decode())
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_finished_import_into_the_cohort_does_not_block_the_delete(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Imported")
+    _import_into(cohort, ImportStatus.DONE)
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.delete(_delete_url(client, cohort))
+
+    assert response.status_code == 204
+    assert not Cohort.objects.filter(pk=cohort.pk).exists()
 
 
 @pytest.mark.django_db

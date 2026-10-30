@@ -101,6 +101,7 @@ from freedom_ls.learner_management.queries import (
     courses_gaining_access,
     courses_losing_access,
     courses_lost_by_any,
+    import_into_cohort_in_progress,
     learners_keeping_access_count,
     learners_permitted_for,
     learners_visible_to,
@@ -217,9 +218,10 @@ def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpRespon
 
 
 def cohort_not_empty_sentence(cohort: Cohort) -> str:
-    """Why a cohort cannot be deleted, counting everything deletion would
-    cascade away: deactivated learners and inactive registrations included.
-    Empty for an empty cohort, so one call tells a caller both things."""
+    """Why a cohort cannot be deleted: everything deletion would cascade
+    away, deactivated learners and inactive registrations included, and an
+    import into it that has not finished. Empty for a deletable cohort, so
+    one call tells a caller both things."""
     learners = cohort.cohortmembership_set.count()
     registrations = cohort.course_registrations.count()
     parts = []
@@ -229,12 +231,20 @@ def cohort_not_empty_sentence(cohort: Cohort) -> str:
         parts.append(
             count_phrase(registrations, "course registration", "course registrations")
         )
+    importing = import_into_cohort_in_progress(cohort)
     if not parts:
-        return ""
-    return (
+        if not importing:
+            return ""
+        return (
+            f"{cohort} can't be deleted while a learner import into it is in progress."
+        )
+    sentence = (
         f"{cohort} can't be deleted while it has {join_prose(parts)}, counting "
         "inactive learners and inactive registrations."
     )
+    if importing:
+        sentence += " A learner import into it is also in progress."
+    return sentence
 
 
 class RequiresActiveCohortMixin(PanelAction):
@@ -431,7 +441,8 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
     template_name = "educator_interface/modal/delete_cohort_confirmation.html"
 
     def is_offered(self, ctx: PanelContext) -> bool:
-        return cohort_is_empty(cast(Cohort, ctx.instance))
+        cohort = cast(Cohort, ctx.instance)
+        return cohort_is_empty(cohort) and not import_into_cohort_in_progress(cohort)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
