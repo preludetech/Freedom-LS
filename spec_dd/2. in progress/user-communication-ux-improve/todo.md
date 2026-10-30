@@ -18,8 +18,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: picker with nobody to offer says "No one you can message matches ''" (TDD: failing test first, then fix)
-- [ ] (user) Decide whether to correct the frontend QA plan where it disagrees with the build (reply rights are symmetric so §4.2–4.5 cannot refuse a send in an existing thread; refusal alert names nobody; cohort admins have no History tab; §1.2 and §5.1 counts), then edit 3. frontend_qa.md
+- [x] (user) Decide what to do about QA bug: picker with nobody to offer says "No one you can message matches ''" (TDD: failing test first, then fix)
+- [x] (user) Decide whether to correct the frontend QA plan where it disagrees with the build (reply rights are symmetric so §4.2–4.5 cannot refuse a send in an existing thread; refusal alert names nobody; cohort admins have no History tab; §1.2 and §5.1 counts), then edit 3. frontend_qa.md
 
 ## 4. Documentation and pull request
 
