@@ -283,12 +283,42 @@ A rejected push stops the run with the reason. The cell result is `blocked-on-sp
 
 Before a cell runs, skip it when its result file already ends `result: integrated` and the spec's directory name appears in the project's `Update FLS:` subjects (the Step 2 log). A re-run recomputes pending specs, so a completed cell never repeats. A parked project resumes when the spec it was blocked on is in `3. done/`, which Step 2 shows.
 
+## Pull-in scan
+
+Once per project per run, after its last spec, find concrete-project code that belongs in FLS and put it to the operator. The command never copies project code into FLS. An accepted candidate becomes an idea on FLS `main`, and the idea names the project's files as the reference implementation.
+
+**Worker.** One `sdd:sdd-worker` per project, a solo `Agent` call, writing `.sdd-work/update_concrete_pullin_<project>.md`. The brief states:
+
+- the project root;
+- the read set: `apps/`, `templates/`, `config/`, `pyproject.toml`, and `spec_dd/fls_integration/declined_pull_ins.md` when it exists;
+- the never-read set: `submodules/`, `spec_dd/for_freedom_ls/`, and every environment file whose name starts with a dot and `env`;
+- that FLS's app boundaries are in `docs/app_structure.md`, which the worker reads;
+- the rule from Rules about text that comes from a concrete project, restated as written there.
+
+The worker returns at most ten cards. Each card holds:
+
+- one sentence on what the code does;
+- its project paths;
+- the FLS app it would join, or the gap it fills;
+- why it is general: no project name, brand, URL or data; another concrete project would use it; it fits an existing extension point; it is testable without the project;
+- size `S`, `M` or `L`;
+- whether the project would delete its copy.
+
+Code whose path is on the declined list is left out. The file ends with a `status: ok` footer.
+
+**Questions.** Ask one `AskUserQuestion` question per card, at most four per batch, with these options in this order:
+
+1. **Write an FLS idea.** Write `spec_dd/1. next/<slug>/idea.md` following `idea_standard.md`, naming the project path and files as the reference implementation. Then run the commit, `Skill(sdd:roadmap)` and `git push origin main` sequence from Large fix in `## Failure handling`, with the commit subject `idea: <slug> (pull-in from <project>)`.
+2. **Keep it in the project.** Append `- <path> | <one-line what> | <date>` to `<p>/spec_dd/fls_integration/declined_pull_ins.md`, creating the file with a one-line heading when absent. Later runs leave that path out, so it is never proposed again.
+3. **Ask again next run.** Write nothing.
+
+An unanswered question counts as option 3.
+
 ## Step 5: After the last spec
 
 For each project, in this order:
 
-<!-- The pull-in scan runs first, ahead of item 1. -->
-
+0. Follow `## Pull-in scan` once for this project, before item 1. Its declined-list append is staged by item 3.
 1. The final sync section of `concrete_spec_integration.md`.
 2. Write the integration report with the `Write` tool to `<p>/spec_dd/fls_integration/<run-date>/integration_report.md`. Its sections are below.
 3. Commit it: `git -C <p> add spec_dd/fls_integration`, then `uv run --directory <p> git commit -m "Update FLS: integration report <run-date>"`.
@@ -306,7 +336,7 @@ Sections, in this order:
 4. Baseline: the baseline failing ids, and which of them passed in one more run of the portable contract test set after the final sync.
 5. FLS changes made: each fix commit (subject, SHA, the spec and the regression test) and each idea (path, slug). `none` when there are none.
 6. Workarounds: removed (path, spec), declined, still needed and unmatched, read from the workaround files and the cell result counts. `none` when no cell listed any.
-7. Pull-in candidates: `none`.
+7. Pull-in candidates: each idea written (slug, path), each candidate declined (path), each deferred (path). `none` when the scan found no candidates.
 8. Assumed defaults: the push policy when the operator did not answer, and every borderline size call decided without an answer.
 
 ## Deleting scratch files

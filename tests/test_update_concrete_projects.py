@@ -129,6 +129,8 @@ def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> No
         "delete_sdd_work_files.sh",
         "update_concrete_workarounds_",
         "update_concrete_specdiff_",
+        "declined_pull_ins.md",
+        "update_concrete_pullin_",
     ],
 )
 def test_loop_names_the_gate_flags_and_every_cell_result(spelled: str) -> None:
