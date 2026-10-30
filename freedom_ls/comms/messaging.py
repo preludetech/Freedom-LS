@@ -17,9 +17,11 @@ from django.db.models import (
     Case,
     F,
     FilteredRelation,
+    OuterRef,
     Prefetch,
     Q,
     QuerySet,
+    Subquery,
     Value,
     When,
 )
@@ -135,6 +137,22 @@ def inbox_for(user: User) -> QuerySet[Conversation]:
         .order_by(F("last_message_at").desc(nulls_last=True), "-created_at")
     )
     return cast("QuerySet[Conversation]", queryset)
+
+
+def last_message_body_subquery() -> Subquery:
+    """The body of a conversation's newest message, for an excerpt annotation."""
+    return Subquery(
+        Message.objects.filter(conversation=OuterRef("pk"))
+        .order_by("-created_at", "-id")
+        .values("body")[:1]
+    )
+
+
+def recent_conversations_for(user: User, limit: int) -> QuerySet[Conversation]:
+    """The user's newest conversations with an excerpt, for the messages panel."""
+    return inbox_for(user).annotate(last_message_body=last_message_body_subquery())[
+        :limit
+    ]
 
 
 def unread_conversation_count(user: User) -> int:

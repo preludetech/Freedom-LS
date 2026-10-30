@@ -24,6 +24,8 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 | `equation` | `content_engine/.../alpine-components.js` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |
 | `contentLightbox` | `content_engine/.../alpine-components.js` | `cotton/picture.html` | Focus-managing image lightbox (open/close, escape, focus restore) |
 | `localTime` | `base/.../alpine-components.js` | `deadlines` `local_time` template tag (`<time>`) | Rewrites the server-rendered instant into the viewer's own time zone, with the zone label when `data-show-zone="true"` |
+| `notificationBell` | `comms/.../alpine-components.js` | `comms/partials/notification_bell.html` | Header disclosure panel (built on `headerPanel`): loads on open, loading and error blocks, badge poll, closes when the messages panel opens |
+| `messagesPanel` | `comms/.../alpine-components.js` | `comms/partials/messages_button.html` | Header disclosure panel (built on `headerPanel`): newest conversations load on open, refresh on `conversationChanged` while open |
 
 ## Icons with Alpine
 

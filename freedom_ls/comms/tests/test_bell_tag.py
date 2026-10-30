@@ -12,6 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -116,7 +117,7 @@ class TestMessagesButton:
 
         assert MESSAGES_MARKER not in response.content.decode()
 
-    def test_it_links_to_the_inbox_when_messaging_is_on(
+    def test_the_panel_content_loads_from_the_recent_conversations_view(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
@@ -125,11 +126,13 @@ class TestMessagesButton:
             reverse("learner_interface:dashboard")
         )
 
-        content = response.content.decode()
-        assert MESSAGES_MARKER in content
-        assert f'href="{reverse("conversations:inbox")}"' in content
+        tree = html.fromstring(response.content)
+        assert MESSAGES_MARKER in response.content.decode()
+        panel = tree.xpath("//*[@id='messages-panel']")[0]
+        assert panel.get("hx-get") == reverse("conversations:recent")
+        assert panel.get("hx-trigger") == "refresh"
 
-    def test_the_link_shows_the_icon_and_a_messages_label(
+    def test_the_button_has_an_icon_and_no_visible_text(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
@@ -138,11 +141,37 @@ class TestMessagesButton:
             reverse("learner_interface:dashboard")
         )
 
-        link = html.fromstring(response.content).xpath(
-            "//a[@aria-labelledby='messages-button-label']"
+        button = html.fromstring(response.content).xpath(
+            "//button[@aria-labelledby='messages-button-label']"
         )[0]
-        assert link.text_content().strip() == "Messages"
-        assert link.xpath(".//svg")
+        assert button.text_content().strip() == ""
+        assert button.xpath(".//svg")
+        assert button.get("aria-controls") == "messages-panel"
+
+    def test_the_accessible_name_reports_the_unread_count(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = True
+        user = UserFactory()
+        client = logged_in_client(user)
+        page = html.fromstring(
+            client.get(reverse("learner_interface:dashboard")).content
+        )
+        badge = page.xpath("//*[@id='messages-badge']")[0]
+        assert page.xpath("//*[@id='messages-button-label']")
+        assert badge.get("hx-get") == reverse("conversations:unread_badge")
+        for _ in range(2):
+            other = UserFactory()
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, other)), sender=other
+            )
+
+        fragment = html.fromstring(
+            client.get(badge.get("hx-get"), HTTP_HX_REQUEST="true").content.decode()
+        )
+
+        label = fragment.xpath("//*[@id='messages-button-label']")[0]
+        assert label.text_content().strip() == "Messages, 2 unread"
 
     def test_the_badge_element_loads_lazily_and_carries_the_poll_seconds(
         self, mock_site_context, logged_in_client, settings

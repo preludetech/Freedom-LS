@@ -6,7 +6,7 @@ buttons rather than menu items, and it does not trap focus.
 <div x-data="notificationBell" class="relative" data-poll-seconds="{{ poll_seconds }}">
     <button type="button"
             id="notification-bell"
-            x-ref="bell"
+            x-ref="trigger"
             x-on:click="toggle"
             aria-labelledby="notification-bell-label"
             x-bind:aria-expanded="open"
@@ -34,7 +34,8 @@ buttons rather than menu items, and it does not trap focus.
     <div x-ref="panel"
          x-show="open"
          x-cloak
-         x-on:click.away="close"
+         x-transition
+         x-on:click.away="closeOnClickAway"
          x-on:keydown.escape.window="close"
          class="fixed inset-0 z-50 bg-surface sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:rounded-lg sm:border sm:border-border sm:shadow-lg">
         <div x-show="loading" class="p-8">

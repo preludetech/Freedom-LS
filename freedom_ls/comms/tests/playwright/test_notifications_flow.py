@@ -16,8 +16,13 @@ from playwright.sync_api import Locator, Page, expect
 
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.comms.factories import NotificationFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    MessageFactory,
+    NotificationFactory,
+)
 from freedom_ls.comms.models import Notification
 from freedom_ls.conftest import reverse_url
 from freedom_ls.tests.playwright_helpers import (
@@ -251,3 +256,59 @@ def test_a_failed_reopen_shows_the_error_and_try_again_recovers(
 
     expect(list_).to_be_visible()
     expect(error).to_be_hidden()
+
+
+def test_the_messages_panel_and_the_bell_open_one_at_a_time(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+) -> None:
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    MessageFactory(
+        conversation=ConversationFactory(between=(logged_in_user, kai)),
+        sender=kai,
+        body="Welcome to the course",
+    )
+    page = logged_in_page
+    bell = _bell(page)
+    messages_button = page.locator("#messages-button")
+    messages_panel = page.locator("#messages-panel")
+    page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+
+    # Opening the panel loads the newest conversations with an excerpt.
+    messages_button.click()
+    expect(messages_button).to_have_attribute("aria-expanded", "true")
+    expect(messages_panel.get_by_text("Kai Ngata")).to_be_visible()
+    expect(messages_panel.get_by_text("Welcome to the course")).to_be_visible()
+
+    # Opening the bell closes the messages panel.
+    bell.click()
+    expect(bell).to_have_attribute("aria-expanded", "true")
+    expect(messages_button).to_have_attribute("aria-expanded", "false")
+    expect(messages_panel).to_be_hidden()
+
+    # Opening the messages panel again closes the bell.
+    messages_button.click()
+    expect(messages_button).to_have_attribute("aria-expanded", "true")
+    expect(bell).to_have_attribute("aria-expanded", "false")
+    expect(messages_panel).to_be_visible()
+
+    # Escape closes the panel and returns focus to the button.
+    page.keyboard.press("Escape")
+    expect(messages_button).to_have_attribute("aria-expanded", "false")
+    assert _focused_id(page) == "messages-button"
+
+    # Layout: the open panel fills a phone and its close button works.
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+        messages_button.click()
+        expect(messages_panel).to_be_visible()
+        assert_no_horizontal_overflow(page)
+        if viewport["width"] == PHONE_WIDTH:
+            box = messages_panel.bounding_box()
+            assert box is not None
+            assert box["width"] == pytest.approx(PHONE_WIDTH, abs=1)
+            page.get_by_role("button", name="Close messages").click()
+            expect(messages_button).to_have_attribute("aria-expanded", "false")
