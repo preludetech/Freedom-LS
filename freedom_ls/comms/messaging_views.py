@@ -692,19 +692,21 @@ def _boundary_message(
     )
 
 
-@messaging_view
-def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """The page of messages older than ``?before=``, for prepending to the log.
+def older_page_response(
+    request: HttpRequest,
+    conversation: Conversation,
+    cursor: tuple[datetime, UUID],
+    *,
+    older_url: str | None = None,
+) -> HttpResponse:
+    """The page of messages older than ``cursor``, for prepending to the log.
 
     The first message already on screen is re-rendered out of band, because
     its day separator and sender line depend on what now sits above it. The
     load-earlier control is replaced out of band with the next cursor, or with
-    nothing once no older message exists.
+    nothing once no older message exists; ``older_url`` is the address that
+    control fetches from when it is not the participant's own.
     """
-    conversation = participant_conversation(request, pk)
-    cursor = decode_cursor(request.GET.get("before", ""))
-    if cursor is None:
-        return HttpResponseBadRequest("before must be a cursor")
     older, has_more = page_before(conversation, cursor)
     boundary_message = _boundary_message(conversation, cursor)
     body = ""
@@ -726,11 +728,22 @@ def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
         {
             "conversation": conversation,
             "older_cursor": encode_cursor(older[0]) if has_more and older else "",
+            "older_url": older_url,
             "oob": True,
         },
         request,
     )
     return HttpResponse(body)
+
+
+@messaging_view
+def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """The page of messages older than ``?before=``, for prepending to the log."""
+    conversation = participant_conversation(request, pk)
+    cursor = decode_cursor(request.GET.get("before", ""))
+    if cursor is None:
+        return HttpResponseBadRequest("before must be a cursor")
+    return older_page_response(request, conversation, cursor)
 
 
 def _incoming_announcement(incoming: list[Message]) -> str:

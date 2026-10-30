@@ -9,6 +9,7 @@ import uuid
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import cast
+from urllib.parse import quote
 from uuid import uuid4
 
 import lxml.html
@@ -36,11 +37,12 @@ from freedom_ls.audit_log.writer import (
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
     SendResult,
+    encode_cursor,
     inbox_for,
     unread_conversation_count,
 )
 from freedom_ls.comms.messaging_policy import MessagingRefusal
-from freedom_ls.comms.models import Conversation
+from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -3379,6 +3381,24 @@ def _view_conversation_url(learner: Learner) -> str:
     return f"{_tab_url(learner)}/__actions/view_conversation"
 
 
+def _older_url(
+    learner: Learner,
+    conversation_pk: object,
+    cursor: str,
+    organisation: Organisation | None = None,
+) -> str:
+    slug = (organisation or learner.organisation).slug
+    base = reverse(
+        "educator_interface:oversight_thread_older",
+        kwargs={
+            "organisation_slug": slug,
+            "learner_pk": str(learner.pk),
+            "conversation_pk": str(conversation_pk),
+        },
+    )
+    return f"{base}?before={quote(cursor)}" if cursor else base
+
+
 def _open_conversation(
     client: Client, learner: Learner, conversation: object, **extra: str
 ):
@@ -3548,6 +3568,126 @@ class TestOversight:
 
         assert response.status_code == 404
         assert _viewed_entries() == []
+
+    @pytest.fixture
+    def long_scene(self, scene, settings):
+        settings.MESSAGE_PAGE_SIZE = 3
+        _, educator, _, conversation = scene
+        base = timezone.now() - timedelta(days=3)
+        messages = []
+        for i in range(7):
+            message = MessageFactory(
+                conversation=conversation, sender=educator, body=f"m{i}"
+            )
+            Message.objects.filter(pk=message.pk).update(
+                created_at=base + timedelta(minutes=i)
+            )
+            messages.append(Message.objects.get(pk=message.pk))
+        return scene, messages
+
+    def test_the_modal_control_points_at_the_oversight_endpoint(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, learner, conversation), _ = long_scene
+
+        response = _open_conversation(
+            msg_client_for(_msg_educator(organisation)), learner, conversation.pk
+        )
+
+        page = lxml.html.fromstring(response.content.decode())
+        (button,) = page.xpath("//div[@id='thread-older']//button")
+        assert button.get("hx-get").startswith(_older_url(learner, conversation.pk, ""))
+
+    def test_the_older_endpoint_pages_back_and_writes_no_entry(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, learner, conversation), messages = long_scene
+        client = msg_client_for(_msg_educator(organisation))
+
+        response = client.get(
+            _older_url(learner, conversation.pk, encode_cursor(messages[4])),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 200
+        tree = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+        ids = [li.get("id") for li in tree.xpath("./li[not(@hx-swap-oob)]")]
+        assert ids == [f"msg-{m.pk}" for m in messages[1:4]]
+        button = tree.xpath("./div[@id='thread-older']//button")[0]
+        assert button.get("hx-get").startswith(_older_url(learner, conversation.pk, ""))
+        assert _viewed_entries() == []
+
+    def test_the_older_endpoint_is_404_for_a_cohort_admin(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, learner, conversation), messages = long_scene
+        cohort = CohortFactory(organisation=organisation)
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+        cohort_admin = cast(User, UserFactory(staff=True))
+        _grant(cohort_admin, "cohort_admin", cohort)
+
+        response = msg_client_for(cohort_admin).get(
+            _older_url(learner, conversation.pk, encode_cursor(messages[4])),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_the_older_endpoint_is_404_outside_the_oversight_set(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, learner, _), messages = long_scene
+        client = msg_client_for(_msg_educator(organisation))
+        peer = _msg_learner(organisation, first_name="Peer")
+        peer_conversation = _msg_conversation(peer.user, learner.user)
+        cursor = encode_cursor(messages[4])
+
+        for target in (peer_conversation.pk, uuid4(), "-" * 36):
+            response = client.get(
+                _older_url(learner, target, cursor), HTTP_HX_REQUEST="true"
+            )
+            assert response.status_code == 404, target
+
+    def test_the_older_endpoint_is_404_for_another_organisations_learner(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, _, conversation), messages = long_scene
+        stranger = _msg_learner(OrganisationFactory())
+
+        response = msg_client_for(_msg_educator(organisation)).get(
+            _older_url(
+                stranger, conversation.pk, encode_cursor(messages[4]), organisation
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_the_older_endpoint_is_404_when_messaging_is_off(
+        self, msg_client_for, long_scene, settings
+    ):
+        (organisation, _, learner, conversation), messages = long_scene
+        client = msg_client_for(_msg_educator(organisation))
+        settings.MESSAGING_ENABLED = False
+
+        response = client.get(
+            _older_url(learner, conversation.pk, encode_cursor(messages[4])),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize("cursor", ["", "junk"])
+    def test_a_missing_or_malformed_cursor_is_a_400(
+        self, msg_client_for, long_scene, cursor
+    ):
+        (organisation, _, learner, conversation), _ = long_scene
+
+        response = msg_client_for(_msg_educator(organisation)).get(
+            _older_url(learner, conversation.pk, cursor), HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 400
 
     def test_the_list_rows_open_the_conversation_in_the_modal(
         self, msg_client_for, scene

@@ -22,6 +22,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
+    decode_cursor,
     encode_cursor,
     inbox_for,
     mark_conversation_read,
@@ -32,7 +33,10 @@ from freedom_ls.comms.messaging_policy import (
     MessagingPolicy,
     MessagingRefusal,
 )
-from freedom_ls.comms.messaging_views import read_only_thread_context
+from freedom_ls.comms.messaging_views import (
+    older_page_response,
+    read_only_thread_context,
+)
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
 from freedom_ls.site_aware_models.models import _thread_locals
 from freedom_ls.tests.factories import SiteFactory
@@ -1782,6 +1786,24 @@ class TestEarlierMessages:
         control = tree.xpath("./div[@id='thread-older']")[0]
         assert not control.xpath(".//button")
 
+    def test_a_render_with_an_older_url_puts_that_address_on_the_control(
+        self, long_thread, rf
+    ) -> None:
+        user, conversation, messages = long_thread
+        request = rf.get("/")
+        request.user = user
+
+        response = older_page_response(
+            request,
+            conversation,
+            decode_cursor(encode_cursor(messages[5])),
+            older_url="/elsewhere/older/",
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        button = tree.xpath("./div[@id='thread-older']//button")[0]
+        assert button.get("hx-get").startswith("/elsewhere/older/?before=")
+
     def test_a_malformed_cursor_is_a_400(self, long_thread, logged_in_client) -> None:
         user, conversation, _ = long_thread
 
@@ -2625,7 +2647,7 @@ class TestReadOnlyThread:
         assert not tree.xpath("//*[@hx-trigger='refresh']")
         assert not tree.xpath("//*[@data-just-read]")
 
-    def test_the_load_earlier_control_needs_an_oversight_url(
+    def test_the_load_earlier_control_fetches_from_the_oversight_url(
         self, pair, rf, settings
     ) -> None:
         settings.MESSAGE_PAGE_SIZE = 2
@@ -2644,6 +2666,5 @@ class TestReadOnlyThread:
                 )
             ).xpath("//div[@id='thread-older']//button")
 
-        assert control("") == []
         (button,) = control("/oversight/older")
         assert button.get("hx-get").startswith("/oversight/older?before=")
