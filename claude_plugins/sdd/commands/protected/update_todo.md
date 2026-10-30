@@ -1,7 +1,7 @@
 ---
 description: Tick items and optionally append new items to a todo.md checklist
 allowed-tools: Read, Edit
-argument-hint: <todo-path> tick:"<exact item text>" [tick:"…"] [add:"<section heading>|<marker>|<item text>"] [add_first:"<marker>|<item text>"] …
+argument-hint: <todo-path> tick:"<exact item text>" [tick:"…"] [add:"<section heading>|<marker>|<item text>"] [add_first:"<marker>|<item text>"] [add_after:"<item substring>|<marker>|<item text>"] …
 ---
 
 This is a helper command. It does **not** decide what was done — it reacts to what the caller tells it. Callers pass the path to a `todo.md`, one or more items to tick, and optionally one or more items to append or insert. The command edits the file and reports back.
@@ -16,16 +16,18 @@ The caller must supply:
 - **`tick:"…"`** (one or more required) — the exact text of a checklist item to mark done. Match the existing line (minus the `- [ ]` prefix). If the caller gives you a substring that uniquely identifies one unchecked item, use that.
 - **`add:"<section>|<marker>|<text>"`** (zero or more, optional) — a new checklist item to append under the named section. `<section>` is the exact heading text (e.g. `QA`). `<marker>` is one of the literal strings the caller chooses (e.g. `user`, `cmd`, `user + cmd`). `<text>` is the item body.
 - **`add_first:"<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately above the first unchecked (`- [ ]`) line in the whole file, regardless of section. Same `<marker>`/`<text>` shape as `add:`, minus the section (there is only one insertion point). If the file has no unchecked item, stop and tell the caller — there is nowhere to put it ahead of.
+- **`add_after:"<item substring>|<marker>|<text>"`** (zero or more, optional) — a new checklist item inserted immediately below the existing item that `<item substring>` uniquely identifies (ticked or not), so a follow-up lands right where the step that owes it sits. Several `add_after:` arguments naming the same item are inserted in the order given, each below the one before. Same `<marker>`/`<text>` shape as `add:`. If no item matches, or more than one does, stop and tell the caller.
 
-At least one of `tick:`, `add:` or `add_first:` must be supplied.
+At least one of `tick:`, `add:`, `add_first:` or `add_after:` must be supplied.
 
 If the caller passes its arguments in prose rather than this exact shape (e.g. "tick the `/spec_from_idea` item and add a user task under QA saying X"), parse the intent — the pieces of information above are what you need. Ask the caller to clarify if anything is ambiguous.
 
 ## Step 1: Validate inputs
 
 - Confirm `<todo-path>` exists and is readable. If not, stop and tell the caller.
-- Confirm at least one `tick:`, `add:` or `add_first:` argument was provided. If none, stop — there is nothing to do.
+- Confirm at least one `tick:`, `add:`, `add_first:` or `add_after:` argument was provided. If none, stop — there is nothing to do.
 - For each `add_first:` argument, confirm the file has at least one unchecked (`- [ ]`) line. If it does not, stop and tell the caller: there is no unchecked item to insert above.
+- For each `add_after:` argument, confirm exactly one checklist line contains `<item substring>`. Zero or several: stop and tell the caller which argument was ambiguous.
 
 ## Step 2: Read the file
 
@@ -61,6 +63,15 @@ For each `add_first:` argument:
   ```
 - If the file has no unchecked line, this was already caught in Step 1 — stop and tell the caller rather than guessing where to put it.
 
+For each `add_after:` argument:
+
+- Find the one checklist line that contains `<item substring>` (validated in Step 1).
+- Insert a new line directly below it, and below any item an earlier `add_after:` in the same call already put there, in the same section:
+  ```
+  - [ ] (<marker>) <text>
+  ```
+- Nothing else moves. An item inserted below a ticked line is fine: the step that owed it has run, and the follow-up is what comes next.
+
 ## Step 5: Write the changes
 
 Use `Edit` to apply the changes. Do **not**:
@@ -76,7 +87,7 @@ Print a short summary:
 
 - Which items were ticked (or already ticked, or not found).
 - Which items were appended, and under which section.
-- Which items were inserted via `add_first:`.
+- Which items were inserted via `add_first:` or `add_after:`, and below which item.
 - The next unchecked item in the file, so the caller knows what comes up.
 
 Keep it to a few lines — this runs at the tail end of other commands and should not dominate their output.
