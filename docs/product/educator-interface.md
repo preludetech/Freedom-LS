@@ -1,17 +1,17 @@
 # Educator Interface
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
-- Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses, plus Messages when direct messaging is turned on. Organisation admins also get a Members section, under Administration.
+- Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses. Organisation admins also get a Members section, under Administration.
 - A learner or cohort can be previewed in a quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - Educators can create, edit, deactivate and delete cohorts, and register a cohort for courses or deactivate that registration. A cohort's page shows an overview with per-course completion, then Learners, Courses, Report and Settings tabs. See [Cohorts](#cohorts).
 - The landing page is a dashboard of the cohorts the educator can see: totals, the learners who need attention, and each cohort's progress. A cohort's Report tab shows its progress report on screen, with the PDF to download. See [Reporting](#reporting).
 - Educators can add learners by email, see whether each is active, pending or inactive, put them in or move them between cohorts, register them for courses, and deactivate or reactivate them. See [Learners](#learners).
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
-- When direct messaging is turned on, educators can message learners from a Messages section or from a learner's quick view. See [Messages](#messages).
+- When direct messaging is turned on, educators can message a learner from a Messages tab on the learner's page or from their quick view, and organisation and site admins can read the learner's other conversations with their educators. See [Messages](#messages).
 - **Access is granted by role**: site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
 - Organisation admins add members, assign and deactivate their roles, and deactivate or reactivate them from the Members section. See [Members and roles](#members-and-roles).
 - Site and organisation admins see a record of who changed what and when, on a History tab on learner and cohort pages and in an Audit log section. See [History](#history).
@@ -23,7 +23,7 @@ _Last updated: 2026-10-25_
 
 The educator interface is a single-page application, scoped to one organisation at a time — see [Organisation Scope](#organisation-scope). Navigation within it is HTMX-driven: selecting a section or item updates the main panel, sidebar, and breadcrumb without a full page reload.
 
-**Quick view.** Clicking a learner's or cohort's name opens a summary in a drawer beside the list, with a link through to the full page. On a wide screen the drawer docks beside the page, and on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active in a course. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view. When direct messaging is turned on, a learner's quick view also has a box showing the latest messages with that learner and a composer to reply.
+**Quick view.** Clicking a learner's or cohort's name opens a summary in a drawer beside the list, with a link through to the full page. On a wide screen the drawer docks beside the page, and on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active in a course. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view. When direct messaging is turned on, a learner's quick view also has a box showing the latest messages with that learner, a composer to reply, and a link to the learner's Messages tab.
 
 ![Learner quick view open beside the Learners list](screenshots/educator_learner_quick_view.png)
 
@@ -50,7 +50,7 @@ Renaming, deactivating, reactivating and deleting need an organisation admin or 
 Lists the learners of the current organisation the educator has access to — learners in cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they have enrolled in anything yet. Someone studying with more than one organisation appears once per organisation, showing only the cohort memberships and course registrations belonging to the one currently in view. Each learner has a status: **active**, **pending** (staff created their account and they have not yet set a password and signed in) or **removed**. Removed learners are hidden until the Status filter asks for them. Detail pages carry the same access check as the listing; see [Access Control](#access-control).
 
 - **Adding learners** — organisation admins and site admins paste up to 50 email addresses, optionally with names, and can put them straight into a cohort. An address that already has an account on the site joins the organisation; a new one gets an account and an **account setup email** with a link to choose a password, which can be resent from the learner's page. The dialog reports what happened to each address. Staff-created people still meet the site's terms and registration forms at first login.
-- **Learner page** — a header with name, email, status and actions, and tabs for an overview, courses, and history. The Courses tab gives each course the learner is registered for its completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. The History tab lists the recorded changes to the learner. See [History](#history).
+- **Learner page** — a header with name, email, status and actions, and tabs for an overview, courses, messages (when direct messaging is turned on) and history. The Courses tab gives each course the learner is registered for its completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. The History tab lists the recorded changes to the learner. See [History](#history).
 - **Cohort membership** — add a learner to a cohort, remove them, or **move** them to another active cohort in the organisation. Each confirmation names the courses the learner loses access to. A move carries course progress across, keeping whichever record is further along for a course both cohorts grant; nothing is deleted.
 - **Course registration** — register a learner for any course that is not coming soon, deactivate and reactivate the registration. Deactivating a registration keeps their progress and says whether a cohort still gives them the course. Registering a learner for a course not open to their organisation, or reactivating such a registration, is refused with a message.
 - **Deactivating** — removes the learner's access to this organisation's courses while keeping their cohorts, registrations and progress, which return on reactivation. On the site's default organisation a learner can undo a deactivation, of the learner or of a registration, by registering themselves for an open course.
@@ -98,7 +98,7 @@ Admins can give only roles at or below their own. Any change that gives someone 
 
 ### History
 
-The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and member roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page, and as an **Audit log** section under Administration. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab and the Audit log also name the person each row is about. Deleting a cohort also records each role that went with it. Changes with no user behind them show as "System".
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and member roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page, and as an **Audit log** section under Administration. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab and the Audit log also name the person each row is about. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations to read it. Changes with no user behind them show as "System".
 
 Confirming a removal or deactivation (removing a learner from a cohort, deactivating a course registration, deactivating a learner or cohort, deleting a cohort, deactivating a role, deactivating a member) offers an optional **Reason**, shown in the history to staff only.
 
@@ -108,7 +108,9 @@ Not recorded: anything before the feature was installed (there is no backfill), 
 
 ### Messages
 
-When direct messaging is turned on, the sidebar has a Messages link with a count of unread conversations. It lists the educator's conversations with learners in the current organisation, with a **New message** action to start another; conversations with colleagues stay in the shared inbox. Who an educator may message is decided by the messaging policy. See [messaging](./messaging.md).
+When direct messaging is turned on, a learner's page has a **Messages** tab showing the signed-in educator's own conversation with that learner, with a composer. Conversations with colleagues are on the shared messages page. Who an educator may message is decided by the messaging policy. See [messaging](./messaging.md).
+
+**Oversight.** On the same tab, organisation admins and site admins also see a read-only list of the learner's other conversations with their educators, and can open one to read it. Each open is recorded in the [history](#history). No other role has this.
 
 ### Reporting
 

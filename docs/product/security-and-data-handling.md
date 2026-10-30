@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -18,7 +18,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Operational:** Report PDFs are written to a private storage location, separate from the buckets that hold course media and public branding. There is no fallback: an unconfigured location fails at startup, and a deploy pipeline running Django's deployment check catches a location that resolves to the wrong bucket before anything is written to it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Built:** every section of the educator interface — Cohorts, Learners, Courses and Members — is permission-checked and denies by default. Members, where roles are assigned and deactivated, opens only for organisation admins and site admins. The Courses list shows published courses plus those registered to a cohort or learner the viewer can see in the current organisation; any other course page is refused as though it did not exist. See [educator interface authorisation](#educator-interface-authorisation-built).
-- **Built:** administrative changes are recorded in an audit log: role and membership changes, learner state, cohort lifecycle, course registrations, renames and setup emails. Entries are append-only against application code and kept until an operator chooses to prune them. See [audit log](#audit-log-built).
+- **Built:** administrative changes are recorded in an audit log: role and membership changes, learner state, cohort lifecycle, course registrations, renames and setup emails, and an organisation or site admin opening a learner's conversation with an educator. Entries are append-only against application code and kept until an operator chooses to prune them. See [audit log](#audit-log-built).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, applicant-uploaded documents, anonymous applicant data or direct messages, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -123,7 +123,7 @@ FLS stores, in its PostgreSQL database:
 - Answers to a course's application form, and any document the applicant uploaded with it, which may be a government ID scan. For an applicant with no account yet, also their name, email and consent evidence (time and IP address). See [applicant uploads](#applicant-uploads-built) and [anonymous course applications](#anonymous-course-applications-built).
 - Webhook delivery logs, which may contain user data inside the delivered payload.
 - In-app notifications: a per-user record of things that happened to that user, such as being registered for a course, with a little context such as the course title. Only that user can see them. See [notifications](./notifications.md).
-- Direct messages: the text of private one-to-one messages between two users, with who sent each and when. Only the two participants can read them. See [direct messages](#direct-messages).
+- Direct messages: the text of private one-to-one messages between two users, with who sent each and when. Only the two participants can read a peer conversation; a learner-educator conversation can also be read by organisation admins and site admins, and each such read is audited. See [direct messages](#direct-messages).
 - Employment details, only where the optional HR attributes app is installed: a learner's job title, department and location, chosen from lists the organisation maintains, and up to four dates (when they joined the organisation, and when they started in their current job title, department and location). Staff enter these in the admin; nothing is collected from the learner, and there is no sync with an HR system. See [HR attributes](./hr-attributes.md).
 - Fully rendered outgoing email — subject and both bodies — where a deployment has turned email queueing on, held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
 
@@ -171,7 +171,7 @@ Every acceptance of a legal document is recorded as an append-only record tied t
 
 ### Audit Log (built)
 
-FLS keeps a record of administrative changes: role assignments and deactivations, and roles removed with a deleted cohort; member deactivation and reactivation; learners added, renamed, deactivated and reactivated, and setup emails resent; learners added to, removed from and moved between cohorts; cohorts created, renamed, deactivated, reactivated and deleted; and learner and cohort course registrations added, deactivated and reactivated. Admins read it in the [educator interface](./educator-interface.md#history); the Django admin shows it read-only, to everyone including superusers. It is separate from the [consent audit trail](#consent-audit-trail) and does not cover report downloads (see [cohort report access control](#cohort-report-access-control-built)).
+FLS keeps a record of administrative changes: role assignments and deactivations, and roles removed with a deleted cohort; member deactivation and reactivation; learners added, renamed, deactivated and reactivated, and setup emails resent; learners added to, removed from and moved between cohorts; cohorts created, renamed, deactivated, reactivated and deleted; learner and cohort course registrations added, deactivated and reactivated; and organisation admins or site admins opening a learner's conversation with an educator to read it. Admins read it in the [educator interface](./educator-interface.md#history), where these opens also show on the learner's history; the Django admin shows it read-only, to everyone including superusers. It is separate from the [consent audit trail](#consent-audit-trail) and does not cover report downloads (see [cohort report access control](#cohort-report-access-control-built)).
 
 **Append-only against application code, not against the database.** FLS code cannot edit or delete an entry, but anyone with direct database access can.
 
@@ -191,7 +191,7 @@ A [cohort progress report](./reports.md) is a generated PDF, one per cohort, hol
 
 ### Direct Messages
 
-Where a deployment has turned [messaging](./messaging.md) on, FLS stores the text of private messages between two users. Only those two participants can read a conversation, and message text is kept out of the Django admin, so granting admin access does not grant access to it. Anyone with database read access, or a copy of an unencrypted dump, can read it; the text carries no application-level encryption (see [encryption at rest](#encryption-at-rest)).
+Where a deployment has turned [messaging](./messaging.md) on, FLS stores the text of private messages between two users. Only the two participants can read a peer conversation. A conversation between a learner and an educator can also be opened, read only, by the learner's organisation admins and site admins; no other role can, and the composer tells participants this. Each open is recorded in the [audit log](#audit-log-built). Message text is kept out of the Django admin, so granting admin access does not grant access to it. Anyone with database read access, or a copy of an unencrypted dump, can read it; the text carries no application-level encryption (see [encryption at rest](#encryption-at-rest)).
 
 Messages are kept indefinitely. Deleting a user does not delete the messages they sent: the other participant keeps the conversation, read only, with the sender shown as a deleted user. When an erasure request covers that text, an operator removes it by hand.
 
