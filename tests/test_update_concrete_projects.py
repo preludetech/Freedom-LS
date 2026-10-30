@@ -59,6 +59,12 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(git -C * add *)",
         "Bash(uv run --directory * pytest*)",
         "Bash(uv run --directory * python manage.py migrate --check*)",
+        "Bash(git -C * submodule update*)",
+        "Bash(uv run --directory * python manage.py check*)",
+        "Bash(uv run --directory * python manage.py makemigrations --check*)",
+        "Bash(uv run --directory * git commit *)",
+        "Bash(uv sync --directory *)",
+        "Bash(npm --prefix * run tailwind_build*)",
     ],
 )
 def test_every_new_allow_verb_matches_a_spelled_command_form(entry: str) -> None:
@@ -85,6 +91,38 @@ def test_every_new_allow_verb_matches_a_spelled_command_form(entry: str) -> None
 def test_command_spells_every_preflight_check_and_the_pending_spec_log(
     spelled: str,
 ) -> None:
+    text = COMMAND.read_text()
+
+    assert spelled in text
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "Bash(git -C * push --force*)",
+        "Bash(git -C * commit --no-verify*)",
+        "Bash(uv run --directory * git commit --no-verify*)",
+    ],
+)
+def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> None:
+    deny = json.loads(SETTINGS.read_text())["permissions"]["deny"]
+
+    assert entry in deny
+
+
+@pytest.mark.parametrize(
+    "spelled",
+    [
+        "-rf",
+        "Update FLS:",
+        "integrated",
+        "blocked-on-fix",
+        "blocked-on-spec",
+        "skipped",
+        "delete_sdd_work_files.sh",
+    ],
+)
+def test_loop_names_the_gate_flags_and_every_cell_result(spelled: str) -> None:
     text = COMMAND.read_text()
 
     assert spelled in text

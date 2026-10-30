@@ -122,11 +122,20 @@
       "Bash(git -C * remote get-url *)",
       "Bash(git -C * add *)",
       "Bash(uv run --directory * pytest*)",
-      "Bash(uv run --directory * python manage.py migrate --check*)"
+      "Bash(uv run --directory * python manage.py migrate --check*)",
+      "Bash(git -C * submodule update*)",
+      "Bash(uv run --directory * python manage.py check*)",
+      "Bash(uv run --directory * python manage.py makemigrations --check*)",
+      "Bash(uv run --directory * git commit *)",
+      "Bash(uv sync --directory *)",
+      "Bash(npm --prefix * run tailwind_build*)"
     ],
     "deny": [
       "Bash(git commit --no-verify:*)",
       "Bash(git push --force:*)",
+      "Bash(git -C * push --force*)",
+      "Bash(git -C * commit --no-verify*)",
+      "Bash(uv run --directory * git commit --no-verify*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Edit(.env)",

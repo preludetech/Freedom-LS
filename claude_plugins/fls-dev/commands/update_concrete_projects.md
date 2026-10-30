@@ -121,8 +121,67 @@ Then ask one `AskUserQuestion` with up to four questions, recommended option fir
 
 There is no per-spec confirmation. An unanswered question takes the recommended option and is recorded for the report's assumed-defaults section. Nothing is written to any project before the confirmation.
 
+## Step 4: The loop
+
+For each spec in the run's order, and for each project that is not parked and not skipped, run one cell. A cell is breadth-first: every project finishes spec N before any starts spec N+1.
+
+Before a cell, apply Resume (below). Then, for `<p>` the project path and `<spec-commit>` the spec's commit from Step 2:
+
+1. Follow `concrete_spec_integration.md` with `<project-root>` set to `<p>` and `<spec-commit>` set to the spec's commit, up to but not including the test run in 3i.
+2. <!-- Workaround removal inserts here, between the resource steps and the gate. -->Run the portable contract test set from `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed.
+3. Compare the failing ids with the project's baseline ids. An id not in the baseline is new. Re-run each new id alone once, and keep it as new only if it fails again. This one re-run is the whole flake allowance.
+4. If any id is still new, or any resource step errored, the cell fails. For now a failed cell is a stop: print the project, spec, the step that failed, the new ids and `git -C <p> diff --stat`, write the cell result file with the matching `result:`, and end the run without deleting scratch files.
+5. <!-- QA inserts here, between the gate and the commit. -->Run 3j: `git -C <p> add -A`, then `uv run --directory <p> git commit -m "Update FLS: <spec-name>"`, with a body that names the spec directory and the pointer move.
+6. Record the project's new last good: `git -C <p> rev-parse HEAD`.
+7. Write the cell result file.
+
+The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These are the command's own cell results, distinct from the `status:` footer a worker writes. It holds one `key: value` line each for:
+
+- `project:`
+- `spec:`
+- `fls-commit:`
+- `flags:` the six flags from the spec's upgrade notes, or `no notes`
+- `project-commit:` the SHA from step 6, or `none`
+- `new-failures:` the ids that stayed new, or `none`
+- `qa:` `not run` when the spec has no frontend QA plan
+- `result:` the last line, one of `integrated`, `blocked-on-fix`, `blocked-on-spec <slug>` or `skipped`
+
+## Resume
+
+Before a cell runs, skip it when its result file already ends `result: integrated` and the spec's directory name appears in the project's `Update FLS:` subjects (the Step 2 log). A re-run recomputes pending specs, so a completed cell never repeats. A parked project resumes when the spec it was blocked on is in `3. done/`, which Step 2 shows.
+
+## Step 5: After the last spec
+
+For each project, in this order:
+
+<!-- The pull-in scan runs first, ahead of item 1. -->
+
+1. The final sync section of `concrete_spec_integration.md`.
+2. Write the integration report with the `Write` tool to `<p>/spec_dd/fls_integration/<run-date>/integration_report.md`. Its sections are below.
+3. Commit it: `git -C <p> add spec_dd/fls_integration`, then `uv run --directory <p> git commit -m "Update FLS: integration report <run-date>"`.
+4. Push under the Step 3 policy. When the policy says push and the project's branch is neither its default branch nor, when the default is unknown, `main` or `master`, run `git -C <p> push`. Otherwise do not push.
+
+Because the report is committed before the push, write its verdict line with `pushed: yes` or `pushed: no` and, for no, the reason: the policy said leave unpushed, or the branch is the default branch.
+
+### The integration report
+
+Sections, in this order:
+
+1. Verdict line: integrated N of M, parked on `<slug>` or `none`, FLS fixes landed, ideas written, `pushed: yes` or `pushed: no`, and the resume instruction when the run is not complete. The resume instruction is the command name with the project path as its argument.
+2. Needs attention: `none`.
+3. Per-cell results, one row per cell read from the cell result files: spec, FLS commit, flags, result, project commit, new failures, QA result.
+4. Baseline: the baseline failing ids, and which of them passed in one more run of the portable contract test set after the final sync.
+5. FLS changes made: `none`.
+6. Workarounds: `none`.
+7. Pull-in candidates: `none`.
+8. Assumed defaults: the push policy when the operator did not answer.
+
+## Deleting scratch files
+
+At the end of a complete run, `Glob` `.sdd-work/update_concrete_*`, including the files inside any `update_concrete_qa_*/` directory and its `screenshots/`. Pass every file found, by name, to `.claude/fls-dev/scripts/delete_sdd_work_files.sh` in one call. This also clears what an earlier stopped run left. The script refuses directories, so the emptied `update_concrete_qa_*` directories stay under the gitignored `.sdd-work/`. A run that stops early deletes nothing, which makes resume cheap.
+
 ## Permissions
 
 Each project path should be listed under `permissions.additionalDirectories` in `.claude/settings.local.json` (gitignored); Step 1 checks it. Writes into a project prompt unless the session runs in `acceptEdits` mode.
 
-`.claude/settings.json` allows the read-only `git -C` verbs, `uv run --directory` for the test run and `migrate --check`, and `git -C … add`. `reset --hard`, `clean`, `migrate`, `makemigrations`, `npm install`, seed commands, the submodule `checkout` and `push` keep prompting by design. The `fetch` entry is pinned to `git -C … fetch origin main`, the only form this command and the shared resource run, because `git fetch` accepts `--upload-pack=<cmd>`.
+`.claude/settings.json` allows the read-only `git -C` verbs, `git -C … add`, `git -C … submodule update`, `uv run --directory` for the test run, `check`, `makemigrations --check`, `migrate --check` and `git commit`, `uv sync --directory`, and `npm --prefix … run tailwind_build`. It denies `--force` pushes and `--no-verify` commits in a project. `reset --hard`, `clean`, `rmdir`, `migrate`, `makemigrations`, `npm install`, seed commands, the submodule `checkout` and `push` keep prompting by design. The `fetch` entry is pinned to `git -C … fetch origin main`, the only form this command and the shared resource run, because `git fetch` accepts `--upload-pack=<cmd>`.
