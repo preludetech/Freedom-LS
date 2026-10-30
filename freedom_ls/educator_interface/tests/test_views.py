@@ -6,7 +6,7 @@ import csv
 import io
 import json
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
@@ -85,7 +85,15 @@ from freedom_ls.learner_management.models import (
     LearnerImport,
     OrganisationMember,
 )
+from freedom_ls.learner_management.queries import (
+    ADD_COHORTMEMBERSHIP,
+    ADD_LEARNER,
+    VIEW_COHORT,
+    VIEW_LEARNER,
+    VIEW_ORGANISATION,
+)
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
+from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
@@ -96,6 +104,8 @@ from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 QUERY_BUDGET = 60
 
@@ -4513,6 +4523,64 @@ def test_the_template_download_is_refused_to_a_user_who_fails_the_import_gate(
     )
 
     assert response.status_code == 403
+
+
+@pytest.fixture
+def cohort_importer_client(
+    import_world: SimpleNamespace, mock_site_context: Site, settings
+) -> Iterator[Client]:
+    """A client whose user passes the cohort import gate but not the
+    organisation-wide one, which no shipped role does."""
+    role = Role(
+        display_name="Cohort importer",
+        permissions=frozenset(
+            {
+                VIEW_ORGANISATION,
+                VIEW_COHORT,
+                VIEW_LEARNER,
+                ADD_LEARNER,
+                ADD_COHORTMEMBERSHIP,
+            }
+        ),
+        assignment_scope=SCOPE_OBJECT,
+    )
+    with custom_role_config(
+        mock_site_context, settings, extra_roles={"cohort_importer": role}
+    ):
+        importer = cast(
+            User,
+            LearnerFactory(
+                user__staff=True, organisation=import_world.organisation
+            ).user,
+        )
+        assign_object_role(importer, import_world.organisation, "cohort_importer")
+        yield import_world.logged_in_client(importer)
+
+
+@pytest.mark.django_db
+def test_a_cohort_page_importer_can_download_the_template(
+    import_world: SimpleNamespace, cohort_importer_client: Client
+):
+    """The template was gated on the organisation-wide import, so the cohort
+    upload page offered a link that answered 403 to an importer who may only
+    import into the cohort."""
+    upload_url = (
+        f"{_import_url(import_world.organisation, 'learner_import')}"
+        f"?cohort={import_world.cohort.pk}"
+    )
+    page = _get_document(cohort_importer_client, upload_url)
+    template_url = _import_url(import_world.organisation, "learner_import_template")
+    (href,) = [
+        a.get("href") for a in page.cssselect("a") if template_url in a.get("href")
+    ]
+
+    organisation_wide = cohort_importer_client.get(template_url)
+    response = cohort_importer_client.get(href)
+
+    assert href == f"{template_url}?cohort={import_world.cohort.pk}"
+    assert organisation_wide.status_code == 403
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/csv")
 
 
 @pytest.mark.django_db

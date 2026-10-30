@@ -31,8 +31,10 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    ImportStatus,
     Learner,
     LearnerCourseRegistration,
+    LearnerImport,
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
@@ -747,6 +749,16 @@ def cohort_is_empty(cohort: Cohort) -> bool:
         )
         .exists()
     )
+
+
+def import_into_cohort_in_progress(cohort: Cohort) -> bool:
+    """Whether a learner import into the cohort is previewed, queued or
+    running. Deleting the cohort under it would turn it into an import into
+    the organisation, which is not what the importer confirmed."""
+    return LearnerImport.objects.filter(
+        cohort=cohort,
+        status__in=[ImportStatus.PREVIEWED, ImportStatus.QUEUED, ImportStatus.RUNNING],
+    ).exists()
 
 
 def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:

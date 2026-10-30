@@ -163,6 +163,44 @@ def test_a_cohort_cell_matches_only_cohorts_the_user_can_add_to(
     assert rows[2].preview_label == ImportLabel.ERROR
 
 
+def test_a_cohort_cell_matches_the_exact_name_before_a_case_insensitive_one(
+    organisation: Organisation, admin: User
+) -> None:
+    """Cohort names are unique only case-sensitively, but the cell was matched
+    on its lower-cased name, so 'Group A' could land rows in 'group a'."""
+    upper = cast(Cohort, CohortFactory(organisation=organisation, name="Group A"))
+    lower = cast(Cohort, CohortFactory(organisation=organisation, name="group a"))
+    CohortFactory(organisation=organisation, name="Group B")
+    upload = _file(
+        "a@example.com,,,Group A",
+        "b@example.com,,,group a",
+        "c@example.com,,,GROUP A",
+        "d@example.com,,,group b",
+    )
+
+    learner_import = create_learner_import(admin, organisation, None, upload)
+    run_learner_import(str(learner_import.pk), organisation.site_id)
+
+    rows = LearnerImportRow.objects.filter(learner_import=learner_import).order_by(
+        "line_number"
+    )
+    assert [row.final_label for row in rows] == [
+        ImportLabel.NEW_ACCOUNT,
+        ImportLabel.NEW_ACCOUNT,
+        ImportLabel.ERROR,
+        ImportLabel.NEW_ACCOUNT,
+    ]
+    assert rows[2].final_reason == (
+        "'GROUP A' matches more than one cohort. Use its exact name."
+    )
+    assert [m.learner.user.email for m in upper.cohortmembership_set.all()] == [
+        "a@example.com"
+    ]
+    assert [m.learner.user.email for m in lower.cohortmembership_set.all()] == [
+        "b@example.com"
+    ]
+
+
 def test_a_cohort_import_ignores_the_cohort_cell_and_uses_its_own_cohort(
     organisation: Organisation, admin: User
 ) -> None:

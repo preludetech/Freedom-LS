@@ -2156,12 +2156,21 @@ def _cohort_learners_url(cohort: Cohort) -> str:
     )
 
 
+def _cohort_import_url(
+    name: str, organisation: Organisation, cohort: Cohort | None
+) -> str:
+    """An import page's URL, carrying `?cohort=` for a cohort import."""
+    url = _import_url(name, organisation)
+    if cohort is None:
+        return url
+    return f"{url}?{urlencode({'cohort': str(cohort.pk)})}"
+
+
 def _import_upload_url(learner_import: LearnerImport) -> str:
     """The upload page that made this import: the cohort's, for a cohort import."""
-    url = _import_url("learner_import", learner_import.organisation)
-    if learner_import.cohort is None:
-        return url
-    return f"{url}?{urlencode({'cohort': str(learner_import.cohort.pk)})}"
+    return _cohort_import_url(
+        "learner_import", learner_import.organisation, learner_import.cohort
+    )
 
 
 def _import_cohort_or_404(
@@ -2218,7 +2227,9 @@ def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse
             "form": form,
             "cohort": cohort,
             "headers": ",".join(HEADERS),
-            "template_url": _import_url("learner_import_template", organisation),
+            "template_url": _cohort_import_url(
+                "learner_import_template", organisation, cohort
+            ),
         },
         status=422 if form.errors else 200,
     )
@@ -2294,9 +2305,11 @@ def _csv_attachment(chunks: Iterator[str], filename: str) -> StreamingHttpRespon
 def learner_import_template(
     request: HttpRequest, organisation_slug: str
 ) -> HttpResponse | StreamingHttpResponse:
-    """A CSV with the accepted headers and two example rows."""
+    """A CSV with the accepted headers and two example rows. Gated like the
+    upload page that links to it, so `?cohort=` names the same cohort."""
     scoped = scope_request(request, organisation_slug)
-    if not check_import_gate(cast(User, request.user), scoped.organisation, None):
+    cohort = _import_cohort_or_404(request, scoped.organisation)
+    if not check_import_gate(cast(User, request.user), scoped.organisation, cohort):
         return _import_denied(request, scoped)
     return _csv_attachment(
         write_error_csv(HEADERS, TEMPLATE_EXAMPLE_ROWS), "learner-import-template.csv"
