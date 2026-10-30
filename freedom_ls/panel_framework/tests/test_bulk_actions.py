@@ -35,6 +35,7 @@ from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.views import (
+    REFRESH_IDS_LIMIT,
     SectionConfigBase,
     _handle_action,
     _ResolvedAction,
@@ -384,6 +385,31 @@ def test_confirmed_htmx_post_returns_result_summary(mock_site_context: Site) -> 
     assert not StubModel.objects.filter(is_active=True).exists()
     trigger = json.loads(execute_response["HX-Trigger"])
     assert sorted(trigger["itemChanged"]["ids"]) == sorted(keys)
+
+
+def test_a_result_over_many_rows_fires_its_events_without_ids(
+    mock_site_context: Site,
+) -> None:
+    """The header carried every selected key: 250 UUIDs per refresh event,
+    enough to overflow a proxy's header buffer after the changes were made."""
+    stubs = [make_stub() for _ in range(REFRESH_IDS_LIMIT + 1)]
+    keys = [str(stub.pk) for stub in stubs]
+
+    execute_response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={
+            "mode": "keys",
+            "keys": keys,
+            "confirmed": "1",
+            "expected_count": str(len(keys)),
+        },
+        htmx=True,
+    )
+
+    assert execute_response.status_code == 200
+    assert not StubModel.objects.filter(is_active=True).exists()
+    assert json.loads(execute_response["HX-Trigger"]) == {"itemChanged": {"ids": []}}
 
 
 def test_confirmed_plain_post_returns_result_page_with_back_link(
