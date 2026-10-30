@@ -1216,7 +1216,9 @@ def _region_text(document: lxml.html.HtmlElement) -> str:
 
 
 @pytest.mark.django_db
-def test_the_learner_page_has_overview_courses_and_history_tabs(staff_client: Client):
+def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
+    staff_client: Client,
+):
     learner = LearnerFactory(organisation=OrganisationFactory())
 
     document = _learner_page(staff_client, learner)
@@ -1226,6 +1228,7 @@ def test_the_learner_page_has_overview_courses_and_history_tabs(staff_client: Cl
     assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
         "overview",
         "courses",
+        "messages",
         "history",
     ]
 
@@ -3853,3 +3856,176 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
         response = staff_client.get(_audit_log_url(organisation))
 
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
+
+
+# The learner page's Messages tab: the educator's own conversation with the
+# learner, and the composer that posts back into the tab.
+
+
+def _tab_url(learner: Learner) -> str:
+    return _msg_url(learner.organisation, f"learners/{learner.pk}/__tabs/messages")
+
+
+def _send_url(learner: Learner) -> str:
+    return f"{_tab_url(learner)}/__actions/send"
+
+
+def _tab_document(client: Client, learner: Learner) -> lxml.html.HtmlElement:
+    return _get_document(client, _tab_url(learner))
+
+
+@pytest.mark.django_db
+@messages_section
+class TestLearnerMessagesTab:
+    def test_the_tab_is_in_the_learner_pages_tab_row(self, msg_client_for):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+
+        document = _learner_page(msg_client_for(educator), learner)
+
+        assert document.xpath(f"//a[@href='{_tab_url(learner)}']")
+
+    def test_the_tab_is_absent_and_its_url_404s_when_messaging_is_off(
+        self, msg_client_for, settings
+    ):
+        settings.MESSAGING_ENABLED = False
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        client = msg_client_for(educator)
+
+        document = _learner_page(client, learner)
+
+        assert not document.xpath(f"//a[@href='{_tab_url(learner)}']")
+        assert client.get(_tab_url(learner)).status_code == 404
+
+    def test_it_shows_the_educators_own_conversation_and_not_a_colleagues(
+        self, msg_client_for
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        colleague = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        own = _msg_conversation(educator, learner.user)
+        MessageFactory(conversation=own, sender=learner.user, body="for me")
+        theirs = _msg_conversation(colleague, learner.user)
+        MessageFactory(conversation=theirs, sender=learner.user, body="for them")
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        text = document.text_content()
+        assert "for me" in text
+        assert "for them" not in text
+
+    def test_a_learner_with_no_conversation_shows_a_prompt_and_a_composer_posting_to_the_tab(
+        self, msg_client_for
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        assert "No messages with Ada Lovelace yet." in document.text_content()
+        composer = document.xpath("//form[@id='composer']")[0]
+        assert composer.get("hx-post") == _send_url(learner)
+        region_id = document.xpath("//section[@data-panel='messages']")[0].get("id")
+        assert composer.get("hx-target") == f"#{region_id}"
+        assert composer.get("hx-swap") == "outerHTML"
+
+    def test_opening_the_tab_moves_the_educators_read_marker(self, msg_client_for):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        conversation = _msg_conversation(educator, learner.user)
+        MessageFactory(conversation=conversation, sender=learner.user, body="hi")
+        assert unread_conversation_count(educator) == 1
+
+        _tab_document(msg_client_for(educator), learner)
+
+        assert unread_conversation_count(educator) == 0
+
+    def test_an_educator_of_another_organisation_gets_404(self, msg_client_for):
+        organisation = OrganisationFactory()
+        learner = _msg_learner(organisation)
+        outsider = _msg_educator(OrganisationFactory())
+
+        response = msg_client_for(outsider).get(_tab_url(learner))
+
+        assert response.status_code == 404
+
+    def test_the_first_send_creates_the_conversation_and_rerenders_the_tab(
+        self, msg_client_for
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+
+        response = msg_client_for(educator).post(
+            _send_url(learner), {"body": "Welcome aboard", "client_key": str(uuid4())}
+        )
+
+        assert response.status_code == 200
+        assert "HX-Location" not in response
+        assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+        conversation = inbox_for(educator).get()
+        assert conversation.messages.get().body == "Welcome aboard"
+        page = lxml.html.fromstring(response.content.decode())
+        assert "Welcome aboard" in page.xpath("//*[@id='thread-log']")[0].text_content()
+
+    def test_a_reply_into_an_existing_conversation_rerenders_the_tab(
+        self, msg_client_for
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        conversation = _msg_conversation(educator, learner.user)
+
+        response = msg_client_for(educator).post(
+            _send_url(learner), {"body": "Second thoughts", "client_key": str(uuid4())}
+        )
+
+        assert response.status_code == 200
+        assert "HX-Location" not in response
+        assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+        assert conversation.messages.get().body == "Second thoughts"
+        page = lxml.html.fromstring(response.content.decode())
+        assert page.xpath("//*[@id='thread-log']")
+
+    def test_a_refused_send_answers_422_with_the_draft_and_the_alert(
+        self, msg_client_for, monkeypatch
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.views.send_message",
+            lambda **kwargs: SendResult(refusal=MessagingRefusal.NO_RELATIONSHIP),
+        )
+
+        response = msg_client_for(educator).post(
+            _send_url(learner), {"body": "Welcome aboard", "client_key": str(uuid4())}
+        )
+
+        assert response.status_code == 422
+        page = lxml.html.fromstring(response.content.decode())
+        assert page.xpath("//*[@role='alert'][not(@x-show)]")
+        textarea = page.xpath("//textarea[@name='body']")[0]
+        assert "Welcome aboard" in textarea.text_content()
+        assert not inbox_for(educator).exists()
+
+    def test_a_post_with_messaging_off_is_denied_and_stores_nothing(
+        self, msg_client_for, settings
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        settings.MESSAGING_ENABLED = False
+
+        response = msg_client_for(educator).post(
+            _send_url(learner), {"body": "Welcome aboard", "client_key": str(uuid4())}
+        )
+
+        assert response.status_code in {403, 404}
+        assert not inbox_for(educator).exists()

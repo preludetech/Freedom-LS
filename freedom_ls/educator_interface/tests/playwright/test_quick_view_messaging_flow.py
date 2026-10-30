@@ -2,7 +2,7 @@
 
 The Django test client covers what the server renders. What only a browser
 shows is covered here: the drawer staying open through a send, the Open
-conversation link appearing after the first message, the discard prompt for an
+conversation link pointing at the learner page's Messages tab, the discard prompt for an
 unsent draft, and the bottom sheet on a phone.
 """
 
@@ -54,9 +54,11 @@ def _learners_url(live_server, organisation_slug: str) -> str:
     return f"{live_server.url}{path}"
 
 
-def _thread_href(organisation_slug: str) -> re.Pattern[str]:
-    """A pattern matching a thread address inside the organisation."""
-    return re.compile(rf"/{re.escape(organisation_slug)}/messages/[0-9a-f-]{{36}}$")
+def _tab_href(organisation_slug: str) -> re.Pattern[str]:
+    """A pattern matching a learner's Messages tab address inside the organisation."""
+    return re.compile(
+        rf"/{re.escape(organisation_slug)}/learners/[0-9a-f-]{{36}}/__tabs/messages$"
+    )
 
 
 def test_messaging_a_learner_from_the_quick_view(
@@ -88,11 +90,10 @@ def test_messaging_a_learner_from_the_quick_view(
     expect(quick_view).to_be_visible()
     expect(quick_view.locator("#quick-view-title")).to_have_text("Kai Ngata")
 
-    # No conversation yet, so no Open conversation link.
-    expect(open_link).to_be_hidden()
+    # The link to the Messages tab is there before any conversation exists.
+    expect(open_link).to_have_attribute("href", _tab_href(organisation.slug))
 
-    # The first send keeps the drawer open, shows the entry, and reveals the
-    # link to the new conversation.
+    # The first send keeps the drawer open and shows the entry.
     box.fill("Welcome to the course")
     quick_view.get_by_role("button", name="Send").click()
     expect(quick_view.locator("#quick-view-message-box")).to_contain_text(
@@ -100,8 +101,7 @@ def test_messaging_a_learner_from_the_quick_view(
     )
     expect(quick_view).to_be_visible()
     expect(box).to_have_value("")
-    expect(open_link).to_be_visible()
-    expect(open_link).to_have_attribute("href", _thread_href(organisation.slug))
+    expect(open_link).to_have_attribute("href", _tab_href(organisation.slug))
 
     # The fresh composer after a send is not a draft: another learner opens
     # without a prompt.

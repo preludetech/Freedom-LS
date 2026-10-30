@@ -15,7 +15,10 @@ message.
       method="post"
       action="{{ composer.action_url }}"
       hx-post="{{ composer.action_url }}"
-      {% if composer.in_quick_view %}
+      {% if composer.swap_target %}
+          hx-target="#{{ composer.swap_target }}"
+          hx-swap="outerHTML"
+      {% elif composer.in_quick_view %}
           hx-target="#quick-view-message-box"
           hx-swap="outerHTML"
       {% elif composer.in_modal %}
@@ -29,7 +32,7 @@ message.
           hx-swap="beforeend"
           hx-include="#thread-cursor"
       {% endif %}
-      hx-sync="{% if composer.in_quick_view or composer.in_modal or composer.recipient %}this:drop{% else %}#thread-log:replace{% endif %}"
+      hx-sync="{% if composer.swap_target or composer.in_quick_view or composer.in_modal or composer.recipient %}this:drop{% else %}#thread-log:replace{% endif %}"
       hx-disabled-elt="find button[type=submit]"
       data-max-length="{{ composer.max_length }}"
       data-counter-from="{{ composer.counter_from }}"

@@ -558,7 +558,6 @@ class TestLearnerQuickViewMessageBox:
         assert form.xpath(".//input[@name='recipient']")[0].get("value") == str(
             learner.user.pk
         )
-        assert box.get("data-conversation-pk") == ""
 
     def test_lists_the_last_three_messages_and_links_to_the_conversation(
         self, educator_client
@@ -580,15 +579,14 @@ class TestLearnerQuickViewMessageBox:
         assert "first" not in box.text_content()
         for body in ("second", "third", "fourth"):
             assert body in box.text_content()
-        assert box.get("data-conversation-pk") == str(conversation.pk)
         form = box.xpath(".//form[@id='composer']")[0]
         assert form.get("hx-post") == reverse(
             "conversations:send", kwargs={"pk": conversation.pk}
         )
         link = tree.xpath("//a[normalize-space()='Open conversation']")[0]
-        assert link.get("href").endswith(f"/messages/{conversation.pk}")
+        assert link.get("href").endswith(f"/learners/{learner.pk}/__tabs/messages")
 
-    def test_the_open_conversation_link_has_no_target_before_a_conversation_exists(
+    def test_the_open_conversation_link_points_at_the_tab_before_a_conversation_exists(
         self, educator_client
     ):
         organisation = OrganisationFactory()
@@ -599,13 +597,9 @@ class TestLearnerQuickViewMessageBox:
         )
 
         tree = html.fromstring(f"<div>{response.content.decode()}</div>")
-        root = tree.xpath("//*[@x-data='messageBox']")[0]
-        assert root.get("data-open-url-template").endswith("/messages/{pk}")
-        assert not [
-            a.get("href")
-            for a in tree.xpath("//a[normalize-space()='Open conversation']")
-            if a.get("href")
-        ]
+        link = tree.xpath("//a[normalize-space()='Open conversation']")[0]
+        assert link.get("href").endswith(f"/learners/{learner.pk}/__tabs/messages")
+        assert not tree.xpath("//*[@x-data='messageBox']")
 
     def test_leaves_refresh_events_unchanged(self):
         assert LearnerQuickView.refresh_events == (LEARNER_CHANGED,)
