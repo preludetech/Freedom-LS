@@ -25,6 +25,7 @@ Title-link target by status:
   complete                 -> course_finish
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
+  access ended (access_ended_at set) -> course_detail, with the "Access ended" eyebrow
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in the eyebrow slot.
@@ -34,11 +35,13 @@ frees the horizontal space that clipped "Details" off narrow viewports.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-missed_deadline, next_deadline, access_badge, current_price,
+missed_deadline, next_deadline, access_ends_at, access_ended_at, access_badge, current_price,
 card_organisation), user and
 show_time_zone_to_learners.
 {% endcomment %}
-{% if course.listing_status == "complete" %}
+{% if course.access_ended_at %}
+    {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
+{% elif course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "registered" or course.listing_status == "in_progress" %}
     {% url 'learner_interface:course_home' course_slug=course.slug as home_url %}
@@ -55,7 +58,11 @@ show_time_zone_to_learners.
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
         <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             {% if course.listing_status != "not_registered" %}
-                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
+                {% if course.access_ended_at %}
+                    {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True as_chip=True %}
+                {% else %}
+                    {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
+                {% endif %}
             {% elif not user.is_authenticated and course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}

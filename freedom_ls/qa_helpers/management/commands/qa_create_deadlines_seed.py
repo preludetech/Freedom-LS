@@ -6,7 +6,7 @@ Builds, on the named site:
 * one ``SiteTimeZoneConfig``: ``Africa/Johannesburg``, zone label hidden;
 * ``QA Deadlines Org`` > ``QA Deadlines Cohort`` with an active
   ``CohortCourseRegistration`` for the parts course and no cohort deadline overrides;
-* four verified learners (password = email):
+* five verified learners (password = email):
 
   - ``qa_deadline_cohort@email.com``: cohort member, parts-course record created
     2026-03-01 10:00 UTC;
@@ -14,16 +14,33 @@ Builds, on the named site:
     record created 100 days before now; plus an individual registration for the plain course;
   - ``qa_deadline_fresh@email.com``: an individual parts-course registration made now (its
     registration and record are deleted and rebuilt on every run);
-  - ``qa_deadline_none@email.com``: no registrations or memberships at all.
+  - ``qa_deadline_none@email.com``: no registrations or memberships at all;
+  - ``qa_deadline_restored@email.com``: individual parts-course registration, its record
+    created 100 days before now.
 
-Every run also strips the four learners' learner deadline overrides, topic progress,
+Every run deletes and rebuilds the deadline config rows it owns (the cohort's, the
+cohort registration's and the learners' registrations'), then produces these states:
+
+* solo / parts: close_items on with a three-day grace window and access ending off;
+  "Course Feedback" carries a fixed override due yesterday, so it is inside its grace
+  window; "Welcome", "What to Expect" and "Key Ideas" are closed; "Knowledge Check" is a
+  closed form with an open attempt;
+* cohort / parts: access ending on with ``outline_and_results``, so the course is ended
+  and "Welcome" is a completed item that stays linked;
+* solo / plain: access ending on with ``nothing`` and a fixed time-limit override ten
+  days ago, so the course is ended with nothing to open;
+* restored / parts: access ending on, past the 90-day limit, restored by a fixed
+  time-limit override 30 days from now;
+* fresh / parts: no config rows, so nothing is due and nothing is closed.
+
+Every run also strips the five learners' learner deadline overrides, topic progress,
 course form attempts and form sittings, and zeroes their records' percentage, start,
 completion and resume pointer, so nothing is completed.
 
 The demo content must already be loaded (``content_save demo_content <SITE>``); the
 command checks the parts course's defaults and refuses to seed if they differ.
 
-Re-running is idempotent and destructive for the four ``qa_deadline_*`` accounts only.
+Re-running is idempotent and destructive for the ``qa_deadline_*`` accounts only.
 
 Usage:
     uv run python manage.py qa_create_deadlines_seed [--site-name DemoDev]
@@ -31,6 +48,7 @@ Usage:
 
 from datetime import UTC, date, datetime, time, timedelta
 from typing import cast
+from zoneinfo import ZoneInfo
 
 import djclick as click
 from allauth.account.models import EmailAddress
@@ -41,9 +59,18 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course
-from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
-from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.deadlines.models import (
+    AfterAccessEnded,
+    CohortCourseRegistrationDeadlineConfig,
+    CohortDeadlineConfig,
+    CohortDeadlineOverride,
+    DeadlineKind,
+    DeadlineSwitch,
+    LearnerCourseRegistrationDeadlineConfig,
+    LearnerDeadlineOverride,
+)
+from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -79,6 +106,8 @@ COHORT_EMAIL = "qa_deadline_cohort@email.com"
 SOLO_EMAIL = "qa_deadline_solo@email.com"
 FRESH_EMAIL = "qa_deadline_fresh@email.com"
 NONE_EMAIL = "qa_deadline_none@email.com"
+RESTORED_EMAIL = "qa_deadline_restored@email.com"
+GRACE_WINDOW = timedelta(days=3)
 COHORT_REG_DATE = datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
 SOLO_DAYS_AGO = 100
 
@@ -293,6 +322,73 @@ def _delete(queryset: QuerySet) -> tuple[int, dict[str, int]]:
     return queryset.delete()
 
 
+def _local_today() -> date:
+    return timezone.now().astimezone(ZoneInfo(TIME_ZONE)).date()
+
+
+def _delete_owned_configs(
+    cohort_registration: CohortCourseRegistration, users: list[User]
+) -> None:
+    """Remove the config rows the seed owns so each run rebuilds them from scratch."""
+    for label, queryset in (
+        (
+            "Cohort deadline configs",
+            CohortDeadlineConfig._base_manager.filter(
+                cohort=cohort_registration.cohort
+            ),
+        ),
+        (
+            "Cohort registration deadline configs",
+            CohortCourseRegistrationDeadlineConfig._base_manager.filter(
+                cohort_registration=cohort_registration
+            ),
+        ),
+        (
+            "Learner registration deadline configs",
+            LearnerCourseRegistrationDeadlineConfig._base_manager.filter(
+                learner_registration__learner__user__in=users
+            ),
+        ),
+    ):
+        click.echo(f"{label} removed: {_delete(queryset)}")
+
+
+def _item_titled(course: Course, title: str) -> ContentCollectionItem:
+    for item in course.viewable_collection_items():
+        if getattr(item.child, "title", None) == title:
+            return item
+    raise click.ClickException(f"{course.slug} has no item '{title}'.")
+
+
+def _fixed_override(
+    record: CourseProgress,
+    site: Site,
+    due: date,
+    collection_item: ContentCollectionItem | None = None,
+) -> LearnerDeadlineOverride:
+    return LearnerDeadlineOverride._base_manager.create(
+        site=site,
+        course_progress=record,
+        collection_item=collection_item,
+        kind=DeadlineKind.FIXED,
+        due_date=due,
+    )
+
+
+def _open_attempt(
+    record: CourseProgress, item: ContentCollectionItem, site: Site
+) -> CourseFormAttempt:
+    form = item.child
+    if not isinstance(form, Form):
+        raise click.ClickException(f"Item '{item}' is not a form.")
+    sitting = FormProgress._base_manager.create(
+        site=site, form=form, user=record.learner.user
+    )
+    return CourseFormAttempt._base_manager.create(
+        site=site, course_progress=record, collection_item=item, form_progress=sitting
+    )
+
+
 def _wipe_enrolment(user: User) -> None:
     """Delete the user's records, then registrations and memberships (PROTECT order)."""
     click.echo(
@@ -307,6 +403,68 @@ def _wipe_enrolment(user: User) -> None:
         f"{user.email} memberships removed: "
         f"{_delete(CohortMembership._base_manager.filter(learner__user=user))}"
     )
+
+
+def _seed_states(
+    site: Site,
+    parts: Course,
+    cohort_registration: CohortCourseRegistration,
+    cohort_learner: Learner,
+    cohort_record: CourseProgress,
+    solo_parts: tuple[LearnerCourseRegistration, CourseProgress],
+    solo_plain: tuple[LearnerCourseRegistration, CourseProgress],
+    restored: tuple[LearnerCourseRegistration, CourseProgress],
+) -> None:
+    """Config rows, overrides and progress that produce the closed and ended states."""
+    today = _local_today()
+
+    CohortDeadlineConfig._base_manager.create(
+        site=site,
+        cohort=cohort_registration.cohort,
+        end_course_access=DeadlineSwitch.ON,
+        after_access_ended=AfterAccessEnded.OUTLINE_AND_RESULTS,
+    )
+    welcome = _item_titled(parts, "Welcome")
+    TopicProgress._base_manager.create(
+        site=site,
+        course_progress=cohort_record,
+        topic=cast(Topic, welcome.child),
+        collection_item=welcome,
+        complete_time=timezone.now(),
+    )
+
+    solo_parts_registration, solo_parts_record = solo_parts
+    LearnerCourseRegistrationDeadlineConfig._base_manager.create(
+        site=site,
+        learner_registration=solo_parts_registration,
+        close_items=DeadlineSwitch.ON,
+        grace_window=GRACE_WINDOW,
+        end_course_access=DeadlineSwitch.OFF,
+    )
+    _fixed_override(
+        solo_parts_record,
+        site,
+        today - timedelta(days=1),
+        _item_titled(parts, "Course Feedback"),
+    )
+    _open_attempt(solo_parts_record, _item_titled(parts, "Knowledge Check"), site)
+
+    solo_plain_registration, solo_plain_record = solo_plain
+    LearnerCourseRegistrationDeadlineConfig._base_manager.create(
+        site=site,
+        learner_registration=solo_plain_registration,
+        end_course_access=DeadlineSwitch.ON,
+        after_access_ended=AfterAccessEnded.NOTHING,
+    )
+    _fixed_override(solo_plain_record, site, today - timedelta(days=10))
+
+    restored_registration, restored_record = restored
+    LearnerCourseRegistrationDeadlineConfig._base_manager.create(
+        site=site,
+        learner_registration=restored_registration,
+        end_course_access=DeadlineSwitch.ON,
+    )
+    _fixed_override(restored_record, site, today + timedelta(days=30))
 
 
 @click.command()
@@ -327,8 +485,13 @@ def command(site_name: str) -> None:
     solo_user = _ensure_user(SOLO_EMAIL, site)
     fresh_user = _ensure_user(FRESH_EMAIL, site)
     none_user = _ensure_user(NONE_EMAIL, site)
+    restored_user = _ensure_user(RESTORED_EMAIL, site)
 
-    _strip_progress([cohort_user, solo_user, fresh_user, none_user])
+    _strip_progress([cohort_user, solo_user, fresh_user, none_user, restored_user])
+    _delete_owned_configs(
+        cohort_registration,
+        [cohort_user, solo_user, fresh_user, none_user, restored_user],
+    )
     _wipe_enrolment(fresh_user)
     _wipe_enrolment(none_user)
 
@@ -361,6 +524,24 @@ def command(site_name: str) -> None:
         fresh_learner, parts, site, learner_registration=fresh_registration
     )
 
+    restored_learner = _learner(restored_user, organisation, site)
+    restored_registration = _individual_registration(restored_learner, parts, site)
+    restored_record = _record_for(
+        restored_learner, parts, site, learner_registration=restored_registration
+    )
+    _set_created_at(restored_record, timezone.now() - timedelta(days=SOLO_DAYS_AGO))
+
+    _seed_states(
+        site,
+        parts,
+        cohort_registration,
+        cohort_learner,
+        cohort_record,
+        (solo_parts, solo_record),
+        (solo_plain, solo_plain_record),
+        (restored_registration, restored_record),
+    )
+
     click.echo(f"\nSite time zone: {tz_config.pk} {tz_config}")
     click.echo(
         f"Cohort {cohort_registration.cohort.pk}; "
@@ -370,6 +551,7 @@ def command(site_name: str) -> None:
         ("cohort / parts", cohort_record),
         ("solo / parts", solo_record),
         ("solo / plain", solo_plain_record),
+        ("restored / parts", restored_record),
         ("fresh / parts", fresh_record),
     ):
         click.echo(

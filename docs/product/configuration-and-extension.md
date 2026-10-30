@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
@@ -8,6 +8,7 @@ _Last updated: 2026-10-25_
 - Theming works at three increasing depths: override CSS tokens, fill slots inside components, or replace whole template files.
 - Two themes ship (`default`, `first_class`), selected by `FLS_THEME`. Four icon sets are available, selected by `FREEDOM_LS_ICON_SET`.
 - Course access is a pluggable backend, so a deployment can offer free enrolment, application-gated courses, or a model of its own.
+- [Deadline consequences](./learner-experience.md#deadlines) have a deployment-wide default, and the policy that decides them can be replaced.
 - [Direct messaging](./messaging.md) is off until `MESSAGING_ENABLED` is set. Who may message whom is decided by a swappable messaging policy that keeps learner-initiated messages closed by default.
 - FLS is designed to be installed into a host Django project, which retains override priority at every layer.
 - An opt-in conformance suite lets a downstream project verify it has wired FLS up correctly.
@@ -64,6 +65,8 @@ FLS's reference configuration selects the application-gated backend, so both fre
 
 Adding a future access model — a subscription, a per-course purchase — is a new backend class and a settings change, with no template, view, or migration work. A backend can also recognise a visitor who has no account but whose browser session holds an application, which is how the application-gated backend lets an anonymous applicant return to their application; a backend that decides by user alone needs nothing extra. See [learner experience](./learner-experience.md#applying-to-a-course) for what the applicant sees.
 
+Like course visibility, the end of access under a [deadline policy](#deadline-policy) is enforced around whichever backend is configured, so a custom backend needs no deadline handling of its own.
+
 `COURSE_ACCESS_CONFIG_VALIDATOR` names the validator that checks each course's access configuration when content is loaded. A custom backend introducing its own configuration keys points this at its own validator; most deployments never set it.
 
 Access configuration is authored per course — see [content editing workflow](./content-editing-workflow.md). For how learners experience the two current access types, see [learner experience](./learner-experience.md).
@@ -77,6 +80,10 @@ See [learner experience](./learner-experience.md) for the learner-facing effect 
 ## Messaging Policy
 
 [Direct messaging](./messaging.md) is off by default; `MESSAGING_ENABLED` turns it on. Who may message whom comes from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy keeps every conversation a learner starts **closed by default**. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
+
+## Deadline Policy
+
+What a missed deadline leads to follows the same pattern. `DEADLINE_POLICY_DEFAULTS` sets the deployment-wide default, beneath the per-site, organisation, course, cohort and registration settings administrators choose in the admin; see [admin interface](./admin-interface.md#deadline-policy). The shipped default only shows the Missed deadline mark: nothing closes and no access ends. `DEADLINE_POLICY` lets a deployment point at a policy of its own to replace how those settings are combined.
 
 ## Preview Overrides (Dev and Staging Only)
 
@@ -161,6 +168,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `MESSAGING_POLICY` | Selects the policy that decides who may message whom; the shipped policy is used unless set. |
 | `MESSAGING_DEFAULT_FLAGS` | Deployment-wide defaults for learner-to-educator, learner-to-cohort-peer and learner-to-course-peer messaging; all closed by default. |
 | `MESSAGING_OFFERED_EDUCATOR_ROLES` | Educator roles a learner may be offered to message; defaults to cohort admins. |
+| `DEADLINE_POLICY_DEFAULTS` | Deployment-wide default deadline policy, beneath the admin's per-level settings. See [Deadline Policy](#deadline-policy). |
+| `DEADLINE_POLICY` | The policy that combines the deadline settings; the shipped layered policy unless set. |
 | `REGISTRATION_RULE_KINDS` | The ways a registration rule can decide who it matches; a project can add its own. Only attribute matching ships, and it is the default. See [registration rules](./registration-rules.md). |
 | `REGISTRATION_RULE_BATCH_SIZE` | How many learners a rule evaluation handles at a time; defaults to 500. See [registration rules](./registration-rules.md). |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |

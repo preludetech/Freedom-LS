@@ -27,7 +27,16 @@ from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     LearnerDeadlineOverrideFactory,
 )
-from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
+from freedom_ls.deadlines.loader import get_deadline_policy
+from freedom_ls.deadlines.models import (
+    AfterAccessEnded,
+    CohortDeadlineConfig,
+    CohortDeadlineOverride,
+    LearnerCourseRegistrationDeadlineConfig,
+    LearnerDeadlineOverride,
+)
+from freedom_ls.deadlines.resolver import course_deadlines
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -67,7 +76,11 @@ def _parts_course() -> Course:
     ):
         ContentCollectionItemFactory(
             collection_object=course,
-            child_object=TopicFactory(title=title),
+            child_object=(
+                FormFactory(title=title)
+                if title == "Knowledge Check"
+                else TopicFactory(title=title)
+            ),
             due_date=due_date,
             due_time=due_time,
             due_days_after_registration=days,
@@ -133,3 +146,84 @@ def test_seed_strips_qa_residue_and_spares_other_learners(qa_site):
     ).exists()
     config = SiteTimeZoneConfig._base_manager.get(site=qa_site)
     assert config.time_zone == "Africa/Johannesburg"
+
+
+def _seed_record(email: str, course: Course) -> CourseProgress:
+    return CourseProgress._base_manager.get(learner__user__email=email, course=course)
+
+
+@pytest.mark.django_db
+def test_seed_twice_leaves_one_config_row_and_one_override_per_owner(qa_site):
+    _parts_course()
+    CourseFactory(slug="functionality-demo-show-end-with-topic")
+
+    call_command("qa_create_deadlines_seed")
+    call_command("qa_create_deadlines_seed")
+
+    assert CohortDeadlineConfig._base_manager.count() == 1
+    assert LearnerCourseRegistrationDeadlineConfig._base_manager.count() == 3
+    assert LearnerDeadlineOverride._base_manager.count() == 3
+    assert (
+        LearnerDeadlineOverride._base_manager.filter(
+            course_progress__learner__user__email="qa_deadline_solo@email.com",
+            collection_item__isnull=True,
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_seed_resolves_the_documented_policies_and_restored_time_limit(qa_site):
+    parts = _parts_course()
+    plain = CourseFactory(slug="functionality-demo-show-end-with-topic")
+
+    call_command("qa_create_deadlines_seed")
+
+    policy = get_deadline_policy()
+    solo = policy.resolve(_seed_record("qa_deadline_solo@email.com", parts))
+    assert solo.close_items is True
+    assert solo.grace_window == timedelta(days=3)
+    assert solo.end_course_access is False
+    cohort = policy.resolve(_seed_record("qa_deadline_cohort@email.com", parts))
+    assert cohort.end_course_access is True
+    assert cohort.after_access_ended == AfterAccessEnded.OUTLINE_AND_RESULTS
+    solo_plain = policy.resolve(_seed_record("qa_deadline_solo@email.com", plain))
+    assert solo_plain.end_course_access is True
+    assert solo_plain.after_access_ended == AfterAccessEnded.NOTHING
+    fresh = policy.resolve(_seed_record("qa_deadline_fresh@email.com", parts))
+    assert fresh.close_items is False
+    assert fresh.end_course_access is False
+
+    restored = _seed_record("qa_deadline_restored@email.com", parts)
+    restored_limit = course_deadlines(restored).time_limit.due_at
+    assert restored_limit is not None
+    assert restored_limit - timezone.now() > timedelta(days=29)
+    assert policy.resolve(restored).end_course_access is True
+    ended = course_deadlines(_seed_record("qa_deadline_solo@email.com", plain))
+    assert ended.time_limit.due_at is not None
+    assert ended.time_limit.due_at < timezone.now()
+
+
+@pytest.mark.django_db
+def test_seed_builds_solo_feedback_override_open_attempt_and_cohort_completion(
+    qa_site,
+):
+    parts = _parts_course()
+    CourseFactory(slug="functionality-demo-show-end-with-topic")
+
+    call_command("qa_create_deadlines_seed")
+
+    solo = _seed_record("qa_deadline_solo@email.com", parts)
+    feedback = LearnerDeadlineOverride._base_manager.get(
+        course_progress=solo, collection_item__isnull=False
+    )
+    assert feedback.collection_item is not None
+    assert getattr(feedback.collection_item.child, "title", None) == "Course Feedback"
+    attempt = solo.form_attempts.get()
+    assert attempt.form_progress.completed_time is None
+    assert attempt.collection_item is not None
+    assert getattr(attempt.collection_item.child, "title", None) == "Knowledge Check"
+    cohort = _seed_record("qa_deadline_cohort@email.com", parts)
+    welcome = TopicProgress._base_manager.get(course_progress=cohort)
+    assert welcome.topic.title == "Welcome"
+    assert welcome.complete_time is not None

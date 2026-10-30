@@ -5,23 +5,26 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [x] (user) Decide what to do about QA bug: with mark_overdue off the dashboard card drops a past deadline's date — the spec says the date stays, the test plan's 2.1.4 accepts dropping it (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: the player's closed notice is not aligned to the reading column because <c-callout> drops its class attribute (TDD: failing test first, then fix)
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: 24 in tests/test_update_concrete_projects.py (test_every_new_allow_verb_matches_a_spelled_command_form, test_every_spelled_project_command_form_is_allowed_or_prompts_by_design) — they arrived with main's commit 22ad3e36b, not this branch
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward

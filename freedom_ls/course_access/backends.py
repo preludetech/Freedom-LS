@@ -9,12 +9,13 @@ course_access never imports course_applications.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, Any, cast
 
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.learner_management.queries import (
@@ -25,12 +26,18 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.learner_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import datetime
+    from uuid import UUID
+
     from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
     from django.http import HttpRequest
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
+    from freedom_ls.deadlines.resolver import ResolvedDeadline
 
     type RequestUser = User | AnonymousUser
 
@@ -44,7 +51,7 @@ if TYPE_CHECKING:
 class CourseAccessDecision:
     """Decision returned by CourseAccessBackend.get_access().
 
-    All callers read only these four fields — no caller may branch on
+    All callers read only these fields — no caller may branch on
     Course.access_config directly (backend-private convention).
     """
 
@@ -61,6 +68,11 @@ class CourseAccessDecision:
     acquisition_heading: str | None = None  # sign-up panel heading
     acquisition_subtext: str | None = None  # sign-up panel subtext
     is_accessible_for_free: bool = True  # honest free/gated signal for badge + JSON-LD
+    # Set when a registered learner's access to the content has ended: the instant it
+    # ended and what the course still shows them (an AfterAccessEnded value). Both are
+    # None for every other decision, including one that never granted access.
+    access_ended_at: datetime | None = None
+    after_access_ended: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +136,19 @@ class CourseAccessBackend:
         anonymous session overrides this.
         """
         return self.get_access(user=request.user, course=course)
+
+    def get_access_many(
+        self, *, user: RequestUser, courses: Sequence[Course]
+    ) -> dict[UUID, CourseAccessDecision]:
+        """The access decision for each of ``courses``, keyed by course id.
+
+        The default asks get_access once per course. A backend that can answer for a
+        whole listing with a fixed number of queries overrides this, so a page showing
+        many courses does not pay for each one separately.
+        """
+        return {
+            course.pk: self.get_access(user=user, course=course) for course in courses
+        }
 
     def is_accessible_for_free(self, *, course: Course) -> bool:
         """User-independent free/gated signal for badges and JSON-LD.
@@ -450,6 +475,20 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             return forced
         return self._inner.get_access_for_request(request=request, course=course)
 
+    def get_access_many(
+        self, *, user: RequestUser, courses: Sequence[Course]
+    ) -> dict[UUID, CourseAccessDecision]:
+        decisions: dict[UUID, CourseAccessDecision] = {}
+        unforced: list[Course] = []
+        for course in courses:
+            forced = self._visibility_decision(user=user, course=course)
+            if forced is None:
+                unforced.append(course)
+            else:
+                decisions[course.pk] = forced
+        decisions.update(self._inner.get_access_many(user=user, courses=unforced))
+        return decisions
+
     def is_accessible_for_free(self, *, course: Course) -> bool:
         from freedom_ls.course_access.overrides import override_access_to_free
 
@@ -498,6 +537,163 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             .exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
             .filter(in_audience_expression(user, registered=Q(_is_registered=True)))
         )
+
+    def validate_course_config(
+        self,
+        raw: dict[str, Any],
+        *,
+        file_path: str = "",
+    ) -> dict[str, Any]:
+        return self._inner.validate_course_config(raw, file_path=file_path)
+
+    def get_dashboard_contributions(
+        self, *, user: RequestUser
+    ) -> list[DashboardContribution]:
+        return self._inner.get_dashboard_contributions(user=user)
+
+    def get_dashboard_contributions_for_request(
+        self, *, request: HttpRequest
+    ) -> list[DashboardContribution]:
+        return self._inner.get_dashboard_contributions_for_request(request=request)
+
+
+# ---------------------------------------------------------------------------
+# Deadline-enforcing wrapper
+# ---------------------------------------------------------------------------
+
+
+def _ended_or_none(
+    inner_decision: CourseAccessDecision,
+    time_limit: ResolvedDeadline,
+    policy: ResolvedDeadlinePolicy,
+) -> CourseAccessDecision | None:
+    """The inner decision with content withdrawn if the learner's access has ended by now,
+    else None. The funnel copy stays: the detail page's stats strip still describes the
+    course."""
+    from freedom_ls.deadlines.consequences import access_end_instant, has_access_ended
+
+    if not has_access_ended(time_limit, policy, timezone.now()):
+        return None
+    return replace(
+        inner_decision,
+        cta_label=None,
+        cta_url=None,
+        can_self_register=False,
+        can_access_content=False,
+        access_ended_at=access_end_instant(time_limit, policy),
+        after_access_ended=policy.after_access_ended,
+    )
+
+
+class DeadlineEnforcingBackend(CourseAccessBackend):
+    """Ends a learner's content access once their course deadline policy says it has ended.
+
+    Wraps any inner backend: the inner backend decides who may enter, this wrapper
+    withdraws content access from a registered learner who is past the time limit plus
+    the grace window under a policy that ends access. Nothing is written: the decision is
+    recomputed on every call, so a later deadline override restores access at once.
+    """
+
+    def __init__(self, inner: CourseAccessBackend) -> None:
+        self._inner = inner
+
+    def _ended_decision(
+        self, *, user: User, course: Course, inner_decision: CourseAccessDecision
+    ) -> CourseAccessDecision | None:
+        """The decision for a learner whose access has ended, or None when the inner
+        decision stands.
+
+        Deadlines are read only once the inner backend has granted content, so a refused
+        decision costs nothing extra. The imports are function-local: deadlines depends on
+        learner_progress, and a module-level import here would pull both in at import time.
+        """
+        from freedom_ls.deadlines.loader import get_deadline_policy
+        from freedom_ls.deadlines.resolver import course_deadlines
+        from freedom_ls.learner_progress.queries import course_progress_for
+
+        if not inner_decision.can_access_content:
+            return None
+        record = course_progress_for(user, course)
+        # A finished course never ends.
+        if record is None or record.completed_time is not None:
+            return None
+        policy = get_deadline_policy().resolve(record)
+        # Nothing can end, so the time limit is not read.
+        if not policy.end_course_access:
+            return None
+        return _ended_or_none(
+            inner_decision, course_deadlines(record).time_limit, policy
+        )
+
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
+        inner = self._inner.get_access(user=user, course=course)
+        if not user.is_authenticated:
+            return inner
+        ended = self._ended_decision(
+            user=cast("User", user), course=course, inner_decision=inner
+        )
+        return ended or inner
+
+    def get_access_for_request(
+        self, *, request: HttpRequest, course: Course
+    ) -> CourseAccessDecision:
+        inner = self._inner.get_access_for_request(request=request, course=course)
+        if not request.user.is_authenticated:
+            return inner
+        ended = self._ended_decision(
+            user=cast("User", request.user), course=course, inner_decision=inner
+        )
+        return ended or inner
+
+    def get_access_many(
+        self, *, user: RequestUser, courses: Sequence[Course]
+    ) -> dict[UUID, CourseAccessDecision]:
+        """Every course's decision with the records, policies and time limits read in bulk.
+
+        Only courses the inner backend grants content for are looked at, and a time limit
+        is read only for a record whose policy ends access.
+        """
+        from freedom_ls.deadlines.loader import get_deadline_policy
+        from freedom_ls.deadlines.resolver import course_deadlines_for
+        from freedom_ls.learner_progress.queries import course_progress_by_course_for
+
+        decisions = self._inner.get_access_many(user=user, courses=courses)
+        if not user.is_authenticated:
+            return decisions
+        granted = [c for c in courses if decisions[c.pk].can_access_content]
+        records = {
+            course_id: record
+            for course_id, record in course_progress_by_course_for(
+                cast("User", user), granted
+            ).items()
+            if record.completed_time is None
+        }
+        policies = get_deadline_policy().resolve_for(list(records.values()))
+        ending = [r for r in records.values() if policies[r.pk].end_course_access]
+        deadlines = course_deadlines_for(ending)
+        for record in ending:
+            ended = _ended_or_none(
+                decisions[record.course_id],
+                deadlines[record.pk].time_limit,
+                policies[record.pk],
+            )
+            if ended is not None:
+                decisions[record.course_id] = ended
+        return decisions
+
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        return self._inner.is_accessible_for_free(course=course)
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        return self._inner.get_access_badge(course=course)
+
+    def get_access_type(self, *, course: Course) -> str:
+        return self._inner.get_access_type(course=course)
+
+    def filter_visible(
+        self, *, user: RequestUser, courses: QuerySet[Course]
+    ) -> QuerySet[Course]:
+        return self._inner.filter_visible(user=user, courses=courses)
 
     def validate_course_config(
         self,

@@ -1,14 +1,19 @@
+{% load deadline_tags %}
 {% comment %}
-The one place the five status labels and their icons are written. Both roots of
+The one place the status labels and their icons are written. Both roots of
 course_status_eyebrow.html include it, so neither repeats them.
 
 Params:
-  status    — one of: not_registered | registered | in_progress | complete | coming_soon
+  status    — one of: not_registered | registered | in_progress | complete | coming_soon | access_ended
+  access_ended_at — the instant access ended; read only when status is access_ended
   with_icon — include the reinforcement icon
 {% endcomment %}
 {% if status == "coming_soon" %}
     {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
     Coming soon
+{% elif status == "access_ended" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
+    Access ended {% local_time access_ended_at %}
 {% elif status == "complete" %}
     {% if with_icon %}<span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>{% endif %}
     Completed

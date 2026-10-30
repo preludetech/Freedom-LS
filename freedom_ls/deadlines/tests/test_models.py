@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -11,19 +12,29 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
+    CohortCourseRegistrationDeadlineConfigFactory,
+    CohortDeadlineConfigFactory,
     CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
+    LearnerCourseRegistrationDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
+    OrganisationDeadlineConfigFactory,
+    SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
+    SWITCH_FIELDS,
     CohortDeadlineOverride,
     DeadlineKind,
     LearnerDeadlineOverride,
 )
-from freedom_ls.deadlines.resolver import DeadlineValue
+from freedom_ls.deadlines.resolver import DeadlineValue, course_deadlines
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+
+JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 
 
 def _course_item() -> tuple[Course, CohortCourseRegistration, ContentCollectionItem]:
@@ -78,10 +89,14 @@ def _override(
             id="none-takes-no-days-even-zero",
         ),
         pytest.param(
-            {"kind": DeadlineKind.FIXED, "due_date": date(2026, 3, 1)},
+            {
+                "kind": DeadlineKind.FIXED,
+                "due_date": date(2026, 3, 1),
+                "due_time": time(9, 0),
+            },
             False,
-            "kind",
-            id="time-limit-is-not-fixed",
+            "due_time",
+            id="fixed-time-limit-has-no-time",
         ),
         pytest.param(
             {
@@ -145,6 +160,11 @@ def test_clean_refuses_an_inconsistent_shape(
             {"kind": DeadlineKind.RELATIVE, "due_days_after_registration": 30},
             False,
             id="time-limit",
+        ),
+        pytest.param(
+            {"kind": DeadlineKind.FIXED, "due_date": date(2026, 3, 1)},
+            False,
+            id="fixed-time-limit",
         ),
     ],
 )
@@ -251,10 +271,14 @@ def _record_item() -> tuple[CourseProgress, ContentCollectionItem]:
             id="none-takes-no-days",
         ),
         pytest.param(
-            {"kind": DeadlineKind.FIXED, "due_date": date(2026, 3, 1)},
+            {
+                "kind": DeadlineKind.FIXED,
+                "due_date": date(2026, 3, 1),
+                "due_time": time(9, 0),
+            },
             False,
-            "kind",
-            id="time-limit-is-not-fixed",
+            "due_time",
+            id="fixed-time-limit-has-no-time",
         ),
         pytest.param(
             {
@@ -372,3 +396,127 @@ def test_a_new_record_does_not_carry_the_old_records_overrides(
 
     assert record.deadline_overrides.count() == 1
     assert moved.deadline_overrides.count() == 0
+
+
+CONFIG_FACTORIES = [
+    SiteDeadlineConfigFactory,
+    OrganisationDeadlineConfigFactory,
+    CourseDeadlineConfigFactory,
+    CohortDeadlineConfigFactory,
+    CohortCourseRegistrationDeadlineConfigFactory,
+    LearnerCourseRegistrationDeadlineConfigFactory,
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+@pytest.mark.parametrize(
+    "bad_values",
+    [
+        {"mark_overdue": "maybe"},
+        {"close_items": "maybe"},
+        {"end_course_access": "maybe"},
+        {"notify_educators": "maybe"},
+        {"after_access_ended": "everything"},
+        {"grace_window": timedelta(seconds=-1)},
+    ],
+)
+def test_config_row_with_an_invalid_value_is_refused_by_the_database(
+    mock_site_context, config_factory, bad_values
+) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(**bad_values)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+def test_config_row_with_a_zero_grace_window_saves(
+    mock_site_context, config_factory
+) -> None:
+    row = config_factory(grace_window=timedelta(0))
+
+    row.refresh_from_db()
+    assert row.grace_window == timedelta(0)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("config_factory", CONFIG_FACTORIES)
+def test_config_row_defaults_to_inherit_everywhere(
+    mock_site_context, config_factory
+) -> None:
+    row = config_factory()
+
+    assert [getattr(row, name) for name in SWITCH_FIELDS] == ["inherit"] * 4
+    assert row.after_access_ended == "inherit"
+    assert row.grace_window is None
+
+
+@pytest.mark.django_db
+def test_second_site_config_row_is_refused_by_the_database(
+    mock_site_context,
+) -> None:
+    SiteDeadlineConfigFactory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        SiteDeadlineConfigFactory()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("config_factory", "owner_field"),
+    [
+        (OrganisationDeadlineConfigFactory, "organisation"),
+        (CourseDeadlineConfigFactory, "course"),
+        (CohortDeadlineConfigFactory, "cohort"),
+        (CohortCourseRegistrationDeadlineConfigFactory, "cohort_registration"),
+        (LearnerCourseRegistrationDeadlineConfigFactory, "learner_registration"),
+    ],
+)
+def test_second_config_row_for_one_owner_is_refused_by_the_database(
+    mock_site_context, config_factory, owner_field
+) -> None:
+    first = config_factory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(**{owner_field: getattr(first, owner_field)})
+
+
+@pytest.mark.django_db
+def test_a_cohort_fixed_time_limit_resolves_to_the_end_of_that_day_in_the_site_zone(
+    mock_site_context,
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    registration = CohortCourseRegistrationFactory()
+    record = CourseProgressFactory(
+        course=registration.course,
+        cohort_registration=registration,
+        learner_registration=None,
+    )
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=None,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2026, 3, 1),
+    )
+
+    due_at = course_deadlines(record).time_limit.due_at
+
+    assert due_at == datetime(2026, 3, 1, 23, 59, 59, 999999, tzinfo=JOHANNESBURG)
+
+
+@pytest.mark.django_db
+def test_a_learner_fixed_time_limit_resolves_to_the_end_of_that_day_in_the_site_zone(
+    mock_site_context,
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record = CourseProgressFactory()
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        collection_item=None,
+        kind=DeadlineKind.FIXED,
+        due_date=date(2026, 3, 1),
+    )
+
+    due_at = course_deadlines(record).time_limit.due_at
+
+    assert due_at == datetime(2026, 3, 1, 23, 59, 59, 999999, tzinfo=JOHANNESBURG)

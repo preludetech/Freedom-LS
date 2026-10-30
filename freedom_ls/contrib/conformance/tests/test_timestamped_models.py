@@ -20,7 +20,7 @@ from freedom_ls.site_aware_models.models import TimestampedModel
 
 pytestmark = pytest.mark.fls_internal
 
-# Content authoring, enrolment, identity and messaging configuration. Progress and delivery records
+# Content authoring, enrolment, identity, and messaging and deadline configuration. Progress and delivery records
 # are deliberately absent: they carry their own domain-meaningful timestamps
 # (completion, dispatch, consent) and a second pair would invite the wrong
 # one to be read.
@@ -37,8 +37,14 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_content_engine.File",
         "freedom_ls_content_engine.Topic",
         "freedom_ls_course_applications.AnonymousApplicant",
+        "freedom_ls_deadlines.CohortCourseRegistrationDeadlineConfig",
+        "freedom_ls_deadlines.CohortDeadlineConfig",
         "freedom_ls_deadlines.CohortDeadlineOverride",
+        "freedom_ls_deadlines.CourseDeadlineConfig",
+        "freedom_ls_deadlines.LearnerCourseRegistrationDeadlineConfig",
         "freedom_ls_deadlines.LearnerDeadlineOverride",
+        "freedom_ls_deadlines.OrganisationDeadlineConfig",
+        "freedom_ls_deadlines.SiteDeadlineConfig",
         "freedom_ls_form_engine.Form",
         "freedom_ls_form_engine.FormContent",
         "freedom_ls_form_engine.FormPage",

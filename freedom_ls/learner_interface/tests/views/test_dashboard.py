@@ -29,7 +29,8 @@ from freedom_ls.course_access.backends import (
 )
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
-from freedom_ls.deadlines.models import DeadlineKind
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
+from freedom_ls.deadlines.models import CourseDeadlineConfig, DeadlineKind
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
     learner_override,
@@ -1421,7 +1422,7 @@ def test_the_htmx_fragment_updates_the_status_region_out_of_band(
 # realistic-sized page and then grows the input that section must not be
 # sensitive to, to prove the count held.
 
-IN_PROGRESS_MAX_QUERIES = 60
+IN_PROGRESS_MAX_QUERIES = 70
 
 
 CATEGORY_SECTION_MAX_QUERIES = 7
@@ -2037,7 +2038,7 @@ def test_card_shell_article_has_no_zero_padding(mock_site_context):
     assert "p-0" not in article.split()
 
 
-BYLINE_DASHBOARD_MAX_QUERIES = 48
+BYLINE_DASHBOARD_MAX_QUERIES = 58
 
 
 @pytest.mark.django_db
@@ -2090,3 +2091,217 @@ def test_narrow_row_shows_the_difficulty(mock_site_context):
     row_lists = _row_lists(_dashboard_html())
 
     assert "Intermediate" in row_lists
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_drops_the_missed_item_chip_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_drops_the_missed_time_limit_chip_when_mark_overdue_is_off(deadline_card):
+    course, _topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_drops_the_missed_chip_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    html = _dashboard_html(client)
+
+    assert "Missed deadline" not in _row_lists(html)
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_keeps_the_past_item_date_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Deadline Second Topic 1 Jan 2020" in text
+    assert "Next deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_keeps_the_past_time_limit_date_when_mark_overdue_is_off(deadline_card):
+    course, _topics, _user, _record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    text = _dashboard_text(client)
+
+    assert "Deadline Course 31 Mar 2026" in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_keeps_the_past_date_when_mark_overdue_is_off(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    rows = " ".join(
+        re.sub(r"<[^>]+>", " ", _row_lists(_dashboard_html(client))).split()
+    )
+
+    assert "Deadline Second Topic 1 Jan 2020" in rows
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_when_the_next_deadline_closes(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2026, 10, 1))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=datetime.timedelta(days=3)
+    )
+
+    text = _dashboard_text(client)
+
+    assert (
+        "Next deadline: Second Topic 1 Oct 2026, 23:59 UTC Closes 4 Oct 2026, 23:59 UTC ."
+        in text
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_closed_once_a_deadline_has_closed(deadline_card):
+    course, topics, user, _record, client = deadline_card
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+
+    text = _dashboard_text(client)
+
+    assert "Closed 1 Jan 2020" in text
+    assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_no_closed_chip_for_a_locked_item(deadline_card):
+    """Sequential unlock wins over closing: a withheld item is overdue, not closed."""
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+
+    text = _dashboard_text(client)
+
+    assert "Closed" not in text
+    assert "Missed deadline Second Topic 1 Jan 2020" in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_when_a_missed_deadline_closes(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2026, 8, 30))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=datetime.timedelta(days=7)
+    )
+
+    text = _dashboard_text(client)
+
+    assert (
+        "Missed deadline Second Topic 30 Aug 2026, 23:59 UTC Closes 6 Sep 2026, 23:59 UTC ."
+        in text
+    )
+
+
+@pytest.fixture
+def access_ending_card(deadline_card):
+    """The deadline card course with a 30-day time limit whose policy ends access."""
+    course, _topics, user, record, client = deadline_card
+    course.time_limit_days = 30
+    course.save()
+    CourseDeadlineConfigFactory(course=course, end_course_access="on")
+    record.progress_percentage = 40
+    record.save()
+    return course, user, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_says_when_access_ended(access_ending_card):
+    _course, _user, client = access_ending_card
+
+    html = _dashboard_html(client)
+
+    assert "Access ended 31 Mar 2026" in " ".join(re.sub(r"<[^>]+>", " ", html).split())
+    assert 'data-testid="course-status-access_ended"' in _first_card_grid(html)
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_an_ended_card_keeps_progress_and_links_the_title_to_the_detail_page(
+    access_ending_card,
+):
+    course, _user, client = access_ending_card
+
+    card = _first_card_grid(_dashboard_html(client))
+
+    assert "Progress for" in card
+    detail = reverse("learner_interface:course_detail", args=[course.slug])
+    home = reverse("learner_interface:course_home", args=[course.slug])
+    assert f'href="{detail}"' in card
+    assert f'href="{home}"' not in card
+    assert "Next up" not in card
+    assert "Missed deadline" not in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_compact_row_says_access_ended_and_drops_next_up(access_ending_card):
+    _course, _user, client = access_ending_card
+
+    rows = _row_lists(_dashboard_html(client))
+
+    assert "Access ended" in rows
+    assert "Next up" not in rows
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 3, 10, 10, 0, tzinfo=UTC), tick=False)
+def test_card_and_row_say_when_access_will_end(access_ending_card):
+    _course, _user, client = access_ending_card
+
+    html = _dashboard_html(client)
+
+    assert "Access ends 31 Mar 2026, 23:59 UTC ." in " ".join(
+        re.sub(r"<[^>]+>", " ", _first_card_grid(html)).split()
+    )
+    assert "Access ends" in _row_lists(html)
+    assert "Access ended" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 3, 10, 10, 0, tzinfo=UTC), tick=False)
+def test_no_access_end_is_announced_while_ending_access_is_off(access_ending_card):
+    course, _user, client = access_ending_card
+    CourseDeadlineConfig.objects.filter(course=course).update(end_course_access="off")
+
+    assert "Access ends" not in _dashboard_html(client)

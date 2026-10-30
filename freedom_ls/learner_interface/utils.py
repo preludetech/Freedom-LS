@@ -16,7 +16,9 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
-from freedom_ls.deadlines.resolver import CourseDeadlines, is_overdue
+from freedom_ls.deadlines.consequences import close_instant, is_closed, shows_overdue
+from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
+from freedom_ls.deadlines.resolver import CourseDeadlines
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
@@ -60,6 +62,7 @@ READY = "READY"
 IN_PROGRESS = "IN_PROGRESS"
 COMPLETE = "COMPLETE"
 FAILED = "FAILED"
+CLOSED = "CLOSED"
 
 
 def derive_part_status(child_statuses: list[str]) -> str:
@@ -73,6 +76,9 @@ def derive_part_status(child_statuses: list[str]) -> str:
 
     A re-sit outranks that, because "needs retry" names the thing to do next
     where "in progress" only says work remains.
+
+    A closed child reads as closed only once nothing else in the part can be
+    opened: a part with a closed child and an open one is still open.
 
     "Under way" needs a child that can actually be opened. Once everything
     left is blocked -- an item the access backend withholds, say -- the part is
@@ -93,6 +99,8 @@ def derive_part_status(child_statuses: list[str]) -> str:
         return FAILED
     if READY in child_statuses:
         return IN_PROGRESS if COMPLETE in child_statuses else READY
+    if CLOSED in child_statuses:
+        return CLOSED
     return BLOCKED
 
 
@@ -476,7 +484,9 @@ def get_course_index(
     can_access_content: bool,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     course_deadlines: CourseDeadlines | None = None,
+    deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
+    access_ended_outline: bool = False,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -493,7 +503,9 @@ def get_course_index(
 
     ``course_deadlines`` is the learner's resolved deadlines for the course; each
     item row carries its ``due_at`` and ``is_overdue`` against ``now`` (defaulting
-    to the current time). Without it no row carries a date.
+    to the current time). Without it no row carries a date. ``deadline_policy`` is
+    the policy resolved for the same record, and decides whether ``is_overdue``
+    shows; a caller passes both or neither.
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
@@ -504,7 +516,7 @@ def get_course_index(
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}
-    if can_access_content and user.is_authenticated:
+    if (can_access_content or access_ended_outline) and user.is_authenticated:
         if isinstance(course_progress, Unresolved):
             # can_access_content implies an authenticated, registered user (it
             # comes from the backend decision), so the cast to User is safe here.
@@ -531,12 +543,29 @@ def get_course_index(
             form_placement_map,
             current_index=current_index,
             course_deadlines=course_deadlines,
+            deadline_policy=deadline_policy,
             now=now,
+            access_ended_outline=access_ended_outline,
         )
         children.append(child_dict)
         global_index += items_added
 
     return children
+
+
+def current_entry(course_index: list[dict]) -> dict | None:
+    """The row ``get_course_index`` marked ``is_current``, or None.
+
+    Searches the top level and one level into a CoursePart's children, the only two
+    places is_current is ever set.
+    """
+    for entry in course_index:
+        if entry.get("is_current"):
+            return entry
+        for child in entry.get("children", []):
+            if child.get("is_current"):
+                return cast("dict", child)
+    return None
 
 
 def current_entry_status(course_index: list[dict]) -> str | None:
@@ -552,39 +581,67 @@ def current_entry_status(course_index: list[dict]) -> str | None:
     the access backend owns that -- so an unexpected index shape must never strand
     a learner outside their own course.
     """
-    for entry in course_index:
-        if entry.get("is_current"):
-            return cast("str", entry["status"])
-        for child in entry.get("children", []):
-            if child.get("is_current"):
-                return cast("str", child["status"])
-    return None
+    entry = current_entry(course_index)
+    return cast("str", entry["status"]) if entry is not None else None
 
 
 class DeadlineKeys(TypedDict):
     collection_item_id: uuid.UUID
     due_at: datetime | None
     is_overdue: bool
+    closes_at: datetime | None
+    is_closed: bool
 
 
 def _deadline_keys(
     collection_item: ContentCollectionItem,
     status: str,
     course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
     now: datetime,
 ) -> DeadlineKeys:
-    """The due instant and overdue flag for one row. A completed row is never overdue, and a
-    caller that resolved no deadlines gets None and False."""
+    """The due instant, close instant and their flags for one row. A completed row is never
+    overdue or closed, a withheld row is never closed, and a caller that resolved no
+    deadlines gets None and False."""
     keys = DeadlineKeys(
-        collection_item_id=collection_item.pk, due_at=None, is_overdue=False
+        collection_item_id=collection_item.pk,
+        due_at=None,
+        is_overdue=False,
+        closes_at=None,
+        is_closed=False,
     )
     resolved = (
         course_deadlines.items.get(collection_item.pk) if course_deadlines else None
     )
     if resolved is not None:
+        if deadline_policy is None:
+            raise ValueError(
+                "Deadlines are resolved from a record, so its policy comes too."
+            )
         keys["due_at"] = resolved.due_at
-        keys["is_overdue"] = is_overdue(resolved, status == COMPLETE, now)
+        keys["is_overdue"] = shows_overdue(
+            resolved, deadline_policy, status == COMPLETE, now
+        )
+        closes_at = close_instant(resolved, deadline_policy)
+        # Only a row sequential unlock offers can close; a withheld row stays locked
+        # past its close instant and carries no closed mark anywhere it is drawn.
+        keys["is_closed"] = status in (READY, IN_PROGRESS, FAILED) and is_closed(
+            resolved, deadline_policy, status == COMPLETE, now
+        )
+        # A close instant already behind us is only worth naming on a closed row, so a
+        # withheld row past it is not told it "Closes" in the past.
+        if keys["is_closed"] or (closes_at is not None and closes_at > now):
+            keys["closes_at"] = closes_at
     return keys
+
+
+def _closed_if_past_close(status: str, keys: DeadlineKeys) -> str:
+    """CLOSED for an open row past its close instant, otherwise the status unchanged.
+
+    A BLOCKED row is never marked closed, so sequential unlock still decides what is
+    withheld. A closed row keeps its url: the player renders the closed notice there.
+    ``next_status`` is untouched by this, so a closed item unlocks nothing after it."""
+    return CLOSED if keys["is_closed"] else status
 
 
 def create_child_dict_with_flattened_index(
@@ -597,7 +654,9 @@ def create_child_dict_with_flattened_index(
     form_placement_map: dict[uuid.UUID, FormPlacementProgress],
     current_index: int | None = None,
     course_deadlines: CourseDeadlines | None = None,
+    deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
+    access_ended_outline: bool = False,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -609,6 +668,9 @@ def create_child_dict_with_flattened_index(
     item dict is marked ``is_current=True`` and the containing CoursePart dict is
     marked ``contains_current=True`` so the TOC can highlight the current item
     and auto-expand its part.
+
+    ``access_ended_outline`` reads progress without content access and withholds
+    every row that is not COMPLETE, so only finished items stay linked.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
@@ -630,7 +692,7 @@ def create_child_dict_with_flattened_index(
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
-            if can_access_content:
+            if can_access_content or access_ended_outline:
                 child_status, part_next_status = get_content_status(
                     part_item,
                     part_next_status,
@@ -647,7 +709,13 @@ def create_child_dict_with_flattened_index(
             else:
                 child_status = BLOCKED
                 child_url = ""
+            if access_ended_outline and child_status != COMPLETE:
+                child_status = BLOCKED
 
+            keys = _deadline_keys(
+                part_item, child_status, course_deadlines, deadline_policy, now
+            )
+            child_status = _closed_if_past_close(child_status, keys)
             part_child_index = start_index + items_added + 1
             part_child_dict = {
                 "title": part_child.title,
@@ -655,7 +723,7 @@ def create_child_dict_with_flattened_index(
                 "url": child_url if child_status != BLOCKED else None,
                 "status": child_status,
                 "is_current": current_index == part_child_index,
-                **_deadline_keys(part_item, child_status, course_deadlines, now),
+                **keys,
             }
             part_children_dicts.append(part_child_dict)
             items_added += 1
@@ -686,7 +754,14 @@ def create_child_dict_with_flattened_index(
             failed_child = next(
                 (c for c in part_children_dicts if c["status"] == FAILED), None
             )
-            if in_progress_child:
+            if access_ended_outline:
+                # Only COMPLETE children carry a url here, so the part opens the
+                # first finished one and nothing when none is.
+                complete_child = next(
+                    (c for c in part_children_dicts if c["status"] == COMPLETE), None
+                )
+                url = complete_child["url"] if complete_child else ""
+            elif in_progress_child:
                 url = in_progress_child["url"]
             elif ready_child:
                 url = ready_child["url"]
@@ -696,6 +771,8 @@ def create_child_dict_with_flattened_index(
                 url = failed_child["url"]
             elif status == COMPLETE:
                 url = part_children_dicts[0]["url"]
+            # A CLOSED part keeps no url: its closed children are reached from
+            # their own rows.
 
         child_dict = {
             "title": content_item.title,
@@ -713,7 +790,7 @@ def create_child_dict_with_flattened_index(
     else:
         # Regular content item (Topic, Form, etc.)
         items_added = 1
-        if can_access_content:
+        if can_access_content or access_ended_outline:
             status, next_status = get_content_status(
                 collection_item, next_status, topic_progress_map, form_placement_map
             )
@@ -724,14 +801,20 @@ def create_child_dict_with_flattened_index(
         else:
             status = BLOCKED
             url = ""
+        if access_ended_outline and status != COMPLETE:
+            status = BLOCKED
 
+        keys = _deadline_keys(
+            collection_item, status, course_deadlines, deadline_policy, now
+        )
+        status = _closed_if_past_close(status, keys)
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "is_current": current_index == start_index + 1,
-            **_deadline_keys(collection_item, status, course_deadlines, now),
+            **keys,
         }
 
     return child_dict, next_status, items_added

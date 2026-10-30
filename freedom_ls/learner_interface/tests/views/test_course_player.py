@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import io
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 
 import lxml.html
 import pytest
+import time_machine
 from PIL import Image
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -31,6 +32,7 @@ from freedom_ls.course_access.backends import (
     FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.deadlines.models import DeadlineKind
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -47,6 +49,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.learner_interface.tests.helpers import (
     cohort_override,
+    course_with_single_question_form,
     form_attempt,
     learner_override,
     learner_with_two_grants,
@@ -1461,12 +1464,12 @@ def test_player_page_query_count_is_bounded(
     ``CoursePart.children`` memoize per instance, so the repeated chrome
     traversals share one resolution -- and (b) bulk-fetches all topic/form
     progress into maps via ``_fetch_player_progress_maps`` instead of one query
-    per item. The ceiling is 46, well below what a reintroduced full traversal
+    per item. The ceiling is 50, well below what a reintroduced full traversal
     or a per-item progress N+1 would cost. See
     ``test_player_page_query_count_does_not_grow_with_items``, which runs the
     same budget over a course three times the size.
 
-    46 is the cold number. Some of these queries are served from caches that
+    50 is the cold number. Some of these queries are served from caches that
     outlive a single test -- the header asks whether this user may enter the
     educator interface, and Django caches content types for the process -- so
     the same page costs 43 once an earlier test has warmed them. The ceiling is
@@ -1480,7 +1483,7 @@ def test_player_page_query_count_is_bounded(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
-    with django_assert_max_num_queries(46):
+    with django_assert_max_num_queries(50):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -3084,6 +3087,25 @@ def test_the_completion_is_recorded_against_the_resolved_record(
 
 
 @pytest.mark.django_db
+def test_marking_a_complete_topic_again_keeps_its_first_completion_time(
+    mock_site_context, client
+):
+    course = _course_with_titled_topics("Only Topic")
+    user = UserFactory()
+    register_user_for_course(course, user)
+    first_completion = datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+    completion = topic_completion(
+        course, user, course.viewable_items()[0], complete_time=first_completion
+    )
+    client.force_login(user)
+
+    client.post(_item_url(course, 1), {"mark_complete": "1"})
+
+    completion.refresh_from_db()
+    assert completion.complete_time == first_completion
+
+
+@pytest.mark.django_db
 def test_the_finish_page_mints_the_record_a_bare_registration_never_had(
     mock_site_context, client
 ):
@@ -4150,3 +4172,312 @@ def test_sidebar_learner_none_override_removes_the_date(overridden_player):
 
     assert "1 Jan 2020" not in html
     assert "Missed deadline" not in html
+
+
+# --- The mark_overdue switch in the player ---
+
+
+def _header_deadline_text(html: str) -> str:
+    """The visible text of the item header's deadline labels, empty when it has none."""
+    nodes = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
+    return " ".join(nodes[0].text_content().split()) if nodes else ""
+
+
+@pytest.mark.django_db
+def test_player_keeps_the_missed_deadline_chip_when_mark_overdue_is_inherited(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course)
+
+    html = _player_html(client, course)
+
+    assert _header_deadline_text(html).startswith("Missed deadline 1 Jan 2020")
+    assert "Missed deadline" in html
+
+
+@pytest.mark.django_db
+def test_player_toc_and_header_keep_the_date_but_drop_the_chip_when_mark_overdue_is_off(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    html = _player_html(client, course)
+    text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert "Missed deadline" not in html
+    assert _header_deadline_text(html).startswith("Deadline 1 Jan 2020")
+    assert "Deadline 1 Jan 2020" in text
+
+
+# --- Closing items ---
+
+CLOSED_NOTICE = "Ask your educator if you need more time."
+BEFORE_CLOSE = datetime(2020, 1, 2, 12, 0, tzinfo=UTC)
+AFTER_CLOSE = datetime(2020, 1, 10, 12, 0, tzinfo=UTC)
+
+
+def _visible_text(html: str) -> str:
+    return " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+
+def _toc_text(html: str) -> str:
+    """The visible text of the course outline panel."""
+    nodes = lxml.html.fromstring(html).cssselect("#course-toc-region")
+    return " ".join(nodes[0].text_content().split())
+
+
+@pytest.fixture
+def closing_topic_course(due_course):
+    """due_course whose first topic was due on 1 Jan 2020 and closes with a three-day grace."""
+    course, first, second, user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=timedelta(days=3)
+    )
+    return course, first, second, user, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(BEFORE_CLOSE, tick=False)
+def test_a_topic_inside_the_grace_window_opens_and_the_outline_says_when_it_closes(
+    closing_topic_course,
+):
+    course, _first, _second, _user, client = closing_topic_course
+
+    html = _player_html(client, course)
+
+    assert CLOSED_NOTICE not in html
+    assert "Closes 4 Jan 2020, 23:59 UTC ." in _visible_text(html)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_topic_past_its_close_instant_opens_as_a_closed_notice(closing_topic_course):
+    course, _first, _second, user, client = closing_topic_course
+
+    html = _player_html(client, course)
+    record = course_progress_record(course, user)
+
+    assert "Closed on 4 Jan 2020, 23:59 UTC ." in _visible_text(html)
+    assert CLOSED_NOTICE in html
+    assert record.last_accessed_item is None
+    assert record.last_accessed_time is None
+    assert record.started_at is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_the_closed_notice_sits_in_the_reading_column(closing_topic_course):
+    course, _first, _second, _user, client = closing_topic_course
+
+    html = _player_html(client, course)
+    notice_box = html[: html.index(CLOSED_NOTICE)].rsplit("<div", 2)[-2]
+
+    assert "mx-auto max-w-reading" in notice_box
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_closed_topic_row_reads_closed_in_the_outline_and_keeps_its_link(
+    closing_topic_course,
+):
+    course, _first, _second, _user, client = closing_topic_course
+
+    toc = _toc_text(_player_html(client, course))
+
+    assert "Closed 4 Jan 2020" in toc
+    assert "Missed deadline" not in toc
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_closed_topic_notice_has_next_but_no_completion_control(
+    closing_topic_course,
+):
+    course, _first, _second, _user, client = closing_topic_course
+
+    html = _player_html(client, course)
+
+    assert 'name="mark_complete"' not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_the_item_after_a_closed_one_stays_locked(closing_topic_course):
+    course, _first, _second, _user, client = closing_topic_course
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 2},
+        )
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_locked_row_past_its_close_instant_shows_no_closed_chip(
+    closing_topic_course,
+):
+    """A row sequential unlock withheld drew a Closed chip beside its Locked text."""
+    course, _first, second, _user, client = closing_topic_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    toc = _toc_text(_player_html(client, course))
+
+    assert toc.count("Closed 4 Jan 2020") == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_completed_topic_past_its_close_instant_still_opens(closing_topic_course):
+    course, first, _second, user, client = closing_topic_course
+    topic_completion(course, user, first, complete_time=timezone.now())
+
+    html = _player_html(client, course)
+
+    assert CLOSED_NOTICE not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_nothing_closes_while_close_items_is_off(due_course):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert CLOSED_NOTICE not in html
+    assert "Closed" not in _toc_text(html)
+
+
+@pytest.fixture
+def closing_form_course(mock_site_context):
+    """A one-form course whose form closed on 1 Jan 2020, a learner and their client."""
+    course = course_with_single_question_form("Closing Course", "closing-course")
+    form = course.viewable_items()[0]
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    user = UserFactory()
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+    return course, form, user, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_form_past_its_close_instant_opens_as_a_closed_notice(closing_form_course):
+    course, _form, user, client = closing_form_course
+
+    html = _player_html(client, course)
+    record = course_progress_record(course, user)
+
+    assert CLOSED_NOTICE in html
+    assert record.last_accessed_item is None
+    assert record.started_at is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_closed_form_cannot_be_started(closing_form_course):
+    course, form, _user, client = closing_form_course
+
+    response = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.url == reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert not FormProgress.objects.filter(form=form).exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_a_closed_form_page_is_refused_and_writes_nothing(closing_form_course, method):
+    course, form, _user, client = closing_form_course
+    question = form.pages.get().questions.get()
+
+    response = getattr(client, method)(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+        ),
+        *([{f"question_{question.id}": "1"}] if method == "post" else []),
+    )
+
+    assert response.url == reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert not FormProgress.objects.filter(form=form).exists()
+    assert not QuestionAnswer.objects.filter(question=question).exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(BEFORE_CLOSE, tick=False)
+def test_a_form_before_its_close_instant_can_be_started(closing_form_course):
+    course, form, _user, client = closing_form_course
+    set_due_date(course, form, due_date=date(2020, 1, 5))
+
+    response = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert "fill_form" in response.url
+    assert FormProgress.objects.filter(form=form).exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_a_completed_form_past_its_close_instant_opens_and_shows_its_results(
+    closing_form_course,
+):
+    course, form, user, client = closing_form_course
+    form_attempt(course, user, form, completed_time=timezone.now())
+
+    html = _player_html(client, course)
+    results = client.get(
+        reverse(
+            "learner_interface:course_form_complete",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert CLOSED_NOTICE not in html
+    assert results.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_the_outline_and_the_gate_agree_that_an_item_is_closed(closing_form_course):
+    course, _form, _user, client = closing_form_course
+
+    toc = _toc_text(_player_html(client, course))
+    refused = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert "Closed 1 Jan 2020" in toc
+    assert refused.status_code == 302
