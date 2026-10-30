@@ -49,6 +49,8 @@ Run `/sdd:plan_from_spec`. This produces:
 
 The plan review runs the built-in dimensions and the briefs listed under `## Plan Review Hooks` in `.claude/sdd/config.md`. It leaves every callout decided or recorded as an assumed default.
 
+The plan is implementation only. Anything the spec asks for that the plan does not build and no documentation hook covers (a skill row, a roadmap note, a glossary term) becomes a `(user)` item in `todo.md`, placed right after the `/sdd:document` item, so it is done before the pull request opens.
+
 An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
 
 ## Step 4: Implementation and QA

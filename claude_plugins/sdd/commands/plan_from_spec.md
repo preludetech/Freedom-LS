@@ -140,6 +140,14 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan"`.
+- `add_after:` one item per piece of work the spec asks for that the plan does not build and no
+  later command will do. The plan is implementation only, so everything in the spec's
+  documentation or downstream section is in scope here. Read `## Documentation Hooks` in
+  `.claude/sdd/config.md` (and `config.local.md`) and the description of each hook's skill; a spec
+  item one of those hooks covers needs no todo item. Every other item becomes
+  `add_after:"Run `/sdd:document`|user|<what to change, in which file, from which spec section>"`,
+  in the spec's order, so it sits between the documentation hooks and the pull request. A plan
+  summary never tells the user that something is left for them to do by hand: the todo carries it.
 
 # Step 9: Commit and push
 
