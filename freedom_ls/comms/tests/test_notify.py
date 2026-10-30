@@ -7,6 +7,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from django.db import IntegrityError, connection, transaction
 from django.test import override_settings
@@ -22,7 +23,22 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import mark_notifications_read, raise_notification
+from freedom_ls.comms.tests.helpers import ROLLUP_TEST_CATEGORY
 from freedom_ls.tests.factories import SiteFactory
+
+
+@pytest.fixture(autouse=True)
+def _rollup_category(settings: SettingsWrapper) -> None:
+    settings.NOTIFICATION_CATEGORIES = [
+        *FLS_NOTIFICATION_CATEGORIES,
+        ROLLUP_TEST_CATEGORY,
+    ]
+
+
+def test_no_fls_category_exists_for_a_direct_message() -> None:
+    keys = {category.key for category in FLS_NOTIFICATION_CATEGORIES}
+
+    assert "message.received" not in keys
 
 
 @pytest.mark.django_db
@@ -201,10 +217,10 @@ def test_self_registering_for_a_course_notifies_nothing(
     assert not Notification._base_manager.filter(user=user).exists()
 
 
-def _raise_message_received(user, conversation, site_id, sender_name="Sam"):
+def _raise_rolled_up(user, conversation, site_id, sender_name="Sam"):
     raise_notification(
         user=user,
-        category="message.received",
+        category=ROLLUP_TEST_CATEGORY.key,
         target=conversation,
         site_id=site_id,
         data={"sender_name": sender_name},
@@ -224,7 +240,7 @@ class TestRollupNotification:
             patch("freedom_ls.comms.notify.default_task_backend") as backend,
             django_capture_on_commit_callbacks(execute=True),
         ):
-            _raise_message_received(user, conversation, mock_site_context.pk)
+            _raise_rolled_up(user, conversation, mock_site_context.pk)
 
         notification = Notification.objects.get()
         assert notification.rollup_key is not None
@@ -237,7 +253,7 @@ class TestRollupNotification:
         user, other = UserFactory(), UserFactory()
         conversation = ConversationFactory(between=(user, other))
         with django_capture_on_commit_callbacks(execute=True):
-            _raise_message_received(user, conversation, mock_site_context.pk, "Sam")
+            _raise_rolled_up(user, conversation, mock_site_context.pk, "Sam")
         first = Notification.objects.get()
         Notification.objects.filter(pk=first.pk).update(
             seen_at=timezone.now(), created_at=timezone.now() - timedelta(hours=1)
@@ -249,7 +265,7 @@ class TestRollupNotification:
             patch("freedom_ls.comms.notify.default_task_backend") as backend,
             django_capture_on_commit_callbacks(execute=True),
         ):
-            _raise_message_received(user, conversation, mock_site_context.pk, "Alex")
+            _raise_rolled_up(user, conversation, mock_site_context.pk, "Alex")
 
         notification = Notification.objects.get()
         assert notification.pk == first.pk
@@ -264,7 +280,7 @@ class TestRollupNotification:
         user, other = UserFactory(), UserFactory()
         conversation = ConversationFactory(between=(user, other))
         with django_capture_on_commit_callbacks(execute=True):
-            _raise_message_received(user, conversation, mock_site_context.pk)
+            _raise_rolled_up(user, conversation, mock_site_context.pk)
         Notification.objects.update(read_at=timezone.now())
 
         with (
@@ -272,7 +288,7 @@ class TestRollupNotification:
             patch("freedom_ls.comms.notify.default_task_backend") as backend,
             django_capture_on_commit_callbacks(execute=True),
         ):
-            _raise_message_received(user, conversation, mock_site_context.pk)
+            _raise_rolled_up(user, conversation, mock_site_context.pk)
 
         assert Notification.objects.count() == 2
         assert Notification.objects.filter(read_at__isnull=True).count() == 1
@@ -286,7 +302,7 @@ class TestRollupNotification:
         key = f"1:{conversation.pk}"
         NotificationFactory(
             user=user,
-            category="message.received",
+            category=ROLLUP_TEST_CATEGORY.key,
             target=conversation,
             data={"sender_name": "Sam"},
             rollup_key=key,
@@ -295,7 +311,7 @@ class TestRollupNotification:
         with pytest.raises(IntegrityError), transaction.atomic():
             NotificationFactory(
                 user=user,
-                category="message.received",
+                category=ROLLUP_TEST_CATEGORY.key,
                 target=conversation,
                 data={"sender_name": "Sam"},
                 rollup_key=key,
@@ -320,21 +336,6 @@ class TestRollupNotification:
         assert Notification.objects.count() == 2
         assert Notification.objects.filter(rollup_key__isnull=True).count() == 2
 
-    def test_the_notification_url_is_the_thread(self, mock_site_context) -> None:
-        user, other = UserFactory(), UserFactory()
-        conversation = ConversationFactory(between=(user, other))
-        notification = NotificationFactory(
-            user=user,
-            category="message.received",
-            target=conversation,
-            data={"sender_name": "Sam"},
-        )
-
-        assert notification.url == reverse(
-            "conversations:thread", kwargs={"pk": conversation.pk}
-        )
-        assert notification.message == "New message from Sam"
-
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_raises_leave_one_unread_row(site) -> None:
@@ -345,7 +346,7 @@ def test_concurrent_raises_leave_one_unread_row(site) -> None:
     def raise_one() -> None:
         try:
             barrier.wait()
-            _raise_message_received(user, conversation, site.pk)
+            _raise_rolled_up(user, conversation, site.pk)
         finally:
             connection.close()
 
@@ -373,19 +374,19 @@ class TestMarkNotificationsRead:
         elsewhere = ConversationFactory(between=(user, UserFactory()))
         mine = NotificationFactory(
             user=user,
-            category="message.received",
+            category=ROLLUP_TEST_CATEGORY.key,
             target=conversation,
             data={"sender_name": "Sam"},
         )
         other_target = NotificationFactory(
             user=user,
-            category="message.received",
+            category=ROLLUP_TEST_CATEGORY.key,
             target=elsewhere,
             data={"sender_name": "Sam"},
         )
         others = NotificationFactory(
             user=other,
-            category="message.received",
+            category=ROLLUP_TEST_CATEGORY.key,
             target=conversation,
             data={"sender_name": "Sam"},
         )
