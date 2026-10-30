@@ -14,7 +14,7 @@ _Last updated: 2026-10-30_
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
-- A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. Nothing is enforced: an item past its deadline stays open and completable. See [Deadlines](#deadlines).
+- A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - A course can belong to particular organisations, and only their learners see it unless it is public. Where a course has one organisation, the dashboard, the all-courses list and the course page name it, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
@@ -303,6 +303,16 @@ The **course detail page** shows no deadlines. It reads the same for everyone, r
 
 Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 
-**Nothing is enforced.** A due date or time limit that has passed locks nothing, blocks nothing and sends no reminder, and a learner cannot request an extension. The [educator interface](./educator-interface.md) shows no overdue items, and Needs attention and reports do not count them. See [roadmap](./roadmap.md#deadlines).
+**Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
+
+- **Missed deadline mark.** It can be switched off. The deadline's date still shows, without the mark.
+- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards the item carries a **Closed** chip, and opening it shows a notice that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved.
+- **Ending course access.** Access to a course can end a grace window after its time limit. The dashboard card shows "Access ends <date>." and then "Access ended <date>" with no Continue action, and the course detail page says access has ended and offers no button. Depending on the policy, the learner can then still open the outline, their completed items and their results, or nothing. A completed course never ends.
+
+![A closed topic in the course player, with its Closed chip and notice](screenshots/learner_closed_item_notice.png)
+
+![Course detail page after the learner's access has ended](screenshots/learner_course_access_ended.png)
+
+Closing and ending never remove progress or the registration, and staff restore access by overriding the time limit. No reminder is sent when a deadline passes, and a learner cannot request an extension. The [educator interface](./educator-interface.md) shows no overdue, closed or ended items, and Needs attention and reports do not count them. See [roadmap](./roadmap.md#deadlines).
 
 Authors set due dates and time limits as described in [content editing workflow](./content-editing-workflow.md#course-frontmatter-options); administrators override them and set the site time zone as described in [admin interface](./admin-interface.md#deadline-overrides).

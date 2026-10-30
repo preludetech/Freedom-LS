@@ -1,12 +1,12 @@
 # Roadmap
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
-- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
+- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides and policy), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Organisation Deferrals
@@ -139,7 +139,7 @@ The educator interface can create, edit, deactivate, reactivate and delete cohor
 - **Cohort membership** — adding learners to a cohort, moving them between cohorts, or removing them.
 - **Organisation membership** — associating a learner with an organisation, or marking one removed.
 - **Individual course registration** — registering a single learner for a course.
-- **Deadline overrides** — setting or removing a due date or course time limit for a cohort course registration or a single learner. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
+- **Deadline overrides and policy** — setting or removing a due date or course time limit for a cohort course registration or a single learner, and setting the [deadline policy](#deadlines). See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
 
 Also not built in the educator interface: bulk actions on lists, and data for the cohort overview's "needs attention" card, which shows a placeholder.
 
@@ -147,15 +147,14 @@ Educators can message learners from within FLS; see [Direct Messaging](#direct-m
 
 ## Deadlines
 
-**Status: Due dates, course time limits and the overdue mark are built; nothing is enforced.**
+**Status: Due dates, course time limits, the overdue mark and an administrator-set consequence policy are built; reminders, pause and educator-interface screens are not.**
 
-Authors can give topics and forms a due date and courses a time limit, administrators can override them, and learners see deadlines and a missed deadline mark; see [learner experience](./learner-experience.md#deadlines). A missed deadline is only a label. Not built:
+Authors can give topics and forms a due date and courses a time limit, and administrators can override them. Administrators also set a deadline policy in the Django admin that can switch the Missed deadline mark off, close incomplete items after a grace window, and end course access once the time limit and a grace window have passed; see [admin interface](./admin-interface.md#deadline-policy). Closing and ending are off by default. Learners see the outcome described in [learner experience](./learner-experience.md#deadlines). Not built:
 
-- **Consequences after a date passes** — nothing is locked, closed or ended.
-- **Extensions and pause** — staff cannot extend a learner's deadlines or pause a course, and learners cannot pause their own.
-- **Reminders** — no notification, email or webhook is sent as a date approaches or passes.
-- **Educator-interface screens** — due dates and overrides are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
-- **Overdue in educator views** — overdue learners do not appear in a cohort's "needs attention" card or in [cohort reports](./reports.md).
+- **Reminders** — no notification, email or webhook is sent as a date approaches or passes. The policy's notify-educators setting can be saved but does nothing yet.
+- **Extension requests and pause** — a deadline override is the only way to move a date. Learners cannot request an extension, and nobody can pause a course.
+- **Educator-interface screens** — due dates, overrides and the policy are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
+- **Overdue, closed and ended in educator views** — these learners do not appear in a cohort's "needs attention" card or in [cohort reports](./reports.md).
 
 ## Enforcing Content Security Policy
 

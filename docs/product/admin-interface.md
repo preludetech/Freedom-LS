@@ -10,6 +10,7 @@ _Last updated: 2026-10-30_
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and deactivates a learner. Deactivation is soft — it switches off that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - An administrator can override a due date or a course time limit for a cohort's course registration or for a single learner, including removing it. Each override records who set it and why, and is flagged when the content's own value has changed since. See [Deadline Overrides](#deadline-overrides).
+- An administrator sets a deadline policy per site, organisation, course, cohort or registration: whether the Missed deadline mark shows, whether items close and course access ends after a grace window, and what a learner whose access has ended can still see. See [Deadline policy](#deadline-policy).
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
@@ -83,7 +84,20 @@ Course authors set due dates and time limits in the course content; see [content
 - **"No deadline".** An override can remove a due date or time limit altogether, as well as set a fixed date (with optional time) or a number of days after registration.
 - **Who and why.** Each override shows who set it and carries a free-text reason, and a note appears if the content's own value changed after the override was saved, so an administrator can decide whether it still makes sense.
 
-Overrides only change what is shown, in the admin and to [learners](./learner-experience.md#deadlines). They do not lock content, send reminders or grant extensions, and the educator interface has no screen for them.
+Overrides change a due date or time limit for particular people. They do not send reminders, and what happens once a deadline has passed is set by the policy below.
+
+### Deadline policy
+
+A deadline policy decides what a missed deadline leads to. Administrators set it for a site, an organisation, a course, a cohort, a cohort's course registration, or one learner's course registration, and each setting can inherit from the broader level.
+
+- **Missed deadline mark.** Whether a past due date is flagged to the learner.
+- **Closing items.** Whether incomplete items close once a grace window after their deadline has passed.
+- **Ending access.** Whether course access ends once the same grace window after the time limit has passed, and what the learner can still see of the course afterwards.
+- **Notify educators.** The setting can be saved, but nothing is sent yet; see [roadmap](./roadmap.md#deadlines).
+
+A learner's course progress page shows the policy that applies to them and which level set each value. With no policy set anywhere, nothing closes and no access ends; the deployment-wide default is described in [configuration and extension](./configuration-and-extension.md#deadline-policy). What learners see is covered in [learner experience](./learner-experience.md#deadlines).
+
+Ended access is restored by overriding the course time limit with a fixed date or a number of days, for one learner or a whole cohort. Policy and overrides are admin-only: the educator interface has no screen for either.
 
 ## Site Time Zone
 
