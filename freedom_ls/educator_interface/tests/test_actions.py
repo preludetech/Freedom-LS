@@ -28,6 +28,7 @@ from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
+from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
     AddToCohortBulkAction,
     CohortCourseBulkAction,
@@ -5723,7 +5724,7 @@ def test_a_cohort_admin_may_select_learners_but_not_deactivate_them(
 
 
 @pytest.mark.django_db
-def test_apply_skips_a_learner_outside_the_cohort_the_user_may_change(
+def test_a_run_skips_a_learner_outside_the_cohort_the_user_may_change(
     cohort_learner_manager_role: str,
 ):
     organisation = OrganisationFactory()
@@ -5732,13 +5733,62 @@ def test_apply_skips_a_learner_outside_the_cohort_the_user_may_change(
     educator = UserFactory(staff=True)
     assign_object_role(educator, cohort, cohort_learner_manager_role)
 
-    outcome = DeactivateLearnersBulkAction().apply(educator, learner, {})
+    result = run_apply(
+        DeactivateLearnersBulkAction(),
+        educator,
+        organisation,
+        Learner.objects.filter(pk=learner.pk),
+        {},
+    )
 
     learner.refresh_from_db()
-    assert outcome == BulkOutcome(
-        "skipped", "learners you don't have permission to change"
-    )
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", "learners you don't have permission to change")
+    ]
     assert learner.is_active is True
+
+
+@pytest.mark.django_db
+def test_a_run_changes_a_member_of_the_cohort_the_user_may_change(
+    cohort_learner_manager_role: str,
+):
+    """The run checked the capability against the organisation while the
+    preview checked it through the cohort, so a cohort-scoped educator was
+    promised a change and then had every learner skipped."""
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=member)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort, cohort_learner_manager_role)
+
+    result = run_apply(
+        DeactivateLearnersBulkAction(),
+        educator,
+        organisation,
+        Learner.objects.filter(pk=member.pk),
+        {},
+    )
+
+    member.refresh_from_db()
+    assert result.changed == 1
+    assert member.is_active is False
+
+
+@pytest.mark.django_db
+def test_a_run_reads_who_is_permitted_once_rather_than_per_learner(
+    staff_client: Client, mocker: MockerFixture
+):
+    """`apply` asked `can` about every learner, four or five queries each, so
+    an inline run over 250 learners cost over a thousand queries."""
+    can = mocker.spy(actions_module, "can")
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    # Once for the preview and once for the run, never per learner.
+    assert can.call_count <= 2
 
 
 @pytest.mark.django_db
@@ -6841,6 +6891,7 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
     result = run_apply(
         action_class(),
         educator,
+        organisation,
         Cohort._base_manager.filter(pk=inactive.pk),
         {"course": CourseFactory()},
     )

@@ -185,6 +185,17 @@ class BulkAction:
     def has_permission(self, request: HttpRequest) -> bool:
         return True
 
+    def prepare(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        scope: Model | None,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> None:
+        """Called once before `apply` runs over `queryset`, with the table's
+        scope object, so an action can read what every row needs in one go
+        rather than once per row. Nothing by default."""
+
     def apply(
         self,
         user: AbstractBaseUser | AnonymousUser,
@@ -245,7 +256,7 @@ class BulkAction:
         """Run the action over `queryset`. Takes the panel context rather
         than the bare request because a run that outlives the request needs
         the table's scope and URL as well."""
-        return run_apply(self, ctx.request.user, queryset, cleaned_data)
+        return run_apply(self, ctx.request.user, ctx.scope, queryset, cleaned_data)
 
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
@@ -327,6 +338,7 @@ class RecordedBulkAction(BulkAction):
 def run_apply(
     action: BulkAction,
     user: AbstractBaseUser | AnonymousUser,
+    scope: Model | None,
     queryset: QuerySet,
     cleaned_data: dict[str, object],
     on_progress: Callable[[int], None] | None = None,
@@ -337,6 +349,7 @@ def run_apply(
     A module function rather than a method so a background task can call it
     without a request.
     """
+    action.prepare(user, scope, queryset, cleaned_data)
     tallies: dict[tuple[Status, str], int] = {}
     entries: list[BulkResultEntry] = []
     left_out = 0
