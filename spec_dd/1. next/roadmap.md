@@ -14,7 +14,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
-- `deadlines-8-per-placement-dates`
 - `failed-login-follow-up`
 - `file-scanning`
 - `form-engine-branch-logic`
@@ -513,7 +512,7 @@ is at risk.
 | 5 | `deadlines-5-reminders` | A housekeeping sweep raises reminder notifications to learners (approaching, due today, overdue) and rolled-up overdue notifications to educators, once each, plus a `deadline.missed` webhook. | `deadlines-3-extensions-and-pause` | next |
 | 6 | `deadlines-6-educator-management` | Educator-interface panels and actions on cohort and learner detail: set deadlines, extend (also in bulk), pause and resume, with capabilities and audit log entries. | `deadlines-3-extensions-and-pause`, `educator-interface-8-bulk-operations`, `educator-interface-11-audit-log` | next |
 | 7 | `deadlines-7-educator-at-risk` | Overdue and due-soon learners in the cohort's Needs attention panel and the dashboard list, and an overdue at-risk rule in the cohort report. | `deadlines-2-consequence-policy`, `educator-interface-10-reporting-dashboards` | next |
-| 8 | `deadlines-8-per-placement-dates` | A `children:` entry in `course.md` or `part.yaml` carries a due date for that one placement, so a part or topic shared by two courses can have deadlines in one and none in the other. | `deadlines-1-dates-and-overdue` | next |
+| 8 | `deadlines-8-per-placement-dates` | A `children:` entry in `course.md` or `part.yaml` carries a due date for that one placement, so a part or topic shared by two courses can have deadlines in one and none in the other. | `deadlines-1-dates-and-overdue` | in progress |
 
 ```
 1 dates ──┬── 2 policy ──┬── 3 extensions and pause ──┬── 4 learner self-pause
