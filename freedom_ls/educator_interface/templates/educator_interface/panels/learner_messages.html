@@ -1,0 +1,19 @@
+{% extends "panel_framework/panels/_panel_base.html" %}
+{% comment %}
+The learner's Messages tab. A conversation shows as the thread pane, sized to
+fit the card with an h2 so the page keeps its one h1. Before the first message
+the tab says so above the composer that starts the conversation. When the
+policy refuses and there is no conversation the body is empty.
+{% endcomment %}
+{% block panel_body %}
+    {% if own_shown %}
+        {% if conversation %}
+            {% include "comms/partials/thread.html" with pane_height="h-[65dvh]" heading_tag="h2" %}
+        {% else %}
+            <div class="px-4 py-6">
+                <p class="m-0 text-muted">No messages with {{ learner.user.display_name }} yet.</p>
+            </div>
+            {% include "comms/partials/composer.html" %}
+        {% endif %}
+    {% endif %}
+{% endblock panel_body %}

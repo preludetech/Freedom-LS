@@ -50,6 +50,7 @@ from freedom_ls.comms.messaging import (
 )
 from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import (
+    CONVERSATION_CHANGED,
     composer_context,
     posted_client_key,
     recipient_pk,
@@ -110,7 +111,9 @@ from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
     ConversationRow,
     conversations_in_organisation,
+    own_conversation_with,
 )
+from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
@@ -810,11 +813,96 @@ class LearnerHistoryPanel(HistoryPanel):
     )
 
 
+class LearnerMessagesPanel(Panel):
+    """The learner's Messages tab: the educator's own conversation with them.
+
+    It declares no refresh events: a re-fetch would mark the thread read again
+    for nothing, and the thread polls for new messages itself.
+    """
+
+    model = Learner
+    title = "Messages"
+    template_name = "educator_interface/panels/learner_messages.html"
+    card_flush = True
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(request)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [SendToLearnerAction()]
+
+    def get_context_data(
+        self, *, draft: str = "", client_key: UUID | None = None, alert: str = ""
+    ) -> dict[str, object]:
+        """The tab's context. The keyword arguments re-render the tab after a
+        refused send with the educator's draft and the refusal."""
+        context = super().get_context_data()
+        learner = cast(Learner, self.instance)
+        own = own_conversation_with(self.request, learner)
+        context["learner"] = learner
+        context["own_shown"] = own.conversation is not None or own.allowed
+        if own.conversation is not None:
+            context.update(thread_context(self.request, own.conversation))
+            context.pop("back_url")
+        else:
+            context["other"] = learner.user
+        if own.allowed:
+            context["composer"] = composer_context(
+                client_key=client_key or uuid4(),
+                draft=draft,
+                alert=alert,
+                conversation=own.conversation,
+                recipient=None if own.conversation is not None else learner.user,
+                action_url=SendToLearnerAction().get_action_url(self.ctx),
+                swap_target=self.region_id,
+            )
+        return context
+
+
+class SendToLearnerAction(PanelAction):
+    """The Messages tab's composer posts here, so the answer is the tab itself
+    re-rendered, never a redirect to the messages page."""
+
+    action_name = "send"
+    renders_in_footer = False
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        request = ctx.request
+        learner = cast(Learner, ctx.instance)
+        own = own_conversation_with(request, learner)
+        client_key = posted_client_key(request)
+        draft = request.POST.get("body", "")
+        result = send_message(
+            sender=cast(User, request.user),
+            body=draft,
+            client_key=client_key,
+            site=cast(Site, get_cached_site(request)),
+            conversation=own.conversation,
+            recipient=None if own.conversation is not None else learner.user,
+        )
+        panel = LearnerMessagesPanel(ctx)
+        if result.message is not None:
+            response = render(request, panel.template_name, panel.get_context_data())
+            response["HX-Trigger"] = CONVERSATION_CHANGED
+            return response
+        alert = result.body_error or refusal_alert_copy(result.refusal, learner.user)
+        return render(
+            request,
+            panel.template_name,
+            panel.get_context_data(draft=draft, client_key=client_key, alert=alert),
+            status=422,
+        )
+
+
 class LearnerTabSet(TabSet):
     title = "Learner sections"
     children = {
         "overview": LearnerOverviewStack,
         "courses": LearnerCoursesStack,
+        "messages": LearnerMessagesPanel,
         "history": LearnerHistoryPanel,
     }
 
@@ -836,13 +924,6 @@ class LearnerInstanceView(InstanceView):
             ResendSetupEmailAction(),
             *learner_state_actions(),
         ]
-
-
-def _interface_path(organisation: Organisation, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
-    )
 
 
 _LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
@@ -1044,7 +1125,7 @@ class CohortSettingsPanel(Panel):
         return [
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
-                success_url=_interface_path(cohort.organisation, "cohorts"),
+                success_url=interface_path(cohort.organisation, "cohorts"),
             ),
         ]
 
@@ -1140,7 +1221,7 @@ class CreateCohortAction(CreateInstanceAction):
         return form
 
     def get_success_url(self, instance: Model) -> str:
-        return _interface_path(self._organisation, f"cohorts/{instance.pk}")
+        return interface_path(self._organisation, f"cohorts/{instance.pk}")
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         with transaction.atomic():
@@ -1274,7 +1355,7 @@ class ConversationThreadPanel(Panel):
         context = super().get_context_data()
         context.update(thread_context(self.request, cast(Conversation, self.instance)))
         organisation = cast(OrganisationScopedRequest, self.request).organisation
-        context["back_url"] = _interface_path(organisation, "messages")
+        context["back_url"] = interface_path(organisation, "messages")
         return context
 
 
@@ -1370,7 +1451,7 @@ class NewMessageAction(PanelAction):
             organisation = cast(OrganisationScopedRequest, request).organisation
             conversation = cast(Conversation, result.conversation)
             return navigation_response(
-                _interface_path(organisation, f"messages/{conversation.pk}")
+                interface_path(organisation, f"messages/{conversation.pk}")
             )
         alert = result.body_error or refusal_alert_copy(result.refusal, recipient)
         return render(

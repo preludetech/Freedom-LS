@@ -137,6 +137,7 @@ def composer_context(
     action_url: str | None = None,
     in_modal: bool = False,
     in_quick_view: bool = False,
+    swap_target: str | None = None,
 ) -> dict[str, object]:
     """What the composer partial needs.
 
@@ -146,7 +147,8 @@ def composer_context(
     posts somewhere else instead, and ``in_modal`` makes the answer replace the
     whole app modal body, which is where a first message composed in the modal
     sends its refusal. ``in_quick_view`` makes the answer replace the quick-view
-    box instead, so the drawer around it stays open.
+    box instead, so the drawer around it stays open. ``swap_target`` is the id
+    of a host page's region that the answer replaces whole.
     """
     if action_url is None:
         if conversation is not None:
@@ -163,6 +165,7 @@ def composer_context(
         "recipient": recipient,
         "in_modal": in_modal,
         "in_quick_view": in_quick_view,
+        "swap_target": swap_target,
     }
 
 

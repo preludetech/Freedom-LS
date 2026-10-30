@@ -11,14 +11,12 @@ from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 from django.db.models import Max
-from django.urls import reverse
 
-from freedom_ls.accounts.models import User
 from freedom_ls.comms.config import config as comms_config
-from freedom_ls.comms.messaging import inbox_for, pair_key_for, reply_decision
-from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import message_box_context
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.messaging import own_conversation_with
+from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
     cohort_learner_count,
@@ -30,11 +28,8 @@ from freedom_ls.learner_progress.queries import (
     registrations_with_progress_for_learner,
 )
 from freedom_ls.panel_framework.quick_view import QuickView
-from freedom_ls.site_aware_models.models import get_cached_site
 
 if TYPE_CHECKING:
-    from django.contrib.sites.models import Site
-
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
@@ -91,47 +86,25 @@ class LearnerQuickView(QuickView):
 
     def _message_box_context(self, learner: Learner) -> dict[str, object]:
         """The message box for the educator and learner, or nothing when the
-        policy refuses.
+        policy refuses. A refused pair gets no box at all.
 
-        The policy's reply decision applies once a conversation exists, its
-        start decision before then. A refused pair gets no box at all.
+        The box's "Open conversation" link goes to the learner page's Messages
+        tab, which exists before the first message does.
         """
         request = cast("OrganisationScopedRequest", self.request)
-        educator = cast(User, request.user)
-        conversation = (
-            inbox_for(educator)
-            .filter(pair_key=pair_key_for(educator, learner.user))
-            .first()
-        )
-        if conversation is not None:
-            decision = reply_decision(viewer=educator, conversation=conversation)
-        else:
-            decision = get_messaging_policy().can_start(
-                sender=educator,
-                recipient=learner.user,
-                site=cast("Site", get_cached_site(request)),
-            )
-        if not decision.allowed:
+        own = own_conversation_with(request, learner)
+        if not own.allowed:
             return {}
-        # reverse() percent-encodes the braces; the page fills the pk in later.
-        open_url_template = reverse(
-            "educator_interface:interface",
-            kwargs={
-                "organisation_slug": request.organisation.slug,
-                "path_string": "messages/{pk}",
-            },
-        ).replace("%7Bpk%7D", "{pk}")
         return {
             "message_box": True,
-            "open_url_template": open_url_template,
-            "open_url": open_url_template.replace("{pk}", str(conversation.pk))
-            if conversation is not None
-            else "",
+            "open_url": interface_path(
+                request.organisation, f"learners/{learner.pk}/__tabs/messages"
+            ),
             **message_box_context(
-                conversation=conversation,
+                conversation=own.conversation,
                 other=learner.user,
                 client_key=uuid4(),
-                recipient=learner.user if conversation is None else None,
+                recipient=learner.user if own.conversation is None else None,
             ),
         }
 

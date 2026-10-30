@@ -40,23 +40,11 @@ rows start at their status.
 </c-panel-definition-list>
 
 {% if message_box %}
-    {% comment %}
-    The box swaps itself after each send, so the Open conversation link in the
-    heading row follows it: it appears once the box reports a conversation pk,
-    and the server fills the href only when the conversation already exists.
-    {% endcomment %}
-    <section x-data="messageBox"
-             x-on:htmx:after-swap="onAfterSwap"
-             data-open-url-template="{{ open_url_template }}"
-             class="mt-4 border-t border-border pt-4"
+    <section class="mt-4 border-t border-border pt-4"
              aria-labelledby="quick-view-message-heading">
         <div class="flex items-center justify-between gap-2">
             <h3 id="quick-view-message-heading" class="m-0 text-base font-semibold text-on-surface">Messages</h3>
-            <a x-show="hasConversation"
-               x-cloak
-               x-transition
-               x-bind:href="openUrl"
-               {% if open_url %}href="{{ open_url }}"{% endif %}
+            <a href="{{ open_url }}"
                title="Open conversation"
                class="inline-flex size-8 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
                 <c-icon name="open_page" class="size-5" />

@@ -2391,7 +2391,6 @@ class TestSendFromTheQuickViewBox:
         message = Message.objects.get()
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 200
-        assert box.get("data-conversation-pk") == str(conversation.pk)
         assert box.xpath(f".//li[@id='msg-{message.pk}']")
         composer = box.xpath(".//form[@id='composer']")[0]
         assert composer.get("hx-swap-oob") is None
@@ -2455,7 +2454,6 @@ class TestSendFromTheQuickViewBox:
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 200
         assert "HX-Location" not in response
-        assert box.get("data-conversation-pk") == str(conversation.pk)
         assert box.xpath(".//li[starts-with(@id, 'msg-')]")
         form = box.xpath(".//form[@id='composer']")[0]
         assert form.get("hx-post") == send_url(conversation)
@@ -2500,7 +2498,6 @@ class TestRefusedFromTheQuickViewBox:
         tree = html.fromstring(f"<div>{response.content.decode()}</div>")
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 422
-        assert box.get("data-conversation-pk") == ""
         assert box.xpath(".//textarea")[0].text_content() == "Please read"
         assert box.xpath(".//input[@name='recipient']")[0].get("value") == str(
             recipient.pk
