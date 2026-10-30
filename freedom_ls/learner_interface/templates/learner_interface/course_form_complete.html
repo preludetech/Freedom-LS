@@ -236,26 +236,31 @@
         still looks like the rest of the player. Previous steps back through the
         course. Going back into this form is Retry quiz's job, which is why that
         button keeps its own place on the right.
+        A learner whose access ended gets no footer: retrying, the next item and
+        the finish page are all shut to them, and the outline, where the policy
+        keeps it, is the way around.
         {% endcomment %}
-        <c-player-footer :previous_url="previous_url" class="mt-8">
-            {% if quiz_verdict == "failed" %}
-                <c-button href="{{ retry_url }}" icon_left="retry" size="small">
-                    Retry quiz
-                </c-button>
-            {% else %}
-                {% if next_url %}
-                    <c-button href="{{ next_url }}" icon_right="next" size="small">
-                        Continue
+        {% if not access_ended %}
+            <c-player-footer :previous_url="previous_url" class="mt-8">
+                {% if quiz_verdict == "failed" %}
+                    <c-button href="{{ retry_url }}" icon_left="retry" size="small">
+                        Retry quiz
                     </c-button>
                 {% else %}
-                    <c-button href="{% url 'learner_interface:view_course_item' course_slug=course.slug index=1 %}"
-                              icon_right="home"
-                              size="small">
-                        Return to course
-                    </c-button>
+                    {% if next_url %}
+                        <c-button href="{{ next_url }}" icon_right="next" size="small">
+                            Continue
+                        </c-button>
+                    {% else %}
+                        <c-button href="{% url 'learner_interface:view_course_item' course_slug=course.slug index=1 %}"
+                                  icon_right="home"
+                                  size="small">
+                            Return to course
+                        </c-button>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
-        </c-player-footer>
+            </c-player-footer>
+        {% endif %}
 
     </c-page>
 {% endblock %}

@@ -6,12 +6,12 @@ any other row its deadline date; either one adds when the row closes, if it will
 row or a row without a due date renders nothing.
 
 Required context: child (due_at, closes_at, is_overdue, is_closed, status) and
-show_time_zone_to_learners.
-Optional: title, a prefix placed before the date; withheld, true for a row sequential unlock
-withholds, which stays locked past its close instant and so gets no "Closed" chip.
+show_time_zone_to_learners. A row sequential unlock withholds is never is_closed, so it
+stays locked past its close instant with no "Closed" chip.
+Optional: title, a prefix placed before the date.
 {% endcomment %}
 {% if child.due_at and child.status != "COMPLETE" %}
-    {% if child.is_closed and not withheld %}
+    {% if child.is_closed %}
         <c-chip variant="error" size="xs" icon="deadline" class="forced-colors:border">Closed {% local_time child.closes_at %}</c-chip>
     {% elif child.is_overdue %}
         <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>

@@ -75,6 +75,7 @@ Layers = list[tuple[str, DeadlineConfigFields | None]]
 
 
 class LayeredDeadlinePolicy(DeadlinePolicy):
+    # Most specific first; the only place the order is written.
     LAYER_ORDER = (
         "registration",
         "cohort",
@@ -162,15 +163,19 @@ class LayeredDeadlinePolicy(DeadlinePolicy):
                     else None
                 )
                 organisation_id = learner_organisations.get(record.learner_id)
-            layers: Layers = [
-                ("registration", registration_row),
-                ("cohort", cohort_row),
-                (
-                    "organisation",
-                    organisation_rows.get(organisation_id) if organisation_id else None,
+            rows_by_layer: dict[str, DeadlineConfigFields | None] = {
+                "registration": registration_row,
+                "cohort": cohort_row,
+                "organisation": (
+                    organisation_rows.get(organisation_id) if organisation_id else None
                 ),
-                ("course", course_rows.get(record.course_id)),
-                ("site", site_row),
+                "course": course_rows.get(record.course_id),
+                "site": site_row,
+            }
+            layers: Layers = [
+                (layer, rows_by_layer[layer])
+                for layer in self.LAYER_ORDER
+                if layer != SETTINGS_LAYER
             ]
             resolved[record.pk] = self._resolve_one(layers)
         return resolved

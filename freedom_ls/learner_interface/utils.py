@@ -16,7 +16,7 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
-from freedom_ls.deadlines.consequences import close_instant, shows_overdue
+from freedom_ls.deadlines.consequences import close_instant, is_closed, shows_overdue
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import CourseDeadlines
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
@@ -601,7 +601,8 @@ def _deadline_keys(
     now: datetime,
 ) -> DeadlineKeys:
     """The due instant, close instant and their flags for one row. A completed row is never
-    overdue or closed, and a caller that resolved no deadlines gets None and False."""
+    overdue or closed, a withheld row is never closed, and a caller that resolved no
+    deadlines gets None and False."""
     keys = DeadlineKeys(
         collection_item_id=collection_item.pk,
         due_at=None,
@@ -623,8 +624,10 @@ def _deadline_keys(
         )
         closes_at = close_instant(resolved, deadline_policy)
         keys["closes_at"] = closes_at
-        keys["is_closed"] = (
-            closes_at is not None and status != COMPLETE and now > closes_at
+        # Only a row sequential unlock offers can close; a withheld row stays locked
+        # past its close instant and carries no closed mark anywhere it is drawn.
+        keys["is_closed"] = status in (READY, IN_PROGRESS, FAILED) and is_closed(
+            resolved, deadline_policy, status == COMPLETE, now
         )
     return keys
 
@@ -632,13 +635,10 @@ def _deadline_keys(
 def _closed_if_past_close(status: str, keys: DeadlineKeys) -> str:
     """CLOSED for an open row past its close instant, otherwise the status unchanged.
 
-    Only a status the learner could still act on closes. A BLOCKED row stays blocked, so
-    sequential unlock still decides what is withheld, and the row keeps its url: the
-    player renders the closed notice there. ``next_status`` is untouched by this, so a
-    closed item unlocks nothing after it."""
-    if keys["is_closed"] and status in (READY, IN_PROGRESS, FAILED):
-        return CLOSED
-    return status
+    A BLOCKED row is never marked closed, so sequential unlock still decides what is
+    withheld. A closed row keeps its url: the player renders the closed notice there.
+    ``next_status`` is untouched by this, so a closed item unlocks nothing after it."""
+    return CLOSED if keys["is_closed"] else status
 
 
 def create_child_dict_with_flattened_index(

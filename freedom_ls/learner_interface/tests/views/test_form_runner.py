@@ -3027,8 +3027,27 @@ def test_closed_form_page_post_is_refused_and_saves_no_answers(
 
     attempt.refresh_from_db()
     assert response.status_code == 302
+    assert response["Location"] == _item_url(course)
     assert attempt.completed_time is None
     assert not attempt.answers.exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_start_is_sent_to_the_closed_notice(mock_site_context, client):
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == _item_url(course)
 
 
 @pytest.mark.django_db

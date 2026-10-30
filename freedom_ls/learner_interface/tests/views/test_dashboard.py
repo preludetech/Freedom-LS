@@ -2190,7 +2190,8 @@ def test_card_says_when_the_next_deadline_closes(deadline_card):
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_card_says_closed_once_a_deadline_has_closed(deadline_card):
-    course, topics, _user, _record, client = deadline_card
+    course, topics, user, _record, client = deadline_card
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
     CourseDeadlineConfigFactory(course=course, close_items="on")
 
@@ -2198,6 +2199,20 @@ def test_card_says_closed_once_a_deadline_has_closed(deadline_card):
 
     assert "Closed 1 Jan 2020" in text
     assert "Missed deadline" not in text
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_card_shows_no_closed_chip_for_a_locked_item(deadline_card):
+    """Sequential unlock wins over closing: a withheld item is overdue, not closed."""
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+
+    text = _dashboard_text(client)
+
+    assert "Closed" not in text
+    assert "Missed deadline Second Topic 1 Jan 2020" in text
 
 
 @pytest.mark.django_db

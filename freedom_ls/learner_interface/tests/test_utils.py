@@ -519,6 +519,7 @@ def test_an_item_that_sequential_unlock_withholds_stays_blocked_past_its_close_i
 
     assert second["status"] == BLOCKED
     assert second["url"] is None
+    assert second["is_closed"] is False
 
 
 @pytest.mark.django_db
