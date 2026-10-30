@@ -45,8 +45,6 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
 BLANK_BODY = _("Type a message first.")
-# Up to this many candidates the picker lists everyone without a search term.
-PICKER_LIST_ALL_LIMIT = 15
 PICKER_MIN_TERM_LENGTH = 2
 PICKER_RESULT_LIMIT = 20
 TOO_LONG_BODY = _("This message is too long. The limit is %(limit)s characters.")
@@ -550,42 +548,32 @@ def search_recipients(
 
     Only narrows ``candidates`` (default: everyone the policy offers the
     sender); a person outside them never appears, so a name the sender may not
-    message looks the same as a name that does not exist. A short list is shown
-    whole; a longer one waits for a term of two characters. Results are capped
-    at 20, with ``truncated`` set when more matched.
+    message looks the same as a name that does not exist. An empty term lists
+    everyone, capped like a search; a typed term shorter than two characters
+    asks for more. Results are capped at 20, with ``truncated`` set when more
+    matched.
     """
     policy = get_messaging_policy()
     if candidates is None:
         candidates = policy.recipients_for(sender=sender, site=site)
     term = term.strip()
-    if not term:
-        everyone = list(
-            candidates.order_by("first_name", "last_name", "pk")[
-                : PICKER_LIST_ALL_LIMIT + 1
-            ]
-        )
-        if len(everyone) > PICKER_LIST_ALL_LIMIT:
-            return RecipientSearch(groups=[], needs_term=True)
-        matches, truncated = everyone, False
-    elif len(term) < PICKER_MIN_TERM_LENGTH:
+    if term and len(term) < PICKER_MIN_TERM_LENGTH:
         return RecipientSearch(groups=[], needs_term=True)
-    else:
-        # Every word must match some field, so "Jane Smith" finds Jane Smith.
-        condition = Q()
-        for word in term.split():
-            word_condition = Q(first_name__icontains=word) | Q(
-                last_name__icontains=word
-            )
-            if include_email:
-                word_condition |= Q(email__icontains=word)
-            condition &= word_condition
-        fetched = list(
-            candidates.filter(condition).order_by("first_name", "last_name", "pk")[
-                : PICKER_RESULT_LIMIT + 1
-            ]
-        )
-        truncated = len(fetched) > PICKER_RESULT_LIMIT
-        matches = fetched[:PICKER_RESULT_LIMIT]
+    # Every word must match some field, so "Jane Smith" finds Jane Smith. No
+    # words means no narrowing.
+    condition = Q()
+    for word in term.split():
+        word_condition = Q(first_name__icontains=word) | Q(last_name__icontains=word)
+        if include_email:
+            word_condition |= Q(email__icontains=word)
+        condition &= word_condition
+    fetched = list(
+        candidates.filter(condition).order_by("first_name", "last_name", "pk")[
+            : PICKER_RESULT_LIMIT + 1
+        ]
+    )
+    truncated = len(fetched) > PICKER_RESULT_LIMIT
+    matches = fetched[:PICKER_RESULT_LIMIT]
     if not matches:
         return RecipientSearch(groups=[])
     groups = policy.group_recipients(
