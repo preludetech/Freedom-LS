@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery, group messaging and help requests from the course player not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
 - **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -72,7 +72,7 @@ Not built:
 
 **Status: In-app notifications built; delivery and most events not built.**
 
-FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). Two things raise a notification: a learner being registered for a course by someone else, and a new [direct message](./messaging.md). Still missing: email or any other delivery channel, notification preferences, digests, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
+FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). One thing raises a notification: a learner being registered for a course by someone else. [Direct messages](./messaging.md) do not; the Messages button's unread count is their signal. Still missing: email or any other delivery channel, notification preferences, digests, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
 
 ## Direct Messaging
 
@@ -81,9 +81,10 @@ FLS has an in-app bell and notification centre, off by default, described in [no
 Educators and learners can exchange one-to-one messages where the site's messaging policy allows it; see [messaging](./messaging.md) for what is built. Not built:
 
 - **Reporting and blocking** — nobody can report a message or block a user, and there is no moderation queue for site admins. Planned.
-- **Email about messages** — a new message shows only in the in-app bell and Messages badge. Email delivery, preferences and digests are planned together with notification email.
+- **Email about messages** — a new message shows only in the Messages button's unread count. Email delivery, preferences and digests are planned together with notification email.
 - **Push delivery** — the inbox and open threads update by polling. Optional real-time push is planned, off by default.
 - **Group, broadcast and cohort-wide messaging** — conversations are between two people only. Not planned in the current effort.
+- **Help requests from the course player** — a learner cannot ask for help about specific content into a shared queue that educators pick up. Planned.
 - **Attachments, editing and deleting messages, typing and presence indicators** — not built.
 
 ## Two-Factor Authentication (2FA / MFA)

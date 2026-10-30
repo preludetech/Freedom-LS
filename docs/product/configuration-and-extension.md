@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-10-25_
 - Theming works at three increasing depths: override CSS tokens, fill slots inside components, or replace whole template files.
 - Two themes ship (`default`, `first_class`), selected by `FLS_THEME`. Four icon sets are available, selected by `FREEDOM_LS_ICON_SET`.
 - Course access is a pluggable backend, so a deployment can offer free enrolment, application-gated courses, or a model of its own.
-- [Direct messaging](./messaging.md) is off until `MESSAGING_ENABLED` is set. Who may message whom is decided by a swappable messaging policy that keeps learner-initiated messages closed by default.
+- [Direct messaging](./messaging.md) is off until `MESSAGING_ENABLED` is set. Who may message whom is decided by a swappable messaging policy; out of the box learners may message their educators and peer messaging stays closed.
 - FLS is designed to be installed into a host Django project, which retains override priority at every layer.
 - An opt-in conformance suite lets a downstream project verify it has wired FLS up correctly.
 - Common wiring mistakes are reported by Django's configuration checks at boot, rather than as a runtime error on a learner's first request.
@@ -76,7 +76,7 @@ See [learner experience](./learner-experience.md) for the learner-facing effect 
 
 ## Messaging Policy
 
-[Direct messaging](./messaging.md) is off by default; `MESSAGING_ENABLED` turns it on. Who may message whom comes from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy keeps every conversation a learner starts **closed by default**. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
+[Direct messaging](./messaging.md) is off by default; `MESSAGING_ENABLED` turns it on. Who may message whom comes from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy lets learners message their educators and keeps messaging between learners closed. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
 
 ## Preview Overrides (Dev and Staging Only)
 
@@ -159,7 +159,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `NOTIFICATION_CATEGORIES` | The kinds of notification FLS can raise; a project can add its own. See [notifications](./notifications.md). |
 | `MESSAGING_ENABLED` | Turns direct messaging on; off by default. See [messaging](./messaging.md). |
 | `MESSAGING_POLICY` | Selects the policy that decides who may message whom; the shipped policy is used unless set. |
-| `MESSAGING_DEFAULT_FLAGS` | Deployment-wide defaults for learner-to-educator, learner-to-cohort-peer and learner-to-course-peer messaging; all closed by default. |
+| `MESSAGING_DEFAULT_FLAGS` | Deployment-wide defaults for learner-to-educator, learner-to-cohort-peer and learner-to-course-peer messaging; learner-to-educator is open by default and the two peer settings are closed. |
 | `MESSAGING_OFFERED_EDUCATOR_ROLES` | Educator roles a learner may be offered to message; defaults to cohort admins. |
 | `REGISTRATION_RULE_KINDS` | The ways a registration rule can decide who it matches; a project can add its own. Only attribute matching ships, and it is the default. See [registration rules](./registration-rules.md). |
 | `REGISTRATION_RULE_BATCH_SIZE` | How many learners a rule evaluation handles at a time; defaults to 500. See [registration rules](./registration-rules.md). |

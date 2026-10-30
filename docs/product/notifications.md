@@ -1,11 +1,11 @@
 # Notifications
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-10-30_
 
 ## Summary
 
 - Signed-in users get an in-app bell with an unread badge in the header, a panel of recent notifications, and a notification centre page.
-- Two events raise a notification today: a learner is registered for a course by someone else, and a user receives a new [direct message](./messaging.md).
+- One event raises a notification today: a learner is registered for a course by someone else. [Direct messages](./messaging.md) do not; the unread count on the header Messages button is their signal.
 - The bell is **off by default**. Notifications are recorded either way.
 - A project can add its own notification categories.
 - Not built: email or any other delivery, preferences, pop-up alerts, retention, and backfill.
@@ -18,9 +18,7 @@ Every signed-in user, learner or educator, has a bell in the shared header. It c
 
 ## What Triggers a Notification
 
-FLS never notifies someone about what they just did. A learner is notified when someone else registers them for a course, including when a [registration rule](./registration-rules.md) does it; a learner a rule reactivates after retracting them is not notified a second time. Self-registering and finishing a course notify nobody, because the learner is already looking at the result. The corresponding [webhooks](./webhooks.md) still fire in both cases.
-
-A user is also notified when they receive a [direct message](./messaging.md). Each conversation has at most one unread notification for a user: a later message refreshes it rather than adding another. Opening the conversation marks it read.
+FLS never notifies someone about what they just did. A learner is notified when someone else registers them for a course, including when a [registration rule](./registration-rules.md) does it; a learner a rule reactivates after retracting them is not notified a second time. Self-registering and finishing a course notify nobody, because the learner is already looking at the result. The corresponding [webhooks](./webhooks.md) still fire in both cases. New [direct messages](./messaging.md) raise no notification; the unread count on the header Messages button signals them.
 
 ## Turning It On and Extending It
 
