@@ -32,8 +32,11 @@ to the article element without forking the shell.
 
     <div class="pt-3 flex-1 flex flex-col space-y-2">
         {% comment %}Wrapper keeps the eyebrow's content in block flow: as a direct
-        flex child an inline chip is blockified and stretched to the card width.{% endcomment %}
-        {% if eyebrow %}<div>{{ eyebrow }}</div>{% endif %}
+        flex child an inline chip is blockified and stretched to the card width.
+        A slot that rendered nothing but whitespace gets no wrapper and no gap.{% endcomment %}
+        {% with eyebrow_text=eyebrow|striptags %}
+            {% if eyebrow_text.strip %}<div>{{ eyebrow }}</div>{% endif %}
+        {% endwith %}
         {{ slot }}
         {% if footer %}{{ footer }}{% endif %}
     </div>

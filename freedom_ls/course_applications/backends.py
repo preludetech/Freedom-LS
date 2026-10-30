@@ -277,18 +277,15 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             from freedom_ls.course_applications.anonymous_session import (
                 owned_applications,
             )
+            from freedom_ls.course_applications.queries import panel_rows
 
             # An empty session map makes this an `IN ()` filter, which Django
             # answers without a query.
-            applications = (
-                owned_applications(request)
-                .filter(
+            applications = panel_rows(
+                owned_applications(request).filter(
                     form_progress__isnull=False,
                     form_progress__completed_time__isnull=True,
                 )
-                .select_related("course", "form_progress")
-                .prefetch_related("course__organisations")
-                .order_by("-created_at", "pk")
             )
         # The paginator counts and then fetches one page, so only the three
         # rows shown ever leave the database.

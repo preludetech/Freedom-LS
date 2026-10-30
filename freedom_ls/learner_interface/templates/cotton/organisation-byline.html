@@ -14,7 +14,9 @@ both.
 With overlap, the line is the course card's avatar: a large raised mark pulled
 up over the bottom of the card header, the name beside its lower half. The
 negative margin lives here, behind the default-organisation guard, so a card
-with no organisation to show keeps its normal spacing.
+with no organisation to show keeps its normal spacing. The line is positioned
+so it paints over the header, but carries no z-index: the card's stretched
+title link overlays it, so a click on the avatar still opens the course.
 
 Params:
   organisation — the organisation to name
@@ -24,7 +26,7 @@ Params:
 {% endcomment %}
 {% if organisation and not organisation.is_default %}
     <p data-testid="organisation-byline"
-       class="flex min-w-0 gap-2 text-sm {% if overlap %}relative z-10 -mt-6 items-end{% else %}items-center{% endif %} {% if class %}{{ class }}{% else %}text-muted{% endif %}">
+       class="flex min-w-0 gap-2 text-sm {% if overlap %}relative -mt-6 items-end{% else %}items-center{% endif %} {% if class %}{{ class }}{% else %}text-muted{% endif %}">
         {% if overlap %}
             <c-organisation-mark :organisation="organisation" size="lg" raised="true" />
         {% else %}

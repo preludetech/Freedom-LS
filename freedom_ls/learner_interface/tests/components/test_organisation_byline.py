@@ -110,6 +110,8 @@ def test_overlap_pulls_a_raised_large_mark_up_over_the_card_header(
 
     assert "-mt-6" in paragraph
     assert "items-end" in paragraph
+    # No z-index: the card's stretched title link must stay on top of the line.
+    assert "z-" not in paragraph
     assert "size-12" in result
     assert "ring-surface" in result
 

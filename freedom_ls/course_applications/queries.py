@@ -40,11 +40,23 @@ def get_application_for_course(
     )
 
 
-def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
-    """Return all applications for this user on the current site, newest first.
+def panel_rows(
+    applications: QuerySet[CourseApplication],
+) -> QuerySet[CourseApplication]:
+    """Order ``applications`` newest first and load what each panel row reads.
 
     The primary key breaks ties, so applications created in the same instant
     keep one stable order from page to page.
+    """
+    return (
+        applications.select_related("course", "form_progress")
+        .prefetch_related("course__organisations")
+        .order_by("-created_at", "pk")
+    )
+
+
+def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
+    """Return all applications for this user on the current site, newest first.
 
     Returns an empty queryset immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager. With no terminal states
@@ -55,9 +67,4 @@ def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
 
     if not user.is_authenticated:
         return CourseApplication.objects.none()
-    return (
-        CourseApplication.objects.filter(user=user)
-        .select_related("course", "form_progress")
-        .prefetch_related("course__organisations")
-        .order_by("-created_at", "pk")
-    )
+    return panel_rows(CourseApplication.objects.filter(user=user))

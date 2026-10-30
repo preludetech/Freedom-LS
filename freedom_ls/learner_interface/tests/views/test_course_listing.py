@@ -2103,6 +2103,30 @@ def test_all_courses_row_without_organisation_or_difficulty_shows_neither(
 
 
 @pytest.mark.django_db
+def test_all_courses_row_with_an_empty_eyebrow_draws_no_eyebrow_line(
+    mock_site_context, logged_in_client
+):
+    # Signed in and not registered, so no status chip or access badge; free,
+    # with no organisation or difficulty, so nothing on the left either.
+    CourseFactory(audience=CourseAudience.PUBLIC, difficulty="")
+
+    html = logged_in_client(UserFactory()).get(reverse("learner_interface:courses"))
+
+    assert "justify-between" not in html.content.decode()
+
+
+@pytest.mark.django_db
+def test_all_courses_row_with_a_difficulty_draws_the_eyebrow_line(
+    mock_site_context, logged_in_client
+):
+    CourseFactory(audience=CourseAudience.PUBLIC, difficulty="advanced")
+
+    html = logged_in_client(UserFactory()).get(reverse("learner_interface:courses"))
+
+    assert "justify-between" in html.content.decode()
+
+
+@pytest.mark.django_db
 def test_all_courses_details_link_name_ends_with_the_course_title(mock_site_context):
     CourseFactory(audience=CourseAudience.PUBLIC, title="Zebra Handling")
 

@@ -70,9 +70,8 @@ organisation.
 ## Manual steps
 
 1. Run `uv run manage.py migrate`. This applies
-   `freedom_ls/organisations/migrations/0002_organisation_bio_organisation_profile_logo.py` and
-   `0003_alter_organisation_profile_logo.py`. Both fields are blank by default, so existing
-   organisations keep working.
+   `freedom_ls/organisations/migrations/0002_organisation_bio_organisation_profile_logo.py`. Both
+   fields are blank by default, so existing organisations keep working.
 2. If you override any template listed in `changed_template_paths`, apply your changes again on
    top of the new version.
 3. Rebuild Tailwind. The new templates use utility classes your bundle may not contain yet.

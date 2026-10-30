@@ -3,6 +3,7 @@ its title with another organisation's course."""
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -90,6 +91,49 @@ def test_learner_sees_only_their_organisations_course_with_its_byline(
             page.get_by_text("Harbour College").locator("visible=true")
         ).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_clicking_the_card_byline_opens_the_course(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The byline overlaps the card header above the stretched title link; it
+    used to sit on top of the link and swallow every click on its strip."""
+    page = logged_in_page
+    organisation = OrganisationFactory(name="Harbour College")
+    course = CourseFactory(
+        title="Clickable Card",
+        slug="clickable-card",
+        audience=CourseAudience.ORGANISATION_LEARNERS,
+        access_config={"access_type": "free"},
+    )
+    course.organisations.add(organisation)
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user,
+        learner__organisation=organisation,
+        course=course,
+        is_active=True,
+    )
+
+    page.goto(str(reverse_url(live_server, "learner_interface:dashboard")))
+    # The phone-width row is in the DOM too, hidden; the card is the visible one.
+    card = page.locator("article.course-card", has_text="Clickable Card").locator(
+        "visible=true"
+    )
+    target = card.get_by_role("link", name="Clickable Card", exact=True).get_attribute(
+        "href"
+    )
+    assert target is not None
+
+    # A pointer click at the name's position: the stretched link overlays the
+    # byline, so an element click would be refused as intercepted.
+    box = card.get_by_text("Harbour College").bounding_box()
+    assert box is not None
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    # The course home then sends the learner on to their first item.
+    expect(page).to_have_url(re.compile(f"^{re.escape(live_server.url + target)}"))
 
 
 # Each chip's box, the difficulty's box and the byline name's width, read from

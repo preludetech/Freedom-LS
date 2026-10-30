@@ -43,17 +43,15 @@ current_price, card_organisation), user and show_time_zone_to_learners.
                      title="{{ course.title }}"
                      :organisation="course.card_organisation">
     <c-slot name="eyebrow">
-        <div class="space-y-1">
-            {% if course.listing_status == "not_registered" %}
-                {% if user.is_authenticated %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-                {% elif course.access_badge %}
-                    <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
-                {% endif %}
-            {% else %}
-                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+        {% if course.listing_status == "not_registered" %}
+            {% if user.is_authenticated %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
+            {% elif course.access_badge %}
+                <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
-        </div>
+        {% else %}
+            {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+        {% endif %}
     </c-slot>
 
     {% with url=title_url title=course.title %}
