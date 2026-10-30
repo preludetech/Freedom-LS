@@ -29,6 +29,7 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseBadRequest,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
@@ -41,6 +42,7 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
+    decode_cursor,
     other_participant,
     pair_key_for,
     refusal_alert_copy,
@@ -49,10 +51,12 @@ from freedom_ls.comms.messaging import (
 from freedom_ls.comms.messaging_views import (
     CONVERSATION_CHANGED,
     composer_context,
+    older_page_response,
     posted_client_key,
     read_only_thread_context,
     thread_context,
 )
+from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -934,7 +938,18 @@ class ViewConversationAction(PanelAction):
             subjects=[learner],
         )
         return {
-            **read_only_thread_context(conversation, other=educator, older_url=""),
+            **read_only_thread_context(
+                conversation,
+                other=educator,
+                older_url=reverse(
+                    "educator_interface:oversight_thread_older",
+                    kwargs={
+                        "organisation_slug": learner.organisation.slug,
+                        "learner_pk": str(learner.pk),
+                        "conversation_pk": str(conversation.pk),
+                    },
+                ),
+            ),
             "viewer_role_label": _oversight_role_label(viewer, learner),
         }
 
@@ -1835,6 +1850,30 @@ def cohort_report_download(
     if not can(request.user, DOWNLOAD_COHORT_REPORT, cohort):
         raise Http404
     return report_file_response(report)
+
+
+@login_required_htmx_to("educator_interface:root")
+def partial_oversight_thread_older(
+    request: HttpRequest, organisation_slug: str, learner_pk: str, conversation_pk: str
+) -> HttpResponse:
+    """Older messages of a conversation under oversight. Authorised the way the
+    learner page is, then by the oversight permission and the oversight set;
+    records nothing, since the open that reached this page already did."""
+    if not comms_config.MESSAGING_ENABLED:
+        raise Http404
+    _attach_organisation(request, organisation_slug)
+    learner = cast(
+        Learner, LearnerConfig.get_instance_view(request, learner_pk).instance
+    )
+    if not can(request.user, VIEW_CONVERSATION, learner):
+        raise Http404
+    conversation = get_object_or_404(
+        oversight_conversations_for(learner), pk=uuid_or_404(conversation_pk)
+    )
+    cursor = decode_cursor(request.GET.get("before", ""))
+    if cursor is None:
+        return HttpResponseBadRequest("before must be a cursor")
+    return older_page_response(request, conversation, cursor, older_url=request.path)
 
 
 @login_required

@@ -13,6 +13,11 @@ urlpatterns = [
         views.cohort_report_download,
         name="cohort_report_download",
     ),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/learners/(?P<learner_pk>[0-9a-f-]{36})/conversations/(?P<conversation_pk>[0-9a-f-]{36})/older/$",
+        views.partial_oversight_thread_older,
+        name="oversight_thread_older",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation
