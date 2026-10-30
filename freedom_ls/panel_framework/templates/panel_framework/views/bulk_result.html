@@ -5,6 +5,6 @@
 {% endblock page_header %}
 
 {% block main %}
-    {% include "panel_framework/partials/bulk_result_body.html" with headline=main.headline other_counts=main.other_counts result=main.result only %}
+    {% include "panel_framework/partials/bulk_result_body.html" with headline=main.headline result_lines=main.result_lines result=main.result only %}
     <a href="{{ main.page_url }}">Back to {{ main.noun }}</a>
 {% endblock main %}

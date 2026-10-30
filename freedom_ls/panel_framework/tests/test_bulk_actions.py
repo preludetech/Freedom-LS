@@ -482,7 +482,7 @@ def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> N
     assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert "0 stub models changed." in content
-    assert "2 already processed" in content
+    assert "2 were already processed." in content
     assert "row-0: already processed" in content
 
 
@@ -535,6 +535,19 @@ def test_declared_failure_exception_becomes_failed_entry(
         ("boom", "failed", FAILED_REASON)
     ]
     assert "secret detail" not in str(result.to_json())
+
+
+@pytest.mark.parametrize(
+    ("item", "line"),
+    [
+        (BulkCount("skipped", "already processed", 1), "1 was already processed."),
+        (BulkCount("skipped", "already processed", 3), "3 were already processed."),
+        (BulkCount("failed", FAILED_REASON, 1), "1 could not be changed."),
+        (BulkCount("failed", FAILED_REASON, 2), "2 could not be changed."),
+    ],
+)
+def test_a_result_line_reads_as_a_sentence(item: BulkCount, line: str) -> None:
+    assert StubBulkAction().result_line(item) == line
 
 
 def test_undeclared_exception_propagates(mock_site_context: Site) -> None:

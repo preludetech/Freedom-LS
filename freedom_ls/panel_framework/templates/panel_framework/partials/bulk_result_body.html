@@ -1,8 +1,8 @@
 <p>{{ headline }}</p>
-{% if other_counts %}
+{% if result_lines %}
     <ul class="mt-2 list-disc pl-5 text-sm">
-        {% for item in other_counts %}
-            <li>{{ item.count }} {{ item.reason }}</li>
+        {% for line in result_lines %}
+            <li>{{ line }}</li>
         {% endfor %}
     </ul>
 {% endif %}

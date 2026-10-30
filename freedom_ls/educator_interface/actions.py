@@ -146,6 +146,7 @@ from freedom_ls.panel_framework.actions import (
     navigation_response,
 )
 from freedom_ls.panel_framework.bulk_actions import (
+    BulkCount,
     BulkOutcome,
     ConfirmationWording,
     RecordedBulkAction,
@@ -2762,6 +2763,7 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
     action_name = "resend_setup_email"
     capability = CHANGE_LEARNER
     unchanged_reason = "account already set up"
+    recently_sent_reason = "setup email sent recently"
     pending_ids: frozenset[object] = frozenset()
 
     def classify_all(
@@ -2795,10 +2797,19 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
         except AccountAlreadySetUp:
             return BulkOutcome("skipped", self.unchanged_reason)
         except SetupEmailRecentlySent:
-            return BulkOutcome("skipped", "emailed recently")
+            return BulkOutcome("skipped", self.recently_sent_reason)
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Resend the setup email to {count_noun(Learner, count)}."
+
+    def result_line(self, item: BulkCount) -> str:
+        if item.reason == self.unchanged_reason:
+            accounts = count_phrase(item.count, "account was", "accounts were")
+            return f"{accounts} already set up."
+        if item.reason == self.recently_sent_reason:
+            emails = count_phrase(item.count, "setup email was", "setup emails were")
+            return f"{emails} sent recently."
+        return super().result_line(item)
 
     def confirmation_wording(
         self,
@@ -2811,7 +2822,8 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             request, queryset, classified, cleaned_data
         )
         # "account already set up" names its own subject, so it cannot follow
-        # the "N is/are" the skip lines put in front of a reason.
+        # the "N is/are" the skip lines put in front of a reason; result_line
+        # words both of this action's reasons for the same cause.
         set_up = sum(
             skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
         )
@@ -2860,7 +2872,7 @@ class CohortCourseBulkAction(CoursePickerMixin, CohortBulkAction):
     registration for it, read once per classification so previewing costs a
     fixed number of queries however many cohorts are selected."""
 
-    inactive_reason = "inactive"
+    inactive_reason = "an inactive cohort"
     registered_ids: frozenset[object] = frozenset()
 
     def classify_all(

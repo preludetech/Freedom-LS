@@ -14,7 +14,7 @@ from django.http import Http404
 from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkResult
 from freedom_ls.panel_framework.bulk_runs import (
     ACTION_UNAVAILABLE,
-    NO_LONGER_EXISTS,
+    NOT_FOUND,
     action_for,
     report_finished,
     run_bulk_action,
@@ -77,15 +77,16 @@ def test_it_stores_the_result_json_and_marks_the_run_done(mock_site_context: Sit
     assert run.finished_at is not None
 
 
-def test_a_stale_key_is_reported_as_no_longer_existing(mock_site_context: Site):
+def test_a_stale_key_is_reported_as_not_found(mock_site_context: Site):
     run = _run_over(make_stub(), GONE)
 
     result = run_bulk_action(str(run.pk), mock_site_context.pk)
 
-    assert BulkCount("skipped", NO_LONGER_EXISTS, 1) in result.counts
+    assert BulkCount("skipped", NOT_FOUND, 1) in result.counts
     assert [(entry.key, entry.reason) for entry in result.entries] == [
-        (GONE, NO_LONGER_EXISTS)
+        (GONE, NOT_FOUND)
     ]
+    assert StubRecordedBulkAction().result_line(result.counts[-1]) == "1 was not found."
 
 
 def test_a_run_of_another_site_is_not_found(mock_site_context: Site):
@@ -193,7 +194,7 @@ def test_the_summary_names_every_kind_of_outcome(mock_site_context: Site):
         counts=[
             BulkCount("changed", "", 3),
             BulkCount("skipped", "already inactive", 2),
-            BulkCount("skipped", NO_LONGER_EXISTS, 1),
+            BulkCount("skipped", NOT_FOUND, 1),
             BulkCount("failed", "error", 1),
         ],
         entries=[],

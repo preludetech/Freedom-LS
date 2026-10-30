@@ -15,6 +15,7 @@ from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
 
+from freedom_ls.panel_framework.actions import count_phrase
 from freedom_ls.panel_framework.config import config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
@@ -51,9 +52,10 @@ class ConfirmationWording:
     """What a confirmation says before anything runs.
 
     Each skip reason is a predicate that follows "is" or "are" ("already
-    processed", "already in the cohort"), so one template renders both the
-    confirmation line "3 are already processed and will be skipped." and the
-    result line "3 already processed".
+    processed", "already in the cohort"), so the same reason gives both the
+    confirmation line "3 are already processed and will be skipped." and,
+    through `BulkAction.result_line`, the result line "3 were already
+    processed."
     """
 
     sentence: str
@@ -243,6 +245,14 @@ class BulkAction:
             sentence=f"This will affect {count} {model._meta.verbose_name_plural}.",
             skips=skips,
         )
+
+    def result_line(self, item: BulkCount) -> str:
+        """The sentence a result shows for one skipped or failed count. A
+        skip reason follows "was" or "were"; a failure reason is a verb
+        phrase of its own ("could not be changed")."""
+        if item.status == "failed":
+            return f"{item.count} {item.reason}."
+        return f"{count_phrase(item.count, 'was', 'were')} {item.reason}."
 
     def row_label(self, obj: Model) -> str:
         return str(obj)

@@ -44,6 +44,10 @@ project that defines its own `BulkAction` subclass:
   cleaned_data)`: it only ever runs inside a request, so it gets the whole request rather than
   the user alone. `apply(user, obj, cleaned_data)` is unchanged, since a background task calls it
   with no request.
+- The bulk result template's context carries `result_lines`, one sentence per skipped or failed
+  count from the new `BulkAction.result_line(item)` ("2 were already processed."), in place of
+  `other_counts`. A project with its own `result_template_name` reads `result_lines`; an action
+  whose skip reason names its own subject overrides `result_line`.
 
 `educator_interface/interface.html` now only extends the new `educator_interface/_shell.html`; the
 sidebar, content header and breadcrumbs blocks moved there. A project that overrides
