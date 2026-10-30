@@ -43,6 +43,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.messaging import OwnConversation
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
     walk_interface,
@@ -3151,6 +3152,10 @@ class TestLearnerMessagesTab:
 
         document = _tab_document(msg_client_for(educator), learner)
 
+        for section in document.xpath(
+            "//section[@aria-labelledby='oversight-heading']"
+        ):
+            section.getparent().remove(section)
         text = document.text_content()
         assert "for me" in text
         assert "for them" not in text
@@ -3204,6 +3209,91 @@ class TestLearnerMessagesTab:
         response = msg_client_for(outsider).get(_tab_url(learner))
 
         assert response.status_code == 404
+
+    def test_an_organisation_admin_sees_the_learners_educator_conversations_but_not_peers_or_their_own(
+        self, msg_client_for
+    ):
+        organisation = OrganisationFactory()
+        admin = _msg_educator(organisation)
+        colleague = _msg_educator(organisation)
+        peer = _msg_learner(organisation, first_name="Peer", last_name="Person")
+        learner = _msg_learner(organisation)
+        own = _msg_conversation(admin, learner.user)
+        MessageFactory(conversation=own, sender=admin, body="my own words")
+        theirs = _msg_conversation(colleague, learner.user)
+        MessageFactory(conversation=theirs, sender=colleague, body="colleague words")
+        among_peers = _msg_conversation(peer.user, learner.user)
+        MessageFactory(conversation=among_peers, sender=peer.user, body="peer words")
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        (section,) = document.xpath("//section[@aria-labelledby='oversight-heading']")
+        text = section.text_content()
+        assert "Other educator conversations" in text
+        assert colleague.display_name in text
+        assert "colleague words" in text
+        assert "my own words" not in text
+        assert "peer words" not in text
+        assert "Peer Person" not in text
+
+    def test_a_site_admin_sees_the_list(self, msg_client_for, mock_site_context):
+        organisation = OrganisationFactory()
+        site_admin = cast(User, UserFactory(staff=True))
+        _grant(site_admin, "site_admin", mock_site_context)
+        colleague = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        _msg_conversation(colleague, learner.user)
+
+        document = _tab_document(msg_client_for(site_admin), learner)
+
+        assert colleague.display_name in document.text_content()
+        assert document.xpath("//h3[@id='oversight-heading']")
+
+    @pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+    def test_a_cohort_role_sees_no_list(self, msg_client_for, role):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        learner = _msg_learner(organisation)
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+        educator = cast(User, UserFactory(staff=True))
+        _grant(educator, role, cohort)
+        colleague = _msg_educator(organisation)
+        _msg_conversation(colleague, learner.user)
+
+        document = _tab_document(msg_client_for(educator), learner)
+
+        assert "Other educator conversations" not in document.text_content()
+        assert not document.xpath("//*[@id='oversight-heading']")
+
+    def test_a_deactivated_learner_shows_the_empty_state(self, msg_client_for):
+        organisation = OrganisationFactory()
+        admin = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        _msg_conversation(_msg_educator(organisation), learner.user)
+        learner.is_active = False
+        learner.save()
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        assert "No other educator conversations." in document.text_content()
+
+    def test_the_list_renders_when_the_admins_own_area_is_hidden(
+        self, msg_client_for, monkeypatch
+    ):
+        organisation = OrganisationFactory()
+        admin = _msg_educator(organisation)
+        colleague = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        _msg_conversation(colleague, learner.user)
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.views.own_conversation_with",
+            lambda request, learner: OwnConversation(None, False),
+        )
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        assert not document.xpath("//form[@id='composer']")
+        assert colleague.display_name in document.text_content()
 
     def test_the_first_send_creates_the_conversation_and_rerenders_the_tab(
         self, msg_client_for

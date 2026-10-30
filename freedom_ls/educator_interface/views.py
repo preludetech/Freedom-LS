@@ -41,6 +41,8 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
+    other_participant,
+    pair_key_for,
     refusal_alert_copy,
     send_message,
 )
@@ -99,6 +101,7 @@ from freedom_ls.educator_interface.filters import (
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
+    oversight_conversations_for,
     own_conversation_with,
 )
 from freedom_ls.educator_interface.paths import interface_path
@@ -125,6 +128,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
     MEMBER_ROLES,
+    VIEW_CONVERSATION,
     LearnerStatus,
     active_organisation_admins,
     cohort_counts,
@@ -843,6 +847,14 @@ class LearnerMessagesPanel(Panel):
                 action_url=SendToLearnerAction().get_action_url(self.ctx),
                 swap_target=self.region_id,
             )
+        if can(self.request.user, VIEW_CONVERSATION, learner):
+            viewer = cast(User, self.request.user)
+            rows = oversight_conversations_for(learner).exclude(
+                pair_key=pair_key_for(viewer, learner.user)
+            )
+            context["oversight_rows"] = [
+                (c, other_participant(c, learner.user)) for c in rows
+            ]
         return context
 
 

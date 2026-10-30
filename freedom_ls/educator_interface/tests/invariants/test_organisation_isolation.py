@@ -52,6 +52,11 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
 
 
+@pytest.fixture
+def _messaging_on(settings) -> None:
+    settings.MESSAGING_ENABLED = True
+
+
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
@@ -953,3 +958,21 @@ class TestLearnerRegistrationIsolation:
         )
 
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_messaging_on")
+def test_an_organisation_admin_of_another_organisation_gets_404_on_the_messages_tab(
+    logged_in_client, settings
+) -> None:
+    organisation_a = OrganisationFactory()
+    organisation_b = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation_a)
+    admin_of_b = UserFactory(staff=True)
+    assign_object_role(admin_of_b, organisation_b, "organisation_admin")
+
+    response = logged_in_client(admin_of_b).get(
+        _interface_url(organisation_a.slug, f"learners/{learner.pk}/__tabs/messages")
+    )
+
+    assert response.status_code == 404
