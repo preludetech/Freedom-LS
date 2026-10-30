@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 import lxml.html
 import pytest
+import pytest_django.fixtures
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -38,6 +39,16 @@ def sidebar(
     return nav, response.content.decode()
 
 
+@pytest.fixture
+def _messaging_on(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    settings.MESSAGING_ENABLED = True
+
+
+@pytest.fixture
+def _messaging_off(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    settings.MESSAGING_ENABLED = False
+
+
 @pytest.mark.django_db
 def test_sidebar_groups_its_sections_under_a_teaching_heading(
     sidebar: tuple[lxml.html.HtmlElement, str],
@@ -50,6 +61,7 @@ def test_sidebar_groups_its_sections_under_a_teaching_heading(
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("_messaging_on")
 def test_sidebar_lists_the_six_sections_each_with_an_icon(
     sidebar: tuple[lxml.html.HtmlElement, str],
 ) -> None:
@@ -66,6 +78,18 @@ def test_sidebar_lists_the_six_sections_each_with_an_icon(
         "Members",
     ]
     assert all(link.cssselect("svg") for link in links)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_messaging_off")
+def test_sidebar_leaves_out_messages_while_messaging_is_off(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+
+    links = nav.cssselect("ul > li > a")
+
+    assert "Messages" not in [link.text_content().strip() for link in links]
 
 
 @pytest.mark.django_db
