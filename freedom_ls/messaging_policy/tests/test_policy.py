@@ -341,6 +341,40 @@ def test_a_learner_starting_with_a_cohort_peer_is_closed_by_configuration_out_of
     assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
 
 
+def test_a_learner_may_start_with_their_cohort_admin_out_of_the_box(
+    out_of_the_box_policy: LayeredMessagingPolicy, world: World
+) -> None:
+    learner = world.learners["in_c1"].user
+    admin = world.role_holders["c1_admin"]
+    peer = world.learners["in_c1_and_c2"].user
+
+    admin_decision = out_of_the_box_policy.can_start(
+        sender=learner, recipient=admin, site=world.site
+    )
+    peer_decision = out_of_the_box_policy.can_start(
+        sender=learner, recipient=peer, site=world.site
+    )
+
+    assert admin_decision.allowed is True
+    assert peer_decision.allowed is False
+
+
+def test_an_organisation_row_closes_the_out_of_the_box_educator_flag(
+    out_of_the_box_policy: LayeredMessagingPolicy, world: World
+) -> None:
+    OrganisationMessagingConfigFactory(
+        organisation=world.organisations["o1"], learner_to_educator="closed"
+    )
+
+    decision = out_of_the_box_policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
 def test_a_learner_may_start_with_a_cohort_peer_when_the_flag_is_open(
     policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
 ) -> None:
@@ -696,18 +730,6 @@ def test_a_removed_learner_or_inactive_registration_removes_the_candidate_backwa
     )
 
     assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
-
-
-def test_a_learner_starting_with_their_cohort_admin_is_closed_by_configuration_out_of_the_box(
-    out_of_the_box_policy: LayeredMessagingPolicy, world: World
-) -> None:
-    decision = out_of_the_box_policy.can_start(
-        sender=world.learners["in_c1"].user,
-        recipient=world.role_holders["c1_admin"],
-        site=world.site,
-    )
-
-    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
 
 
 @pytest.mark.parametrize(

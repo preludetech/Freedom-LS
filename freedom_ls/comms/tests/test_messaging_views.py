@@ -1126,14 +1126,17 @@ class TestRecipientPicker:
 
         assert "No one you can message matches 'zzzz'" in response.content.decode()
 
-    def test_a_long_list_asks_for_a_term(
+    def test_a_long_list_is_listed_to_the_cap_with_the_note(
         self, mock_site_context, logged_in_client
     ) -> None:
-        UserFactory.create_batch(16)
+        UserFactory.create_batch(25)
 
         response = logged_in_client(UserFactory()).get(search_url())
 
-        assert "Keep typing" in response.content.decode()
+        content = response.content.decode()
+        assert "20 people found" in content
+        assert "Keep typing to narrow the list." in content
+        assert "Enter at least two characters" not in content
 
     def test_truncated_results_say_to_keep_typing(
         self, mock_site_context, logged_in_client
@@ -1173,6 +1176,20 @@ class TestRecipientPicker:
         settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
 
         response = logged_in_client(user).get(search_url(), {"q": "kai"})
+
+        content = response.content.decode()
+        assert "Kai Allowed" in content
+        assert "Refused" not in content
+
+    def test_an_empty_term_never_offers_someone_outside_the_recipients(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other = UserFactory(), UserFactory(first_name="Kai", last_name="Allowed")
+        UserFactory(first_name="Kai", last_name="Refused")
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+
+        response = logged_in_client(user).get(search_url())
 
         content = response.content.decode()
         assert "Kai Allowed" in content

@@ -790,29 +790,33 @@ class TestSearchRecipients:
     def names(self, result) -> list[str]:
         return [user.display_name for g in result.groups for user in g.users]
 
-    def test_it_lists_everyone_without_a_term_at_fifteen_or_fewer(
+    def test_an_empty_term_lists_every_candidate_when_there_are_few(
         self, sender, mock_site_context
     ) -> None:
-        UserFactory.create_batch(15)
+        UserFactory.create_batch(3)
 
         result = self.search(
             sender, mock_site_context, "", User.objects.exclude(pk=sender.pk)
         )
 
         assert not result.needs_term
-        assert result.count == 15
+        assert not result.truncated
+        assert result.count == 3
+        assert result.groups
 
-    def test_it_asks_for_a_term_above_fifteen_candidates(
+    def test_an_empty_term_lists_up_to_the_cap_and_flags_truncation(
         self, sender, mock_site_context
     ) -> None:
-        UserFactory.create_batch(16)
+        UserFactory.create_batch(25)
 
         result = self.search(
             sender, mock_site_context, "", User.objects.exclude(pk=sender.pk)
         )
 
-        assert result.needs_term
-        assert result.groups == []
+        assert not result.needs_term
+        assert result.truncated
+        assert result.count == 20
+        assert result.groups
 
     def test_a_one_character_term_needs_more(self, sender, mock_site_context) -> None:
         UserFactory(first_name="Kai")
@@ -907,6 +911,21 @@ class TestSearchRecipients:
         absent = self.search(sender, mock_site_context, "nobodyhere", candidates)
 
         assert refused == absent
+
+    def test_an_empty_term_never_lists_a_user_outside_the_candidates(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Allowed")
+        refused = UserFactory(first_name="Kai", last_name="Refused")
+
+        result = self.search(
+            sender,
+            mock_site_context,
+            "",
+            User.objects.exclude(pk__in=[sender.pk, refused.pk]),
+        )
+
+        assert self.names(result) == ["Kai Allowed"]
 
     def test_it_defaults_candidates_to_the_policys_recipients(
         self, sender, mock_site_context, settings
