@@ -199,6 +199,32 @@ def message_box_context(
     }
 
 
+def _thread_page_context(conversation: Conversation) -> dict[str, object]:
+    """The newest page of the thread as the partial renders it, and the cursor
+    the load-earlier control needs."""
+    shown, has_older = latest_page(conversation)
+    return {
+        "thread_messages": shown,
+        "thread_entries": render_message_entries(shown, None),
+        "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
+    }
+
+
+def read_only_thread_context(
+    conversation: Conversation, *, other: User | None, older_url: str
+) -> dict[str, object]:
+    """What the thread partial needs to show a conversation to someone who is
+    not in it. Reads the latest page and nothing else: no read marker moves,
+    no composer, no poll."""
+    return {
+        "conversation": conversation,
+        "other": other,
+        "read_only": True,
+        "older_url": older_url,
+        **_thread_page_context(conversation),
+    }
+
+
 def thread_context(
     request: HttpRequest, conversation: Conversation
 ) -> dict[str, object]:
@@ -210,7 +236,8 @@ def thread_context(
     viewer = cast("User", request.user)
     other = other_participant(conversation, viewer)
     decision = reply_decision(viewer=viewer, conversation=conversation)
-    shown, has_older = latest_page(conversation)
+    page = _thread_page_context(conversation)
+    shown = cast("list[Message]", page["thread_messages"])
     closed_heading, closed_body = ("", "")
     if not decision.allowed:
         closed_heading, closed_body = closed_note_copy(decision.reason, other)
@@ -224,9 +251,7 @@ def thread_context(
         "decision": decision,
         "closed_heading": closed_heading,
         "closed_body": closed_body,
-        "thread_messages": shown,
-        "thread_entries": render_message_entries(shown, None),
-        "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
+        **page,
         "thread_cursor": encode_cursor(shown[-1]) if shown else "",
         "thread_poll_seconds": config.MESSAGE_THREAD_POLL_SECONDS,
         "composer": composer_context(client_key=uuid4(), conversation=conversation),

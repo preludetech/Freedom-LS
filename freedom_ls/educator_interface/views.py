@@ -38,7 +38,7 @@ from django.utils import timezone
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
+from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     other_participant,
@@ -50,6 +50,7 @@ from freedom_ls.comms.messaging_views import (
     CONVERSATION_CHANGED,
     composer_context,
     posted_client_key,
+    read_only_thread_context,
     thread_context,
 )
 from freedom_ls.content_engine.models import Course
@@ -820,7 +821,7 @@ class LearnerMessagesPanel(Panel):
         return comms_config.MESSAGING_ENABLED and super().has_permission(request)
 
     def get_actions(self) -> list[PanelAction]:
-        return [SendToLearnerAction()]
+        return [SendToLearnerAction(), ViewConversationAction()]
 
     def get_context_data(
         self, *, draft: str = "", client_key: UUID | None = None, alert: str = ""
@@ -894,6 +895,69 @@ class SendToLearnerAction(PanelAction):
             panel.get_context_data(draft=draft, client_key=client_key, alert=alert),
             status=422,
         )
+
+
+class ViewConversationAction(PanelAction):
+    """Opens one of the learner's educator conversations read-only in the app
+    modal, for someone who holds oversight of the learner. Every open is
+    recorded in the learner's history, so only the page's own htmx request
+    may open one: a plain GET from a prefetch or a cross-site tag must not
+    leave a false entry."""
+
+    action_name = "view_conversation"
+    capability = VIEW_CONVERSATION
+    renders_in_footer = False
+    template_name = "educator_interface/modal/conversation_oversight.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(ctx)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        request = ctx.request
+        if request.headers.get("HX-Request") != "true":
+            raise Http404
+        learner = cast(Learner, ctx.instance)
+        conversation = get_object_or_404(
+            oversight_conversations_for(learner),
+            pk=uuid_or_404(request.GET.get("conversation")),
+        )
+        educator = other_participant(conversation, learner.user)
+        viewer = cast(User, request.user)
+        record_entry(
+            action="conversation.viewed",
+            actor=viewer,
+            target=conversation,
+            target_label=(
+                f"Conversation with {educator.display_name if educator else 'Deleted user'}"
+            ),
+            organisation=learner.organisation,
+            subjects=[learner],
+        )
+        return {
+            **read_only_thread_context(conversation, other=educator, older_url=""),
+            "viewer_role_label": _oversight_role_label(viewer, learner),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # Opening is a read; there is nothing to submit.
+        raise Http404
+
+
+def uuid_or_404(raw: str | None) -> UUID:
+    """A pk from a query string or a URL; a 404 when it is not a UUID."""
+    try:
+        return UUID(raw or "")
+    except ValueError:
+        raise Http404("not a uuid") from None
+
+
+def _oversight_role_label(viewer: User, learner: Learner) -> str:
+    """How the read-only banner names the viewer's access: a site admin reads
+    through the site grant, anyone else holding the permission is an
+    organisation admin of the learner's organisation."""
+    if site_level_admins(learner.site).filter(pk=viewer.pk).exists():
+        return "a site admin"
+    return "an organisation admin"
 
 
 class LearnerTabSet(TabSet):

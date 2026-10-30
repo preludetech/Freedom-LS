@@ -5,16 +5,18 @@ and the log is the only part that scrolls. A host that embeds the pane in a
 page of its own passes pane_height (a height class) and heading_tag, so the
 pane fits its card and does not add a second h1.
 data-just-read marks a render that moved the read marker, so the pane tells
-the header badge and sidebar count to refresh.
+the header badge and sidebar count to refresh. read_only shows the log to
+someone who is not in the conversation: a banner replaces the composer and
+nothing polls or moves a read marker.
 {% endcomment %}
 <section x-data="conversationThread"
-         {% if just_read %}data-just-read{% endif %}
+         {% if just_read and not read_only %}data-just-read{% endif %}
          x-on:resize.window="measure"
          x-on:htmx:before-swap="rememberScroll"
          x-on:htmx:after-settle="keepScrollAfterPrepend"
          class="flex {% firstof pane_height 'h-[calc(100dvh-var(--thread-top,0px))]' %} min-h-0 flex-col bg-surface">
     <header class="flex items-center gap-3 border-b border-border px-4 py-3">
-        {% if back_url %}
+        {% if back_url and not read_only %}
             <a href="{{ back_url }}"
                class="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 md:hidden"
                aria-label="Back to messages">
@@ -51,25 +53,35 @@ the header badge and sidebar count to refresh.
             </c-button>
         </div>
     </div>
-    {% include "comms/partials/thread_status.html" %}
-    {% include "comms/partials/thread_cursor.html" %}
-    {% comment %}
-    The poll asks for what is newer than the cursor and carries the composer's
-    state and draft flag, so a swap never replaces a form that holds typed text.
-    It skips a turn while a send is in flight: the send's answer covers it.
-    {% endcomment %}
-    <div x-data="refreshTimer" data-poll-seconds="{{ thread_poll_seconds }}">
-        <span x-ref="target"
-              hx-get="{% url 'conversations:thread_poll' conversation.pk %}"
-              hx-trigger="refresh"
-              hx-include="#thread-cursor, #composer-state, #composer-draft"
-              hx-sync="#thread-log:drop"
-              hx-target="#thread-log"
-              hx-swap="beforeend"></span>
-    </div>
-    {% if decision.allowed %}
-        {% include "comms/partials/composer.html" %}
+    {% if read_only %}
+        <div class="border-t border-border bg-surface-2 px-4 py-3">
+            <p role="status" class="m-0 flex items-start gap-2 text-sm">
+                <c-icon name="locked" class="size-5 shrink-0" />
+                Read only. You are viewing this conversation as {{ viewer_role_label }}.
+            </p>
+            {% include "comms/partials/disclosure_line.html" %}
+        </div>
     {% else %}
-        {% include "comms/partials/closed_note.html" %}
+        {% include "comms/partials/thread_status.html" %}
+        {% include "comms/partials/thread_cursor.html" %}
+        {% comment %}
+        The poll asks for what is newer than the cursor and carries the composer's
+        state and draft flag, so a swap never replaces a form that holds typed text.
+        It skips a turn while a send is in flight: the send's answer covers it.
+        {% endcomment %}
+        <div x-data="refreshTimer" data-poll-seconds="{{ thread_poll_seconds }}">
+            <span x-ref="target"
+                  hx-get="{% url 'conversations:thread_poll' conversation.pk %}"
+                  hx-trigger="refresh"
+                  hx-include="#thread-cursor, #composer-state, #composer-draft"
+                  hx-sync="#thread-log:drop"
+                  hx-target="#thread-log"
+                  hx-swap="beforeend"></span>
+        </div>
+        {% if decision.allowed %}
+            {% include "comms/partials/composer.html" %}
+        {% else %}
+            {% include "comms/partials/closed_note.html" %}
+        {% endif %}
     {% endif %}
 </section>
