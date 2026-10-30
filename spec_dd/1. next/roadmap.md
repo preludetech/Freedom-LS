@@ -16,7 +16,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `failed-login-follow-up`
 - `file-scanning`
-- `form-engine-branch-logic`
 - `phone-number-form-field`
 - `referral-attribution-over-time`
 - `retry-sent-emails`
@@ -645,7 +644,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `cookie-banner` | A cookie banner telling visitors how they are tracked, dismissed once and remembered so it stops showing. | none | next | |
 | `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
-| `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | next | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
+| `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | in progress | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
 | `mega-qa` | Whole-system QA: a locked staging reset endpoint, a durable journey-and-area QA suite with a new report format, and downstream projects inheriting the plans. | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation). Idea 2 tests the educator interface, so it is best written after the rebuild. |
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
