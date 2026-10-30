@@ -66,6 +66,17 @@ def test_directory_outside_cwd_exits_1(tmp_path: Path) -> None:
     assert "elsewhere.png" not in result.stdout
 
 
+def test_dangling_symlink_is_skipped(tmp_path: Path) -> None:
+    write_noise_png(tmp_path / "shots", "real.png")
+    (tmp_path / "shots" / "gone.png").symlink_to(tmp_path / "shots" / "deleted.png")
+
+    result = run_script(tmp_path, "--max-kb", "1", "shots")
+
+    assert result.returncode == 0
+    assert "Found 1 file(s)" in result.stdout
+    assert "gone.png" not in result.stdout
+
+
 def test_default_directory_is_spec_dd(tmp_path: Path) -> None:
     write_noise_png(tmp_path / "spec_dd", "shot.png")
 

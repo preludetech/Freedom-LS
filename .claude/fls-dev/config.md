@@ -20,3 +20,7 @@ Seeding is not configured here. The seed list comes from the test plan's own `§
 - DB drop: .claude/fls-dev/scripts/dev_db_delete.sh
 - DB create: .claude/fls-dev/scripts/dev_db_init.sh
 - Migrate: uv run python manage.py migrate
+
+## Concrete Projects
+
+/home/sheena/workspace/first_class/First-Class-LMS.git/main

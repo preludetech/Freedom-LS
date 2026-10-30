@@ -9,7 +9,9 @@ The core flow is: advance the submodule **spec by spec**, integrate each complet
 
 # Step 1: Identify new completed specs
 
-1. `cd submodules/Freedom-LS && git fetch origin main`
+Before anything else, confirm the working tree is clean: `git status --porcelain` prints nothing and `git submodule status submodules/Freedom-LS` does not start with `+`. Otherwise stop and ask the operator to commit or stash first. The integration's commit in 3j stages everything with `add -A`, and its rollback deletes every untracked file, so both treat whatever is in the tree as the integration's own.
+
+1. `git -C submodules/Freedom-LS fetch origin main`
 2. Note the current submodule commit (this is what the concrete project currently uses).
 3. Look at the FLS commit log from the current submodule commit to `origin/main`. Identify commits that moved a spec directory into `spec_dd/3. done/`. Each of these represents a completed spec. The directory names include the completion date (e.g. `2026-03-18_13:49_webhook-translation-layer`).
 4. List the completed specs in chronological order. These are the ones we need to integrate.

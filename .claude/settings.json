@@ -140,6 +140,8 @@
       "Bash(git -C * push --force*)",
       "Bash(git -C * commit --no-verify*)",
       "Bash(uv run --directory * git commit --no-verify*)",
+      "Bash(git -C * commit * --no-verify*)",
+      "Bash(uv run --directory * git commit * --no-verify*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Edit(.env)",

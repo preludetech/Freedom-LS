@@ -33,12 +33,20 @@ ALLOWED = frozenset(
 )
 
 
+def spells_out_pytest(text: str) -> bool:
+    """Prose and fenced code are scanned as written; the fragment pass adds inline spans
+    that wrap across lines."""
+    return bool(PYTEST_INVOCATION.search(text)) or any(
+        PYTEST_INVOCATION.search(f) for f in code_fragments(text)
+    )
+
+
 def files_spelling_out_pytest() -> set[str]:
     return {
         path.relative_to(REPO_ROOT).as_posix()
         for plugin_dir in PLUGIN_DIRS
         for path in (REPO_ROOT / plugin_dir).rglob("*.md")
-        if any(PYTEST_INVOCATION.search(f) for f in code_fragments(path.read_text()))
+        if spells_out_pytest(path.read_text())
     }
 
 
@@ -55,10 +63,14 @@ def test_only_allowlisted_plugin_files_spell_out_a_pytest_invocation() -> None:
 )
 def test_detector_matches_a_pytest_invocation(text: str) -> None:
     fenced = f"```\n{text}\n```"
+    tilde_fenced = f"~~~\n{text}\n~~~"
     inline = f"Run `{text}` now"
+    prose = f"then run {text} before committing"
 
-    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(fenced))
-    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(inline))
+    assert spells_out_pytest(fenced)
+    assert spells_out_pytest(tilde_fenced)
+    assert spells_out_pytest(inline)
+    assert spells_out_pytest(prose)
 
 
 @pytest.mark.parametrize(
@@ -70,10 +82,16 @@ def test_detector_matches_a_pytest_invocation(text: str) -> None:
     ],
 )
 def test_detector_ignores_text_that_is_not_an_invocation(text: str) -> None:
-    assert not any(PYTEST_INVOCATION.search(f) for f in code_fragments(text))
+    assert not spells_out_pytest(text)
 
 
 def test_detector_matches_an_inline_span_wrapped_across_two_lines() -> None:
     text = "Run `uv run\npytest -x` to check."
 
-    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(text))
+    assert spells_out_pytest(text)
+
+
+def test_a_backtick_fence_inside_a_tilde_fence_does_not_close_it() -> None:
+    text = "~~~\n```\nuv run pytest\n```\n~~~"
+
+    assert code_fragments(text) == ["```", "uv run pytest", "```"]

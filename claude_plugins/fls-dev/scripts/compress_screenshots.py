@@ -108,7 +108,9 @@ def main() -> None:
     large_files = sorted(
         p
         for p in scan_root.rglob("*.png")
-        if p.resolve().is_relative_to(scan_root)
+        # A dangling symlink is not a file, and stat() on it would abort the scan.
+        if p.is_file()
+        and p.resolve().is_relative_to(scan_root)
         and p.stat().st_size > args.max_kb * 1024
     )
 

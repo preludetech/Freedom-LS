@@ -132,10 +132,11 @@ The tree was clean when the integration started, so everything changed or untrac
 
 ```
 git -C <project-root> add -A
-uv run --directory <project-root> git commit
+uv run --directory <project-root> git commit -m "Update FLS: <spec-name>" -m "spec_dd/3. done/<spec-dir>
+submodules/Freedom-LS: <old-sha> -> <new-sha>"
 ```
 
-The subject is `Update FLS: <spec-name>`. The body names the FLS spec directory (`spec_dd/3. done/<spec-dir>`) and the pointer move as `submodules/Freedom-LS: <old-sha> -> <new-sha>`.
+`<spec-name>` is the spec's done directory name, the same string as `<spec-dir>`, so a later run can match the subject against `spec_dd/3. done/`. Both `-m` arguments are required: a commit with no message would open an editor, which has no terminal here. The first is the subject; the second is the body, naming the FLS spec directory and the pointer move.
 
 If consecutive specs are trivially simple (no integration work needed beyond updating the pointer), they may be combined into a single commit, but this should be the exception, not the rule.
 

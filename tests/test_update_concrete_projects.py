@@ -20,6 +20,22 @@ COMMAND_FORM_SOURCES = [
     COMMAND,
     FLS_DEV / "resources/concrete_spec_integration.md",
     FLS_DEV / "commands/do_qa.md",
+    FLS_DEV / "commands/concrete/update_fls.md",
+]
+PROJECT_FORM_PREFIXES = (
+    "git -C ",
+    "uv run --directory ",
+    "uv sync --directory ",
+    "npm --prefix ",
+)
+# The Permissions section says these keep prompting by design.
+PROMPTS_BY_DESIGN = [
+    re.compile(r"git -C \S+ reset --hard .*"),
+    re.compile(r"git -C \S+ clean -f .*"),
+    re.compile(r"git -C \S+ push"),
+    re.compile(r"git -C \S+/submodules/Freedom-LS checkout \S+"),
+    re.compile(r"uv run --directory \S+ python manage\.py (migrate|makemigrations)"),
+    re.compile(r"npm --prefix \S+ install"),
 ]
 
 
@@ -60,6 +76,10 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(git -C * symbolic-ref *)",
         "Bash(git -C * remote get-url *)",
         "Bash(git -C * add *)",
+        "Bash(git -C * branch --show-current)",
+        "Bash(git -C * rm *)",
+        "Bash(git -C * checkout -- *)",
+        "Bash(git -C * checkout HEAD -- *)",
         "Bash(uv run --directory * pytest*)",
         "Bash(uv run --directory * python manage.py migrate --check*)",
         "Bash(git -C * submodule update*)",
@@ -80,6 +100,27 @@ def test_every_new_allow_verb_matches_a_spelled_command_form(entry: str) -> None
 
     assert entry in allow
     assert any(pattern.fullmatch(line) for line in first_lines_of_command_forms())
+
+
+def test_every_spelled_project_command_form_is_allowed_or_prompts_by_design() -> None:
+    allow = json.loads(SETTINGS.read_text())["permissions"]["allow"]
+    allowed = [
+        allow_pattern_to_regex(entry.removeprefix("Bash(").removesuffix(")"))
+        for entry in allow
+        if entry.startswith("Bash(")
+    ]
+    # A form with an ellipsis is prose shorthand, not a command the run executes.
+    forms = [
+        line
+        for line in first_lines_of_command_forms()
+        if line.startswith(PROJECT_FORM_PREFIXES) and "…" not in line
+    ]
+
+    assert [
+        line
+        for line in forms
+        if not any(p.fullmatch(line) for p in allowed + PROMPTS_BY_DESIGN)
+    ] == []
 
 
 @pytest.mark.parametrize(
@@ -109,6 +150,8 @@ def test_command_spells_every_preflight_check_and_the_pending_spec_log(
         "Bash(git -C * push --force*)",
         "Bash(git -C * commit --no-verify*)",
         "Bash(uv run --directory * git commit --no-verify*)",
+        "Bash(git -C * commit * --no-verify*)",
+        "Bash(uv run --directory * git commit * --no-verify*)",
     ],
 )
 def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> None:
