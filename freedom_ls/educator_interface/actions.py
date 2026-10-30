@@ -2383,6 +2383,42 @@ class EducatorBulkAction(RecordedBulkAction):
         counts = count_outcomes(classified or {})
         return sum(item.count for item in counts if item.status == "changed")
 
+    def changed_keys(self, classified: dict[str, BulkOutcome] | None) -> list[str]:
+        return [
+            key
+            for key, outcome in (classified or {}).items()
+            if outcome.status == "changed"
+        ]
+
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        """The confirmation sentence for the `count` objects that will change."""
+        raise NotImplementedError
+
+    def consequences(
+        self,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> list[str]:
+        """What the change means beyond itself, one line each. None by default."""
+        return []
+
+    def confirmation_wording(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> ConfirmationWording:
+        wording = super().confirmation_wording(
+            request, queryset, classified, cleaned_data
+        )
+        return ConfirmationWording(
+            sentence=self.sentence(self.changed_count(classified), cleaned_data),
+            skips=wording.skips,
+            consequences=self.consequences(queryset, classified, cleaned_data),
+        )
+
     def apply(
         self,
         user: AbstractBaseUser | AnonymousUser,
@@ -2506,22 +2542,9 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
             cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
         )
 
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         cohort = cast(Cohort, cleaned_data["cohort"])
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=f"Add {count_noun(Learner, count)} to {cohort.name}.",
-            skips=wording.skips,
-        )
+        return f"Add {count_noun(Learner, count)} to {cohort.name}."
 
 
 @register_bulk_action
@@ -2539,35 +2562,25 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
             cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
         )
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        cohort = cast(Cohort, cleaned_data["cohort"])
+        return f"Remove {count_noun(Learner, count)} from {cohort.name}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
+    ) -> list[str]:
+        lost = courses_lost_by_any(
+            queryset.filter(pk__in=self.changed_keys(classified)),
+            cast(Cohort, cleaned_data["cohort"]),
         )
-        cohort = cast(Cohort, cleaned_data["cohort"])
-        changed_keys = [
-            key
-            for key, outcome in (classified or {}).items()
-            if outcome.status == "changed"
+        if not lost:
+            return []
+        return [
+            f"They lose access to: {join_prose([course.title for course in lost])}."
         ]
-        lost = courses_lost_by_any(queryset.filter(pk__in=changed_keys), cohort)
-        consequences = (
-            [f"They lose access to: {join_prose([course.title for course in lost])}."]
-            if lost
-            else []
-        )
-        return ConfirmationWording(
-            sentence=(
-                f"Remove {count_noun(Learner, len(changed_keys))} from {cohort.name}."
-            ),
-            skips=wording.skips,
-            consequences=consequences,
-        )
 
 
 class LearnerStateBulkAction(LearnerBulkAction):
@@ -2593,26 +2606,20 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return deactivate_learner(cast(Learner, obj), actor=actor)
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Deactivate {count_noun(Learner, count)}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=f"Deactivate {count_noun(Learner, count)}.",
-            skips=wording.skips,
-            consequences=[
-                "They lose access to this organisation's courses.",
-                "Their cohorts, registrations and progress are kept and "
-                "return when you reactivate them.",
-            ],
-        )
+    ) -> list[str]:
+        return [
+            "They lose access to this organisation's courses.",
+            "Their cohorts, registrations and progress are kept and "
+            "return when you reactivate them.",
+        ]
 
 
 @register_bulk_action
@@ -2625,34 +2632,27 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return reactivate_learner(cast(Learner, obj), actor=actor)
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Reactivate {count_noun(Learner, count)}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=f"Reactivate {count_noun(Learner, count)}.",
-            skips=wording.skips,
-            consequences=[
-                "Their access returns through their existing cohorts and registrations."
-            ],
-        )
+    ) -> list[str]:
+        return [
+            "Their access returns through their existing cohorts and registrations."
+        ]
 
 
-class CourseRegistrationBulkAction(LearnerBulkAction):
-    """Registers learners for, or unregisters them from, the one course the
-    educator picks. `registered_ids` holds the selected learners with an
-    active individual registration for it, read once per classification so
-    previewing costs a fixed number of queries however many are selected."""
+class CoursePickerMixin(RecordedBulkAction):
+    """The course picker the course registration actions share: its form,
+    and the picked course as a run stores it and reads it back. Declared on
+    RecordedBulkAction so the overrides type-check; list it before the
+    action in the bases."""
 
     form_class = BulkTargetPickerForm
-    registered_ids: frozenset[object] = frozenset()
 
     def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
         return BulkTargetPickerForm(
@@ -2663,19 +2663,6 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
             ),
             label="Course",
         )
-
-    def classify_all(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> dict[str, BulkOutcome] | None:
-        self.registered_ids = frozenset(
-            LearnerCourseRegistration.objects.filter(
-                course=cleaned_data["course"], learner__in=queryset, is_active=True
-            ).values_list("learner_id", flat=True)
-        )
-        return super().classify_all(request, queryset, cleaned_data)
 
     def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
         return {"course": str(cast(Course, cleaned_data["course"]).pk)}
@@ -2689,6 +2676,28 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
                 pk=target["course"],
             )
         }
+
+
+class CourseRegistrationBulkAction(CoursePickerMixin, LearnerBulkAction):
+    """Registers learners for, or unregisters them from, the one course the
+    educator picks. `registered_ids` holds the selected learners with an
+    active individual registration for it, read once per classification so
+    previewing costs a fixed number of queries however many are selected."""
+
+    registered_ids: frozenset[object] = frozenset()
+
+    def classify_all(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        self.registered_ids = frozenset(
+            LearnerCourseRegistration.objects.filter(
+                course=cleaned_data["course"], learner__in=queryset, is_active=True
+            ).values_list("learner_id", flat=True)
+        )
+        return super().classify_all(request, queryset, cleaned_data)
 
 
 @register_bulk_action
@@ -2706,22 +2715,9 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
             cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=(f"Register {count_noun(Learner, count)} for {course.title}."),
-            skips=wording.skips,
-        )
+        return f"Register {count_noun(Learner, count)} for {course.title}."
 
 
 @register_bulk_action
@@ -2740,36 +2736,24 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
             cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        course = cast(Course, cleaned_data["course"])
+        return f"Unregister {count_noun(Learner, count)} from {course.title}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        course = cast(Course, cleaned_data["course"])
-        changed_keys = [
-            key
-            for key, outcome in (classified or {}).items()
-            if outcome.status == "changed"
-        ]
+    ) -> list[str]:
         keeping = learners_keeping_access_count(
-            queryset.filter(pk__in=changed_keys), course
+            queryset.filter(pk__in=self.changed_keys(classified)),
+            cast(Course, cleaned_data["course"]),
         )
+        if not keeping:
+            return []
         verb = "keeps" if keeping == 1 else "keep"
-        return ConfirmationWording(
-            sentence=(
-                f"Unregister {count_noun(Learner, len(changed_keys))} "
-                f"from {course.title}."
-            ),
-            skips=wording.skips,
-            consequences=(
-                [f"{keeping} {verb} access through a cohort."] if keeping else []
-            ),
-        )
+        return [f"{keeping} {verb} access through a cohort."]
 
 
 @register_bulk_action
@@ -2813,6 +2797,9 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
         except SetupEmailRecentlySent:
             return BulkOutcome("skipped", "emailed recently")
 
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Resend the setup email to {count_noun(Learner, count)}."
+
     def confirmation_wording(
         self,
         request: HttpRequest,
@@ -2823,14 +2810,13 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
         wording = super().confirmation_wording(
             request, queryset, classified, cleaned_data
         )
-        count = self.changed_count(classified)
         # "account already set up" names its own subject, so it cannot follow
         # the "N is/are" the skip lines put in front of a reason.
         set_up = sum(
             skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
         )
         return ConfirmationWording(
-            sentence=f"Resend the setup email to {count_noun(Learner, count)}.",
+            sentence=wording.sentence,
             skips=[
                 skip for skip in wording.skips if skip.reason != self.unchanged_reason
             ],
@@ -2868,25 +2854,14 @@ class CohortBulkAction(EducatorBulkAction):
         )
 
 
-class CohortCourseBulkAction(CohortBulkAction):
+class CohortCourseBulkAction(CoursePickerMixin, CohortBulkAction):
     """Registers cohorts for, or unregisters them from, the one course the
     educator picks. `registered_ids` holds the selected cohorts with an active
     registration for it, read once per classification so previewing costs a
     fixed number of queries however many cohorts are selected."""
 
-    form_class = BulkTargetPickerForm
     inactive_reason = "inactive"
     registered_ids: frozenset[object] = frozenset()
-
-    def get_form(self, request: HttpRequest, data: QueryDict | None) -> forms.Form:
-        return BulkTargetPickerForm(
-            data,
-            field_name="course",
-            queryset=registerable_courses(
-                cast("OrganisationScopedRequest", request).organisation
-            ),
-            label="Course",
-        )
 
     def classify_all(
         self,
@@ -2921,19 +2896,6 @@ class CohortCourseBulkAction(CohortBulkAction):
         active registration for the course."""
         raise NotImplementedError
 
-    def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
-        return {"course": str(cast(Course, cleaned_data["course"]).pk)}
-
-    def resolve_target(
-        self, scope: Model | None, target: dict[str, str]
-    ) -> dict[str, object]:
-        return {
-            "course": get_object_or_404(
-                registerable_courses(cast(Organisation, scope)),
-                pk=target["course"],
-            )
-        }
-
 
 @register_bulk_action
 class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
@@ -2950,22 +2912,9 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
             cast(Cohort, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=(f"Register {count_noun(Cohort, count)} for {course.title}."),
-            skips=wording.skips,
-        )
+        return f"Register {count_noun(Cohort, count)} for {course.title}."
 
 
 @register_bulk_action
@@ -2993,26 +2942,20 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
             return False
         return deactivate_cohort_registration(registration, actor=actor)
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        course = cast(Course, cleaned_data["course"])
+        return f"Unregister {count_noun(Cohort, count)} from {course.title}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        course = cast(Course, cleaned_data["course"])
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=(f"Unregister {count_noun(Cohort, count)} from {course.title}."),
-            skips=wording.skips,
-            consequences=[
-                "Learners in these cohorts lose access to the course unless "
-                "they have another registration for it."
-            ],
-        )
+    ) -> list[str]:
+        return [
+            "Learners in these cohorts lose access to the course unless "
+            "they have another registration for it."
+        ]
 
 
 class CohortStateBulkAction(CohortBulkAction):
@@ -3038,28 +2981,22 @@ class DeactivateCohortsBulkAction(CohortStateBulkAction):
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return deactivate_cohort(cast(Cohort, obj), actor=actor)
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Deactivate {count_noun(Cohort, count)}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=f"Deactivate {count_noun(Cohort, count)}.",
-            skips=wording.skips,
-            consequences=[
-                "Learners stay in their cohorts and keep their progress.",
-                "While a cohort is inactive, its registrations stop giving "
-                "access to its courses. Learners with another registration "
-                "for a course keep access to it.",
-                "You can reactivate a cohort at any time.",
-            ],
-        )
+    ) -> list[str]:
+        return [
+            "Learners stay in their cohorts and keep their progress.",
+            "While a cohort is inactive, its registrations stop giving "
+            "access to its courses. Learners with another registration "
+            "for a course keep access to it.",
+            "You can reactivate a cohort at any time.",
+        ]
 
 
 @register_bulk_action
@@ -3072,23 +3009,15 @@ class ReactivateCohortsBulkAction(CohortStateBulkAction):
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return reactivate_cohort(cast(Cohort, obj), actor=actor)
 
-    def confirmation_wording(
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Reactivate {count_noun(Cohort, count)}."
+
+    def consequences(
         self,
-        request: HttpRequest,
         queryset: QuerySet,
         classified: dict[str, BulkOutcome] | None,
         cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        count = self.changed_count(classified)
-        return ConfirmationWording(
-            sentence=f"Reactivate {count_noun(Cohort, count)}.",
-            skips=wording.skips,
-            consequences=[
-                "It gives access to its courses again."
-                if count == 1
-                else "They give access to their courses again."
-            ],
-        )
+    ) -> list[str]:
+        if self.changed_count(classified) == 1:
+            return ["It gives access to its courses again."]
+        return ["They give access to their courses again."]
