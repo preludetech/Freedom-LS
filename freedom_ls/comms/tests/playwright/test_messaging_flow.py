@@ -166,6 +166,37 @@ def test_picker_search_choose_and_send_on_a_phone(
         assert_no_horizontal_overflow(page)
 
 
+def test_new_message_from_the_messages_page_on_a_desktop(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = logged_in_page
+    page.set_viewport_size({"width": 1280, "height": 800})
+    UserFactory(first_name="Kai", last_name="Ngata")
+
+    page.goto(reverse_url(live_server, "conversations:inbox"))
+    # A marker that survives only while the document is not reloaded.
+    page.evaluate("window.sameDocument = true")
+
+    page.get_by_label("Conversations").get_by_role("link", name="New message").and_(
+        page.locator(":visible")
+    ).click()
+    expect(page.locator("#thread-pane #recipient-picker")).to_be_visible()
+    assert page.evaluate("window.sameDocument === true")
+
+    page.get_by_role("link", name="Kai Ngata").click()
+    page.get_by_label("Message to Kai Ngata").fill("Hello Kai")
+    page.get_by_role("button", name="Send").click()
+
+    expect(page.get_by_text("Hello Kai")).to_be_visible()
+    assert "/messages/new" not in page.url
+
+
 def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
     live_server,
     logged_in_page: Page,
