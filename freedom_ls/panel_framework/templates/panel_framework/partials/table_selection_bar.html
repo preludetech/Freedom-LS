@@ -1,27 +1,92 @@
 {% comment %}
-The selection bar: the result count and one submit button per permitted bulk
-action, hidden until a row is checked, sharing its footer row with the
+The selection bar: the result count and the first two permitted bulk actions as buttons
+and any others under a "More actions" menu, hidden until a row is checked, sharing its footer row with the
 pagination — which stays visible regardless of selection. Fixed to the
-bottom of the viewport below md, where the bar would otherwise scroll out of
-reach below a long card list.
+bottom of the viewport below lg, where the sidebar is not docked and the bar
+would otherwise scroll out of reach below a long card list or table.
 {% endcomment %}
-<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:static md:border-0 md:bg-transparent md:px-6 md:py-3">
-    <div aria-live="polite" x-show="hasSelection" class="flex flex-wrap items-center gap-4">
-        <span class="text-sm">
-            <span x-text="count"></span> selected
-            · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
+<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:px-6 lg:static lg:border-0 lg:bg-transparent"
+     data-page-count="{{ page_obj|length }}"
+     data-total-count="{{ page_obj.paginator.count }}">
+    <div class="flex flex-wrap items-center gap-4">
+        {% comment %}
+        The status element is always rendered; only its text is toggled, so
+        assistive technology has a live region to watch before the count changes.
+        {% endcomment %}
+        <span role="status" class="text-sm">
+            <span x-show="running" x-cloak><span x-text="runLabel"></span> is running…</span>
+            <span x-show="showSelectionCount">
+                <span x-text="count"></span> selected
+                · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
+            </span>
         </span>
-        {% for entry in bulk_actions %}
+        <span x-show="showPagePrompt" x-cloak x-transition class="text-sm">
+            All {{ page_obj|length }} on this page are selected.
+            <button type="button" class="font-medium text-primary underline" x-on:click="selectAllMatching" x-bind:disabled="running">
+                Select all {{ page_obj.paginator.count }} matching
+            </button>
+        </span>
+        <span x-show="showMatchingPrompt" x-cloak x-transition class="text-sm">
+            <span x-show="excluded.length === 0">All <span x-text="count"></span> matching are selected.</span>
+            <span x-show="excluded.length > 0" x-cloak><span x-text="count"></span> of {{ page_obj.paginator.count }} matching are selected.</span>
+            <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection" x-bind:disabled="running">
+                Clear selection
+            </button>
+            <span class="text-muted">Changing page, sort or filters clears the selection.</span>
+        </span>
+        <span x-ref="excluded" hidden></span>
+        {% comment %}
+        A disabled fieldset disables every button inside it, the "More
+        actions" trigger included, while a background run is going.
+        {% endcomment %}
+        <fieldset x-show="showActions" x-bind:disabled="running" class="m-0 flex min-w-0 flex-wrap items-center gap-4 rounded-none border-0 p-0">
             {% querystring request.GET as qs %}
-            <c-button type="submit"
-                      variant="secondary"
-                      formaction="{{ entry.url }}{{ qs }}"
-                      hx-post="{{ entry.url }}{{ qs }}"
-                      hx-target="#app-modal-body"
-                      hx-swap="innerHTML">
-                {{ entry.action.label }}
-            </c-button>
-        {% endfor %}
+            {% for entry in bulk_actions|slice:":2" %}
+                <c-button type="submit"
+                          variant="{{ entry.action.variant }}"
+                          formaction="{{ entry.url }}{{ qs }}"
+                          hx-post="{{ entry.url }}{{ qs }}"
+                          hx-target="#app-modal-body"
+                          hx-swap="innerHTML">
+                    <span class="inline-flex items-center gap-2">
+                        <span x-show="spinsForRun" data-run-actions="{{ entry.action.action_name }}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+                        {{ entry.action.label }}
+                    </span>
+                </c-button>
+            {% endfor %}
+            {% with more=bulk_actions|slice:"2:" %}
+                {% if more %}
+                    <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
+                        <c-slot name="trigger">
+                            <span class="inline-flex items-center gap-2">
+                                <span x-show="spinsForRun" data-run-actions="{% for entry in more %}{{ entry.action.action_name }} {% endfor %}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
+                                More actions
+                            </span>
+                        </c-slot>
+                        {% for entry in more %}
+                            <c-button dropdown="true"
+                                      type="submit"
+                                      formaction="{{ entry.url }}{{ qs }}"
+                                      hx-post="{{ entry.url }}{{ qs }}"
+                                      hx-target="#app-modal-body"
+                                      hx-swap="innerHTML">
+                                {{ entry.action.label }}
+                            </c-button>
+                        {% endfor %}
+                    </c-dropdown-menu>
+                    {% comment %}The menu opens through Alpine, so without JavaScript its actions are plain buttons.{% endcomment %}
+                    <noscript>
+                        {% for entry in more %}
+                            <c-button type="submit"
+                                      variant="{{ entry.action.variant }}"
+                                      formaction="{{ entry.url }}{{ qs }}">
+                                {{ entry.action.label }}
+                            </c-button>
+                        {% endfor %}
+                    </noscript>
+                {% endif %}
+            {% endwith %}
+        </fieldset>
     </div>
     <c-pagination :page_obj="page_obj"
                   :base_url="base_url"

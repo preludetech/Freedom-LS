@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, cast
@@ -9,7 +10,8 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
-from django.core.paginator import Page
+from django.core.exceptions import ValidationError
+from django.core.paginator import Page, Paginator
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -29,16 +31,19 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseRedirect,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
+from freedom_ls.base.csv_import import CsvImportError, write_error_csv
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     inbox_for,
@@ -75,6 +80,7 @@ from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
+    ImportLearnersAction,
     MoveToCohortAction,
     ReactivateMemberAction,
     ReactivateRegistrationAction,
@@ -82,6 +88,7 @@ from freedom_ls.educator_interface.actions import (
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
+    bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
@@ -105,7 +112,18 @@ from freedom_ls.educator_interface.filters import (
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
-from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
+from freedom_ls.educator_interface.learner_import import (
+    ERROR_CSV_HEADER,
+    HEADERS,
+    NOT_ADDED_LABELS,
+    TEMPLATE_EXAMPLE_ROWS,
+    check_import_gate,
+    create_learner_import,
+    error_reason,
+    error_rows,
+    run_learner_import,
+)
 from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
     ConversationRow,
@@ -122,13 +140,18 @@ from freedom_ls.educator_interface.reporting import (
     DashboardPanel,
     LearnerCoursesPanel,
 )
+from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    ImportLabel,
+    ImportStatus,
     Learner,
     LearnerCourseRegistration,
+    LearnerImport,
+    LearnerImportRow,
     OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
@@ -155,8 +178,11 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
     navigation_response,
 )
+from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.config import config as panel_framework_config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     InstanceDetailsPanel,
@@ -178,6 +204,7 @@ from freedom_ls.panel_framework.views import (
     NavGroup,
     SectionConfigBase,
     StatusBadge,
+    build_menu_items,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -255,7 +282,7 @@ class OrganisationSectionConfig(SectionConfigBase):
 # Data Tables
 # top level filters (searchable dropdown)
 #   use HTMX to only reload that one panel
-# Checkboxes and bulk actions (eg. Delete, add to cohort, remove from cohort)
+# Bulk delete
 # Export as csv
 #
 # instance edit
@@ -393,6 +420,10 @@ class CohortDataTable(DataTable):
                 card="md_only",
             ),
         ]
+
+    @staticmethod
+    def get_row_label(row: Model) -> str:
+        return cast(Cohort, row).name
 
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
@@ -917,6 +948,7 @@ class CohortLearnersPanel(DataTablePanel):
         return [
             AddExistingLearnersAction(),
             AddLearnersToCohortAction(),
+            ImportLearnersAction(),
             RemoveFromCohortAction(),
             MoveToCohortAction(),
         ]
@@ -1167,6 +1199,10 @@ class CohortConfig(OrganisationSectionConfig, ListViewConfig):
         return [CreateCohortAction()]
 
     @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return list(bulk_actions_for_table(cls.table_key))
+
+    @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
@@ -1190,7 +1226,11 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddLearnersAction()]
+        return [AddLearnersAction(), ImportLearnersAction()]
+
+    @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return list(bulk_actions_for_table(cls.table_key))
 
     @classmethod
     def get_instance_label(cls, instance: Model) -> str:
@@ -1952,11 +1992,11 @@ def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpR
     return HttpResponse(badge_count(unread) if unread else "")
 
 
-@login_required
-def interface(
-    request: HttpRequest, organisation_slug: str, path_string: str = ""
-) -> HttpResponse | StreamingHttpResponse:
-    """Resolve and authorise the organisation named in the URL, once.
+def scope_request(
+    request: HttpRequest, organisation_slug: str
+) -> OrganisationScopedRequest:
+    """Resolve and authorise the organisation named in the URL, and set the
+    attributes the shell and the panels read off the request.
 
     Selecting an organisation is an authorisation decision, not a filter:
     unlike Site, which is derived from the request host and cannot be
@@ -1965,12 +2005,11 @@ def interface(
     403 would confirm the slug is real and let an attacker enumerate a
     Site's organisation names.
     """
-    organisation = _attach_organisation(request, organisation_slug)
+    _attach_organisation(request, organisation_slug)
     scoped_request = cast(OrganisationScopedRequest, request)
     scoped_request.accessible_organisations = list(
         organisations_accessible_to(request.user)
     )
-    scoped_request.path_string = path_string
     # Rendered into the same OOB bundle panel_framework already assembles
     # for breadcrumbs/sidebar/title/announcer (panel_framework/views.py) —
     # on every navigation, not only a switch, because the switcher's
@@ -1980,6 +2019,435 @@ def interface(
     scoped_request.panel_extra_oob = [
         "educator_interface/partials/organisation_switcher.html"
     ]
+    return scoped_request
+
+
+def standalone_page_context(
+    request: OrganisationScopedRequest, heading: str, section: str
+) -> dict[str, object]:
+    """The shell context for a page outside the panel framework: the menu
+    with `section` marked, and a trail back to the section, shaped like the
+    one an instance page gets so the shell renders it as a back link."""
+    extra_url_kwargs = request.panel_url_kwargs
+    url_name = "educator_interface:interface"
+    # The switcher links to the same path in another organisation; a run or
+    # import belongs to one organisation, so the other lands on the section.
+    request.path_string = section
+    section_config = sections_by_url_name(interface_config)[section]
+    return {
+        "menu_groups": build_menu_items(
+            interface_config,
+            url_name,
+            request,
+            active_section=section,
+            extra_url_kwargs=extra_url_kwargs,
+        ),
+        "breadcrumbs": [
+            {
+                "label": section_config.menu_label,
+                "url": reverse(
+                    url_name, kwargs={"path_string": section, **extra_url_kwargs}
+                ),
+            },
+            {"label": heading},
+        ],
+        "heading": heading,
+    }
+
+
+def _see_other(url: str) -> HttpResponseRedirect:
+    """A 303, so the browser follows a POST with a GET of the next page."""
+    return HttpResponseRedirect(url, status=303)
+
+
+def _learners_url(organisation: Organisation) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": "learners"},
+    )
+
+
+def _import_url(name: str, organisation: Organisation, *args: str) -> str:
+    return reverse(
+        f"educator_interface:{name}",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            **({"import_id": args[0]} if args else {}),
+        },
+    )
+
+
+def _import_page(
+    request: HttpRequest,
+    scoped: OrganisationScopedRequest,
+    template: str,
+    context: dict[str, object],
+    status: int = 200,
+) -> HttpResponse:
+    page = standalone_page_context(
+        scoped, heading="Import learners", section="learners"
+    )
+    page.update(context)
+    return render(request, template, page, status=status)
+
+
+def _import_denied(
+    request: HttpRequest, scoped: OrganisationScopedRequest
+) -> HttpResponse:
+    """The 403 page for a user who can see the organisation but may not import."""
+    return _import_page(
+        request,
+        scoped,
+        "educator_interface/learner_import_denied.html",
+        {
+            **LearnerConfig.get_denied_context(scoped, None, None),
+            "back_url": _learners_url(scoped.organisation),
+        },
+        status=403,
+    )
+
+
+IMPORT_PREVIEW_PAGE_SIZE = 50
+IMPORT_RESULT_ERROR_ROWS = 50
+
+
+def _label_counts(
+    rows: QuerySet[LearnerImportRow], field: str
+) -> list[dict[str, object]]:
+    """The rows per label, in the order labels are declared, for the labels
+    that occur."""
+    counted = {
+        item[field]: item["total"]
+        for item in rows.exclude(**{f"{field}__isnull": True})
+        .values(field)
+        .annotate(total=Count("pk"))
+    }
+    return [
+        {"label": label.value, "name": label.label, "count": counted[label.value]}
+        for label in ImportLabel
+        if label.value in counted
+    ]
+
+
+def _count_of(counts: list[dict[str, object]], *labels: str) -> int:
+    return sum(cast(int, item["count"]) for item in counts if item["label"] in labels)
+
+
+def _requested_import_or_404(
+    request: HttpRequest, scoped: OrganisationScopedRequest, import_id: str
+) -> LearnerImport:
+    """The import only its requester may see. Anyone else, and an import of
+    another organisation, gets the 404 a missing one does."""
+    return cast(
+        LearnerImport,
+        get_object_or_404(
+            LearnerImport.objects.select_related("organisation", "cohort").filter(
+                organisation=scoped.organisation, requested_by=cast(User, request.user)
+            ),
+            pk=import_id,
+        ),
+    )
+
+
+def _cohort_learners_url(cohort: Cohort) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": cohort.organisation.slug,
+            "path_string": f"cohorts/{cohort.pk}/__tabs/learners",
+        },
+    )
+
+
+def _cohort_import_url(
+    name: str, organisation: Organisation, cohort: Cohort | None
+) -> str:
+    """An import page's URL, carrying `?cohort=` for a cohort import."""
+    url = _import_url(name, organisation)
+    if cohort is None:
+        return url
+    return f"{url}?{urlencode({'cohort': str(cohort.pk)})}"
+
+
+def _import_upload_url(learner_import: LearnerImport) -> str:
+    """The upload page that made this import: the cohort's, for a cohort import."""
+    return _cohort_import_url(
+        "learner_import", learner_import.organisation, learner_import.cohort
+    )
+
+
+def _import_cohort_or_404(
+    request: HttpRequest, organisation: Organisation
+) -> Cohort | None:
+    """The cohort named by `?cohort=`, among the cohorts the user can see in
+    the organisation; None when the parameter is absent. A value that is not a
+    cohort id is a 404 like an unknown one."""
+    cohort_id = request.GET.get("cohort")
+    if not cohort_id:
+        return None
+    try:
+        return get_object_or_404(
+            cohorts_visible_to(cast(User, request.user), organisation).select_related(
+                "organisation"
+            ),
+            pk=cohort_id,
+        )
+    except ValidationError as error:
+        raise Http404("No such cohort.") from error
+
+
+@login_required
+def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse:
+    """The upload page of a learner import; a valid file becomes a previewed
+    import and the reader is sent to its preview. With `?cohort=<id>` the
+    learners are added to that cohort."""
+    scoped = scope_request(request, organisation_slug)
+    organisation = scoped.organisation
+    user = cast(User, request.user)
+    cohort = _import_cohort_or_404(request, organisation)
+    if not check_import_gate(user, organisation, cohort):
+        return _import_denied(request, scoped)
+    form = LearnerImportForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            created = create_learner_import(
+                user, organisation, cohort, form.cleaned_data["file"]
+            )
+        except CsvImportError as error:
+            form.add_error("file", str(error))
+        else:
+            return _see_other(
+                _import_url("learner_import_preview", organisation, str(created.pk))
+            )
+    return _import_page(
+        request,
+        scoped,
+        "educator_interface/learner_import_upload.html",
+        {
+            "form": form,
+            "cohort": cohort,
+            "headers": ",".join(HEADERS),
+            "template_url": _cohort_import_url(
+                "learner_import_template", organisation, cohort
+            ),
+        },
+        status=422 if form.errors else 200,
+    )
+
+
+@login_required
+def learner_import_preview(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse:
+    """What confirming an import will do (GET), and the confirmation (POST)."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    user = cast(User, request.user)
+    if not check_import_gate(user, learner_import.organisation, learner_import.cohort):
+        return _import_denied(request, scoped)
+    result_url = _import_url("learner_import_result", scoped.organisation, import_id)
+    if learner_import.status != ImportStatus.PREVIEWED:
+        return _see_other(result_url)
+    rows = LearnerImportRow.objects.filter(learner_import=learner_import)
+    counts = _label_counts(rows, "preview_label")
+    add_count = learner_import.row_count - _count_of(counts, *NOT_ADDED_LABELS)
+    in_background = add_count > panel_framework_config.BULK_BACKGROUND_THRESHOLD
+    if request.method == "POST":
+        # Only one of two simultaneous confirmations changes a row, so only one
+        # of them runs or enqueues the import.
+        started = LearnerImport.objects.filter(
+            pk=learner_import.pk, status=ImportStatus.PREVIEWED
+        ).update(status=ImportStatus.QUEUED if in_background else ImportStatus.RUNNING)
+        if started:
+            site_id = scoped.organisation.site_id
+            if in_background:
+                _run_learner_import_task.enqueue(str(learner_import.pk), site_id)
+            else:
+                run_learner_import(str(learner_import.pk), site_id)
+        return _see_other(result_url)
+    # An unknown label shows every row rather than none.
+    label = request.GET.get("label", "")
+    shown = rows.filter(preview_label=label) if label in ImportLabel.values else rows
+    page_obj = Paginator(
+        shown.order_by("line_number"), IMPORT_PREVIEW_PAGE_SIZE
+    ).get_page(request.GET.get("page"))
+    return _import_page(
+        request,
+        scoped,
+        "educator_interface/learner_import_preview.html",
+        {
+            "learner_import": learner_import,
+            "page_obj": page_obj,
+            "label": label if label in ImportLabel.values else "",
+            "preview_url": _import_url(
+                "learner_import_preview", scoped.organisation, import_id
+            ),
+            "upload_url": _import_upload_url(learner_import),
+            "errors_url": _import_url(
+                "learner_import_errors", scoped.organisation, import_id
+            ),
+            "label_counts": counts,
+            "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
+            "error_count": _count_of(counts, ImportLabel.ERROR),
+            "add_count": add_count,
+            "in_background": in_background,
+        },
+    )
+
+
+def _csv_attachment(chunks: Iterator[str], filename: str) -> StreamingHttpResponse:
+    response = StreamingHttpResponse(chunks, content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def learner_import_template(
+    request: HttpRequest, organisation_slug: str
+) -> HttpResponse | StreamingHttpResponse:
+    """A CSV with the accepted headers and two example rows. Gated like the
+    upload page that links to it, so `?cohort=` names the same cohort."""
+    scoped = scope_request(request, organisation_slug)
+    cohort = _import_cohort_or_404(request, scoped.organisation)
+    if not check_import_gate(cast(User, request.user), scoped.organisation, cohort):
+        return _import_denied(request, scoped)
+    return _csv_attachment(
+        write_error_csv(HEADERS, TEMPLATE_EXAMPLE_ROWS), "learner-import-template.csv"
+    )
+
+
+@login_required
+def learner_import_errors(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse | StreamingHttpResponse:
+    """The rows of an import that were not added because of an error, with
+    the reason for each, in the shape the import accepts plus a reason."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    if not check_import_gate(
+        cast(User, request.user), learner_import.organisation, learner_import.cohort
+    ):
+        return _import_denied(request, scoped)
+    # Built before the response is returned: the body is read after the
+    # request's site scope has been cleared.
+    rows = error_rows(learner_import).iterator(chunk_size=500)
+    filename = f"learner-import-errors-{timezone.localdate().isoformat()}.csv"
+    return _csv_attachment(
+        write_error_csv(
+            ERROR_CSV_HEADER,
+            (
+                (
+                    row.email,
+                    row.first_name,
+                    row.last_name,
+                    row.cohort_name,
+                    error_reason(row),
+                )
+                for row in rows
+            ),
+        ),
+        filename,
+    )
+
+
+def _import_status_context(
+    scoped: OrganisationScopedRequest, learner_import: LearnerImport
+) -> dict[str, object]:
+    """What `partials/run_status.html` renders for an import: the progress while
+    it is queued or running, the outcome once it has finished or failed."""
+    import_id = str(learner_import.pk)
+    total = learner_import.row_count
+    context: dict[str, object] = {
+        "run": learner_import,
+        "learner_import": learner_import,
+        "noun": "rows",
+        "total": total,
+        "percentage": learner_import.processed_count * 100 // total if total else 100,
+        "status_url": _import_url(
+            "learner_import_status", scoped.organisation, import_id
+        ),
+        "result_template": "educator_interface/partials/learner_import_result_body.html",
+        "result_on_failure": True,
+    }
+    if learner_import.status not in (RunStatus.DONE, RunStatus.FAILED):
+        return context
+    counts = _label_counts(
+        LearnerImportRow.objects.filter(learner_import=learner_import), "final_label"
+    )
+    added = total - _count_of(counts, *NOT_ADDED_LABELS)
+    context.update(
+        label_counts=counts,
+        added_count=added,
+        not_added_count=total - added,
+        error_rows=[
+            {"row": row, "reason": error_reason(row)}
+            for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
+        ],
+        error_count=_count_of(counts, ImportLabel.ERROR),
+        errors_url=_import_url("learner_import_errors", scoped.organisation, import_id),
+        new_account_count=_count_of(counts, ImportLabel.NEW_ACCOUNT),
+        learners_url=(
+            _cohort_learners_url(learner_import.cohort)
+            if learner_import.cohort
+            else _learners_url(scoped.organisation)
+        ),
+        upload_url=_import_upload_url(learner_import),
+    )
+    return context
+
+
+@login_required
+def learner_import_result(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse:
+    """What an import did, or how far it got."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    user = cast(User, request.user)
+    if not check_import_gate(user, learner_import.organisation, learner_import.cohort):
+        return _import_denied(request, scoped)
+    if learner_import.status == ImportStatus.PREVIEWED:
+        return _see_other(
+            _import_url("learner_import_preview", scoped.organisation, import_id)
+        )
+    return _import_page(
+        request,
+        scoped,
+        "educator_interface/learner_import_result.html",
+        _import_status_context(scoped, learner_import),
+    )
+
+
+@login_required_htmx_to("educator_interface:root")
+def partial_learner_import_status(
+    request: HttpRequest, organisation_slug: str, import_id: str
+) -> HttpResponse:
+    """The polled fragment of `learner_import_result`."""
+    scoped = scope_request(request, organisation_slug)
+    learner_import = _requested_import_or_404(request, scoped, import_id)
+    user = cast(User, request.user)
+    if not check_import_gate(user, learner_import.organisation, learner_import.cohort):
+        return _import_denied(request, scoped)
+    if learner_import.status == ImportStatus.PREVIEWED:
+        raise Http404("The import has not been confirmed.")
+    return render(
+        request,
+        "educator_interface/partials/run_status.html",
+        _import_status_context(scoped, learner_import),
+    )
+
+
+@login_required
+def interface(
+    request: HttpRequest, organisation_slug: str, path_string: str = ""
+) -> HttpResponse | StreamingHttpResponse:
+    """Serve the panel framework for the organisation named in the URL."""
+    scoped_request = scope_request(request, organisation_slug)
+    organisation = scoped_request.organisation
+    scoped_request.path_string = path_string
     # Guarded so the session store is only written when the value actually
     # changes — an unconditional assignment would mark the session dirty on
     # every educator page load.

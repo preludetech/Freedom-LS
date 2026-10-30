@@ -21,6 +21,26 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
+class LearnerImportForm(forms.Form):
+    file = forms.FileField(label="CSV file")
+
+
+class BulkTargetPickerForm(forms.Form):
+    """Picks the one target a bulk action applies to, from every target the
+    user may act on in the organisation. `field_name` is "cohort" or "course"."""
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        field_name: str,
+        queryset: QuerySet,
+        label: str,
+    ) -> None:
+        super().__init__(data)
+        self.fields[field_name] = forms.ModelChoiceField(queryset=queryset, label=label)
+
+
 class CohortForm(ConstraintValidationFormMixin):
     """Form for a cohort's editable fields.
 
@@ -151,6 +171,9 @@ class AddLearnersForm(forms.Form):
         preset: Cohort | None = None,
     ) -> None:
         super().__init__(data)
+        #: Set when the list was refused for being too long, so the dialog can
+        #: point at the file import that has no such limit.
+        self.over_limit = False
         cohort_field = cast(forms.ModelChoiceField, self.fields["cohort"])
         cohort_field.queryset = cohorts
         if preset is not None:
@@ -166,6 +189,7 @@ class AddLearnersForm(forms.Form):
         if not lines:
             raise forms.ValidationError("Enter at least one email address.")
         if len(lines) > MAX_ADD_LEARNERS:
+            self.over_limit = True
             raise forms.ValidationError(
                 f"Add up to {MAX_ADD_LEARNERS} at a time; larger lists are "
                 "imported from a file."

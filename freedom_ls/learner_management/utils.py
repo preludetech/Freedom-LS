@@ -182,9 +182,9 @@ def record_cohort_entry(
 
 def register_cohort_for_course(
     cohort: Cohort, course: Course, *, actor: User | None = None, reason: str = ""
-) -> CohortCourseRegistration:
+) -> bool:
     """Register the cohort for the course, reactivating an inactive
-    registration.
+    registration; False when it already held an active registration.
 
     Reuses the row the unique constraint allows per cohort and course,
     and saves through save() so the post_save fan-out mints a course
@@ -218,7 +218,7 @@ def register_cohort_for_course(
             record_cohort_entry(
                 cohort, code, actor, reason=reason, details={"course": course.title}
             )
-    return registration
+    return created or reactivated
 
 
 def deactivate_cohort_registration(
@@ -226,9 +226,9 @@ def deactivate_cohort_registration(
     *,
     actor: User | None = None,
     reason: str = "",
-) -> None:
-    """Deactivate the registration. Reversible: the row and every course
-    progress record it minted stay."""
+) -> bool:
+    """Deactivate the registration; False when it was already inactive.
+    Reversible: the row and every course progress record it minted stay."""
     from freedom_ls.learner_management.models import CohortCourseRegistration
 
     with transaction.atomic():
@@ -252,3 +252,4 @@ def deactivate_cohort_registration(
                 reason=reason,
                 details={"course": registration.course.title},
             )
+    return was_active

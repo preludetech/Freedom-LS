@@ -23,8 +23,11 @@ from django.contrib.sites.models import Site
 from django.db.models import Model
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedAction,
+    WalkedBulkAction,
     walk_interface,
 )
 from freedom_ls.learner_management.capabilities import can
@@ -39,6 +42,7 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
@@ -591,14 +595,21 @@ def test_every_capability_reachable_from_the_interface_is_in_matrix(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
-    capabilities = {
-        item.action.get_capability(item.ctx)
-        for item in walk_interface(organisation)
-        if isinstance(item, WalkedAction)
-    }
+    capabilities = _walked_capabilities(organisation)
     capabilities.discard(None)
 
     assert capabilities <= set(MATRIX)
+
+
+def _walked_capabilities(organisation: Organisation) -> set[str | None]:
+    """Every capability the interface's actions and bulk actions declare."""
+    capabilities: set[str | None] = set()
+    for item in walk_interface(organisation):
+        if isinstance(item, WalkedAction):
+            capabilities.add(item.action.get_capability(item.ctx))
+        elif isinstance(item, WalkedBulkAction):
+            capabilities.add(item.action.capability)
+    return capabilities
 
 
 @pytest.mark.django_db
@@ -606,11 +617,7 @@ def test_assign_cohort_viewer_is_reachable_from_the_interface(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
-    capabilities = {
-        item.action.get_capability(item.ctx)
-        for item in walk_interface(organisation)
-        if isinstance(item, WalkedAction)
-    }
+    capabilities = _walked_capabilities(organisation)
 
     assert ASSIGN_COHORT_VIEWER in capabilities
 
@@ -661,3 +668,50 @@ def test_cohort_admin_holds_add_cohortmembership_on_another_cohort_only_with_a_g
     assign_object_role(user, other_cohort, "cohort_admin")
 
     assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_the_organisation_import_gate_needs_bulk_manage_learners_and_add_learner(
+    mock_site_context: Site, role: str
+) -> None:
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    expected = all(
+        ("organisation", OWN) in MATRIX[capability][role]
+        for capability in (BULK_MANAGE_LEARNERS, ADD_LEARNER)
+    )
+
+    assert check_import_gate(cast(User, user), organisation, None) is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_the_cohort_import_gate_needs_add_learner_and_add_cohortmembership(
+    mock_site_context: Site, role: str
+) -> None:
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
+    expected = ("organisation", OWN) in MATRIX[ADD_LEARNER][role] and (
+        "cohort",
+        OWN,
+    ) in MATRIX[ADD_COHORTMEMBERSHIP][role]
+
+    assert check_import_gate(cast(User, user), organisation, cohort) is expected
+
+
+@pytest.mark.django_db
+def test_the_cohort_import_gate_refuses_an_inactive_cohort(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    user = cast(User, world.users["organisation_admin"])
+    organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    cohort = cast(Cohort, world.scopes[("cohort", OWN)])
+    cohort.is_active = False
+    cohort.save(update_fields=["is_active"])
+
+    assert check_import_gate(user, organisation, cohort) is False

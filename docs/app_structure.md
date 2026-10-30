@@ -101,7 +101,9 @@ flowchart TB
     deadlines --> site_aware_models
     deployment --> base
     deployment --> content_engine
+    deployment --> learner_management
     deployment --> organisations
+    deployment --> panel_framework
     deployment --> reports
     dev_tools --> accounts
     dev_tools --> base
@@ -112,6 +114,7 @@ flowchart TB
     dev_tools --> organisations
     educator_interface --> accounts
     educator_interface --> audit_log
+    educator_interface --> base
     educator_interface --> comms
     educator_interface --> content_engine
     educator_interface --> learner_management
@@ -148,8 +151,10 @@ flowchart TB
     learner_interface --> webhooks
     learner_management --> accounts
     learner_management --> audit_log
+    learner_management --> base
     learner_management --> content_engine
     learner_management --> organisations
+    learner_management --> panel_framework
     learner_management --> role_based_permissions
     learner_management --> site_aware_models
     learner_management --> webhooks
@@ -172,7 +177,9 @@ flowchart TB
     meta_pixel --> base
     organisations --> base
     organisations --> site_aware_models
+    panel_framework --> accounts
     panel_framework --> base
+    panel_framework --> site_aware_models
     qa_helpers --> accounts
     qa_helpers --> comms
     qa_helpers --> content_engine
@@ -188,6 +195,7 @@ flowchart TB
     qa_helpers --> learner_progress
     qa_helpers --> messaging_policy
     qa_helpers --> organisations
+    qa_helpers --> panel_framework
     qa_helpers --> registration_rules
     qa_helpers --> reports
     qa_helpers --> role_based_permissions
@@ -238,6 +246,7 @@ flowchart TB
     course_access -.-> course_applications
     course_applications -.-> learner_progress
     course_interest -.-> learner_management
+    deployment -.-> accounts
     dev_tools -.-> course_applications
     dev_tools -.-> registration_rules
     educator_interface -.-> course_interest
@@ -284,24 +293,24 @@ flowchart TB
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |
 | deadlines | accounts, content_engine, learner_management, learner_progress, site_aware_models | — |
-| deployment | base, content_engine, organisations, reports | — |
+| deployment | base, content_engine, learner_management, organisations, panel_framework, reports | accounts |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications, registration_rules |
-| educator_interface | accounts, audit_log, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
+| educator_interface | accounts, audit_log, base, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
 | form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
 | learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
-| learner_management | accounts, audit_log, content_engine, organisations, role_based_permissions, site_aware_models, webhooks | — |
+| learner_management | accounts, audit_log, base, content_engine, organisations, panel_framework, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
-| panel_framework | base | — |
-| qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, deadlines, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, messaging_policy, organisations, registration_rules, reports, role_based_permissions, site_aware_models, webhooks | — |
+| panel_framework | accounts, base, site_aware_models | — |
+| qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, deadlines, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, messaging_policy, organisations, panel_framework, registration_rules, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, base, site_aware_models | — |
 | registration_rules | accounts, base, content_engine, course_recommendations, hr_attributes, learner_management, learner_progress, organisations, site_aware_models | comms, webhooks |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |

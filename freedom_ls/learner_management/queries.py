@@ -24,14 +24,17 @@ from freedom_ls.learner_management.capabilities import (
     _granted_cohorts,
     _granted_organisations,
     _site_grants,
+    can,
     roles_granting,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    ImportStatus,
     Learner,
     LearnerCourseRegistration,
+    LearnerImport,
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
@@ -62,8 +65,24 @@ COURSE_NOT_OPEN_MESSAGE = "This course is not open to the organisation."
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
+ADD_LEARNER = "freedom_ls_learner_management.add_learner"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
+CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+CHANGE_COHORT = "freedom_ls_learner_management.change_cohort"
+ADD_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_cohortcourseregistration"
+)
+CHANGE_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_cohortcourseregistration"
+)
+ADD_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_learnercourseregistration"
+)
+CHANGE_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_learnercourseregistration"
+)
+BULK_MANAGE_LEARNERS = "freedom_ls_learner_management.bulk_manage_learners"
 
 
 class ResolvedRegistration(NamedTuple):
@@ -495,7 +514,7 @@ def courses_visible_to(
     )
 
 
-def _registerable_courses(organisation: Organisation) -> QuerySet[Course]:
+def registerable_courses(organisation: Organisation) -> QuerySet[Course]:
     """Published and hidden courses open to the organisation, by title;
     coming-soon courses cannot be registered for."""
     return (
@@ -509,7 +528,7 @@ def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
     """Registerable courses open to the cohort's organisation that the cohort
     holds no active registration for. A course with an inactive registration
     is offered, and registering it reactivates that row."""
-    return _registerable_courses(cohort.organisation).exclude(
+    return registerable_courses(cohort.organisation).exclude(
         cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
     )
 
@@ -518,7 +537,7 @@ def registerable_courses_for_learner(learner: Learner) -> QuerySet[Course]:
     """Registerable courses open to the learner's organisation that the learner
     holds no active individual registration for. A course with an inactive
     registration is offered."""
-    return _registerable_courses(learner.organisation).exclude(
+    return registerable_courses(learner.organisation).exclude(
         learner_registrations__in=learner.learnercourseregistration_set.filter(
             is_active=True
         )
@@ -612,6 +631,60 @@ def courses_losing_access(
     return [course for course in _courses_granted_by(removing) if course.pk not in kept]
 
 
+def courses_lost_by_any(learners: QuerySet[Learner], removing: Cohort) -> list[Course]:
+    """Courses at least one of `learners` stops reaching when `removing` stops
+    covering them, ordered by title. The rule per learner is
+    `courses_losing_access`'s; every learner's other registrations are read
+    in a fixed number of queries, so a bulk confirmation costs the same for
+    one learner as for hundreds."""
+    ids = list(learners.values_list("pk", flat=True))
+    granted = list(_courses_granted_by(removing))
+    if not ids or not granted:
+        return []
+    granted_ids = [course.pk for course in granted]
+    reached: set[tuple[UUID, UUID]] = set(
+        LearnerCourseRegistration.objects.filter(
+            learner_id__in=ids, course_id__in=granted_ids, is_active=True
+        ).values_list("learner_id", "course_id")
+    )
+    memberships: list[tuple[UUID, UUID]] = list(
+        CohortMembership.objects.filter(learner_id__in=ids)
+        .exclude(cohort=removing)
+        .values_list("learner_id", "cohort_id")
+    )
+    courses_by_cohort: dict[UUID, set[UUID]] = {}
+    for cohort_id, course_id in (
+        access_granting_cohort_registrations()
+        .filter(
+            cohort_id__in={cohort_id for _, cohort_id in memberships},
+            course_id__in=granted_ids,
+        )
+        .values_list("cohort_id", "course_id")
+    ):
+        courses_by_cohort.setdefault(cohort_id, set()).add(course_id)
+    for learner_id, cohort_id in memberships:
+        reached.update(
+            (learner_id, course_id)
+            for course_id in courses_by_cohort.get(cohort_id, ())
+        )
+    return [
+        course
+        for course in granted
+        if any((learner_id, course.pk) not in reached for learner_id in ids)
+    ]
+
+
+def learners_keeping_access_count(learners: QuerySet[Learner], course: Course) -> int:
+    """How many of `learners` still reach `course` through a cohort they
+    belong to, in one query. The per-learner answer is `other_grants_for`."""
+    granting = access_granting_cohort_registrations().filter(course=course)
+    return (
+        learners.filter(cohortmembership__cohort_id__in=granting.values("cohort_id"))
+        .distinct()
+        .count()
+    )
+
+
 def courses_gaining_access(learner: Learner, adding: Cohort) -> list[Course]:
     """Courses `adding` grants that the learner does not reach today, ordered
     by title. A course already held by an active individual registration or
@@ -676,6 +749,16 @@ def cohort_is_empty(cohort: Cohort) -> bool:
         )
         .exists()
     )
+
+
+def import_into_cohort_in_progress(cohort: Cohort) -> bool:
+    """Whether a learner import into the cohort is previewed, queued or
+    running. Deleting the cohort under it would turn it into an import into
+    the organisation, which is not what the importer confirmed."""
+    return LearnerImport.objects.filter(
+        cohort=cohort,
+        status__in=[ImportStatus.PREVIEWED, ImportStatus.QUEUED, ImportStatus.RUNNING],
+    ).exists()
 
 
 def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
@@ -757,6 +840,28 @@ def learners_visible_to(
 
     roles = roles_granting(VIEW_LEARNER, organisation.site)
     return within.filter(visible_learners_expression(user, roles, organisation.site))
+
+
+def can_on_any(user: RequestUser, organisation: Organisation, capability: str) -> bool:
+    """Whether `capability` holds for the organisation or for at least one of
+    its cohorts, the test for offering an action that acts on many learners."""
+    return (
+        can(user, capability, organisation)
+        or cohorts_visible_to(user, organisation, capability=capability).exists()
+    )
+
+
+def learners_permitted_for(
+    user: RequestUser, organisation: Organisation, capability: str
+) -> QuerySet[Learner]:
+    """Learners the user may apply `capability` to: every visible learner for
+    an organisation-level grant, otherwise the members of the cohorts that
+    grant it."""
+    visible = learners_visible_to(user, organisation, include_inactive=True)
+    if can(user, capability, organisation):
+        return visible
+    cohorts = cohorts_visible_to(user, organisation, capability=capability)
+    return visible.filter(cohortmembership__cohort__in=cohorts).distinct()
 
 
 def educators_of(

@@ -62,13 +62,19 @@ class World(NamedTuple):
 
 @contextmanager
 def custom_role_config(
-    site: Site, settings: SettingsWrapper, *, without: frozenset[str] = frozenset()
+    site: Site,
+    settings: SettingsWrapper,
+    *,
+    without: frozenset[str] = frozenset(),
+    extra_roles: dict[str, Role] | None = None,
 ) -> Iterator[SiteRolesConfig]:
     """Install a role config for `site` for the duration of the block: BASE_ROLES
     minus `without`, plus "custom_educator" (grants VIEW_LEARNER) and
     "custom_bystander" (grants nothing). Caches are cleared on entry and exit so
-    the previous config cannot leak into the next test."""
+    the previous config cannot leak into the next test. `extra_roles` adds
+    further roles to the config."""
     roles = {key: role for key, role in BASE_ROLES.items() if key not in without}
+    roles.update(extra_roles or {})
     roles["custom_educator"] = Role(
         display_name="Custom educator",
         permissions=frozenset({VIEW_LEARNER}),

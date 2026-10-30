@@ -7,11 +7,14 @@
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']">
         {% csrf_token %}
-        <input type="hidden" name="mode" value="keys">
-        {% for key in selection.keys %}
-            <input type="hidden" name="keys" value="{{ key }}">
-        {% endfor %}
+        {% include "panel_framework/partials/bulk_selection_inputs.html" %}
+        {% if form.is_bound and not form.errors %}
+            {% for field in form %}
+                <input type="hidden" name="{{ field.html_name }}" value="{{ field.value }}">
+            {% endfor %}
+        {% endif %}
+        <input type="hidden" name="expected_count" value="{{ expected_count }}">
         <input type="hidden" name="confirmed" value="1">
-        <c-button type="submit" variant="primary" loading="true">{{ action.label }}</c-button>
+        <c-button type="submit" variant="{{ action.variant }}" loading="true" :disabled="confirm_disabled">{{ action.label }}</c-button>
     </form>
 {% endif %}

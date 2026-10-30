@@ -1,0 +1,48 @@
+{% comment %}
+The outcome of a finished or failed learner import, rendered inside the run
+status partial.
+{% endcomment %}
+<div>
+    {% if learner_import.status == "done" %}
+        <p class="font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}. {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.</p>
+        <ul class="mt-2 list-disc pl-5 text-sm">
+            {% for item in label_counts %}
+                <li>{{ item.name }}: {{ item.count }}</li>
+            {% endfor %}
+        </ul>
+        <p class="mt-2 text-sm">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</p>
+    {% else %}
+        <p class="font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</p>
+        {% if learner_import.error_message %}<p class="mt-2 text-sm">{{ learner_import.error_message }}</p>{% endif %}
+    {% endif %}
+</div>
+{% if error_rows %}
+    <div class="mt-4 overflow-x-auto">
+        <table data-error-rows class="w-full text-left text-sm">
+            <thead>
+                <tr>
+                    <th scope="col" class="px-2 py-2">Line</th>
+                    <th scope="col" class="px-2 py-2">Email</th>
+                    <th scope="col" class="px-2 py-2">Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in error_rows %}
+                    <tr class="border-t border-border">
+                        <td class="px-2 py-2">{{ item.row.line_number }}</td>
+                        <td class="px-2 py-2 break-words">{{ item.row.email }}</td>
+                        <td class="px-2 py-2 break-words">{{ item.reason }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="mt-2">
+        <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" data-error-download>Download the {{ error_count }} error row{{ error_count|pluralize }}</c-button>
+    </p>
+{% endif %}
+<p class="mt-4 text-sm">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
+<p class="mt-4 space-x-4">
+    <a href="{{ learners_url }}">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</a>
+    <a href="{{ upload_url }}">Import another file</a>
+</p>

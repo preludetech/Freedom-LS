@@ -45,8 +45,10 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
+    LearnerImport,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
@@ -153,6 +155,71 @@ class TestCrossOrganisationIsolation:
         response = isolation.client.get(
             _interface_url(
                 isolation.organisation_a.slug, f"cohorts/{isolation.cohort_b.pk}"
+            )
+        )
+
+        assert response.status_code == 404
+
+    def test_a_bulk_run_of_organisation_b_404s_through_organisation_as_slug(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        run = BulkActionRun.objects.create(
+            scope=isolation.organisation_b,
+            requested_by=isolation.educator,
+            table_key="learners",
+            action_name="deactivate",
+        )
+
+        response = isolation.client.get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": isolation.organisation_a.slug,
+                    "path_string": f"learners/__runs/{run.pk}",
+                },
+            )
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "learner_import_preview",
+            "learner_import_result",
+            "learner_import_errors",
+            "learner_import_status",
+        ],
+    )
+    def test_a_learner_import_of_organisation_b_404s_through_organisation_as_slug(
+        self, isolation: SimpleNamespace, name: str
+    ) -> None:
+        learner_import = LearnerImport.objects.create(
+            organisation=isolation.organisation_b,
+            requested_by=isolation.educator,
+            file_name="learners.csv",
+        )
+
+        response = isolation.client.get(
+            reverse(
+                f"educator_interface:{name}",
+                kwargs={
+                    "organisation_slug": isolation.organisation_a.slug,
+                    "import_id": learner_import.pk,
+                },
+            )
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize("name", ["learner_import", "learner_import_template"])
+    def test_the_learner_import_upload_page_is_scoped_to_the_slugs_organisation(
+        self, isolation: SimpleNamespace, name: str
+    ) -> None:
+        response = isolation.client.get(
+            reverse(
+                f"educator_interface:{name}",
+                kwargs={"organisation_slug": "no-such-organisation"},
             )
         )
 

@@ -31,7 +31,7 @@
     <div tabindex="-1" data-table-anchor></div>
     {% include "panel_framework/partials/table_toolbar.html" %}
 
-    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys">{% endif %}
+    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">{% endif %}
 
     {% if bulk_actions %}
         {% comment %}
@@ -45,13 +45,14 @@
                 <input type="checkbox"
                        aria-label="Select all on this page"
                        data-select-all
-                       x-on:change="toggleAll">
+                       x-on:change="toggleAll"
+                       x-bind:disabled="running">
                 Select all on this page
             </label>
         </div>
     {% endif %}
 
-    <div class="hidden overflow-x-auto md:block {{ class }}">
+    <div class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
@@ -64,7 +65,8 @@
                                 <input type="checkbox"
                                        aria-label="Select all on this page"
                                        data-select-all
-                                       x-on:change="toggleAll">
+                                       x-on:change="toggleAll"
+                       x-bind:disabled="running">
                             </th>
                         {% endif %}
                         {% for header in header_columns %}
@@ -102,7 +104,8 @@
                                                name="keys"
                                                value="{{ row.object.pk }}"
                                                aria-label="Select {{ row.label }}"
-                                               x-on:change="update">
+                                               x-on:change="update"
+                                               x-bind:disabled="running">
                                     </td>
                                 {% endif %}
                                 {% for column in columns %}
@@ -124,7 +127,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden">
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}">
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"

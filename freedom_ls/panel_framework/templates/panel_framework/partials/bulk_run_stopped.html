@@ -1,0 +1,8 @@
+{% extends "panel_framework/modal/read_only.html" %}
+
+{% block title %}{{ label }}{% endblock title %}
+
+{% block content %}
+    <p>{{ summary }}</p>
+    {% if run.error_message %}<p class="mt-2 text-sm">{{ run.error_message }}</p>{% endif %}
+{% endblock content %}

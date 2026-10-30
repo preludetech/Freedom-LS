@@ -24,9 +24,9 @@ from freedom_ls.panel_framework.views import (
     ListViewConfig,
     NavGroup,
     ObjectViewConfig,
-    _build_breadcrumbs,
-    _build_menu_items,
     _resolve_path,
+    build_breadcrumbs,
+    build_menu_items,
     panel_framework_view,
 )
 
@@ -593,7 +593,7 @@ class TestActionsThatAreNotOffered:
         assert "This is no longer available" in response.content.decode()
 
 
-# Tests for _build_breadcrumbs.
+# Tests for build_breadcrumbs.
 
 
 class _CrumbCohortsConfig(ListViewConfig):
@@ -634,10 +634,10 @@ CRUMB_SECTIONS = {
 
 class TestBuildBreadcrumbs:
     def test_root_no_parts(self) -> None:
-        assert _build_breadcrumbs([], CRUMB_SECTIONS, INTERFACE_URL_NAME) == []
+        assert build_breadcrumbs([], CRUMB_SECTIONS, INTERFACE_URL_NAME) == []
 
     def test_section_list_page(self) -> None:
-        crumbs = _build_breadcrumbs(["cohorts"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
+        crumbs = build_breadcrumbs(["cohorts"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
 
         assert crumbs == [{"label": "Cohorts"}]
 
@@ -645,7 +645,7 @@ class TestBuildBreadcrumbs:
     def test_instance_page(self, mock_site_context: None) -> None:
         instance = make_stub(name="Test Cohort")
 
-        crumbs = _build_breadcrumbs(
+        crumbs = build_breadcrumbs(
             ["cohorts", str(instance.pk)],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
@@ -659,8 +659,7 @@ class TestBuildBreadcrumbs:
 
     def test_unknown_section_returns_empty(self) -> None:
         assert (
-            _build_breadcrumbs(["nonexistent"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
-            == []
+            build_breadcrumbs(["nonexistent"], CRUMB_SECTIONS, INTERFACE_URL_NAME) == []
         )
 
     @pytest.mark.django_db
@@ -669,7 +668,7 @@ class TestBuildBreadcrumbs:
     ) -> None:
         instance = make_stub(name="Test Cohort")
 
-        crumbs = _build_breadcrumbs(
+        crumbs = build_breadcrumbs(
             ["cohorts", str(instance.pk)],
             CRUMB_SECTIONS,
             "panel_framework_test:scoped_interface",
@@ -686,7 +685,7 @@ class TestBuildBreadcrumbs:
     def test_tab_page_shows_instance_as_current(self, mock_site_context: None) -> None:
         instance = make_stub(name="Tab Test")
 
-        crumbs = _build_breadcrumbs(
+        crumbs = build_breadcrumbs(
             ["cohorts", str(instance.pk), "__tabs", "details"],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
@@ -702,7 +701,7 @@ class TestBuildBreadcrumbs:
     def test_object_view_is_its_section_alone(self, mock_site_context: None) -> None:
         instance = make_stub(name="Acme")
 
-        crumbs = _build_breadcrumbs(
+        crumbs = build_breadcrumbs(
             ["organisation"],
             CRUMB_SECTIONS,
             INTERFACE_URL_NAME,
@@ -712,7 +711,7 @@ class TestBuildBreadcrumbs:
         assert crumbs == [{"label": "Organisation"}]
 
     def test_base_view_is_its_section_alone(self) -> None:
-        crumbs = _build_breadcrumbs(["dashboard"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
+        crumbs = build_breadcrumbs(["dashboard"], CRUMB_SECTIONS, INTERFACE_URL_NAME)
 
         assert crumbs == [{"label": "Dashboard"}]
 
@@ -1094,7 +1093,7 @@ class TestSectionAvailability:
         assert _CrumbCohortsConfig.is_available(RequestFactory().get("/")) is True
 
     def test_the_menu_lists_available_sections_and_skips_unavailable_ones(self) -> None:
-        groups = _build_menu_items(
+        groups = build_menu_items(
             [NavGroup("Group", [_CrumbCohortsConfig, _HiddenSectionConfig])],
             INTERFACE_URL_NAME,
             RequestFactory().get("/"),
@@ -1104,7 +1103,7 @@ class TestSectionAvailability:
         assert [item["label"] for item in items] == ["Cohorts"]
 
     def test_a_group_whose_sections_are_all_unavailable_is_left_out(self) -> None:
-        groups = _build_menu_items(
+        groups = build_menu_items(
             [NavGroup("Group", [_HiddenSectionConfig])],
             INTERFACE_URL_NAME,
             RequestFactory().get("/"),

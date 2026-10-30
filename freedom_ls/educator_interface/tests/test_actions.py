@@ -9,13 +9,14 @@ from typing import cast
 import lxml.html
 import pytest
 from allauth.account.models import EmailAddress
+from pytest_mock import MockerFixture
 
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.cache import cache
 from django.db import connection, transaction
-from django.http import HttpResponse
-from django.test import Client
+from django.http import Http404, HttpRequest, HttpResponse
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -24,9 +25,19 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import subject_key
+from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
+from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
+    AddToCohortBulkAction,
+    CohortCourseBulkAction,
+    DeactivateLearnersBulkAction,
+    RegisterCohortForCourseBulkAction,
+    RegisterForCourseBulkAction,
+    RemoveFromCohortBulkAction,
+    UnregisterCohortFromCourseBulkAction,
+    UnregisterFromCourseBulkAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -37,6 +48,7 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.members import current_role_entries
+from freedom_ls.educator_interface.views import OrganisationScopedRequest
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -53,22 +65,44 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     OrganisationMember,
 )
-from freedom_ls.learner_management.queries import COURSE_NOT_OPEN_MESSAGE
+from freedom_ls.learner_management.queries import (
+    CHANGE_LEARNER,
+    COURSE_NOT_OPEN_MESSAGE,
+    VIEW_COHORT,
+    VIEW_LEARNER,
+)
 from freedom_ls.learner_management.role_assignment import (
     GrantableRole,
     assign_role,
     deactivate_role,
 )
+from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.panel_framework.bulk_actions import (
+    BulkCount,
+    BulkOutcome,
+    BulkResult,
+    run_apply,
+)
+from freedom_ls.panel_framework.bulk_runs import (
+    NOT_FOUND,
+    report_finished,
+    run_bulk_action,
+    run_summary,
+)
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
+from freedom_ls.panel_framework.tasks import _run_bulk_action_task
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
+from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.factories import SiteFactory
 
@@ -5455,3 +5489,1686 @@ def test_a_reason_over_500_characters_answers_422_and_changes_nothing(
     assert document.cssselect("input[name='reason']")
     assert "at most 500 characters" in document.text_content()
     assert written == []
+
+
+# bulk learner state actions
+
+
+def _bulk_learner(**fields: object) -> Learner:
+    return cast(Learner, LearnerFactory(**fields))
+
+
+def _scoped_request(user: User, organisation: Organisation) -> HttpRequest:
+    """A request as `scope_request` leaves it: the user and the organisation
+    the table's rows belong to."""
+    request = cast(OrganisationScopedRequest, RequestFactory().post("/"))
+    request.user = user
+    request.organisation = organisation
+    return request
+
+
+def _learners_bulk_url(organisation: Organisation, action_name: str) -> str:
+    return _interface_url(organisation.slug, f"learners/__actions/{action_name}")
+
+
+def _bulk_post(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    **extra: str,
+):
+    return client.post(
+        _learners_bulk_url(organisation, action_name),
+        {"keys": [str(learner.pk) for learner in learners], **extra},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _bulk_confirm(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+):
+    return _bulk_post(
+        client,
+        organisation,
+        action_name,
+        learners,
+        confirmed="on",
+        expected_count=str(len(learners)),
+    )
+
+
+def _bulk_text(response) -> str:
+    return " ".join(
+        lxml.html.fromstring(response.content.decode()).text_content().split()
+    )
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_confirm_button_uses_a_defined_destructive_button_variant(
+    staff_client: Client,
+):
+    """The confirm button rendered the undefined `btn-destructive` class, so it looked like plain text."""
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation)]
+
+    response = _bulk_post(staff_client, organisation, "deactivate", learners)
+
+    buttons = lxml.html.fromstring(response.content.decode()).cssselect(
+        "button[type=submit]"
+    )
+    assert any("btn-error" in (button.get("class") or "") for button in buttons)
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_confirmation_says_what_changes_and_what_is_skipped(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    active = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "deactivate", [*active, inactive])
+
+    text = _bulk_text(response)
+    assert "Deactivate 2 learners." in text
+    assert "They lose access to this organisation's courses." in text
+    assert "1 is already inactive and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_changes_the_learners_and_summarises_the_run(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    active = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_confirm(
+        staff_client, organisation, "deactivate", [*active, inactive]
+    )
+
+    assert response.status_code == 200
+    assert {
+        learner.is_active
+        for learner in Learner.objects.filter(pk__in=[learner.pk for learner in active])
+    } == {False}
+    assert "1 was already inactive." in _bulk_text(response)
+    trigger = json.loads(response["HX-Trigger"])
+    assert set(trigger[LEARNER_CHANGED]["ids"]) == {
+        str(learner.pk) for learner in active
+    } | {str(inactive.pk)}
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_records_the_run_with_its_result(staff_client: Client):
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+
+    _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    run = BulkActionRun.objects.get()
+    assert (run.table_key, run.action_name, run.status) == (
+        "learners",
+        "deactivate",
+        RunStatus.DONE,
+    )
+    assert sorted(run.keys) == sorted(str(learner.pk) for learner in learners)
+    assert run.result is not None
+    assert BulkResult.from_json(run.result).changed == 2
+    assert run.finished_at is not None
+
+
+@pytest.mark.django_db
+def test_bulk_reactivate_changes_inactive_learners_and_skips_active_ones(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+    active = _bulk_learner(organisation=organisation)
+
+    response = _bulk_confirm(
+        staff_client, organisation, "reactivate", [inactive, active]
+    )
+
+    inactive.refresh_from_db()
+    assert inactive.is_active is True
+    assert "1 was already active." in _bulk_text(response)
+
+
+@pytest.mark.django_db
+def test_bulk_reactivate_confirmation_pluralises_for_one_learner(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "reactivate", [inactive])
+
+    text = _bulk_text(response)
+    assert "Reactivate 1 learner." in text
+    assert (
+        "Their access returns through their existing cohorts and registrations." in text
+    )
+
+
+@pytest.fixture
+def cohort_learner_manager_role(mock_site_context: Site, settings):
+    """A role that may change the learners of a cohort it is granted on, which
+    no shipped role can."""
+    role = Role(
+        display_name="Cohort learner manager",
+        permissions=frozenset({VIEW_COHORT, VIEW_LEARNER, CHANGE_LEARNER}),
+        assignment_scope=SCOPE_OBJECT,
+    )
+    with custom_role_config(
+        mock_site_context, settings, extra_roles={"cohort_learner_manager": role}
+    ):
+        yield "cohort_learner_manager"
+
+
+@pytest.mark.django_db
+def test_classify_all_counts_changed_skipped_and_not_permitted(
+    cohort_learner_manager_role: str,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    outsider = _bulk_learner(organisation=organisation)
+    inactive_member = _bulk_learner(organisation=organisation, is_active=False)
+    for learner in (member, inactive_member):
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort, cohort_learner_manager_role)
+    action = DeactivateLearnersBulkAction()
+
+    outcomes = action.classify_all(
+        _scoped_request(educator, organisation),
+        Learner.objects.filter(pk__in=[member.pk, outsider.pk, inactive_member.pk]),
+        {},
+    )
+
+    assert outcomes == {
+        str(member.pk): BulkOutcome("changed"),
+        str(outsider.pk): BulkOutcome(
+            "skipped", "learners you don't have permission to change"
+        ),
+        str(inactive_member.pk): BulkOutcome("skipped", "already inactive"),
+    }
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_may_select_learners_but_not_deactivate_them(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=member)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort, "cohort_admin")
+    client = logged_in_client(educator)
+
+    request = client.get(_interface_url(organisation.slug, "learners"))
+    response = _bulk_post(client, organisation, "deactivate", [member])
+
+    assert request.status_code == 200
+    assert "learners/__actions/add_to_cohort" in request.content.decode()
+    assert "learners/__actions/deactivate" not in request.content.decode()
+    assert response.status_code == 403
+    member.refresh_from_db()
+    assert member.is_active is True
+
+
+@pytest.mark.django_db
+def test_a_run_skips_a_learner_outside_the_cohort_the_user_may_change(
+    cohort_learner_manager_role: str,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort, cohort_learner_manager_role)
+
+    result = run_apply(
+        DeactivateLearnersBulkAction(),
+        educator,
+        organisation,
+        Learner.objects.filter(pk=learner.pk),
+        {},
+    )
+
+    learner.refresh_from_db()
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", "learners you don't have permission to change")
+    ]
+    assert learner.is_active is True
+
+
+@pytest.mark.django_db
+def test_a_run_changes_a_member_of_the_cohort_the_user_may_change(
+    cohort_learner_manager_role: str,
+):
+    """The run checked the capability against the organisation while the
+    preview checked it through the cohort, so a cohort-scoped educator was
+    promised a change and then had every learner skipped."""
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=member)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort, cohort_learner_manager_role)
+
+    result = run_apply(
+        DeactivateLearnersBulkAction(),
+        educator,
+        organisation,
+        Learner.objects.filter(pk=member.pk),
+        {},
+    )
+
+    member.refresh_from_db()
+    assert result.changed == 1
+    assert member.is_active is False
+
+
+@pytest.mark.django_db
+def test_a_run_reads_who_is_permitted_once_rather_than_per_learner(
+    staff_client: Client, mocker: MockerFixture
+):
+    """`apply` asked `can` about every learner, four or five queries each, so
+    an inline run over 250 learners cost over a thousand queries."""
+    can = mocker.spy(actions_module, "can")
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    # Once for the preview and once for the run, never per learner.
+    assert can.call_count <= 2
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_fires_one_event_per_changed_learner_and_none_for_skipped(
+    staff_client: Client, mocker: MockerFixture
+):
+    fire = mocker.patch("freedom_ls.learner_management.learner_actions._fire")
+    organisation = OrganisationFactory()
+    active = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    _bulk_confirm(staff_client, organisation, "deactivate", [*active, inactive])
+
+    fired = [(call.args[0], call.args[1].pk) for call in fire.call_args_list]
+    assert sorted(fired, key=str) == sorted(
+        [("learner.deactivated", learner.pk) for learner in active], key=str
+    )
+
+
+# bulk cohort membership actions
+
+
+def _bulk_cohort_post(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    **extra: str,
+):
+    return _bulk_post(client, organisation, action_name, learners, **extra)
+
+
+def _bulk_cohort_confirm(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    cohort: Cohort,
+):
+    return _bulk_confirm_with(
+        client, organisation, action_name, learners, cohort=str(cohort.pk)
+    )
+
+
+def _bulk_confirm_with(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    learners: list[Learner],
+    **extra: str,
+):
+    return _bulk_post(
+        client,
+        organisation,
+        action_name,
+        learners,
+        confirmed="on",
+        expected_count=str(len(learners)),
+        **extra,
+    )
+
+
+def _picker_options(response) -> set[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("select[name='cohort'] option")
+        if option.get("value")
+    }
+
+
+@pytest.mark.django_db
+def test_the_first_add_to_cohort_confirmation_renders_the_picker_unbound(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(staff_client, organisation, "add_to_cohort", [learner])
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 200
+    assert document.cssselect("select[name='cohort']")
+    assert not document.cssselect(".text-error")
+    assert document.cssselect("button[disabled]")
+
+
+@pytest.mark.django_db
+def test_the_picker_offers_only_active_cohorts_the_user_may_add_to(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    assigned = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortFactory(organisation=organisation)
+    CohortFactory(organisation=organisation, is_active=False)
+    educator = _cohort_admin_on(organisation, assigned)
+    learner = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=assigned, learner=learner)
+    client = logged_in_client(educator)
+
+    response = _bulk_cohort_post(client, organisation, "add_to_cohort", [learner])
+
+    assert _picker_options(response) == {str(assigned.pk)}
+
+
+@pytest.mark.django_db
+def test_refresh_with_a_cohort_shows_what_the_cohort_would_change(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Evening"))
+    members = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    fresh = _bulk_learner(organisation=organisation)
+    for learner in members:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+
+    response = _bulk_cohort_post(
+        staff_client,
+        organisation,
+        "add_to_cohort",
+        [*members, fresh],
+        refresh="1",
+        cohort=str(cohort.pk),
+    )
+
+    text = _bulk_text(response)
+    assert response.status_code == 200
+    assert "Add 1 learner to Evening." in text
+    assert "2 are already in the cohort and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_refresh_without_a_cohort_answers_422_with_confirm_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_cohort_post(
+        staff_client, organisation, "add_to_cohort", [learner], refresh="1"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.cssselect("button[disabled]")
+
+
+@pytest.mark.django_db
+def test_without_javascript_a_picked_cohort_can_be_confirmed(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _bulk_learner(organisation=organisation)
+    url = _learners_bulk_url(organisation, "add_to_cohort")
+
+    preview = staff_client.post(
+        url, {"keys": [str(learner.pk)], "refresh": "1", "cohort": str(cohort.pk)}
+    )
+
+    document = lxml.html.fromstring(preview.content.decode())
+    [confirm_form] = [
+        form
+        for form in document.cssselect("form")
+        if form.cssselect("input[name='confirmed']")
+    ]
+    assert preview.status_code == 200
+    assert not confirm_form.cssselect("button[disabled]")
+    fields = {
+        field.get("name"): field.get("value")
+        for field in confirm_form.cssselect("input[type='hidden']")
+    }
+    assert fields["cohort"] == str(cohort.pk)
+
+    staff_client.post(url, {**fields, "keys": [str(learner.pk)]})
+
+    assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_confirming_without_a_cohort_answers_422_and_adds_nobody(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_confirm_with(
+        staff_client, organisation, "add_to_cohort", [learner]
+    )
+
+    assert response.status_code == 422
+    assert not CohortMembership.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_the_user_cannot_add_to_is_not_a_valid_choice(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    assigned = cast(Cohort, CohortFactory(organisation=organisation))
+    other = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, assigned)
+    learner = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=assigned, learner=learner)
+    client = logged_in_client(educator)
+
+    response = _bulk_cohort_confirm(
+        client, organisation, "add_to_cohort", [learner], other
+    )
+
+    assert response.status_code == 422
+    assert not CohortMembership.objects.filter(cohort=other).exists()
+
+
+@pytest.mark.django_db
+def test_classify_all_skips_every_learner_for_a_cohort_the_user_cannot_change(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    assigned = cast(Cohort, CohortFactory(organisation=organisation))
+    other = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, assigned)
+    learner = _bulk_learner(organisation=organisation)
+
+    outcomes = AddToCohortBulkAction().classify_all(
+        _scoped_request(educator, organisation),
+        Learner.objects.filter(pk=learner.pk),
+        {"cohort": other},
+    )
+
+    assert outcomes == {
+        str(learner.pk): BulkOutcome(
+            "skipped", "learners you don't have permission to change"
+        )
+    }
+
+
+@pytest.mark.django_db
+def test_bulk_add_to_cohort_adds_only_the_learners_who_are_not_members(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    fresh = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=member)
+
+    response = _bulk_cohort_confirm(
+        staff_client, organisation, "add_to_cohort", [member, fresh], cohort
+    )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert "1 was already in the cohort." in text
+    assert CohortMembership.objects.filter(cohort=cohort, learner=fresh).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_add_to_cohort_fires_one_event_per_changed_learner(
+    staff_client: Client, mocker: MockerFixture
+):
+    fire = mocker.patch("freedom_ls.learner_management.learner_actions._fire")
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    fresh = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    CohortMembershipFactory(cohort=cohort, learner=member)
+
+    _bulk_cohort_confirm(
+        staff_client, organisation, "add_to_cohort", [member, *fresh], cohort
+    )
+
+    fired = [(call.args[0], call.args[1].pk) for call in fire.call_args_list]
+    assert sorted(fired, key=str) == sorted(
+        [("cohort_membership.added", learner.pk) for learner in fresh], key=str
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_deactivated_after_the_confirmation_fails_each_learner_without_aborting(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
+    learner = _bulk_learner(organisation=organisation)
+    run = BulkActionRun.objects.create(
+        scope=organisation,
+        requested_by=UserFactory(superuser=True),
+        action_path=f"{AddToCohortBulkAction.__module__}.AddToCohortBulkAction",
+        table_key="learners",
+        action_name="add_to_cohort",
+        target={"cohort": str(cohort.pk)},
+        keys=[str(learner.pk)],
+        status=RunStatus.QUEUED,
+    )
+
+    result = run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    assert [(c.status, c.count) for c in result.counts] == [("failed", 1)]
+    assert not CohortMembership.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+def test_a_saved_target_in_another_organisation_does_not_resolve(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    foreign = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
+
+    with pytest.raises(Http404):
+        AddToCohortBulkAction().resolve_target(
+            organisation, {"cohort": str(foreign.pk)}
+        )
+
+
+@pytest.mark.django_db
+def test_bulk_remove_from_cohort_confirmation_names_the_courses_lost(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 2)
+    members = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    outsider = _bulk_learner(organisation=organisation)
+    for learner in members:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+
+    response = _bulk_cohort_post(
+        staff_client,
+        organisation,
+        "remove_from_cohort",
+        [*members, outsider],
+        refresh="1",
+        cohort=str(cohort.pk),
+    )
+
+    text = _bulk_text(response)
+    expected_titles = " and ".join(
+        sorted(r.course.title for r in cohort.course_registrations.all())
+    )
+    assert f"They lose access to: {expected_titles}." in text
+    assert "1 is not a member and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_remove_from_cohort_wording_costs_the_same_for_any_selection_size(
+    mock_site_context: Site, django_assert_num_queries
+):
+    """The courses lost used to be read once per selected learner."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 2)
+    members = [_bulk_learner(organisation=organisation) for _ in range(4)]
+    for learner in members:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+    CohortMembershipFactory(
+        cohort=_cohort_with_courses(organisation, 1), learner=members[0]
+    )
+    classified = {str(learner.pk): BulkOutcome("changed") for learner in members}
+
+    with django_assert_num_queries(5):
+        wording = RemoveFromCohortBulkAction().confirmation_wording(
+            RequestFactory().post("/"),
+            Learner.objects.filter(pk__in=[learner.pk for learner in members]),
+            classified,
+            {"cohort": cohort},
+        )
+
+    assert wording.sentence == f"Remove 4 learners from {cohort.name}."
+    assert len(wording.consequences) == 1
+
+
+@pytest.mark.django_db
+def test_bulk_remove_from_cohort_deletes_memberships_and_skips_non_members(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = _bulk_learner(organisation=organisation)
+    outsider = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=member)
+
+    response = _bulk_cohort_confirm(
+        staff_client, organisation, "remove_from_cohort", [member, outsider], cohort
+    )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert "1 was not a member." in text
+    assert not CohortMembership.objects.filter(cohort=cohort).exists()
+
+
+# bulk actions above the background threshold
+
+
+def _task_rows():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path__endswith="_run_bulk_action_task")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_background(
+    staff_client: Client, settings
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(
+        staff_client, organisation, "deactivate", [*learners, inactive]
+    )
+
+    text = _bulk_text(response)
+    assert "This will affect 3 learners." in text
+    assert "background" in text
+    assert "already inactive" not in text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_keeps_the_reader_on_the_table(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    run = BulkActionRun.objects.get()
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 204
+    assert "HX-Redirect" not in response
+    assert "closeModal" in trigger
+    assert trigger["bulkRunStarted"]["status_url"] == reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"learners/__runs/{run.pk}",
+        },
+    )
+    assert trigger["bulkRunStarted"]["action"] == "deactivate"
+    assert run.status == RunStatus.QUEUED
+    assert _task_rows().count() == 1
+    assert Learner.objects.filter(is_active=False).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_without_javascript_returns_to_the_list(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = staff_client.post(
+        _learners_bulk_url(organisation, "deactivate"),
+        {
+            "keys": [str(learner.pk) for learner in learners],
+            "confirmed": "on",
+            "expected_count": "3",
+        },
+        follow=True,
+    )
+
+    assert response.redirect_chain == [
+        (
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "learners",
+                },
+            ),
+            303,
+        )
+    ]
+    assert "Deactivate is running in the background." in response.content.decode()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_at_the_threshold_still_runs_inline(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 3
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    assert response.status_code == 200
+    assert _task_rows().count() == 0
+    assert Learner.objects.filter(is_active=False).count() == 3
+
+
+# bulk course registration and setup email actions
+
+
+def _course_option_values(response) -> set[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("select[name='course'] option")
+        if option.get("value")
+    }
+
+
+def _bulk_pending_learner(organisation: Organisation) -> Learner:
+    user = UserFactory(last_login=None)
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    return _bulk_learner(organisation=organisation, user=user)
+
+
+@pytest.mark.django_db
+def test_the_register_picker_offers_only_registerable_courses(staff_client: Client):
+    organisation = OrganisationFactory()
+    published = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+    CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "register_for_course", [learner])
+
+    assert response.status_code == 200
+    assert _course_option_values(response) == {str(published.pk)}
+
+
+@pytest.mark.django_db
+def test_bulk_register_confirmation_counts_changes_and_skips(staff_client: Client):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    registered = _bulk_learner(organisation=organisation)
+    fresh = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "register_for_course",
+        [registered, fresh],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert response.status_code == 200
+    assert "Register 1 learner for Algebra." in text
+    assert "1 is already registered individually and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_register_without_a_course_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(
+        staff_client, organisation, "register_for_course", [learner], refresh="1"
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_bulk_register_registers_only_learners_without_an_active_registration(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    fresh = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_confirm_with(
+        staff_client,
+        organisation,
+        "register_for_course",
+        [registered, fresh],
+        course=str(course.pk),
+    )
+
+    assert "1 learner changed." in _bulk_text(response)
+    assert LearnerCourseRegistration.objects.filter(
+        learner=fresh, course=course, is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_register_records_one_course_registered_event_per_changed_learner(
+    staff_client: Client,
+    django_capture_on_commit_callbacks,
+    mocker: MockerFixture,
+):
+    fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    fresh = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm_with(
+            staff_client,
+            organisation,
+            "register_for_course",
+            [registered, *fresh],
+            course=str(course.pk),
+        )
+
+    fired = [call.args[1]["user_id"] for call in fire.call_args_list]
+    assert sorted(fired) == sorted(learner.user_id for learner in fresh)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_registers_only_learners_in_their_own_cohorts(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, cohort)
+    mine = _bulk_learner(organisation=organisation)
+    theirs = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=mine)
+    course = CourseFactory()
+
+    outcomes = RegisterForCourseBulkAction().classify_all(
+        _scoped_request(educator, organisation),
+        Learner.objects.filter(pk__in=[mine.pk, theirs.pk]),
+        {"course": course},
+    )
+
+    assert outcomes == {
+        str(mine.pk): BulkOutcome("changed"),
+        str(theirs.pk): BulkOutcome(
+            "skipped", "learners you don't have permission to change"
+        ),
+    }
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    keeps = _bulk_learner(organisation=organisation)
+    loses = _bulk_learner(organisation=organisation)
+    unregistered = _bulk_learner(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=keeps)
+    for learner in (keeps, loses):
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "unregister_from_course",
+        [keeps, loses, unregistered],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert "Unregister 2 learners from Algebra." in text
+    assert "1 keeps access through a cohort." in text
+    assert "1 is not registered individually and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_wording_costs_the_same_for_any_selection_size(
+    mock_site_context: Site, django_assert_num_queries
+):
+    """Who keeps access through a cohort used to be read once per learner."""
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    learners = [_bulk_learner(organisation=organisation) for _ in range(4)]
+    for learner in learners:
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+    for learner in learners[:2]:
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+    classified = {str(learner.pk): BulkOutcome("changed") for learner in learners}
+
+    with django_assert_num_queries(1):
+        wording = UnregisterFromCourseBulkAction().confirmation_wording(
+            RequestFactory().post("/"),
+            Learner.objects.filter(pk__in=[learner.pk for learner in learners]),
+            classified,
+            {"course": course},
+        )
+
+    assert wording.sentence == "Unregister 4 learners from Algebra."
+    assert wording.consequences == ["2 keep access through a cohort."]
+
+
+@pytest.mark.django_db
+def test_bulk_unregister_deactivates_individual_registrations(staff_client: Client):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_learner(organisation=organisation)
+    other = _bulk_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=registered, course=course)
+
+    response = _bulk_confirm_with(
+        staff_client,
+        organisation,
+        "unregister_from_course",
+        [registered, other],
+        course=str(course.pk),
+    )
+
+    assert "1 learner changed." in _bulk_text(response)
+    assert not LearnerCourseRegistration.objects.get(
+        learner=registered, course=course
+    ).is_active
+
+
+@pytest.mark.django_db
+def test_bulk_resend_confirmation_skips_learners_who_set_up_their_account(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(
+        staff_client, organisation, "resend_setup_email", [pending, done]
+    )
+
+    text = _bulk_text(response)
+    assert "Resend the setup email to 1 learner." in text
+    assert "1 account is already set up and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_resend_confirmation_counts_set_up_accounts_in_the_plural(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = [_bulk_learner(organisation=organisation) for _ in range(2)]
+
+    response = _bulk_post(
+        staff_client, organisation, "resend_setup_email", [pending, *done]
+    )
+
+    assert "2 accounts are already set up and will be skipped." in _bulk_text(response)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_sends_one_email_per_pending_learner(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    pending = [_bulk_pending_learner(organisation) for _ in range(2)]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", pending
+        )
+
+    assert "2 learners changed." in _bulk_text(response)
+    assert len(mail.outbox) == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+@pytest.mark.parametrize(
+    ("set_up", "line"),
+    [(1, "1 account was already set up."), (2, "2 accounts were already set up.")],
+)
+def test_bulk_resend_result_counts_the_accounts_already_set_up(
+    staff_client: Client, django_capture_on_commit_callbacks, set_up: int, line: str
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = [_bulk_learner(organisation=organisation) for _ in range(set_up)]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", [pending, *done]
+        )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert line in text
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    recent = _bulk_pending_learner(organisation)
+    fresh = _bulk_pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm(staff_client, organisation, "resend_setup_email", [recent])
+    mail.outbox.clear()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", [recent, fresh]
+        )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert "1 setup email was sent recently." in text
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_bulk_resend_records_one_entry_per_email_sent_naming_the_sender(
+    mock_site_context: Site, logged_in_client, django_capture_on_commit_callbacks
+):
+    """The bulk resend sent the emails but wrote no audit entry, while the
+    single-learner resend records one; the audit log said nothing happened."""
+    organisation = OrganisationFactory()
+    pending = [_bulk_pending_learner(organisation) for _ in range(2)]
+    done = _bulk_learner(organisation=organisation)
+    sender = UserFactory(superuser=True)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _bulk_confirm(
+            logged_in_client(sender),
+            organisation,
+            "resend_setup_email",
+            [*pending, done],
+        )
+
+    entries = AuditLogEntry.unscoped.filter(action="learner.setup_email_resent")
+    assert {entry.target_object_id for entry in entries} == {
+        str(learner.pk) for learner in pending
+    }
+    assert {entry.actor for entry in entries} == {sender}
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_entries_name_the_educator_who_ran_it(
+    mock_site_context: Site, logged_in_client
+):
+    """Bulk runs called the services without an actor, so every entry a bulk
+    change wrote was attributed to nobody."""
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    educator = UserFactory(superuser=True)
+
+    _bulk_confirm(logged_in_client(educator), organisation, "deactivate", learners)
+
+    entries = AuditLogEntry.unscoped.filter(action="learner.deactivated")
+    assert entries.count() == 2
+    assert {entry.actor for entry in entries} == {educator}
+
+
+# cohort bulk actions
+
+
+def _cohorts_bulk_post(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    cohorts: list[Cohort],
+    **extra: str,
+):
+    return client.post(
+        _interface_url(organisation.slug, f"cohorts/__actions/{action_name}"),
+        {"keys": [str(cohort.pk) for cohort in cohorts], **extra},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _cohorts_bulk_confirm(
+    client: Client,
+    organisation: Organisation,
+    action_name: str,
+    cohorts: list[Cohort],
+    **extra: str,
+):
+    return _cohorts_bulk_post(
+        client,
+        organisation,
+        action_name,
+        cohorts,
+        confirmed="on",
+        expected_count=str(len(cohorts)),
+        **extra,
+    )
+
+
+def _bulk_cohort(organisation: Organisation, **fields: object) -> Cohort:
+    return cast(Cohort, CohortFactory(organisation=organisation, **fields))
+
+
+@pytest.mark.django_db
+def test_cohort_state_action_deactivates_through_the_service(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _bulk_cohort(organisation)
+
+    _post(staff_client, _cohort_url(organisation, cohort, "/__actions/deactivate"))
+
+    cohort.refresh_from_db()
+    assert cohort.is_active is False
+
+
+@pytest.mark.django_db
+def test_cohort_state_action_reactivates_through_the_service(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _bulk_cohort(organisation, is_active=False)
+
+    _post(staff_client, _cohort_url(organisation, cohort, "/__actions/reactivate"))
+
+    cohort.refresh_from_db()
+    assert cohort.is_active is True
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_deactivate_confirmation_counts_changes_and_skips(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    active = [_bulk_cohort(organisation) for _ in range(2)]
+    inactive = _bulk_cohort(organisation, is_active=False)
+
+    response = _cohorts_bulk_post(
+        staff_client, organisation, "deactivate", [*active, inactive]
+    )
+
+    text = _bulk_text(response)
+    assert "Deactivate 2 cohorts." in text
+    assert "1 is already inactive and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_deactivate_changes_only_active_cohorts(staff_client: Client):
+    organisation = OrganisationFactory()
+    active = [_bulk_cohort(organisation) for _ in range(2)]
+    inactive = _bulk_cohort(organisation, is_active=False)
+
+    response = _cohorts_bulk_confirm(
+        staff_client, organisation, "deactivate", [*active, inactive]
+    )
+
+    assert "2 cohorts changed." in _bulk_text(response)
+    assert (
+        Cohort.objects.filter(organisation=organisation, is_active=False).count() == 3
+    )
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_reactivate_confirmation_counts_changes_and_skips(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = _bulk_cohort(organisation, is_active=False)
+    active = _bulk_cohort(organisation)
+
+    response = _cohorts_bulk_post(
+        staff_client, organisation, "reactivate", [inactive, active]
+    )
+
+    text = _bulk_text(response)
+    assert "Reactivate 1 cohort." in text
+    assert "It gives access to its courses again." in text
+    assert "1 is already active and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_reactivate_activates_inactive_cohorts(staff_client: Client):
+    organisation = OrganisationFactory()
+    inactive = _bulk_cohort(organisation, is_active=False)
+
+    _cohorts_bulk_confirm(staff_client, organisation, "reactivate", [inactive])
+
+    inactive.refresh_from_db()
+    assert inactive.is_active is True
+
+
+@pytest.mark.django_db
+def test_the_cohort_register_picker_offers_only_registerable_courses(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    published = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+    CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    cohort = _bulk_cohort(organisation)
+
+    response = _cohorts_bulk_post(staff_client, organisation, "register", [cohort])
+
+    assert response.status_code == 200
+    assert _course_option_values(response) == {str(published.pk)}
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    registered = _bulk_cohort(organisation)
+    fresh = _bulk_cohort(organisation)
+    inactive = _bulk_cohort(organisation, is_active=False)
+    CohortCourseRegistrationFactory(cohort=registered, course=course)
+
+    response = _cohorts_bulk_post(
+        staff_client,
+        organisation,
+        "register",
+        [registered, fresh, inactive],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert "Register 1 cohort for Algebra." in text
+    assert "1 is already registered and will be skipped." in text
+    assert "1 is an inactive cohort and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_register_registers_only_unregistered_active_cohorts(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_cohort(organisation)
+    fresh = _bulk_cohort(organisation)
+    inactive = _bulk_cohort(organisation, is_active=False)
+    CohortCourseRegistrationFactory(cohort=registered, course=course)
+
+    response = _cohorts_bulk_confirm(
+        staff_client,
+        organisation,
+        "register",
+        [registered, fresh, inactive],
+        course=str(course.pk),
+    )
+
+    assert "1 cohort changed." in _bulk_text(response)
+    assert CohortCourseRegistration.objects.filter(
+        cohort=fresh, course=course, is_active=True
+    ).exists()
+    assert not CohortCourseRegistration.objects.filter(cohort=inactive).exists()
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_register_without_a_course_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _bulk_cohort(organisation)
+
+    response = _cohorts_bulk_post(
+        staff_client, organisation, "register", [cohort], refresh="1"
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_register_fires_one_course_registered_event_per_changed_cohort(
+    staff_client: Client,
+    django_capture_on_commit_callbacks,
+    mocker: MockerFixture,
+):
+    fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_cohort(organisation)
+    fresh = [_bulk_cohort(organisation) for _ in range(2)]
+    CohortCourseRegistrationFactory(cohort=registered, course=course)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _cohorts_bulk_confirm(
+            staff_client,
+            organisation,
+            "register",
+            [registered, *fresh],
+            course=str(course.pk),
+        )
+
+    fired = [(call.args[0], call.args[1]["cohort_id"]) for call in fire.call_args_list]
+    assert sorted(fired) == sorted(
+        ("cohort_registration.added", str(cohort.pk)) for cohort in fresh
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site):
+    organisation = OrganisationFactory()
+    mine = _bulk_cohort(organisation)
+    theirs = _bulk_cohort(organisation)
+    educator = _cohort_admin_on(organisation, mine)
+    course = CourseFactory()
+
+    outcomes = RegisterCohortForCourseBulkAction().classify_all(
+        _scoped_request(educator, organisation),
+        Cohort.objects.filter(pk__in=[mine.pk, theirs.pk]),
+        {"course": course},
+    )
+
+    assert outcomes == {
+        str(mine.pk): BulkOutcome("changed"),
+        str(theirs.pk): BulkOutcome(
+            "skipped", "cohorts you don't have permission to change"
+        ),
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action_class",
+    [RegisterCohortForCourseBulkAction, UnregisterCohortFromCourseBulkAction],
+)
+def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
+    mock_site_context: Site, action_class: type[CohortCourseBulkAction]
+):
+    """An inactive cohort was reported as "could not be changed" at the end of
+    the run, though the confirmation had promised to skip it."""
+    organisation = OrganisationFactory()
+    inactive = _bulk_cohort(organisation, is_active=False)
+    educator = _cohort_admin_on(organisation, inactive)
+
+    result = run_apply(
+        action_class(),
+        educator,
+        organisation,
+        Cohort._base_manager.filter(pk=inactive.pk),
+        {"course": CourseFactory()},
+    )
+
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", "an inactive cohort")
+    ]
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory(title="Algebra")
+    registered = _bulk_cohort(organisation)
+    unregistered = _bulk_cohort(organisation)
+    inactive = _bulk_cohort(organisation, is_active=False)
+    CohortCourseRegistrationFactory(cohort=registered, course=course)
+
+    response = _cohorts_bulk_post(
+        staff_client,
+        organisation,
+        "unregister",
+        [registered, unregistered, inactive],
+        refresh="1",
+        course=str(course.pk),
+    )
+
+    text = _bulk_text(response)
+    assert "Unregister 1 cohort from Algebra." in text
+    assert "1 is not registered and will be skipped." in text
+    assert "1 is an inactive cohort and will be skipped." in text
+
+
+@pytest.mark.django_db
+def test_bulk_cohort_unregister_deactivates_the_active_registration(
+    staff_client: Client, django_capture_on_commit_callbacks, mocker: MockerFixture
+):
+    fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event_for_site")
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    registered = _bulk_cohort(organisation)
+    other = _bulk_cohort(organisation)
+    registration = CohortCourseRegistrationFactory(cohort=registered, course=course)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _cohorts_bulk_confirm(
+            staff_client,
+            organisation,
+            "unregister",
+            [registered, other],
+            course=str(course.pk),
+        )
+
+    registration.refresh_from_db()
+    assert "1 cohort changed." in _bulk_text(response)
+    assert registration.is_active is False
+    assert [call.args[0] for call in fire.call_args_list] == [
+        "cohort_registration.deactivated"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_add_learners_cap_message_links_to_the_import_page(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+    lines = "\n".join(f"person{n}@example.com" for n in range(51))
+
+    response = logged_in_client(educator).post(
+        _add_learners_list_url(organisation),
+        {"entries": lines},
+        HTTP_HX_REQUEST="true",
+    )
+
+    import_url = reverse(
+        "educator_interface:learner_import",
+        kwargs={"organisation_slug": organisation.slug},
+    )
+    assert (
+        response.status_code,
+        f'href="{import_url}"' in response.content.decode(),
+    ) == (
+        422,
+        True,
+    )
+
+
+@pytest.mark.django_db
+def test_an_add_learners_error_that_is_not_the_cap_carries_no_import_link(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+
+    response = logged_in_client(educator).post(
+        _add_learners_list_url(organisation),
+        {"entries": ""},
+        HTTP_HX_REQUEST="true",
+    )
+
+    import_url = reverse(
+        "educator_interface:learner_import",
+        kwargs={"organisation_slug": organisation.slug},
+    )
+    assert import_url not in response.content.decode()
+
+
+# -- recorded runs: the organisation scope and the finished notification ----
+
+GONE = "00000000-0000-0000-0000-000000000001"
+DEACTIVATE = (
+    f"{DeactivateLearnersBulkAction.__module__}.{DeactivateLearnersBulkAction.__name__}"
+)
+
+
+def _learner() -> Learner:
+    return cast(Learner, LearnerFactory(organisation=OrganisationFactory()))
+
+
+def _run_over(learner: Learner, *others: str) -> BulkActionRun:
+    return cast(
+        BulkActionRun,
+        BulkActionRun.objects.create(
+            scope=learner.organisation,
+            requested_by=UserFactory(superuser=True),
+            action_path=DEACTIVATE,
+            table_key="learners",
+            action_name="deactivate",
+            keys=[str(learner.pk), *others],
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_a_learner_of_another_organisation_is_not_touched(mock_site_context: Site):
+    other = _learner()
+    run = _run_over(_learner(), str(other.pk))
+
+    result = run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    other.refresh_from_db()
+    assert other.is_active is True
+    assert BulkCount("skipped", NOT_FOUND, 1) in result.counts
+
+
+@pytest.mark.django_db
+def test_a_requester_who_lost_the_grant_skips_every_object_and_the_run_is_done(
+    mock_site_context: Site,
+):
+    learner = _learner()
+    run = _run_over(learner)
+    run.requested_by = UserFactory(staff=True)
+    run.save(update_fields=["requested_by"])
+
+    result = run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    learner.refresh_from_db()
+    run.refresh_from_db()
+    assert (result.changed, learner.is_active, run.status) == (
+        0,
+        True,
+        RunStatus.DONE,
+    )
+    assert [item.reason for item in result.counts] == [
+        "learners you don't have permission to change"
+    ]
+
+
+def _notifications_for(run: BulkActionRun) -> list[tuple[int, str]]:
+    return [
+        (notification.user_id, notification.message)
+        for notification in Notification._base_manager.filter(
+            category="bulk_action.finished", object_id=str(run.pk)
+        )
+    ]
+
+
+@pytest.mark.django_db
+def test_the_task_tells_the_requester_the_run_finished(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+):
+    run = _run_over(_learner(), GONE)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+
+    assert _notifications_for(run) == [
+        (run.requested_by_id, "Deactivate finished: 1 learner changed, 1 skipped.")
+    ]
+
+
+@pytest.mark.django_db
+def test_the_task_tells_the_requester_where_a_failed_run_stopped(
+    mock_site_context: Site, django_capture_on_commit_callbacks, monkeypatch
+):
+    def _explode(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("freedom_ls.panel_framework.bulk_runs.run_apply", _explode)
+    run = _run_over(_learner())
+
+    with (
+        django_capture_on_commit_callbacks(execute=True),
+        pytest.raises(RuntimeError),
+    ):
+        _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+
+    assert _notifications_for(run) == [
+        (run.requested_by_id, "Deactivate stopped after 0 of 1 learner.")
+    ]
+
+
+@pytest.mark.django_db
+def test_an_inline_run_raises_no_notification(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+):
+    run = _run_over(_learner())
+
+    with django_capture_on_commit_callbacks(execute=True):
+        run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    assert _notifications_for(run) == []
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_is_not_notified(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+):
+    run = _run_over(_learner())
+
+    with django_capture_on_commit_callbacks(execute=True):
+        report_finished(str(run.pk), mock_site_context.pk)
+
+    assert _notifications_for(run) == []
+
+
+@pytest.mark.django_db
+def test_the_summary_counts_in_the_actions_own_noun(mock_site_context: Site):
+    run = _run_over(_learner())
+    run.status = RunStatus.DONE
+    run.result = BulkResult(
+        counts=[
+            BulkCount("changed", "", 3),
+            BulkCount("skipped", "already inactive", 2),
+            BulkCount("skipped", NOT_FOUND, 1),
+            BulkCount("failed", "error", 1),
+        ],
+        entries=[],
+        left_out=0,
+    ).to_json()
+
+    assert run_summary(run) == (
+        "Deactivate finished: 3 learners changed, 3 skipped, 1 failed."
+    )

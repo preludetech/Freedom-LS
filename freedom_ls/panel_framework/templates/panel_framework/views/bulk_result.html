@@ -1,0 +1,10 @@
+{% extends "panel_framework/views/_main_base.html" %}
+
+{% block page_header %}
+    <c-panel-page-header title="{{ main.action.label }}" panel_toggle="true" />
+{% endblock page_header %}
+
+{% block main %}
+    {% include "panel_framework/partials/bulk_result_body.html" with headline=main.headline result_lines=main.result_lines result=main.result only %}
+    <a href="{{ main.page_url }}">Back to {{ main.noun }}</a>
+{% endblock main %}

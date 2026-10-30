@@ -63,11 +63,6 @@ from freedom_ls.registration_rules.tasks import evaluate_learner_task
 from freedom_ls.tests.site_context import drop_ambient_request
 
 
-@pytest.fixture
-def database_task_backend(settings) -> None:
-    settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
-
-
 def _queued_tasks(task_name: str = "evaluate_rule_task"):
     from django_tasks_db.models import DBTaskResult
 

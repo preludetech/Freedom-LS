@@ -6,7 +6,7 @@ _Last updated: 2026-10-25_
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and records edited directly in the Django admin are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes and rules that register learners built; rules that recommend, educator-interface screens and CSV import not built).
-- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadline overrides), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
+- **Not built:** 2FA/MFA, educator-interface deadline override management, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Organisation Deferrals
@@ -17,8 +17,7 @@ Organisations shipped as a grouping layer between a site and its cohorts and reg
 
 - **No delete or merge** — an organisation cannot be removed or combined with another once created, and a learner's association with one can only be deactivated, never deleted.
 - **No nested organisations** — the structure is flat, with no parent/child relationship.
-- **No roster management in the educator interface** — associating a learner with an organisation, or marking one removed, is done in the Django admin only; there is no add-, remove-, or suspend-learner action there, and no "show removed learners" filter.
-- **No bulk add or remove, and no CSV import of learners.**
+- **Bulk and CSV tools are learner-only** — learners can be added to an organisation by CSV import, and deactivated or reactivated in bulk, but an import cannot update existing learners' details, create cohorts or map columns, and there is no bulk delete or bulk cohort move.
 - **No cross-organisation view** — nothing shows one person's associations across every organisation they study with, though a person can hold several.
 - **No notification when a learner is removed** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
 - **No per-organisation domain, subdomain, colours, or theme**, and no organisation branding in emails or certificates.
@@ -132,16 +131,11 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 ## Educator Interface Gaps
 
-**Status: Cohorts can be administered; learner and deadline override management cannot.**
+**Status: Cohorts and learners can be administered; deadline overrides cannot.**
 
-The educator interface can create, edit, deactivate, reactivate and delete cohorts, and register a cohort for courses or deactivate that registration; its Courses section is read-only. See [educator interface](./educator-interface.md). These operations must still be performed in the Django admin by an administrator:
+The educator interface manages cohorts, cohort membership and course registration, one at a time or in bulk, and imports learners from a CSV file; its Courses section is read-only. See [educator interface](./educator-interface.md). Deadline overrides, which set or remove a due date or course time limit for a cohort course registration or a single learner, must still be managed in the Django admin by an administrator. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
 
-- **Cohort membership** — adding learners to a cohort, moving them between cohorts, or removing them.
-- **Organisation membership** — associating a learner with an organisation, or marking one removed.
-- **Individual course registration** — registering a single learner for a course.
-- **Deadline overrides** — setting or removing a due date or course time limit for a cohort course registration or a single learner. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
-
-Also not built in the educator interface: bulk actions on lists, and data for the cohort overview's "needs attention" card, which shows a placeholder.
+Also not built in the educator interface: data for the cohort overview's "needs attention" card, which shows a placeholder.
 
 Educators can message learners from within FLS; see [Direct Messaging](#direct-messaging) for what messaging still lacks.
 

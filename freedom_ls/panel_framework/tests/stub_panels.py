@@ -23,6 +23,8 @@ from typing import ClassVar, cast
 
 from django import forms
 from django.apps import apps
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import Field, Model, QuerySet
 from django.http import HttpRequest, QueryDict
 from django.shortcuts import get_object_or_404
@@ -32,7 +34,11 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     PanelAction,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.bulk_actions import (
+    BulkAction,
+    BulkOutcome,
+    RecordedBulkAction,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import (
     BooleanFilter,
@@ -40,6 +46,7 @@ from freedom_ls.panel_framework.filters import (
     RelatedChoiceFilter,
     TableFilter,
 )
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     Panel,
@@ -194,8 +201,91 @@ class StubBulkAction(BulkAction):
     label = "Mark processed"
     action_name = "stub_bulk"
 
-    def execute(self, request: HttpRequest, queryset: QuerySet) -> None:
-        queryset.update(is_active=False)
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        type(obj)._default_manager.filter(pk=obj.pk).update(is_active=False)
+        return BulkOutcome("changed")
+
+
+class StubClassifyingBulkAction(StubBulkAction):
+    """Skips rows that are already inactive, so a confirmation has both
+    changed and skipped counts to show."""
+
+    label = "Mark processed (classified)"
+    action_name = "stub_classifying_bulk"
+
+    def classify_all(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> dict[str, BulkOutcome] | None:
+        return {
+            str(obj.pk): (
+                BulkOutcome("changed")
+                if obj.is_active
+                else BulkOutcome("skipped", "already processed")
+            )
+            for obj in queryset
+        }
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        if not obj.is_active:
+            return BulkOutcome("skipped", "already processed")
+        return super().apply(user, obj, cleaned_data)
+
+
+class StubArchiveBulkAction(StubBulkAction):
+    label = "Archive"
+    action_name = "stub_archive_bulk"
+
+
+class StubExportBulkAction(StubBulkAction):
+    """A third permitted action, so the selection bar has a "More actions" menu."""
+
+    label = "Export"
+    action_name = "stub_export_bulk"
+
+
+class StubRecordedBulkAction(RecordedBulkAction):
+    """A recorded action over stub rows, with no host behind it: the hooks
+    only note which runs reached them."""
+
+    label = "Deactivate"
+    action_name = "stub_recorded"
+    table_key = "stubs"
+    finished: ClassVar[list[object]] = []
+    shown: ClassVar[list[object]] = []
+
+    def __init__(self) -> None:
+        self.noun_model = _stub_model()
+
+    def row_label(self, obj: Model) -> str:
+        return cast(str, obj.name)
+
+    def apply(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        obj: Model,
+        cleaned_data: dict[str, object],
+    ) -> BulkOutcome:
+        type(obj)._default_manager.filter(pk=obj.pk).update(is_active=False)
+        return BulkOutcome("changed")
+
+    def on_finished(self, run: BulkActionRun) -> None:
+        type(self).finished.append(run.pk)
+
+    def on_result_shown(self, request: HttpRequest, run: BulkActionRun) -> None:
+        type(self).shown.append(run.pk)
 
 
 class StubForbiddenBulkAction(BulkAction):
@@ -213,7 +303,11 @@ class StubDataTablePanel(DataTablePanel):
     refresh_events = ("itemChanged",)
 
     def get_bulk_actions(self) -> list[BulkAction]:
-        return [StubBulkAction(), StubForbiddenBulkAction()]
+        return [
+            StubBulkAction(),
+            StubClassifyingBulkAction(),
+            StubForbiddenBulkAction(),
+        ]
 
 
 class StubChildDataTable(DataTable):
@@ -395,7 +489,12 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
 
     @classmethod
     def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
-        return [StubBulkAction()]
+        return [
+            StubBulkAction(),
+            StubArchiveBulkAction(),
+            StubExportBulkAction(),
+            StubRecordedBulkAction(),
+        ]
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:

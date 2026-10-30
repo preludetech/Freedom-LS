@@ -1,7 +1,30 @@
+{% comment %}
+The confirmation text. Context: error, notice, wording (sentence, skips,
+consequences), count, noun. Without wording, it falls back to the plain count.
+{% endcomment %}
 {% if error %}
     <div class="bg-error/10 border border-error/20 rounded-md p-3">
         <p class="text-sm text-on-surface">{{ error }}</p>
     </div>
 {% else %}
-    <p>This will affect {{ count }} {{ noun }}.</p>
+    {% if notice %}
+        <div class="bg-error/10 border border-error/20 rounded-md p-3 mb-3">
+            <p class="text-sm text-on-surface">{{ notice }}</p>
+        </div>
+    {% endif %}
+    {% if wording %}
+        <p>{{ wording.sentence }}</p>
+        {% if wording.skips %}
+            <ul class="mt-2 list-disc pl-5 text-sm">
+                {% for skip in wording.skips %}
+                    <li>{{ skip.count }} {% if skip.count == 1 %}is{% else %}are{% endif %} {{ skip.reason }} and will be skipped.</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% for consequence in wording.consequences %}
+            <p class="mt-2 text-sm">{{ consequence }}</p>
+        {% endfor %}
+    {% else %}
+        <p>This will affect {{ count }} {{ noun }}.</p>
+    {% endif %}
 {% endif %}

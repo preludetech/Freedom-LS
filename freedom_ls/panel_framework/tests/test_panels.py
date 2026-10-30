@@ -33,7 +33,7 @@ from freedom_ls.panel_framework.views import (
     ObjectViewConfig,
     SectionConfigBase,
     StatusBadge,
-    _build_menu_items,
+    build_menu_items,
     sections_by_url_name,
 )
 
@@ -723,7 +723,7 @@ def test_unreachable_tab_paths_404(mock_site_context: Site, suffix: str) -> None
         fetch(f"stubs/{stub.pk}/{suffix}")
 
 
-# Tests for _build_menu_items: groups, active highlighting, icons and counts.
+# Tests for build_menu_items: groups, active highlighting, icons and counts.
 
 
 class CohortsConfig(ListViewConfig):
@@ -759,7 +759,7 @@ MENU_URL_NAME = "panel_framework_test:interface"
 def _items(
     active_section: str = "", **kwargs: Model | dict[str, str] | None
 ) -> list[dict[str, object]]:
-    groups = _build_menu_items(
+    groups = build_menu_items(
         MENU_CONFIG, MENU_URL_NAME, RequestFactory().get("/"), active_section, **kwargs
     )
     return [item for group in groups for item in group["items"]]
@@ -772,7 +772,7 @@ def _by_label(
 
 
 def test_one_group_per_nav_group_with_sections() -> None:
-    groups = _build_menu_items(MENU_CONFIG, MENU_URL_NAME, RequestFactory().get("/"))
+    groups = build_menu_items(MENU_CONFIG, MENU_URL_NAME, RequestFactory().get("/"))
 
     assert [group["heading"] for group in groups] == ["Teaching", "People"]
 
@@ -806,7 +806,7 @@ def test_an_item_carries_its_icon_and_count() -> None:
 
 
 def test_extra_url_kwargs_merge_into_section_url() -> None:
-    groups = _build_menu_items(
+    groups = build_menu_items(
         MENU_CONFIG,
         "panel_framework_test:scoped_interface",
         RequestFactory().get("/"),
@@ -840,7 +840,7 @@ def test_on_an_instance_page_its_section_stays_current_but_not_as_the_page(
 def test_an_instance_page_adds_nothing_about_the_instance_to_the_menu(
     mock_site_context: None,
 ) -> None:
-    groups = _build_menu_items(
+    groups = build_menu_items(
         MENU_CONFIG,
         MENU_URL_NAME,
         RequestFactory().get("/"),

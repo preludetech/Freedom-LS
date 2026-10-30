@@ -6,12 +6,14 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from urllib.parse import urlsplit
 
+from django import forms
+from django.contrib import messages
 from django.core.exceptions import (
     ImproperlyConfigured,
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http import (
     Http404,
     HttpRequest,
@@ -27,15 +29,33 @@ from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
+from freedom_ls.base.csv_import import EchoWriter
 from freedom_ls.base.csv_safety import UTF8_BOM
-from freedom_ls.panel_framework.actions import PanelAction, denied_response
+from freedom_ls.panel_framework.actions import (
+    PanelAction,
+    count_noun,
+    denied_response,
+)
 from freedom_ls.panel_framework.bulk_actions import (
+    BackgroundRun,
     BulkAction,
+    BulkConfirmForm,
+    BulkOutcome,
+    BulkResult,
+    ConfirmationWording,
     Selection,
     parse_selection,
     resolve_selection,
 )
+from freedom_ls.panel_framework.bulk_runs import (
+    action_for,
+    run_label,
+    run_summary,
+    stopped_after,
+)
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import BULK_RUN_STARTED_EVENT, build_hx_trigger
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus, scope_lookup
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
@@ -395,6 +415,9 @@ class _Resolved:
     #: than any panel or action, so panel_framework_view can branch to it
     #: before touching the panel tree at all.
     quick_view: bool = False
+    #: The id of the recorded bulk run whose status the path polls, on
+    #: `panel`, the table it was started from.
+    run_id: str | None = None
 
 
 class _NamedAction(Protocol):
@@ -529,7 +552,7 @@ def _resolve_path(
     """Walk the URL path parts down from a section to the panel or action they address.
 
     `__panels/<name>` and `__tabs/<name>` step into a container's children,
-    and `__actions/<name>` must come last.
+    and `__actions/<name>` or `__runs/<id>` must come last.
     """
     try:
         section = sections[parts[0]]
@@ -563,6 +586,7 @@ def _resolve_path(
     current = root
     parents: list[Panel] = []
     action: _ResolvedAction | None = None
+    run_id: str | None = None
     while i < len(parts):
         segment = parts[i]
         if i + 1 >= len(parts):
@@ -572,6 +596,8 @@ def _resolve_path(
             action = _resolve_action(
                 request, section, instance_view, root, current, name
             )
+        elif segment == "__runs" and i + 2 == len(parts):
+            run_id = name
         elif segment in ("__panels", "__tabs") and segment == current.child_segment:
             parents.append(current)
             current = current.child(name)
@@ -587,6 +613,7 @@ def _resolve_path(
         instance_view=instance_view,
         parents=tuple(parents),
         action=action,
+        run_id=run_id,
     )
 
 
@@ -603,74 +630,311 @@ class _BulkConfirmation:
     selection: Selection
     error: str
     status: int
+    wording: ConfirmationWording | None = None
+    notice: str = ""
+    expected_count: int = 0
+    confirm_disabled: bool = False
+    form: forms.Form | None = None
+
+    def context(self) -> dict[str, object]:
+        return {
+            "action": self.action,
+            "action_url": self.action_url,
+            "selection": self.selection,
+            "count": self.count,
+            "noun": self.noun,
+            "error": self.error,
+            "wording": self.wording,
+            "notice": self.notice,
+            "expected_count": self.expected_count,
+            "confirm_disabled": self.confirm_disabled,
+            "form": self.form,
+        }
+
+
+@dataclass(frozen=True)
+class _BulkResultPage:
+    """A confirmed bulk action's result for a JavaScript-off request,
+    rendered as a full interface page. `page_url` is the table's page with
+    the request's query string, so the link back keeps its state."""
+
+    action: BulkAction
+    result: BulkResult
+    noun: str
+    headline: str
+    page_url: str
+
+
+#: The most row ids a bulk result's refresh events carry. Only a quick view
+#: reads them, and a header of hundreds of UUIDs, once per event, can exceed
+#: a proxy's header buffer; past this the events carry none, as a background
+#: run's do.
+REFRESH_IDS_LIMIT = 50
+
+
+def _result_response(
+    request: HttpRequest,
+    panel: DataTablePanel,
+    action: BulkAction,
+    result: BulkResult,
+    noun: str,
+    headline: str,
+    selected_keys: list[str],
+) -> HttpResponse | _BulkResultPage:
+    """The summary of a finished run.
+
+    Over htmx it replaces the confirmation in the modal and fires the
+    panel's refresh events, so the table updates behind the summary. Without
+    JavaScript it is a page of its own.
+    """
+    if request.headers.get("HX-Request") != "true":
+        return _BulkResultPage(
+            action, result, noun, headline, _history_url(panel, request)
+        )
+    ids = selected_keys if len(selected_keys) <= REFRESH_IDS_LIMIT else []
+    return bulk_result_fragment(
+        request,
+        action,
+        result,
+        noun,
+        headline,
+        dict.fromkeys(_table_refresh_events(panel), ids),
+    )
+
+
+def bulk_result_fragment(
+    request: HttpRequest,
+    action: BulkAction,
+    result: BulkResult,
+    noun: str,
+    headline: str,
+    refresh: dict[str, list[str]],
+) -> HttpResponse:
+    """The result modal fragment, firing `refresh` so the table updates
+    behind it. A background run's status poll answers with this too."""
+    html = render_to_string(
+        action.result_template_name,
+        _result_context(action, result, noun, headline),
+        request=request,
+    )
+    response = HttpResponse(html)
+    response["HX-Trigger"] = build_hx_trigger(refresh)
+    return response
+
+
+def _table_refresh_events(panel: DataTablePanel) -> tuple[str, ...]:
+    """The events that refresh `panel`'s table. A list page's table is
+    refreshed by its section's events rather than the panel's own."""
+    config = panel.ctx.config
+    if issubclass(config, ListViewConfig):
+        return config.refresh_events
+    return panel.refresh_events
+
+
+def _result_context(
+    action: BulkAction, result: BulkResult, noun: str, headline: str
+) -> dict[str, object]:
+    return {
+        "action": action,
+        "result": result,
+        "noun": noun,
+        "headline": headline,
+        "result_lines": [
+            action.result_line(item)
+            for item in result.counts
+            if item.status != "changed"
+        ],
+    }
+
+
+def _background_response(
+    request: HttpRequest, panel: DataTablePanel, action: BulkAction, run: BackgroundRun
+) -> HttpResponse:
+    """The reader stays on the table. Over htmx the modal closes and the
+    table's selection component polls `run.status_url` until the result
+    arrives; without JavaScript the table page reloads with a flash."""
+    if request.headers.get("HX-Request") == "true":
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = build_hx_trigger(
+            {},
+            close_modal=True,
+            signals={
+                BULK_RUN_STARTED_EVENT: {
+                    "region": panel.region_id,
+                    "action": action.action_name,
+                    "label": action.label,
+                    "status_url": run.status_url,
+                }
+            },
+        )
+        return response
+    messages.info(
+        request,
+        f"{action.label} is running in the background. "
+        "You'll get a notification when it finishes.",
+    )
+    return HttpResponseRedirect(_history_url(panel, request), status=303)
+
+
+def _confirmation_response(
+    request: HttpRequest, confirmation: _BulkConfirmation
+) -> HttpResponse | _BulkConfirmation:
+    """The confirmation or error state: an htmx fragment, or the
+    `_BulkConfirmation` itself for the page-level render."""
+    if request.headers.get("HX-Request") == "true":
+        html = render_to_string(
+            confirmation.action.confirm_template_name,
+            confirmation.context(),
+            request=request,
+        )
+        return HttpResponse(html, status=confirmation.status)
+    return confirmation
+
+
+def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
+    """The confirmation for a run too large to preview: the total, and where
+    the skips will be reported."""
+    return ConfirmationWording(
+        sentence=f"This will affect {count_noun(queryset.model, count)}.",
+        consequences=[
+            "It runs in the background. You'll get a notification when it finishes."
+        ],
+    )
 
 
 def _handle_bulk_action(
     request: HttpRequest, action: BulkAction, ctx: PanelContext, panel: DataTablePanel
-) -> HttpResponse | _BulkConfirmation:
+) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
     """Permission, selection, resolution, confirmation and execution for one
     bulk-action POST.
 
     An htmx request always gets an HTML fragment back. A plain request gets
-    one too once confirmed and executed; until then it gets a
-    `_BulkConfirmation`, since the confirmation step must render with the
-    page's own chrome rather than as a bare fragment.
+    a `_BulkConfirmation` or `_BulkResultPage` instead, since both must
+    render with the page's own chrome rather than as a bare fragment.
     """
     if not action.has_permission(request):
         return HttpResponse(status=403)
 
-    is_htmx = request.headers.get("HX-Request") == "true"
     action_url = action.get_action_url(ctx)
     noun = str(panel.get_queryset(request).model._meta.verbose_name_plural)
 
-    def _confirm(
-        selection: Selection, count: int, error: str, status: int
+    def error_response(
+        selection: Selection, count: int, error: str
     ) -> HttpResponse | _BulkConfirmation:
-        if is_htmx:
-            html = render_to_string(
-                action.confirm_template_name,
-                {
-                    "action": action,
-                    "action_url": action_url,
-                    "selection": selection,
-                    "count": count,
-                    "noun": noun,
-                    "error": error,
-                },
-                request=request,
-            )
-            return HttpResponse(html, status=status)
-        return _BulkConfirmation(
-            count, noun, action, action_url, selection, error, status
+        return _confirmation_response(
+            request,
+            _BulkConfirmation(count, noun, action, action_url, selection, error, 422),
         )
 
     selection = parse_selection(request)
-    if selection.mode != "keys":
-        return _confirm(selection, 0, "Not supported yet", 422)
-
     queryset = resolve_selection(panel, request, selection)
     count = queryset.count()
     if count == 0:
-        return _confirm(selection, count, "Nothing selected", 422)
-    if count > action.max_rows:
-        message = f"{count} selected; the limit is {action.max_rows}"
-        return _confirm(selection, count, message, 422)
+        return error_response(selection, count, "Nothing selected")
+    in_background = action.runs_in_background(count)
+    # A whole filtered table is bounded only when a task does the work.
+    if count > action.max_rows and not (
+        selection.mode == "all_matching" and in_background
+    ):
+        what = "matching" if selection.mode == "all_matching" else "selected"
+        message = f"{count} {what}; the limit is {action.max_rows}"
+        return error_response(selection, count, message)
 
-    if request.POST.get("confirmed") != "1":
-        return _confirm(selection, count, "", 200)
+    form = BulkConfirmForm(request.POST)
+    if not form.is_valid():
+        return error_response(selection, count, "The request was not valid")
+    confirmed = bool(form.cleaned_data["confirmed"])
+    expected_count = form.cleaned_data["expected_count"]
+    if confirmed and expected_count is None:
+        return error_response(selection, count, "The request was not valid")
 
-    action.execute(request, queryset)
-    redirect_url = _history_url(panel, request)
-    if is_htmx:
-        response = HttpResponse(status=204)
-        response["HX-Redirect"] = redirect_url
-        return response
-    return HttpResponseRedirect(redirect_url, status=303)
+    picker = action.get_form(
+        request, request.POST if form.cleaned_data["refresh"] or confirmed else None
+    )
+    cleaned_data: dict[str, object] = {}
+    if picker is not None:
+        if picker.is_bound and picker.is_valid():
+            cleaned_data = picker.cleaned_data
+        else:
+            # Without a valid choice there is nothing to preview. An unbound
+            # picker is the first view of the dialog, so it is not an error;
+            # a bound one that failed is.
+            return _confirmation_response(
+                request,
+                _BulkConfirmation(
+                    count=count,
+                    noun=noun,
+                    action=action,
+                    action_url=action_url,
+                    selection=selection,
+                    error="",
+                    status=422 if picker.is_bound else 200,
+                    wording=ConfirmationWording(
+                        sentence=f"{count_noun(queryset.model, count)} selected."
+                    ),
+                    expected_count=count,
+                    confirm_disabled=True,
+                    form=picker,
+                ),
+            )
+
+    classified: dict[str, BulkOutcome] | None = (
+        None if in_background else action.classify_all(request, queryset, cleaned_data)
+    )
+    changed_count = (
+        count
+        if classified is None
+        else sum(1 for item in classified.values() if item.status == "changed")
+    )
+
+    def confirmation(status: int = 200, notice: str = "") -> _BulkConfirmation:
+        # The wording's cost grows with the selection, so it is built only
+        # for a response that shows it; a confirmed run never does.
+        wording = (
+            _background_wording(queryset, count)
+            if in_background
+            else action.confirmation_wording(
+                request, queryset, classified, cleaned_data
+            )
+        )
+        return _BulkConfirmation(
+            count=count,
+            noun=noun,
+            action=action,
+            action_url=action_url,
+            selection=selection,
+            error="",
+            status=status,
+            wording=wording,
+            notice=notice,
+            expected_count=count,
+            confirm_disabled=changed_count == 0,
+            form=picker,
+        )
+
+    if not confirmed:
+        return _confirmation_response(request, confirmation())
+    if expected_count != count:
+        return _confirmation_response(
+            request,
+            confirmation(422, "The selection changed since you opened this."),
+        )
+    if changed_count == 0:
+        return _confirmation_response(request, confirmation(422))
+
+    selected_keys = [str(pk) for pk in queryset.values_list("pk", flat=True)]
+    outcome = action.execute(ctx, queryset, cleaned_data)
+    if isinstance(outcome, BackgroundRun):
+        return _background_response(request, panel, action, outcome)
+    headline = f"{count_noun(queryset.model, outcome.changed)} changed."
+    return _result_response(
+        request, panel, action, outcome, noun, headline, selected_keys
+    )
 
 
 def _handle_action(
     request: HttpRequest, resolved: _ResolvedAction, panel: Panel | None = None
-) -> HttpResponse | _BulkConfirmation:
+) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
     """Check permission, then submit (POST, DELETE) or render (GET) the action.
 
     A BulkAction runs the confirm-then-act flow instead, over `panel` — the
@@ -701,8 +965,66 @@ def _is_htmx_action_request(request: HttpRequest, parts: list[str]) -> bool:
     return (
         request.headers.get("HX-Request") == "true"
         and len(parts) >= 2
-        and parts[-2] == "__actions"
+        and parts[-2] in ("__actions", "__runs")
     )
+
+
+def _handle_run_status(request: HttpRequest, resolved: _Resolved) -> HttpResponse:
+    """Polled by the table a background run was started from: 204 while it
+    runs, then the result modal, which refreshes the table behind it.
+
+    Only the requester sees a run, and only from the table and scope it was
+    started on; anyone else, and a run from elsewhere, gets the 404 a missing
+    one does. The list root binds without `check_request`, so the
+    authentication check is made here rather than assumed.
+    """
+    panel = resolved.panel
+    if not isinstance(panel, DataTablePanel) or not request.user.is_authenticated:
+        raise Http404("No such run")
+    runs = BulkActionRun.objects.filter(
+        requested_by=request.user,
+        table_key=panel.table_key,
+        **scope_lookup(panel.ctx.scope),
+    )
+    try:
+        run = get_object_or_404(runs, pk=resolved.run_id)
+    except ValidationError as err:
+        raise Http404(f"'{resolved.run_id}' is not a valid identifier") from err
+    if run.status in (RunStatus.QUEUED, RunStatus.RUNNING):
+        return HttpResponse(status=204)
+    action = action_for(run)
+    if action is not None:
+        action.on_result_shown(request, run)
+    # Not the run's keys: a background run can cover thousands of rows,
+    # more than REFRESH_IDS_LIMIT allows, and only a quick view reads the ids.
+    refresh: dict[str, list[str]] = {
+        event: [] for event in _table_refresh_events(panel)
+    }
+    if action is not None and run.status == RunStatus.DONE and run.result is not None:
+        model = action.noun_model
+        result = BulkResult.from_json(run.result)
+        return bulk_result_fragment(
+            request,
+            action,
+            result,
+            str(model._meta.verbose_name_plural),
+            f"{count_noun(model, result.changed)} changed.",
+            refresh,
+        )
+    # A run whose action has since been renamed or removed has no result
+    # template to render, so its stored outcome is summarised instead.
+    summary = (
+        f"Stopped {stopped_after(run, action)}."
+        if run.status == RunStatus.FAILED
+        else run_summary(run)
+    )
+    response = render(
+        request,
+        "panel_framework/partials/bulk_run_stopped.html",
+        {"label": run_label(run, action), "run": run, "summary": summary},
+    )
+    response["HX-Trigger"] = build_hx_trigger(refresh)
+    return response
 
 
 def _handle_quick_view(
@@ -860,15 +1182,6 @@ def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
     return panel.ctx.page_url
 
 
-class _Echo:
-    """A file-like object whose `write` hands back the string it was given
-    instead of buffering it, so `csv.writer` can drive a generator that
-    `StreamingHttpResponse` streams one row at a time."""
-
-    def write(self, value: str) -> str:
-        return value
-
-
 def _export_response(
     request: HttpRequest, panel: DataTablePanel
 ) -> StreamingHttpResponse:
@@ -889,7 +1202,7 @@ def _export_response(
     _query, queryset = panel.narrow(request)
 
     def rows() -> Iterator[str]:
-        echo = _Echo()
+        echo = EchoWriter()
         writer = csv.writer(echo)
         yield UTF8_BOM
         yield writer.writerow([column.header for column in columns])
@@ -980,7 +1293,7 @@ def _respond(
     )
 
 
-def _build_menu_items(
+def build_menu_items(
     config: list[NavGroup],
     url_name: str,
     request: HttpRequest,
@@ -1030,7 +1343,7 @@ def _build_menu_items(
     return groups
 
 
-def _build_breadcrumbs(
+def build_breadcrumbs(
     parts: list[str],
     sections: dict[str, SectionConfig],
     url_name: str,
@@ -1103,7 +1416,7 @@ def panel_framework_view(
         section_url = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
-        result: HttpResponse | _BulkConfirmation | None = None
+        result: HttpResponse | _BulkConfirmation | _BulkResultPage | None = None
         try:
             resolved = _resolve_path(parts, sections, request, section_url)
             if resolved.quick_view:
@@ -1115,7 +1428,9 @@ def panel_framework_view(
                         resolved.root.ctx.base_url,
                     )
                 )
-            if resolved.action is not None:
+            if resolved.run_id is not None:
+                result = _handle_run_status(request, resolved)
+            elif resolved.action is not None:
                 result = _handle_action(request, resolved.action, resolved.panel)
         except Http404:
             # htmx drops a bare 404, so an action the page offered would
@@ -1131,29 +1446,33 @@ def panel_framework_view(
                 )
             raise
         if result is not None:
-            if not isinstance(result, _BulkConfirmation):
+            if not isinstance(result, _BulkConfirmation | _BulkResultPage):
                 return _vary_on_htmx(result)
             # A JavaScript-off bulk-action POST: render its message and
             # confirm form as this page's main content, with the page's own
             # chrome (menu, breadcrumbs) built the same way as any other
             # request below, rather than as a bare fragment.
-            main_template_name = "panel_framework/views/bulk_confirmation.html"
-            main = {
-                "action": result.action,
-                "action_url": result.action_url,
-                "count": result.count,
-                "noun": result.noun,
-                "selection": result.selection,
-                "error": result.error,
-                "page_url": resolved.panel.ctx.page_url,
-            }
             heading = result.action.label
-            bulk_status = result.status
+            if isinstance(result, _BulkResultPage):
+                main_template_name = "panel_framework/views/bulk_result.html"
+                main = {
+                    **_result_context(
+                        result.action, result.result, result.noun, result.headline
+                    ),
+                    "page_url": result.page_url,
+                }
+            else:
+                main_template_name = "panel_framework/views/bulk_confirmation.html"
+                main = {
+                    **result.context(),
+                    "page_url": resolved.panel.ctx.page_url,
+                }
+                bulk_status = result.status
         else:
             main_template_name, main, heading = _main_for(request, resolved)
 
     page_context: dict[str, object] = {
-        "menu_groups": _build_menu_items(
+        "menu_groups": build_menu_items(
             config,
             url_name,
             request,
@@ -1162,7 +1481,7 @@ def panel_framework_view(
             extra_url_kwargs=extra_url_kwargs,
         ),
         "heading": heading,
-        "breadcrumbs": _build_breadcrumbs(
+        "breadcrumbs": build_breadcrumbs(
             parts,
             sections,
             url_name,

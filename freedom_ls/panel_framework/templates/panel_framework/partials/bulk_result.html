@@ -1,0 +1,14 @@
+{% comment %}
+The modal fragment a confirmed bulk action returns, replacing the
+confirmation in #app-modal. Context: action, result, noun, headline,
+result_lines.
+{% endcomment %}
+<c-modal-header>{{ action.label }}</c-modal-header>
+
+<div class="px-6 py-4">
+{% include "panel_framework/partials/bulk_result_body.html" %}
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Close</c-button>
+</c-button-group>

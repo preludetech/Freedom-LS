@@ -36,8 +36,9 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, LearnerImport
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.models import BulkActionRun
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     ListViewConfig,
@@ -189,3 +190,85 @@ def test_walk_interface_skips_detail_paths_for_a_list_with_no_instance_view(
 
     assert paths == ["no-instance-pages"]
     assert Cohort.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_the_bulk_run_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+    run = BulkActionRun.objects.create(
+        scope=organisation,
+        requested_by=requester,
+        table_key="learners",
+        action_name="deactivate",
+    )
+
+    response = logged_in_client(requester).get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"learners/__runs/{run.pk}",
+            },
+        )
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "name",
+    [
+        "learner_import_preview",
+        "learner_import_result",
+        "learner_import_errors",
+        "learner_import_status",
+    ],
+)
+def test_a_learner_import_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client, name: str
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+    learner_import = LearnerImport.objects.create(
+        organisation=organisation, requested_by=requester, file_name="learners.csv"
+    )
+
+    response = logged_in_client(requester).get(
+        reverse(
+            f"educator_interface:{name}",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "import_id": learner_import.pk,
+            },
+        )
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import", "learner_import_template"])
+def test_the_learner_import_upload_route_404s_for_a_user_with_no_access_to_the_organisation(
+    mock_site_context, logged_in_client, name: str
+):
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    requester = UserFactory(staff=True)
+    assign_object_role(requester, other_organisation, "organisation_admin")
+
+    response = logged_in_client(requester).get(
+        reverse(
+            f"educator_interface:{name}",
+            kwargs={"organisation_slug": organisation.slug},
+        )
+    )
+
+    assert response.status_code == 404

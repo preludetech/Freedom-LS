@@ -1,0 +1,18 @@
+<p>{{ headline }}</p>
+{% if result_lines %}
+    <ul class="mt-2 list-disc pl-5 text-sm">
+        {% for line in result_lines %}
+            <li>{{ line }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% if result.entries %}
+    <ul class="mt-2 text-sm">
+        {% for entry in result.entries %}
+            <li>{{ entry.row_label }}: {{ entry.reason }}</li>
+        {% endfor %}
+    </ul>
+    {% if result.left_out %}
+        <p class="mt-1 text-sm">and {{ result.left_out }} more</p>
+    {% endif %}
+{% endif %}

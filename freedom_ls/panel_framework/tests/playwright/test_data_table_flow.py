@@ -179,7 +179,7 @@ def test_data_table_interaction(
     # Sorting clears the selection.
     expect(page.get_by_text(f"{PAGE_SIZE} selected", exact=False)).to_be_visible()
     page.get_by_role("link", name="Name").click()
-    expect(page.get_by_text("selected", exact=False)).to_be_hidden()
+    expect(page.get_by_text(" selected · showing", exact=False)).to_be_hidden()
     expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
         0
     )
@@ -199,7 +199,8 @@ def test_data_table_interaction(
     page.get_by_role("button", name="Mark processed").click()
     expect(modal).to_be_visible()
     modal.get_by_role("button", name="Mark processed").click()
-    expect(page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
+    expect(modal.get_by_text("2 stub models changed.")).to_be_visible()
+    modal.get_by_role("button", name="Close", exact=True).first.click()
     expect(modal).to_be_hidden()
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))
     assert active_by_name["row-00"] is False
@@ -316,6 +317,184 @@ def test_data_table_interaction(
             assert icon_width == 16
 
 
+def test_more_actions_menu_stays_inside_the_viewport(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The selection bar sits at the bottom, and its "More actions" menu used
+    to open downward, off the screen, leaving its last item out of reach."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(list_url)
+        page.locator("#stubs-table input[name='keys']:visible").first.check()
+        page.get_by_role("button", name="More actions").click()
+        last_item = page.get_by_role("menuitem").last
+        expect(last_item).to_be_visible()
+        box = last_item.bounding_box()
+        assert box is not None
+        assert box["y"] >= 0, f"menu item above the viewport at {viewport}"
+        assert box["y"] + box["height"] <= viewport["height"], (
+            f"menu item below the viewport at {viewport}"
+        )
+
+
+def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """At tablet width the bar sat under the table, out of view below a
+    long page, so a ticked row's actions could not be reached without
+    scrolling to the end. It stays fixed until the sidebar docks at lg, and
+    never covers the last row while fixed."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+    bar = page.locator("[data-total-count]")
+
+    for viewport, position in (
+        (QA_VIEWPORTS[0], "fixed"),
+        (QA_VIEWPORTS[1], "fixed"),
+        (QA_VIEWPORTS[2], "static"),
+    ):
+        page.set_viewport_size(viewport)
+        page.goto(list_url)
+        checkboxes = page.locator("#stubs-table input[name='keys']:visible")
+        checkboxes.first.check()
+
+        assert bar.evaluate("el => getComputedStyle(el).position") == position, (
+            f"bar position at {viewport}"
+        )
+        if position != "fixed":
+            continue
+        bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
+        assert bottom == viewport["height"], f"bar bottom at {viewport}"
+
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        last_is_topmost = checkboxes.last.evaluate(
+            """el => {
+                const box = el.getBoundingClientRect();
+                return document.elementFromPoint(
+                    box.x + box.width / 2, box.y + box.height / 2) === el;
+            }"""
+        )
+        assert last_is_topmost, f"bar covers the last row at {viewport}"
+
+
+def test_selection_bar_actions_fieldset_draws_no_box(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The fieldset wrapping the bulk-action buttons picked up the global
+    fieldset border and padding, boxing the buttons and, on a phone, making
+    the fixed selection bar cover a large part of the screen."""
+    make_stub(name="row-00")
+    page.set_viewport_size(_PHONE_VIEWPORT)
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+    page.locator("#stubs-table input[name='keys']:visible").first.check()
+
+    actions = page.locator("[data-total-count] fieldset")
+    expect(actions).to_be_visible()
+    box_styles = actions.evaluate(
+        """el => {
+            const s = getComputedStyle(el);
+            return [s.borderTopWidth, s.paddingTop, s.paddingLeft, s.borderTopLeftRadius];
+        }"""
+    )
+    assert box_styles == ["0px", "0px", "0px", "0px"]
+
+
+def test_select_all_matching_spans_every_page(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    matching = 2 * PAGE_SIZE + 3
+    for i in range(matching):
+        make_stub(name=f"pick-{i:02d}")
+    for i in range(4):
+        make_stub(name=f"other-{i}")
+    filtered_url = f"{live_server.url}{_LIST_PATH}?stubs-q=pick"
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(filtered_url)
+
+    # The status region exists before anything is ticked.
+    status = page.locator("#stubs-table").get_by_role("status")
+    expect(status).to_have_count(1)
+    row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
+    expect(row_checkboxes).to_have_count(PAGE_SIZE)
+    select_all_matching = page.get_by_role(
+        "button", name=f"Select all {matching} matching"
+    )
+    expect(select_all_matching).to_be_hidden()
+
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    expect(
+        page.get_by_text(f"All {PAGE_SIZE} on this page are selected.")
+    ).to_be_visible()
+    select_all_matching.click()
+    expect(status).to_contain_text(f"{matching} selected")
+    expect(page.get_by_text(f"All {matching} matching are selected.")).to_be_visible()
+    expect(
+        page.get_by_text("Changing page, sort or filters clears the selection.")
+    ).to_be_visible()
+
+    # Unticking one row leaves every other matching row selected.
+    row_checkboxes.first.uncheck()
+    expect(status).to_contain_text(f"{matching - 1} selected")
+    expect(
+        page.get_by_text(f"{matching - 1} of {matching} matching are selected.")
+    ).to_be_visible()
+    expect(
+        page.get_by_text(f"All {matching - 1} matching are selected.")
+    ).to_be_hidden()
+
+    page.get_by_role("button", name="Mark processed").click()
+    modal = page.locator("#app-modal")
+    expect(
+        modal.get_by_text(f"This will affect {matching - 1} stub models.")
+    ).to_be_visible()
+    modal.get_by_role("button", name="Mark processed").click()
+    expect(modal.get_by_text(f"{matching - 1} stub models changed.")).to_be_visible()
+    assert StubModel.objects.filter(is_active=False).count() == matching - 1
+    assert StubModel.objects.get(name="pick-00").is_active
+    assert not StubModel.objects.filter(
+        name__startswith="other", is_active=False
+    ).exists()
+
+    # Sorting swaps the table and clears the selection.
+    page.goto(filtered_url)
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    select_all_matching.click()
+    expect(status).to_contain_text(f"{matching} selected")
+    page.get_by_role("link", name="Name").click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+    expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
+        0
+    )
+
+    # Clear selection returns to ticking rows one by one.
+    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
+    select_all_matching.click()
+    page.get_by_role("button", name="Clear selection").click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(filtered_url)
+        assert_no_horizontal_overflow(page)
+
+
 def test_filter_sheet_is_visible_with_javascript_off(
     browser: Browser,
     live_server: pytest_django.live_server_helper.LiveServer,
@@ -355,6 +534,8 @@ def test_bulk_action_posts_with_javascript_off(
         ).to_be_visible()
 
         no_js_page.get_by_role("button", name="Mark processed").click()
+        expect(no_js_page.get_by_text("2 stub models changed.")).to_be_visible()
+        no_js_page.get_by_role("link", name="Back to stub models").click()
         expect(no_js_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
 
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))

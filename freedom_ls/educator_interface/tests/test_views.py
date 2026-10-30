@@ -6,16 +6,19 @@ import csv
 import io
 import json
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import lxml.html
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.models import Model
 from django.template.loader import render_to_string
@@ -29,7 +32,11 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
-from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    MessageFactory,
+    NotificationFactory,
+)
 from freedom_ls.comms.messaging import (
     SendResult,
     inbox_for,
@@ -42,7 +49,12 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
+from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.learner_import import (
+    create_learner_import,
+    run_learner_import,
+)
 from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
@@ -70,19 +82,35 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     Learner,
+    LearnerImport,
     OrganisationMember,
 )
+from freedom_ls.learner_management.queries import (
+    ADD_COHORTMEMBERSHIP,
+    ADD_LEARNER,
+    VIEW_COHORT,
+    VIEW_LEARNER,
+    VIEW_ORGANISATION,
+)
 from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
+from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.bulk_runs import run_bulk_action
+from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 QUERY_BUDGET = 60
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -3853,3 +3881,1231 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
         response = staff_client.get(_audit_log_url(organisation))
 
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
+
+
+# bulk run status, polled by the table a background run was started from.
+# The route is the framework's; these cover its wiring into this interface
+# (the organisation scope, the refresh event and the notification hooks).
+
+
+def _run_for(user: User, organisation: Organisation, **fields: object):
+    return BulkActionRun.objects.create(
+        scope=organisation,
+        requested_by=user,
+        action_path=(
+            f"{DeactivateLearnersBulkAction.__module__}."
+            f"{DeactivateLearnersBulkAction.__name__}"
+        ),
+        table_key="learners",
+        action_name="deactivate",
+        keys=[str(LearnerFactory(organisation=organisation).pk) for _ in range(2)],
+        **fields,
+    )
+
+
+def _run_status_url(organisation: Organisation, run: BulkActionRun) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"learners/__runs/{run.pk}",
+        },
+    )
+
+
+@pytest.fixture
+def run_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+    organisation = OrganisationFactory()
+    requester = cast(User, UserFactory(superuser=True))
+    return SimpleNamespace(
+        organisation=organisation,
+        requester=requester,
+        client=logged_in_client(requester),
+        run=_run_for(requester, organisation),
+    )
+
+
+def _poll(world: SimpleNamespace) -> _MonkeyPatchedWSGIResponse:
+    client: Client = world.client
+    return client.get(
+        _run_status_url(world.organisation, world.run), HTTP_HX_REQUEST="true"
+    )
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_answers_204(run_world: SimpleNamespace):
+    response = _poll(run_world)
+
+    assert (response.status_code, response.content) == (204, b"")
+
+
+@pytest.mark.django_db
+def test_a_finished_run_answers_the_result_modal_and_refreshes_the_table(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+
+    response = _poll(run_world)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 200
+    assert "2 learners changed." in document.text_content()
+    assert json.loads(response["HX-Trigger"]) == {LEARNER_CHANGED: {"ids": []}}
+
+
+@pytest.mark.django_db
+def test_a_finished_run_marks_its_notification_read(
+    run_world: SimpleNamespace, mock_site_context: Site
+):
+    run_bulk_action(str(run_world.run.pk), mock_site_context.pk)
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "Deactivate finished: 2 learners changed."},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is not None
+
+
+@pytest.mark.django_db
+def test_an_unfinished_run_leaves_its_notification_unread(
+    run_world: SimpleNamespace,
+):
+    notification = NotificationFactory(
+        user=run_world.requester,
+        category="bulk_action.finished",
+        target=run_world.run,
+        data={"summary": "s"},
+    )
+
+    _poll(run_world)
+
+    notification.refresh_from_db()
+    assert notification.read_at is None
+
+
+@pytest.mark.django_db
+def test_a_run_is_a_404_for_another_user_of_the_organisation(
+    run_world: SimpleNamespace, logged_in_client
+):
+    other = cast(User, UserFactory(superuser=True))
+
+    response = logged_in_client(other).get(
+        _run_status_url(run_world.organisation, run_world.run)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_run_is_a_404_through_another_organisations_slug(
+    run_world: SimpleNamespace,
+):
+    elsewhere = OrganisationFactory()
+
+    response = run_world.client.get(_run_status_url(elsewhere, run_world.run))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_under_more(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    LearnerFactory(organisation=organisation)
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, "learners")
+    )
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
+        "Add to cohort",
+        "Remove from cohort",
+    ]
+    assert labels("[role='menu'] button[formaction]") == [
+        "Deactivate",
+        "Reactivate",
+        "Register for a course",
+        "Unregister from a course",
+        "Resend setup email",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_state_actions_under_more(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation)
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    def labels(selector: str) -> list[str]:
+        return [
+            " ".join(element.text_content().split())
+            for element in document.cssselect(selector)
+        ]
+
+    assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
+        "Register for a course",
+        "Unregister from a course",
+    ]
+    assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
+
+
+# learner import pages
+
+
+def _import_url(organisation: Organisation, name: str, learner_import=None) -> str:
+    kwargs: dict[str, object] = {"organisation_slug": organisation.slug}
+    if learner_import is not None:
+        kwargs["import_id"] = learner_import.pk
+    return reverse(f"educator_interface:{name}", kwargs=kwargs)
+
+
+def _csv_upload(*lines: str) -> SimpleUploadedFile:
+    body = "email,first_name,last_name,cohort\n" + "\n".join(lines)
+    return SimpleUploadedFile("learners.csv", body.encode(), "text/csv")
+
+
+def _import_for(user: User, organisation: Organisation, *lines: str) -> LearnerImport:
+    return create_learner_import(user, organisation, None, _csv_upload(*lines))
+
+
+@pytest.fixture
+def import_world(logged_in_client: Callable[[User], Client], mock_site_context: Site):
+    organisation = OrganisationFactory()
+    grantor = cast(User, UserFactory(superuser=True))
+    admin = cast(User, LearnerFactory(user__staff=True, organisation=organisation).user)
+    assign_role(grantor, admin, "organisation_admin", organisation)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    cohort_admin = cast(
+        User, LearnerFactory(user__staff=True, organisation=organisation).user
+    )
+    assign_role(grantor, cohort_admin, "cohort_admin", cohort)
+    return SimpleNamespace(
+        organisation=organisation,
+        admin=admin,
+        client=logged_in_client(admin),
+        cohort=cohort,
+        cohort_admin_client=logged_in_client(cohort_admin),
+        logged_in_client=logged_in_client,
+    )
+
+
+@pytest.mark.django_db
+def test_the_upload_page_shows_the_headers_the_stepper_and_the_file_input(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    assert page.cssselect("input[type=file]")
+    assert page.cssselect("code")[0].text == "email,first_name,last_name,cohort"
+    assert page.cssselect("ol li[aria-current='step']")
+    assert "Step 1 of 3" in page.text_content()
+
+
+@pytest.mark.django_db
+def test_an_import_page_offers_a_back_link_to_the_learners_list(
+    import_world: SimpleNamespace,
+):
+    organisation = import_world.organisation
+
+    page = _get_document(
+        import_world.client, _import_url(organisation, "learner_import")
+    )
+
+    (back,) = page.cssselect("#breadcrumbs a")
+    assert back.get("href") == _interface_url(organisation.slug, "learners")
+    assert back.text_content().strip() == "Learners"
+
+
+@pytest.mark.django_db
+def test_the_stepper_numbers_each_step_in_its_own_label(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    steps = page.cssselect("nav[aria-label='Import steps'] li")
+    assert [" ".join(step.text_content().split()) for step in steps] == [
+        "1. Upload",
+        "2. Preview",
+        "3. Result",
+    ]
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_passes_the_import_gate_and_a_cohort_admin_gets_the_403_page(
+    import_world: SimpleNamespace,
+):
+    url = _import_url(import_world.organisation, "learner_import")
+
+    allowed = import_world.client.get(url)
+    denied = import_world.cohort_admin_client.get(url)
+
+    assert allowed.status_code == 200
+    assert denied.status_code == 403
+    assert (
+        "can't import learners here"
+        in lxml.html.fromstring(denied.content.decode()).text_content()
+    )
+
+
+@pytest.mark.django_db
+def test_a_bad_file_is_a_422_with_a_focused_alert_and_stores_nothing(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import"),
+        {"file": SimpleUploadedFile("learners.csv", b"name\nAda\n")},
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    (alert,) = page.cssselect("#main-content [role=alert]")
+    assert response.status_code == 422
+    assert alert.get("autofocus") is not None
+    assert "Unknown column(s): name" in alert.text_content()
+    assert not LearnerImport.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_good_file_redirects_with_a_303_to_its_preview(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import"),
+        {"file": _csv_upload("a@example.com,Ada,Lovelace,")},
+    )
+
+    learner_import = LearnerImport.objects.get()
+    assert response.status_code == 303
+    assert response["Location"] == _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_counts_each_label_and_offers_to_add_the_rows_that_can_be_added(
+    import_world: SimpleNamespace,
+):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "a@example.com,,,",
+        "b@example.com,,,",
+        f"{existing.user.email},,,",
+        "nonsense,,,",
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    text = " ".join(page.text_content().split())
+    assert "New account: 2" in text
+    assert "Already a member: 1" in text
+    assert "Error: 1" in text
+    assert "1 row with errors will not be added." in text
+    assert "2 new accounts will get a setup email." in text
+    assert [
+        button.text_content().strip()
+        for button in page.cssselect("#main-content button[type=submit]")
+    ] == ["Add 2 learners"]
+    assert len(page.cssselect("tbody tr")) == 4
+
+
+@pytest.mark.django_db
+def test_a_preview_with_nothing_to_add_has_no_confirm_button_and_says_why(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "nonsense,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert not page.cssselect("#main-content form button[type=submit]")
+    assert "Nothing can be added" in page.text_content()
+
+
+@pytest.mark.django_db
+def test_confirming_runs_the_import_and_the_result_page_reports_it(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "a@example.com,,,",
+        "b@example.com,,,",
+        "nonsense,,,",
+    )
+
+    confirmed = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    result_url = _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    page = _get_document(import_world.client, result_url)
+
+    text = " ".join(page.text_content().split())
+    assert (confirmed.status_code, confirmed["Location"]) == (303, result_url)
+    assert "Added 2 learners. 1 row was not added." in text
+    assert "2 setup emails were sent." in text
+    assert "Step 3 of 3" in text
+
+
+@pytest.mark.django_db
+def test_a_second_confirmation_does_not_run_the_import_again(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    import_world.client.post(url)
+    second = import_world.client.post(url)
+
+    assert second.status_code == 303
+    assert second["Location"] == _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    assert Learner.objects.filter(organisation=import_world.organisation).count() == 3
+
+
+@pytest.mark.django_db
+def test_a_finished_import_redirects_from_its_preview_to_its_result(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(status=RunStatus.DONE)
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    assert response.status_code == 303
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+def test_an_import_is_a_404_for_another_user_of_the_organisation(
+    import_world: SimpleNamespace, name: str
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    other = cast(User, UserFactory(superuser=True))
+
+    response = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, name, learner_import)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["learner_import_preview", "learner_import_result"])
+def test_an_import_is_a_404_through_another_organisations_slug(
+    import_world: SimpleNamespace, name: str
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    elsewhere = OrganisationFactory()
+
+    response = import_world.client.get(_import_url(elsewhere, name, learner_import))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learners_list_offers_the_import_link_to_an_admin_and_not_to_a_cohort_admin(
+    import_world: SimpleNamespace,
+):
+    url = _interface_url(import_world.organisation.slug, "learners")
+    import_url = _import_url(import_world.organisation, "learner_import")
+
+    admin_page = import_world.client.get(url).content.decode()
+    cohort_admin_page = import_world.cohort_admin_client.get(url).content.decode()
+
+    assert f'href="{import_url}"' in admin_page
+    assert import_url not in cohort_admin_page
+
+
+# learner import preview, template and error file
+
+
+def _numbered_lines(good: int, bad: int) -> list[str]:
+    return [f"person{n}@example.com,,," for n in range(good)] + [
+        f"bad{n},,," for n in range(bad)
+    ]
+
+
+@pytest.mark.django_db
+def test_the_preview_filters_its_rows_to_the_label_in_the_query_string(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "good@example.com,,,",
+        "bad,,,",
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+        + "?label=error",
+    )
+
+    emails = [cell.text for cell in page.cssselect("table tbody tr td:nth-child(2)")]
+    assert emails == ["bad"]
+
+
+@pytest.mark.django_db
+def test_each_label_count_links_to_the_preview_filtered_by_that_label(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    page = _get_document(import_world.client, preview_url)
+
+    hrefs = [link.get("href") for link in page.cssselect("a[data-label-filter]")]
+    assert sorted(hrefs) == [
+        f"{preview_url}?label=error",
+        f"{preview_url}?label=new_account",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(2, 51)
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    first = _get_document(import_world.client, f"{preview_url}?label=error")
+    second = _get_document(import_world.client, f"{preview_url}?label=error&page=2")
+
+    next_link = first.cssselect("a[rel='next']")[0]
+    assert (
+        len(first.cssselect("table tbody tr")),
+        len(second.cssselect("table tbody tr")),
+        next_link.get("href"),
+    ) == (50, 1, "?label=error&page=2")
+
+
+@pytest.mark.django_db
+def test_the_preview_shows_the_file_chip_and_a_link_to_upload_a_different_file(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    chip = " ".join(page.cssselect(".chip")[0].text_content().split())
+    upload_link = page.xpath("//a[normalize-space()='Upload a different file']")[0]
+    assert (chip, upload_link.get("href")) == (
+        "learners.csv \u00b7 1 row",
+        _import_url(import_world.organisation, "learner_import"),
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_offers_each_row_as_a_card_for_narrow_screens(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,Ada,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    card = page.cssselect("ul[data-row-cards] > li")[0]
+    assert "a@example.com" in card.text_content()
+    assert "New account" in card.text_content()
+
+
+@pytest.mark.django_db
+def test_the_preview_links_to_the_error_rows_download_only_when_there_are_errors(
+    import_world: SimpleNamespace,
+):
+    with_errors = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,", "bad,,,"
+    )
+    without_errors = _import_for(
+        import_world.admin, import_world.organisation, "b@example.com,,,"
+    )
+
+    def download_links(learner_import: LearnerImport) -> list[str]:
+        page = _get_document(
+            import_world.client,
+            _import_url(
+                import_world.organisation, "learner_import_preview", learner_import
+            ),
+        )
+        return [
+            " ".join(a.text_content().split())
+            for a in page.cssselect("a[data-error-download]")
+        ]
+
+    assert (download_links(with_errors), download_links(without_errors)) == (
+        ["Download the 1 error row"],
+        [],
+    )
+
+
+@pytest.mark.django_db
+def test_the_template_download_is_a_bom_prefixed_csv_with_the_headers_and_two_examples(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_template")
+    )
+
+    body = b"".join(response.streaming_content).decode("utf-8")
+    rows = list(csv.reader(io.StringIO(body.lstrip("﻿"))))
+    assert (
+        body.startswith("﻿"),
+        response["Content-Disposition"],
+        rows[0],
+        len(rows),
+    ) == (
+        True,
+        'attachment; filename="learner-import-template.csv"',
+        ["email", "first_name", "last_name", "cohort"],
+        3,
+    )
+
+
+@pytest.mark.django_db
+def test_the_template_download_is_refused_to_a_user_who_fails_the_import_gate(
+    import_world: SimpleNamespace,
+):
+    response = import_world.cohort_admin_client.get(
+        _import_url(import_world.organisation, "learner_import_template")
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.fixture
+def cohort_importer_client(
+    import_world: SimpleNamespace, mock_site_context: Site, settings
+) -> Iterator[Client]:
+    """A client whose user passes the cohort import gate but not the
+    organisation-wide one, which no shipped role does."""
+    role = Role(
+        display_name="Cohort importer",
+        permissions=frozenset(
+            {
+                VIEW_ORGANISATION,
+                VIEW_COHORT,
+                VIEW_LEARNER,
+                ADD_LEARNER,
+                ADD_COHORTMEMBERSHIP,
+            }
+        ),
+        assignment_scope=SCOPE_OBJECT,
+    )
+    with custom_role_config(
+        mock_site_context, settings, extra_roles={"cohort_importer": role}
+    ):
+        importer = cast(
+            User,
+            LearnerFactory(
+                user__staff=True, organisation=import_world.organisation
+            ).user,
+        )
+        assign_object_role(importer, import_world.organisation, "cohort_importer")
+        yield import_world.logged_in_client(importer)
+
+
+@pytest.mark.django_db
+def test_a_cohort_page_importer_can_download_the_template(
+    import_world: SimpleNamespace, cohort_importer_client: Client
+):
+    """The template was gated on the organisation-wide import, so the cohort
+    upload page offered a link that answered 403 to an importer who may only
+    import into the cohort."""
+    upload_url = (
+        f"{_import_url(import_world.organisation, 'learner_import')}"
+        f"?cohort={import_world.cohort.pk}"
+    )
+    page = _get_document(cohort_importer_client, upload_url)
+    template_url = _import_url(import_world.organisation, "learner_import_template")
+    (href,) = [
+        a.get("href") for a in page.cssselect("a") if template_url in a.get("href")
+    ]
+
+    organisation_wide = cohort_importer_client.get(template_url)
+    response = cohort_importer_client.get(href)
+
+    assert href == f"{template_url}?cohort={import_world.cohort.pk}"
+    assert organisation_wide.status_code == 403
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/csv")
+
+
+@pytest.mark.django_db
+def test_the_upload_page_links_to_the_template(import_world: SimpleNamespace):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    hrefs = [a.get("href") for a in page.cssselect("a")]
+    assert _import_url(import_world.organisation, "learner_import_template") in hrefs
+
+
+def _error_csv_rows(response) -> tuple[str, list[list[str]]]:
+    body = b"".join(response.streaming_content).decode("utf-8")
+    return body, list(csv.reader(io.StringIO(body.lstrip("﻿"))))
+
+
+@pytest.mark.django_db
+def test_the_error_csv_of_a_preview_holds_exactly_the_error_rows_with_reasons(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "good@example.com,Ada,Lovelace,",
+        "=bad,Eve,Hacker,",
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    body, rows = _error_csv_rows(response)
+    assert (body.startswith("﻿"), rows) == (
+        True,
+        [
+            ["email", "first_name", "last_name", "cohort", "reason"],
+            ["'=bad", "Eve", "Hacker", "", "This isn't a valid email address."],
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_the_error_csv_is_named_for_the_day(import_world: SimpleNamespace):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "bad,,,"
+    )
+
+    with time_machine.travel(datetime(2026, 3, 4, 12, tzinfo=UTC)):
+        response = import_world.client.get(
+            _import_url(
+                import_world.organisation, "learner_import_errors", learner_import
+            )
+        )
+
+    assert (
+        response["Content-Disposition"]
+        == 'attachment; filename="learner-import-errors-2026-03-04.csv"'
+    )
+
+
+@pytest.mark.django_db
+def test_the_error_csv_of_a_finished_import_holds_the_final_error_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    _body, rows = _error_csv_rows(response)
+    assert [row[0] for row in rows[1:]] == ["bad"]
+
+
+@pytest.mark.django_db
+def test_the_error_csv_is_a_404_for_another_user_of_the_organisation(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "bad,,,"
+    )
+    other = cast(User, UserFactory(superuser=True))
+
+    response = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, "learner_import_errors", learner_import)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_result_lists_its_error_rows_the_download_and_the_reupload_line(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    text = " ".join(page.text_content().split())
+    error_cells = [cell.text for cell in page.cssselect("table[data-error-rows] td")]
+    download = page.cssselect("a[data-error-download]")[0].get("href")
+    assert (error_cells, download) == (
+        ["3", "bad", "This isn't a valid email address."],
+        _import_url(import_world.organisation, "learner_import_errors", learner_import),
+    )
+    assert (
+        "Uploading the whole file again is safe: rows already added show as "
+        "'already a member'." in text
+    )
+
+
+@pytest.mark.django_db
+def test_the_result_shows_only_the_first_fifty_error_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(0, 51)
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert len(page.cssselect("table[data-error-rows] tbody tr")) == 50
+
+
+@pytest.mark.django_db
+def test_a_failed_import_shows_the_reupload_line(import_world: SimpleNamespace):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=RunStatus.FAILED, error_message="Something broke."
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert "Uploading the whole file again is safe" in page.text_content()
+
+
+def _import_task_rows():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path__endswith="_run_learner_import_task")
+
+
+def _ten_row_import(import_world: SimpleNamespace) -> LearnerImport:
+    return _import_for(
+        import_world.admin,
+        import_world.organisation,
+        *(f"learner{index}@example.com,,," for index in range(10)),
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_names_the_background_only_above_the_threshold(
+    import_world: SimpleNamespace, settings
+):
+    learner_import = _ten_row_import(import_world)
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    settings.BULK_BACKGROUND_THRESHOLD = 10
+    at_threshold = " ".join(
+        _get_document(import_world.client, url).text_content().split()
+    )
+    settings.BULK_BACKGROUND_THRESHOLD = 9
+    above_threshold = " ".join(
+        _get_document(import_world.client, url).text_content().split()
+    )
+
+    assert "runs in the background" not in at_threshold
+    assert (
+        "This import runs in the background. The result page will show progress."
+        in above_threshold
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_confirming_above_the_threshold_queues_one_task_and_the_result_page_polls(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+    result_url = _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+
+    confirmed = import_world.client.post(preview_url)
+    page = _get_document(import_world.client, result_url)
+
+    learner_import.refresh_from_db()
+    (status,) = page.cssselect("#run-status")
+    assert (confirmed.status_code, confirmed["Location"]) == (303, result_url)
+    assert learner_import.status == RunStatus.QUEUED
+    assert _import_task_rows().count() == 1
+    assert Learner.objects.filter(organisation=import_world.organisation).count() == 2
+    assert status.get("role") == "status"
+    assert status.get("hx-trigger") == "every 2s"
+    assert status.get("hx-get") == _import_url(
+        import_world.organisation, "learner_import_status", learner_import
+    )
+    assert "Waiting to start." in status.text_content()
+    assert status.cssselect("progress, [role=progressbar]")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_second_confirmation_of_a_queued_import_does_not_enqueue_again(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    import_world.client.post(url)
+    second = import_world.client.post(url)
+
+    assert second.status_code == 303
+    assert second["Location"] == _import_url(
+        import_world.organisation, "learner_import_result", learner_import
+    )
+    assert _import_task_rows().count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_status_partial_drops_the_trigger_and_holds_the_result_once_done(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    status_url = _import_url(
+        import_world.organisation, "learner_import_status", learner_import
+    )
+
+    queued = import_world.client.get(status_url)
+    run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
+    done = import_world.client.get(status_url)
+
+    queued_status = lxml.html.fromstring(queued.content.decode())
+    done_status = lxml.html.fromstring(done.content.decode())
+    assert queued_status.get("hx-trigger") == "every 2s"
+    assert done_status.get("id") == "run-status"
+    assert done_status.get("hx-trigger") is None
+    assert done_status.get("hx-get") is None
+    assert "Added 10 learners. 0 rows were not added." in " ".join(
+        done_status.text_content().split()
+    )
+
+
+@pytest.mark.django_db
+def test_the_status_partial_of_a_failed_import_stops_polling_and_shows_the_reason(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=RunStatus.FAILED, error_message="Something broke.", processed_count=0
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+
+    status = lxml.html.fromstring(response.content.decode())
+    text = " ".join(status.text_content().split())
+    assert status.get("hx-trigger") is None
+    assert "Stopped after 0 of 1 rows" in text
+    assert "Something broke." in text
+    assert "Uploading the whole file again is safe" in text
+
+
+@pytest.mark.django_db
+def test_the_import_status_is_a_404_for_another_user_and_another_organisation(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(status=RunStatus.QUEUED)
+    other = cast(User, UserFactory(superuser=True))
+
+    by_other_user = import_world.logged_in_client(other).get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+    through_other_slug = import_world.client.get(
+        _import_url(OrganisationFactory(), "learner_import_status", learner_import)
+    )
+
+    assert by_other_user.status_code == 404
+    assert through_other_slug.status_code == 404
+
+
+# learner import from a cohort
+
+
+def _cohort_import_url(organisation: Organisation, cohort: Cohort) -> str:
+    return f"{_import_url(organisation, 'learner_import')}?cohort={cohort.pk}"
+
+
+def _learners_tab_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners")
+
+
+@pytest.mark.django_db
+def test_the_cohort_upload_page_names_the_cohort_and_says_the_cohort_column_is_ignored(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, name="Accra Jan")
+
+    page = _get_document(
+        import_world.client, _cohort_import_url(import_world.organisation, cohort)
+    )
+
+    text = " ".join(page.text_content().split())
+    assert "Accra Jan" in text
+    assert "The cohort column is ignored" in text
+    assert "is matched by name" not in text
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_the_403_page_from_the_cohort_upload_page(
+    import_world: SimpleNamespace,
+):
+    response = import_world.cohort_admin_client.get(
+        _cohort_import_url(import_world.organisation, import_world.cohort)
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_is_refused_by_the_cohort_upload_page(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, is_active=False)
+
+    response = import_world.client.get(
+        _cohort_import_url(import_world.organisation, cohort)
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "cohort_param", ["not-a-uuid", "00000000-0000-0000-0000-000000000000"]
+)
+def test_an_unknown_cohort_is_a_404_on_the_upload_page(
+    import_world: SimpleNamespace, cohort_param: str
+):
+    response = import_world.client.get(
+        f"{_import_url(import_world.organisation, 'learner_import')}?cohort={cohort_param}"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cohort_in_another_organisation_is_a_404_on_the_upload_page(
+    import_world: SimpleNamespace,
+):
+    foreign = CohortFactory(organisation=OrganisationFactory())
+
+    response = import_world.client.get(
+        _cohort_import_url(import_world.organisation, foreign)
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_uploading_from_the_cohort_page_stores_the_cohort_on_the_import(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+
+    response = import_world.client.post(
+        _cohort_import_url(import_world.organisation, cohort),
+        {"file": _csv_upload("a@example.com,Ada,Lovelace,Other cohort")},
+    )
+
+    learner_import = LearnerImport.objects.get()
+    assert response.status_code == 303
+    assert learner_import.cohort == cohort
+
+
+@pytest.mark.django_db
+def test_the_preview_of_a_cohort_import_shows_the_target_cohort_on_every_row(
+    import_world: SimpleNamespace,
+):
+    """The preview echoed the file's ignored cohort cell, so a row naming
+    another cohort, or none, looked like it would join somewhere else."""
+    cohort = CohortFactory(organisation=import_world.organisation, name="Target A")
+    CohortFactory(organisation=import_world.organisation, name="Other C")
+    learner_import = create_learner_import(
+        import_world.admin,
+        import_world.organisation,
+        cohort,
+        _csv_upload("a@example.com,Co,Imp,Other C", "b@example.com,,,"),
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    table_cells = [
+        " ".join(row.cssselect("td")[4].text_content().split())
+        for row in page.cssselect("tbody tr")
+    ]
+    card_values = [
+        " ".join(dd.text_content().split())
+        for dd in page.cssselect("[data-row-cards] dt:contains('Cohort') + dd")
+    ]
+    assert table_cells == ["Target A", "Target A"]
+    assert card_values == ["Target A", "Target A"]
+
+
+@pytest.mark.django_db
+def test_a_failed_cohort_upload_keeps_the_cohort_for_the_next_attempt(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, name="Accra Jan")
+
+    response = import_world.client.post(
+        _cohort_import_url(import_world.organisation, cohort),
+        {"file": SimpleUploadedFile("learners.csv", b"name\nAda\n")},
+    )
+
+    assert response.status_code == 422
+    assert "Accra Jan" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_result_of_a_cohort_import_links_to_the_cohorts_learners_tab(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+    learner_import = create_learner_import(
+        import_world.admin,
+        import_world.organisation,
+        cohort,
+        _csv_upload("a@example.com,,,"),
+    )
+    run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    hrefs = [link.get("href") for link in page.cssselect("#main-content a")]
+    assert _learners_tab_url(import_world.organisation, cohort) in hrefs
+
+
+@pytest.mark.django_db
+def test_the_cohort_learners_tab_offers_the_import_link_to_an_organisation_admin(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation)
+
+    page = _get_document(
+        import_world.client, _learners_tab_url(import_world.organisation, cohort)
+    )
+
+    hrefs = [link.get("href") for link in page.cssselect("a[href]")]
+    assert _cohort_import_url(import_world.organisation, cohort) in hrefs
+
+
+@pytest.mark.django_db
+def test_the_cohort_learners_tab_hides_the_import_link_from_a_cohort_admin(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.cohort_admin_client,
+        _learners_tab_url(import_world.organisation, import_world.cohort),
+    )
+
+    hrefs = [link.get("href") or "" for link in page.cssselect("a[href]")]
+    assert not [href for href in hrefs if "/learners/import" in href]
