@@ -2272,14 +2272,18 @@ class EducatorBulkAction(RecordedBulkAction):
     """A bulk action over the rows of an educator-interface table, scoped to
     the organisation the request was made under.
 
-    Each object is checked, previewed and changed with the same capability,
-    scope and service its single-object action uses. Subclasses fill in the
-    hooks; the defaults suit an action with no target picker.
+    Each object is changed with the same capability and service its
+    single-object action uses. `permitted` decides which objects the user may
+    change; it is read once per preview and once per run, so the preview and
+    the run agree and the cost does not grow with the selection. Subclasses
+    fill in the hooks; the defaults suit an action with no target picker.
     """
 
     capability: str
     #: The skip reason when the service reports nothing changed.
     unchanged_reason: str = ""
+    #: The pks `permitted` returned, set by `prepare`.
+    permitted_ids: frozenset[object] = frozenset()
 
     def has_permission(self, request: HttpRequest) -> bool:
         scoped = cast("OrganisationScopedRequest", request)
@@ -2300,9 +2304,18 @@ class EducatorBulkAction(RecordedBulkAction):
         current state; None when it would change."""
         return None
 
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        """What the single-object action asks `can` about before acting."""
-        raise NotImplementedError
+    def prepare(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        scope: Model | None,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> None:
+        self.permitted_ids = frozenset(
+            self.permitted(
+                user, cast(Organisation, scope), queryset, cleaned_data
+            ).values_list("pk", flat=True)
+        )
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         """Call the service; False when it reports nothing changed."""
@@ -2342,14 +2355,10 @@ class EducatorBulkAction(RecordedBulkAction):
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
         scoped = cast("OrganisationScopedRequest", request)
-        permitted_ids = set(
-            self.permitted(
-                scoped.user, scoped.organisation, queryset, cleaned_data
-            ).values_list("pk", flat=True)
-        )
+        self.prepare(scoped.user, scoped.organisation, queryset, cleaned_data)
         outcomes: dict[str, BulkOutcome] = {}
         for obj in self.with_related(queryset):
-            if obj.pk not in permitted_ids:
+            if obj.pk not in self.permitted_ids:
                 outcomes[str(obj.pk)] = BulkOutcome(
                     "skipped", self.not_permitted_reason()
                 )
@@ -2369,7 +2378,7 @@ class EducatorBulkAction(RecordedBulkAction):
         obj: Model,
         cleaned_data: dict[str, object],
     ) -> BulkOutcome:
-        if not can(user, self.capability, self.scope_object(obj, cleaned_data)):
+        if obj.pk not in self.permitted_ids:
             return BulkOutcome("skipped", self.not_permitted_reason())
         if self.perform(obj, cleaned_data, cast("User", user)):
             return BulkOutcome("changed")
@@ -2454,9 +2463,6 @@ class CohortMembershipBulkAction(LearnerBulkAction):
             ).values_list("learner_id", flat=True)
         )
         return super().classify_all(request, queryset, cleaned_data)
-
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        return cast(Cohort, cleaned_data["cohort"])
 
     def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
         return {"cohort": str(cast(Cohort, cleaned_data["cohort"]).pk)}
@@ -2564,9 +2570,6 @@ class LearnerStateBulkAction(LearnerBulkAction):
             return self.unchanged_reason
         return None
 
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        return cast(Learner, obj).organisation
-
 
 @register_bulk_action
 class DeactivateLearnersBulkAction(LearnerStateBulkAction):
@@ -2662,9 +2665,6 @@ class CourseRegistrationBulkAction(LearnerBulkAction):
             ).values_list("learner_id", flat=True)
         )
         return super().classify_all(request, queryset, cleaned_data)
-
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        return obj
 
     def target_json(self, cleaned_data: dict[str, object]) -> dict[str, str]:
         return {"course": str(cast(Course, cleaned_data["course"]).pk)}
@@ -2783,9 +2783,6 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
         return None if obj.pk in self.pending_ids else self.unchanged_reason
 
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        return obj
-
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         record_and_resend_setup_email(cast(Learner, obj), actor)
         return True
@@ -2843,6 +2840,9 @@ class CohortBulkAction(EducatorBulkAction):
     table_key = "cohorts"
     noun_model = Cohort
 
+    def with_related(self, queryset: QuerySet) -> QuerySet:
+        return queryset.select_related("organisation", "site")
+
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
@@ -2855,9 +2855,6 @@ class CohortBulkAction(EducatorBulkAction):
                 user, organisation, capability=self.capability
             ).values("pk")
         )
-
-    def scope_object(self, obj: Model, cleaned_data: dict[str, object]) -> Model:
-        return obj
 
 
 class CohortCourseBulkAction(CohortBulkAction):

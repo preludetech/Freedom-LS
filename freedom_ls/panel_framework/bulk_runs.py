@@ -97,6 +97,7 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
         result = run_apply(
             action,
             run.requested_by,
+            run.scope,
             queryset,
             cleaned_data,
             on_progress=save_processed(run),
