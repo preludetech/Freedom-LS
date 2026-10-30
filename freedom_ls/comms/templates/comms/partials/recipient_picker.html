@@ -43,7 +43,11 @@ state into the messages page's #thread-pane instead of navigating.
                     </ul>
                 </div>
             {% empty %}
-                <p class="text-muted">No one you can message matches '{{ term }}'</p>
+                {% if term %}
+                    <p class="text-muted">No one you can message matches '{{ term }}'</p>
+                {% else %}
+                    <p class="text-muted">There's no one you can message here.</p>
+                {% endif %}
             {% endfor %}
             {% if search.truncated %}
                 <p class="text-muted">Keep typing to narrow the list.</p>

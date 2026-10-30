@@ -1474,6 +1474,15 @@ class TestRecipientPicker:
 
         assert "No one you can message matches 'zzzz'" in response.content.decode()
 
+    def test_nobody_to_offer_without_a_term_quotes_no_term(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(search_url())
+
+        content = response.content.decode()
+        assert "matches ''" not in content
+        assert "There's no one you can message here." in content
+
     def test_a_long_list_is_listed_to_the_cap_with_the_note(
         self, mock_site_context, logged_in_client
     ) -> None:
