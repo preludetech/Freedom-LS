@@ -534,6 +534,58 @@ class TestInbox:
 
         assert "Deleted user" in content
 
+    def test_nothing_selected_renders_the_placeholder_and_no_thread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert "Select a conversation to read it." in response.content.decode()
+        assert not tree.xpath("//*[@id='thread-log']")
+        assert not tree.xpath("//*[@id='composer']")
+        assert not tree.xpath("//*[@x-data='conversationThread']")
+        assert not tree.xpath("//*[@aria-current]")
+
+    def test_nothing_selected_leaves_every_conversation_unread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        before = ConversationParticipant.objects.get(
+            conversation=conversation, user=user
+        ).last_read_at
+
+        logged_in_client(user).get(inbox_url())
+
+        after = ConversationParticipant.objects.get(
+            conversation=conversation, user=user
+        ).last_read_at
+        assert after == before
+
+    def test_the_placeholder_copy_follows_whether_there_are_conversations(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        user = UserFactory()
+        empty = logged_in_client(user).get(inbox_url()).content.decode()
+        ConversationFactory(between=(user, UserFactory()))
+        listed = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert "Select a conversation to read it." not in empty
+        assert "Select a conversation to read it." in listed
+
+    def test_the_list_pane_has_a_header(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert tree.xpath("//aside//h1[normalize-space()='Messages']")
+
     def test_it_is_404_when_messaging_is_off(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
@@ -650,7 +702,7 @@ class TestThreadMarksRead:
         content = logged_in_client(user).get(thread_url(conversation)).content.decode()
 
         assert 'id="conversation-list"' in content
-        assert 'aria-current="page"' in content
+        assert 'aria-current="true"' in content
 
     def test_the_thread_has_a_back_link_to_the_inbox(
         self, pair, logged_in_client
@@ -970,7 +1022,7 @@ class TestStartRefused:
 
 
 @pytest.mark.django_db
-class TestInboxNewMessage:
+class TestMessagesPageNewMessage:
     def test_the_button_shows_when_the_user_has_recipients(
         self, mock_site_context, logged_in_client, allow_policy
     ) -> None:
@@ -1998,7 +2050,7 @@ class TestInboxPoll:
             inbox_poll_url(current=str(conversation.pk)), **HTMX
         )
 
-        links = poll_tree(response).xpath("//a[@aria-current='page']")
+        links = poll_tree(response).xpath("//a[@aria-current='true']")
         assert [link.get("href") for link in links] == [thread_url(conversation)]
 
     def test_the_thread_page_tells_the_poll_which_thread_is_open(

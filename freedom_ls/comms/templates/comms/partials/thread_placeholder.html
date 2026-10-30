@@ -1,0 +1,10 @@
+{% comment %}
+The thread pane when no conversation is selected. It never includes the
+thread partial, so nothing here marks a conversation read.
+{% endcomment %}
+<div class="flex min-h-[50dvh] flex-col items-center justify-center gap-4 p-6 text-center text-muted">
+    <p class="m-0">{% if inbox_rows %}Select a conversation to read it.{% else %}No conversations yet.{% endif %}</p>
+    {% if has_recipients %}
+        {% include "comms/partials/new_message_button.html" %}
+    {% endif %}
+</div>

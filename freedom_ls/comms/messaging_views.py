@@ -231,29 +231,40 @@ def thread_context(
     }
 
 
+def _page_context(
+    request: HttpRequest, current: Conversation | None = None
+) -> dict[str, object]:
+    """What every render of the messages page needs beyond the thread itself."""
+    return {
+        **_inbox_context(request, current),
+        "has_recipients": _has_recipients(request),
+    }
+
+
 @messaging_view
 def thread(request: HttpRequest, pk: UUID) -> HttpResponse:
     conversation = participant_conversation(request, pk)
     context = thread_context(request, conversation)
-    context.update(_inbox_context(request, conversation))
+    context.update(_page_context(request, conversation))
     return render(request, "comms/thread.html", context)
 
 
 @messaging_view
 def inbox(request: HttpRequest) -> HttpResponse:
-    """The conversation list. A history-restore request needs the full page."""
+    """The messages page with no conversation selected, or the list alone for htmx.
+
+    A history-restore request needs the full page.
+    """
     is_fragment = (
         request.headers.get("HX-Request") == "true"
         and request.headers.get("HX-History-Restore-Request") != "true"
     )
-    template_name = (
-        "comms/partials/conversation_list.html#conversation-list"
-        if is_fragment
-        else "comms/inbox.html"
-    )
-    context = _inbox_context(request)
-    context["has_recipients"] = _has_recipients(request)
-    return render(request, template_name, context)
+    context = _page_context(request)
+    if is_fragment:
+        return render(
+            request, "comms/partials/conversation_list.html#conversation-list", context
+        )
+    return render(request, "comms/thread.html", context)
 
 
 def _has_recipients(request: HttpRequest) -> bool:
@@ -442,7 +453,7 @@ def _send_response(
             "comms/thread.html",
             {
                 **thread_context(request, conversation),
-                **_inbox_context(request, conversation),
+                **_page_context(request, conversation),
                 **context,
             },
             status=422,
