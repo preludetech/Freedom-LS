@@ -52,7 +52,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
   - Decision: fix it. The bar stays fixed until the sidebar docks at lg.
 - [x] Fix the import pages (TDD: failing test first): every import page shows a back link to Learners, and spec R5.1 says so
 - [x] Fix the course action labels (TDD: failing test first): 'Register for a course' and 'Unregister from a course' on both lists and the learner page
-- [ ] Fix the bulk result wording (TDD: failing test first): each skip count reads as a sentence ('2 were already in the cohort.'), the cohort skip reads 'an inactive cohort', the resend skip reads 'setup email sent recently'; update spec R1.3, QA plan §6.11 and the upgrade notes
+- [x] Fix the bulk result wording (TDD: failing test first): each skip count reads as a sentence ('2 were already in the cohort.'), the cohort skip reads 'an inactive cohort', the resend skip reads 'setup email sent recently'; update spec R1.3, QA plan §6.11 and the upgrade notes
 - [ ] Fix the selection bar (TDD: failing test first): fixed to the bottom below lg, with the table padded so the bar covers no row
 
 ## 3b. Portable bulk runs (review follow-up)

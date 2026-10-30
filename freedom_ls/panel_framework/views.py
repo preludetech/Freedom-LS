@@ -739,7 +739,11 @@ def _result_context(
         "result": result,
         "noun": noun,
         "headline": headline,
-        "other_counts": [item for item in result.counts if item.status != "changed"],
+        "result_lines": [
+            action.result_line(item)
+            for item in result.counts
+            if item.status != "changed"
+        ],
     }
 
 

@@ -88,7 +88,7 @@ from freedom_ls.panel_framework.bulk_actions import (
     run_apply,
 )
 from freedom_ls.panel_framework.bulk_runs import (
-    NO_LONGER_EXISTS,
+    NOT_FOUND,
     report_finished,
     run_bulk_action,
     run_summary,
@@ -5596,7 +5596,7 @@ def test_bulk_deactivate_changes_the_learners_and_summarises_the_run(
         learner.is_active
         for learner in Learner.objects.filter(pk__in=[learner.pk for learner in active])
     } == {False}
-    assert "1 already inactive" in _bulk_text(response)
+    assert "1 was already inactive." in _bulk_text(response)
     trigger = json.loads(response["HX-Trigger"])
     assert set(trigger[LEARNER_CHANGED]["ids"]) == {
         str(learner.pk) for learner in active
@@ -5636,7 +5636,7 @@ def test_bulk_reactivate_changes_inactive_learners_and_skips_active_ones(
 
     inactive.refresh_from_db()
     assert inactive.is_active is True
-    assert "1 already active" in _bulk_text(response)
+    assert "1 was already active." in _bulk_text(response)
 
 
 @pytest.mark.django_db
@@ -6042,7 +6042,7 @@ def test_bulk_add_to_cohort_adds_only_the_learners_who_are_not_members(
 
     text = _bulk_text(response)
     assert "1 learner changed." in text
-    assert "1 already in the cohort" in text
+    assert "1 was already in the cohort." in text
     assert CohortMembership.objects.filter(cohort=cohort, learner=fresh).exists()
 
 
@@ -6175,7 +6175,7 @@ def test_bulk_remove_from_cohort_deletes_memberships_and_skips_non_members(
 
     text = _bulk_text(response)
     assert "1 learner changed." in text
-    assert "1 not a member" in text
+    assert "1 was not a member." in text
     assert not CohortMembership.objects.filter(cohort=cohort).exists()
 
 
@@ -6557,6 +6557,29 @@ def test_bulk_resend_sends_one_email_per_pending_learner(
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("_clear_resend_guard")
+@pytest.mark.parametrize(
+    ("set_up", "line"),
+    [(1, "1 account was already set up."), (2, "2 accounts were already set up.")],
+)
+def test_bulk_resend_result_counts_the_accounts_already_set_up(
+    staff_client: Client, django_capture_on_commit_callbacks, set_up: int, line: str
+):
+    organisation = OrganisationFactory()
+    pending = _bulk_pending_learner(organisation)
+    done = [_bulk_learner(organisation=organisation) for _ in range(set_up)]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _bulk_confirm(
+            staff_client, organisation, "resend_setup_email", [pending, *done]
+        )
+
+    text = _bulk_text(response)
+    assert "1 learner changed." in text
+    assert line in text
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
 def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
     staff_client: Client, django_capture_on_commit_callbacks
 ):
@@ -6574,7 +6597,7 @@ def test_bulk_resend_skips_a_learner_emailed_inside_the_resend_window(
 
     text = _bulk_text(response)
     assert "1 learner changed." in text
-    assert "1 emailed recently" in text
+    assert "1 setup email was sent recently." in text
     assert len(mail.outbox) == 1
 
 
@@ -6783,7 +6806,7 @@ def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "Register 1 cohort for Algebra." in text
     assert "1 is already registered and will be skipped." in text
-    assert "1 is inactive and will be skipped." in text
+    assert "1 is an inactive cohort and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -6896,7 +6919,9 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
         {"course": CourseFactory()},
     )
 
-    assert [(e.status, e.reason) for e in result.entries] == [("skipped", "inactive")]
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", "an inactive cohort")
+    ]
 
 
 @pytest.mark.django_db
@@ -6922,7 +6947,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "Unregister 1 cohort from Algebra." in text
     assert "1 is not registered and will be skipped." in text
-    assert "1 is inactive and will be skipped." in text
+    assert "1 is an inactive cohort and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -7035,7 +7060,7 @@ def test_a_learner_of_another_organisation_is_not_touched(mock_site_context: Sit
 
     other.refresh_from_db()
     assert other.is_active is True
-    assert BulkCount("skipped", NO_LONGER_EXISTS, 1) in result.counts
+    assert BulkCount("skipped", NOT_FOUND, 1) in result.counts
 
 
 @pytest.mark.django_db
@@ -7137,7 +7162,7 @@ def test_the_summary_counts_in_the_actions_own_noun(mock_site_context: Site):
         counts=[
             BulkCount("changed", "", 3),
             BulkCount("skipped", "already inactive", 2),
-            BulkCount("skipped", NO_LONGER_EXISTS, 1),
+            BulkCount("skipped", NOT_FOUND, 1),
             BulkCount("failed", "error", 1),
         ],
         entries=[],

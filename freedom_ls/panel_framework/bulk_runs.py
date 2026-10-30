@@ -20,7 +20,7 @@ from freedom_ls.panel_framework.bulk_actions import (
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.run_records import record_run
 
-NO_LONGER_EXISTS = "no longer exists"
+NOT_FOUND = "not found"
 ACTION_UNAVAILABLE = "This action is no longer available."
 
 
@@ -102,7 +102,7 @@ def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
             cleaned_data,
             on_progress=save_processed(run),
         )
-        result = with_missing_keys(result, run.keys, queryset, NO_LONGER_EXISTS)
+        result = with_missing_keys(result, run.keys, queryset, NOT_FOUND)
         run.result, run.status = result.to_json(), RunStatus.DONE
     return result
 
