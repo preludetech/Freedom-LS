@@ -24,9 +24,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (user) Add the **oversight** (coined) row under Messaging in `.claude/skills/domain-glossary/SKILL.md`, and `conversation` and `viewed` to its Changes section (spec "Documentation and downstream")
-- [ ] (user) Rewrite `.claude/skills/notifications/SKILL.md` so its example table and rollup section stop citing `message.received`; messages raise no notification because the header badge already shows unread conversations (spec "Documentation and downstream")
-- [ ] (user) In `spec_dd/1. next/roadmap.md`, note on the `user-communication-2-notification-email` row that message emails need their own trigger (spec "Documentation and downstream")
+- [x] (user) Add the **oversight** (coined) row under Messaging in `.claude/skills/domain-glossary/SKILL.md`, and `conversation` and `viewed` to its Changes section (spec "Documentation and downstream")
+- [x] (user) Rewrite `.claude/skills/notifications/SKILL.md` so its example table and rollup section stop citing `message.received`; messages raise no notification because the header badge already shows unread conversations (spec "Documentation and downstream")
+- [x] (user) In `spec_dd/1. next/roadmap.md`, note on the `user-communication-2-notification-email` row that message emails need their own trigger (spec "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward

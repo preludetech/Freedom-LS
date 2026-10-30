@@ -174,7 +174,7 @@ notification enqueues nothing, so email goes out once per unread stretch.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate, daily, weekly or off preferences and timezone-aware quiet hours, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`, and a new `fls_run_housekeeping` sweep for digests and held mail with its cadence documented. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
+| 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate, daily, weekly or off preferences and timezone-aware quiet hours, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`, and a new `fls_run_housekeeping` sweep for digests and held mail with its cadence documented. Messages raise no notification since `user-communication-ux-improve` removed `message.received`, so message emails need their own trigger. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
 | 6 | `user-communication-6-moderation` | Report a message, block a user, and a report queue where site admins hide messages. Nothing is hard deleted. | `user-communication-4-direct-messaging` | next |
 | 8 | `user-communication-8-realtime` | Optional Django Channels push for the unread badge and open threads, off by default, polling as the fallback, the ASGI and channel-layer deployment documented. | `user-communication-4-direct-messaging`, `user-communication-6-moderation` | next |
 
