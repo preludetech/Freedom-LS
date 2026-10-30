@@ -539,6 +539,21 @@ def _educator_with_conversation(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("messaging_on")
 class TestLearnerQuickViewMessageBox:
+    def test_the_composer_carries_the_disclosure_line(self, educator_client):
+        organisation = OrganisationFactory()
+        learner = _learner_in(organisation)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(box.text_content().split())
+        )
+
     def test_shows_the_composer_when_there_is_no_conversation_yet(
         self, educator_client
     ):
