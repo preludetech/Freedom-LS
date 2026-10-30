@@ -1,3 +1,8 @@
+---
+description: Advance the FreedomLS submodule one completed spec at a time, from inside a concrete project
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Skill, Agent, AskUserQuestion, mcp__plugin_ds_playwright__*
+---
+
 Update the FreedomLS submodule (`submodules/Freedom-LS`) to the latest version, integrating each completed spec one at a time.
 
 The core flow is: advance the submodule **spec by spec**, integrate each completed spec, run a test gate, and make **one commit per spec** (`Update FLS: <spec-name>`). On top of that, this command reads each spec's structured `upgrade_notes.md` to know exactly which integration steps to run, previews the whole plan before touching anything, guards migrations, and documents how to roll back a failed spec.
@@ -32,137 +37,9 @@ Print a preview table — one row per spec — listing the spec name and the fla
 
 Present the preview and let the operator confirm before any pointer moves. Do not modify the submodule or the concrete project during this step.
 
-# Step 3: Integrate each spec sequentially
+# Step 3 and 4: integrate
 
-For each completed spec, in chronological order, use a subagent to do the following.
-
-## 3a. Read the upgrade notes
-
-Read `submodules/Freedom-LS/spec_dd/3. done/<spec-dir>/upgrade_notes.md` and parse its frontmatter flags. These drive which of the steps below actually run.
-
-**Backward compatibility:** if the file is absent, **warn** that the spec has no structured notes and **fall back to the previous prose-inference behaviour** — read the spec's `1. spec.md` and `2. plan.md` (and, if needed, the actual code diff for that commit) to infer the required integration work, exactly as before. The flag-driven steps below then become judgement calls based on that reading.
-
-## 3b. Pre-flight migration check
-
-Before moving the pointer, confirm the concrete project's migration state is clean:
-
-```
-uv run python manage.py migrate --check
-```
-
-If this fails, stop and resolve the dirty migration state before integrating further — do not move the pointer on top of an inconsistent database state.
-
-## 3c. Move the submodule pointer
-
-Update `submodules/Freedom-LS` to the commit that completed this spec:
-
-```
-cd submodules/Freedom-LS && git checkout <commit-hash>
-```
-
-## 3d. Sync dependencies
-
-Always run `uv sync` after the pointer moves — a spec may have introduced new FLS dependencies even when `requires_package_upgrade` is not set:
-
-```
-uv sync
-```
-
-(Concrete-project CI uses `uv sync --locked`, so make sure `uv.lock` ends up committed alongside the integration.)
-
-## 3e. Apply the flagged integration steps
-
-Run only the steps the notes call for (or that prose inference indicated, for specs without notes). **Apply settings before migrations** — `migrate` and `makemigrations` run Django's full system-check set, so a spec that adds both a boot-enforced setting and a migration aborts on that setting's check if the migration runs first:
-
-- **`requires_settings_change`** → review and apply the listed `changed_settings` to the concrete project's `config/`.
-- **`requires_migrations`** → `uv run python manage.py makemigrations && uv run python manage.py migrate`
-- **`requires_package_upgrade`** → apply the listed `changed_packages` (already partly covered by `uv sync`; reconcile versions if the notes pin specific ones).
-- **`requires_npm_install`** → add the listed `changed_npm_packages` to the concrete project's own `package.json`, then run `npm install`. Unlike `uv sync`, this is **not** auto-resolved from the submodule — the concrete project keeps a standalone `package.json`, so the new deps must be mirrored in by hand. Commit the updated `package-lock.json` alongside the integration. Run this **before** any Tailwind rebuild so new icon sets/packages are present when the bundle is built.
-- **`requires_tailwind_rebuild`** → `npm run tailwind_build`.
-- **`requires_template_review`** → run the template-drift detection in 3f.
-
-## 3f. Template-drift detection (when `requires_template_review` is set)
-
-For each path in `changed_template_paths`, check whether the concrete project ships its own override of that template (a file at the same template path under the concrete project's own template directories). If it does, the upstream source changed underneath the override, so the override may now be stale.
-
-**Flag** every such override for human review — report the path and that its upstream source changed. **Do not auto-merge**; re-applying customisations is a human decision.
-
-## 3g. System check
-
-After applying the integration, run FreedomLS's system checks to catch configuration drift the pointer move introduced:
-
-```
-uv run python manage.py check
-uv run python manage.py check --deploy --settings=<the project's production settings>
-```
-
-Both runs are needed. FLS registers checks in both groups and neither run is a superset of the other: the deploy-gated ones guard production-only configuration — storage, caches, proxy headers — and a pointer move is exactly what lands new configuration for them to catch, so skipping that run is how a misconfigured production setting reaches production silently. The spec's `upgrade_notes.md` names any check ids that spec adds or changes; FLS's own `docs/deployment-security-checklist.md` documents what every id reports.
-
-`--deploy` needs the production settings module, since the checks read settings that only exist there. If the environment this runs in cannot supply the production settings, say so and hand the `--deploy` run to the deploy pipeline rather than skipping it.
-
-`migrate` and `makemigrations` already run the non-deploy check set internally, so that half isn't the only place a failure would surface — running it directly here is about attribution (a configuration `Error` would otherwise read as a migration-gate failure) and warning visibility (only a direct `check` sets `display_num_errors`). Errors abort the run: stop and resolve them. Warnings do not abort, but read and act on them rather than skimming past.
-
-## 3h. Post-flight conflict check
-
-After applying the integration, confirm no migrations are missing or in conflict:
-
-```
-uv run python manage.py makemigrations --check
-```
-
-A non-zero result here means the integration left the migration state inconsistent (e.g. a model change with no migration). Resolve it before committing.
-
-## 3i. Verify
-
-Before running the test suite, confirm the concrete project has a `tests/` file that imports `freedom_ls.contrib.conformance`. If no such file exists, write one with **exactly** the contents below, note that it was added, and continue:
-
-```python
-# tests/test_fls_conformance.py
-from freedom_ls.contrib.conformance import *  # noqa: F401,F403
-```
-
-Write it verbatim — customise nothing. In particular, **never** add a `conformance.drop(...)` call: dropping a probe is a downstream decision about a route that project has actually customised, and it belongs in the project's own `conftest.py`, not in a file this command generates.
-
-If the project already has a conformance file but wants to avoid shadowing same-named tests of its own, the collision-safe form binds all six probes explicitly:
-
-```python
-from freedom_ls.contrib import conformance
-
-test_fls_namespace_reverses = conformance.test_fls_namespace_reverses
-test_reference_url_reverses = conformance.test_reference_url_reverses
-test_configured_backend_instantiates = conformance.test_configured_backend_instantiates
-test_active_theme_resolves = conformance.test_active_theme_resolves
-test_active_icon_set_resolves = conformance.test_active_icon_set_resolves
-test_migration_state_consistent = conformance.test_migration_state_consistent
-```
-
-Binding a subset is a silent false green — the probes you leave out simply never run.
-
-**Why add the file even though the probes may already be running.** A concrete project that falls back to recursive collection over the vendored `submodules/Freedom-LS` tree already collects `freedom_ls/contrib/conformance/test_*.py` directly, so the suite runs whether or not this file exists. That is incidental, not a contract: it depends on collection scope the project can change at any time, and if it later points `testpaths` at its own `tests/` dir the conformance signal disappears with no error. An explicit opt-in file makes the conformance contract intentional, keeps it stable under either collection scope, and gives the probes node IDs under the project's own `tests/` that the operator can point at.
-
-Stop and report only if the file cannot be written.
-
-Run the portable contract test set and confirm everything passes — this is where the conformance suite above actually runs, alongside the concrete project's own suite, which deselects FLS's browser tests, brand/demo-coupled tests, and slow-only tests (the downstream is verifying its own wiring, not re-running FLS's regression suite):
-
-```
-uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
-```
-
-If there are front-end changes, use the Playwright MCP to verify things work visually.
-
-## 3j. Commit
-
-Commit the submodule update and any integration changes together (including the updated `uv.lock`) before moving to the next spec. Use a commit message like: `Update FLS: <spec-name>`.
-
-If consecutive specs are trivially simple (no integration work needed beyond updating the pointer), they may be combined into a single commit — but this should be the exception, not the rule.
-
-# Step 4: Final sync
-
-After all completed specs have been integrated:
-
-1. Update the submodule to the latest `origin/main`: `cd submodules/Freedom-LS && git checkout origin/main`
-2. If the submodule pointer moved further (i.e. there are commits after the last spec), run `uv sync` and commit the final pointer update.
-3. Run the portable contract test set one last time: `uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"`
+For each pending spec in order, follow `${CLAUDE_PLUGIN_ROOT}/resources/concrete_spec_integration.md` with `<project-root>` `.` and `<spec-commit>` the spec's commit, running its test run in 3i and its commit in 3j. After the last spec, run its final-sync section. On a failure mid-spec, run its rollback section before retrying.
 
 # Step 5: Commit and push
 
@@ -185,56 +62,3 @@ This is the last step of the run. An integration that only exists locally is a s
 Only the concrete project is pushed. The submodule needs no push of its own: every commit the pointer now references is already on FLS's `origin/main`, which is what Step 1 fetched.
 
 Do not push while any spec is still mid-integration or a template override is still flagged for human review — finish or roll back first. If the run happened on the concrete project's default branch, move the commits onto a branch and open a PR rather than pushing to the default branch directly.
-
-# Rollback: recovering from a spec that fails mid-integration
-
-If a spec fails partway through Step 3 — tests won't pass, a system check fails, a migration conflicts, an override can't be reconciled — return to the last known-good state rather than committing a broken integration. The last good state is the previous `Update FLS: <spec-name>` commit (or the pre-update HEAD if this was the first spec).
-
-1. Discard the in-progress integration changes in the concrete project (working tree and index):
-   ```
-   git checkout -- .
-   git clean -fd            # only if the spec added new untracked files you want gone
-   ```
-2. Reset the submodule pointer back to the last good commit:
-   ```
-   git submodule update --init submodules/Freedom-LS
-   ```
-   This restores `submodules/Freedom-LS` to the commit recorded in the last good concrete-project commit.
-3. Re-sync dependencies to the restored pointer. Step 1 already restored `package.json` / `package-lock.json`, so reinstall npm packages too if this spec touched them:
-   ```
-   uv sync
-   npm install
-   ```
-4. Confirm you are clean and green:
-   ```
-   git status
-   uv run python manage.py migrate --check
-   uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
-   ```
-
-You are now back at the last successfully-integrated spec. Investigate the failure (often a missing override re-apply or a migration that needs to be generated by hand) before retrying that spec.
-
-# Per-spec loop (reference)
-
-```
-for spec in pending_completed_specs (chronological):
-    notes = read frontmatter of submodules/Freedom-LS/spec_dd/3. done/<spec>/upgrade_notes.md
-    if notes missing: warn("no upgrade_notes.md — falling back to prose inference"); infer from spec/plan/diff
-    migrate --check                      # fail early on dirty migration state
-    move submodule pointer to the commit that completed <spec>
-    uv sync                              # pick up new deps
-    if notes.requires_settings_change:   apply notes.changed_settings   # before migrate: it runs system checks
-    if notes.requires_migrations:        makemigrations && migrate
-    if notes.requires_package_upgrade:   reconcile notes.changed_packages
-    if notes.requires_npm_install:       mirror notes.changed_npm_packages into package.json && npm install
-    if notes.requires_tailwind_rebuild:  npm run tailwind_build
-    if notes.requires_template_review:   flag drift for notes.changed_template_paths (no auto-merge)
-    manage.py check                      # catch config drift the pointer move introduced
-    makemigrations --check               # catch conflicts introduced by this spec
-    if no tests/ file imports freedom_ls.contrib.conformance: write one, note it, continue
-    uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"  # test gate
-    commit "Update FLS: <spec>"          # includes uv.lock
-# on failure mid-spec: follow the rollback procedure above
-
-commit any final sync leftovers, then git push   # last step of the run
-```

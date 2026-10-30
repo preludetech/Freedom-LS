@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from tests.plugin_markdown import PYTEST_INVOCATION, code_fragments
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIRS = (
     "claude_plugins/sdd",
@@ -16,13 +20,13 @@ PLUGIN_DIRS = (
 )
 
 # Files allowed to spell out a pytest invocation: the tier definition, the testing
-# and Playwright guidance, and the downstream updater's portable subset.
+# and Playwright guidance, and the shared integration procedure's portable contract test set.
 ALLOWED = frozenset(
     {
         "claude_plugins/django-stack/resources/test_tiers.md",
         "claude_plugins/fls-dev/skills/testing/SKILL.md",
         "claude_plugins/fls-dev/resources/playwright-testing.md",
-        "claude_plugins/fls-dev/commands/concrete/update_fls.md",
+        "claude_plugins/fls-dev/resources/concrete_spec_integration.md",
         # The fallback for a project with no tier definition.
         "claude_plugins/sdd/commands/protected/run_test_tier.md",
     }
@@ -34,9 +38,42 @@ def files_spelling_out_pytest() -> set[str]:
         path.relative_to(REPO_ROOT).as_posix()
         for plugin_dir in PLUGIN_DIRS
         for path in (REPO_ROOT / plugin_dir).rglob("*.md")
-        if "uv run pytest" in path.read_text()
+        if any(PYTEST_INVOCATION.search(f) for f in code_fragments(path.read_text()))
     }
 
 
 def test_only_allowlisted_plugin_files_spell_out_a_pytest_invocation() -> None:
     assert files_spelling_out_pytest() == ALLOWED
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "uv run --directory /p pytest -m x",
+        "uv run pytest",
+    ],
+)
+def test_detector_matches_a_pytest_invocation(text: str) -> None:
+    fenced = f"```\n{text}\n```"
+    inline = f"Run `{text}` now"
+
+    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(fenced))
+    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(inline))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "run `uv run` then pytest",
+        "`uv run --with pytest-cov python x.py`",
+        "`uv run --with pillow python x.py`",
+    ],
+)
+def test_detector_ignores_text_that_is_not_an_invocation(text: str) -> None:
+    assert not any(PYTEST_INVOCATION.search(f) for f in code_fragments(text))
+
+
+def test_detector_matches_an_inline_span_wrapped_across_two_lines() -> None:
+    text = "Run `uv run\npytest -x` to check."
+
+    assert any(PYTEST_INVOCATION.search(f) for f in code_fragments(text))

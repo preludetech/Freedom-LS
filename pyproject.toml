@@ -135,10 +135,11 @@ tests = ["tests"]
 glob = "claude_plugins/fls-content/**"
 tests = ["claude_plugins/fls-content", "freedom_ls/content_engine/tests"]
 
-# Plugin prompts are read by one test: the one that keeps pytest flags out of them.
+# Plugin prompts are read by the tests that keep pytest flags out of them and check the shared
+# integration procedure.
 [[tool.test_tiers.tooling]]
 glob = "claude_plugins/*/**/*.md"
-tests = ["tests/test_test_tiers.py"]
+tests = ["tests/test_test_tiers.py", "tests/test_concrete_spec_integration.py"]
 
 [tool.coverage.run]
 branch = true

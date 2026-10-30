@@ -72,9 +72,10 @@ in every QA session.** Review any new script with the same care as a new allow-l
 it validates its arguments, does not write outside the project, and does not execute its
 arguments as shell code.
 
-### Resources (14)
+### Resources (15)
 
-FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`.
+FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`, `concrete_spec_integration`
+(the per-spec integration procedure a concrete project follows; `concrete/update_fls` follows it).
 Plan review briefs, reached through `## Plan Review Hooks`: `plan_review_structure`,
 `plan_review_fls_threats`.
 FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
