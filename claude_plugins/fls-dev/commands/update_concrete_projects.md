@@ -128,12 +128,13 @@ For each spec in the run's order, and for each project that is not parked and no
 Before a cell, apply Resume (below). Then, for `<p>` the project path and `<spec-commit>` the spec's commit from Step 2:
 
 1. Follow `concrete_spec_integration.md` with `<project-root>` set to `<p>` and `<spec-commit>` set to the spec's commit, up to but not including the test run in 3i.
-2. <!-- Workaround removal inserts here, between the resource steps and the gate. -->Run the portable contract test set from `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed.
-3. Compare the failing ids with the project's baseline ids. An id not in the baseline is new. Re-run each new id alone once, and keep it as new only if it fails again. This one re-run is the whole flake allowance.
-4. If any id is still new, or any resource step errored, the cell fails. Follow `## Failure handling`; a cell that fails ends as `blocked-on-fix` or `blocked-on-spec <slug>`, or retries after a fix.
-5. <!-- QA inserts here, between the gate and the commit. -->Run 3j: `git -C <p> add -A`, then `uv run --directory <p> git commit -m "Update FLS: <spec-name>"`, with a body that names the spec directory and the pointer move.
-6. Record the project's new last good: `git -C <p> rev-parse HEAD`.
-7. Write the cell result file.
+2. Follow `## Workaround removal` for this cell.
+3. Run the portable contract test set from `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed. This gate runs with the approved removals applied.
+4. Compare the failing ids with the project's baseline ids. An id not in the baseline is new. Re-run each new id alone once, and keep it as new only if it fails again. This one re-run is the whole flake allowance.
+5. A new id, or a file, that an approved removal touched means that removal is still needed: revert it as `## Workaround removal` says and re-run the gate. If any id is then still new, or any resource step errored, the cell fails. Follow `## Failure handling`; a cell that fails ends as `blocked-on-fix` or `blocked-on-spec <slug>`, or retries after a fix.
+6. <!-- QA inserts here, between the gate and the commit. -->Run 3j: `git -C <p> add -A`, then `uv run --directory <p> git commit -m "Update FLS: <spec-name>"`, with a body that names the spec directory and the pointer move. Approved removals are part of the staged tree.
+7. Record the project's new last good: `git -C <p> rev-parse HEAD`.
+8. Write the cell result file.
 
 The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These are the command's own cell results, distinct from the `status:` footer a worker writes. It holds one `key: value` line each for:
 
@@ -143,8 +144,37 @@ The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These a
 - `flags:` the six flags from the spec's upgrade notes, or `no notes`
 - `project-commit:` the SHA from step 6, or `none`
 - `new-failures:` the ids that stayed new, or `none`
+- `workarounds:` counts of removed, declined, still needed and unmatched
 - `qa:` `not run` when the spec has no frontend QA plan
 - `result:` the last line, one of `integrated`, `blocked-on-fix`, `blocked-on-spec <slug>` or `skipped`
+
+## Workaround removal
+
+Concrete projects carry workarounds for FLS defects. Before each cell's gate, find the ones the cell's spec makes obsolete and remove the ones the operator approves.
+
+**Spec diff file.** Once per spec, write `.sdd-work/update_concrete_specdiff_<spec>.md` unless it exists. It holds `git diff --stat <previous-spec-commit>..<spec-commit>`, `git diff --name-only` of the same range, and the body of the spec's `upgrade_notes.md`, with `<previous-spec-commit>` the commit before the spec's in the run's spec list (or the project's submodule SHA for the first). The worker has no Bash, so this file is how it matches symbols, test ids, template paths and settings.
+
+**Worker.** One `sdd:sdd-worker` per cell, a solo `Agent` call, writing `.sdd-work/update_concrete_workarounds_<project>_<spec>.md`. The brief states:
+
+- the project root, and the spec name and directory;
+- the spec diff file path;
+- the read set: `apps/`, `config/`, `templates/`, `tests/`, every `conftest.py` and `pyproject.toml`;
+- the never-read set: `submodules/` and every environment file whose name starts with a dot and `env`;
+- the rule from Rules about text that comes from a concrete project, restated as written there.
+
+The worker lists three kinds of workaround:
+
+- a comment containing `workaround` or `remove once` within three lines of `FLS` or `upstream`;
+- a `--deselect` or `--ignore` entry inside the `addopts` string of `pyproject.toml` that names a path under `submodules/Freedom-LS`;
+- a template shadow or `conftest.py` fixture whose comment cites an FLS defect.
+
+One line per workaround: `path:line | what it works around | evidence line | removal | matches: <spec> or unmatched`. A match is a comment naming the spec, or naming a symbol, test id, template path or setting that the diff file or the notes touch. The file ends with a `status: ok` footer.
+
+**Approval.** Ask one `AskUserQuestion` per matched workaround, at most four per batch, with options `remove` (recommended) and `keep`. Apply each approved removal with `Edit`; delete a template shadow with `git -C <p> rm <path>`. A `TODO` or `@claude` comment goes only together with the code it annotates, inside an approved removal. After removing an `addopts` entry, re-run the project's baseline and replace its pre-existing failing ids with the result.
+
+**Gate interaction.** The gate runs with the removals applied. When a new failure's node id or file is one an approved removal touched, revert that removal (`git -C <p> checkout -- <path>` for an edit, `git -C <p> checkout HEAD -- <path>` for a deletion), re-run the gate, and record the workaround as still needed. Only then does `## Failure handling` apply to what remains.
+
+**Result.** Record for the report, per workaround: removed (path, spec), declined, still needed or unmatched. The cell result file gains a `workarounds:` line giving those four counts.
 
 ## Failure handling
 
@@ -238,7 +268,7 @@ Sections, in this order:
 3. Per-cell results, one row per cell read from the cell result files: spec, FLS commit, flags, result, project commit, new failures, QA result.
 4. Baseline: the baseline failing ids, and which of them passed in one more run of the portable contract test set after the final sync.
 5. FLS changes made: each fix commit (subject, SHA, the spec and the regression test) and each idea (path, slug). `none` when there are none.
-6. Workarounds: `none`.
+6. Workarounds: removed (path, spec), declined, still needed and unmatched, read from the workaround files and the cell result counts. `none` when no cell listed any.
 7. Pull-in candidates: `none`.
 8. Assumed defaults: the push policy when the operator did not answer, and every borderline size call decided without an answer.
 
