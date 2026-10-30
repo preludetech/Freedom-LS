@@ -13,6 +13,7 @@ from lxml import html
 
 from django.conf import settings as django_settings
 from django.db import connection
+from django.template.loader import render_to_string
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -31,6 +32,7 @@ from freedom_ls.comms.messaging_policy import (
     MessagingPolicy,
     MessagingRefusal,
 )
+from freedom_ls.comms.messaging_views import read_only_thread_context
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
 from freedom_ls.site_aware_models.models import _thread_locals
 from freedom_ls.tests.factories import SiteFactory
@@ -2584,3 +2586,64 @@ class TestRefusedFromTheQuickViewBox:
         assert response["HX-Retarget"] == "#composer-error"
         assert name_of(recipient) not in response.content.decode()
         assert Message.objects.count() == 0
+
+
+@pytest.mark.django_db
+class TestReadOnlyThread:
+    def test_the_context_moves_no_read_marker(self, pair) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+
+        context = read_only_thread_context(conversation, other=other, older_url="")
+
+        assert last_read_at(conversation, user) is None
+        assert context["read_only"] is True
+        assert "composer" not in context
+        assert "decision" not in context
+
+    def test_the_partial_shows_the_banner_and_no_composer_poll_or_cursor(
+        self, pair, rf
+    ) -> None:
+        _, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="visible words")
+        context = read_only_thread_context(conversation, other=other, older_url="")
+        context["viewer_role_label"] = "an organisation admin"
+
+        tree = html.fromstring(
+            render_to_string("comms/partials/thread.html", context, request=rf.get("/"))
+        )
+
+        text = " ".join(tree.text_content().split())
+        assert "visible words" in text
+        assert (
+            "Read only. You are viewing this conversation as an organisation admin."
+            in text
+        )
+        assert "Organisation admins can read conversations" in text
+        assert not tree.xpath("//*[@id='composer']")
+        assert not tree.xpath("//*[@id='thread-cursor']")
+        assert not tree.xpath("//*[@hx-trigger='refresh']")
+        assert not tree.xpath("//*[@data-just-read]")
+
+    def test_the_load_earlier_control_needs_an_oversight_url(
+        self, pair, rf, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 2
+        _, other, conversation = pair
+        for number in range(5):
+            MessageFactory(conversation=conversation, sender=other, body=f"m{number}")
+
+        def control(older_url: str):
+            context = read_only_thread_context(
+                conversation, other=other, older_url=older_url
+            )
+            context["viewer_role_label"] = "a site admin"
+            return html.fromstring(
+                render_to_string(
+                    "comms/partials/thread.html", context, request=rf.get("/")
+                )
+            ).xpath("//div[@id='thread-older']//button")
+
+        assert control("") == []
+        (button,) = control("/oversight/older")
+        assert button.get("hx-get").startswith("/oversight/older?before=")

@@ -28,7 +28,11 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.factories import AuditLogEntryFactory
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import record_entry, record_run_summary
+from freedom_ls.audit_log.writer import (
+    record_entry,
+    record_run_summary,
+    subject_key,
+)
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
     SendResult,
@@ -3369,3 +3373,194 @@ class TestLearnerMessagesTab:
 
         assert response.status_code in {403, 404}
         assert not inbox_for(educator).exists()
+
+
+def _view_conversation_url(learner: Learner) -> str:
+    return f"{_tab_url(learner)}/__actions/view_conversation"
+
+
+def _open_conversation(
+    client: Client, learner: Learner, conversation: object, **extra: str
+):
+    return client.get(
+        f"{_view_conversation_url(learner)}?conversation={conversation}",
+        HTTP_HX_REQUEST="true",
+        **extra,
+    )
+
+
+def _viewed_entries() -> list[AuditLogEntry]:
+    return list(AuditLogEntry.unscoped.filter(action="conversation.viewed"))
+
+
+def _read_markers(conversation: Conversation) -> list[str]:
+    return sorted(str(p.last_read_at) for p in conversation.participants.all())
+
+
+@pytest.mark.django_db
+@messages_section
+class TestOversight:
+    @pytest.fixture
+    def scene(self):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        conversation = _msg_conversation(educator, learner.user)
+        MessageFactory(conversation=conversation, sender=educator, body="oversight me")
+        return organisation, educator, learner, conversation
+
+    def test_an_organisation_admin_reads_the_thread_read_only(
+        self, msg_client_for, scene
+    ):
+        organisation, educator, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        response = _open_conversation(msg_client_for(admin), learner, conversation.pk)
+
+        assert response.status_code == 200
+        page = lxml.html.fromstring(response.content.decode())
+        text = " ".join(page.text_content().split())
+        assert "oversight me" in text
+        assert f"Conversation with {educator.display_name}" in text
+        assert (
+            "Read only. You are viewing this conversation as an organisation admin."
+            in text
+        )
+        assert not page.xpath("//*[@id='composer']")
+
+    def test_a_site_admin_is_named_as_one(
+        self, msg_client_for, scene, mock_site_context
+    ):
+        _, _, learner, conversation = scene
+        site_admin = cast(User, UserFactory(staff=True))
+        _grant(site_admin, "site_admin", mock_site_context)
+
+        response = _open_conversation(
+            msg_client_for(site_admin), learner, conversation.pk
+        )
+
+        assert "as a site admin." in " ".join(response.content.decode().split())
+
+    def test_the_open_writes_one_entry_naming_the_learner(self, msg_client_for, scene):
+        organisation, educator, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        _open_conversation(msg_client_for(admin), learner, conversation.pk)
+
+        (entry,) = _viewed_entries()
+        assert entry.target_label == f"Conversation with {educator.display_name}"
+        assert entry.actor == admin
+        assert entry.organisation == organisation
+        assert entry.target == conversation
+        assert subject_key(learner) in entry.subjects
+
+    def test_a_second_open_writes_a_second_entry(self, msg_client_for, scene):
+        organisation, _, learner, conversation = scene
+        client = msg_client_for(_msg_educator(organisation))
+
+        _open_conversation(client, learner, conversation.pk)
+        _open_conversation(client, learner, conversation.pk)
+
+        assert len(_viewed_entries()) == 2
+
+    def test_the_open_moves_no_read_marker(self, msg_client_for, scene):
+        organisation, _, learner, conversation = scene
+        before = _read_markers(conversation)
+
+        _open_conversation(
+            msg_client_for(_msg_educator(organisation)), learner, conversation.pk
+        )
+
+        assert _read_markers(conversation) == before
+
+    def test_the_entry_shows_on_the_learners_history_tab(self, msg_client_for, scene):
+        organisation, _, learner, conversation = scene
+        client = msg_client_for(_msg_educator(organisation))
+        _open_conversation(client, learner, conversation.pk)
+
+        text = _learner_page(client, learner, "history").text_content()
+
+        assert "Conversation viewed" in text
+
+    def test_a_plain_get_is_404_and_writes_nothing(self, msg_client_for, scene):
+        organisation, _, learner, conversation = scene
+        client = msg_client_for(_msg_educator(organisation))
+
+        response = client.get(
+            f"{_view_conversation_url(learner)}?conversation={conversation.pk}"
+        )
+
+        assert response.status_code == 404
+        assert _viewed_entries() == []
+
+    def test_a_conversation_outside_the_oversight_set_is_404(
+        self, msg_client_for, scene
+    ):
+        organisation, _, learner, _ = scene
+        client = msg_client_for(_msg_educator(organisation))
+        peer = _msg_learner(organisation, first_name="Peer")
+        peer_conversation = _msg_conversation(peer.user, learner.user)
+        stranger = _msg_learner(OrganisationFactory())
+        foreign = _msg_conversation(_msg_educator(stranger.organisation), stranger.user)
+
+        for target in (peer_conversation.pk, foreign.pk, uuid4(), "not-a-uuid", ""):
+            response = _open_conversation(client, learner, target)
+            assert response.status_code == 404, target
+        assert _viewed_entries() == []
+
+    def test_a_cohort_admin_is_denied_and_nothing_is_written(
+        self, msg_client_for, scene
+    ):
+        organisation, _, learner, conversation = scene
+        cohort = CohortFactory(organisation=organisation)
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+        cohort_admin = cast(User, UserFactory(staff=True))
+        _grant(cohort_admin, "cohort_admin", cohort)
+
+        response = _open_conversation(
+            msg_client_for(cohort_admin), learner, conversation.pk
+        )
+
+        assert response.status_code == 403
+        assert _viewed_entries() == []
+
+    def test_the_action_is_denied_when_messaging_is_off(
+        self, msg_client_for, scene, settings
+    ):
+        organisation, _, learner, conversation = scene
+        client = msg_client_for(_msg_educator(organisation))
+        settings.MESSAGING_ENABLED = False
+
+        response = _open_conversation(client, learner, conversation.pk)
+
+        assert response.status_code in (403, 404)
+        assert _viewed_entries() == []
+
+    def test_a_post_is_404(self, msg_client_for, scene):
+        organisation, _, learner, conversation = scene
+        client = msg_client_for(_msg_educator(organisation))
+
+        response = client.post(
+            _view_conversation_url(learner),
+            {"conversation": str(conversation.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+        assert _viewed_entries() == []
+
+    def test_the_list_rows_open_the_conversation_in_the_modal(
+        self, msg_client_for, scene
+    ):
+        organisation, _, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        document = _tab_document(msg_client_for(admin), learner)
+
+        (row,) = document.xpath(
+            "//section[@aria-labelledby='oversight-heading']//li/button"
+        )
+        assert row.get("hx-get") == (
+            f"{_view_conversation_url(learner)}?conversation={conversation.pk}"
+        )
+        assert row.get("hx-target") == "#app-modal-body"

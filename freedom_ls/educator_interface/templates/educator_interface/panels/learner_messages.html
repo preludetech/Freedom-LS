@@ -6,7 +6,8 @@ fit the card with an h2 so the page keeps its one h1. Before the first message
 the tab says so above the composer that starts the conversation. When the
 policy refuses and there is no conversation the own area is empty. Users who
 may view conversations see a second list below it: the learner's conversations
-with their other educators, one line each.
+with their other educators, one line each; a row opens the conversation
+read-only in the app modal.
 {% endcomment %}
 {% block panel_body %}
     {% if own_shown %}
@@ -25,13 +26,21 @@ with their other educators, one line each.
             {% if oversight_rows %}
                 <ul class="m-0 list-none divide-y divide-border p-0">
                     {% for conversation, educator in oversight_rows %}
-                        <li class="flex items-center gap-3 px-4 py-3">
-                            {% include "comms/partials/participant_avatar.html" with other=educator %}
-                            <span class="min-w-0 flex-1">
-                                <span class="block truncate">{% if educator %}{{ educator.display_name }}{% else %}Deleted user{% endif %}</span>
-                                {% if conversation.last_message_body %}<span class="block truncate text-sm text-muted">{{ conversation.last_message_body }}</span>{% endif %}
-                            </span>
-                            {% if conversation.last_message_at %}<time datetime="{{ conversation.last_message_at|date:'c' }}" class="shrink-0 text-sm text-muted">{{ conversation.last_message_at|relative_time }}</time>{% endif %}
+                        <li>
+                            <button type="button"
+                                    hx-get="{{ row_action_urls.view_conversation }}?conversation={{ conversation.pk }}"
+                                    hx-target="#app-modal-body"
+                                    hx-swap="innerHTML"
+                                    hx-disabled-elt="this"
+                                    aria-haspopup="dialog"
+                                    class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+                                {% include "comms/partials/participant_avatar.html" with other=educator %}
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate">{% if educator %}{{ educator.display_name }}{% else %}Deleted user{% endif %}</span>
+                                    {% if conversation.last_message_body %}<span class="block truncate text-sm text-muted">{{ conversation.last_message_body }}</span>{% endif %}
+                                </span>
+                                {% if conversation.last_message_at %}<time datetime="{{ conversation.last_message_at|date:'c' }}" class="shrink-0 text-sm text-muted">{{ conversation.last_message_at|relative_time }}</time>{% endif %}
+                            </button>
                         </li>
                     {% endfor %}
                 </ul>

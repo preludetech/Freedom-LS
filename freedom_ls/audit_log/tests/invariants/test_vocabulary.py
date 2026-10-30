@@ -22,6 +22,7 @@ NOUNS = frozenset(
         "course",
         "bulk_action",
         "import",
+        "conversation",
     }
 )
 
@@ -40,6 +41,7 @@ VERBS = frozenset(
         "completed",
         "committed",
         "signed_up",
+        "viewed",
     }
 )
 

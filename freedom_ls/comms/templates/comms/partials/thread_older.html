@@ -1,16 +1,18 @@
 {% comment %}
 The load-earlier control. It is always rendered, empty when nothing older
 exists, so the page that answers a load can replace it out of band with the
-next cursor (or with nothing). It sits outside the role="log" list.
+next cursor (or with nothing). It sits outside the role="log" list. A
+read-only viewer is not a participant, so the control renders only when the
+host passes older_url, the endpoint that viewer may use.
 {% endcomment %}
 <div id="thread-older"
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
     >
-    {% if older_cursor %}
+    {% if older_cursor and older_url or older_cursor and not read_only %}
         <div class="px-4 pt-3 text-center">
         <c-button variant="ghost"
                   size="small"
-                  hx-get="{% url 'conversations:thread_older' conversation.pk %}?before={{ older_cursor|urlencode }}"
+                  hx-get="{% if older_url %}{{ older_url }}{% else %}{% url 'conversations:thread_older' conversation.pk %}{% endif %}?before={{ older_cursor|urlencode }}"
                   hx-target="#thread-log"
                   hx-swap="afterbegin">
             Load earlier messages
