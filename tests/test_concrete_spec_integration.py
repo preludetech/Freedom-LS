@@ -19,6 +19,7 @@ RESOURCE_REFERENCE = "resources/concrete_spec_integration.md"
     "command",
     [
         "commands/concrete/update_fls.md",
+        "commands/update_concrete_projects.md",
     ],
 )
 def test_updater_command_names_the_shared_resource(command: str) -> None:

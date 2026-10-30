@@ -139,7 +139,11 @@ tests = ["claude_plugins/fls-content", "freedom_ls/content_engine/tests"]
 # integration procedure.
 [[tool.test_tiers.tooling]]
 glob = "claude_plugins/*/**/*.md"
-tests = ["tests/test_test_tiers.py", "tests/test_concrete_spec_integration.py"]
+tests = [
+    "tests/test_test_tiers.py",
+    "tests/test_concrete_spec_integration.py",
+    "tests/test_update_concrete_projects.py",
+]
 
 [tool.coverage.run]
 branch = true

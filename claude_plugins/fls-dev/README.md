@@ -24,10 +24,11 @@ Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-i
 `app-settings`, `frontend-styling`, `playwright-tests`, `template`, `testing`, `use-playwright`
 (all → `ds:*`), and `git-worktree-setup` (→ `sdd:git-worktree-setup`).
 
-### Commands (9 files)
+### Commands (10 files)
 
-Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_product_docs`,
-`update_upgrade_notes`.
+Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_concrete_projects`
+(run from the FLS `main` worktree: integrates completed specs into each concrete project listed in
+`.claude/fls-dev/config.local.md`), `update_product_docs`, `update_upgrade_notes`.
 `concrete/`: `README`, `update_fls`.
 `protected/`: `design_check`, `frontend_check` (helpers read by path, not advertised as slash commands).
 
