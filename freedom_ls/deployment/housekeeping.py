@@ -24,6 +24,7 @@ from django.utils import timezone
 from freedom_ls.deployment.config import config
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import ImportStatus, LearnerImport
+from freedom_ls.panel_framework.bulk_runs import report_finished
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.models import GeneratedReport
 
@@ -242,6 +243,25 @@ def delete_stale_previews() -> int:
     return deleted_per_model.get(LearnerImport._meta.label, 0)
 
 
+def _close_as_failed(
+    model: BulkRecordModel, records: QuerySet, error_message: str
+) -> int:
+    """Close every record in `records` as FAILED, at the current time, and
+    tell a bulk action run's action, which a bare update would skip and
+    which is how the requester hears about a run they are no longer
+    watching. Returns how many rows were closed."""
+    closed = list(records.values_list("pk", "site_id"))
+    if not closed:
+        return 0
+    records.filter(pk__in=[pk for pk, _ in closed]).update(
+        status=RunStatus.FAILED, error_message=error_message, finished_at=timezone.now()
+    )
+    if model is BulkActionRun:
+        for pk, site_id in closed:
+            report_finished(str(pk), site_id)
+    return len(closed)
+
+
 def mark_unpicked_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> int:
     """Close every QUEUED record older than max_age_seconds as FAILED.
 
@@ -249,18 +269,15 @@ def mark_unpicked_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> i
     its task. The task is not requeued; the reader starts the action again.
     Returns how many rows were closed.
     """
-    now = timezone.now()
-    return model._base_manager.filter(
-        status=RunStatus.QUEUED,
-        created_at__lte=now - timedelta(seconds=max_age_seconds),
-    ).update(
-        status=RunStatus.FAILED,
-        error_message=(
-            f"The background task was never picked up within {max_age_seconds}s "
-            f"of being queued, so no worker is consuming. fls_run_housekeeping "
-            f"marked this record failed to say so. Start the action again."
+    return _close_as_failed(
+        model,
+        model._base_manager.filter(
+            status=RunStatus.QUEUED,
+            created_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
         ),
-        finished_at=now,
+        f"The background task was never picked up within {max_age_seconds}s "
+        f"of being queued, so no worker is consuming. fls_run_housekeeping "
+        f"marked this record failed to say so. Start the action again.",
     )
 
 
@@ -272,19 +289,16 @@ def mark_orphaned_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> i
     The work is not run again: part of it may already have been applied.
     Returns how many rows were closed.
     """
-    now = timezone.now()
-    return model._base_manager.filter(
-        status=RunStatus.RUNNING,
-        started_at__lte=now - timedelta(seconds=max_age_seconds),
-    ).update(
-        status=RunStatus.FAILED,
-        error_message=(
-            f"Still running {max_age_seconds}s after it started, so the worker "
-            f"running it died without finishing. fls_run_housekeeping marked this "
-            f"record failed to say so. The work was not run again; check what was "
-            f"applied before starting it again."
+    return _close_as_failed(
+        model,
+        model._base_manager.filter(
+            status=RunStatus.RUNNING,
+            started_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
         ),
-        finished_at=now,
+        f"Still running {max_age_seconds}s after it started, so the worker "
+        f"running it died without finishing. fls_run_housekeeping marked this "
+        f"record failed to say so. The work was not run again; check what was "
+        f"applied before starting it again.",
     )
 
 
