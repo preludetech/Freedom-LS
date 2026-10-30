@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
-from typing import cast
+from typing import ClassVar, cast
 
 import pytest
 import pytest_django.fixtures
@@ -47,6 +47,7 @@ from freedom_ls.learner_management.models import (
     LearnerImportRow,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.bulk_actions import RecordedBulkAction
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
@@ -977,6 +978,49 @@ class TestMarkUnpickedRunsFailed:
 
         record.refresh_from_db()
         assert record.status == RunStatus.RUNNING
+
+
+class _ReportingAction(RecordedBulkAction):
+    """Records the runs it is told have finished."""
+
+    finished: ClassVar[list[str]] = []
+
+    def on_finished(self, run: BulkActionRun) -> None:
+        type(self).finished.append(str(run.pk))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("sweep", "fields"),
+    [
+        (
+            mark_unpicked_runs_failed,
+            {"status": RunStatus.QUEUED, "created_ago": timedelta(hours=2)},
+        ),
+        (
+            mark_orphaned_runs_failed,
+            {"status": RunStatus.RUNNING, "started_ago": timedelta(hours=2)},
+        ),
+    ],
+    ids=["unpicked", "orphaned"],
+)
+def test_a_run_closed_by_a_sweep_is_reported_to_its_action(
+    mock_site_context, monkeypatch, sweep, fields: dict[str, object]
+) -> None:
+    """The sweeps closed runs with a bare update, so the action's on_finished
+    never ran and the requester was never told the run had stopped."""
+    monkeypatch.setattr(_ReportingAction, "finished", [])
+    record = _make_bulk_record(BulkActionRun, **fields)
+    BulkActionRun._base_manager.filter(pk=record.pk).update(
+        action_path=f"{__name__}.{_ReportingAction.__name__}"
+    )
+
+    with time_machine.travel(FIXED_NOW, tick=False):
+        closed = sweep(BulkActionRun, 3600)
+
+    record.refresh_from_db()
+    assert (closed, record.status) == (1, RunStatus.FAILED)
+    assert _ReportingAction.finished == [str(record.pk)]
 
 
 @pytest.mark.django_db
