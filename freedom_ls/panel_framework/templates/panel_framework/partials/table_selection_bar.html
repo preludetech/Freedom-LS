@@ -2,10 +2,10 @@
 The selection bar: the result count and the first two permitted bulk actions as buttons
 and any others under a "More actions" menu, hidden until a row is checked, sharing its footer row with the
 pagination — which stays visible regardless of selection. Fixed to the
-bottom of the viewport below md, where the bar would otherwise scroll out of
-reach below a long card list.
+bottom of the viewport below lg, where the sidebar is not docked and the bar
+would otherwise scroll out of reach below a long card list or table.
 {% endcomment %}
-<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:static md:border-0 md:bg-transparent md:px-6 md:py-3"
+<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:px-6 lg:static lg:border-0 lg:bg-transparent"
      data-page-count="{{ page_obj|length }}"
      data-total-count="{{ page_obj.paginator.count }}">
     <div class="flex flex-wrap items-center gap-4">

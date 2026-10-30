@@ -329,7 +329,7 @@ def test_more_actions_menu_stays_inside_the_viewport(
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
 
-    for viewport in (QA_VIEWPORTS[0], QA_VIEWPORTS[2]):
+    for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(list_url)
         page.locator("#stubs-table input[name='keys']:visible").first.check()
@@ -342,6 +342,50 @@ def test_more_actions_menu_stays_inside_the_viewport(
         assert box["y"] + box["height"] <= viewport["height"], (
             f"menu item below the viewport at {viewport}"
         )
+
+
+def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """At tablet width the bar sat under the table, out of view below a
+    long page, so a ticked row's actions could not be reached without
+    scrolling to the end. It stays fixed until the sidebar docks at lg, and
+    never covers the last row while fixed."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+    bar = page.locator("[data-total-count]")
+
+    for viewport, position in (
+        (QA_VIEWPORTS[0], "fixed"),
+        (QA_VIEWPORTS[1], "fixed"),
+        (QA_VIEWPORTS[2], "static"),
+    ):
+        page.set_viewport_size(viewport)
+        page.goto(list_url)
+        checkboxes = page.locator("#stubs-table input[name='keys']:visible")
+        checkboxes.first.check()
+
+        assert bar.evaluate("el => getComputedStyle(el).position") == position, (
+            f"bar position at {viewport}"
+        )
+        if position != "fixed":
+            continue
+        bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
+        assert bottom == viewport["height"], f"bar bottom at {viewport}"
+
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        last_is_topmost = checkboxes.last.evaluate(
+            """el => {
+                const box = el.getBoundingClientRect();
+                return document.elementFromPoint(
+                    box.x + box.width / 2, box.y + box.height / 2) === el;
+            }"""
+        )
+        assert last_is_topmost, f"bar covers the last row at {viewport}"
 
 
 def test_selection_bar_actions_fieldset_draws_no_box(
