@@ -1,12 +1,12 @@
 # Admin Interface
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-10-30_
 
 ## Summary
 
 - The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
 - Educator roles are not assigned in the admin. A cohort's or organisation's permissions tab governs admin access only; educator-interface and report access come from [role assignments](./educator-interface.md#access-control).
-- Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge.
+- Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. An organisation can also have a profile logo and a short bio, both optional.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and deactivates a learner. Deactivation is soft — it switches off that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - An administrator can override a due date or a course time limit for a cohort's course registration or for a single learner, including removing it. Each override records who set it and why, and is flagged when the content's own value has changed since. See [Deadline Overrides](#deadline-overrides).
@@ -37,7 +37,7 @@ Each cohort's and organisation's admin page carries a permissions tab. It govern
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default. With [registration rules](./registration-rules.md) installed, the switch decides whether the organisation's rules act at all. See [HR attributes](./hr-attributes.md).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; it is optional, and no screen draws it yet. Two further optional fields shape how the organisation appears to learners: a profile logo, shown in a circle beside its name on course cards and the course page (without one, the light-background logo is shown), and a bio of up to 500 plain-text characters, shown on the course page. See [learner experience](./learner-experience.md) for where these appear. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default. With [registration rules](./registration-rules.md) installed, the switch decides whether the organisation's rules act at all. See [HR attributes](./hr-attributes.md).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
 

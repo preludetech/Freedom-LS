@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
@@ -16,7 +16,7 @@ _Last updated: 2026-10-25_
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
 - A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. Nothing is enforced: an item past its deadline stays open and completable. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
-- A course can belong to particular organisations, and only their learners see it unless it is public. Dashboard cards name the organisation, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+- A course can belong to particular organisations, and only their learners see it unless it is public. Where a course has one organisation, the dashboard, the all-courses list and the course page name it, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 - A site has a public blog: an index of its published articles and a page for each article, readable without logging in. An article can carry an image, shown on its page, its cards and its social-sharing preview. See [Blog](#blog).
 - A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
@@ -45,11 +45,11 @@ Every section shows up to three cards at a time, with previous/next controls and
 
 Each course card shows the course title, its registration status, and a progress percentage once the learner has started it, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action. A card does not name the course's category; the [detail page](#course-detail-page) does.
 
-A card for an organisation's course carries a small byline under the title with the organisation's logo and name: on an in-progress card, the organisation the learner studies it through; on other dashboard cards, the organisation that owns the course when there is exactly one. The compact rows that phones and tablets show carry the same byline. The site's default organisation never gets a byline, and the all-courses list, completed cards and the course detail page show none.
+A course card names its organisation with a small circular avatar, the organisation's profile logo, else its logo, else its initials, that overlaps the bottom of the card's colour block. An in-progress or registered card names the organisation the learner studies the course through. A card for a course the learner is not registered for names the course's organisation when it has exactly one. A completed card names none. The compact rows that phones and tablets show put the organisation's name and the course's difficulty at the top left, with the status and price as small chips at the top right. The site's default organisation is never named, on any surface.
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
-When application-gated courses are in use, the dashboard also shows a **Your applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses. An anonymous visitor sees the panel for the applications their browser session has started, with no name or email shown on the page. The panel shows three applications at a time, paged with the same previous/next controls and position text as the course sections, and each application shows its course's icon.
+When application-gated courses are in use, the dashboard also shows a **Your applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses. An anonymous visitor sees the panel for the applications their browser session has started, with no name or email shown on the page. The panel shows three applications at a time, paged with the same previous/next controls and position text as the course sections, and each application shows its course's icon. Each application is laid out like the compact course rows: the course's organisation (where it has exactly one) and difficulty at the top left, the "Pending review" or "Incomplete" chip at the right, and the same "Details" link beside the button.
 
 The site header shows **Log in** and **Sign up** affordances for anonymous visitors (carrying a `?next=` parameter so the visitor returns to the page they were on after authenticating). These affordances are absent from the header for authenticated users.
 
@@ -57,7 +57,7 @@ The site header shows **Log in** and **Sign up** affordances for anonymous visit
 
 ## Course Listing
 
-The course listing page is publicly accessible — no login is required to browse it. It shows all courses available on the current site.
+The course listing page is publicly accessible — no login is required to browse it. It shows all courses available on the current site. Each row names the course's organisation, where it has exactly one, in the same way as the compact dashboard rows: organisation and difficulty at the top left, status and price as small chips on the right.
 
 Each entry shows an **access-model badge** ("Free" or "By application") so a visitor can identify the access model before clicking through to the detail page.
 
@@ -117,6 +117,7 @@ The course detail page is publicly accessible. Anonymous visitors and authentica
 - **Description** — full course markdown description.
 - **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses.
 - **Table of contents** — all items are shown locked for visitors who are not registered, whether anonymous or signed in.
+- **Organisation** — where the course has exactly one, its name and mark appear in the page's hero. Under the sign-up panel a card repeats the name and mark and, if the organisation has written one, its bio. Neither appears for a course with several organisations or only the site's default one.
 
 A single **Back** link returns the learner to the page they came from on this site, or to the dashboard when they did not arrive from another page on the site.
 

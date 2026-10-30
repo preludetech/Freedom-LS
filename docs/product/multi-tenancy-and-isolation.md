@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-30_
 
 ## Summary
 
@@ -61,7 +61,7 @@ This is the canonical statement of what an organisation is and is not; other doc
 - **Management commands run without a request**, so there is no site to scope to and the filter does not apply — commands see all sites' records and must filter explicitly. This is deliberate: it is what lets a command load content or run maintenance across sites.
 - **Site-aware user groups are not available.** A site-scoped equivalent of Django's groups is drafted but not enabled; permissions are granted per user. See [roadmap](./roadmap.md).
 - **Organisations cannot be deleted or merged**, and there is no nested (parent/child) organisation structure.
-- **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and theme, and there is no per-organisation brand colour. An organisation's name and logo are what distinguish it visually: a small mark in the course player — see [learner experience](./learner-experience.md) — and the primary brand on the cover of a [cohort progress report](./reports.md).
+- **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and theme, and there is no per-organisation brand colour. An organisation's name and logo are what distinguish it visually: learners see them in the course player and on course cards, rows and the course page — see [learner experience](./learner-experience.md) — and they are the primary brand on the cover of a [cohort progress report](./reports.md).
 - **Only course visibility and registration are organisation-scoped.** Course interest and applications are not restricted by a course's organisations, and recommendation rules are not set per organisation, though recommendations only surface courses the learner may see. See [roadmap](./roadmap.md).
 
 ## Per-Site Configuration
