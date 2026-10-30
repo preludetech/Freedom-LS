@@ -51,7 +51,7 @@ The user acted, the action worked, and they need to know that. Show it where the
 | Admin or educator registers a learner for a course | Yes (`course.registered`) | Someone else acted; the learner has no other way to know. |
 | Cohort registered for a course / learner added to a cohort | Yes, once built | Same reason: an educator acted. Not raised yet (deferred to the educator-interface specs). |
 | Learner finishes a course | No | They're looking at the completion page. |
-| A direct message arrives, in any direction (educator to learner, learner to educator, peer to peer) | Yes (`message.received`) | Communication from another person. One rolled-up notification per conversation. |
+| A direct message arrives, in any direction (educator to learner, learner to educator, peer to peer) | No | The Messages badge in the header already shows unread conversations, so a bell row would say the same thing twice. |
 | Deadline approaching on a course not yet complete | Yes, if built | A time-sensitive reminder with a real cost. |
 | Coming-soon course the learner expressed interest in launches | Yes, if built | The system did something they asked to hear about. |
 | Progress recalculated, record minted, sync finished | No | Background work that needs nothing from anyone. |
@@ -69,12 +69,15 @@ The user acted, the action worked, and they need to know that. Show it where the
   to carry its own context.
 - **One event, one notification.** If the same event could arrive through two paths (an individual
   and a cohort registration for the same course), make sure the learner hears about it once.
+- **Don't repeat an unread signal that already exists.** If the thing has its own unread indicator
+  (the Messages badge counts unread conversations), the indicator is the notification. A bell row
+  on top of it doubles every alert.
 - **A burst of events about one thing is one notification.** A category that can fire many times
-  for the same target (`message.received`: every message in a conversation) sets
-  `NotificationCategory.rollup=True`. While the user has an unread notification for that target,
-  the next event updates that row (new data, `created_at` bumped to mean "last changed", `seen_at`
-  cleared so the badge lights again) and enqueues no delivery. Once the row is read, the next event
-  creates a fresh row and delivers it. Reading the target (opening the thread) marks the
+  for the same target sets `NotificationCategory.rollup=True`. No FLS category does today; the
+  machinery is kept and tested against a test-only category. While the user has an unread
+  notification for that target, the next event updates that row (new data, `created_at` bumped to
+  mean "last changed", `seen_at` cleared so the badge lights again) and enqueues no delivery. Once
+  the row is read, the next event creates a fresh row and delivers it. Reading the target marks the
   notification read through `mark_notifications_read`.
 
 ## Checklist for a new category
