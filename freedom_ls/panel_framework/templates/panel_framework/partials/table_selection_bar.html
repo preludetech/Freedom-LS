@@ -27,7 +27,8 @@ would otherwise scroll out of reach below a long card list or table.
             </button>
         </span>
         <span x-show="showMatchingPrompt" x-cloak x-transition class="text-sm">
-            All <span x-text="count"></span> matching are selected.
+            <span x-show="excluded.length === 0">All <span x-text="count"></span> matching are selected.</span>
+            <span x-show="excluded.length > 0" x-cloak><span x-text="count"></span> of {{ page_obj.paginator.count }} matching are selected.</span>
             <button type="button" class="font-medium text-primary underline" x-on:click="clearSelection" x-bind:disabled="running">
                 Clear selection
             </button>

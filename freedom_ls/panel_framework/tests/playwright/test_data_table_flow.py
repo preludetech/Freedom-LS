@@ -452,6 +452,12 @@ def test_select_all_matching_spans_every_page(
     # Unticking one row leaves every other matching row selected.
     row_checkboxes.first.uncheck()
     expect(status).to_contain_text(f"{matching - 1} selected")
+    expect(
+        page.get_by_text(f"{matching - 1} of {matching} matching are selected.")
+    ).to_be_visible()
+    expect(
+        page.get_by_text(f"All {matching - 1} matching are selected.")
+    ).to_be_hidden()
 
     page.get_by_role("button", name="Mark processed").click()
     modal = page.locator("#app-modal")
