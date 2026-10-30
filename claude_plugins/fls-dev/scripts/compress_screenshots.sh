@@ -1,6 +1,6 @@
 #!/bin/bash
-# compress_screenshots.sh — Compress oversized QA screenshots under spec_dd/.
-# Usage: ./compress_screenshots.sh [--max-kb N] [--quality N]
+# compress_screenshots.sh — Compress oversized QA screenshots under a directory (default spec_dd/).
+# Usage: ./compress_screenshots.sh [--max-kb N] [--quality N] [DIR]
 #
 # Thin wrapper around compress_screenshots.py. It exists so callers have a stable
 # .claude/fls-dev/scripts/ path to invoke: the Python script must be located
@@ -8,8 +8,8 @@
 # the Bash tool environment (and resolves to the wrong plugin when the caller is
 # an agent from a different plugin).
 #
-# compress_screenshots.py scans ${CLAUDE_PROJECT_DIR}/spec_dd/ and must therefore
-# run from the project root; this wrapper enforces that rather than relying on
+# compress_screenshots.py scans DIR (default spec_dd/) relative to the project root and
+# refuses a DIR outside it, so it must run from the project root; this wrapper enforces that rather than relying on
 # the caller's working directory.
 
 set -euo pipefail

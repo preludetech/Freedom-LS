@@ -104,6 +104,7 @@
       "Bash(./.claude/fls-dev/scripts/qa_collect_screenshots.sh:*)",
       "Bash(./.claude/fls-dev/scripts/rebuild_after_rebase.sh:*)",
       "Bash(uv run python manage.py runserver:*)",
+      "Bash(uv run --directory * python manage.py runserver*)",
       "Bash(uv run python manage.py danger_content_delete:*)",
       "Bash(uv run python manage.py danger_clear_all_course_progress:*)",
       "Bash(uv run python manage.py create_demo_data:*)",

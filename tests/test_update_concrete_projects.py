@@ -13,6 +13,7 @@ from tests.plugin_markdown import code_fragments
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLS_DEV = REPO_ROOT / "claude_plugins/fls-dev"
 COMMAND = FLS_DEV / "commands/update_concrete_projects.md"
+DO_QA = FLS_DEV / "commands/do_qa.md"
 CONFIG_TEMPLATE = FLS_DEV / "templates/config.local.md"
 SETTINGS = REPO_ROOT / ".claude/settings.json"
 COMMAND_FORM_SOURCES = [
@@ -67,6 +68,7 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(uv run --directory * git commit *)",
         "Bash(uv sync --directory *)",
         "Bash(npm --prefix * run tailwind_build*)",
+        "Bash(uv run --directory * python manage.py runserver*)",
     ],
 )
 def test_every_new_allow_verb_matches_a_spelled_command_form(entry: str) -> None:
@@ -149,3 +151,34 @@ def test_failure_handling_names_every_path(spelled: str) -> None:
     text = COMMAND.read_text()
 
     assert spelled in text
+
+
+def project_root_section() -> str:
+    text = DO_QA.read_text()
+    start = text.index("## Project-root mode")
+    ends = [m.start() for m in re.finditer(r"^(## |---)", text[start + 1 :], re.M)]
+    return text[start : start + 1 + ends[0]] if ends else text[start:]
+
+
+@pytest.mark.parametrize(
+    "heading",
+    ["Inputs from the caller: `project-root:", "## Project-root mode"],
+)
+def test_do_qa_declares_the_project_root_inputs_and_section(heading: str) -> None:
+    assert heading in DO_QA.read_text()
+
+
+def test_project_root_bullets_never_change_directory() -> None:
+    fragments = code_fragments(project_root_section())
+
+    assert [f for f in fragments if re.search(r"\bcd\s", f)] == []
+
+
+def test_project_root_manage_and_pytest_forms_carry_directory() -> None:
+    bullets = re.findall(r"^- .*(?:\n  .*)*", project_root_section(), re.M)
+
+    assert [
+        b
+        for b in bullets
+        if re.search(r"manage\.py|pytest", b) and "--directory" not in b
+    ] == []

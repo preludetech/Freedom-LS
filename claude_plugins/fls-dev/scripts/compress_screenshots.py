@@ -1,9 +1,9 @@
 # ruff: noqa: T201
 #!/usr/bin/env python3
-"""Compress PNG screenshots in spec_dd/ to stay under the pre-commit 1024KB limit.
+"""Compress PNG screenshots in a directory (default spec_dd) to stay under the pre-commit 1024KB limit.
 
 Usage:
-    uv run --with pillow python compress_screenshots.py [--max-kb 1024] [--quality 85]
+    uv run --with pillow python compress_screenshots.py [--max-kb 1024] [--quality 85] [DIR]
 """
 
 import argparse
@@ -80,7 +80,7 @@ def compress_png(path: Path, max_kb: int, quality: int) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Compress large screenshots in spec_dd/"
+        description="Compress large screenshots in a directory (default spec_dd)"
     )
     parser.add_argument(
         "--max-kb",
@@ -91,25 +91,35 @@ def main() -> None:
     parser.add_argument(
         "--quality", type=int, default=85, help="JPEG quality 1-100 (default: 85)"
     )
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        default="spec_dd",
+        help="Directory to scan for oversized PNGs (default: spec_dd)",
+    )
     args = parser.parse_args()
 
-    spec_dir = Path.cwd() / "spec_dd"
-    if not spec_dir.exists():
-        print(f"spec_dd/ directory not found in {Path.cwd()}")
+    scan_root = Path(args.directory).resolve()
+    # The wrapper is allow-listed with any arguments, so the scan never leaves the project.
+    if not scan_root.is_dir() or not scan_root.is_relative_to(Path.cwd().resolve()):
+        print(f"{args.directory} is not a directory under {Path.cwd()}")
         sys.exit(1)
 
     large_files = sorted(
-        p for p in spec_dir.rglob("*.png") if p.stat().st_size > args.max_kb * 1024
+        p
+        for p in scan_root.rglob("*.png")
+        if p.resolve().is_relative_to(scan_root)
+        and p.stat().st_size > args.max_kb * 1024
     )
 
     if not large_files:
-        print(f"No PNG files over {args.max_kb}KB found in spec_dd/")
+        print(f"No PNG files over {args.max_kb}KB found in {args.directory}")
         return
 
     print(f"Found {len(large_files)} file(s) over {args.max_kb}KB:\n")
     modified = 0
     for path in large_files:
-        print(f"{path.relative_to(spec_dir)} ({path.stat().st_size // 1024}KB)")
+        print(f"{path.relative_to(scan_root)} ({path.stat().st_size // 1024}KB)")
         if compress_png(path, args.max_kb, args.quality):
             modified += 1
         print()
