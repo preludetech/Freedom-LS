@@ -20,6 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: with mark_overdue off the dashboard card drops a past deadline's date — the spec says the date stays, the test plan's 2.1.4 accepts dropping it (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: the player's closed notice is not aligned to the reading column because <c-callout> drops its class attribute (TDD: failing test first, then fix)
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: 24 in tests/test_update_concrete_projects.py (test_every_new_allow_verb_matches_a_spelled_command_form, test_every_spelled_project_command_form_is_allowed_or_prompts_by_design) — they arrived with main's commit 22ad3e36b, not this branch
 
 ## 4. Documentation and pull request
 
