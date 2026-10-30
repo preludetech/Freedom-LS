@@ -204,7 +204,6 @@ from freedom_ls.panel_framework.views import (
     NavGroup,
     SectionConfigBase,
     StatusBadge,
-    build_breadcrumbs,
     build_menu_items,
     panel_framework_view,
     sections_by_url_name,
@@ -2027,13 +2026,14 @@ def standalone_page_context(
     request: OrganisationScopedRequest, heading: str, section: str
 ) -> dict[str, object]:
     """The shell context for a page outside the panel framework: the menu
-    with `section` marked and the breadcrumbs for it, built the way
-    `panel_framework_view` builds them."""
+    with `section` marked, and a trail back to the section, shaped like the
+    one an instance page gets so the shell renders it as a back link."""
     extra_url_kwargs = request.panel_url_kwargs
     url_name = "educator_interface:interface"
     # The switcher links to the same path in another organisation; a run or
     # import belongs to one organisation, so the other lands on the section.
     request.path_string = section
+    section_config = sections_by_url_name(interface_config)[section]
     return {
         "menu_groups": build_menu_items(
             interface_config,
@@ -2042,12 +2042,15 @@ def standalone_page_context(
             active_section=section,
             extra_url_kwargs=extra_url_kwargs,
         ),
-        "breadcrumbs": build_breadcrumbs(
-            [section],
-            sections_by_url_name(interface_config),
-            url_name,
-            extra_url_kwargs=extra_url_kwargs,
-        ),
+        "breadcrumbs": [
+            {
+                "label": section_config.menu_label,
+                "url": reverse(
+                    url_name, kwargs={"path_string": section, **extra_url_kwargs}
+                ),
+            },
+            {"label": heading},
+        ],
         "heading": heading,
     }
 

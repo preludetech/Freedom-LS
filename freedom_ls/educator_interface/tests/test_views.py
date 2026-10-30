@@ -4119,6 +4119,21 @@ def test_the_upload_page_shows_the_headers_the_stepper_and_the_file_input(
 
 
 @pytest.mark.django_db
+def test_an_import_page_offers_a_back_link_to_the_learners_list(
+    import_world: SimpleNamespace,
+):
+    organisation = import_world.organisation
+
+    page = _get_document(
+        import_world.client, _import_url(organisation, "learner_import")
+    )
+
+    (back,) = page.cssselect("#breadcrumbs a")
+    assert back.get("href") == _interface_url(organisation.slug, "learners")
+    assert back.text_content().strip() == "Learners"
+
+
+@pytest.mark.django_db
 def test_the_stepper_numbers_each_step_in_its_own_label(
     import_world: SimpleNamespace,
 ):
