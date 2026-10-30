@@ -52,7 +52,7 @@
         </div>
     {% endif %}
 
-    <div class="hidden overflow-x-auto md:block {{ class }}">
+    <div class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
