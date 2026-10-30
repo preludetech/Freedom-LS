@@ -130,7 +130,7 @@ Before a cell, apply Resume (below). Then, for `<p>` the project path and `<spec
 1. Follow `concrete_spec_integration.md` with `<project-root>` set to `<p>` and `<spec-commit>` set to the spec's commit, up to but not including the test run in 3i.
 2. <!-- Workaround removal inserts here, between the resource steps and the gate. -->Run the portable contract test set from `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed.
 3. Compare the failing ids with the project's baseline ids. An id not in the baseline is new. Re-run each new id alone once, and keep it as new only if it fails again. This one re-run is the whole flake allowance.
-4. If any id is still new, or any resource step errored, the cell fails. For now a failed cell is a stop: print the project, spec, the step that failed, the new ids and `git -C <p> diff --stat`, write the cell result file with the matching `result:`, and end the run without deleting scratch files.
+4. If any id is still new, or any resource step errored, the cell fails. Follow `## Failure handling`; a cell that fails ends as `blocked-on-fix` or `blocked-on-spec <slug>`, or retries after a fix.
 5. <!-- QA inserts here, between the gate and the commit. -->Run 3j: `git -C <p> add -A`, then `uv run --directory <p> git commit -m "Update FLS: <spec-name>"`, with a body that names the spec directory and the pointer move.
 6. Record the project's new last good: `git -C <p> rev-parse HEAD`.
 7. Write the cell result file.
@@ -145,6 +145,72 @@ The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These a
 - `new-failures:` the ids that stayed new, or `none`
 - `qa:` `not run` when the spec has no frontend QA plan
 - `result:` the last line, one of `integrated`, `blocked-on-fix`, `blocked-on-spec <slug>` or `skipped`
+
+## Failure handling
+
+A cell fails when a resource step errors or the gate has a new failure. Work in this order.
+
+**Evidence, then rollback.** Before touching anything, capture: the step and command that failed, the last 30 lines of its output, the new failing node ids, and `git -C <p> diff --stat` of the integration. Replace every line matching `KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL` with `[redacted]` before the evidence is written anywhere, and say in the report that lines were redacted when any were. Then follow the Rollback section of `concrete_spec_integration.md` with `<last-good-sha>` set to the project's last good. Print a stop card in the transcript: project, spec, step, failing ids, diff stat, class and proposed action.
+
+**Classify.** Read the table top to bottom; the first matching row wins.
+
+| class | action |
+| --- | --- |
+| FLS code bug, or an FLS test that assumes FLS's own settings, theme, icon set or demo content | FLS fix |
+| `upgrade_notes.md` of the spec missed a step the project needed | FLS fix: correct `spec_dd/3. done/<spec>/upgrade_notes.md`, plus code if any |
+| the project's own override, subclass or template shadow is stale against the spec | report it; the cell is `blocked-on-fix`, not retried |
+| pre-existing baseline failure | not a failure |
+| environment (missing `node_modules`, DB not reachable) | fix the environment once and retry |
+
+- A cell whose only new failures are baseline ids is not a failure. The gate already excludes them; this row covers a baseline id that now fails with a different error.
+- An environment failure is fixed once: `npm --prefix <p> install` for `node_modules`, or tell the operator the database is unreachable. The cell then retries, and that retry does not count as the fix attempt.
+- A stale override makes the cell `blocked-on-fix`. The project is not parked, and its next spec's cell still runs.
+
+**Size test.** A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. For a borderline case, ask one `AskUserQuestion`: small fix now (recommended) or write an idea. An unanswered question takes the recommended option and is recorded in report section 8.
+
+**Small fix.** In the FLS `main` worktree, each command its own Bash call:
+
+```
+git switch -c fix/<slug>
+```
+
+Write the regression test and see it fail, then write the fix and see it pass. Run the targeted tier:
+
+```
+.claude/ds/scripts/select_tests.sh --working-tree
+```
+
+Run the command it prints. Then:
+
+```
+uv run git commit -m "fix: <what> (found integrating <spec> into <project>)"
+```
+
+The fix lands without a separate approval question: the size test, the targeted tier, the borderline question and the operator's attendance are the gates. Print `git diff main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
+
+```
+claude_plugins/sdd/scripts/land_on_main.sh land
+```
+
+- Exit 7 means `origin/main` moved: run `git rebase origin/main`, then `land_on_main.sh land` once more.
+- Any other non-zero exit stops the run. Print the script's message, the name of the `fix/` branch the worktree is left on, and `git switch main` as the way back.
+- Exit 0: record the fix commit with `git rev-parse HEAD` while still on the `fix/` branch, run `git switch main` (the script already fast-forwarded it), then `git branch -d fix/<slug>`. If git refuses because the landed commit is a rebased copy, confirm `git log --oneline -1 origin/main` shows the fix subject and use `git branch -D fix/<slug>`.
+
+**Retry.** Re-run the cell with `<spec-commit>` set to the fix commit; every remaining cell for that spec in this run uses it too. Folding: the done specs whose commits lie in `<spec-commit>..<fix-commit>`, with `<spec-commit>` the cell's original one, are listed. Their notes flags are OR-ed into the cell's flags and their `changed_template_paths` concatenated. The commit subject becomes `Update FLS: <spec>, <spec>, …` naming every folded spec. When the project's `Update FLS:` subjects already name a folded spec, fold only the ones it lacks. One fix attempt per cell: a second failure is `blocked-on-fix`, with the evidence in the cell result file.
+
+**Large fix.** Write `spec_dd/1. next/<slug>/idea.md` following `claude_plugins/sdd/resources/idea_standard.md`: the failure, the project path and spec it surfaced in, the failing test or step with its evidence lines, and the expected fix in one paragraph. Then, on `main`:
+
+```
+uv run git commit -m "idea: <slug> (found integrating <spec> into <project>)"
+```
+
+Stage the idea file only. Then call `Skill(sdd:roadmap)` with no argument; it commits the roadmap row. Then:
+
+```
+git push origin main
+```
+
+A rejected push stops the run with the reason. The cell result is `blocked-on-spec <slug>`. The project is parked: its remaining cells in this run are `skipped` with reason `parked on <slug>`, and the other projects continue with the same spec.
 
 ## Resume
 
@@ -168,13 +234,13 @@ Because the report is committed before the push, write its verdict line with `pu
 Sections, in this order:
 
 1. Verdict line: integrated N of M, parked on `<slug>` or `none`, FLS fixes landed, ideas written, `pushed: yes` or `pushed: no`, and the resume instruction when the run is not complete. The resume instruction is the command name with the project path as its argument.
-2. Needs attention: `none`.
+2. Needs attention: `blocked-on-fix` cells with their evidence, and the stale-override flags from the template-drift step of `concrete_spec_integration.md`. `none` when there are no such cells. Say when lines were redacted.
 3. Per-cell results, one row per cell read from the cell result files: spec, FLS commit, flags, result, project commit, new failures, QA result.
 4. Baseline: the baseline failing ids, and which of them passed in one more run of the portable contract test set after the final sync.
-5. FLS changes made: `none`.
+5. FLS changes made: each fix commit (subject, SHA, the spec and the regression test) and each idea (path, slug). `none` when there are none.
 6. Workarounds: `none`.
 7. Pull-in candidates: `none`.
-8. Assumed defaults: the push policy when the operator did not answer.
+8. Assumed defaults: the push policy when the operator did not answer, and every borderline size call decided without an answer.
 
 ## Deleting scratch files
 

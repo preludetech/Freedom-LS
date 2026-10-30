@@ -52,6 +52,8 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(git -C * status*)",
         "Bash(git -C * rev-parse *)",
         "Bash(git -C * log*)",
+        "Bash(git -C * diff*)",
+        "Bash(git switch *)",
         "Bash(git -C * fetch origin main)",
         "Bash(git -C * submodule status*)",
         "Bash(git -C * symbolic-ref *)",
@@ -123,6 +125,25 @@ def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> No
     ],
 )
 def test_loop_names_the_gate_flags_and_every_cell_result(spelled: str) -> None:
+    text = COMMAND.read_text()
+
+    assert spelled in text
+
+
+@pytest.mark.parametrize(
+    "spelled",
+    [
+        "land_on_main.sh land",
+        "rebase origin/main",
+        "git switch main",
+        "git branch -d fix/",
+        "idea_standard.md",
+        "blocked-on-spec",
+        "parked on",
+        "Update FLS: <spec>, <spec>",
+    ],
+)
+def test_failure_handling_names_every_path(spelled: str) -> None:
     text = COMMAND.read_text()
 
     assert spelled in text
