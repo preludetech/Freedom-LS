@@ -248,13 +248,28 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // The messages page's #thread-pane (comms/thread.html).
+    //
+    // Sets --thread-top to the site header's height, which the thread and the
+    // new-message pane subtract from the viewport so the page itself does not
+    // scroll. It sits on the wrapper because htmx swaps what is inside it.
+    // The header's height changes across breakpoints, so the measurement
+    // repeats on window resize (bound with x-on:resize.window on the wrapper).
+    Alpine.data("threadPane", () => ({
+        init() {
+            this.measure();
+        },
+        measure() {
+            const header = document.querySelector("header.header");
+            const top = header ? header.getBoundingClientRect().height : 0;
+            this.$el.style.setProperty("--thread-top", top + "px");
+        },
+    }));
+
     // The thread pane (comms/partials/thread.html).
     //
-    // Sizes the pane to the viewport below the site header, so the composer
-    // stays in view and the log is the only scrolling part, and opens the log
-    // at its newest message. The header's height changes across breakpoints,
-    // so the measurement repeats on window resize (bound with x-on:resize.window
-    // on the pane, which Alpine removes with the component).
+    // Keeps the composer in view with the log as the only scrolling part, and
+    // opens the log at its newest message.
     //
     // Entries appended by a send or a poll follow the reader only when they
     // were already at the bottom or the entry is their own send; otherwise a
@@ -271,7 +286,6 @@ document.addEventListener("alpine:init", () => {
         reduceMotion: false,
         init() {
             this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            this.measure();
             this.scrollToLatest();
             if ("justRead" in this.$el.dataset) {
                 this.$dispatch("conversationChanged");
@@ -291,11 +305,6 @@ document.addEventListener("alpine:init", () => {
             this.scrollToLatest(true);
             this.newCount = 0;
         },
-        measure() {
-            const header = document.querySelector("header.header");
-            const top = header ? header.getBoundingClientRect().height : 0;
-            this.$el.style.setProperty("--thread-top", top + "px");
-        },
         // Only a swap triggered from the load-earlier control prepends; sends
         // and polls append and should not move the reader.
         rememberScroll(event) {
@@ -303,7 +312,7 @@ document.addEventListener("alpine:init", () => {
             if (event.detail.target !== log) {
                 return;
             }
-            if (!event.detail.requestConfig.elt.closest("#thread-older")) {
+            if (!event.detail.requestConfig.elt.closest("[data-thread-older]")) {
                 this.beforeAppend = log.lastElementChild;
                 return;
             }

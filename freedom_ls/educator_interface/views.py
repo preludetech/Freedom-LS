@@ -44,12 +44,12 @@ from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     decode_cursor,
     other_participant,
-    pair_key_for,
     refusal_alert_copy,
     send_message,
 )
 from freedom_ls.comms.messaging_views import (
     CONVERSATION_CHANGED,
+    READ_ONLY_THREAD_ID,
     composer_context,
     older_page_response,
     posted_client_key,
@@ -106,7 +106,8 @@ from freedom_ls.educator_interface.filters import (
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
-    oversight_conversations_for,
+    OwnConversation,
+    other_educator_conversations,
     own_conversation_with,
 )
 from freedom_ls.educator_interface.paths import interface_path
@@ -828,21 +829,30 @@ class LearnerMessagesPanel(Panel):
         return [SendToLearnerAction(), ViewConversationAction()]
 
     def get_context_data(
-        self, *, draft: str = "", client_key: UUID | None = None, alert: str = ""
+        self,
+        *,
+        own: OwnConversation | None = None,
+        draft: str = "",
+        client_key: UUID | None = None,
+        alert: str = "",
     ) -> dict[str, object]:
-        """The tab's context. The keyword arguments re-render the tab after a
-        refused send with the educator's draft and the refusal."""
+        """The tab's context. ``own`` is the educator's side when the caller
+        has already looked it up. The other keyword arguments re-render the
+        tab after a refused send with the educator's draft and the refusal,
+        which shows even when the policy no longer lets them write."""
         context = super().get_context_data()
         learner = cast(Learner, self.instance)
-        own = own_conversation_with(self.request, learner)
+        if own is None:
+            own = own_conversation_with(self.request, learner)
+        may_write = own.allowed or bool(alert)
         context["learner"] = learner
-        context["own_shown"] = own.conversation is not None or own.allowed
+        context["own_shown"] = own.conversation is not None or may_write
         if own.conversation is not None:
             context.update(thread_context(self.request, own.conversation))
             context.pop("back_url")
         else:
             context["other"] = learner.user
-        if own.allowed:
+        if may_write:
             context["composer"] = composer_context(
                 client_key=client_key or uuid4(),
                 draft=draft,
@@ -852,11 +862,9 @@ class LearnerMessagesPanel(Panel):
                 action_url=SendToLearnerAction().get_action_url(self.ctx),
                 swap_target=self.region_id,
             )
-        if can(self.request.user, VIEW_CONVERSATION, learner):
-            viewer = cast(User, self.request.user)
-            rows = oversight_conversations_for(learner).exclude(
-                pair_key=pair_key_for(viewer, learner.user)
-            )
+        row_action_urls = cast(dict[str, str], context["row_action_urls"])
+        if ViewConversationAction.action_name in row_action_urls:
+            rows = other_educator_conversations(cast(User, self.request.user), learner)
             context["oversight_rows"] = [
                 (c, other_participant(c, learner.user)) for c in rows
             ]
@@ -889,14 +897,23 @@ class SendToLearnerAction(PanelAction):
         )
         panel = LearnerMessagesPanel(ctx)
         if result.message is not None:
-            response = render(request, panel.template_name, panel.get_context_data())
+            # A first send created the conversation, so look it up afresh.
+            response = render(
+                request,
+                panel.template_name,
+                panel.get_context_data(
+                    own=own if own.conversation is not None else None
+                ),
+            )
             response["HX-Trigger"] = CONVERSATION_CHANGED
             return response
         alert = result.body_error or refusal_alert_copy(result.refusal, learner.user)
         return render(
             request,
             panel.template_name,
-            panel.get_context_data(draft=draft, client_key=client_key, alert=alert),
+            panel.get_context_data(
+                own=own, draft=draft, client_key=client_key, alert=alert
+            ),
             status=422,
         )
 
@@ -921,12 +938,12 @@ class ViewConversationAction(PanelAction):
         if request.headers.get("HX-Request") != "true":
             raise Http404
         learner = cast(Learner, ctx.instance)
+        viewer = cast(User, request.user)
         conversation = get_object_or_404(
-            oversight_conversations_for(learner),
+            other_educator_conversations(viewer, learner),
             pk=uuid_or_404(request.GET.get("conversation")),
         )
         educator = other_participant(conversation, learner.user)
-        viewer = cast(User, request.user)
         record_entry(
             action="conversation.viewed",
             actor=viewer,
@@ -1868,12 +1885,19 @@ def partial_oversight_thread_older(
     if not can(request.user, VIEW_CONVERSATION, learner):
         raise Http404
     conversation = get_object_or_404(
-        oversight_conversations_for(learner), pk=uuid_or_404(conversation_pk)
+        other_educator_conversations(cast(User, request.user), learner),
+        pk=uuid_or_404(conversation_pk),
     )
     cursor = decode_cursor(request.GET.get("before", ""))
     if cursor is None:
         return HttpResponseBadRequest("before must be a cursor")
-    return older_page_response(request, conversation, cursor, older_url=request.path)
+    return older_page_response(
+        request,
+        conversation,
+        cursor,
+        older_url=request.path,
+        thread_id=READ_ONLY_THREAD_ID,
+    )
 
 
 @login_required

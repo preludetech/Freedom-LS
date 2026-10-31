@@ -26,6 +26,7 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 | `localTime` | `base/.../alpine-components.js` | `deadlines` `local_time` template tag (`<time>`) | Rewrites the server-rendered instant into the viewer's own time zone, with the zone label when `data-show-zone="true"` |
 | `notificationBell` | `comms/.../alpine-components.js` | `comms/partials/notification_bell.html` | Header disclosure panel (built on `headerPanel`): loads on open, loading and error blocks, badge poll, closes when the messages panel opens |
 | `messagesPanel` | `comms/.../alpine-components.js` | `comms/partials/messages_button.html` | Header disclosure panel (built on `headerPanel`): newest conversations load on open, refresh on `conversationChanged` while open |
+| `threadPane` | `comms/.../alpine-components.js` | `comms/thread.html` | Sets `--thread-top` to the site header's height on the messages page's `#thread-pane`, so whatever htmx swaps into it fills the viewport below the header |
 
 ## Icons with Alpine
 

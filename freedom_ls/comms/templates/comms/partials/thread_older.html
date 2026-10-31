@@ -4,8 +4,11 @@ exists, so the page that answers a load can replace it out of band with the
 next cursor (or with nothing). It sits outside the role="log" list. A
 viewer who is not a participant passes older_url, the endpoint that viewer
 may use; a participant fetches from the conversation's own endpoint.
+thread_id is the pane's id prefix, as in thread.html.
 {% endcomment %}
-<div id="thread-older"
+{% firstof thread_id "thread" as thread_id %}
+<div id="{{ thread_id }}-older"
+     data-thread-older
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
     >
     {% if older_cursor %}
@@ -13,7 +16,7 @@ may use; a participant fetches from the conversation's own endpoint.
         <c-button variant="ghost"
                   size="small"
                   hx-get="{% if older_url %}{{ older_url }}{% else %}{% url 'conversations:thread_older' conversation.pk %}{% endif %}?before={{ older_cursor|urlencode }}"
-                  hx-target="#thread-log"
+                  hx-target="#{{ thread_id }}-log"
                   hx-swap="afterbegin">
             Load earlier messages
         </c-button>

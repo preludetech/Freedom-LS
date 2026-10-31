@@ -87,3 +87,14 @@ def oversight_conversations_for(learner: Learner) -> QuerySet[Conversation]:
         .order_by(F("last_message_at").desc(nulls_last=True), "-created_at")
     )
     return conversations
+
+
+def other_educator_conversations(
+    viewer: User, learner: Learner
+) -> QuerySet[Conversation]:
+    """The learner's educator conversations the viewer may open read-only:
+    the oversight set less the viewer's own conversation with the learner,
+    which they read as a participant."""
+    return oversight_conversations_for(learner).exclude(
+        pair_key=pair_key_for(viewer, learner.user)
+    )
