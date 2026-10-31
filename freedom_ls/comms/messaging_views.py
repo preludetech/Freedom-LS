@@ -22,6 +22,7 @@ from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging import (
     SendResult,
     closed_note_copy,
+    conversation_between,
     decode_cursor,
     encode_cursor,
     entry_for_message,
@@ -33,6 +34,7 @@ from freedom_ls.comms.messaging import (
     new_messages_announcement,
     other_participant,
     page_before,
+    recent_conversations_for,
     refusal_alert_copy,
     render_message_entries,
     reply_decision,
@@ -59,6 +61,9 @@ CONVERSATION_CHANGED = json.dumps({"conversationChanged": {}})
 # The id of the region a quick-view composer swaps, which is also the value
 # htmx sends in ``HX-Target`` when a send comes from there.
 QUICK_VIEW_BOX_ID = "quick-view-message-box"
+
+# How many conversations the header messages panel lists.
+RECENT_CONVERSATION_COUNT = 5
 
 # How many of the conversation's newest messages the quick-view box shows.
 QUICK_VIEW_MESSAGE_COUNT = 3
@@ -130,18 +135,17 @@ def composer_context(
     conversation: Conversation | None = None,
     recipient: User | None = None,
     action_url: str | None = None,
-    in_modal: bool = False,
     in_quick_view: bool = False,
+    swap_target: str | None = None,
 ) -> dict[str, object]:
     """What the composer partial needs.
 
     A composer for an existing conversation posts to its ``send`` URL and
     appends the new message to the log. A composer for a first message posts to
     ``start`` with the recipient, and replaces itself when refused. ``action_url``
-    posts somewhere else instead, and ``in_modal`` makes the answer replace the
-    whole app modal body, which is where a first message composed in the modal
-    sends its refusal. ``in_quick_view`` makes the answer replace the quick-view
-    box instead, so the drawer around it stays open.
+    posts somewhere else instead. ``in_quick_view`` makes the answer replace the quick-view
+    box instead, so the drawer around it stays open. ``swap_target`` is the id
+    of a host page's region that the answer replaces whole.
     """
     if action_url is None:
         if conversation is not None:
@@ -156,8 +160,8 @@ def composer_context(
         "counter_from": max(0, config.MESSAGE_MAX_LENGTH - COUNTER_MARGIN),
         "action_url": action_url,
         "recipient": recipient,
-        "in_modal": in_modal,
         "in_quick_view": in_quick_view,
+        "swap_target": swap_target,
     }
 
 
@@ -195,6 +199,36 @@ def message_box_context(
     }
 
 
+def _thread_page_context(conversation: Conversation) -> dict[str, object]:
+    """The newest page of the thread as the partial renders it, and the cursor
+    the load-earlier control needs."""
+    shown, has_older = latest_page(conversation)
+    return {
+        "thread_messages": shown,
+        "thread_entries": render_message_entries(shown, None),
+        "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
+    }
+
+
+READ_ONLY_THREAD_ID = "read-only-thread"
+
+
+def read_only_thread_context(
+    conversation: Conversation, *, other: User | None, older_url: str
+) -> dict[str, object]:
+    """What the thread partial needs to show a conversation to someone who is
+    not in it. Reads the latest page and nothing else: no read marker moves,
+    no composer, no poll."""
+    return {
+        "conversation": conversation,
+        "other": other,
+        "read_only": True,
+        "thread_id": READ_ONLY_THREAD_ID,
+        "older_url": older_url,
+        **_thread_page_context(conversation),
+    }
+
+
 def thread_context(
     request: HttpRequest, conversation: Conversation
 ) -> dict[str, object]:
@@ -206,7 +240,8 @@ def thread_context(
     viewer = cast("User", request.user)
     other = other_participant(conversation, viewer)
     decision = reply_decision(viewer=viewer, conversation=conversation)
-    shown, has_older = latest_page(conversation)
+    page = _thread_page_context(conversation)
+    shown = cast("list[Message]", page["thread_messages"])
     closed_heading, closed_body = ("", "")
     if not decision.allowed:
         closed_heading, closed_body = closed_note_copy(decision.reason, other)
@@ -220,9 +255,7 @@ def thread_context(
         "decision": decision,
         "closed_heading": closed_heading,
         "closed_body": closed_body,
-        "thread_messages": shown,
-        "thread_entries": render_message_entries(shown, None),
-        "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
+        **page,
         "thread_cursor": encode_cursor(shown[-1]) if shown else "",
         "thread_poll_seconds": config.MESSAGE_THREAD_POLL_SECONDS,
         "composer": composer_context(client_key=uuid4(), conversation=conversation),
@@ -231,29 +264,40 @@ def thread_context(
     }
 
 
+def _page_context(
+    request: HttpRequest, current: Conversation | None = None
+) -> dict[str, object]:
+    """What every render of the messages page needs beyond the thread itself."""
+    return {
+        **_inbox_context(request, current),
+        "has_recipients": _has_recipients(request),
+    }
+
+
 @messaging_view
 def thread(request: HttpRequest, pk: UUID) -> HttpResponse:
     conversation = participant_conversation(request, pk)
     context = thread_context(request, conversation)
-    context.update(_inbox_context(request, conversation))
+    context.update(_page_context(request, conversation))
     return render(request, "comms/thread.html", context)
 
 
 @messaging_view
 def inbox(request: HttpRequest) -> HttpResponse:
-    """The conversation list. A history-restore request needs the full page."""
+    """The messages page with no conversation selected, or the list alone for htmx.
+
+    A history-restore request needs the full page.
+    """
     is_fragment = (
         request.headers.get("HX-Request") == "true"
         and request.headers.get("HX-History-Restore-Request") != "true"
     )
-    template_name = (
-        "comms/partials/conversation_list.html#conversation-list"
-        if is_fragment
-        else "comms/inbox.html"
-    )
-    context = _inbox_context(request)
-    context["has_recipients"] = _has_recipients(request)
-    return render(request, template_name, context)
+    context = _page_context(request)
+    if is_fragment:
+        return render(
+            request, "comms/partials/conversation_list.html#conversation-list", context
+        )
+    return render(request, "comms/thread.html", context)
 
 
 def _has_recipients(request: HttpRequest) -> bool:
@@ -356,6 +400,30 @@ def unreachable_recipient_response(request: HttpRequest) -> HttpResponse:
     return response
 
 
+THREAD_PANE_ID = "thread-pane"
+
+
+def _targets_thread_pane(request: HttpRequest) -> bool:
+    """Whether htmx asked on behalf of the messages page's thread pane."""
+    return (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-Target") == THREAD_PANE_ID
+    )
+
+
+def _open_thread_response(
+    request: HttpRequest, conversation: Conversation
+) -> HttpResponse:
+    """Take the browser to the conversation's thread: a redirect for a plain
+    request, a 204 with HX-Location for htmx so the whole page loads."""
+    thread_url = reverse("conversations:thread", kwargs={"pk": conversation.pk})
+    if request.headers.get("HX-Request") != "true":
+        return redirect(thread_url)
+    response = HttpResponse(status=204)
+    response["HX-Location"] = json.dumps({"path": thread_url})
+    return response
+
+
 def _send_response(
     request: HttpRequest,
     result: SendResult,
@@ -382,13 +450,8 @@ def _send_response(
         )
     if result.message is not None:
         sent_to = cast("Conversation", result.conversation)
-        thread_url = reverse("conversations:thread", kwargs={"pk": sent_to.pk})
-        if not is_htmx:
-            return redirect(thread_url)
-        if recipient is not None:
-            response = HttpResponse(status=204)
-            response["HX-Location"] = json.dumps({"path": thread_url})
-            return response
+        if not is_htmx or recipient is not None:
+            return _open_thread_response(request, sent_to)
         cursor = decode_cursor(request.POST.get("after", ""))
         new = messages_after(sent_to, cursor) if cursor is not None else []
         if new:
@@ -442,7 +505,7 @@ def _send_response(
             "comms/thread.html",
             {
                 **thread_context(request, conversation),
-                **_inbox_context(request, conversation),
+                **_page_context(request, conversation),
                 **context,
             },
             status=422,
@@ -496,8 +559,14 @@ def _offered_recipients(request: HttpRequest) -> QuerySet[User]:
     )
 
 
-def _picker_context(request: HttpRequest, term: str) -> dict[str, object]:
-    """What the picker partial needs: the search outcome and the URLs it links to."""
+def _picker_context(
+    request: HttpRequest, term: str, in_pane: bool = False
+) -> dict[str, object]:
+    """What the picker partial needs: the search outcome and the URLs it links to.
+
+    ``in_pane`` makes each result load the composer into the messages page's
+    thread pane instead of navigating.
+    """
     site = cast("Site", get_cached_site(request))
     return {
         "search": search_recipients(
@@ -510,27 +579,36 @@ def _picker_context(request: HttpRequest, term: str) -> dict[str, object]:
         "include_email": False,
         "search_url": reverse("conversations:recipient_search"),
         "choose_url": reverse("conversations:start"),
+        "in_pane": in_pane,
     }
 
 
 def _start_get(request: HttpRequest) -> HttpResponse:
+    in_pane = _targets_thread_pane(request)
+    template = (
+        "comms/partials/new_conversation_pane.html" if in_pane else "comms/start.html"
+    )
     raw = request.GET.get("recipient")
     if raw is None:
-        return render(
-            request,
-            "comms/start.html",
-            {"recipient": None, **_picker_context(request, request.GET.get("q", ""))},
-        )
+        context = {
+            "recipient": None,
+            "in_pane": in_pane,
+            **_picker_context(request, request.GET.get("q", ""), in_pane=in_pane),
+        }
+        return render(request, template, context)
     recipient = get_object_or_404(_offered_recipients(request), pk=recipient_pk(raw))
-    return render(
-        request,
-        "comms/start.html",
-        {
-            "recipient": recipient,
-            "other": recipient,
-            "composer": composer_context(client_key=uuid4(), recipient=recipient),
-        },
-    )
+    site = cast("Site", get_cached_site(request))
+    existing = conversation_between(cast("User", request.user), recipient, site)
+    if existing is not None:
+        # One conversation per pair: choosing the person again opens it.
+        return _open_thread_response(request, existing)
+    context = {
+        "recipient": recipient,
+        "other": recipient,
+        "in_pane": in_pane,
+        "composer": composer_context(client_key=uuid4(), recipient=recipient),
+    }
+    return render(request, template, context)
 
 
 def _start_post(request: HttpRequest) -> HttpResponse:
@@ -567,6 +645,22 @@ def start(request: HttpRequest) -> HttpResponse:
 
 
 @messaging_view
+def partial_recent_conversations(request: HttpRequest) -> HttpResponse:
+    """The messages panel's content: the newest conversations, loaded when the panel opens."""
+    viewer = cast("User", request.user)
+    conversations = list(recent_conversations_for(viewer, RECENT_CONVERSATION_COUNT))
+    rows = [
+        (conversation, other_participant(conversation, viewer))
+        for conversation in conversations
+    ]
+    return render(
+        request,
+        "comms/partials/messages_panel.html",
+        {"rows": rows, "has_recipients": _has_recipients(request)},
+    )
+
+
+@messaging_view
 def partial_unread_badge(request: HttpRequest) -> HttpResponse:
     """The header Messages badge content: the sr-only label and the count."""
     return render(
@@ -582,7 +676,9 @@ def partial_recipient_search(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "comms/partials/recipient_picker.html#results",
-        _picker_context(request, request.GET.get("q", "")),
+        _picker_context(
+            request, request.GET.get("q", ""), in_pane=request.GET.get("in_pane") == "1"
+        ),
     )
 
 
@@ -602,19 +698,23 @@ def _boundary_message(
     )
 
 
-@messaging_view
-def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """The page of messages older than ``?before=``, for prepending to the log.
+def older_page_response(
+    request: HttpRequest,
+    conversation: Conversation,
+    cursor: tuple[datetime, UUID],
+    *,
+    older_url: str | None = None,
+    thread_id: str = "thread",
+) -> HttpResponse:
+    """The page of messages older than ``cursor``, for prepending to the log.
 
     The first message already on screen is re-rendered out of band, because
     its day separator and sender line depend on what now sits above it. The
     load-earlier control is replaced out of band with the next cursor, or with
-    nothing once no older message exists.
+    nothing once no older message exists; ``older_url`` is the address that
+    control fetches from when it is not the participant's own, and
+    ``thread_id`` the id prefix of the pane it belongs to.
     """
-    conversation = participant_conversation(request, pk)
-    cursor = decode_cursor(request.GET.get("before", ""))
-    if cursor is None:
-        return HttpResponseBadRequest("before must be a cursor")
     older, has_more = page_before(conversation, cursor)
     boundary_message = _boundary_message(conversation, cursor)
     body = ""
@@ -636,11 +736,23 @@ def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
         {
             "conversation": conversation,
             "older_cursor": encode_cursor(older[0]) if has_more and older else "",
+            "older_url": older_url,
+            "thread_id": thread_id,
             "oob": True,
         },
         request,
     )
     return HttpResponse(body)
+
+
+@messaging_view
+def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """The page of messages older than ``?before=``, for prepending to the log."""
+    conversation = participant_conversation(request, pk)
+    cursor = decode_cursor(request.GET.get("before", ""))
+    if cursor is None:
+        return HttpResponseBadRequest("before must be a cursor")
+    return older_page_response(request, conversation, cursor)
 
 
 def _incoming_announcement(incoming: list[Message]) -> str:

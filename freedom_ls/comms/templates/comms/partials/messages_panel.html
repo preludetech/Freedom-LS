@@ -1,0 +1,43 @@
+<div class="flex h-full flex-col sm:h-auto sm:max-h-[32rem]">
+    <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <h2 id="messages-panel-heading"
+            tabindex="-1"
+            class="text-base font-semibold text-on-surface focus:outline-none">Messages</h2>
+        <div class="flex items-center gap-1">
+            {% if has_recipients %}
+                <c-button variant="ghost" size="small" href="{% url 'conversations:start' %}" icon_left="message">
+                    New message
+                </c-button>
+            {% endif %}
+            <button type="button"
+                    x-on:click="close"
+                    aria-label="Close messages"
+                    class="sm:hidden rounded-full p-2 text-muted hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
+                <c-icon name="close" class="size-5" />
+            </button>
+        </div>
+    </div>
+    <div class="min-h-0 flex-1 overflow-y-auto">
+        {% if rows %}
+            <ul class="list-none ml-0 space-y-0 divide-y divide-border">
+                {% for conversation, other in rows %}
+                    {% include "comms/partials/messages_panel_row.html" %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                <p class="text-sm text-muted">No messages yet.</p>
+                {% if has_recipients %}
+                    <c-button variant="primary" size="small" href="{% url 'conversations:start' %}" icon_left="message">
+                        New message
+                    </c-button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-3">
+        <c-button variant="ghost" size="small" href="{% url 'conversations:inbox' %}" icon_right="next">
+            See all messages
+        </c-button>
+    </div>
+</div>

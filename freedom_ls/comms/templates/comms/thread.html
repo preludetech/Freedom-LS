@@ -6,11 +6,19 @@
     <c-page width="wide" class="py-0!">
         <div class="flex border-x border-border">
             <aside aria-label="Conversations"
-                   class="hidden w-80 shrink-0 overflow-y-auto border-r border-border bg-surface md:block">
+                   class="{% if conversation %}hidden {% endif %}w-full shrink-0 overflow-y-auto border-r border-border bg-surface md:block md:w-80">
+                <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                    {% if conversation %}<h2 class="m-0 text-lg font-semibold">Messages</h2>{% else %}<h1 class="m-0 text-lg font-semibold">Messages</h1>{% endif %}
+                    {% if has_recipients %}{% include "comms/partials/new_message_button.html" %}{% endif %}
+                </div>
                 {% include "comms/partials/conversation_list.html" %}
             </aside>
-            <div class="min-w-0 flex-1">
-                {% include "comms/partials/thread.html" %}
+            <div id="thread-pane" x-data="threadPane" x-on:resize.window="measure" class="{% if not conversation %}hidden md:block {% endif %}min-w-0 flex-1">
+                {% if conversation %}
+                    {% include "comms/partials/thread.html" %}
+                {% else %}
+                    {% include "comms/partials/thread_placeholder.html" %}
+                {% endif %}
             </div>
         </div>
     </c-page>

@@ -153,6 +153,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **peer** (coined) | `learner_management/queries.py` `peers_of` | Another user's active `Learner` row in the same organisation that shares a cohort with the given learner, or a course both hold an active registration for (individually or through a cohort). Course peers stay inside the organisation because a course is not owned by one. |
 | **candidate** (coined) | `messaging_policy/policy.py` | A relationship that could let one user start a conversation with another, before the settings layers decide whether it is open. A candidate that resolves open allows the start; one that resolves closed is refused with `CLOSED_BY_CONFIGURATION`; no candidate at all is `NO_RELATIONSHIP`. Today every cohort the sender shares with another learner is one. |
 | **offered educator** (coined) | `messaging_policy/policy.py` `offered_roles_for` | An educator of a learner whose role is on the offered list (`MESSAGING_OFFERED_EDUCATOR_ROLES`), always narrowed to roles granting `VIEW_LEARNER`. Only an offered educator can resolve open as a candidate; an educator through any other role is still a candidate and resolves closed. |
+| **oversight** (coined) | `educator_interface/messaging.py` `oversight_conversations_for` | Read-only access, for holders of `freedom_ls_comms.view_conversation`, to a learner's `Conversation` rows whose other participant is in `educators_of(learner)`. Reached from the learner page only. It never marks a thread read and never goes through participant code paths; each open writes one `conversation.viewed` audit entry. |
 | **rollup** (coined) | `base/notification_categories.py` `NotificationCategory.rollup`, `comms/notify.py` `raise_notification` | A notification category that keeps one unread `Notification` per user and target. A further event updates that row (`created_at` then means "last changed") instead of adding one; once the row is read, the next event starts a new one. Keyed by `Notification.rollup_key`. |
 
 ---
@@ -172,12 +173,12 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 A change to the system is named once, as a `noun.verb` code. The audit action and the webhook
 event type for the same change are **the same string**: `registration.deactivated` is what the
 audit log stores and what a receiver gets as `type`. The full table of codes, with the label each
-shows in the UI, is `freedom_ls/audit_log/README.md`; `freedom_ls/audit_log/tests/test_vocabulary.py`
+shows in the UI, is `freedom_ls/audit_log/README.md`; `freedom_ls/audit_log/tests/invariants/test_vocabulary.py`
 fails a code that steps outside this section.
 
 The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
 (a `LearnerCourseRegistration`), `cohort_registration`, `role`, `member` (an `OrganisationMember`),
-`user`, `course`, `bulk_action`, `import`. The verb comes from this list and nowhere else:
+`user`, `course`, `bulk_action`, `import`, `conversation`. The verb comes from this list and nowhere else:
 
 | Verb | Means | Not |
 | --- | --- | --- |
@@ -187,6 +188,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort). | |
 | `deleted` | A standalone object was deleted: `cohort.deleted`. | |
 | `assigned` | A role was given to a user. Its opposite is `role.deactivated`. | `granted` |
+| `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight. Only for a read worth auditing. | `opened`, `accessed`, `read` |
 | `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
 
 The words a person reads follow the same verbs:

@@ -5,7 +5,7 @@ The open thread's row carries aria-current.
 {% endcomment %}
 <li>
     <a href="{% url 'conversations:thread' conversation.pk %}"
-       {% if conversation.pk == current_pk %}aria-current="page"{% endif %}
+       {% if conversation.pk == current_pk %}aria-current="true"{% endif %}
        class="flex min-h-12 items-center gap-3 px-4 py-3 text-on-surface no-underline hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] aria-[current]:bg-surface-2 aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)] {% if conversation.is_unread %}bg-primary/5{% endif %}">
         {% include "comms/partials/participant_avatar.html" %}
         <span class="min-w-0 flex-1 truncate {% if conversation.is_unread %}font-semibold{% endif %}">

@@ -24,6 +24,7 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_accounts.change_user",
                     "freedom_ls_organisations.view_organisation",
                     "freedom_ls_audit_log.view_auditlogentry",
+                    "freedom_ls_comms.view_conversation",
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
                     "freedom_ls_learner_management.add_cohort",
@@ -98,6 +99,7 @@ BASE_ROLES = SiteRolesConfig(
                 {
                     "freedom_ls_organisations.view_organisation",
                     "freedom_ls_audit_log.view_auditlogentry",
+                    "freedom_ls_comms.view_conversation",
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
                     "freedom_ls_learner_management.add_cohort",

@@ -37,74 +37,129 @@ function visibilityPoller(seconds, target) {
     };
 }
 
+/**
+ * Shared by the header bell and the header messages button: one disclosure
+ * panel whose content loads each time it opens. Only one header panel is open
+ * at a time: opening one announces itself on window and the other closes.
+ *
+ * Components are built as Object.assign(headerPanel(name), {...}) so the
+ * contentVisible getter stays a live getter (an object spread would evaluate
+ * it once).
+ */
+function headerPanel(name) {
+    // A closure, not reactive state: Alpine must not proxy the listener.
+    let onOtherOpened = null;
+    return {
+        open: false,
+        loading: false,
+        failed: false,
+        initPanel() {
+            const content = this.$refs.content;
+            // Only the panel's own content load drives loading/failed. Events
+            // bubbling from elements inside the content (row actions) must not
+            // flip them: hiding the content for those would lose keyboard focus.
+            const onPanelLoad = (handler) => (event) => {
+                if (event.detail.elt === content) handler();
+            };
+            content.addEventListener("htmx:beforeRequest", onPanelLoad(() => {
+                this.loading = true;
+            }));
+            content.addEventListener("htmx:afterSwap", onPanelLoad(() => {
+                this.loading = false;
+            }));
+            const onFailure = onPanelLoad(() => {
+                this.loading = false;
+                this.failed = true;
+            });
+            content.addEventListener("htmx:responseError", onFailure);
+            content.addEventListener("htmx:sendError", onFailure);
+            onOtherOpened = (event) => {
+                if (event.detail !== name && this.open) this.close();
+            };
+            window.addEventListener("header-panel-opened", onOtherOpened);
+        },
+        destroyPanel() {
+            window.removeEventListener("header-panel-opened", onOtherOpened);
+        },
+        get contentVisible() {
+            return !this.loading && !this.failed;
+        },
+        toggle() {
+            if (this.open) {
+                this.close();
+            } else {
+                this.openPanel();
+            }
+        },
+        openPanel() {
+            this.open = true;
+            this.failed = false;
+            window.dispatchEvent(new CustomEvent("header-panel-opened", { detail: name }));
+            this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
+        },
+        close() {
+            const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
+            const focusWasOnTrigger = document.activeElement === this.$refs.trigger;
+            this.open = false;
+            if (focusWasInPanel || focusWasOnTrigger) {
+                this.$refs.trigger.focus();
+            }
+        },
+        // The trigger sits outside the panel, so a click on it counts as a
+        // click away. While the panel is still fading out that would close it
+        // again straight after the click reopened it; the trigger's own
+        // toggle handles that click.
+        closeOnClickAway(event) {
+            if (this.$refs.trigger.contains(event.target)) return;
+            this.close();
+        },
+        retry() {
+            this.openPanel();
+        },
+    };
+}
+
 document.addEventListener("alpine:init", () => {
     // Header bell (comms/partials/notification_bell.html).
     //
-    // Its badge poll timer comes from visibilityPoller.
-    //
-    // `open`, `loading` and `failed` also drive the panel: it loads from
-    // notification_panel each time it opens (openPanel), not once up front,
-    // so the eight rows and the unread count are never stale.
+    // Its badge poll timer comes from visibilityPoller. The panel loads from
+    // notification_panel each time it opens (headerPanel.openPanel), not once
+    // up front, so the eight rows and the unread count are never stale.
     Alpine.data("notificationBell", () => {
         // A closure, not reactive state: Alpine must not proxy the timer object.
         let poller = null;
-        return {
-            open: false,
-            loading: false,
-            failed: false,
+        return Object.assign(headerPanel("notifications"), {
             init() {
                 poller = visibilityPoller(Number(this.$el.dataset.pollSeconds), this.$refs.badge);
-
-                // Only the panel's own load drives loading/failed. Mark-all and row
-                // actions bubble their htmx events up through the same element,
-                // and hiding the content for those would lose keyboard focus.
-                const content = this.$refs.content;
-                const onPanelLoad = (handler) => (event) => {
-                    if (event.detail.elt === content) handler();
-                };
-                content.addEventListener("htmx:beforeRequest", onPanelLoad(() => {
-                    this.loading = true;
-                }));
-                content.addEventListener("htmx:afterSwap", onPanelLoad(() => {
-                    this.loading = false;
-                }));
-                const onFailure = onPanelLoad(() => {
-                    this.loading = false;
-                    this.failed = true;
-                });
-                content.addEventListener("htmx:responseError", onFailure);
-                content.addEventListener("htmx:sendError", onFailure);
-            },
-            get contentVisible() {
-                return !this.loading && !this.failed;
-            },
-            toggle() {
-                if (this.open) {
-                    this.close();
-                } else {
-                    this.openPanel();
-                }
-            },
-            openPanel() {
-                this.open = true;
-                this.failed = false;
-                this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
-            },
-            close() {
-                const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
-                const focusWasOnBell = document.activeElement === this.$refs.bell;
-                this.open = false;
-                if (focusWasInPanel || focusWasOnBell) {
-                    this.$refs.bell.focus();
-                }
-            },
-            retry() {
-                this.openPanel();
+                this.initPanel();
             },
             destroy() {
                 poller.destroy();
+                this.destroyPanel();
             },
-        };
+        });
+    });
+
+    // Header messages button (comms/partials/messages_button.html).
+    //
+    // The panel loads the newest conversations each time it opens. A reply
+    // landing while it is open refreshes its rows; closed, the next open
+    // loads afresh anyway.
+    Alpine.data("messagesPanel", () => {
+        let onConversationChanged = null;
+        return Object.assign(headerPanel("messages"), {
+            init() {
+                this.initPanel();
+                onConversationChanged = () => {
+                    if (this.open) this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
+                };
+                document.body.addEventListener("conversationChanged", onConversationChanged);
+            },
+            destroy() {
+                document.body.removeEventListener("conversationChanged", onConversationChanged);
+                this.destroyPanel();
+            },
+        });
     });
 
     // The header Messages badge (comms/partials/messages_button.html): polls
@@ -193,38 +248,28 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // The learner quick-view message box (comms/partials/message_box.html).
+    // The messages page's #thread-pane (comms/thread.html).
     //
-    // The Open conversation link appears once a conversation exists. The box
-    // replaces itself after every send, so the pk is read from the box that was
-    // just swapped in and the link's address is filled from the URL template
-    // the server rendered.
-    Alpine.data("messageBox", () => ({
-        hasConversation: false,
-        openUrl: "",
-        urlTemplate: "",
+    // Sets --thread-top to the site header's height, which the thread and the
+    // new-message pane subtract from the viewport so the page itself does not
+    // scroll. It sits on the wrapper because htmx swaps what is inside it.
+    // The header's height changes across breakpoints, so the measurement
+    // repeats on window resize (bound with x-on:resize.window on the wrapper).
+    Alpine.data("threadPane", () => ({
         init() {
-            this.urlTemplate = this.$root.dataset.openUrlTemplate;
-            this.sync();
+            this.measure();
         },
-        sync() {
-            const box = this.$root.querySelector("#quick-view-message-box");
-            const pk = box ? box.dataset.conversationPk : "";
-            this.hasConversation = pk !== "";
-            this.openUrl = this.hasConversation ? this.urlTemplate.replace("{pk}", pk) : "";
-        },
-        onAfterSwap() {
-            this.sync();
+        measure() {
+            const header = document.querySelector("header.header");
+            const top = header ? header.getBoundingClientRect().height : 0;
+            this.$el.style.setProperty("--thread-top", top + "px");
         },
     }));
 
     // The thread pane (comms/partials/thread.html).
     //
-    // Sizes the pane to the viewport below the site header, so the composer
-    // stays in view and the log is the only scrolling part, and opens the log
-    // at its newest message. The header's height changes across breakpoints,
-    // so the measurement repeats on window resize (bound with x-on:resize.window
-    // on the pane, which Alpine removes with the component).
+    // Keeps the composer in view with the log as the only scrolling part, and
+    // opens the log at its newest message.
     //
     // Entries appended by a send or a poll follow the reader only when they
     // were already at the bottom or the entry is their own send; otherwise a
@@ -241,7 +286,6 @@ document.addEventListener("alpine:init", () => {
         reduceMotion: false,
         init() {
             this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            this.measure();
             this.scrollToLatest();
             if ("justRead" in this.$el.dataset) {
                 this.$dispatch("conversationChanged");
@@ -261,11 +305,6 @@ document.addEventListener("alpine:init", () => {
             this.scrollToLatest(true);
             this.newCount = 0;
         },
-        measure() {
-            const header = document.querySelector("header.header");
-            const top = header ? header.getBoundingClientRect().height : 0;
-            this.$el.style.setProperty("--thread-top", top + "px");
-        },
         // Only a swap triggered from the load-earlier control prepends; sends
         // and polls append and should not move the reader.
         rememberScroll(event) {
@@ -273,7 +312,7 @@ document.addEventListener("alpine:init", () => {
             if (event.detail.target !== log) {
                 return;
             }
-            if (!event.detail.requestConfig.elt.closest("#thread-older")) {
+            if (!event.detail.requestConfig.elt.closest("[data-thread-older]")) {
                 this.beforeAppend = log.lastElementChild;
                 return;
             }

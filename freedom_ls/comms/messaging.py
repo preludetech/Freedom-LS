@@ -15,15 +15,17 @@ from django.db import IntegrityError, transaction
 from django.db.models import (
     BooleanField,
     Case,
-    Exists,
     F,
     FilteredRelation,
+    OuterRef,
     Prefetch,
     Q,
     QuerySet,
+    Subquery,
     Value,
     When,
 )
+from django.db.models.functions import Left
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
@@ -36,7 +38,6 @@ from freedom_ls.comms.messaging_policy import (
     RecipientGroup,
 )
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
-from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,8 +48,6 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
 BLANK_BODY = _("Type a message first.")
-# Up to this many candidates the picker lists everyone without a search term.
-PICKER_LIST_ALL_LIMIT = 15
 PICKER_MIN_TERM_LENGTH = 2
 PICKER_RESULT_LIMIT = 20
 TOO_LONG_BODY = _("This message is too long. The limit is %(limit)s characters.")
@@ -141,6 +140,27 @@ def inbox_for(user: User) -> QuerySet[Conversation]:
     return cast("QuerySet[Conversation]", queryset)
 
 
+MESSAGE_EXCERPT_LENGTH = 140
+
+
+def last_message_body_subquery() -> Subquery:
+    """The start of a conversation's newest message, for an excerpt annotation.
+    Rows show it on one clamped line, so the rest of the body is not fetched."""
+    return Subquery(
+        Message.objects.filter(conversation=OuterRef("pk"))
+        .order_by("-created_at", "-id")
+        .annotate(excerpt=Left("body", MESSAGE_EXCERPT_LENGTH))
+        .values("excerpt")[:1]
+    )
+
+
+def recent_conversations_for(user: User, limit: int) -> QuerySet[Conversation]:
+    """The user's newest conversations with an excerpt, for the messages panel."""
+    return inbox_for(user).annotate(last_message_body=last_message_body_subquery())[
+        :limit
+    ]
+
+
 def unread_conversation_count(user: User) -> int:
     """How many conversations hold a message the user has not been shown."""
     return inbox_for(user).filter(Q(is_unread=True)).count()
@@ -208,26 +228,12 @@ def mark_conversation_read(
 
     Returns whether the marker moved, so a caller can tell the page its unread
     counts changed.
-
-    The conversation's notification is marked read too, unless a message from
-    someone else is newer than ``up_to``: that message has refreshed the
-    notification and has not been shown. The reverse does not hold: reading or
-    unreading a notification leaves the marker alone.
     """
     moved = ConversationParticipant.objects.filter(
         Q(last_read_at__isnull=True) | Q(last_read_at__lt=up_to),
         conversation=conversation,
         user=user,
     ).update(last_read_at=up_to)
-    newer_incoming = Message.objects.filter(
-        conversation=conversation, created_at__gt=up_to
-    ).exclude(sender=user)
-    mark_notifications_read(
-        user=user,
-        target=conversation,
-        site_id=conversation.site_id,
-        condition=~Q(Exists(newer_incoming)),
-    )
     return moved > 0
 
 
@@ -323,15 +329,6 @@ def send_message(
         if not _has_unread_incoming(locked, sender):
             mark_conversation_read(
                 user=sender, conversation=locked, up_to=message.created_at
-            )
-        other = other_participant(locked, sender)
-        if other is not None:
-            raise_notification(
-                user=other,
-                category="message.received",
-                target=locked,
-                site_id=locked.site_id,
-                data={"sender_name": sender.display_name},
             )
     return SendResult(message=message, conversation=locked)
 
@@ -575,42 +572,32 @@ def search_recipients(
 
     Only narrows ``candidates`` (default: everyone the policy offers the
     sender); a person outside them never appears, so a name the sender may not
-    message looks the same as a name that does not exist. A short list is shown
-    whole; a longer one waits for a term of two characters. Results are capped
-    at 20, with ``truncated`` set when more matched.
+    message looks the same as a name that does not exist. An empty term lists
+    everyone, capped like a search; a typed term shorter than two characters
+    asks for more. Results are capped at 20, with ``truncated`` set when more
+    matched.
     """
     policy = get_messaging_policy()
     if candidates is None:
         candidates = policy.recipients_for(sender=sender, site=site)
     term = term.strip()
-    if not term:
-        everyone = list(
-            candidates.order_by("first_name", "last_name", "pk")[
-                : PICKER_LIST_ALL_LIMIT + 1
-            ]
-        )
-        if len(everyone) > PICKER_LIST_ALL_LIMIT:
-            return RecipientSearch(groups=[], needs_term=True)
-        matches, truncated = everyone, False
-    elif len(term) < PICKER_MIN_TERM_LENGTH:
+    if term and len(term) < PICKER_MIN_TERM_LENGTH:
         return RecipientSearch(groups=[], needs_term=True)
-    else:
-        # Every word must match some field, so "Jane Smith" finds Jane Smith.
-        condition = Q()
-        for word in term.split():
-            word_condition = Q(first_name__icontains=word) | Q(
-                last_name__icontains=word
-            )
-            if include_email:
-                word_condition |= Q(email__icontains=word)
-            condition &= word_condition
-        fetched = list(
-            candidates.filter(condition).order_by("first_name", "last_name", "pk")[
-                : PICKER_RESULT_LIMIT + 1
-            ]
-        )
-        truncated = len(fetched) > PICKER_RESULT_LIMIT
-        matches = fetched[:PICKER_RESULT_LIMIT]
+    # Every word must match some field, so "Jane Smith" finds Jane Smith. No
+    # words means no narrowing.
+    condition = Q()
+    for word in term.split():
+        word_condition = Q(first_name__icontains=word) | Q(last_name__icontains=word)
+        if include_email:
+            word_condition |= Q(email__icontains=word)
+        condition &= word_condition
+    fetched = list(
+        candidates.filter(condition).order_by("first_name", "last_name", "pk")[
+            : PICKER_RESULT_LIMIT + 1
+        ]
+    )
+    truncated = len(fetched) > PICKER_RESULT_LIMIT
+    matches = fetched[:PICKER_RESULT_LIMIT]
     if not matches:
         return RecipientSearch(groups=[])
     groups = policy.group_recipients(

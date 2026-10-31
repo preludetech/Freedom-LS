@@ -10,7 +10,7 @@ class MessagingPolicyConfig(AppSettings):
     declared_settings = {
         "MESSAGING_DEFAULT_FLAGS": Setting(
             default={
-                "learner_to_educator": "closed",
+                "learner_to_educator": "open",
                 "learner_to_cohort_peer": "closed",
                 "learner_to_course_peer": "closed",
             }

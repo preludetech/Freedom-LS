@@ -1,0 +1,2 @@
+<c-button href="{% url 'conversations:start' %}" variant="primary" icon_left="message" class="md:hidden">New message</c-button>
+<c-button href="{% url 'conversations:start' %}" variant="primary" icon_left="message" class="hidden md:inline-flex" hx-get="{% url 'conversations:start' %}" hx-target="#thread-pane" hx-swap="innerHTML" hx-push-url="true">New message</c-button>

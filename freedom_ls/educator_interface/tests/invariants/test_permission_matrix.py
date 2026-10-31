@@ -69,6 +69,7 @@ VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_AUDITLOGENTRY = "freedom_ls_audit_log.view_auditlogentry"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
+VIEW_CONVERSATION = "freedom_ls_comms.view_conversation"
 ADD_COHORT = "freedom_ls_learner_management.add_cohort"
 CHANGE_COHORT = "freedom_ls_learner_management.change_cohort"
 DELETE_COHORT = "freedom_ls_learner_management.delete_cohort"
@@ -128,6 +129,16 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": {("learner", OWN)},
+    },
+    VIEW_CONVERSATION: {
+        "site_admin": {
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
     },
     VIEW_AUDITLOGENTRY: {
         "site_admin": {
@@ -341,6 +352,7 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     VIEW_ORGANISATION: ("organisation",),
     VIEW_COHORT: ("cohort",),
     VIEW_LEARNER: ("learner",),
+    VIEW_CONVERSATION: ("learner",),
     VIEW_AUDITLOGENTRY: ("organisation", "cohort", "learner"),
     ADD_COHORT: ("organisation",),
     CHANGE_COHORT: ("cohort",),

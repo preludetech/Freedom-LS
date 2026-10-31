@@ -132,6 +132,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "bulk_action.completed", "Bulk action completed", _describe_run_summary
     ),
     AuditAction("import.committed", "Import committed", _describe_run_summary),
+    AuditAction("conversation.viewed", "Conversation viewed"),
 )
 
 

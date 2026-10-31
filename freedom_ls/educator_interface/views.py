@@ -29,6 +29,7 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseBadRequest,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
@@ -38,26 +39,23 @@ from django.utils import timezone
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, subject_key
+from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
-    inbox_for,
+    decode_cursor,
     other_participant,
     refusal_alert_copy,
-    reply_decisions,
-    search_recipients,
     send_message,
 )
-from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import (
+    CONVERSATION_CHANGED,
+    READ_ONLY_THREAD_ID,
     composer_context,
+    older_page_response,
     posted_client_key,
-    recipient_pk,
+    read_only_thread_context,
     thread_context,
-    unreachable_recipient_response,
 )
-from freedom_ls.comms.models import Conversation
-from freedom_ls.comms.templatetags.comms_tags import badge_count
 from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
@@ -108,9 +106,11 @@ from freedom_ls.educator_interface.filters import (
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
-    ConversationRow,
-    conversations_in_organisation,
+    OwnConversation,
+    other_educator_conversations,
+    own_conversation_with,
 )
+from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
@@ -134,6 +134,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
     MEMBER_ROLES,
+    VIEW_CONVERSATION,
     LearnerStatus,
     active_organisation_admins,
     cohort_counts,
@@ -153,7 +154,6 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
-    navigation_response,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
@@ -810,11 +810,194 @@ class LearnerHistoryPanel(HistoryPanel):
     )
 
 
+class LearnerMessagesPanel(Panel):
+    """The learner's Messages tab: the educator's own conversation with them.
+
+    It declares no refresh events: a re-fetch would mark the thread read again
+    for nothing, and the thread polls for new messages itself.
+    """
+
+    model = Learner
+    title = "Messages"
+    template_name = "educator_interface/panels/learner_messages.html"
+    card_flush = True
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(request)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [SendToLearnerAction(), ViewConversationAction()]
+
+    def get_context_data(
+        self,
+        *,
+        own: OwnConversation | None = None,
+        draft: str = "",
+        client_key: UUID | None = None,
+        alert: str = "",
+    ) -> dict[str, object]:
+        """The tab's context. ``own`` is the educator's side when the caller
+        has already looked it up. The other keyword arguments re-render the
+        tab after a refused send with the educator's draft and the refusal,
+        which shows even when the policy no longer lets them write."""
+        context = super().get_context_data()
+        learner = cast(Learner, self.instance)
+        if own is None:
+            own = own_conversation_with(self.request, learner)
+        may_write = own.allowed or bool(alert)
+        context["learner"] = learner
+        context["own_shown"] = own.conversation is not None or may_write
+        if own.conversation is not None:
+            context.update(thread_context(self.request, own.conversation))
+            context.pop("back_url")
+        else:
+            context["other"] = learner.user
+        if may_write:
+            context["composer"] = composer_context(
+                client_key=client_key or uuid4(),
+                draft=draft,
+                alert=alert,
+                conversation=own.conversation,
+                recipient=None if own.conversation is not None else learner.user,
+                action_url=SendToLearnerAction().get_action_url(self.ctx),
+                swap_target=self.region_id,
+            )
+        row_action_urls = cast(dict[str, str], context["row_action_urls"])
+        if ViewConversationAction.action_name in row_action_urls:
+            rows = other_educator_conversations(cast(User, self.request.user), learner)
+            context["oversight_rows"] = [
+                (c, other_participant(c, learner.user)) for c in rows
+            ]
+        return context
+
+
+class SendToLearnerAction(PanelAction):
+    """The Messages tab's composer posts here, so the answer is the tab itself
+    re-rendered, never a redirect to the messages page."""
+
+    action_name = "send"
+    renders_in_footer = False
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        request = ctx.request
+        learner = cast(Learner, ctx.instance)
+        own = own_conversation_with(request, learner)
+        client_key = posted_client_key(request)
+        draft = request.POST.get("body", "")
+        result = send_message(
+            sender=cast(User, request.user),
+            body=draft,
+            client_key=client_key,
+            site=cast(Site, get_cached_site(request)),
+            conversation=own.conversation,
+            recipient=None if own.conversation is not None else learner.user,
+        )
+        panel = LearnerMessagesPanel(ctx)
+        if result.message is not None:
+            # A first send created the conversation, so look it up afresh.
+            response = render(
+                request,
+                panel.template_name,
+                panel.get_context_data(
+                    own=own if own.conversation is not None else None
+                ),
+            )
+            response["HX-Trigger"] = CONVERSATION_CHANGED
+            return response
+        alert = result.body_error or refusal_alert_copy(result.refusal, learner.user)
+        return render(
+            request,
+            panel.template_name,
+            panel.get_context_data(
+                own=own, draft=draft, client_key=client_key, alert=alert
+            ),
+            status=422,
+        )
+
+
+class ViewConversationAction(PanelAction):
+    """Opens one of the learner's educator conversations read-only in the app
+    modal, for someone who holds oversight of the learner. Every open is
+    recorded in the learner's history, so only the page's own htmx request
+    may open one: a plain GET from a prefetch or a cross-site tag must not
+    leave a false entry."""
+
+    action_name = "view_conversation"
+    capability = VIEW_CONVERSATION
+    renders_in_footer = False
+    template_name = "educator_interface/modal/conversation_oversight.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return comms_config.MESSAGING_ENABLED and super().has_permission(ctx)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        request = ctx.request
+        if request.headers.get("HX-Request") != "true":
+            raise Http404
+        learner = cast(Learner, ctx.instance)
+        viewer = cast(User, request.user)
+        conversation = get_object_or_404(
+            other_educator_conversations(viewer, learner),
+            pk=uuid_or_404(request.GET.get("conversation")),
+        )
+        educator = other_participant(conversation, learner.user)
+        record_entry(
+            action="conversation.viewed",
+            actor=viewer,
+            target=conversation,
+            target_label=(
+                f"Conversation with {educator.display_name if educator else 'Deleted user'}"
+            ),
+            organisation=learner.organisation,
+            subjects=[learner],
+        )
+        return {
+            **read_only_thread_context(
+                conversation,
+                other=educator,
+                older_url=reverse(
+                    "educator_interface:oversight_thread_older",
+                    kwargs={
+                        "organisation_slug": learner.organisation.slug,
+                        "learner_pk": str(learner.pk),
+                        "conversation_pk": str(conversation.pk),
+                    },
+                ),
+            ),
+            "viewer_role_label": _oversight_role_label(viewer, learner),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # Opening is a read; there is nothing to submit.
+        raise Http404
+
+
+def uuid_or_404(raw: str | None) -> UUID:
+    """A pk from a query string or a URL; a 404 when it is not a UUID."""
+    try:
+        return UUID(raw or "")
+    except ValueError:
+        raise Http404("not a uuid") from None
+
+
+def _oversight_role_label(viewer: User, learner: Learner) -> str:
+    """How the read-only banner names the viewer's access: a site admin reads
+    through the site grant, anyone else holding the permission is an
+    organisation admin of the learner's organisation."""
+    if site_level_admins(learner.site).filter(pk=viewer.pk).exists():
+        return "a site admin"
+    return "an organisation admin"
+
+
 class LearnerTabSet(TabSet):
     title = "Learner sections"
     children = {
         "overview": LearnerOverviewStack,
         "courses": LearnerCoursesStack,
+        "messages": LearnerMessagesPanel,
         "history": LearnerHistoryPanel,
     }
 
@@ -836,13 +1019,6 @@ class LearnerInstanceView(InstanceView):
             ResendSetupEmailAction(),
             *learner_state_actions(),
         ]
-
-
-def _interface_path(organisation: Organisation, path_string: str) -> str:
-    return reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
-    )
 
 
 _LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
@@ -1044,7 +1220,7 @@ class CohortSettingsPanel(Panel):
         return [
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
-                success_url=_interface_path(cohort.organisation, "cohorts"),
+                success_url=interface_path(cohort.organisation, "cohorts"),
             ),
         ]
 
@@ -1140,7 +1316,7 @@ class CreateCohortAction(CreateInstanceAction):
         return form
 
     def get_success_url(self, instance: Model) -> str:
-        return _interface_path(self._organisation, f"cohorts/{instance.pk}")
+        return interface_path(self._organisation, f"cohorts/{instance.pk}")
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         with transaction.atomic():
@@ -1201,247 +1377,6 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
             not learners_visible_to(request.user, organisation, include_inactive=True)
-            .filter(pk=instance.pk)
-            .exists()
-        ):
-            raise OrganisationScopeDenied
-
-
-class ConversationDataTable(DataTable):
-    """The educator's conversations with learners of the organisation.
-
-    Rows are ConversationRow objects: the Status column needs each row's reply
-    decision, which is decided for the whole page in one policy call so the
-    query count does not follow the number of rows.
-    """
-
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet:
-        scoped = cast(OrganisationScopedRequest, request)
-        return conversations_in_organisation(
-            cast(User, request.user), scoped.organisation
-        )
-
-    @staticmethod
-    def get_columns() -> list[Column]:
-        return [
-            Column(
-                header="With",
-                template="educator_interface/data-table-cells/conversation_with.html",
-                text_attr="other.display_name",
-                url_name="educator_interface:interface",
-                url_path_template="messages/{conversation.pk}",
-                htmx_nav=True,
-                card="primary",
-            ),
-            Column(
-                header="Last message",
-                template="educator_interface/data-table-cells/conversation_last_message.html",
-            ),
-            Column(
-                header="Status",
-                template="educator_interface/data-table-cells/conversation_state.html",
-            ),
-        ]
-
-    @classmethod
-    def get_rows(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
-    ) -> Page:
-        page = super().get_rows(request, queryset, query)
-        viewer = cast(User, request.user)
-        conversations = list(page.object_list)
-        decisions = reply_decisions(viewer=viewer, conversations=conversations)
-        page.object_list = [
-            ConversationRow(
-                conversation=conversation,
-                other=other_participant(conversation, viewer),
-                can_reply=decisions[conversation.pk].allowed,
-            )
-            for conversation in conversations
-        ]
-        return page
-
-
-class ConversationThreadPanel(Panel):
-    """The conversation's thread, with its composer, inside the interface card."""
-
-    model = Conversation
-    template_name = "educator_interface/panels/conversation_thread.html"
-    card_flush = True
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context.update(thread_context(self.request, cast(Conversation, self.instance)))
-        organisation = cast(OrganisationScopedRequest, self.request).organisation
-        context["back_url"] = _interface_path(organisation, "messages")
-        return context
-
-
-class NewMessageAction(PanelAction):
-    """Starts a conversation with a learner of the organisation, in the app modal.
-
-    The picker offers only learners the sender can see in this organisation
-    and the policy lets them message, so a learner elsewhere looks the same as
-    a name that does not exist.
-    """
-
-    label = "New message"
-    action_name = "new_message"
-    trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/new_message.html"
-
-    def _candidates(self, ctx: PanelContext) -> QuerySet[User]:
-        user = cast(User, ctx.request.user)
-        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
-        site = cast(Site, get_cached_site(ctx.request))
-        return (
-            get_messaging_policy()
-            .recipients_for(sender=user, site=site)
-            .filter(pk__in=learners_visible_to(user, organisation).values("user_id"))
-        )
-
-    def _modal_context(
-        self,
-        ctx: PanelContext,
-        recipient: User | None,
-        *,
-        client_key: UUID | None = None,
-        draft: str = "",
-        alert: str = "",
-    ) -> dict[str, object]:
-        action_url = self.get_action_url(ctx)
-        context: dict[str, object] = {
-            "recipient": recipient,
-            "other": recipient,
-            "search_url": action_url,
-            "choose_url": action_url,
-            "include_email": True,
-            "in_modal": True,
-        }
-        if recipient is None:
-            term = ctx.request.GET.get("q", "")
-            context["term"] = term.strip()
-            context["search"] = search_recipients(
-                sender=cast(User, ctx.request.user),
-                site=cast(Site, get_cached_site(ctx.request)),
-                term=term,
-                candidates=self._candidates(ctx),
-                include_email=True,
-                scope=cast(OrganisationScopedRequest, ctx.request).organisation,
-            )
-        else:
-            context["composer"] = composer_context(
-                client_key=client_key or uuid4(),
-                draft=draft,
-                alert=alert,
-                recipient=recipient,
-                action_url=action_url,
-                in_modal=True,
-            )
-        return context
-
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        raw = ctx.request.GET.get("recipient")
-        if raw is None:
-            return self._modal_context(ctx, None)
-        recipient = get_object_or_404(self._candidates(ctx), pk=recipient_pk(raw))
-        return self._modal_context(ctx, recipient)
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        request = ctx.request
-        client_key = posted_client_key(request)
-        recipient = (
-            self._candidates(ctx)
-            .filter(pk=recipient_pk(request.POST.get("recipient")))
-            .first()
-        )
-        if recipient is None:
-            return unreachable_recipient_response(request)
-        draft = request.POST.get("body", "")
-        result = send_message(
-            sender=cast(User, request.user),
-            body=draft,
-            client_key=client_key,
-            site=cast(Site, get_cached_site(request)),
-            recipient=recipient,
-        )
-        if result.message is not None:
-            organisation = cast(OrganisationScopedRequest, request).organisation
-            conversation = cast(Conversation, result.conversation)
-            return navigation_response(
-                _interface_path(organisation, f"messages/{conversation.pk}")
-            )
-        alert = result.body_error or refusal_alert_copy(result.refusal, recipient)
-        return render(
-            request,
-            self.template_name,
-            self._modal_context(
-                ctx, recipient, client_key=client_key, draft=draft, alert=alert
-            ),
-            status=422,
-        )
-
-
-class ConversationInstanceView(InstanceView):
-    panel = ConversationThreadPanel
-
-    def get_actions(self) -> list[PanelAction]:
-        return [NewMessageAction()]
-
-
-class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
-    url_name = "messages"
-    menu_label = "Messages"
-    icon = "message"
-    model = Conversation
-    list_view = ConversationDataTable
-    table_key = "conversations"
-    instance_view = ConversationInstanceView
-
-    @classmethod
-    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [NewMessageAction()]
-
-    @classmethod
-    def is_available(cls, request: HttpRequest) -> bool:
-        return comms_config.MESSAGING_ENABLED
-
-    @classmethod
-    def get_menu_count_url(cls, request: HttpRequest) -> str | None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        return reverse(
-            "educator_interface:messages_unread_count",
-            kwargs={"organisation_slug": organisation.slug},
-        )
-
-    @classmethod
-    def get_menu_count_poll_seconds(cls) -> int:
-        return comms_config.MESSAGE_INBOX_POLL_SECONDS
-
-    @classmethod
-    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
-        """The instance view over the educator's own copy of the conversation.
-
-        Loaded through the inbox query after authorisation, so the other
-        participant is already on the instance for the heading and the thread.
-        """
-        authorised = super().get_instance_view(request, pk)
-        conversation = inbox_for(cast(User, request.user)).get(
-            pk=authorised.instance.pk
-        )
-        return cls.instance_view(conversation)
-
-    @classmethod
-    def get_instance_label(cls, instance: Model) -> str:
-        participants = getattr(instance, "other_participants", None)
-        return participants[0].user.display_name if participants else "Deleted user"
-
-    @classmethod
-    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(OrganisationScopedRequest, request).organisation
-        if (
-            not conversations_in_organisation(cast(User, request.user), organisation)
             .filter(pk=instance.pk)
             .exists()
         ):
@@ -1857,7 +1792,7 @@ class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):
 interface_config = [
     NavGroup(
         "Teaching",
-        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig, MessagesConfig],
+        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig],
     ),
     NavGroup("Administration", [MemberConfig, AuditLogConfig]),
 ]
@@ -1935,21 +1870,34 @@ def cohort_report_download(
 
 
 @login_required_htmx_to("educator_interface:root")
-def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpResponse:
-    """The Messages nav item's count: the unread conversations of the organisation.
-
-    The body is empty for zero so the sidebar shows no badge.
-    """
+def partial_oversight_thread_older(
+    request: HttpRequest, organisation_slug: str, learner_pk: str, conversation_pk: str
+) -> HttpResponse:
+    """Older messages of a conversation under oversight. Authorised the way the
+    learner page is, then by the oversight permission and the oversight set;
+    records nothing, since the open that reached this page already did."""
     if not comms_config.MESSAGING_ENABLED:
         raise Http404
-    user = cast(User, request.user)
-    organisation = _resolve_organisation(user, organisation_slug)
-    unread = (
-        conversations_in_organisation(user, organisation)
-        .filter(Q(is_unread=True))
-        .count()
+    _attach_organisation(request, organisation_slug)
+    learner = cast(
+        Learner, LearnerConfig.get_instance_view(request, learner_pk).instance
     )
-    return HttpResponse(badge_count(unread) if unread else "")
+    if not can(request.user, VIEW_CONVERSATION, learner):
+        raise Http404
+    conversation = get_object_or_404(
+        other_educator_conversations(cast(User, request.user), learner),
+        pk=uuid_or_404(conversation_pk),
+    )
+    cursor = decode_cursor(request.GET.get("before", ""))
+    if cursor is None:
+        return HttpResponseBadRequest("before must be a cursor")
+    return older_page_response(
+        request,
+        conversation,
+        cursor,
+        older_url=request.path,
+        thread_id=READ_ONLY_THREAD_ID,
+    )
 
 
 @login_required

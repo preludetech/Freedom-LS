@@ -1,0 +1,28 @@
+{% comment %}
+The messages page's thread pane while starting a conversation: the picker, or
+the chosen person's composer. Mirrors comms/start.html without a page around it.
+{% endcomment %}
+<section class="flex h-[calc(100dvh-var(--thread-top,0px))] min-h-0 flex-col overflow-y-auto bg-surface">
+    <header class="flex items-center gap-3 border-b border-border px-4 py-3">
+        <h2 class="m-0 text-lg font-semibold">New message</h2>
+    </header>
+    <div class="p-4">
+        {% if recipient %}
+            <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>To <span class="font-semibold">{{ recipient.display_name }}</span></span>
+                <a href="{% url 'conversations:start' %}"
+                   hx-get="{% url 'conversations:start' %}"
+                   hx-target="#thread-pane"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">Change</a>
+            </p>
+            <div class="mt-4 overflow-hidden rounded-lg border border-border">
+                {% include "comms/partials/composer.html" %}
+            </div>
+        {% else %}
+            <div id="recipient-picker">
+                {% include "comms/partials/recipient_picker.html" %}
+            </div>
+        {% endif %}
+    </div>
+</section>

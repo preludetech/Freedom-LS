@@ -1,0 +1,52 @@
+{% extends "panel_framework/panels/_panel_base.html" %}
+{% load comms_tags %}
+{% comment %}
+The learner's Messages tab. A conversation shows as the thread pane, sized to
+fit the card with an h2 so the page keeps its one h1. Before the first message
+the tab says so above the composer that starts the conversation. When the
+policy refuses and there is no conversation the own area is empty. Users who
+may view conversations see a second list below it: the learner's conversations
+with their other educators, one line each; a row opens the conversation
+read-only in the app modal.
+{% endcomment %}
+{% block panel_body %}
+    {% if own_shown %}
+        {% if conversation %}
+            {% include "comms/partials/thread.html" with pane_height="h-[65dvh]" heading_tag="h2" %}
+        {% else %}
+            <div class="px-4 py-6">
+                <p class="m-0 text-muted">No messages with {{ learner.user.display_name }} yet.</p>
+            </div>
+            {% include "comms/partials/composer.html" %}
+        {% endif %}
+    {% endif %}
+    {% if oversight_rows is not None %}
+        <section aria-labelledby="oversight-heading" class="border-t border-border">
+            <h3 id="oversight-heading" class="m-0 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted">Other educator conversations</h3>
+            {% if oversight_rows %}
+                <ul class="m-0 list-none divide-y divide-border p-0">
+                    {% for conversation, educator in oversight_rows %}
+                        <li>
+                            <button type="button"
+                                    hx-get="{{ row_action_urls.view_conversation }}?conversation={{ conversation.pk }}"
+                                    hx-target="#app-modal-body"
+                                    hx-swap="innerHTML"
+                                    hx-disabled-elt="this"
+                                    aria-haspopup="dialog"
+                                    class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+                                {% include "comms/partials/participant_avatar.html" with other=educator %}
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate">{% if educator %}{{ educator.display_name }}{% else %}Deleted user{% endif %}</span>
+                                    {% if conversation.last_message_body %}<span class="block truncate text-sm text-muted">{{ conversation.last_message_body }}</span>{% endif %}
+                                </span>
+                                {% if conversation.last_message_at %}<time datetime="{{ conversation.last_message_at|date:'c' }}" class="shrink-0 text-sm text-muted">{{ conversation.last_message_at|relative_time }}</time>{% endif %}
+                            </button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="m-0 px-4 py-6 text-sm text-muted">No other educator conversations.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+{% endblock panel_body %}

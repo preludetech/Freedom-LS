@@ -1,15 +1,16 @@
-"""Seed the browser-QA data set for direct messaging (frontend_qa.md §0.2).
+"""Seed the browser-QA data set for direct messaging.
 
 Organisations, cohorts and personas: Northside (Cohort A with l1/l2/l3
 registered for one published demo course, Cohort B with b1, and gone@ whose
 Northside Learner row is inactive and who is no longer in Cohort A),
-Southside (Cohort S with s1), and the role-less accounts edu, edu2, viewer
-and south.admin. Every persona's password is its own email address, with a
-verified primary EmailAddress.
+Southside (Cohort S with s1), and the educator accounts edu, edu2, viewer,
+south.admin and org.admin. Every persona's password is its own email address,
+with a verified primary EmailAddress.
 
-The seed grants NO role: it deletes every role assignment and
-OrganisationMember row the personas hold (the QA run grants them through the
-Members UI), deletes org.admin@qa.test if an earlier run made it, deletes the
+The seed clears every role assignment and OrganisationMember row the personas
+hold, then grants: edu cohort_admin on Cohort A, edu2 cohort_admin on Cohort B,
+viewer cohort_viewer on Cohort A, south.admin organisation_admin on
+Southside and org.admin organisation_admin on Northside. It also deletes the
 personas' notifications, and resets the DemoDev site / Northside / Southside
 messaging configuration to the defaults.
 
@@ -24,10 +25,7 @@ Conversations (times relative to the run), written directly by factories:
   viewer <-> l1  1 message from viewer; unread for l1
 Any other conversation a persona takes part in is deleted.
 
-Factories raise no notifications, so the seed writes what send_message would
-have left behind: one unread "New message from <sender>" rollup notification
-per participant whose conversation is unread (edu from Lena, l2 from Eve,
-l1 from Vic, s1 from Sid), timed at the newest message.
+Messages raise no notifications, so the seed writes none.
 
 Idempotent: users, organisations, cohorts, conversations and messages are
 reused (messages are keyed by a deterministic client_key); message times and
@@ -49,7 +47,6 @@ import djclick as click
 from allauth.account.models import EmailAddress
 from guardian.models import UserObjectPermission
 
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db.models import Q, QuerySet
 from django.utils import timezone
@@ -59,7 +56,6 @@ from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import (
     ConversationFactory,
     MessageFactory,
-    NotificationFactory,
 )
 from freedom_ls.comms.messaging import inbox_for, pair_key_for
 from freedom_ls.comms.models import (
@@ -100,6 +96,7 @@ from freedom_ls.role_based_permissions.models import (
     SiteRoleAssignment,
     SystemRoleAssignment,
 )
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 COURSE_SLUG = "functionality-demo-course-parts"
 DELETED_EMAIL = "deleted.partner@qa.test"
@@ -117,6 +114,7 @@ PERSONAS: dict[str, tuple[str, str]] = {
     "edu2@qa.test": ("Eli", "Educator"),
     "viewer@qa.test": ("Vic", "Viewer"),
     "south.admin@qa.test": ("Sid", "South"),
+    ORG_ADMIN_EMAIL: ("Orla", "Admin"),
 }
 
 
@@ -296,49 +294,6 @@ def _edu_l1_messages() -> list[_Msg]:
     return messages
 
 
-def _raise_unread_notifications(site: Site, conversations: list[Conversation]) -> None:
-    """Mirror send_message: an unread rollup notification for each participant
-    with an unread incoming message, naming the newest message's sender."""
-    content_type = ContentType.objects.get_for_model(Conversation)
-    for conversation in conversations:
-        newest: Message | None = (
-            Message._base_manager.filter(conversation=conversation)
-            .select_related("sender")
-            .order_by("-created_at")
-            .first()
-        )
-        if newest is None or newest.sender is None:
-            continue
-        for participant in ConversationParticipant._base_manager.filter(
-            conversation=conversation
-        ).select_related("user"):
-            if participant.user_id == newest.sender_id:
-                continue
-            if (
-                participant.last_read_at is not None
-                and participant.last_read_at >= newest.created_at
-            ):
-                continue
-            notification = cast(
-                Notification,
-                NotificationFactory(
-                    site=site,
-                    user=participant.user,
-                    category="message.received",
-                    target=conversation,
-                    data={"sender_name": newest.sender.display_name},
-                    rollup_key=f"{content_type.pk}:{conversation.pk}",
-                ),
-            )
-            Notification._base_manager.filter(pk=notification.pk).update(
-                created_at=newest.created_at
-            )
-            click.echo(
-                f"NOTIFICATION pk={notification.pk} for {participant.user.email}: "
-                f"New message from {newest.sender.display_name}"
-            )
-
-
 def _echo_delete(label: str, queryset: QuerySet) -> None:
     rows = list(queryset)
     if not rows:
@@ -350,8 +305,8 @@ def _echo_delete(label: str, queryset: QuerySet) -> None:
 
 
 def _strip_roles(site: Site, users: list[User]) -> None:
-    """Remove every grant an earlier run (or §1 of an earlier QA run) left on
-    the personas, so the Members UI starts from nothing."""
+    """Remove every grant an earlier run left on the personas, so the grants
+    below are the only ones they hold."""
     _echo_delete(
         "object role assignment(s)",
         ObjectRoleAssignment._base_manager.filter(user__in=users),
@@ -432,10 +387,6 @@ def _seed(site: Site) -> None:
         raise click.ClickException(
             f"Course {COURSE_SLUG!r} not on {site.name}; run content_save first."
         )
-    _echo_delete(
-        "org.admin@qa.test account(s)",
-        User._base_manager.filter(site=site, email=ORG_ADMIN_EMAIL),
-    )
     north = _ensure_organisation(site, "Northside", "northside")
     south = _ensure_organisation(site, "Southside", "southside")
     cohort_a = _ensure_cohort(site, north, "Cohort A")
@@ -451,6 +402,11 @@ def _seed(site: Site) -> None:
     _echo_delete(
         "notification(s)", Notification._base_manager.filter(user__in=personas)
     )
+    assign_object_role(users["edu@qa.test"], cohort_a, "cohort_admin")
+    assign_object_role(users["edu2@qa.test"], cohort_b, "cohort_admin")
+    assign_object_role(users["viewer@qa.test"], cohort_a, "cohort_viewer")
+    assign_object_role(users["south.admin@qa.test"], south, "organisation_admin")
+    assign_object_role(users[ORG_ADMIN_EMAIL], north, "organisation_admin")
 
     for email in ("l1@qa.test", "l2@qa.test", "l3@qa.test"):
         _ensure_member(site, cohort_a, users[email])
@@ -536,7 +492,6 @@ def _seed(site: Site) -> None:
         ),
     }
     _prune_conversations(personas, list(conversations.values()))
-    _raise_unread_notifications(site, list(conversations.values()))
 
     click.secho("--- Direct messaging QA data ---", fg="cyan", bold=True)
     click.echo(f"SITE {site.name} pk={site.pk}; COURSE {course.slug} pk={course.pk}")

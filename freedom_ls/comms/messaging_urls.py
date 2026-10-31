@@ -8,6 +8,7 @@ urlpatterns = [
     path("", messaging_views.inbox, name="inbox"),
     path("poll/", messaging_views.partial_inbox_poll, name="inbox_poll"),
     path("unread-badge/", messaging_views.partial_unread_badge, name="unread_badge"),
+    path("recent/", messaging_views.partial_recent_conversations, name="recent"),
     path("new/", messaging_views.start, name="start"),
     path(
         "new/search/",

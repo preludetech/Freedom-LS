@@ -12,6 +12,9 @@ import pytest
 from lxml import html
 
 from django.conf import settings as django_settings
+from django.db import connection
+from django.template.loader import render_to_string
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -19,6 +22,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
+    decode_cursor,
     encode_cursor,
     inbox_for,
     mark_conversation_read,
@@ -28,6 +32,10 @@ from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
     MessagingRefusal,
+)
+from freedom_ls.comms.messaging_views import (
+    older_page_response,
+    read_only_thread_context,
 )
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
 from freedom_ls.site_aware_models.models import _thread_locals
@@ -239,6 +247,20 @@ class TestThreadPage:
         composer = html.fromstring(response.content).get_element_by_id("composer")
         assert composer.get("data-max-length") == "2000"
         assert composer.get("data-counter-from") == "1800"
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_the_thread_composer_carries_the_disclosure_line(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        composer = html.fromstring(response.content).get_element_by_id("composer")
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(composer.text_content().split())
+        )
 
     @pytest.mark.usefixtures("allow_policy")
     def test_the_composer_shows_the_shortcut_hint(self, pair, logged_in_client) -> None:
@@ -534,6 +556,58 @@ class TestInbox:
 
         assert "Deleted user" in content
 
+    def test_nothing_selected_renders_the_placeholder_and_no_thread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert "Select a conversation to read it." in response.content.decode()
+        assert not tree.xpath("//*[@id='thread-log']")
+        assert not tree.xpath("//*[@id='composer']")
+        assert not tree.xpath("//*[@x-data='conversationThread']")
+        assert not tree.xpath("//*[@aria-current]")
+
+    def test_nothing_selected_leaves_every_conversation_unread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        before = ConversationParticipant.objects.get(
+            conversation=conversation, user=user
+        ).last_read_at
+
+        logged_in_client(user).get(inbox_url())
+
+        after = ConversationParticipant.objects.get(
+            conversation=conversation, user=user
+        ).last_read_at
+        assert after == before
+
+    def test_the_placeholder_copy_follows_whether_there_are_conversations(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        user = UserFactory()
+        empty = logged_in_client(user).get(inbox_url()).content.decode()
+        ConversationFactory(between=(user, UserFactory()))
+        listed = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert "Select a conversation to read it." not in empty
+        assert "Select a conversation to read it." in listed
+
+    def test_the_list_pane_has_a_header(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert tree.xpath("//aside//h1[normalize-space()='Messages']")
+
     def test_it_is_404_when_messaging_is_off(
         self, mock_site_context, logged_in_client, settings
     ) -> None:
@@ -650,7 +724,7 @@ class TestThreadMarksRead:
         content = logged_in_client(user).get(thread_url(conversation)).content.decode()
 
         assert 'id="conversation-list"' in content
-        assert 'aria-current="page"' in content
+        assert 'aria-current="true"' in content
 
     def test_the_thread_has_a_back_link_to_the_inbox(
         self, pair, logged_in_client
@@ -717,6 +791,156 @@ class TestUnreadBadge:
         assert response.status_code == 404
 
 
+def recent_url() -> str:
+    return reverse("conversations:recent")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestRecentConversations:
+    def test_it_lists_at_most_five_newest_first(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        now = timezone.now()
+        conversations = []
+        for index in range(6):
+            other = UserFactory()
+            conversation = ConversationFactory(between=(user, other))
+            message = MessageFactory(conversation=conversation, sender=other)
+            Message.objects.filter(pk=message.pk).update(
+                created_at=now - timedelta(minutes=10 - index)
+            )
+            Conversation.objects.filter(pk=conversation.pk).update(
+                last_message_at=now - timedelta(minutes=10 - index)
+            )
+            conversations.append(conversation)
+
+        response = logged_in_client(user).get(recent_url(), **HTMX)
+
+        hrefs = [
+            a.get("href") for a in html.fromstring(response.content).xpath("//li/a")
+        ]
+        assert hrefs == [thread_url(c) for c in reversed(conversations[1:])]
+
+    def test_it_lists_only_the_viewers_conversations(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, mine = pair
+        MessageFactory(conversation=mine, sender=other)
+        ConversationFactory(between=(UserFactory(), UserFactory()))
+
+        response = logged_in_client(user).get(recent_url(), **HTMX)
+
+        hrefs = [
+            a.get("href") for a in html.fromstring(response.content).xpath("//li/a")
+        ]
+        assert hrefs == [thread_url(mine)]
+
+    def test_an_unread_row_carries_the_marker_and_the_screen_reader_prefix(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, _ = pair
+        MessageFactory(conversation=pair[2], sender=other)
+
+        row = html.fromstring(
+            logged_in_client(user).get(recent_url(), **HTMX).content
+        ).xpath("//li")[0]
+
+        text = " ".join(row.text_content().split())
+        assert "Unread. " in text
+        assert text.endswith("Unread")
+        assert row.xpath(".//span[contains(@class, 'sr-only')]")
+
+    def test_a_read_row_has_no_unread_marker(self, pair, logged_in_client) -> None:
+        user, other, conversation = pair
+        message = MessageFactory(conversation=conversation, sender=other)
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=message.created_at
+        )
+
+        content = logged_in_client(user).get(recent_url(), **HTMX).content.decode()
+
+        assert "Unread" not in content
+
+    def test_the_excerpt_is_the_newest_messages_body(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="Earlier words")
+        MessageFactory(conversation=conversation, sender=other, body="Latest words")
+
+        content = logged_in_client(user).get(recent_url(), **HTMX).content.decode()
+
+        assert "Latest words" in content
+        assert "Earlier words" not in content
+
+    def test_a_conversation_with_no_message_has_no_excerpt(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, _ = pair
+
+        tree = html.fromstring(logged_in_client(user).get(recent_url(), **HTMX).content)
+
+        assert tree.xpath("//li")
+        assert not tree.xpath("//li//*[contains(@class, 'line-clamp-1')]")
+
+    def test_the_empty_state_offers_new_message_when_there_are_recipients(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory()
+
+        content = (
+            logged_in_client(UserFactory()).get(recent_url(), **HTMX).content.decode()
+        )
+
+        assert "No messages yet." in content
+        assert content.count(f'href="{start_url()}"') == 2
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_the_empty_state_has_no_new_message_without_recipients(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        content = (
+            logged_in_client(UserFactory()).get(recent_url(), **HTMX).content.decode()
+        )
+
+        assert "No messages yet." in content
+        assert start_url() not in content
+        assert reverse("conversations:inbox") in content
+
+    def test_it_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(recent_url(), **HTMX)
+
+        assert response.status_code == 404
+
+    def test_the_query_count_does_not_grow_with_the_rows(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        for _ in range(5):
+            other = UserFactory()
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, other)), sender=other
+            )
+        client = logged_in_client(user)
+        client.get(recent_url(), **HTMX)
+
+        with CaptureQueriesContext(connection) as five:
+            client.get(recent_url(), **HTMX)
+        other = UserFactory()
+        extra = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=extra, sender=other)
+        with CaptureQueriesContext(connection) as six:
+            client.get(recent_url(), **HTMX)
+
+        assert len(six) == len(five)
+
+
 def start_url() -> str:
     return reverse("conversations:start")
 
@@ -753,6 +977,107 @@ class TestStartPage:
         assert response.status_code == 200
         assert tree.get_element_by_id("recipient-picker").xpath(".//form")
         assert not tree.xpath("//form[@id='composer']")
+
+    def test_a_pane_request_without_a_recipient_returns_the_picker_fragment(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        tree = html.fromstring(response.content)
+        assert response.status_code == 200
+        assert "<html" not in response.content.decode()
+        assert tree.xpath("//*[@id='recipient-picker']//form")
+        assert not tree.xpath("//form[@id='composer']")
+
+    def test_a_pane_request_with_a_recipient_returns_the_composer_fragment(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        other = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(),
+            {"recipient": other.pk},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="thread-pane",
+        )
+
+        tree = html.fromstring(response.content)
+        assert "<html" not in response.content.decode()
+        assert "To Kai Ngata" in " ".join(tree.text_content().split())
+        assert tree.xpath("//form[@id='composer']")
+
+    def test_the_start_page_composer_carries_the_disclosure_line(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        other = UserFactory()
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(), {"recipient": other.pk}
+        )
+
+        composer = html.fromstring(response.content).get_element_by_id("composer")
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(composer.text_content().split())
+        )
+
+    def test_the_pane_composer_carries_the_disclosure_line(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        other = UserFactory()
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(),
+            {"recipient": other.pk},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="thread-pane",
+        )
+
+        composer = html.fromstring(response.content).xpath("//form[@id='composer']")[0]
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(composer.text_content().split())
+        )
+
+    def test_the_full_page_links_back_to_the_messages_page(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        back = tree.xpath("//main//a[contains(normalize-space(.), 'Back to messages')]")
+        assert back[0].get("href") == reverse("conversations:inbox")
+
+    def test_choosing_someone_with_a_conversation_redirects_to_it(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(start_url(), {"recipient": other.pk})
+
+        assert response.status_code == 302
+        assert response["Location"] == thread_url(conversation)
+
+    def test_choosing_someone_with_a_conversation_from_the_pane_loads_the_thread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(
+            start_url(),
+            {"recipient": other.pk},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="thread-pane",
+        )
+
+        assert response.status_code == 204
+        assert json.loads(response["HX-Location"]) == {"path": thread_url(conversation)}
 
     def test_a_recipient_outside_the_recipients_is_404(
         self, mock_site_context, logged_in_client, settings
@@ -970,7 +1295,7 @@ class TestStartRefused:
 
 
 @pytest.mark.django_db
-class TestInboxNewMessage:
+class TestMessagesPageNewMessage:
     def test_the_button_shows_when_the_user_has_recipients(
         self, mock_site_context, logged_in_client, allow_policy
     ) -> None:
@@ -980,6 +1305,31 @@ class TestInboxNewMessage:
 
         tree = html.fromstring(response.content)
         assert tree.xpath(f"//a[@href='{start_url()}']")
+
+    def test_the_new_message_controls_show_beside_a_selected_thread(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        tree = html.fromstring(response.content)
+        assert len(tree.xpath(f"//aside//a[@href='{start_url()}']")) == 2
+
+    def test_the_wide_control_loads_the_picker_into_the_thread_pane(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        UserFactory()
+
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        wide = tree.xpath(f"//aside//a[@href='{start_url()}'][@hx-get]")
+        assert len(wide) == 1
+        assert wide[0].get("hx-target") == "#thread-pane"
+        assert wide[0].get("hx-swap") == "innerHTML"
+        assert wide[0].get("hx-push-url") == "true"
 
     def test_the_button_is_absent_without_recipients(
         self, mock_site_context, logged_in_client, closed_policy
@@ -1046,6 +1396,56 @@ class TestRecipientPicker:
         link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
         assert link.get("href") == f"{start_url()}?recipient={kai.pk}"
 
+    def test_in_pane_results_target_the_thread_pane(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        kai = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-get") == f"{start_url()}?recipient={kai.pk}"
+        assert link.get("hx-target") == "#thread-pane"
+
+    def test_searching_from_the_pane_keeps_results_targeting_the_thread_pane(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        """A search made from the pane re-rendered links that navigated away."""
+        kai = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(
+            search_url(), {"q": "kai", "in_pane": "1"}, HTTP_HX_REQUEST="true"
+        )
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-get") == f"{start_url()}?recipient={kai.pk}"
+        assert link.get("hx-target") == "#thread-pane"
+
+    def test_the_pane_picker_search_form_asks_for_in_pane_results(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(
+            start_url(), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="thread-pane"
+        )
+
+        form = html.fromstring(response.content).get_element_by_id("recipient-search")
+        assert json.loads(form.get("hx-vals")) == {"in_pane": "1"}
+
+    def test_results_outside_the_pane_do_not_target_it(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("hx-target") is None
+
     def test_the_search_fragment_has_no_page_wrapper(
         self, mock_site_context, logged_in_client
     ) -> None:
@@ -1074,14 +1474,26 @@ class TestRecipientPicker:
 
         assert "No one you can message matches 'zzzz'" in response.content.decode()
 
-    def test_a_long_list_asks_for_a_term(
+    def test_nobody_to_offer_without_a_term_quotes_no_term(
         self, mock_site_context, logged_in_client
     ) -> None:
-        UserFactory.create_batch(16)
+        response = logged_in_client(UserFactory()).get(search_url())
+
+        content = response.content.decode()
+        assert "matches ''" not in content
+        assert "There's no one you can message here." in content
+
+    def test_a_long_list_is_listed_to_the_cap_with_the_note(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory.create_batch(25)
 
         response = logged_in_client(UserFactory()).get(search_url())
 
-        assert "Keep typing" in response.content.decode()
+        content = response.content.decode()
+        assert "20 people found" in content
+        assert "Keep typing to narrow the list." in content
+        assert "Enter at least two characters" not in content
 
     def test_truncated_results_say_to_keep_typing(
         self, mock_site_context, logged_in_client
@@ -1126,6 +1538,20 @@ class TestRecipientPicker:
         assert "Kai Allowed" in content
         assert "Refused" not in content
 
+    def test_an_empty_term_never_offers_someone_outside_the_recipients(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other = UserFactory(), UserFactory(first_name="Kai", last_name="Allowed")
+        UserFactory(first_name="Kai", last_name="Refused")
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+
+        response = logged_in_client(user).get(search_url())
+
+        content = response.content.decode()
+        assert "Kai Allowed" in content
+        assert "Refused" not in content
+
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("allow_policy")
@@ -1144,6 +1570,19 @@ def test_the_start_page_renders_the_results_region_once(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("closed_policy")
 class TestClosedThread:
+    def test_the_closed_note_carries_the_disclosure_line(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        note = html.fromstring(response.content).xpath("//*[@id='composer']")[0]
+        assert (
+            "Organisation admins can read conversations between learners and their educators."
+            in " ".join(note.text_content().split())
+        )
+
     def test_the_note_replaces_the_composer(self, pair, logged_in_client) -> None:
         user, other, conversation = pair
         MessageFactory(conversation=conversation, sender=other, body="Earlier")
@@ -1380,6 +1819,24 @@ class TestEarlierMessages:
         assert len(tree.xpath("./li[not(@hx-swap-oob)]")) == 3
         control = tree.xpath("./div[@id='thread-older']")[0]
         assert not control.xpath(".//button")
+
+    def test_a_render_with_an_older_url_puts_that_address_on_the_control(
+        self, long_thread, rf
+    ) -> None:
+        user, conversation, messages = long_thread
+        request = rf.get("/")
+        request.user = user
+
+        response = older_page_response(
+            request,
+            conversation,
+            decode_cursor(encode_cursor(messages[5])),
+            older_url="/elsewhere/older/",
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        button = tree.xpath("./div[@id='thread-older']//button")[0]
+        assert button.get("hx-get").startswith("/elsewhere/older/?before=")
 
     def test_a_malformed_cursor_is_a_400(self, long_thread, logged_in_client) -> None:
         user, conversation, _ = long_thread
@@ -1998,7 +2455,7 @@ class TestInboxPoll:
             inbox_poll_url(current=str(conversation.pk)), **HTMX
         )
 
-        links = poll_tree(response).xpath("//a[@aria-current='page']")
+        links = poll_tree(response).xpath("//a[@aria-current='true']")
         assert [link.get("href") for link in links] == [thread_url(conversation)]
 
     def test_the_thread_page_tells_the_poll_which_thread_is_open(
@@ -2052,7 +2509,6 @@ class TestSendFromTheQuickViewBox:
         message = Message.objects.get()
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 200
-        assert box.get("data-conversation-pk") == str(conversation.pk)
         assert box.xpath(f".//li[@id='msg-{message.pk}']")
         composer = box.xpath(".//form[@id='composer']")[0]
         assert composer.get("hx-swap-oob") is None
@@ -2116,7 +2572,6 @@ class TestSendFromTheQuickViewBox:
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 200
         assert "HX-Location" not in response
-        assert box.get("data-conversation-pk") == str(conversation.pk)
         assert box.xpath(".//li[starts-with(@id, 'msg-')]")
         form = box.xpath(".//form[@id='composer']")[0]
         assert form.get("hx-post") == send_url(conversation)
@@ -2161,7 +2616,6 @@ class TestRefusedFromTheQuickViewBox:
         tree = html.fromstring(f"<div>{response.content.decode()}</div>")
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 422
-        assert box.get("data-conversation-pk") == ""
         assert box.xpath(".//textarea")[0].text_content() == "Please read"
         assert box.xpath(".//input[@name='recipient']")[0].get("value") == str(
             recipient.pk
@@ -2188,3 +2642,63 @@ class TestRefusedFromTheQuickViewBox:
         assert response["HX-Retarget"] == "#composer-error"
         assert name_of(recipient) not in response.content.decode()
         assert Message.objects.count() == 0
+
+
+@pytest.mark.django_db
+class TestReadOnlyThread:
+    def test_the_context_moves_no_read_marker(self, pair) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+
+        context = read_only_thread_context(conversation, other=other, older_url="")
+
+        assert last_read_at(conversation, user) is None
+        assert context["read_only"] is True
+        assert "composer" not in context
+        assert "decision" not in context
+
+    def test_the_partial_shows_the_banner_and_no_composer_poll_or_cursor(
+        self, pair, rf
+    ) -> None:
+        _, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="visible words")
+        context = read_only_thread_context(conversation, other=other, older_url="")
+        context["viewer_role_label"] = "an organisation admin"
+
+        tree = html.fromstring(
+            render_to_string("comms/partials/thread.html", context, request=rf.get("/"))
+        )
+
+        text = " ".join(tree.text_content().split())
+        assert "visible words" in text
+        assert (
+            "Read only. You are viewing this conversation as an organisation admin."
+            in text
+        )
+        assert "Organisation admins can read conversations" in text
+        assert not tree.xpath("//*[@id='composer']")
+        assert not tree.xpath("//*[@id='thread-cursor']")
+        assert not tree.xpath("//*[@hx-trigger='refresh']")
+        assert not tree.xpath("//*[@data-just-read]")
+
+    def test_the_load_earlier_control_fetches_from_the_oversight_url(
+        self, pair, rf, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 2
+        _, other, conversation = pair
+        for number in range(5):
+            MessageFactory(conversation=conversation, sender=other, body=f"m{number}")
+
+        def control(older_url: str):
+            context = read_only_thread_context(
+                conversation, other=other, older_url=older_url
+            )
+            context["viewer_role_label"] = "a site admin"
+            return html.fromstring(
+                render_to_string(
+                    "comms/partials/thread.html", context, request=rf.get("/")
+                )
+            ).xpath("//div[@id='read-only-thread-older']//button")
+
+        (button,) = control("/oversight/older")
+        assert button.get("hx-get").startswith("/oversight/older?before=")
