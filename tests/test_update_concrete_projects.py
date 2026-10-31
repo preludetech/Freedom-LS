@@ -40,7 +40,12 @@ PROMPTS_BY_DESIGN = [
 
 
 def allow_pattern_to_regex(pattern: str) -> re.Pattern[str]:
-    """An inner `*` stands for one placeholder word, a trailing `*` for the rest of the line."""
+    """An inner `*` stands for one placeholder word, a trailing `*` for the rest of the line.
+
+    A trailing `:*` is Claude Code's prefix form: the command, then optionally its arguments.
+    """
+    if pattern.endswith(":*"):
+        return re.compile(re.escape(pattern.removesuffix(":*")) + r"(?: .*)?")
     trailing = pattern.endswith("*")
     body = pattern.removesuffix("*")
     regex = r"\S+".join(re.escape(part) for part in body.split("*"))
@@ -88,6 +93,8 @@ def test_config_local_template_has_an_empty_concrete_projects_section() -> None:
         "Bash(uv run --directory * git commit *)",
         "Bash(uv sync --directory *)",
         "Bash(npm --prefix * run tailwind_build*)",
+        "Bash(claude_plugins/fls-dev/scripts/concrete_pointer_move.sh:*)",
+        "Bash(claude_plugins/fls-dev/scripts/concrete_rollback.sh:*)",
         "Bash(uv run --directory * python manage.py runserver*)",
         "Bash(uv run --directory * python manage.py shell -c "
         '"from django.conf import settings as s; print(list(s.INSTALLED_APPS)); '
@@ -174,6 +181,13 @@ def test_deny_list_blocks_force_push_and_no_verify_in_projects(entry: str) -> No
         "update_concrete_specdiff_",
         "declined_pull_ins.md",
         "update_concrete_pullin_",
+        "update_concrete_baseline_",
+        "update_concrete_answers.md",
+        "final-failing-ids",
+        "failing:",
+        "concrete_pointer_move.sh <p> <spec-commit>",
+        "concrete_pointer_move.sh <p> origin/main",
+        "concrete_rollback.sh <p> <last-good-sha>",
     ],
 )
 def test_loop_names_the_gate_flags_and_every_cell_result(spelled: str) -> None:
@@ -249,3 +263,32 @@ def test_command_never_uses_diffsettings() -> None:
     fragments = code_fragments(COMMAND.read_text())
 
     assert [f for f in fragments if "diffsettings" in f] == []
+
+
+def section(text: str, heading: str) -> str:
+    """From the line that starts with `heading` to the next heading or bold lead-in."""
+    found = re.search("^" + re.escape(heading), text, re.M)
+    assert found, heading
+    start = found.start()
+    ends = [m.start() for m in re.finditer(r"^#{2,3} |^\*\*", text[start + 1 :], re.M)]
+    return text[start : start + 1 + ends[0]] if ends else text[start:]
+
+
+def test_roadmap_sync_runs_once_at_the_end_of_the_run() -> None:
+    text = COMMAND.read_text()
+
+    assert "Skill(sdd:roadmap)" not in section(text, "**Large fix.**")
+    assert "Skill(sdd:roadmap)" not in section(text, "## Pull-in scan")
+    assert "Skill(sdd:roadmap)" in section(text, "## End of run")
+
+
+def test_every_question_is_asked_in_step_3_or_named_late_sections() -> None:
+    text = COMMAND.read_text()
+    allowed = [
+        section(text, "## Step 3: Preview and confirm"),
+        section(text, "**Size test.**"),
+    ]
+
+    assert text.count("`AskUserQuestion`") == sum(
+        s.count("`AskUserQuestion`") for s in allowed
+    )
