@@ -16,8 +16,10 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `failed-login-follow-up`
 - `file-scanning`
+- `forced-site-name-for-host-based-site-lookup`
 - `phone-number-form-field`
 - `referral-attribution-over-time`
+- `referral-tracking-referer-host-normalisation`
 - `retry-sent-emails`
 - `server-side-conversion-tracking`
 - `test-organisation-and-hygene-10-content-engine-and-markdown-rendering`
@@ -34,6 +36,7 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 Status `next` and every dependency done, but something has to happen on main before `/sdd:start`.
 Each bullet says what.
 
+- `downstream bugs`: cut it with `/sdd:roadmap downstream bugs` (the directory is empty).
 - `mega-qa`: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation).
 
 ## Efforts
@@ -642,12 +645,18 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
 | `cookie-banner` | A cookie banner telling visitors how they are tracked, dismissed once and remembered so it stops showing. | none | next | |
+| `downstream bugs` | Not yet defined: the directory is empty. | none | next | Before starting: cut it with `/sdd:roadmap downstream bugs` (the directory is empty). |
 | `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
+| `forced-site-name-for-host-based-site-lookup` | Make `FORCE_SITE_NAME` reach Django's host-based site lookup in development, so login, signup and admin work on any dev port. | none | next | Pull-in from First-Class-LMS (`ForcedSiteHostMiddleware`). |
 | `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | in progress | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
 | `mega-qa` | Whole-system QA: a locked staging reset endpoint, a durable journey-and-area QA suite with a new report format, and downstream projects inheriting the plans. | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation). Idea 2 tests the educator interface, so it is best written after the rebuild. |
+| `multi-step-course-applications` | Applicants work through a course's application requirements in any order, through a pluggable requirement resolver, with reviewer verdicts, uploads, help requests and recommendations. | `form-engine-branch-logic`, `file-scanning`, `phone-number-form-field`, `corporate-job-course-recommendations-3-recommend-outcome` | next | Its idea says it is too big for one spec and lists six parts; cut it before starting. Builds on the `educator-interface-full-polish/application-review-ui/` draft. |
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
+| `referral-tracking-external-referer-first-touch` | Record a first touch for visitors who arrive untagged from another site, opt-in, so organic and referral traffic shows in signup attribution. | `referral-tracking-referer-host-normalisation` | next | Pull-in from First-Class-LMS. Must agree with the touch list in `referral-attribution-over-time`. |
+| `referral-tracking-marketing-channels` | Classify a signup's first touch into a marketing channel (search, social, email, referral, direct; paid or organic) for reporting. | `referral-tracking-referer-host-normalisation` | next | Pull-in from First-Class-LMS. |
+| `referral-tracking-referer-host-normalisation` | Helpers that turn a stored referer into a comparable host, for referral tracking's channel and referer features. | none | next | Pull-in from First-Class-LMS. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
 | `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
 | `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages dropdown, one thread view with a picker to start conversations, and a help request from the course player. | none | in progress | |
@@ -656,11 +665,22 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
 | `in-app-feedback` | Configurable feedback prompts at natural pause points, with a rating and free text. | none | in progress | Spec, plan and QA plan exist. |
-| `panel-framework-looks-good` | Make the panel framework's screens follow their design; the structure works but the look does not match. | none | in progress | |
+| `design_educator_interface_audit_log` | Tighten the educator audit log table so it reads like a log, ideally with expandable rows. | none | in progress | |
+| `design_learner-interface-deadlines` | Redesign how deadlines and windows look to learners. | none | in progress | |
+| `downstream_bugs_oct_29` | Fix the bugs a downstream project flagged so it can drop its workarounds. | none | in progress | Nests 14 sub-ideas, one per bug. |
+| `learner-facing-ux-refinements` | Compact course rows below `lg`, a single Back link on course detail, and a restyled "Your applications" panel paged three at a time. | `organisation-courses`, `applying-for-courses`, `better-learner-dashboard-course-display` | in progress | |
 | `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
 
 ```
-phone-number-form-field ──── user-profile-upgrades
+phone-number-form-field ──┬── user-profile-upgrades
+                          │
+form-engine-branch-logic ─┤
+file-scanning ────────────┴── multi-step-course-applications
+
+referral-tracking-referer-host-normalisation ──┬── referral-tracking-marketing-channels
+                                               └── referral-tracking-external-referer-first-touch
 ```
 
-No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `user-communication-ux-improve`, `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
+`multi-step-course-applications` also depends on the done `corporate-job-course-recommendations-3-recommend-outcome`.
+
+No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `downstream bugs`, `forced-site-name-for-host-based-site-lookup`, `user-communication-ux-improve`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
