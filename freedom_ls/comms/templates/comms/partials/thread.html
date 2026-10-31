@@ -1,17 +1,20 @@
 {% comment %}
 The thread pane: header, log and composer in one column-flex block whose
-height is the viewport below the site header, so the composer stays in view
+height is the viewport below the site header (--thread-top, set by the
+messages page's #thread-pane), so the composer stays in view
 and the log is the only part that scrolls. A host that embeds the pane in a
 page of its own passes pane_height (a height class) and heading_tag, so the
 pane fits its card and does not add a second h1.
 data-just-read marks a render that moved the read marker, so the pane tells
 the header badge and sidebar count to refresh. read_only shows the log to
 someone who is not in the conversation: a banner replaces the composer and
-nothing polls or moves a read marker.
+nothing polls or moves a read marker. thread_id prefixes the log's and the
+load-earlier control's ids, so a read-only pane on a page that also holds the
+viewer's own thread does not share them.
 {% endcomment %}
+{% firstof thread_id "thread" as thread_id %}
 <section x-data="conversationThread"
          {% if just_read and not read_only %}data-just-read{% endif %}
-         x-on:resize.window="measure"
          x-on:htmx:before-swap="rememberScroll"
          x-on:htmx:after-settle="keepScrollAfterPrepend"
          class="flex {% firstof pane_height 'h-[calc(100dvh-var(--thread-top,0px))]' %} min-h-0 flex-col bg-surface">
@@ -30,7 +33,7 @@ nothing polls or moves a read marker.
     </header>
     {% include "comms/partials/thread_older.html" %}
     <div class="relative flex min-h-0 flex-1 flex-col">
-        <ol id="thread-log"
+        <ol id="{{ thread_id }}-log"
             x-ref="log"
             x-on:scroll="onScroll"
             role="log"

@@ -20,6 +20,7 @@ from freedom_ls.comms.factories import (
 )
 from freedom_ls.comms.messaging import (
     BLANK_BODY,
+    MESSAGE_EXCERPT_LENGTH,
     TOO_LONG_BODY,
     SendResult,
     closed_note_copy,
@@ -781,6 +782,15 @@ class TestRecentConversationsFor:
 
         assert [row.pk for row in rows] == [newer.pk, older.pk]
         assert [row.last_message_body for row in rows] == ["newest reply", "first"]
+
+    def test_the_excerpt_is_cut_to_the_excerpt_length(self, mock_site_context) -> None:
+        user = UserFactory()
+        conversation = ConversationFactory(between=(user, UserFactory()))
+        MessageFactory(conversation=conversation, sender=user, body="x" * 500)
+
+        (row,) = recent_conversations_for(user, 5)
+
+        assert row.last_message_body == "x" * MESSAGE_EXCERPT_LENGTH
 
     def test_it_stops_at_the_limit(self, mock_site_context) -> None:
         user = UserFactory()

@@ -13,7 +13,7 @@
                 </div>
                 {% include "comms/partials/conversation_list.html" %}
             </aside>
-            <div id="thread-pane" class="{% if not conversation %}hidden md:block {% endif %}min-w-0 flex-1">
+            <div id="thread-pane" x-data="threadPane" x-on:resize.window="measure" class="{% if not conversation %}hidden md:block {% endif %}min-w-0 flex-1">
                 {% if conversation %}
                     {% include "comms/partials/thread.html" %}
                 {% else %}

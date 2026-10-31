@@ -3361,6 +3361,31 @@ class TestLearnerMessagesTab:
         assert "Welcome aboard" in textarea.text_content()
         assert not inbox_for(educator).exists()
 
+    def test_a_first_send_refused_after_starting_closed_keeps_the_draft_and_the_alert(
+        self, msg_client_for, monkeypatch
+    ):
+        organisation = OrganisationFactory()
+        educator = _msg_educator(organisation)
+        learner = _msg_learner(organisation)
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.views.own_conversation_with",
+            lambda request, learner: OwnConversation(None, False),
+        )
+        monkeypatch.setattr(
+            "freedom_ls.educator_interface.views.send_message",
+            lambda **kwargs: SendResult(refusal=MessagingRefusal.NO_RELATIONSHIP),
+        )
+
+        response = msg_client_for(educator).post(
+            _send_url(learner), {"body": "Welcome aboard", "client_key": str(uuid4())}
+        )
+
+        assert response.status_code == 422
+        page = lxml.html.fromstring(response.content.decode())
+        assert page.xpath("//*[@role='alert'][not(@x-show)]")
+        textarea = page.xpath("//textarea[@name='body']")[0]
+        assert "Welcome aboard" in textarea.text_content()
+
     def test_a_post_with_messaging_off_is_denied_and_stores_nothing(
         self, msg_client_for, settings
     ):
@@ -3528,6 +3553,24 @@ class TestOversight:
             assert response.status_code == 404, target
         assert _viewed_entries() == []
 
+    def test_the_viewers_own_conversation_is_404_and_writes_nothing(
+        self, msg_client_for, scene
+    ):
+        _, educator, learner, conversation = scene
+        client = msg_client_for(educator)
+
+        opened = _open_conversation(client, learner, conversation.pk)
+        older = client.get(
+            _older_url(
+                learner, conversation.pk, encode_cursor(conversation.messages.get())
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert opened.status_code == 404
+        assert older.status_code == 404
+        assert _viewed_entries() == []
+
     def test_a_cohort_admin_is_denied_and_nothing_is_written(
         self, msg_client_for, scene
     ):
@@ -3595,8 +3638,23 @@ class TestOversight:
         )
 
         page = lxml.html.fromstring(response.content.decode())
-        (button,) = page.xpath("//div[@id='thread-older']//button")
+        (button,) = page.xpath("//div[@id='read-only-thread-older']//button")
         assert button.get("hx-get").startswith(_older_url(learner, conversation.pk, ""))
+
+    def test_the_modal_thread_ids_differ_from_the_own_threads(
+        self, msg_client_for, long_scene
+    ):
+        (organisation, _, learner, conversation), _ = long_scene
+
+        response = _open_conversation(
+            msg_client_for(_msg_educator(organisation)), learner, conversation.pk
+        )
+
+        page = lxml.html.fromstring(response.content.decode())
+        assert page.xpath("//ol[@id='read-only-thread-log']")
+        assert not page.xpath("//*[@id='thread-log' or @id='thread-older']")
+        (button,) = page.xpath("//div[@id='read-only-thread-older']//button")
+        assert button.get("hx-target") == "#read-only-thread-log"
 
     def test_the_older_endpoint_pages_back_and_writes_no_entry(
         self, msg_client_for, long_scene
@@ -3613,8 +3671,9 @@ class TestOversight:
         tree = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
         ids = [li.get("id") for li in tree.xpath("./li[not(@hx-swap-oob)]")]
         assert ids == [f"msg-{m.pk}" for m in messages[1:4]]
-        button = tree.xpath("./div[@id='thread-older']//button")[0]
+        button = tree.xpath("./div[@id='read-only-thread-older']//button")[0]
         assert button.get("hx-get").startswith(_older_url(learner, conversation.pk, ""))
+        assert button.get("hx-target") == "#read-only-thread-log"
         assert _viewed_entries() == []
 
     def test_the_older_endpoint_is_404_for_a_cohort_admin(

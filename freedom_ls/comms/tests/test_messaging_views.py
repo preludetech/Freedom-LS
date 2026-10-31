@@ -2698,7 +2698,7 @@ class TestReadOnlyThread:
                 render_to_string(
                     "comms/partials/thread.html", context, request=rf.get("/")
                 )
-            ).xpath("//div[@id='thread-older']//button")
+            ).xpath("//div[@id='read-only-thread-older']//button")
 
         (button,) = control("/oversight/older")
         assert button.get("hx-get").startswith("/oversight/older?before=")

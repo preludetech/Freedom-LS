@@ -210,6 +210,9 @@ def _thread_page_context(conversation: Conversation) -> dict[str, object]:
     }
 
 
+READ_ONLY_THREAD_ID = "read-only-thread"
+
+
 def read_only_thread_context(
     conversation: Conversation, *, other: User | None, older_url: str
 ) -> dict[str, object]:
@@ -220,6 +223,7 @@ def read_only_thread_context(
         "conversation": conversation,
         "other": other,
         "read_only": True,
+        "thread_id": READ_ONLY_THREAD_ID,
         "older_url": older_url,
         **_thread_page_context(conversation),
     }
@@ -700,6 +704,7 @@ def older_page_response(
     cursor: tuple[datetime, UUID],
     *,
     older_url: str | None = None,
+    thread_id: str = "thread",
 ) -> HttpResponse:
     """The page of messages older than ``cursor``, for prepending to the log.
 
@@ -707,7 +712,8 @@ def older_page_response(
     its day separator and sender line depend on what now sits above it. The
     load-earlier control is replaced out of band with the next cursor, or with
     nothing once no older message exists; ``older_url`` is the address that
-    control fetches from when it is not the participant's own.
+    control fetches from when it is not the participant's own, and
+    ``thread_id`` the id prefix of the pane it belongs to.
     """
     older, has_more = page_before(conversation, cursor)
     boundary_message = _boundary_message(conversation, cursor)
@@ -731,6 +737,7 @@ def older_page_response(
             "conversation": conversation,
             "older_cursor": encode_cursor(older[0]) if has_more and older else "",
             "older_url": older_url,
+            "thread_id": thread_id,
             "oob": True,
         },
         request,

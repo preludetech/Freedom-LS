@@ -25,6 +25,7 @@ from django.db.models import (
     Value,
     When,
 )
+from django.db.models.functions import Left
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
@@ -139,12 +140,17 @@ def inbox_for(user: User) -> QuerySet[Conversation]:
     return cast("QuerySet[Conversation]", queryset)
 
 
+MESSAGE_EXCERPT_LENGTH = 140
+
+
 def last_message_body_subquery() -> Subquery:
-    """The body of a conversation's newest message, for an excerpt annotation."""
+    """The start of a conversation's newest message, for an excerpt annotation.
+    Rows show it on one clamped line, so the rest of the body is not fetched."""
     return Subquery(
         Message.objects.filter(conversation=OuterRef("pk"))
         .order_by("-created_at", "-id")
-        .values("body")[:1]
+        .annotate(excerpt=Left("body", MESSAGE_EXCERPT_LENGTH))
+        .values("excerpt")[:1]
     )
 
 
