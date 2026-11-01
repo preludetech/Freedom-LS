@@ -1,6 +1,7 @@
 from django.db.models import QuerySet
 from rest_framework import serializers
 
+from freedom_ls.api.filters import UpdatedSinceFilterSet
 from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
@@ -19,7 +20,14 @@ class UserApiSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class UserFilterSet(UpdatedSinceFilterSet):
+    class Meta:
+        model = User
+        fields: list[str] = []
+
+
 class UserApiViewSet(ReadOnlyApiViewSet):
+    filterset_class = UserFilterSet
     required_scope = ApiScope.USERS
     serializer_class = UserApiSerializer
 

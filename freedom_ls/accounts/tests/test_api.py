@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from allauth.account.models import EmailAddress
 
@@ -9,6 +11,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import collect_pages
@@ -237,3 +240,44 @@ def test_a_page_of_twenty_users_stays_under_a_query_bound(
         response = client.get(reverse(LIST_URL_NAME), headers=auth)
 
     assert len(response.json()["results"]) == 20
+
+
+def test_users_sharing_one_updated_at_come_back_once_each_across_pages(
+    client, auth, api_key
+):
+    User.objects.bulk_create(
+        [User(email=f"bulk{n}@example.com", site=api_key.site) for n in range(1500)]
+    )
+    User._base_manager.update(updated_at=datetime(2030, 1, 1, tzinfo=UTC))
+
+    pages = collect_pages(client, reverse(LIST_URL_NAME), auth)
+
+    ids = [row["id"] for page in pages for row in page["results"]]
+    assert len(ids) == 1500
+    assert len(set(ids)) == 1500
+
+
+def test_updated_since_returns_only_rows_changed_at_or_after_it(client, auth):
+    old = UserFactory()
+    new = UserFactory()
+    User._base_manager.filter(pk=old.pk).update(
+        updated_at=datetime(2020, 1, 1, tzinfo=UTC)
+    )
+    User._base_manager.filter(pk=new.pk).update(
+        updated_at=datetime(2030, 1, 1, tzinfo=UTC)
+    )
+
+    body = client.get(
+        reverse(LIST_URL_NAME), {"updated_since": "2025-01-01T00:00:00Z"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [new.pk]
+
+
+def test_a_naive_updated_since_is_400_naming_the_parameter(client, auth):
+    response = client.get(
+        reverse(LIST_URL_NAME), {"updated_since": "2025-01-01T00:00:00"}, headers=auth
+    )
+
+    assert response.status_code == 400
+    assert "updated_since" in response.json()

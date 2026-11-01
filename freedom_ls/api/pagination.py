@@ -54,7 +54,18 @@ class ApiKeysetPagination(BasePagination):
         return Response({"next": self._next_link(), "results": data})
 
     def _page_size(self, request: Request) -> int:
-        return config.API_PAGE_SIZE
+        raw = request.query_params.get(self.page_size_query_param)
+        if raw is None:
+            return config.API_PAGE_SIZE
+        try:
+            requested = int(raw)
+        except ValueError as exc:
+            raise ValidationError(
+                {self.page_size_query_param: ["Must be a whole number."]}
+            ) from exc
+        if requested < 1:
+            raise ValidationError({self.page_size_query_param: ["Must be at least 1."]})
+        return min(requested, config.API_MAX_PAGE_SIZE)
 
     def _next_link(self) -> str | None:
         if not self.has_next:

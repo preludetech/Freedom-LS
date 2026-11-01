@@ -102,3 +102,53 @@ def test_a_cursor_the_api_did_not_issue_is_a_400(mock_site_context, cursor):
         _paginate_with_cursor(cursor)
 
     assert exc_info.value.detail == {"cursor": [BAD_CURSOR]}
+
+
+def test_a_page_size_above_the_cap_is_clamped(mock_site_context, settings):
+    settings.API_MAX_PAGE_SIZE = 3
+    [ApiKeyFactory() for _ in range(5)]
+
+    pages = paginate_all(ApiKey._base_manager.all(), "/pages/?page_size=100")
+
+    assert [len(page) for page in pages] == [3, 2]
+
+
+def test_a_page_size_within_the_cap_is_used(mock_site_context):
+    [ApiKeyFactory() for _ in range(5)]
+
+    pages = paginate_all(ApiKey._base_manager.all(), "/pages/?page_size=2")
+
+    assert [len(page) for page in pages] == [2, 2, 1]
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        pytest.param("0", "Must be at least 1.", id="zero"),
+        pytest.param("-4", "Must be at least 1.", id="negative"),
+        pytest.param("x", "Must be a whole number.", id="not_a_number"),
+    ],
+)
+def test_an_invalid_page_size_is_a_400(mock_site_context, value, message):
+    request = Request(factory.get("/pages/", {"page_size": value}))
+
+    with pytest.raises(ValidationError) as exc_info:
+        ApiKeysetPagination().paginate_queryset(ApiKey._base_manager.all(), request)
+
+    assert exc_info.value.detail == {"page_size": [message]}
+
+
+def test_the_next_link_keeps_updated_since_and_page_size(mock_site_context):
+    [ApiKeyFactory() for _ in range(3)]
+    request = Request(
+        factory.get(
+            "/pages/", {"updated_since": "2020-01-01T00:00:00Z", "page_size": "2"}
+        )
+    )
+    paginator = ApiKeysetPagination()
+    paginator.paginate_queryset(ApiKey._base_manager.all(), request)
+
+    next_link = paginator.get_paginated_response([]).data["next"]
+
+    assert "updated_since=2020-01-01T00%3A00%3A00Z" in next_link
+    assert "page_size=2" in next_link

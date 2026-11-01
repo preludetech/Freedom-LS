@@ -95,6 +95,10 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
         # is what lets them use an index instead of scanning every account.
         indexes = [
             models.Index(Upper("email"), name="accounts_user_email_upper_idx"),
+            models.Index(
+                fields=["site", "updated_at", "id"],
+                name="accounts_user_site_updated_idx",
+            ),
         ]
 
     EMAIL_FIELD = "email"

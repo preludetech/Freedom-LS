@@ -159,3 +159,11 @@ def test_user_manager_respects_force_site_name() -> None:
     finally:
         if hasattr(_thread_locals, "request"):
             delattr(_thread_locals, "request")
+
+
+def test_the_users_list_ordering_is_indexed_by_site_updated_at_and_id() -> None:
+    index = next(
+        i for i in User._meta.indexes if i.name == "accounts_user_site_updated_idx"
+    )
+
+    assert index.fields == ["site", "updated_at", "id"]
