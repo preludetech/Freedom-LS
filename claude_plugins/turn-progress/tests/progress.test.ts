@@ -110,8 +110,8 @@ test('a fan-out of agents becomes the steps until set_steps replaces them', asyn
   on('agent.spawn', () => ({ model: 'haiku', agentId: `fan-${++spawned}` }))
   on('turn.complete', () => ({ text: '' }))
 
-  await $.agent.spawn({ ...SPAWN, prompt: 'Fix bug 1', description: 'Fix bug 1', subagentType: 'fls-dev:qa-bugfixer' })
-  await $.agent.spawn({ ...SPAWN, prompt: 'Fix bug 2', description: 'Fix bug 2', subagentType: 'fls-dev:qa-bugfixer' })
+  await $.agent.spawn({ ...SPAWN, prompt: 'Fix bug 1', description: 'Fix bug 1', subagentType: 'sdd:qa-bugfixer' })
+  await $.agent.spawn({ ...SPAWN, prompt: 'Fix bug 2', description: 'Fix bug 2', subagentType: 'sdd:qa-bugfixer' })
 
   let list = state.get('checklist') as Checklist
   expect(list).toMatchObject({ done: 0, total: 2, source: 'agents' })

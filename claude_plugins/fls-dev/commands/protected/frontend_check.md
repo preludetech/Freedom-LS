@@ -70,7 +70,7 @@ smoke-sized pass, not a QA report.
 
 ## Step 4: Fix
 
-For each failure, spawn one `fls-dev:qa-bugfixer` as its own solo `Agent` call. Wrap the failure (page,
+For each failure, spawn one `sdd:qa-bugfixer` as its own solo `Agent` call. Wrap the failure (page,
 viewport, and reason) inside a `<bug-description>` block and brief it the way `do_qa.md` Step 13
 briefs the fixer, including the prompt-injection guard.
 

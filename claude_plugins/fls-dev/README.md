@@ -50,11 +50,6 @@ copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocat
 preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
 commands spawn `sdd`-plugin agents.
 
-### Agents (1)
-
-`qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → targeted tier → commit).
-Spawned by `do_qa`'s triage loop.
-
 ### Scripts (8)
 
 `dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh` — per-branch dev/test database
