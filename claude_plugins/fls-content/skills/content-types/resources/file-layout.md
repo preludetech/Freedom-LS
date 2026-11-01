@@ -17,12 +17,12 @@ my-course/
       2. more-questions.yaml ← FORM_PAGE + questions
 ```
 
-A topic is a numbered directory containing a `content.md`. Give the topic its own
-`images/` for assets used only by that topic; keep assets reused by several topics in an
-`images/` directory higher up the tree (the course root, or a part).
+A topic is a numbered directory containing a `content.md`. Give the topic its own `images/`
+for assets only it uses; keep assets shared by several topics in an `images/` directory
+higher up (the course root, or a part).
 
-A flat numbered topic file (`01. intro.md`) is still accepted, but the directory form is
-preferred — it keeps a topic's body and its images together.
+A flat numbered topic file (`01. intro.md`) is accepted, but the directory form is preferred:
+it keeps a topic's body and images together.
 
 ## Course with COURSE_PARTs
 
@@ -51,7 +51,7 @@ my-course/
 ## Course categories declaration (repo root)
 
 If a repo declares dashboard categories, exactly one `COURSE_CATEGORIES` file lives outside
-every course directory — normally the repo root, as a sibling of the course directories, never
+every course directory, normally at the repo root beside the course directories, never
 nested inside one:
 
 ```
@@ -105,21 +105,20 @@ The FLS scanner skips:
 - `README.md` and `CLAUDE.md`
 - Names ending with `~`
 
-`.fls-content.yaml` (the deployment config) is never scanned as content because it starts with `.`. `.claude/fls-content/widgets/` (the content repo's widget declarations, see the `fls-content:widget-reference` skill) is never scanned as content for the same reason: it sits inside `.claude/`.
+`.fls-content.yaml` (the deployment config) starts with `.`, so it is never scanned. `.claude/fls-content/widgets/` (the content repo's widget declarations, see the `fls-content:widget-reference` skill) is never scanned either: it sits inside `.claude/`.
 
 ## Child auto-discovery
 
 When a COURSE or COURSE_PART has no explicit `children:` list, `content_save` auto-discovers children by iterating the directory alphabetically. Ordering therefore depends on correct `NN.` numbering. For custom ordering, add an explicit `children:` list in `course.md` or `part.yaml`.
 
 Auto-discovery skips any file or directory whose name starts with `_` or `.`
-(e.g. `_drafts/`, `.fls-content.yaml`) — both among the top-level items of the
-collection directory, and among the files inside a numbered subdirectory when
-deciding whether that subdirectory is a nested collection (`course.md` /
-`form.md` / `part.yaml`) or a topic (`content.md`). This is **narrower** than
-the "Files excluded from scanning" list above: auto-discovery does not
-separately special-case `README.md`, `CLAUDE.md`, or a trailing `~` — only the
-`_`/`.`-prefix rule applies to auto-discovered children. Prefix a draft
-file/directory with `_` to keep it out of an auto-discovered `children:` list.
+(e.g. `_drafts/`, `.fls-content.yaml`), both among the top-level items of the collection
+directory and among the files inside a numbered subdirectory when deciding whether it is a
+nested collection (`course.md` / `form.md` / `part.yaml`) or a topic (`content.md`). This is
+**narrower** than the "Files excluded from scanning" list above: auto-discovery does not
+special-case `README.md`, `CLAUDE.md`, or a trailing `~`; only the `_`/`.`-prefix rule
+applies. Prefix a draft file/directory with `_` to keep it out of an auto-discovered
+`children:` list.
 
 Auto-discovery also skips ARTICLE and COURSE_CATEGORIES files, wherever they sit: neither is
 ever a collection child.
@@ -135,8 +134,8 @@ Paths in `c-picture`, `c-pdf-embed`, and `c-file-download` are stored relative t
 - A shared image from inside a form subdirectory: `src="../images/graph.svg"`.
 
 **Never write `src=` with a `.webp` extension because that is what you see in the database or the
-storage bucket.** `content_save` re-encodes most raster images (JPEG, PNG, GIF, BMP) to WebP when it
-stores them, but the path `src=` resolves against always keeps the extension of the file you
-authored: `src="images/photo.jpg"` stays correct even though the stored object is renamed
-`photo.webp`. Only the stored object's name changes. See `c-picture` in the
+storage bucket.** `content_save` re-encodes most raster images (JPEG, PNG, GIF, BMP) to WebP
+when it stores them, but `src=` always keeps the extension of the file you authored:
+`src="images/photo.jpg"` stays correct even though the stored object is renamed
+`photo.webp`. See `c-picture` in the
 `fls-content:widget-reference` skill for what happens to the image itself.

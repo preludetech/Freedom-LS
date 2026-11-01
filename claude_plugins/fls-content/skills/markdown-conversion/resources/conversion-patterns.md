@@ -52,12 +52,12 @@ Apply in this order:
    - `subtitle`: the first sub-heading immediately below the split point (if any); omit if none.
    - `description`: the first non-heading, non-list, non-code, non-widget paragraph below the title (if it reads as introductory); omit if none.
 
-4. **Remove the title (and subtitle if lifted) from the body.** The template renders the frontmatter `title` and `subtitle` automatically (title as the visible H1, subtitle beneath it) — repeating either as a heading or prose in the body renders it twice.
+4. **Remove the title (and subtitle if lifted) from the body.** The template renders the frontmatter `title` (as the H1) and `subtitle` (beneath it) automatically; repeating either as a heading or prose in the body renders it twice.
 
-5. **Re-base the body heading hierarchy.** After the title is lifted out, promote all remaining body headings so the topmost section is `#` (H1). This preserves relative nesting depth. Only the `#` marker count changes; heading **text is never altered**.
+5. **Re-base the body heading hierarchy.** After the title is lifted out, promote all remaining body headings so the topmost section is `#` (H1), preserving relative nesting depth. Only the `#` marker count changes; heading **text is never altered**.
    - Example: if the remaining body starts at `##`, shift everything down by one: `##` → `#`, `###` → `##`, etc.
 
-6. **Flag skipped levels, never rewrite them.** If the source skips a heading level (e.g. `#` then `###` with no `##`), add a note to `_conversion_review.md` with the source line number. Do not insert or renumber headings — that risks changing meaning.
+6. **Flag skipped levels, never rewrite them.** If the source skips a heading level (e.g. `#` then `###` with no `##`), add a note to `_conversion_review.md` with the source line number. Do not insert or renumber headings; that risks changing meaning.
 
 **Why this matters:** FLS applies `mdx_headdown` at render time, shifting every body heading down one level (`#` → H2, `##` → H3, …) so body content nests beneath the page-title H1. A correct body starts at `#`.
 
@@ -65,7 +65,7 @@ Apply in this order:
 
 ## 3. Existing-widget normalisation rules
 
-Source content may already contain `c-*` widgets — hand-written, pasted, or produced by an older tool — and they are frequently subtly wrong. Treat each existing widget as structure to validate, not prose to leave alone.
+Source content may already contain `c-*` widgets (hand-written, pasted, or from an older tool), often subtly wrong. Treat each as structure to validate, not prose to leave alone.
 
 | Widget state | Action |
 |---|---|
@@ -78,7 +78,7 @@ Source content may already contain `c-*` widgets — hand-written, pasted, or pr
 | Unknown `c-*` name (neither built-in nor a valid declared custom widget; the declared set comes from `resources/custom-widgets.md` in the `fls-content:widget-reference` skill) | Flag in `_conversion_review.md` — never emit as-is |
 | `c-admonition type` not in the active set | Flag in `_conversion_review.md` — never emit a silently-wrong `default`-rendering value |
 
-**Only widget syntax, attributes, and structure change — never the prose inside a widget.** Normalising an existing widget is a structural transform.
+**Only widget syntax, attributes, and structure change, never the prose inside a widget.**
 
 ---
 
@@ -86,8 +86,8 @@ Source content may already contain `c-*` widgets — hand-written, pasted, or pr
 
 The converter checks everything; it fixes only what is broken.
 
-- The presence of `content_type:` frontmatter does **not** mean the file is correct — every file (Markdown and pure-YAML alike) has its frontmatter, widgets, naming, and placement checked.
-- **Never touch an existing `uuid:`** — not even if the field looks wrong.
+- `content_type:` frontmatter does **not** mean the file is correct: every file (Markdown and pure-YAML alike) has its frontmatter, widgets, naming, and placement checked.
+- **Never touch an existing `uuid:`**, even if it looks wrong.
 - **Never re-split, re-paraphrase, or rewrite prose that is already structured.** Only broken structure and syntax are fixed.
 - Running on already-correct content produces no changes.
 - Running on partially converted content fixes only what remains broken.
@@ -96,7 +96,7 @@ The converter checks everything; it fixes only what is broken.
 
 ## 5. `_conversion_review.md` — written only when there is something to flag
 
-This is **not** a changelog. Git records what changed — auto-applied lossless changes are left to the `git diff` and are **not** listed.
+This is **not** a changelog: auto-applied lossless changes are left to the `git diff` and **not** listed.
 
 The review file is written only when at least one of these exists:
 

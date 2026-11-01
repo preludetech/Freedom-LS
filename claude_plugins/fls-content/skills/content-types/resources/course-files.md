@@ -6,7 +6,7 @@
 
 One `course.md` file per course root directory. Its presence identifies the directory as a COURSE.
 
-A course can contain COURSE_PARTs, but they are not required. Course parts are like sections or folders that group topics and forms. A course can also contain topics and forms directly, without any parts.
+A course can contain COURSE_PARTs (sections that group topics and forms), but they are not required: a course can hold topics and forms directly.
 
 ### Frontmatter fields
 
@@ -68,7 +68,7 @@ Your competitive advantage is your ability to learn.
 
 ### Children ordering
 
-When `children:` is omitted, `content_save` auto-discovers children alphabetically from the directory. For custom ordering or to exclude specific files, use an explicit `children:` list:
+When `children:` is omitted, `content_save` auto-discovers children alphabetically. For custom ordering or to exclude files, use an explicit `children:` list:
 
 ```yaml
 children:
@@ -140,15 +140,13 @@ entry.
 
 ### Table of contents in development
 
-`table_of_contents_in_development: true` hides three TOC surfaces on the course
-detail page while the course is still being authored: the Lessons stat card,
-the lesson-count line inside "This course includes", and the entire "Course
-content" section. It has no effect on anything else — the course still renders
-otherwise.
+`table_of_contents_in_development: true` hides three TOC surfaces on the course detail page
+while the course is being authored: the Lessons stat card, the lesson-count line inside
+"This course includes", and the entire "Course content" section. Nothing else changes.
 
-It is independent of `visibility` and composes with all three states. A
-`published` course can carry it, which is what an application-gated course
-needs: applications are open while the contents are still being written.
+It is independent of `visibility` and composes with all three states. A `published` course
+can carry it, which an application-gated course needs: applications are open while the
+contents are still being written.
 
 ```yaml
 ---
@@ -166,7 +164,7 @@ Remove the flag (or set it back to `false`) once the contents are written.
 
 `access_config` controls how a learner gains access to the course. It is an **opaque
 configuration block** interpreted by the deployment's active course-access backend
-(`COURSE_ACCESS_BACKEND`) — the content schema itself does not interpret its keys.
+(`COURSE_ACCESS_BACKEND`); the content schema does not interpret its keys.
 
 In practice you set a single `access_type`:
 
@@ -222,10 +220,9 @@ access_config:
 application is reviewed, written **relative to this `course.md`**. It is optional: a gated
 course without one just takes the application and shows the applicant a status page.
 
-FLS collects the applicant's personal details itself, before the first page of the form. A
-signed-in learner's come from their account, and a visitor without an account fills in a
-details step. Do **not** ask for any of these in an application form, because the applicant
-would be giving them twice:
+FLS collects the applicant's personal details itself, before the first page of the form (from
+a signed-in learner's account, or a details step for a visitor). Do **not** ask for any of
+these in an application form; the applicant would give them twice:
 
 - email address
 - first name, last name or full name
@@ -241,10 +238,9 @@ Two rules the host enforces at content-load:
 - `application_form` is only valid alongside `access_type: application_gated`. A free course
   naming a form is refused rather than quietly ignored.
 
-The form is named here, **not** listed in the course's `children:`. An application form placed
-in a course's content collection renders and behaves as a survey inside the course — which,
-with `strategy: UNSCORED`, is exactly what it becomes. That is an authoring mistake the host
-does not police.
+The form is named here, **not** listed in the course's `children:`. An application form in a
+course's content collection renders and behaves as a survey inside the course (with
+`strategy: UNSCORED`, exactly that). The host does not police this authoring mistake.
 
 **Which `access_type` values are valid is deployment-specific.** They come from the active
 `COURSE_ACCESS_BACKEND` and are declared, per content repo, in `.fls-content.yaml` under
@@ -252,7 +248,7 @@ does not police.
 and `application_gated`; a free-only deployment accepts only `free`; a custom backend may
 define entirely different values.
 
-**Invalid `access_config` is rejected — at both ends:**
+**Invalid `access_config` is rejected at both ends:**
 
 - `/fls-content:validate-content` flags it offline against the repo's declared
   `access_types`. An unknown key (anything other than `access_type`) or an unrecognised
@@ -268,20 +264,18 @@ define entirely different values.
 - The FLS host re-validates at content-load through the active backend, so bad config never
   reaches the database.
 
-Set `access_config` deliberately — it is never inferred from course content. When editing an
+Set `access_config` deliberately; it is never inferred from course content. When editing an
 existing course file, preserve any `access_config` exactly as written; do not invent, change,
 or drop it.
 
 ### Course pricing
 
-`price` declares what a course costs. It is **display only** — nothing here processes payment;
-enrolment/access is controlled separately by `access_config` above. Omit `price` entirely for a
-course with no price shown anywhere.
+`price` declares what a course costs. It is **display only**: nothing here processes payment;
+`access_config` above controls enrolment/access. Omit `price` for a course with no price shown.
 
-Every `price` has a `kind`, which selects one of four shapes. Each shape takes only its own
-fields — writing a field another shape does not use fails validation with *"Not used by a
-<kind> price."*, and omitting one it requires fails with *"Required for a <kind>
-price."*
+Every `price` has a `kind` selecting one of four shapes. Each shape takes only its own
+fields: a field another shape uses fails validation with *"Not used by a <kind> price."*,
+and omitting a required one fails with *"Required for a <kind> price."*
 
 | `kind` | Required fields | Optional fields | Reads as |
 |---|---|---|---|
@@ -292,10 +286,10 @@ price."*
 
 #### Amount fields
 
-`amount`, `sale_amount`, `low_amount` and `high_amount` are all the same kind of field:
+`amount`, `sale_amount`, `low_amount` and `high_amount` share these rules:
 
 - **Always write an amount as a quoted string**, e.g. `amount: "1499.00"`. An unquoted number
-  (`amount: 1499.00`) is read through YAML's float parser before validation ever sees it and is
+  (`amount: 1499.00`) is read through YAML's float parser before validation sees it and is
   refused outright: *"write amounts as quoted strings, e.g. \"1499.00\""*.
 - Must be greater than zero, and finite.
 - At most 3 decimal places, and below 1,000,000,000 — *"Can have at most 3 decimal places."* /
@@ -314,12 +308,10 @@ unrecognised code fails with *"'XXX' is not a recognised currency code."* `on_re
 takes a `currency`.
 
 If `currency` is omitted on a kind that needs one, the project's configured `DEFAULT_CURRENCY`
-is used instead at save time. **The offline validator has no access to that setting**, so it
-always skips the currency-precision check when `currency` is omitted from the file — even if
-the project's `DEFAULT_CURRENCY` would have caught it. If the project has *no* `DEFAULT_CURRENCY`
-either, saving the content fails at `content_save` time (not at validation time) with *"the
-price has no currency and DEFAULT_CURRENCY is not set."* Write `currency` explicitly to avoid
-depending on a setting the validator can't see.
+is used at save time. **The offline validator cannot see that setting**, so it skips the
+currency-precision check whenever `currency` is omitted from the file. If the project has *no*
+`DEFAULT_CURRENCY` either, `content_save` (not validation) fails with *"the price has no
+currency and DEFAULT_CURRENCY is not set."* Write `currency` explicitly.
 
 #### `sale_ends_on`
 
@@ -334,8 +326,7 @@ course page's sign-up panel only — never on cards or list rows.
 
 #### Clearing a price
 
-Omitting `price` entirely leaves whatever price is already stored on the course untouched —
-same as `tags`. To remove a previously-set price, write `price: null` explicitly.
+Omitting `price` leaves any stored price untouched, as with `tags`. To remove a price, write `price: null`.
 
 #### Examples
 
@@ -415,9 +406,9 @@ already-expired sale (`functionality_demo_price_sale_expired`).
 
 ## COURSE_PART (`part.yaml`)
 
-One `part.yaml` file per course-part subdirectory. Its presence identifies the directory as a COURSE_PART. The directory must be numbered (e.g. `01. Getting Started/`).
+One `part.yaml` per course-part subdirectory; its presence identifies the directory as a COURSE_PART. The directory must be numbered (e.g. `01. Getting Started/`).
 
-**`part.yaml` has no closing `---`** — the file ends after the last key. This is valid single-document YAML.
+**`part.yaml` has no closing `---`**: the file ends after the last key (valid single-document YAML).
 
 ### Frontmatter fields
 
@@ -432,7 +423,7 @@ One `part.yaml` file per course-part subdirectory. Its presence identifies the d
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata |
 
-Note: COURSE_PART has **no `content`** field — there is no markdown body on a part.
+Note: COURSE_PART has **no `content`** field; a part has no markdown body.
 
 ### Example (new part — no uuid)
 
@@ -451,17 +442,17 @@ title: Getting Started
 uuid: 66bb8510-ce90-426e-82fb-f02b7ca92fdc
 ```
 
-Note the missing closing `---` — this is correct.
+The missing closing `---` is correct.
 
 ---
 
 ## COURSE_CATEGORIES (`course_categories.yaml`)
 
-Declared **once per content repo**, in a file that lives outside every course directory —
-normally the repo root, as a sibling of the course directories. It is identified by
-`content_type: COURSE_CATEGORIES` rather than by filename, but name it `course_categories.yaml`
-by convention. A second declaration anywhere in the repo, or one placed inside a course or
-course-part directory, both fail validation:
+Declared **once per content repo**, in a file outside every course directory, normally at the
+repo root beside the course directories. It is identified by `content_type:
+COURSE_CATEGORIES`, not filename; name it `course_categories.yaml` by convention. A second
+declaration anywhere in the repo, or one inside a course or course-part directory, fails
+validation:
 
 - *"Multiple COURSE_CATEGORIES declarations found: [...]. A content repo may declare its
   categories only once."*
@@ -477,8 +468,8 @@ course-part directory, both fail validation:
 | `show_on_dashboard` | `bool` | No | Whether the dashboard gives this category its own section. Defaults to `true`. |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new entries, never hand-edit an existing one** |
 
-An entry takes those five keys and nothing else — no per-entry `content_type`, `tags`, or
-`meta`.
+An entry takes those five keys and nothing else (no per-entry `content_type`, `tags`, or
+`meta`).
 
 **Display order is the order of the entries in the list.** There is no `order:` field;
 `content_save` assigns each category's order from its position.
@@ -494,10 +485,9 @@ An entry takes those five keys and nothing else — no per-entry `content_type`,
   change `slug`/`title` — then update every course that referenced the old slug. Dropping the
   `uuid` creates a second category instead of renaming the first.
 - **A slug that collides with a category already in the database is only caught by
-  `content_save`, not by `/fls-content:validate-content`** — the offline validator has no
-  database to check against. `content_save` refuses the save, names the `uuid` that already
-  owns the slug, and asks you to either adopt that category (copy its `uuid` into your entry)
-  or choose a different slug.
+  `content_save`, not by `/fls-content:validate-content`** (the offline validator has no
+  database). `content_save` refuses the save, names the `uuid` that owns the slug, and asks
+  you to adopt that category (copy its `uuid` into your entry) or choose a different slug.
 
 ### Example (new file — no uuids)
 

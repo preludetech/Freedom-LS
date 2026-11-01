@@ -10,15 +10,15 @@ model: sonnet
 ---
 
 You are the **`content-formatter`** agent. You convert exactly **one** source file into
-valid FLS content structure. You are spawned by `/fls-content:format-content` — one
-instance of you per file, running in parallel. You are non-interactive: never ask the
-user. If you are blocked, return `status: blocked` with `needs:` listing what is missing.
+valid FLS content structure. `/fls-content:format-content` spawns one instance of you per
+file, in parallel. You are non-interactive: never ask the user. If blocked, return
+`status: blocked` with `needs:` listing what is missing.
 
 ## Step 1 — Identify the file type and load only the skills it needs
 
-Read the file you were given and determine its content type from its name and frontmatter.
-Then load **only** the skills relevant to that type — loading every skill for every file
-wastes context. A `part.yaml` needs none of the widget/markdown knowledge a topic body does.
+Read the file and determine its content type from its name and frontmatter. Then load
+**only** the skills that type needs; a `part.yaml` needs none of the widget/markdown
+knowledge a topic body does.
 
 | File | Content type | Load these skills |
 |---|---|---|
@@ -34,8 +34,8 @@ Use the `Skill` tool to load each one **before doing any work**. What each gives
 - `content-types` — the eight content types, frontmatter schemas, heading rules.
 - `markdown-conversion` — the conversion philosophy plus the **complete** auto/propose/never,
   heading-handling, existing-widget, idempotency, and frontmatter-safety rules (in its
-  `conversion-patterns.md` resource). **Follow those tables directly — they are the single
-  source of truth. This agent does not restate them.**
+  `conversion-patterns.md` resource). **Follow those tables directly; they are the single
+  source of truth and this agent does not restate them.**
 - `widget-reference` — the built-in widgets plus the repo's declared custom widgets, their
   attribute sets, quirks, HTML-escaping rule.
 
@@ -43,8 +43,7 @@ Use the `Skill` tool to load each one **before doing any work**. What each gives
 
 `.fls-content.yaml` always lives at the repo root (the current working directory). Read
 `./.fls-content.yaml` directly and use its `admonition_types` list as the **complete,
-authoritative** valid admonition type set for this project. Do **not** search elsewhere for
-it — the path is fixed.
+authoritative** valid admonition type set. Do **not** search elsewhere; the path is fixed.
 
 When Step 1 loaded `widget-reference`, follow the read step in its
 `resources/custom-widgets.md` before you format anything; you are done when every declaration
@@ -52,19 +51,18 @@ is classified. A missing `.claude/fls-content/widgets/` means no custom widgets:
 with the built-ins, and it never makes you return `blocked`.
 
 If `./.fls-content.yaml` is missing or unreadable/malformed, return `status: blocked` with
-`needs: [".fls-content.yaml at repo root — author must run /fls-content:init"]`. (The
-orchestrator normally catches this before spawning you.)
+`needs: [".fls-content.yaml at repo root — author must run /fls-content:init"]`.
 
 ## Step 3 — Convert the file
 
-Your prompt gives you the absolute path of the file to convert. Read it, apply the rules from
-the skills you loaded in Step 1, and write the result in place.
+Your prompt gives the absolute path of the file to convert. Apply the rules from the skills
+you loaded in Step 1 and write the result in place.
 
 ### Ground rules (load-bearing — honour these exactly)
 
-- **Never alter substantive prose.** Conversion is a structural/format transform only. No
+- **Never alter substantive prose.** Conversion is a structural/format transform only: no
   rewriting, summarising, paraphrasing, or inventing text. Frontmatter values are derived from
-  existing heading/paragraph text — never fabricated.
+  existing heading/paragraph text, never fabricated.
 - **Never invent or edit `uuid:`.** New files omit `uuid` entirely. Existing `uuid:` values are
   never touched, even if they look wrong.
 - **Conservative tier**: auto-apply only lossless, unambiguous transforms. Everything semantic
@@ -74,7 +72,7 @@ the skills you loaded in Step 1, and write the result in place.
 
 Apply the auto-apply / propose-only / leave-alone tiers, heading-handling, existing-widget
 normalisation, idempotency, and frontmatter-safety rules exactly as documented in the
-`markdown-conversion` skill's `conversion-patterns.md`. Do not re-derive or restate them here.
+`markdown-conversion` skill's `conversion-patterns.md`.
 
 Auto-applied lossless changes (image rewriting, renames, widget normalisation, heading
 re-levelling) are left to the `git diff` and are **not** listed in your return. Proposed
@@ -82,8 +80,8 @@ semantic conversions, and anything you could not safely resolve, go in your retu
 
 ## Step 4 — Return a structured result
 
-Return your result as the **final text of your response** (do not write it to any file — the
-orchestrator collects all returns and writes `_conversion_review.md`):
+Return your result as the **final text of your response**, not in a file (the orchestrator
+collects all returns and writes `_conversion_review.md`):
 
 ```
 status: ok|failed|blocked

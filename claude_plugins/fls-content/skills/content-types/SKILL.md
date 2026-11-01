@@ -6,9 +6,9 @@ allowed-tools: Read, Grep, Glob
 
 # FLS Content Types
 
-FLS has ten content types. Each maps to a specific file name or naming pattern; the `content_type` frontmatter field identifies which type a file is.
+FLS has ten content types. Each maps to a file name or naming pattern; the `content_type` frontmatter field identifies the type.
 
-All models use `extra="forbid"` — any unrecognised frontmatter key causes validation to fail. Typos in key names produce a clear error.
+All models use `extra="forbid"`: any unrecognised frontmatter key fails validation, so typos in key names produce a clear error.
 
 ## The ten types at a glance
 
@@ -27,9 +27,9 @@ All models use `extra="forbid"` — any unrecognised frontmatter key causes vali
 
 ## Key non-obvious facts
 
-- **`FORM_QUESTION` vs `FORM_CONTENT`** — the parser selects the type based on whether a YAML section has a `question` key or a `content` key, not on an explicit `content_type` declaration.
+- **`FORM_QUESTION` vs `FORM_CONTENT`** — the parser selects the type by whether a YAML section has a `question` key or a `content` key, not by a `content_type` declaration.
 - **`FORM_QUESTION` and `FORM_CONTENT`** inherit a *smaller* base model — they have **no** `title`, `subtitle`, `description`, `category` (as a display field), or `image` fields.
-- **`part.yaml` has no closing `---`** — the file ends after the last YAML key. This is valid single-document YAML.
+- **`part.yaml` has no closing `---`** — the file ends after the last YAML key (valid single-document YAML).
 - **TOPIC body headings**: the `title` lives in frontmatter and renders as the page H1. **Do not repeat it as a heading in the body.** Body headings start at `#` (H1 in the source), which `mdx_headdown` shifts down to render as H2 beneath the title. Nest sub-sections with `##`, `###`, … without skipping levels.
 - **COURSE access**: a course is `free` by default. Set `access_config: {access_type: application_gated}` to require an application before enrolment, and `application_form:` inside that same block to name the form applicants fill in (a path relative to `course.md`). FLS collects the applicant's email, name and terms agreement itself, so the form must not ask for them. Valid access types are deployment-specific (declared in `.fls-content.yaml` `access_types`) — see [`resources/course-files.md`](resources/course-files.md#course-access-configuration).
 - **COURSE categories**: a course declares membership with `categories: [slug, ...]`, each slug resolved against the one `course_categories.yaml` declared for the whole repo. A single category resolves automatically as the dashboard category; two or more require an explicit `dashboard_category`. See [`resources/course-files.md`](resources/course-files.md#course-categories).

@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob
 
 # FLS Widget Reference
 
-Widgets are `c-*` cotton components embedded in markdown content bodies. They must be registered in `MARKDOWN_ALLOWED_TAGS` or the nh3 sanitiser strips them wholesale before the template ever renders. Authors cannot invent `c-*` names. The valid set is the built-ins below plus the custom widgets the content repo declares (see [`resources/custom-widgets.md`](resources/custom-widgets.md)). Any unknown `c-*` tag is stripped silently, so it produces no error and no output.
+Widgets are `c-*` cotton components embedded in markdown content bodies. They must be registered in `MARKDOWN_ALLOWED_TAGS` or the nh3 sanitiser strips them wholesale before the template renders. Authors cannot invent `c-*` names: the valid set is the built-ins below plus the custom widgets the content repo declares (see [`resources/custom-widgets.md`](resources/custom-widgets.md)). An unknown `c-*` tag is stripped silently, with no error and no output.
 
 ## All widgets at a glance
 
@@ -34,7 +34,7 @@ Widgets are `c-*` cotton components embedded in markdown content bodies. They mu
 
 ## Authorised attribute sets (built-in widgets)
 
-This block lists the built-in widgets only. A declared custom widget's attribute set is the `**Allowed attributes:**` line of its declaration. For each widget, the documented attribute set equals the `MARKDOWN_ALLOWED_TAGS` allowlist exactly. Any attribute outside the set is **silently stripped** by the sanitiser before the template renders.
+Built-in widgets only; a declared custom widget's attribute set is the `**Allowed attributes:**` line of its declaration. Each documented set equals the `MARKDOWN_ALLOWED_TAGS` allowlist exactly. Any attribute outside it is **silently stripped** by the sanitiser.
 
 ```
 c-youtube:        video_id, video_title, caption
@@ -60,11 +60,11 @@ c-slot:           name
 
 ## Admonition types are deployment-configurable
 
-`c-admonition`'s `type` attribute is **not a fixed list** in the plugin. The valid set for your project is declared in `.fls-content.yaml` at the repo root, which always exists (created by `/fls-content:init`). The base set shipped with FLS is:
+`c-admonition`'s `type` attribute is **not a fixed list** in the plugin. The valid set is declared in `.fls-content.yaml` at the repo root, which always exists (created by `/fls-content:init`). The base set shipped with FLS is:
 
 `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
 
-But this base set is fully overridable — a deployment may add, remove, or rename these types. **Do not treat the base set as exhaustive.** An unknown type falls back **silently** to the `default` style at render time with no error, so you must rely on the types declared in your project's `.fls-content.yaml`, not guess.
+A deployment may add, remove, or rename these types, so **do not treat the base set as exhaustive.** An unknown type falls back **silently** to the `default` style at render time with no error: rely on the types declared in `.fls-content.yaml`, never guess.
 
 ## Custom widgets are declared per content repo
 
@@ -72,7 +72,7 @@ A concrete project may declare widgets of its own in `.claude/fls-content/widget
 
 ## HTML-escaping rule (critical for two widgets)
 
-`c-code-block` and `c-equation` bodies are **not** markdown-processed — the content passes as raw text through the sanitiser. You must escape:
+`c-code-block` and `c-equation` bodies are **not** markdown-processed; the content passes as raw text through the sanitiser. You must escape:
 
 - `<` → `&lt;`
 - `>` → `&gt;`

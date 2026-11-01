@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob
 
 ## When to convert
 
-Use conversion when you have existing Markdown (from a blog, docs site, Obsidian vault, Google Docs export, etc.) that you want to turn into properly structured FLS course content. The goal is a valid structure that passes the bundled validator.
+Use conversion for existing Markdown (a blog, docs site, Obsidian vault, Google Docs export, etc.) you want as structured FLS course content. The goal is a valid structure that passes the bundled validator.
 
 ## Conservative philosophy
 
@@ -22,7 +22,7 @@ The three tiers:
 
 ## In-place conversion, no dry-run
 
-`/fls-content:format-content` converts **in place** — it writes changes directly to the source files. There is no dry-run mode. This is intentional: content lives in git, so the full before/after diff and one-command rollback are already available. Review the `git diff` after conversion; roll back with `git checkout` or `git restore` if needed.
+`/fls-content:format-content` converts **in place**, writing directly to the source files, with no dry-run mode. Content lives in git, so the before/after diff and one-command rollback already exist: review `git diff` after conversion; roll back with `git checkout` or `git restore`.
 
 ## After conversion: validate
 
@@ -32,9 +32,8 @@ structure (required fields, unknown fields, types, recognised content types) and
 the obvious, unambiguous problems it finds. For a large conversion, validate per file — one
 call per converted file — so each file's issues stay isolated.
 
-This is a **structural pre-flight only**: it catches the most common structural mistakes
-before the content is considered done. A clean result here does not guarantee any later
-host-side processing will succeed, but it resolves the common errors first.
+This is a **structural pre-flight only**: it catches the most common structural mistakes, but
+a clean result does not guarantee later host-side processing will succeed.
 
 ## Full conversion-pattern tables
 

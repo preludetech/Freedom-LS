@@ -4,11 +4,11 @@
 
 A numbered directory (e.g. `01. welcome/`) inside a course or course-part directory,
 containing a `content.md` with the topic's frontmatter and body. Put images used only by
-this topic in the directory's own `images/` subfolder; images shared across topics live in
-an `images/` directory higher up (see `resources/file-layout.md`).
+this topic in the directory's own `images/` subfolder; shared images live in an `images/`
+directory higher up (see `resources/file-layout.md`).
 
-A flat numbered file (`01. welcome.md`) is still accepted, but the
-directory-with-`content.md` form is preferred.
+A flat numbered file (`01. welcome.md`) is accepted, but the directory-with-`content.md`
+form is preferred.
 
 ### Frontmatter fields
 
@@ -27,11 +27,11 @@ directory-with-`content.md` form is preferred.
 
 ### Due dates
 
-A topic can carry a due date, set with **one** of `due_date` or `due_days_after_registration`, plus an
-optional `due_time`. Write these in the topic's own `content.md` frontmatter, not in the course's
-`children:` list. `due_time` must be quoted: YAML reads an unquoted `17:00` as a number, and it is
-rejected. With no `due_time` the item is due at the end of the day. Remove the fields and re-run
-`content_save` to remove the due date.
+A topic can carry a due date, set with **one** of `due_date` or `due_days_after_registration`,
+plus an optional `due_time`. Write these in the topic's own `content.md` frontmatter, not in
+the course's `children:` list. `due_time` must be quoted: YAML reads an unquoted `17:00` as a
+number and it is rejected. With no `due_time` the item is due at the end of the day. Remove
+the fields and re-run `content_save` to remove the due date.
 
 ```yaml
 ---
@@ -50,12 +50,12 @@ The `title` and `subtitle` frontmatter values are rendered automatically (title 
 H1, subtitle beneath it) — **do not repeat either as a heading or prose in the body**.
 Writing `title: Foo` and then `# Foo` in the body renders `Foo` twice (an H1 and an H2).
 
-Body headings use the `mdx_headdown` rendering shift: every heading in the body is shifted down one level at render time:
+Body headings use the `mdx_headdown` rendering shift: every body heading moves down one level at render time:
 - Body `#` (H1) → rendered H2
 - Body `##` (H2) → rendered H3
 - Body `###` (H3) → rendered H4
 
-This is how body content nests beneath the page title. Use `#` for your top-level body sections, `##` for sub-sections, and so on. Never skip heading levels (e.g. do not jump from `#` to `###` without a `##` between them).
+This nests body content beneath the page title. Use `#` for top-level body sections, `##` for sub-sections, and so on. Never skip heading levels (no `#` straight to `###`).
 
 ### Minimal example (new file — no uuid)
 
@@ -103,8 +103,8 @@ Start with the basics...
 
 ## ACTIVITY
 
-Same on-disk shape as a TOPIC — a numbered directory with a `content.md` (a flat numbered
-`.md` file is also accepted). Identical to TOPIC but with one extra optional field.
+Same on-disk shape as a TOPIC (a numbered directory with a `content.md`; a flat numbered `.md`
+file is also accepted), plus one optional field.
 
 ### Additional field
 

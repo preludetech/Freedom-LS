@@ -33,12 +33,11 @@ course.md
 ```
 
 Form-page files live **inside** the form directory alongside `form.md`. Each numbered
-`.yaml` is one page of the form — a page of questions — named with a kebab-case slug like
-any other content. The names above are just illustrative.
+`.yaml` is one page of questions, named with a kebab-case slug like any other content. The
+names above are illustrative.
 
 A form's results/score page is **generated automatically by FLS** after the learner
-submits — it is never an authored file, and there is no "results" content type. Every
-`.yaml` you author here is a page of questions.
+submits. It is never an authored file, and there is no "results" content type.
 
 Rules:
 - Zero-pad every numeric prefix to the digit-width of the largest sibling in the same
@@ -76,7 +75,7 @@ uuid: 66bb8510-ce90-426e-82fb-f02b7ca92fdc
 
 ## Scanner skip rules
 
-The FLS scanner (`validate.py`) skips these files and directories — they are never treated as content:
+The FLS scanner (`validate.py`) skips these files and directories; they are never content:
 
 - Names starting with `_` (e.g. `_drafts/`)
 - Names starting with `.` (e.g. `.fls-content.yaml`)
@@ -84,17 +83,16 @@ The FLS scanner (`validate.py`) skips these files and directories — they are n
 - Files whose name ends with `~`
 
 Note: when a `course.md`/`part.yaml` omits `children:`, `content_save`'s child
-auto-discovery walk applies only the first two rules (the `_`/`.`-prefix
-rules) — it does not skip `README.md`, `CLAUDE.md`, or a trailing `~`. See the
-`fls-content:content-types` skill's `resources/file-layout.md#child-auto-discovery`
-for the exact rule.
+auto-discovery walk applies only the first two rules (the `_`/`.`-prefix rules); it does not
+skip `README.md`, `CLAUDE.md`, or a trailing `~`. See the `fls-content:content-types`
+skill's `resources/file-layout.md#child-auto-discovery` for the exact rule.
 
 ## UUID rules (load-bearing — read before creating any file)
 
 1. **Omit `uuid` on new content.** Do not write a `uuid:` field. `content_save` generates a UUID and writes it back into the source file on first run.
 2. **Never edit an existing `uuid:`.** The UUID is the stable identity for the DB row; editing it breaks the upsert and may silently create a duplicate.
 3. **Never duplicate a UUID across files.** Two files with the same UUID cause one to silently overwrite the other on `content_save`.
-4. **Never hand-create a UUID.** Not even with a UUID4 generator — the workflow is: omit the field, run `content_save`, let it write the UUID back.
+4. **Never hand-create a UUID.** Not even with a UUID4 generator: omit the field, run `content_save`, let it write the UUID back.
 5. **This applies to `course_categories.yaml` too.** Each entry in its `categories:` list gets its own `uuid` written back on first run, exactly like any other file's `uuid:` field. Omit it on a new entry; never hand-edit an existing one.
 
 Example of a **correct** new topic (no uuid field):
@@ -109,7 +107,7 @@ description: Learn what variables are and how to use them.
 Body content here...
 ```
 
-After the first `content_save`, the file will have a `uuid:` field added automatically.
+After the first `content_save`, the file gains a `uuid:` field.
 
 ## Quoting price amounts (load-bearing)
 
@@ -122,8 +120,8 @@ price:
   amount: "1499.00"    # correct — quoted
 ```
 
-An unquoted `amount: 1499.00` is read through YAML's float parser before validation ever sees
-it — a float can't round-trip a currency amount exactly — and is refused outright. Full field
+An unquoted `amount: 1499.00` is read through YAML's float parser before validation sees it
+(a float can't round-trip a currency amount exactly) and is refused outright. Full field
 reference: see the `fls-content:content-types` skill's `resources/course-files.md#course-pricing`.
 
 ## HTML-escaping rules

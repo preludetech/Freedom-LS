@@ -5,18 +5,17 @@ allowed-tools: Read, Write, Glob, Bash
 
 ## Steps
 
-`.fls-content.yaml` always lives at the **repo root** — the current working directory where
-Claude runs, alongside `.claude/` and the validator's `.venv/`. This command always targets
-the repo root; it ignores any path argument.
+`.fls-content.yaml` always lives at the **repo root**: the current working directory,
+alongside `.claude/` and the validator's `.venv/`. This command always targets the repo root
+and ignores any path argument.
 
 ### 1. Check whether `.fls-content.yaml` already exists
 
 Use the `Glob` tool to check for `.fls-content.yaml` at the repo root.
 
-**Important:** `.fls-content.yaml` is a hidden (dot-prefixed) file. Ensure the glob pattern
-matches it explicitly — pass the full literal filename, not just `*`. A false "not found"
-result here would cause Step 3 to overwrite an existing file, violating the non-destructive
-guarantee.
+**Important:** `.fls-content.yaml` is a hidden (dot-prefixed) file, so pass the full literal
+filename to the glob, not just `*`. A false "not found" would make Step 3 overwrite an
+existing file, violating the non-destructive guarantee.
 
 ---
 
@@ -28,24 +27,22 @@ guarantee.
 
 ### 2. File already exists — report and exit without writing
 
-Read the existing `.fls-content.yaml`. Parse the `admonition_types` list **and** the
-`access_types` list from the file content you just read. Compare each against its FLS base
-set and report both groups for each. Do **not** copy the example values below — compute the
-splits from the actual file.
+Read the existing `.fls-content.yaml`. Parse its `admonition_types` list **and** its
+`access_types` list, compare each against its FLS base set, and report both. Do **not** copy
+the example values below; compute the splits from the actual file.
 
 - `admonition_types` FLS base names: `note`, `tip`, `important`, `warning`, `danger`,
   `key_takeaways`, `checklist`.
 - `access_types` FLS base names (the shipped `COURSE_ACCESS_BACKEND` vocabulary): `free`,
-  `application_gated`. If the file has no `access_types` key at all, note that the repo
-  predates this config and the validator will fall back to the FLS shipped default — suggest
-  adding an `access_types` block (see Step 3) so the valid set is explicit.
+  `application_gated`. If the file has no `access_types` key, note that the repo predates this
+  config and the validator falls back to the FLS shipped default; suggest adding an
+  `access_types` block (see Step 3) so the valid set is explicit.
 
 Report:
 
 1. That the file is already present and has been left **byte-for-byte untouched**.
-2. A convenience cross-reference of each declared list against its FLS base set. Frame this
-   as informational only — differences from the base set are expected and intentional (the
-   file is the authoritative set, not the base set).
+2. A cross-reference of each declared list against its FLS base set, framed as informational
+   only: differences are expected and intentional (the file is the authoritative set).
 
 Example report format:
 
@@ -125,9 +122,6 @@ After writing, confirm to the author:
 `pyyaml`, `python-frontmatter`, and `babel`. Install them once here, into a `.venv/` at the
 repo root, so validation never re-resolves dependencies on every run.
 
-The venv lives at the repo root — the current working directory where Claude runs, alongside
-`.claude/` and `.fls-content.yaml`.
-
 First confirm `uv` is available:
 
 ```bash
@@ -136,7 +130,7 @@ uv --version
 
 If `uv` is not installed, tell the author to install it from
 https://docs.astral.sh/uv/getting-started/installation/ (or ask their FLS administrator),
-and stop — the validator cannot be set up without it.
+and stop; the validator cannot be set up without it.
 
 If the environment already exists and is healthy, do nothing:
 
@@ -144,8 +138,8 @@ If the environment already exists and is healthy, do nothing:
 ".venv/bin/python" -c "import pydantic, yaml, frontmatter, babel"
 ```
 
-If that command succeeds, the dependencies are already installed — report that and skip the
-install. If it fails (or the environment does not exist), create it and install the deps:
+If it succeeds, report that the dependencies are installed and skip the install. If it fails
+(or the environment does not exist), create it and install the deps:
 
 ```bash
 uv venv .venv
@@ -153,8 +147,8 @@ uv pip install --python .venv/bin/python \
   pydantic pyyaml python-frontmatter babel
 ```
 
-Finally, make sure the venv is never committed — ensure `.venv/` is listed in the repo's
-`.gitignore` (idempotent; creates the file if absent):
+Finally, ensure `.venv/` is listed in the repo's `.gitignore` so the venv is never committed
+(idempotent; creates the file if absent):
 
 ```bash
 if ! grep -qxF '.venv/' .gitignore 2>/dev/null; then
@@ -162,8 +156,7 @@ if ! grep -qxF '.venv/' .gitignore 2>/dev/null; then
 fi
 ```
 
-Then confirm to the author that the validator is ready and they can run
-`/fls-content:validate-content`.
+Then tell the author the validator is ready for `/fls-content:validate-content`.
 
 ### Constraint reminder
 

@@ -14,9 +14,8 @@ Expand the path to an absolute path before passing it to the validator.
 
 ### 2. Ensure the validator environment exists
 
-The validator's dependencies are installed once by `/fls-content:init` into a `.venv/` at the
-repo root — the current working directory where Claude runs, alongside `.claude/`. Confirm the
-venv is present and healthy:
+`/fls-content:init` installs the validator's dependencies into a `.venv/` at the repo root
+(the current working directory, alongside `.claude/`). Confirm the venv is healthy:
 
 ```bash
 ".venv/bin/python" -c "import pydantic, yaml, frontmatter, babel"
@@ -24,11 +23,10 @@ venv is present and healthy:
 
 If that succeeds, go to Step 3.
 
-If it fails (the author has not run `/fls-content:init` yet, or the environment is broken),
-set it up yourself — do not ask the author to run anything. First check `uv` is available
-(`uv --version`); if `uv` is missing, stop and tell the author to install it from
-https://docs.astral.sh/uv/getting-started/installation/ (or ask their FLS administrator).
-With `uv` present, create the environment:
+If it fails (init has not run, or the environment is broken), set it up yourself; do not ask
+the author to run anything. Check `uv --version` first; if `uv` is missing, stop and tell the
+author to install it from https://docs.astral.sh/uv/getting-started/installation/ (or ask
+their FLS administrator). With `uv` present, create the environment:
 
 ```bash
 uv venv .venv
@@ -58,21 +56,21 @@ Example:
 > All content files in `<path>` passed structural validation. No schema errors found.
 
 **Non-zero exit (failures detected):**
-Do **not** show the author a raw Python traceback. Instead, rewrite the
-validator's human-readable output into friendly, actionable items:
+Do **not** show the author a raw Python traceback. Rewrite the validator's output into
+friendly, actionable items:
 
 - Identify each failing file by name (preserve any file-path references from the validator output).
 - State what is wrong in plain language (missing required field, unknown field, wrong type, etc.).
 - Tell the author how to fix it (e.g. "Add a `title:` field to the frontmatter of `01. intro.md`").
 - Preserve any line-number or field references from the validator output.
 
-If the validator output is empty on a non-zero exit (unexpected error), report
-the exit code and ask the author to check the file path and re-run.
+If the output is empty on a non-zero exit, report the exit code and ask the author to check
+the file path and re-run.
 
 ### 5. Auto-fix the obvious problems, then re-validate
 
-For each reported failure, if the fix is **obvious and unambiguous**, just make it directly
-in the source file — do not turn it into a task for the author. These are safe to fix:
+Fix each failure that is **obvious and unambiguous** directly in the source file; do not
+turn it into a task for the author. These are safe to fix:
 
 - Malformed frontmatter / YAML syntax (bad indentation, missing `---`, unquoted value that
   breaks parsing).
@@ -87,12 +85,12 @@ Do **not** auto-fix anything that needs author judgement or could change meaning
 - A genuinely missing required value you cannot derive from the file's existing content —
   report it for the author to supply, do not guess.
 
-After applying fixes, **re-run the validator** (Step 3) to confirm. Then report what you
-fixed automatically and list anything that still needs the author to decide or supply.
+After applying fixes, **re-run the validator** (Step 3). Then report what you fixed and list
+anything that still needs the author to decide or supply.
 
 ### 6. Restate the boundary
 
-End every response — success or failure — with this note (keeping it brief):
+End every response, success or failure, with this note (kept brief):
 
 > **Note:** This is a structural pre-flight check only. It validates frontmatter
 > schemas, required fields, and recognised content types. It does not perform the

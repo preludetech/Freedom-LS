@@ -1,14 +1,14 @@
 # ARTICLE Files
 
-An article is a standalone page that anyone can read without registering. It is not part of
-any course. Its body is markdown, like a TOPIC.
+An article is a standalone page anyone can read without registering, not part of any course.
+Its body is markdown, like a TOPIC.
 
 ## File layout
 
 One markdown file per article, named after its slug. A `slug/content.md` directory form is
-also read: when the file is named `content.md`, the slug is derived from the parent directory name.
-Articles take no `NN.` numeric prefix and need no `course.md`. A directory of loose article files
-may sit beside course directories, as `demo_content/functionality_demo_articles/` does.
+also read; the slug is then derived from the parent directory name. Articles take no `NN.`
+numeric prefix and need no `course.md`. A directory of loose article files may sit beside
+course directories, as `demo_content/functionality_demo_articles/` does.
 
 ```
 functionality_demo_articles/
@@ -47,14 +47,14 @@ stored value on the next `content_save`.
 ## Article image
 
 `image` is resolved relative to the article's own file; use `../` to reach a sibling directory.
-The image must be a file `content_save` loads, so not under a file or directory whose name starts
-with `_` or `.`. Validating a directory fails with "Broken image reference" when:
+The image must be a file `content_save` loads, so not under a name starting with `_` or `.`.
+Validating a directory fails with "Broken image reference" when:
 
 - the path does not end in an image extension (`.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.svg`,
   `.webp`): "this file is not an image"
 - no file exists at the path: "no file at this path"
 
-Validating a single file skips these checks, since it has no sibling files to resolve against.
+Validating a single file skips these checks (no sibling files to resolve against).
 `c-article-card` shows the image as a thumbnail with `image_alt` as its alt text.
 
 ## Slug collisions
@@ -66,7 +66,7 @@ different slug.
 
 ## Body headings
 
-Same as a TOPIC: body `#` renders as H2 (`mdx_headdown`). Do not repeat the title as a heading.
+As in a TOPIC: body `#` renders as H2 (`mdx_headdown`). Do not repeat the title as a heading.
 
 ## Example (new file — no uuid)
 
