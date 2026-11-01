@@ -1454,6 +1454,40 @@ def test_nested_path_naming_nothing_in_the_part_lists_the_parts_children(
     assert "03. quiz.md" in output
 
 
+def test_nested_path_naming_nothing_in_a_part_outside_the_directory_fails(
+    tmp_path: Path,
+) -> None:
+    """A course placing a part from a sibling directory is checked against that part even
+    though only the course's directory is validated."""
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    course_dir = content / "placement"
+    course_dir.mkdir()
+    write_course_with_children(
+        course_dir,
+        "children:\n- path: ../part/part.yaml\n  children:\n"
+        "  - path: 09. missing.md\n    no_due_date: true\n",
+    )
+
+    result = run_validator(course_dir, repo_root=tmp_path)
+
+    assert_validator_fails(result, "the part has no child at this path")
+    assert "01. intro.md" in result.stdout + result.stderr
+
+
+def test_a_child_named_twice_in_a_course_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_valid_topic(content, "intro.md")
+    write_course_with_children(
+        content, "children:\n- path: intro.md\n- path: ./intro.md\n"
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "this child is named twice")
+    assert "Invalid children list" in result.stdout + result.stderr
+
+
 def test_nested_path_naming_a_part_fails(tmp_path: Path) -> None:
     content = make_content_tree(tmp_path)
     write_part_tree(content)

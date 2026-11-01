@@ -16,6 +16,7 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CoursePart,
+    CoursePartChildDueDate,
     Topic,
 )
 from freedom_ls.content_engine.signals import collection_items_synced
@@ -23,9 +24,15 @@ from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     LearnerDeadlineOverrideFactory,
 )
-from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
+from freedom_ls.deadlines.models import (
+    CohortDeadlineOverride,
+    DeadlineKind,
+    LearnerDeadlineOverride,
+)
+from freedom_ls.deadlines.resolver import DeadlineValue, content_defaults_for_course
 from freedom_ls.deadlines.signals import carry_over_deadline_overrides
 from freedom_ls.deadlines.tests.helpers import (
+    COURSE_UUID,
     write_course,
     write_part,
     write_topic,
@@ -105,6 +112,38 @@ def test_moving_a_topic_carries_both_override_models_to_the_new_row(
     assert _item_of(cohort_override) == new_row.pk
     assert _item_of(learner_override) == new_row.pk
     assert ContentCollectionItem._base_manager.filter(pk=old_row.pk).exists()
+
+
+@pytest.mark.django_db
+def test_moving_a_topic_with_only_the_part_loaded_carries_the_courses_date_along(
+    site, mock_site_context, tmp_path
+):
+    """Only the new part's directory is reloaded, so the course's rows are not reconciled;
+    the date the course gave the child follows the child's new row through the signal."""
+    part_a = write_part(tmp_path, PART_A)
+    write_part(tmp_path, PART_B)
+    write_topic(part_a, "moving")
+    (tmp_path / "course.md").write_text(
+        "---\ncontent_type: COURSE\ntitle: Moving Course\n"
+        f"uuid: {COURSE_UUID}\nchildren:\n  - path: {PART_A}/part.yaml\n"
+        "    children:\n      - path: moving.md\n        due_days_after_registration: 5\n"
+        f"  - path: {PART_B}/part.yaml\n---\n"
+    )
+    _load(tmp_path, site)
+    course = Course.objects.get()
+    old_row = _row_in_part(_topic(), PART_A)
+    value = CoursePartChildDueDate.objects.get(collection_item=old_row)
+
+    _move_topic_to_part_b(tmp_path)
+    _load(tmp_path / PART_B, site)
+
+    new_row = _row_in_part(_topic(), PART_B)
+    assert new_row.pk != old_row.pk
+    value.refresh_from_db()
+    assert value.collection_item_id == new_row.pk
+    assert content_defaults_for_course(course.pk)[new_row.pk] == DeadlineValue(
+        DeadlineKind.RELATIVE, due_days_after_registration=5
+    )
 
 
 @pytest.mark.django_db

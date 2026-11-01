@@ -699,11 +699,6 @@ def collection_children(
     return [(path, None) for path in auto_discovered_children(collection.file_path)]
 
 
-def _children_of_part(part: CoursePart) -> list[Path]:
-    """The part's children as resolved keys, listed or auto-discovered."""
-    return [path for path, _ in collection_children(part)]
-
-
 def _shown_relative_to(path: Path, directory: Path) -> str:
     """A resolved key as an author would write it under the part's directory."""
     base = content_key(directory)
@@ -720,6 +715,7 @@ class _ParsedByPath:
     def __init__(self, all_parsed: Sequence[BaseBaseContentModel]) -> None:
         self._items = {content_key(item.file_path): item for item in all_parsed}
         self._read: set[Path] = set()
+        self._children: dict[Path, list[Path]] = {}
 
     def get(self, key: Path) -> BaseBaseContentModel | None:
         if key not in self._items and key not in self._read:
@@ -732,6 +728,15 @@ class _ParsedByPath:
                 for item in parsed:
                     self._items.setdefault(content_key(item.file_path), item)
         return self._items.get(key)
+
+    def children_of(self, part: CoursePart) -> list[Path]:
+        """The part's children as resolved keys, listed or auto-discovered. Auto-discovery
+        parses every file beside the part, so the walk happens once per part however many
+        courses place it. Raises ValueError when a file beside the part does not parse."""
+        key = content_key(part.file_path)
+        if key not in self._children:
+            self._children[key] = [path for path, _ in collection_children(part)]
+        return self._children[key]
 
 
 def _nested_list_errors(
@@ -763,7 +768,19 @@ def _nested_list_errors(
                 fix="Only a placed part takes a nested children: list.",
             )
         ]
-    part_children = _children_of_part(target)
+    # The part may sit outside the validated path, where the per-file pass never saw its
+    # siblings, so a file that does not parse is reported here rather than lost.
+    try:
+        part_children = by_path.children_of(target)
+    except ValueError as e:
+        return [
+            error(
+                field,
+                str(entry.path),
+                problem=f"a file beside the part does not parse: {e}",
+                fix="Fix that file first.",
+            )
+        ]
     known = set(part_children)
     listed = ", ".join(
         _shown_relative_to(p, target.file_path.parent) for p in part_children
@@ -805,6 +822,36 @@ def _nested_list_errors(
                 )
             )
         seen.add(resolved)
+    return errors
+
+
+def validate_children_lists(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+    """Check that no course or part names the same child twice in its children: list.
+
+    The loader keeps one row per child of a collection, so a second entry would silently
+    replace the first's order and dates. Paths are resolved the way the loader resolves
+    them, so two spellings of one file count as one child.
+    """
+    errors: list[str] = []
+    for item in all_parsed:
+        if not isinstance(item, (Course, CoursePart)):
+            continue
+        seen: set[Path] = set()
+        for index, entry in enumerate(item.children or []):
+            resolved = resolve_author_path(item.file_path, entry.path)
+            if resolved in seen:
+                errors.append(
+                    _reference_error(
+                        item.file_path,
+                        item.content_type,
+                        f"children[{index}]",
+                        str(entry.path),
+                        problem="this child is named twice",
+                        fix="Name each child once.",
+                        header="Invalid children list",
+                    )
+                )
+            seen.add(resolved)
     return errors
 
 
@@ -923,6 +970,8 @@ def validate(path):
     for message in validate_category_references(all_parsed):
         failed_files.append((path, message))
     for message in validate_widget_references(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_children_lists(all_parsed):
         failed_files.append((path, message))
     for message in validate_due_date_placements(all_parsed):
         failed_files.append((path, message))

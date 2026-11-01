@@ -12,7 +12,12 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.dispatch import receiver
 
-from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    CoursePartChildDueDate,
+)
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.deadlines.models import CohortDeadlineOverride, LearnerDeadlineOverride
 
@@ -25,11 +30,13 @@ def carry_over_deadline_overrides(
     written: list[ContentCollectionItem],
     **kwargs: object,
 ) -> None:
-    """Move deadline override rows from a child's stale collection item to the one a load just
-    wrote.
+    """Move deadline override rows, and a course's per-placement due dates, from a child's
+    stale collection item to the one a load just wrote.
 
     A sync never removes the row a moved child left behind, so the deadline overrides pointing
-    at it would otherwise stop applying. Every written row is looked at, not only the created
+    at it would otherwise stop applying. The same goes for the due date a course gives a
+    part's child when the child moves to another part and only that part's directory is
+    reloaded: the course is not in the load, so its rows are not reconciled. Every written row is looked at, not only the created
     ones: a child moved back to where it came from lands on the row it left, which the load
     updates rather than creates. Only the unambiguous case moves: exactly one other row for
     the same child in the same course that this load did not write. A file with two collection
@@ -58,7 +65,7 @@ def carry_over_deadline_overrides(
             ]
             if len(stale) != 1:
                 continue
-            for model, parent in _OVERRIDE_PARENTS:
+            for model, parent in _CARRIED_PARENTS:
                 already_on_new_row = model._base_manager.filter(
                     collection_item=new_row
                 ).values(parent)
@@ -67,13 +74,21 @@ def carry_over_deadline_overrides(
                 ).update(collection_item=new_row)
 
 
-# Each override model with the field that names whose override a row is, which the unique
-# constraints pair with the collection item.
-_OVERRIDE_PARENTS: tuple[
-    tuple[type[CohortDeadlineOverride] | type[LearnerDeadlineOverride], str], ...
+# Each model whose rows follow a moved child, with the field that names whose row it is,
+# which the unique constraints pair with the collection item. CoursePartChildDueDate is a
+# content_engine model, carried here because this receiver already owns the move.
+_CARRIED_PARENTS: tuple[
+    tuple[
+        type[CohortDeadlineOverride]
+        | type[LearnerDeadlineOverride]
+        | type[CoursePartChildDueDate],
+        str,
+    ],
+    ...,
 ] = (
     (CohortDeadlineOverride, "cohort_registration"),
     (LearnerDeadlineOverride, "course_progress"),
+    (CoursePartChildDueDate, "part_collection_item"),
 )
 
 

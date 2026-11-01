@@ -3495,6 +3495,27 @@ def test_a_broken_nested_list_fails_the_load_naming_the_path(
 
 
 @pytest.mark.django_db
+def test_a_course_placing_the_same_part_twice_fails_the_load(site, mock_site_context):
+    """Both entries would land on one row, so the second's dates would silently replace
+    the first's; the load refuses instead."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(
+            course_dir,
+            NESTED_INTRO_ONLY + "  - path: part/part.yaml\n    children:\n"
+            "      - path: intro.md\n        no_due_date: true\n",
+        )
+
+        with pytest.raises(ValueError, match="Invalid children list") as excinfo:
+            save_content_to_db(course_dir, site.name)
+
+    assert "this child is named twice" in str(excinfo.value)
+    assert "children[1]" in str(excinfo.value)
+    assert ContentCollectionItem.objects.count() == 0
+    assert CoursePartChildDueDate.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_second_course_placing_the_part_without_a_nested_list_gets_no_rows(
     site, mock_site_context
 ):

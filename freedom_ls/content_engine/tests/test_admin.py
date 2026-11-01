@@ -416,6 +416,9 @@ class TestPartPlacementChildDueDatesInline:
         self, staff_client
     ) -> None:
         part_placement = self._part_placement_with_two_rows()
+        # A first render fills the content-type and permission caches; a count taken
+        # from it would differ from the second by those, whatever the row count.
+        self._change_page(staff_client, part_placement)
         with CaptureQueriesContext(connection) as two_rows:
             self._change_page(staff_client, part_placement)
         part = part_placement.child

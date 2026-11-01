@@ -10,6 +10,7 @@ from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
     validate,
+    validate_children_lists,
     validate_due_date_placements,
 )
 
@@ -1004,6 +1005,117 @@ def test_a_due_date_on_an_activity_outside_the_directory_fails(tmp_path: Path) -
 
     assert len(errors) == 1
     assert "a due date on a ACTIVITY placement" in errors[0]
+
+
+def _broken_topic(path: Path) -> Path:
+    return _write_widget_file(path, "---\ncontent_type: TOPIC\n---\nNo title.\n")
+
+
+def test_a_broken_file_beside_an_auto_discovered_part_is_one_placement_error(
+    tmp_path: Path,
+) -> None:
+    """The broken file is reported on the course entry, not raised: when the part lives
+    outside the validated directory nothing else would mention it."""
+    _topic(tmp_path / "shared" / "part" / "intro.md")
+    _broken_topic(tmp_path / "shared" / "part" / "broken.md")
+    _write_widget_file(
+        tmp_path / "shared" / "part" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n",
+    )
+    _course_placing_part(
+        tmp_path / "course" / "course.md", "../shared/part/part.yaml", ["intro.md"]
+    )
+
+    errors = _placement_errors(tmp_path / "course")
+
+    assert len(errors) == 1
+    assert "a file beside the part does not parse" in errors[0]
+    assert "broken.md" in errors[0]
+
+
+def test_validate_keeps_its_report_when_a_file_beside_a_part_is_broken(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _broken_topic(tmp_path / "part" / "broken.md")
+    _write_widget_file(
+        tmp_path / "part" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n",
+    )
+    _activity(tmp_path / "activity.md")
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["intro.md"])
+    _course_with_entries(tmp_path / "other.md", ["activity.md"])
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    report = str(exc_info.value)
+    assert "broken.md" in report
+    assert "a due date on a ACTIVITY placement" in report
+
+
+def _children_list_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        for item in parse_single_file(file_path)
+    ]
+    return validate_children_lists(parsed)
+
+
+def test_a_course_naming_the_same_part_twice_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md"])
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: part/part.yaml\n  - path: ./part/part.yaml\n---\n",
+    )
+
+    errors = _children_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "Invalid children list" in errors[0]
+    assert "course.md" in errors[0]
+    assert "children[1]" in errors[0]
+    assert "this child is named twice" in errors[0]
+
+
+def test_a_part_naming_the_same_topic_twice_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md", "intro.md"])
+
+    errors = _children_list_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "part.yaml" in errors[0]
+    assert "children[1]" in errors[0]
+
+
+def test_one_file_placed_by_two_collections_passes(tmp_path: Path) -> None:
+    _topic(tmp_path / "shared.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["../shared.md"])
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: shared.md\n  - path: part/part.yaml\n---\n",
+    )
+
+    assert _children_list_errors(tmp_path) == []
+
+
+def test_validate_lists_a_child_named_twice_in_the_report(tmp_path: Path) -> None:
+    _topic(tmp_path / "intro.md")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: intro.md\n  - path: intro.md\n---\n",
+    )
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    assert "this child is named twice" in str(exc_info.value)
 
 
 def test_several_nested_rules_in_one_file_give_one_message_each(tmp_path: Path) -> None:

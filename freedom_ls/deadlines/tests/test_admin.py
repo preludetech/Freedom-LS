@@ -448,6 +448,30 @@ def _change_request(registration: CohortCourseRegistration) -> HttpRequest:
 
 
 @pytest.mark.django_db
+def test_the_columns_read_the_placement_values_once_without_the_formset(
+    mock_site_context,
+) -> None:
+    """A column rendered before the formset is built reads the course's defaults once,
+    not once per row."""
+    registration, rows = _registration_with_two_part_rows()
+    overrides = [
+        CohortDeadlineOverrideFactory(
+            cohort_registration=registration,
+            collection_item=row,
+            due_days_after_registration=9,
+        )
+        for row in rows
+    ]
+    inline = CohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+
+    with CaptureQueriesContext(connection) as captured:
+        shown = [inline.content_default(override) for override in overrides]
+
+    assert shown == ["3 days after registration", "4 days after registration"]
+    assert _queries_on(captured, CoursePartChildDueDate._meta.db_table) == 1
+
+
+@pytest.mark.django_db
 def test_the_inline_reads_the_parent_course_once_per_request(
     mock_site_context, django_assert_num_queries
 ) -> None:

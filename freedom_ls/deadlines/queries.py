@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from uuid import UUID
 
-from freedom_ls.content_engine.models import Course
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     LearnerDeadlineOverride,
@@ -21,12 +20,6 @@ from freedom_ls.deadlines.resolver import (
 )
 
 ContentDefaults = Mapping[UUID, DeadlineValue | None]
-
-
-def content_defaults_for(course: Course) -> ContentDefaults:
-    """The content default of every viewable row in the course, keyed by row id, read the
-    way the resolver reads it. A few queries for a page of rows."""
-    return content_defaults_for_course(course.pk)
 
 
 def content_default_for(
@@ -45,7 +38,7 @@ def content_default_for(
         values = (
             content_defaults
             if content_defaults is not None
-            else content_defaults_for(course)
+            else content_defaults_for_course(course.pk)
         )
         return values[item.pk] if item.pk in values else content_layer_value(item)
     return content_layer_value(item)

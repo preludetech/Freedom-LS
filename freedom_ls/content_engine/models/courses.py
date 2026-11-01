@@ -619,5 +619,5 @@ class CoursePartChildDueDate(SiteAwareModel):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Due date for {self.collection_item}"

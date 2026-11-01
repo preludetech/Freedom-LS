@@ -39,13 +39,13 @@ from freedom_ls.deadlines.queries import (
     ContentDefaults,
     canonical_beneath,
     content_default_for,
-    content_defaults_for,
 )
 from freedom_ls.deadlines.resolver import (
     DeadlineSource,
     DeadlineValue,
     LayerRows,
     ResolvedDeadline,
+    content_defaults_for_course,
     course_deadlines,
     due_instant,
 )
@@ -200,8 +200,8 @@ class DeadlineOverrideInline(TabularInline):
     # The cohort rows beneath this page's rows, fetched once per request by the inline whose
     # rows have any; None means each row reads its own.
     cohort_rows_beneath: LayerRows | None = None
-    # The content default of every row in the parent's course, fetched once per request;
-    # None means each row reads its own.
+    # The content default of every row in the parent's course, fetched once per request
+    # on first use through `placement_defaults`.
     content_defaults: ContentDefaults | None = None
     # The parent's course, read once per request: the admin makes one inline per request,
     # and both the picker and the formset ask for it.
@@ -247,13 +247,20 @@ class DeadlineOverrideInline(TabularInline):
             type[DeadlineOverrideFormSet], super().get_formset(request, obj, **kwargs)
         )
         formset.set_by = cast(User, request.user)
-        course = self.parent_course(request)
-        self.content_defaults = (
-            content_defaults_for(course) if course is not None else {}
-        )
         formset.cohort_rows = self.cohort_rows_beneath
-        formset.content_defaults = self.content_defaults
+        formset.content_defaults = self.placement_defaults(self.parent_course(request))
         return formset
+
+    def placement_defaults(self, course: Course | None) -> ContentDefaults:
+        """The course's content defaults, read on first use by whichever caller comes
+        first, so a column rendered before the formset is built still reads them once
+        rather than once per row. Every row on the page is in the parent's course, so the
+        first caller's course is the page's. Empty with no course, as on the add page."""
+        if self.content_defaults is None:
+            self.content_defaults = (
+                content_defaults_for_course(course.pk) if course is not None else {}
+            )
+        return self.content_defaults
 
     def formfield_for_foreignkey(
         self,
@@ -302,7 +309,9 @@ class DeadlineOverrideInline(TabularInline):
     def content_default(self, obj: DeadlineOverride) -> str:
         if obj._state.adding:
             return ""
-        return _value_text(content_default_for(obj, self.content_defaults), obj)
+        return _value_text(
+            content_default_for(obj, self.placement_defaults(obj.course)), obj
+        )
 
     @admin.display(description="Effective")
     def effective_value(self, obj: DeadlineOverride) -> str:
@@ -317,7 +326,7 @@ class DeadlineOverrideInline(TabularInline):
         if obj._state.adding:
             return ""
         beneath = canonical_beneath(
-            obj, self.cohort_rows_beneath, self.content_defaults
+            obj, self.cohort_rows_beneath, self.placement_defaults(obj.course)
         )
         if obj.replaced_value == beneath:
             return ""

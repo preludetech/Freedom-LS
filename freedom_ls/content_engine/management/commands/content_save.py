@@ -59,6 +59,7 @@ from freedom_ls.content_engine.validate import (
     resolve_author_path,
     split_yaml_documents,
     validate,
+    validate_children_lists,
     validate_due_date_placements,
 )
 from freedom_ls.form_engine.models import (
@@ -903,7 +904,10 @@ def save_content_to_db(path, site_name):
     # Every placement error at once, before anything is written, so one load reports
     # all of them and leaves nothing behind: the rows roll back with the transaction,
     # but a file already sent to storage does not.
-    placement_errors = validate_due_date_placements(all_parsed)
+    placement_errors = [
+        *validate_children_lists(all_parsed),
+        *validate_due_date_placements(all_parsed),
+    ]
     if placement_errors:
         raise ValueError("\n".join(placement_errors))
 

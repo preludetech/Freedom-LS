@@ -25,13 +25,13 @@ from freedom_ls.deadlines.models import (
 from freedom_ls.deadlines.queries import (
     canonical_beneath,
     content_default_for,
-    content_defaults_for,
     layers_beneath,
 )
 from freedom_ls.deadlines.resolver import (
     DeadlineLayer,
     DeadlineSource,
     DeadlineValue,
+    content_defaults_for_course,
     course_deadlines,
 )
 from freedom_ls.learner_management.factories import (
@@ -314,7 +314,7 @@ def test_canonical_beneath_a_part_row_reads_the_placement_value(mock_site_contex
 
     assert canonical_beneath(override) == "relative:3"
     assert canonical_beneath(
-        override, content_defaults=content_defaults_for(override.course)
+        override, content_defaults=content_defaults_for_course(placement.collection_id)
     ) == ("relative:3")
 
 
@@ -344,7 +344,7 @@ def test_content_default_for_agrees_with_what_a_learner_is_resolved(mock_site_co
 
 
 @pytest.mark.django_db
-def test_content_defaults_for_keys_by_child_row_and_ignores_another_courses_placement(
+def test_content_defaults_for_course_keys_by_child_row_and_ignores_another_courses_placement(
     mock_site_context,
 ):
     course_a: Course = CourseFactory()
@@ -364,6 +364,6 @@ def test_content_defaults_for_keys_by_child_row_and_ignores_another_courses_plac
         due_days_after_registration=8,
     )
 
-    assert content_defaults_for(course_a) == {
+    assert content_defaults_for_course(course_a.pk) == {
         row.pk: DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=3)
     }
