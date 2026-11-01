@@ -15,6 +15,8 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `apis-for-lead-monitoring-1-foundation-and-users`
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
+- `corporate-job-course-recommendations-5-attribute-csv-import`
+- `educator-interface-12-docs-and-polish`
 - `failed-login-follow-up`
 - `file-scanning`
 - `forced-site-name-for-host-based-site-lookup`
@@ -56,7 +58,6 @@ run, so it is twelve.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 8 | `educator-interface-8-bulk-operations` | CSV import as a page flow with a preview and per-row outcome labels. Multi-select bulk actions on the learner and cohort tables. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration` | in progress |
 | 12 | `educator-interface-12-docs-and-polish` | Product doc and an `fls-dev` skill for the panel framework, the educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
 
 ```
