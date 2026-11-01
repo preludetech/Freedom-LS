@@ -75,22 +75,23 @@ def test_a_key_name_is_escaped_on_the_issued_page(issue):
     assert "<script>x</script>" not in body
 
 
-def test_the_key_text_is_absent_from_the_changelist_and_change_pages(
-    issue, staff_client
-):
+@pytest.mark.parametrize(
+    ("url_name", "needs_pk"),
+    [
+        ("admin:freedom_ls_api_apikey_changelist", False),
+        ("admin:freedom_ls_api_apikey_change", True),
+    ],
+)
+def test_the_key_text_is_absent_from_the_page(issue, staff_client, url_name, needs_pk):
     # Arrange
     key_text = issue().context["key_text"]
-    key = ApiKey.objects.get()
+    args = [ApiKey.objects.get().pk] if needs_pk else []
 
     # Act
-    changelist = staff_client.get(reverse("admin:freedom_ls_api_apikey_changelist"))
-    change = staff_client.get(
-        reverse("admin:freedom_ls_api_apikey_change", args=[key.pk])
-    )
+    response = staff_client.get(reverse(url_name, args=args))
 
     # Assert
-    assert key_text.encode() not in changelist.content
-    assert key_text.encode() not in change.content
+    assert key_text.encode() not in response.content
 
 
 def test_the_admin_log_entry_points_at_the_saved_key(issue):
@@ -128,13 +129,20 @@ def test_issuing_a_key_writes_an_audit_entry_without_the_key_text_or_hash(
     assert key.key_hash not in str(entry.details)
 
 
-def test_an_invalid_add_issues_no_key_and_writes_no_entry(staff_client):
+def test_an_invalid_add_issues_no_key(staff_client):
     # Act
     response = staff_client.post(reverse(ADD_URL), {"name": "Reporting"})
 
     # Assert
     assert response.status_code == 200
     assert ApiKey.objects.count() == 0
+
+
+def test_an_invalid_add_writes_no_audit_entry(staff_client):
+    # Act
+    staff_client.post(reverse(ADD_URL), {"name": "Reporting"})
+
+    # Assert
     assert AuditLogEntry.unscoped.count() == 0
 
 
