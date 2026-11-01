@@ -45,9 +45,9 @@ Before anything else, read `## Testing Skills` in `.claude/sdd/config.md` (`conf
 and load each listed skill with the `Skill` tool. They are the authority on how tests are written
 here: file location, markers, fixtures and factories.
 
-Track two lists as you work — **files created** and **tracked files modified**. Write them into the
-report in Step 6. They are what the report is for, so keep them exact; if you would rather not hold
-them in context, draft the report file early and edit it as you go.
+Track two lists as you work: **files created** and **tracked files modified**. They go into the
+report (Step 6) and must be exact; to avoid holding them in context, draft the report file early and
+edit it as you go.
 
 ### Step 1 — Write a failing test
 
@@ -67,14 +67,14 @@ Run the single test run, as the `Test tiers` file under `## Test Hooks` in `.cla
 defines it, for `<path-to-test-file>::<test-name>`. A blank `Test tiers` runs the project's plain
 test command for that one test.
 
-The test **must fail**. If it passes, you have not reproduced the bug — stop and return
+The test **must fail**. If it passes, you have not reproduced the bug: stop and return
 `status: failed · reason: could not reproduce: test passed before any fix`.
 
 ### Step 3 — Make the minimal fix
 
 Make the **smallest code change** that makes the failing test pass. Do not refactor unrelated code.
-Do not add features. Do not change test files at this step — only production code. Templates and
-static JS/CSS count as production code.
+Do not add features. Change production code only, not test files; templates and static JS/CSS
+count as production code.
 
 ### Step 4 — Confirm GREEN
 
@@ -92,7 +92,7 @@ and falls back to the project's plain test command), with the explicit paths fro
 track (files created, files modified) as `<diff>`.
 
 No `-x` here: the orchestrator skips re-driving the regression layer on the strength of this run, so
-it has to be the whole tier, not "nothing failed before the first failure".
+it has to be the whole tier.
 
 All tests must pass. If any test outside your new test fails, investigate: either your fix broke
 something (revert or widen the fix) or the test was already broken before you started (note it but do
@@ -101,10 +101,10 @@ tier definition the helper names. Return `status: failed · reason: <description
 
 ### Step 6 — Commit
 
-**Stage only the files you created or modified for this fix** — the production file(s) from Step 3
+**Stage only the files you created or modified for this fix**: the production file(s) from Step 3
 and the test file from Step 1, by explicit path. The working tree may hold unrelated changes from
 earlier in the QA run (test data, fixtures, or management commands written by
-`sdd:qa-data-helper`), and those must NOT end up in your commit.
+`sdd:qa-data-helper`); those must NOT end up in your commit.
 
 Commit with the command the project's `CLAUDE.md` names, as
 `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` does. Where that command carries a prefix,
@@ -115,9 +115,8 @@ git add <production-file> <test-file>      # explicit paths only
 git commit -m "<message>"
 ```
 
-- **NEVER use `git commit -a`, `git add -A`, `git add .`, or `git add <dir>`.** Every one of those
-  sweeps in unrelated working-tree changes. Stage each file you touched by its explicit path, nothing
-  else.
+- **NEVER use `git commit -a`, `git add -A`, `git add .`, or `git add <dir>`.** Each sweeps in
+  unrelated working-tree changes. Stage each file you touched by its explicit path, nothing else.
 - Commit message describes the bug fixed and the TDD approach taken.
 - `--no-verify` is denied — do not attempt to bypass hooks.
 - The pre-commit hooks run the project's checks, which do not run the test suite. Your Step 5
@@ -131,8 +130,8 @@ Record the commit hash from the output.
 ## Report file
 
 Write a structured report to `.sdd-work/bugfix_<slug>.md`, where `<slug>` is the short kebab-case
-identifier given in your spawn prompt — so for slug `order-list-404` the file is
-`.sdd-work/bugfix_order-list-404.md`.
+identifier given in your spawn prompt (slug `order-list-404` gives
+`.sdd-work/bugfix_order-list-404.md`).
 
 ```
 # Bug fix report: <bug title>
@@ -165,8 +164,8 @@ identifier given in your spawn prompt — so for slug `order-list-404` the file 
 status: <ok|failed|blocked> · reason: <short> [needs: ...]
 ```
 
-Append `needs: [...]` to that same line when `status: blocked` and the blocker requires human input —
-the footer must remain the final line.
+Append `needs: [...]` to that same line when `status: blocked` and the blocker requires human input;
+the footer stays the final line.
 
 ### Why the file lists matter
 
@@ -195,7 +194,7 @@ Both contracts are required: the **file footer** and the **return line**.
 
 ## Constraints
 
-- **One bug per spawn.** You fix exactly what is described — nothing more.
+- **One bug per spawn.** Fix exactly what is described, nothing more.
 - **No subagents.** You have no `Agent` tool and must not try to use one.
 - **Follow `CLAUDE.md`** at all times, and never delete TODO or `@claude` comments.
 - **The regression test describes the defect.** Its name and docstring say what used to break

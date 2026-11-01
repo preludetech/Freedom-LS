@@ -1,10 +1,9 @@
 # Committing an SDD artifact
 
-Every command that writes or edits an SDD artifact ends by committing and pushing it. The user should
-never have to ask.
+Every command that writes or edits an SDD artifact ends by committing and pushing it, unasked.
 
-The caller supplies a `<summary>` — a few words for what it produced, e.g. `write the spec`,
-`review the plan for security`. Everything else is the same wherever this runs.
+The caller supplies a `<summary>`: a few words for what it produced, e.g. `write the spec`,
+`review the plan for security`.
 
 ## Step 1: Check the branch
 
@@ -17,11 +16,10 @@ uncommitted and why.
 
 ## Step 2: Stage the artifacts
 
-Stage the files this command wrote or changed, by path. Never `git add -A` or `git add .` — the
+Stage the files this command wrote or changed, by path. Never `git add -A` or `git add .`; the
 working tree may hold implementation work that is not yours to commit.
 
-If nothing ends up staged there is nothing to do, which is the normal outcome of a re-run that
-changed no files. Say so and stop.
+If nothing is staged (the normal outcome of a re-run that changed no files), say so and stop.
 
 ## Step 3: Commit
 
@@ -33,7 +31,7 @@ The subject names the spec first, so `git log` reads as a per-spec history:
 
 `<spec name>` is the spec directory's folder name, e.g. `interested_login: write the spec`.
 
-Commit with `uv run git commit` — the `uv run` prefix is required by `CLAUDE.md`, because the
+Commit with `uv run git commit`. The `uv run` prefix is required by `CLAUDE.md`: the
 pre-commit hooks live in the uv environment.
 
 If a hook rewrites a file, re-stage it and commit again. If a hook fails on something you did not

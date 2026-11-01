@@ -26,7 +26,7 @@ worker reads files and cannot load a skill by name.
 ## Never write these in a spec
 
 - **The idea's argument, re-run.** The approach was settled upstream. State the outcome and cite the
-  idea by filename. Do not reproduce the reasoning that got there.
+  idea by filename; leave out the reasoning.
 - **A decisions table that repeats the body.** A decision explained where it is implemented does not
   also get a table row. A decision in the table is not re-explained in the body.
 - **Rejected alternatives at paragraph length.** One sentence naming the alternative and why not, or

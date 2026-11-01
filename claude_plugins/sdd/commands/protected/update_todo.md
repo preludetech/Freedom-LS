@@ -4,7 +4,7 @@ allowed-tools: Read, Edit
 argument-hint: <todo-path> tick:"<exact item text>" [tick:"…"] [add:"<section heading>|<marker>|<item text>"] [add_first:"<marker>|<item text>"] [add_after:"<item substring>|<marker>|<item text>"] …
 ---
 
-This is a helper command. It does **not** decide what was done — it reacts to what the caller tells it. Callers pass the path to a `todo.md`, one or more items to tick, and optionally one or more items to append or insert. The command edits the file and reports back.
+This is a helper command. It does **not** decide what was done; it reacts to what the caller tells it. Callers pass the path to a `todo.md`, items to tick, and optionally items to append or insert. The command edits the file and reports back.
 
 If any required input is missing, stop and ask the caller for it. Do not try to infer from context.
 
@@ -20,7 +20,7 @@ The caller must supply:
 
 At least one of `tick:`, `add:`, `add_first:` or `add_after:` must be supplied.
 
-If the caller passes its arguments in prose rather than this exact shape (e.g. "tick the `/spec_from_idea` item and add a user task under QA saying X"), parse the intent — the pieces of information above are what you need. Ask the caller to clarify if anything is ambiguous.
+If the caller passes its arguments in prose rather than this exact shape (e.g. "tick the `/spec_from_idea` item and add a user task under QA saying X"), parse the intent. Ask the caller to clarify if anything is ambiguous.
 
 ## Step 1: Validate inputs
 
@@ -31,7 +31,7 @@ If the caller passes its arguments in prose rather than this exact shape (e.g. "
 
 ## Step 2: Read the file
 
-Read the file in full. You will need to locate the exact lines to modify and, if adding items, the section they belong under.
+Read the file in full to locate the lines to modify and, if adding items, their section.
 
 ## Step 3: Apply the ticks
 
@@ -90,4 +90,4 @@ Print a short summary:
 - Which items were inserted via `add_first:` or `add_after:`, and below which item.
 - The next unchecked item in the file, so the caller knows what comes up.
 
-Keep it to a few lines — this runs at the tail end of other commands and should not dominate their output.
+Keep it to a few lines; this runs at the tail of other commands.

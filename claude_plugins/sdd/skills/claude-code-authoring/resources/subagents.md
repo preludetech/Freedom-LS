@@ -2,9 +2,8 @@
 
 ## No nesting
 Subagents **cannot spawn subagents**. If `Agent` is listed in a subagent's `tools`, it is ignored at
-depth 1. Depth is capped at 1: main session → subagent. Workflows needing "nested delegation" must
-keep all fan-out in the main session (depth 0) and use skills / read-and-follow helper files inside
-the subagent instead.
+depth 1. Depth is capped at 1: main session → subagent. Keep all fan-out in the main session (depth 0) and use skills / read-and-follow helper files inside
+the subagent instead of nested delegation.
 Source: https://code.claude.com/docs/en/sub-agents (and issue #4182).
 
 ## No slash commands inside a subagent
@@ -17,8 +16,8 @@ Source: https://code.claude.com/docs/en/sub-agents
 
 ## Input is spawn-time only
 The `Agent` tool's `prompt` string is the **only** channel for passing data into a subagent. Compose
-it dynamically (file paths, gathered answers, prior errors). There is **no mid-run messaging** — once
-running, a subagent runs to completion and returns one result. (`SendMessage` under
+it dynamically (file paths, gathered answers, prior errors). There is **no mid-run messaging**: a
+subagent runs to completion and returns one result. (`SendMessage` under
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is experimental and out of scope.) "Resuming a subagent" in
 practice = spawn a fresh one with more context.
 Source: https://code.claude.com/docs/en/sub-agents

@@ -1,6 +1,6 @@
 # The spec roadmap
 
-`spec_dd/1. next/roadmap.md` is the index of every spec that is waiting or in flight: one row per
+`spec_dd/1. next/roadmap.md` indexes every spec that is waiting or in flight: one row per
 directory under `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it
 depends on and where it stands. A row leaves when its spec is done. This file is the single
 definition of the roadmap's shape. `/sdd:roadmap` writes it, `protected/update_roadmap.md` edits
@@ -62,7 +62,7 @@ any other notes.
 
 ## Row grammar
 
-The grammar a mechanic edits by, with no judgement needed:
+The grammar a mechanic edits by, no judgement needed:
 
 - One row per line. The Directory cell is the bare directory name in backticks, no path.
 - Depends on is `none` or a comma-separated list of backticked directory names, each of which

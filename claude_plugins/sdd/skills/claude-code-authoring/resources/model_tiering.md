@@ -18,8 +18,8 @@ Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/do
 
 ## Inline-execution caveat (critical)
 When a command/helper file is **read and followed inline** (not invoked as a slash command), its own
-`model:` frontmatter is **inert** — the caller's model governs. So model tiering must live on
-**spawnable agent files** (always run on their own `model:`), never on files that are inlined.
+`model:` frontmatter is **inert**: the caller's model governs. Model tiering lives on
+**spawnable agent files** (always run on their own `model:`), never on inlined files.
 Source: https://code.claude.com/docs/en/model-config (per-command `model` applies only when the
 command is invoked; spawned work runs on the subagent's model).
 

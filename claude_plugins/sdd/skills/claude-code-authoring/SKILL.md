@@ -10,11 +10,11 @@ allowed-tools: Read, Grep, Glob
 # Authoring Claude Code commands, skills, and agents
 
 This skill is the **single source of truth** for the Claude Code behaviour the SDD workflow depends
-on. Author commands/skills/agents against these constraints instead of restating them in every file.
+on. Author against these constraints instead of restating them in every file.
 
 > **Target: Claude Code 2.1.x.** Per-agent/per-command `model:` frontmatter, `AskUserQuestion`,
-> non-nesting subagents, and "custom commands merged into skills" all hold on this line. There is no
-> runtime version check — this is a documented target.
+> non-nesting subagents, and "custom commands merged into skills" all hold on this line. No
+> runtime version check exists; this is a documented target.
 
 For the *why* and the source citations behind each rule, see the `resources/` files:
 [subagents](resources/subagents.md), [model tiering](resources/model_tiering.md),
@@ -24,15 +24,15 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 
 ## Subagent limits (the load-bearing constraints)
 
-- **No nesting / no fan-out from a subagent.** The `Agent` tool is not exposed at depth 1 — a
-  subagent cannot spawn subagents. All fan-out must happen at depth 0 (the orchestrator / main
+- **No nesting / no fan-out from a subagent.** The `Agent` tool is not exposed at depth 1, so a
+  subagent cannot spawn subagents. All fan-out happens at depth 0 (the orchestrator / main
   thread). Keep orchestration flat.
 - **Subagents can't type slash commands.** There is no `SlashCommand` tool inside a subagent.
   **Headline rule: prefer skills (or "read-and-follow this helper file") to slash commands for any
   reusable logic a subagent must run.** A subagent *can* read a helper `.md` and follow its steps; it
-  just can't invoke it as `/command`.
+  can't invoke it as `/command`.
 - **Spawn-time input only.** The `Agent` tool's `prompt` string is the only channel for passing data
-  in. There is no supported mid-run messaging (Agent Teams `SendMessage` is experimental and out of
+  in; mid-run messaging is unsupported (Agent Teams `SendMessage` is experimental and out of
   scope). Bake every input the worker needs into its prompt.
 - **Subagents can't ask the user.** `AskUserQuestion` is orchestrator-only — see Interactive notes.
 - **Subagents *can* use skills.** They auto-trigger by description, and an agent file's `skills:`
@@ -47,9 +47,9 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 - **Per-agent `model:` frontmatter is the reliable knob.** Aliases `haiku` / `sonnet` / `opus`, a
   full dated ID (e.g. `claude-haiku-4-5`), or `inherit`. Default split: mechanical chores → `haiku`;
   non-interactive fan-out → `sonnet`; interactive authoring/review → the session model (depth 0).
-- **Inline-execution caveat (critical).** A command/helper file that is *read and followed inline*
-  (not invoked as a slash command) keeps the **caller's** model — its own `model:` frontmatter is
-  **inert**. So tiering must live on **spawnable agent files**, which always run on their own `model:`.
+- **Inline-execution caveat (critical).** A command/helper file *read and followed inline*
+  (not invoked as a slash command) keeps the **caller's** model; its own `model:` frontmatter is
+  **inert**. Tiering lives on **spawnable agent files**, which always run on their own `model:`.
 - **Hook mode.** A command another command reads and follows inline at depth 0 is told so by a
   `mode: hook` input. In hook mode it skips its own pre-step rebase and todo tick and keeps its
   commit step. Every command that can be a hook opens with an "Inputs from the caller" line
@@ -60,9 +60,9 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
   plugin. Invoked as a skill it keeps its own plugin root and grants, takes its inputs as `args`,
   and either commits its own work or ends with `changed: <paths>` for the caller to commit.
 - **`CLAUDE_CODE_SUBAGENT_MODEL` overrides everything.** If set, it forces one model for *all*
-  subagents, flattening every per-agent `model:`. Leave it **unset (or `inherit`)** for normal tiering.
-- **Aliases vs pinned IDs.** Aliases (`haiku`/`sonnet`) read well but advance over time; pin dated
-  IDs (e.g. `claude-haiku-4-5`) for frozen/reproducible automation.
+  subagents, flattening every per-agent `model:`. Leave it **unset (or `inherit`)** for tiering.
+- **Aliases vs pinned IDs.** Aliases (`haiku`/`sonnet`) advance over time; pin dated
+  IDs (e.g. `claude-haiku-4-5`) for reproducible automation.
 
 ## Fan-out at depth 0 — the resilience recipe
 
@@ -83,11 +83,11 @@ Fan-out is only legal at depth 0. The resilient shape (full detail in
 
 - **`AskUserQuestion` is orchestrator-only** — not available in Task-spawned subagents. Approval and
   input-gathering gates must live at depth 0; subagents fail-fast with `status: blocked`.
-- **No enforced structured output in the CLI subagent path** — schema-validated JSON is SDK-only. Use
+- **No enforced structured output in the CLI subagent path**; schema-validated JSON is SDK-only. Use
   **file-based hand-off** (fixed-name artifacts + a `status:` footer) as the durable contract.
-- **Exists, deferred (reference only — do not adopt here):** hooks, plan mode / permission modes,
-  Agent-SDK structured outputs. Documented in [resources/interactive_cli.md](resources/interactive_cli.md);
-  adopting them is explicitly out of scope for the current workflow.
+- **Exists, deferred (reference only, do not adopt here):** hooks, plan mode / permission modes,
+  Agent-SDK structured outputs. See [resources/interactive_cli.md](resources/interactive_cli.md);
+  adopting them is out of scope for the current workflow.
 
 ---
 

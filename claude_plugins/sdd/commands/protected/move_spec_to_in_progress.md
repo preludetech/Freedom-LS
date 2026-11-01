@@ -4,20 +4,20 @@ allowed-tools: Bash, Read, Glob
 ---
 
 This is a helper command, invoked by `/sdd:start`. It moves the spec directory into
-`spec_dd/2. in progress/` and commits that move on the **current** branch — *before* any new
-worktree/branch is created. This guarantees the move lands on the current branch (e.g. `main`)
-rather than on the feature branch.
+`spec_dd/2. in progress/` and commits that move on the **current** branch, *before* any new
+worktree/branch is created, so the move lands on the current branch (e.g. `main`) and not the
+feature branch.
 
-Do the steps in order — each step depends on the previous one being complete.
+Do the steps in order; each depends on the previous one being complete.
 
 ## Step 1: Identify the current spec
 
-Look at the caller's input or the current branch to determine which spec directory we're working with.
+Look at the caller's input or the current branch to find the spec directory.
 
 The spec is a directory inside `spec_dd/`, usually under `spec_dd/0. drafts/` or `spec_dd/1. next/`
 at this point. For example: `spec_dd/1. next/role_based_permission_system_foundations/`.
 
-There is no need to read the spec or any other files — we only care about the directory.
+Do not read the spec or any other files; only the directory matters.
 
 If the spec directory is ambiguous, **stop** and return `status: blocked`.
 
@@ -50,8 +50,7 @@ directory name, as every SDD commit does — e.g. `interested_login: start the s
 Do not push. This runs on the current branch before any worktree exists, and that branch is usually
 `main`.
 
-Do **not** run pytest now: we only moved files that are not under test, so running the tests would be
-a waste of time.
+Do **not** run pytest: the moved files are not under test.
 
 Do not finish until the working tree is clean (no uncommitted changes). If the working tree cannot be
 made clean, **stop** and return `status: blocked`.

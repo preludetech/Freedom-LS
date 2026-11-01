@@ -20,8 +20,8 @@ cd <branch-name>
 # then run the configured Setup script, if any (dependency install, DB creation, migrations, seed data)
 ```
 
-If the project provisions per-worktree resources (e.g. a per-branch dev database), that setup lives in
-the project's own tooling, not in this generic skill. The per-worktree setup and teardown scripts are
-configured under the **Worktree Scripts** section of `.claude/sdd/config.md` (`Setup script` /
-`Teardown script`); run the configured Setup script from inside the new worktree after creating it, and
-leave the values blank if the project has no such step.
+Per-worktree resources (e.g. a per-branch dev database) are set up by the project's own tooling, not
+this generic skill. The setup and teardown scripts are configured under the **Worktree Scripts**
+section of `.claude/sdd/config.md` (`Setup script` / `Teardown script`). Run the configured Setup
+script from inside the new worktree after creating it; leave the values blank if the project has no
+such step.

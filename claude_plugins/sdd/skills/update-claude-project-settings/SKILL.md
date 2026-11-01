@@ -5,9 +5,9 @@ description: Audit `.claude/settings.json` (shared project settings) for entries
 
 # Update Claude Project Settings
 
-`.claude/settings.json` is checked in and shared by everyone working on the project. Over time it accumulates duplicate, overlapping, or stale entries — and useful permissions sometimes live only in a developer's local settings.
+`.claude/settings.json` is checked in and shared by everyone working on the project. It accumulates duplicate, overlapping, or stale entries, and useful permissions sometimes live only in a developer's local settings.
 
-This skill audits the shared file and proposes cleanups. `.claude/settings.local.json` is read for context (to spot useful permissions worth promoting) but **never edited** — local settings belong to the user.
+This skill audits the shared file and proposes cleanups. `.claude/settings.local.json` is read for context (to spot permissions worth promoting) but **never edited**; local settings belong to the user.
 
 ## Files
 
@@ -22,12 +22,12 @@ Read `.claude/settings.json` and `.claude/settings.local.json` in parallel. The 
 
 ### 2. Audit `permissions.allow` in project settings for redundancy
 
-Walk every entry in `.claude/settings.json` and look for:
+Walk every entry in `.claude/settings.json` for:
 
 - **Duplicates** — the same pattern appearing twice.
 - **Subsumed entries** — a narrow pattern made redundant by a broader one in the same file (e.g. `Bash(npm run tailwind_build)` is subsumed by `Bash(npm run tailwind_build:*)`).
 - **Stale entries** — patterns referencing scripts, paths, or commands that no longer exist in the repo. Spot-check before suggesting removal.
-- **Too-narrow patterns** — entries so specific they only matched a one-off task and won't be useful again. Flag and suggest either broadening or removing.
+- **Too-narrow patterns** — entries so specific they only matched a one-off task. Flag and suggest broadening or removing.
 - **Too-broad patterns** — entries that grant more than the project needs. Flag and suggest narrowing.
 
 ### 3. Scan local settings for promotion candidates
@@ -48,7 +48,7 @@ For each candidate (cleanup or promotion), ask a clear yes/no:
 
 > Add `Bash(uv run:*)` to project settings? (Currently only in local settings.) [y/n]
 
-Batch related entries if it makes sense (e.g. "Add these 8 documentation WebFetch domains?"), but do not silently bundle anything ambiguous.
+Batch related entries where sensible (e.g. "Add these 8 documentation WebFetch domains?"), but never silently bundle anything ambiguous.
 
 ### 5. Apply approved changes
 
@@ -56,11 +56,11 @@ Edit **only** `.claude/settings.json`. Preserve JSON formatting (2-space indent,
 
 ### 6. Report
 
-Summarise what was added, deleted, or rewritten in `.claude/settings.json`. Remind the user to commit the change. If useful permissions remain in local settings that they declined to promote, do not nag.
+Summarise what was added, deleted, or rewritten in `.claude/settings.json`. Remind the user to commit the change. Do not nag about useful permissions they declined to promote.
 
 ## Notes
 
-- Never edit `.claude/settings.local.json` — that file belongs to the user.
-- Never touch `deny` rules without explicit instruction — those are intentional safety boundaries.
-- Never touch hooks, `enabledPlugins`, or `disabledMcpjsonServers` without explicit instruction — these are usually environment-specific.
+- Never edit `.claude/settings.local.json`; it belongs to the user.
+- Never touch `deny` rules without explicit instruction; they are intentional safety boundaries.
+- Never touch hooks, `enabledPlugins`, or `disabledMcpjsonServers` without explicit instruction; they are usually environment-specific.
 - If a permission pattern looks too narrow or too broad to be useful project-wide, flag it and suggest a better pattern before adding.

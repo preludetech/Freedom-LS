@@ -19,7 +19,7 @@ durable, inspectable contract between phases.
 Source: https://platform.claude.com/docs/en/agent-sdk/structured-outputs · issue #20625
 
 ## Exists, deferred — reference only (do NOT adopt in the current workflow)
-These are documented for completeness; adopting them is explicitly out of scope:
+Documented for completeness; adopting them is out of scope:
 
 - **Hooks** — deterministic lifecycle enforcement (run tests on `PostToolUse`, protect artifacts on
   `PreToolUse`, auto-tick todos on `SubagentStop`, validate artifacts). The biggest *potential*
@@ -30,4 +30,4 @@ These are documented for completeness; adopting them is explicitly out of scope:
 - **Agent-SDK structured outputs** — see above; for a step genuinely needing validated JSON, build it
   via the SDK outside the slash-command flow.
 
-The current SDD refactor *documents* these so future work can decide; it does **not** wire them in.
+These are documented so future work can decide; none is wired in.

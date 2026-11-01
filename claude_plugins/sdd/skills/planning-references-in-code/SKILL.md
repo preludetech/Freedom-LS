@@ -23,13 +23,13 @@ They rot for three reasons:
 
 - **Numbers repeat.** Every effort has its own spec 1, slice 3, §4b and QA Bug 2. "Spec 6" names
   a different document in every effort, so the reader can't tell which one it means.
-- **Documents move.** Spec directories move from `next` to `in progress` to archived. Sections get
-  renumbered. The path or number goes stale even when it was once right.
-- **The code is the source of truth once it ships.** A reason that only lives in a planning doc is
-  a reason the maintainer doesn't have. The reason belongs in the comment, or in git history.
+- **Documents move.** Spec directories move from `next` to `in progress` to archived, and sections get
+  renumbered, so a once-right path or number goes stale.
+- **The code is the source of truth once it ships.** A reason that lives only in a planning doc is
+  one the maintainer doesn't have. It belongs in the comment, or in git history.
 
-**Rewrite each reference as the fact it stood for.** Open the document if you need to, find out
-what the reference meant, and write that down. If the comment was only a citation, delete it.
+**Rewrite each reference as the fact it stood for.** Open the document if needed, find what the
+reference meant, and write that down. If the comment was only a citation, delete it.
 
 ```python
 # BAD
@@ -69,8 +69,8 @@ Section numbers also turn a history comment into a puzzle:
 # §4d — submit_and_close          ← BAD heading above tests whose names already say it
 ```
 
-The same rule applies while you implement a plan. The plan's slice and batch numbers, and the
-spec's section numbers, are scaffolding for the work. They stay out of the code you write.
+The same rule applies while you implement a plan: its slice and batch numbers and the spec's section
+numbers are scaffolding and stay out of the code.
 
 ## Regression tests
 

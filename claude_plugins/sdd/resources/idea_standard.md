@@ -4,8 +4,8 @@ What an idea file is and what stays out of it. `/sdd:roadmap` follows this when 
 
 ## An idea is not a specification
 
-The result is still an idea: what we are doing, why, and what has been settled. It is not a
-specification, and it is not a record of how you arrived at it.
+An idea holds what we are doing, why, and what has been settled. It is not a
+specification, and not a record of how you arrived at it.
 
 ## Never write these in an idea
 

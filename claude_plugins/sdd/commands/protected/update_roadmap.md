@@ -6,7 +6,7 @@ argument-hint: <roadmap-path> [status:"<dir>|next|in progress"] [remove:"<dir>"]
 
 This is a helper command, followed by `sdd:sdd-mechanic` on behalf of
 `protected/move_spec_to_in_progress.md` and `/sdd:finish_worktree`. It does **not** decide what
-happened. It reacts to what the caller says, editing single rows of the spec roadmap
+happened; it reacts to what the caller says, editing single rows of the spec roadmap
 (`spec_dd/1. next/roadmap.md`), keeping its "Ready to start" and "Needs work on main first" lists
 true, and archiving an effort whose rows have all gone.
 

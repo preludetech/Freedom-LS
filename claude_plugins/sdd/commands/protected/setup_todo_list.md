@@ -3,13 +3,13 @@ description: Helper — create a todo.md checklist next to the spec or idea
 allowed-tools: Read, Write, Glob, Bash
 ---
 
-This is a helper command, invoked by `/sdd:start`. It creates a `todo.md` checklist that tracks a spec through the full Spec-Driven Development workflow.
+This is a helper command, invoked by `/sdd:start`. It creates a `todo.md` checklist that tracks a spec through the full SDD workflow.
 
-The checklist is the single source of truth for where the work is. Every SDD step (from idea refinement through to merging the PR) is a checkbox, with clear markers for which steps the user does and which steps are run via slash commands.
+The checklist is the single source of truth for where the work is. Every step from idea refinement to merging the PR is a checkbox, marked as a user step or a slash-command step.
 
 ## Step 1: Locate the spec or idea directory
 
-Figure out which spec or idea we're working with. In order:
+Find the spec or idea. In order:
 
 1. If the caller's input names a file or directory, use that.
 2. Otherwise, look at the current branch name and try to match it to a directory inside `spec_dd/` (usually under `spec_dd/2. in progress/`).
@@ -27,7 +27,7 @@ If `todo.md` already exists in that directory:
 
 ## Step 3: Detect existing artifacts
 
-Most of the time an idea (and possibly more) is already in the directory. List the directory and pre-tick any checklist items whose artifacts already exist. Use these rules:
+An idea (and possibly more) is usually already in the directory. List the directory and pre-tick the checklist items whose artifacts exist:
 
 | Artifact found in the spec directory | Tick this item |
 |---|---|
@@ -36,9 +36,7 @@ Most of the time an idea (and possibly more) is already in the directory. List t
 | `3. frontend_qa.md` | (also covered by the plan step — `/sdd:plan_from_spec` produces both) |
 | `qa_report.md` | the item that executes the QA plan (see Step 4) |
 
-Only tick boxes for artifacts that actually exist. Do **not** tick user-review items, worktree/PR/cleanup items, or anything else where presence of a file can't confirm the step was done — those are for the user to tick manually.
-
-If you're unsure whether a file counts (e.g. an unusually named markdown file that might be an idea, research, or something else), leave the box unchecked rather than guessing.
+Only tick boxes for artifacts that exist. Do **not** tick user-review items, worktree/PR/cleanup items, or anything else a file's presence can't confirm; the user ticks those. If unsure whether a file counts (e.g. an unusually named markdown file), leave the box unchecked.
 
 ## Step 4: Read the QA command
 
@@ -49,14 +47,14 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists —
 
 ## Step 5: Write todo.md
 
-Create `todo.md` in the target directory with the checklist below, applying the tick marks determined in Step 3 and the QA item from Step 4 in place of `<QA item>`. Preserve the structure exactly — later commands and the user both rely on it.
+Create `todo.md` in the target directory with the checklist below, applying the tick marks from Step 3 and the QA item from Step 4 in place of `<QA item>`. Preserve the structure exactly; later commands and the user rely on it.
 
 Each item is marked with who does it:
 
 - **(user)** — the user does this by hand
 - **(cmd)** — run a slash command
 
-Every item must have exactly one marker. If a step involves both a manual action and a command, split it into two separate items (or use sub-items under a parent step).
+Every item has exactly one marker. A step with both a manual action and a command becomes two items (or sub-items under a parent).
 
 ```markdown
 # SDD Todo
@@ -99,4 +97,4 @@ Print a short summary that includes:
 
 - The path to the new `todo.md`
 - Which items were pre-ticked (and why — i.e. which files were detected)
-- A one-line reminder that the caller will continue the workflow (e.g. by setting up a worktree)
+- A one-line reminder that the caller continues the workflow (e.g. by setting up a worktree)

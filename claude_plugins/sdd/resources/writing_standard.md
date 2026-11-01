@@ -1,33 +1,32 @@
 # Writing an SDD artifact
 
-Every artifact in this workflow, whether idea, spec or plan, is written for the next step and only
-for the next step. Its readers are the command that consumes it and the human who approves it. Nobody
-reads it to find out how you arrived at it.
+Every artifact in this workflow, whether idea, spec or plan, is written for the next step only. Its
+readers are the command that consumes it and the human who approves it. Nobody reads it to find out
+how you arrived at it.
 
-This file holds the rules that apply to all of them. Each command adds the ones specific to its
-own artifact.
+This file holds the rules for all of them. Each command adds the ones specific to its artifact.
 
 ## Rewriting means replacing
 
-Rewrite the artifact whole. It is not the previous version with new findings bolted on top. Input
-that changed a decision changes the text. Input that confirmed a decision leaves no trace at all.
+Rewrite the artifact whole, not the previous version with new findings bolted on. Input that changed
+a decision changes the text. Input that confirmed a decision leaves no trace.
 
 ## Coverage is the target, not length
 
 Two passes, in this order.
 
-1. **Completeness.** Walk every input. The previous artifact, its sibling files, the answers the
-   user gave you. Confirm each thing that has to survive has exactly one home, and if you cannot
+1. **Completeness.** Walk every input: the previous artifact, its sibling files, the user's
+   answers. Confirm each thing that has to survive has exactly one home; if you cannot
    find where something went, that was a loss rather than a cut.
 2. **Earning its place.** If removing a paragraph would not change a decision the next step has to
    make, remove it.
 
-Do not aim at a line count. A long artifact covering the material once is finished. A short one
+Do not aim at a line count. A long artifact covering the material once is finished; a short one
 missing a requirement is not.
 
 ## Never write these
 
-Each item here has actually shown up in an artifact and made it worse.
+Each of these has shown up in an artifact and made it worse.
 
 - **Process narration.** No "research status" preamble, no "what the research changed", no
   claim/verdict tables, no "an earlier draft said", no "the audit corrected this", no strikethrough
@@ -42,8 +41,8 @@ Each item here has actually shown up in an artifact and made it worse.
 ## Where the overflow goes
 
 Detail worth keeping that does not belong in the artifact goes into a **sibling file in the same
-directory**, never into an extra section. Each file gets a name that says what it holds. The next
-command reads the directory, so nothing is stranded.
+directory**, never an extra section, named for what it holds. The next command reads the directory,
+so nothing is stranded.
 
 ## Finish with two passes
 
@@ -51,5 +50,5 @@ command reads the directory, so nothing is stranded.
    and say so in the summary, pointing at `/productivity:init`.
 2. Re-read it top to bottom as if someone else wrote it, and delete whatever now reads as padding.
 
-Report the before and after line and word counts in your summary. That is an observation, so the
-direction of travel is visible. It is not a budget.
+Report the before and after line and word counts in your summary. They show the direction of travel;
+they are not a budget.
