@@ -1,11 +1,11 @@
 ---
 name: domain-glossary
-description: "The FreedomLS domain vocabulary — the canonical noun for every concept in the system, where each one is defined, and the words that are already taken and must not be reused. Use whenever you are naming something: writing or reviewing a spec, idea, plan or research note; adding a model, field, function, URL name or template; or writing product docs. Consult this before inventing a word for a concept — FLS almost certainly already has one."
+description: "The canonical noun for every FreedomLS concept, where each is defined, and the words already taken that must not be reused. Use whenever you are naming something: writing or reviewing a spec, idea, plan or research note; adding a model, field, function, URL name or template; or writing product docs. Consult it before inventing a word, because FLS almost certainly has one."
 ---
 
 # FreedomLS Domain Glossary
 
-The vocabulary of this system. If a concept is listed here, use the word listed here — in prose and
+The vocabulary of this system. If a concept is listed here, use the word listed here, in prose and
 in identifiers alike.
 
 If a concept is **not** listed here, find the model that represents it and use its class name and
@@ -38,7 +38,7 @@ right and this file needs fixing.
 ### `ContentCollectionItem` — read this before naming anything nearby
 
 It is the only word FLS has for "this piece of content is in this collection, at this position". A
-document describing content structure names *this model*; it does not invent a synonym for it.
+document describing content structure names *this model* and invents no synonym.
 
 Two accessors sit on top of it and they are **not** the same thing, which is the trap:
 
@@ -46,9 +46,9 @@ Two accessors sit on top of it and they are **not** the same thing, which is the
 - `Course.children()`, `children_flat()`, `viewable_items()` — the resolved **children**
   (`Topic` / `Form` / `CoursePart` objects), with the `ContentCollectionItem` discarded.
 
-So bare **"item"** is already ambiguous in this codebase: `Course.items` means rows,
-`viewable_items()` means children. Do not add a third sense. When you need to be unambiguous, say **collection item**
-for the row and **child** for the resolved object.
+So bare **"item"** is already ambiguous: `Course.items` means rows, `viewable_items()` means
+children. Do not add a third sense. To be unambiguous, say **collection item** for the row and
+**child** for the resolved object.
 
 ---
 
@@ -233,11 +233,10 @@ learning system not LMS, foundation not platform.
 **The word is *learner*.** That is settled, in prose and in code alike.
 
 The codebase has caught up. `learner-terminology-rename` moved the three apps to `learner_management`,
-`learner_progress` and `learner_interface`, renamed their app labels, and reset those apps' migration history to a single `0001_initial` each. There is no
-`student_*` namespace left to match.
+`learner_progress` and `learner_interface`, renamed their app labels, and reset their migration history to a single `0001_initial` each. No `student_*` namespace is left to match.
 
-- **Never introduce a `student_*` name** — not an app, module, class, field, function, template, URL
-  name or test. There is nothing left for it to be consistent with.
+- **Never introduce a `student_*` name** (app, module, class, field, function, template, URL name or
+  test). Nothing is left for it to be consistent with.
 - **A `student` you find in the tree is one of three things**, none of them a naming convention to
   follow: another product's word in research prose (Open edX's `StudentModule`, SCORM's), a stale
   `__pycache__` directory from before the rename, or a genuine miss — fix the last one.

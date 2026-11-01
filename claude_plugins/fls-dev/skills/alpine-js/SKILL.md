@@ -1,16 +1,16 @@
 ---
 name: alpine-js
-description: FreedomLS-specific extension of the ds:alpine-js skill. Adds the inventory of Alpine components already registered in the FreedomLS codebase plus the icon-usage cross-reference. Use alongside ds:alpine-js when adding client-side interactivity in the FreedomLS repo.
+description: Inventory of the Alpine components already registered in FreedomLS, plus the icon cross-reference. Use alongside ds:alpine-js when adding client-side interactivity in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 
 # Alpine.js (FreedomLS overlay)
 
-Read `Skill(ds:alpine-js)` first, and follow it through to the build resource file it routes you to — that file, not this one, owns how components are written. This overlay adds **only** the FreedomLS component inventory and the icon cross-reference.
+Read `Skill(ds:alpine-js)` first and follow it to the build resource it routes to; that file owns how components are written. This overlay adds **only** the component inventory and the icon cross-reference.
 
 ## Existing components
 
-These Alpine components are already registered in the FreedomLS codebase — reuse them before writing a new one:
+Reuse these registered components before writing a new one:
 
 | Component name | File | Used in | Behaviour |
 |---------------|------|---------|-----------|
@@ -30,4 +30,4 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 
 ## Icons with Alpine
 
-Since `<c-icon>` is server-rendered, toggle icons with `x-show` on wrapper `<span>` elements rather than swapping the icon client-side. See `Skill(fls-dev:icon-usage)`.
+`<c-icon>` is server-rendered, so toggle icons with `x-show` on wrapper `<span>` elements, never by swapping the icon client-side. See `Skill(fls-dev:icon-usage)`.

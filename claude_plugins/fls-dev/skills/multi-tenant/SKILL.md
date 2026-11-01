@@ -1,29 +1,17 @@
 ---
 name: multi-tenant
-description: Work with Django Sites framework, SiteAwareModel, and site isolation. Use when creating/modifying models, working with multi-tenancy, or when site context is involved.
+description: Django Sites framework, SiteAwareModel and site isolation in FreedomLS. Use when creating or modifying a model (is it site-aware?), writing queries (automatic site filtering), debugging cross-site data leakage, configuring a site-aware admin, or when the user mentions "site", "multi-tenant" or "SiteAwareModel".
 allowed-tools: Read, Grep, Glob
 ---
 
 # Multi-Tenancy
 
-This Skill helps work with the Django Sites framework and site-aware models.
-
-## When to Use This Skill
-
-Use this Skill when:
-- **Creating new models** - Need to determine if they should be site-aware
-- **Modifying existing models** - Working with SiteAwareModel or SiteAwareModelBase
-- **Debugging site isolation** - Issues with cross-site data leakage
-- **User mentions "site", "multi-tenant", "SiteAwareModel"**
-- **Writing queries** - Need to understand automatic site filtering
-- **Working with the admin** - Site-aware model admin configuration
-
 ## Key Rules
 
-- Extend `SiteAwareModel` for models that need site isolation (includes UUID pk + site FK)
-- Extend `SiteAwareModelBase` if you need site isolation but a custom primary key
-- Manager's `get_queryset()` automatically filters by current site — no manual filtering needed
-- On save, `site_id` auto-populates from the current request — never set it manually
-- In tests, always use `mock_site_context` fixture
+- Extend `SiteAwareModel` for models that need site isolation (UUID pk + site FK).
+- Extend `SiteAwareModelBase` for site isolation with a custom primary key.
+- The manager's `get_queryset()` filters by current site automatically; never filter manually.
+- On save, `site_id` auto-populates from the current request; never set it manually.
+- In tests, always use the `mock_site_context` fixture.
 
-Refer to `${CLAUDE_PLUGIN_ROOT}/resources/multi_tenant.md` for full details.
+Full details: `${CLAUDE_PLUGIN_ROOT}/resources/multi_tenant.md`.

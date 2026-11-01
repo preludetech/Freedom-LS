@@ -5,9 +5,9 @@ description: When FreedomLS should and should not raise an in-app notification. 
 
 # When to notify
 
-A notification tells someone about something they don't already know, or reminds them of
-something important enough that forgetting it costs them. Anything else is noise. Every noisy
-notification teaches people to ignore the bell, and then the ones that matter get ignored too.
+A notification tells someone something they don't already know, or reminds them of something
+whose forgetting costs them. Anything else is noise, and every noisy notification teaches people to
+ignore the bell, so the ones that matter get ignored too.
 
 Adding a notification should be harder than adding a feature. Default to **no**.
 
@@ -36,7 +36,7 @@ And all of these must also hold:
 
 ## Feedback for the user's own action
 
-The user acted, the action worked, and they need to know that. Show it where they are:
+When the user's action worked and they need to know, show it where they are:
 
 - The result appearing is usually enough. Primer: a direct action that plainly succeeds needs no
   extra reinforcement.
@@ -65,8 +65,8 @@ The user acted, the action worked, and they need to know that. Show it where the
 - **A notification and a webhook are different things.** Integrators want every event, including
   ones the user caused. Keep firing the webhook; drop only the notification.
 - **Write the message for someone who wasn't there.** "You've been registered for X", not "You're
-  registered for X". NN/g: a notification reaches a user who may be doing something else, so it has
-  to carry its own context.
+  registered for X". NN/g: a notification reaches a user who may be doing something else, so it
+  carries its own context.
 - **One event, one notification.** If the same event could arrive through two paths (an individual
   and a cohort registration for the same course), make sure the learner hears about it once.
 - **Don't repeat an unread signal that already exists.** If the thing has its own unread indicator

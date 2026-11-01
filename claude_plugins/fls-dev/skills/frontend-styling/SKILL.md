@@ -1,6 +1,6 @@
 ---
 name: frontend-styling
-description: FreedomLS-specific extension of the ds:frontend-styling skill. Points at FLS's theme files and the token gotchas they don't spell out. Use alongside ds:frontend-styling when styling in the FreedomLS repo.
+description: Where FLS keeps its theme tokens, and the token gotchas the theme files don't spell out. Use alongside ds:frontend-styling when styling in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 

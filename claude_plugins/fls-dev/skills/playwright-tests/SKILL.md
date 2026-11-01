@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob
 
 # Playwright tests (FreedomLS overlay)
 
-Read `Skill(ds:playwright-tests)` first for the flow rule and the generic mechanics. This overlay covers what is specific to FLS. Resource detail: `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`.
+Read `Skill(ds:playwright-tests)` first for the flow rule and the generic mechanics. This overlay covers only what is specific to FLS. Detail: `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`.
 
 ## Fixtures
 
@@ -17,7 +17,7 @@ Read `Skill(ds:playwright-tests)` first for the flow rule and the generic mechan
 
 ## Why transaction=True and a login per test
 
-The browser uses its own database connection, so every browser test is `@pytest.mark.django_db(transaction=True)`. That flushes the database after each test, which deletes the session row a reused login cookie points at. Login therefore happens per test through the UI. The `playwright_fixtures.py` module docstring has the full reasoning.
+The browser uses its own database connection, so every browser test is `@pytest.mark.django_db(transaction=True)`. That flushes the database after each test and deletes the session row a reused login cookie points at, so login happens per test through the UI. The `playwright_fixtures.py` module docstring has the full reasoning.
 
 ## Flow trade-off
 

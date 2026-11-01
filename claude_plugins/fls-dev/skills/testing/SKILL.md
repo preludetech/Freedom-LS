@@ -1,14 +1,14 @@
 ---
 name: testing
-description: FreedomLS test organisation, site-aware fixtures and marker taxonomy. Use alongside ds:testing when writing, moving or marking a test in the FreedomLS repo.
+description: FLS test layout (mirroring, exemptions, conftest placement), the mandatory mock_site_context fixture and the marker taxonomy (which tests run where). Use alongside ds:testing when writing, moving or marking a test in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 
 # Testing (FreedomLS overlay)
 
-Read `Skill(ds:testing)` first for the generic pytest/TDD/AAA methodology. This overlay adds **only** the FreedomLS specifics; it does not repeat the generic body.
+Read `Skill(ds:testing)` first for the pytest/TDD/AAA methodology. This overlay adds **only** the FreedomLS specifics.
 
-For full FLS patterns and the de-branding techniques, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
+Full FLS patterns and the de-branding techniques: `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 
 ## Test organisation and hygiene
 
@@ -22,13 +22,13 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 ### Cross-cutting tests
 
-A test that exercises no single module lives in a subpackage of `<app>/tests/` (`components/`, `invariants/`, `demo_content/`). `test_organisation/mirroring_exemptions.txt` lists the current exemptions with a reason for each. To add one, append `<app>/tests/<subpackage>/  # <reason>` to that file and delete the covered files' lines from `mirroring_baseline.txt`. The exemption is permanent; it isn't debt to pay off later. Every new test directory needs an empty `__init__.py`, because pytest runs in `prepend` import mode and same-named modules in different directories collide without it.
+A test that exercises no single module lives in a subpackage of `<app>/tests/` (`components/`, `invariants/`, `demo_content/`). `test_organisation/mirroring_exemptions.txt` lists the current exemptions with a reason for each. To add one, append `<app>/tests/<subpackage>/  # <reason>` to that file and delete the covered files' lines from `mirroring_baseline.txt`. The exemption is permanent, not debt. Every new test directory needs an empty `__init__.py`, because pytest runs in `prepend` import mode and same-named modules in different directories collide without it.
 
 ### Named exceptions
 
 `learner_interface/tests/views/`: page-grouped tests of the one `learner_interface/views.py`, one module per page it renders. The exemption line gives the reason.
 
-`contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
+`contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate (the module docstrings say why).
 
 `mail/tests/conftest.py`: its docstring says the helpers are public, not underscore-prefixed, because serialisation, the worker send and the backend are all tested against the same message shape.
 
@@ -84,7 +84,7 @@ No FLS factory breaks the direction rule today, and none uses the dotted-string 
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
-Any test that touches a site-aware model **must** take the `mock_site_context` fixture — never manually set `site`. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.
+Any test that touches a site-aware model **must** take the `mock_site_context` fixture, and never sets `site` manually. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.
 
 ```python
 def test_registered_learner_appears_in_cohort_roster(mock_site_context):
@@ -110,7 +110,7 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 
 What runs where:
 
-- `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`, since that *is* FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
+- `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`: that is FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
 - The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker, so a module-scoped fixture such as the demo-content import runs once per module.
 - CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
 - A concrete downstream project runs:
@@ -119,7 +119,7 @@ What runs where:
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
 ```
 
-**Reach for `fls_internal` last.** Every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
+**Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 
 ## Collection safety for optional apps — FLS example
 

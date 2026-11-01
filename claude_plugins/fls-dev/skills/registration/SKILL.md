@@ -1,35 +1,25 @@
 ---
 name: registration
-description: Configure signup, T&C/Privacy consent, legal documents, and post-verification registration forms via SiteSignupPolicy. Use when configuring the signup flow, adding/editing legal documents under legal_docs/, writing a registration form that gates platform access, or querying LegalConsent.
+description: Signup, T&C/Privacy consent, legal documents and post-verification registration forms, configured through SiteSignupPolicy. Use when configuring the signup flow (signup, consent, terms, privacy, clickwrap), adding or editing legal documents under legal_docs/, writing a registration form that gates platform access, or querying LegalConsent.
 allowed-tools: Read, Grep, Glob
 ---
 
 # Registration, Consent, and Legal Documents
 
-How to **use and configure** the FLS signup pipeline: per-site signup policy, T&C/Privacy clickwrap consent, legal documents, and additional post-verification registration forms.
-
-This document covers the public interface only. Internals (middleware wiring, loader checks, cache key construction, etc.) are intentionally out of scope — read the code if you need them.
-
-## When to Use This Skill
-
-- **Configuring signup** for a site — `SiteSignupPolicy` row, or the global settings fallbacks
-- **Adding or updating a Terms / Privacy document** under `legal_docs/`
-- **Writing a post-verification registration form** that should gate platform access until completed
-- **Querying `LegalConsent`** — "who accepted v1.2 of terms?", "who hasn't accepted v2.0 of privacy?"
-- User mentions: signup, consent, terms, privacy, clickwrap, registration completion, legal docs, `LegalConsent`, `SiteSignupPolicy`
+How to **use and configure** the FLS signup pipeline: per-site signup policy, T&C/Privacy clickwrap consent, legal documents, and additional post-verification registration forms. This covers the public interface only; for internals (middleware wiring, loader checks, cache keys) read the code.
 
 ## Key Rules
 
-- Per-site config lives on `SiteSignupPolicy` (one row per site). When no row exists, each field falls back to the matching global setting (`REQUIRE_NAME`, `REQUIRE_TERMS_ACCEPTANCE`, `ADDITIONAL_REGISTRATION_FORMS`). A per-site row, if present, always wins.
-- Legal-doc content is read from the **git blob at HEAD**, never the working tree. Editing a file under `legal_docs/` is not enough — the change must be committed before any environment (including the local dev server) will serve it. See "Editing a document" below.
+- Per-site config lives on `SiteSignupPolicy` (one row per site). With no row, each field falls back to the matching global setting (`REQUIRE_NAME`, `REQUIRE_TERMS_ACCEPTANCE`, `ADDITIONAL_REGISTRATION_FORMS`). A row always wins.
+- Legal-doc content is read from the **git blob at HEAD**, never the working tree. Editing a file under `legal_docs/` is not enough: commit the change before any environment (including the local dev server) serves it. See "Editing a document" below.
 - Every legal-doc file MUST have YAML frontmatter with `version`, `title`, `type`, `effective_date`. Bump `version` on every meaningful edit — business queries key on it.
 - `LegalConsent` is append-only and admin-read-only. Never write a code path that updates an existing row, and never register an admin "give consent" action.
-- A post-verification form must subclass `forms.Form` (or the convenience base `RegistrationForm`, which inherits from `forms.Form` and provides a default `applies_to` returning `True`). It must implement `is_complete(user)` and `save(user)`, plus `applies_to(user)` if the default isn't right. The protocol still requires all three methods to exist on the class — the base class just gives you the most common default for `applies_to` for free. It MUST NOT define a field named `user`, `user_id`, or `email` — those names are forbidden and loading the form list will raise `ImproperlyConfigured`.
+- A post-verification form must subclass `forms.Form` (or the convenience base `RegistrationForm`, which inherits from `forms.Form` and provides a default `applies_to` returning `True`). It must implement `is_complete(user)` and `save(user)`, plus `applies_to(user)` if the default isn't right (the protocol requires all three methods on the class; the base class supplies the default `applies_to`). It MUST NOT define a field named `user`, `user_id`, or `email` — those names are forbidden and loading the form list will raise `ImproperlyConfigured`.
 - `applies_to` / `is_complete` MUST return strictly `True` or `False` — not `None`, not a truthy/falsy other value.
 
 ## Per-Site Configuration: `SiteSignupPolicy`
 
-One row per `Site` controls signup behaviour for that site. If no row exists for the current site, each field falls back to the matching global setting. A per-site policy, if it exists, always wins over the corresponding setting.
+One row per `Site` controls signup behaviour for that site; see Key Rules for the fallback.
 
 | Field                            | Type      | Settings fallback               | Effect when set |
 |----------------------------------|-----------|---------------------------------|-----------------|
@@ -41,7 +31,7 @@ One row per `Site` controls signup behaviour for that site. If no row exists for
 ### How to set it
 
 - **Per site:** Django admin → `Accounts → Site signup policies → Add`. Pick the site, set the fields, save.
-- **In a test:** create the row directly with `SiteSignupPolicy.objects.create(site=…, …)`. With no row, each field falls back to its settings default — flip the relevant setting via the `settings` fixture instead of creating a policy row when you want to test the global default.
+- **In a test:** create the row with `SiteSignupPolicy.objects.create(site=…, …)`. To test the global default, flip the setting via the `settings` fixture and create no row.
 - **Reading the effective value in code:** use the helpers in `freedom_ls.accounts.utils`:
   - `get_effective_require_name(site)`
   - `get_effective_require_terms_acceptance(site)`
@@ -59,7 +49,7 @@ One row per `Site` controls signup behaviour for that site. If no row exists for
 | `ALLOW_SIGN_UPS` | Global fallback for `SiteSignupPolicy.allow_signups`. |
 | `TRUSTED_PROXY_IP_HEADER` | e.g. `"X-Real-IP"`. `None` (default) → fall back to `REMOTE_ADDR`. Read by `get_client_ip` when recording consent. Set this if your app sits behind a trusted proxy or load balancer. |
 
-The signup form itself is wired via `ACCOUNT_FORMS` / `ACCOUNT_SIGNUP_FIELDS` in `settings_base.py`. You should not need to touch these.
+The signup form is wired via `ACCOUNT_FORMS` / `ACCOUNT_SIGNUP_FIELDS` in `settings_base.py`; leave them alone.
 
 For production deployment of legal documents (manifest builds, `LEGAL_DOCS_MANIFEST_PATH`, etc.), see `docs/deployment-security-checklist.md`.
 
@@ -102,18 +92,18 @@ All four frontmatter keys are required. `version` is a human-readable string use
 
 ### Editing a document
 
-Legal-doc content is loaded from the **git blob at `HEAD`** of the working repository — not from the working tree. This is true on the local dev server too. Editing the file alone changes nothing user-visible.
+Legal-doc content is loaded from the **git blob at `HEAD`**, not the working tree, on the local dev server too. Editing the file alone changes nothing user-visible.
 
 Workflow when changing a Terms/Privacy doc:
 
 1. Edit the file under `legal_docs/<site_domain>/` or `legal_docs/_default/` (e.g. `legal_docs/_default/terms.md`).
 2. **Bump `version`** in the YAML frontmatter (and update `effective_date` if appropriate). This is what business queries key on.
-3. **Commit** — e.g. `uv run git add legal_docs/_default/terms.md && uv run git commit -m "..."`. Until this step, `runserver` keeps serving the **previously committed** version. Uncommitted edits, staged-but-not-committed changes, and a dirty working tree all behave the same way: `HEAD` is the source of truth.
+3. **Commit** — e.g. `uv run git add legal_docs/_default/terms.md && uv run git commit -m "..."`. Until then, `runserver` keeps serving the **previously committed** version: uncommitted, staged and dirty-tree edits all behave the same way.
 4. Reload the page on `runserver`. The new version is now what users see and what `LegalConsent.git_hash` records.
 
 ### Why "git blob at HEAD"?
 
-The recorded `git_hash` on `LegalConsent` is the blob SHA of the document as the user saw it. A tampered working tree cannot change what users see or what is recorded. This is why `legal_docs/` content is sourced from `HEAD` (or a manifest baked at build time), not from the live filesystem.
+The `git_hash` on `LegalConsent` is the blob SHA of the document as the user saw it. Sourcing `legal_docs/` from `HEAD` (or a manifest baked at build time) means a tampered working tree cannot change what users see or what is recorded.
 
 ## Consent Tracking: `LegalConsent`
 
@@ -132,13 +122,13 @@ One row is written per `(user, document_type, document_version, git_hash)` conse
 
 ### Append-only
 
-- `LegalConsent` rows are append-only — you cannot update an existing row. Any attempt raises.
+- `LegalConsent` rows are append-only; any attempt to update one raises.
 - The admin is read-only: no add, no change, no delete. Do not register "give consent" admin actions or write views that record consent on behalf of a user-id parameter.
 - Email rebind does **not** invalidate consent — consent is bound to the `User`, not the email address.
 
 ### Querying
 
-`LegalConsent.objects` is the site-scoped default manager — queries return only consents for the current site. To audit consents across sites, follow the cross-site escape hatch documented in `fls:multi-tenant` rather than reaching into the manager directly.
+`LegalConsent.objects` is the site-scoped default manager — queries return only consents for the current site. To audit consents across sites, use the cross-site escape hatch in `fls:multi-tenant`, not the manager directly.
 
 ```python
 # All users on the current site who accepted a specific version of the terms
@@ -181,7 +171,7 @@ class RegistrationFormProtocol(Protocol):
 
 ### Forbidden field names
 
-A form that defines a field named `user`, `user_id`, or `email` raises `ImproperlyConfigured` at load time. The completion view always passes `request.user`; user-identifying fields would be a confused-deputy hazard, so this is a fail-loud misconfiguration — fix the field name, don't suppress the error.
+A form that defines a field named `user`, `user_id`, or `email` raises `ImproperlyConfigured` at load time. The completion view always passes `request.user`, and a user-identifying field is a confused-deputy hazard, so this fails loud: fix the field name, don't suppress the error.
 
 ### Worked example
 
@@ -219,7 +209,7 @@ Then add `"downstream_project.profiles.forms.PhoneNumberForm"` to the relevant `
 ## Testing Patterns
 
 - Use the `mock_site_context` fixture (see `fls:multi-tenant`) anywhere you create site-aware records.
-- Create a `SiteSignupPolicy` row when you need non-default behaviour. With no row, each field falls back to its setting — flip the setting via the `settings` fixture instead of creating a row to test the global default.
+- Create a `SiteSignupPolicy` row for non-default behaviour; to test the global default, flip the setting via the `settings` fixture instead.
 - Reuse the test form fixtures in `freedom_ls/accounts/tests/_registration_form_fixtures.py` and `_completion_view_fixtures.py` — don't import private real forms from downstream projects in tests.
 - For tests that touch `legal_docs.py`, the `_git_helpers.py` test helper sets up tiny git repos so you don't depend on the actual project HEAD.
 - Use `get_client_ip(request)` (not `request.META["REMOTE_ADDR"]`) so trusted-proxy logic is exercised consistently.
@@ -231,5 +221,4 @@ Then add `"downstream_project.profiles.forms.PhoneNumberForm"` to the relevant `
 - **Defining a `user` / `user_id` / `email` field on a registration form.** Loading the form list will raise `ImproperlyConfigured`. Rename the field.
 - **Wrapping `applies_to` / `is_complete` in `try/except Exception`.** Bugs there should propagate; silent skip = bypass.
 - **Returning `None` (or implicit `return`) from `applies_to` / `is_complete`.** Raises `TypeError`. Always return an explicit `True` or `False`.
-- **Mocking `request.META["REMOTE_ADDR"]` in consent tests.** Use `get_client_ip(request)` so trusted-proxy logic is exercised consistently.
 - **Adding a `?next=` redirect off the completion view without `url_has_allowed_host_and_scheme`.** Open-redirect bug.
