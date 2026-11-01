@@ -6806,7 +6806,7 @@ def test_bulk_cohort_register_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "Register 1 cohort for Algebra." in text
     assert "1 is already registered and will be skipped." in text
-    assert "1 is an inactive cohort and will be skipped." in text
+    assert "1 is inactive and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -6898,6 +6898,31 @@ def test_a_cohort_admin_registers_only_their_own_cohorts(mock_site_context: Site
 
 
 @pytest.mark.django_db
+def test_an_inactive_cohort_the_educator_cannot_change_is_skipped_for_permission_first(
+    mock_site_context: Site,
+):
+    """The preview checks permission before state; the run must agree."""
+    organisation = OrganisationFactory()
+    mine = _bulk_cohort(organisation)
+    theirs = _bulk_cohort(organisation, is_active=False)
+    educator = _cohort_admin_on(organisation, mine)
+    course = CourseFactory()
+    action = RegisterCohortForCourseBulkAction()
+    queryset = Cohort.objects.filter(pk__in=[theirs.pk])
+
+    previewed = action.classify_all(
+        _scoped_request(educator, organisation), queryset, {"course": course}
+    )
+    result = run_apply(action, educator, organisation, queryset, {"course": course})
+
+    not_permitted = "cohorts you don't have permission to change"
+    assert previewed == {str(theirs.pk): BulkOutcome("skipped", not_permitted)}
+    assert [(e.status, e.reason) for e in result.entries] == [
+        ("skipped", not_permitted)
+    ]
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "action_class",
     [RegisterCohortForCourseBulkAction, UnregisterCohortFromCourseBulkAction],
@@ -6919,9 +6944,7 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
         {"course": CourseFactory()},
     )
 
-    assert [(e.status, e.reason) for e in result.entries] == [
-        ("skipped", "an inactive cohort")
-    ]
+    assert [(e.status, e.reason) for e in result.entries] == [("skipped", "inactive")]
 
 
 @pytest.mark.django_db
@@ -6947,7 +6970,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     text = _bulk_text(response)
     assert "Unregister 1 cohort from Algebra." in text
     assert "1 is not registered and will be skipped." in text
-    assert "1 is an inactive cohort and will be skipped." in text
+    assert "1 is inactive and will be skipped." in text
 
 
 @pytest.mark.django_db

@@ -2882,7 +2882,7 @@ class CohortCourseBulkAction(CoursePickerMixin, CohortBulkAction):
     registration for it, read once per classification so previewing costs a
     fixed number of queries however many cohorts are selected."""
 
-    inactive_reason = "an inactive cohort"
+    inactive_reason = "inactive"
     registered_ids: frozenset[object] = frozenset()
 
     def classify_all(
@@ -2909,7 +2909,8 @@ class CohortCourseBulkAction(CoursePickerMixin, CohortBulkAction):
         obj: Model,
         cleaned_data: dict[str, object],
     ) -> BulkOutcome:
-        if not cast(Cohort, obj).is_active:
+        # Permission first, as the preview checks it, so both give one reason.
+        if obj.pk in self.permitted_ids and not cast(Cohort, obj).is_active:
             return BulkOutcome("skipped", self.inactive_reason)
         return super().apply(user, obj, cleaned_data)
 
