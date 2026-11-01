@@ -3,7 +3,7 @@
 A concrete project can add its own content widgets: a cotton component plus its
 `MARKDOWN_ALLOWED_TAGS` entry. The content repo tells this plugin about them with one
 **widget declaration** per widget. Declaring a widget here does not register it in the
-project. It tells the plugin the project already did.
+project; it tells the plugin the project already did.
 
 ## Location
 

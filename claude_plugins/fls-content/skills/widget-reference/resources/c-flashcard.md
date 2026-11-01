@@ -19,7 +19,7 @@ Named slots:
 
 **An answer wider than the card scrolls rather than stretching it.** A table or fenced code
 block that will not fit becomes its own horizontal scroll container inside the face — on a phone
-that is most tables, whatever the `size`. Nothing is lost, but a learner has to swipe for it, so
+that is most tables, whatever the `size`. A learner has to swipe for it, so
 reach for `size="wide"` when the answer is genuinely tabular and keep recall prompts short.
 
 **Blank lines inside `<c-slot>` tags are required** — they let the markdown parser treat content as block elements (paragraphs, lists, bold text). Without them, content renders as inline text only.

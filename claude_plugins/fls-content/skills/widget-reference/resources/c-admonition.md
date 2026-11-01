@@ -33,6 +33,6 @@ The valid `type` values for **your project** are declared in `.fls-content.yaml`
 
 `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
 
-This base set is **fully overridable** — a deployment may add, remove, or rename types. Never treat the base set as exhaustive. An unknown `type` falls back **silently** to the `default` style at render time with no error, which is why you must use the types declared in your project's `.fls-content.yaml`.
+A deployment may add, remove, or rename types, so never treat the base set as exhaustive. An unknown `type` falls back **silently** to the `default` style with no error: use only the types declared in your project's `.fls-content.yaml`.
 
 The `checklist` type renders `- [ ]` markdown task items as read-only disabled checkboxes.

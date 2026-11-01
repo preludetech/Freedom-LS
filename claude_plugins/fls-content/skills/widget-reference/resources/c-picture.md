@@ -26,14 +26,14 @@ A photograph, from the demo content:
 
 **Do not duplicate `alt` and `title`.** `alt` is for screen readers; `title` is visible text for all users.
 
-**`description` is visible prose on the page**, not lightbox-only text — it sits below the caption in the page and again beneath the title in the lightbox. Write it for every learner, not just the ones who open the image.
+**`description` is visible prose on the page**, not lightbox-only text: it sits below the caption and again beneath the title in the lightbox. Write it for every learner.
 
 Image paths are relative to the content file (resolved to the course root by `content_save`).
 
 ## What `content_save` does to the image
 
-Hand it the original file. There is no need to resize, convert or compress an image before you add
-it, and nothing in the markdown controls any of this.
+Hand it the original file. Do not resize, convert or compress an image first; nothing in the
+markdown controls any of this.
 
 - Most raster images (JPEG, PNG, GIF, BMP) are re-encoded to WebP and capped at 1600 px on the
   longest edge. Smaller images are never scaled up.

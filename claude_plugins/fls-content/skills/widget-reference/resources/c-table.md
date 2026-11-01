@@ -33,6 +33,5 @@ there already.
 
 Those components render their bodies as author markdown, which runs the
 sanitiser over the already-rendered `c-table` markup and strips the wrapper's
-attributes. The table still appears, but it loses the scrollable region, the
-focus ring, the `role="group"` label, and the caption styling — so a nested
-`c-table` reads worse than the plain table it replaced.
+attributes. The table still appears but loses the scrollable region, the
+focus ring, the `role="group"` label, and the caption styling.

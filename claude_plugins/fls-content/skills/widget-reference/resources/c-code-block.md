@@ -29,4 +29,4 @@ if [ &quot;$count&quot; -gt 5 ]; then
 fi</c-code-block>
 ```
 
-Note: use standard fenced code blocks (` ``` `) for code that needs no title or language label — FLS renders them natively without the escaping requirement.
+Use standard fenced code blocks (` ``` `) for code that needs no title or language label — FLS renders them natively without the escaping requirement.

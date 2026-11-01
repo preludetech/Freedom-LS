@@ -11,9 +11,9 @@ Native collapsible disclosure widget (`<details>`/`<summary>`). Body is markdown
 | `title` | No | `""` | Visible summary bar text (required in practice) |
 | `open` | No | absent | When present, accordion starts expanded |
 
-Write `open` as a bare attribute with no value. The sanitiser normalises it to `open=""` and the template handles it correctly.
+Write `open` as a bare attribute with no value. The sanitiser normalises it to `open=""`.
 
-**Accordions are for elective depth** — supplementary detail, optional context, or reference material that not every learner needs. Do not hide content that is required reading or forms part of assessed material; required content must be visible without interaction.
+**Accordions are for elective depth** — supplementary detail, optional context, or reference material that not every learner needs. Never hide required reading or assessed material in one; required content must be visible without interaction.
 
 ```markdown
 <c-accordion title="Why does Python use indentation?">
