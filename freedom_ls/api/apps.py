@@ -6,3 +6,6 @@ class ApiAppConfig(AppConfig):
     name = "freedom_ls.api"
     label = "freedom_ls_api"
     verbose_name = "API"
+
+    def ready(self) -> None:
+        from . import checks  # noqa: F401
