@@ -27,6 +27,15 @@ USER_EXPORT_FIELDS = (
 )
 
 
+def annotate_email_verified(queryset: QuerySet[User]) -> QuerySet[User]:
+    # Matched on the address, not only the user: allauth lets a user hold
+    # several addresses, and only the one the account signs in with counts.
+    verified = EmailAddress.objects.filter(
+        user=OuterRef("pk"), verified=True, email__iexact=OuterRef("email")
+    )
+    return queryset.annotate(email_verified=Exists(verified))
+
+
 class UserResource(SiteAwareModelResource):
     """One row per user, with nothing that could open an account.
 
@@ -50,9 +59,4 @@ class UserResource(SiteAwareModelResource):
     def filter_export(
         self, queryset: QuerySet[User], **kwargs: object
     ) -> QuerySet[User]:
-        # Matched on the address, not only the user: allauth lets a user hold
-        # several addresses, and only the one the account signs in with counts.
-        verified = EmailAddress.objects.filter(
-            user=OuterRef("pk"), verified=True, email__iexact=OuterRef("email")
-        )
-        return queryset.annotate(email_verified=Exists(verified))
+        return annotate_email_verified(queryset)

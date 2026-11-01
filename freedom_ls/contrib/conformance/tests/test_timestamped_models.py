@@ -28,6 +28,7 @@ TIMESTAMPED_MODELS = frozenset(
     {
         "freedom_ls_accounts.SiteSignupPolicy",
         "freedom_ls_accounts.User",
+        "freedom_ls_api.ApiKey",
         "freedom_ls_content_engine.Activity",
         "freedom_ls_content_engine.Article",
         "freedom_ls_content_engine.ContentCollectionItem",

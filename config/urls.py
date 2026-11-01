@@ -70,6 +70,11 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("freedom_ls.accounts.urls")),
     *_blog_urlpatterns,
+    *(
+        [path("api/v1/", include("freedom_ls.api.urls"))]
+        if apps.is_installed("freedom_ls.api")
+        else []
+    ),
     path("", include("freedom_ls.learner_interface.urls")),
     path("notifications/", include("freedom_ls.comms.urls")),
     path("messages/", include("freedom_ls.comms.messaging_urls")),

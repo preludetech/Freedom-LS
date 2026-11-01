@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     # CUSTOM APPS
     # xapi_learning_record_store
     "freedom_ls.base",
+    "freedom_ls.api",
     "freedom_ls.deployment",
     "freedom_ls.google_tag",
     "freedom_ls.meta_pixel",

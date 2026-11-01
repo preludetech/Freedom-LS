@@ -13,6 +13,7 @@ Regenerate this file whenever the graph changes: `/app_map`.
 ```mermaid
 flowchart TB
     accounts
+    api
     audit_log
     base
     blog
@@ -50,11 +51,14 @@ flowchart TB
     tiktok_pixel
     webhooks
     xapi_learning_record_store
+    accounts --> api
     accounts --> base
     accounts --> mail
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    api --> base
+    api --> site_aware_models
     audit_log --> accounts
     audit_log --> base
     audit_log --> organisations
@@ -284,7 +288,8 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
+| accounts | api, base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
+| api | base, site_aware_models | — |
 | audit_log | accounts, base, organisations, site_aware_models | — |
 | base | learner_management | accounts, content_engine, organisations, role_based_permissions |
 | blog | base, content_engine | — |
