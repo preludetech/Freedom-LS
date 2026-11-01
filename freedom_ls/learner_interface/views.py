@@ -83,6 +83,7 @@ from freedom_ls.learner_progress.attempts import (
     finalise_stale_incomplete,
     get_latest_incomplete,
     get_or_create_incomplete,
+    sittings_at_placement,
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.queries import (
@@ -1402,12 +1403,13 @@ def _render_closed_notice(
     submit_and_exit_url = None
     results_url = None
     if isinstance(current_item, Form) and course_progress is not None:
-        if get_latest_incomplete(course_progress, collection_item) is not None:
+        sittings = sittings_at_placement(course_progress, collection_item)
+        if sittings.has_open:
             submit_and_exit_url = reverse(
                 "learner_interface:form_submit_and_exit",
                 kwargs={"course_slug": course.slug, "index": index},
             )
-        if completed_attempts(course_progress, collection_item).exists():
+        if sittings.has_completed:
             results_url = reverse(
                 "learner_interface:course_form_complete",
                 kwargs={"course_slug": course.slug, "index": index},

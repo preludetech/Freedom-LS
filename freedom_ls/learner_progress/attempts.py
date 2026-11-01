@@ -15,6 +15,7 @@ apart, and it cannot tell a course attempt from a standalone one.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import cast
 
 from django.db import transaction
@@ -119,6 +120,30 @@ def finalise_stale_incomplete(
         return None
     incomplete.complete()
     return incomplete
+
+
+@dataclass(frozen=True)
+class SittingsAtPlacement:
+    """Whether this record holds an open sitting, and a finished one, at a placement."""
+
+    has_open: bool
+    has_completed: bool
+
+
+def sittings_at_placement(
+    course_progress: CourseProgress,
+    collection_item: ContentCollectionItem,
+) -> SittingsAtPlacement:
+    """Both flags from one query, for a caller that offers something for each: the open
+    sitting can be submitted as it stands, the finished one has results to show."""
+    completed_times = CourseFormAttempt.objects.filter(
+        course_progress=course_progress, collection_item=collection_item
+    ).values_list("form_progress__completed_time", flat=True)
+    times = list(completed_times)
+    return SittingsAtPlacement(
+        has_open=any(time is None for time in times),
+        has_completed=any(time is not None for time in times),
+    )
 
 
 def completed_attempts(

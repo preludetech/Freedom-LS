@@ -30,6 +30,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_progress.attempts import (
     finalise_stale_incomplete,
     get_or_create_incomplete,
+    sittings_at_placement,
 )
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
@@ -209,3 +210,67 @@ class TestFinaliseStaleIncomplete:
         )
 
         assert finalise_stale_incomplete(record, collection_item) is None
+
+
+@pytest.mark.django_db
+class TestSittingsAtPlacement:
+    def test_no_sitting_sets_neither_flag(self, form_placement) -> None:
+        record, collection_item = form_placement
+
+        sittings = sittings_at_placement(record, collection_item)
+
+        assert (sittings.has_open, sittings.has_completed) == (False, False)
+
+    def test_an_open_sitting_alone(self, form_placement) -> None:
+        record, collection_item = form_placement
+        CourseFormAttemptFactory(
+            course_progress=record,
+            collection_item=collection_item,
+            form=collection_item.child,
+        )
+
+        sittings = sittings_at_placement(record, collection_item)
+
+        assert (sittings.has_open, sittings.has_completed) == (True, False)
+
+    def test_a_finished_sitting_alone(self, form_placement) -> None:
+        record, collection_item = form_placement
+        CourseFormAttemptFactory(
+            course_progress=record,
+            collection_item=collection_item,
+            form=collection_item.child,
+            form_progress__completed_time=timezone.now(),
+        )
+
+        sittings = sittings_at_placement(record, collection_item)
+
+        assert (sittings.has_open, sittings.has_completed) == (False, True)
+
+    def test_both_in_one_query(self, form_placement, django_assert_num_queries) -> None:
+        record, collection_item = form_placement
+        for completed_time in (None, timezone.now()):
+            CourseFormAttemptFactory(
+                course_progress=record,
+                collection_item=collection_item,
+                form=collection_item.child,
+                form_progress__completed_time=completed_time,
+            )
+
+        with django_assert_num_queries(1):
+            sittings = sittings_at_placement(record, collection_item)
+
+        assert (sittings.has_open, sittings.has_completed) == (True, True)
+
+    def test_another_records_sittings_do_not_count(self, form_placement) -> None:
+        record, collection_item = form_placement
+        other_record = CourseProgressFactory(course=record.course)
+        CourseFormAttemptFactory(
+            course_progress=other_record,
+            collection_item=collection_item,
+            form=collection_item.child,
+            form_progress__completed_time=timezone.now(),
+        )
+
+        sittings = sittings_at_placement(record, collection_item)
+
+        assert (sittings.has_open, sittings.has_completed) == (False, False)
