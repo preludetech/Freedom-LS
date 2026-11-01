@@ -87,7 +87,7 @@ Actual: the attempt scored 0/3 (FAILED). The spec makes only COMPLETE items exem
 
 ## Bug status
 
-- **UNRESOLVED** — A closed form whose attempt was submitted and failed still reads "Closed", with no way back to its results (reason: product decision; the spec exempts only COMPLETE items from closing, the test plan expects "Needs retry", and the code follows the spec)
+- **RESOLVED (product decision)** — A closed form whose attempt was submitted and failed still reads "Closed", with no way back to its results (reason: product decision; the spec exempts only COMPLETE items from closing, the test plan expects "Needs retry", and the code follows the spec. Decided: the item stays Closed; the closed notice now links to the results and the closed results page offers no retry. Test plan 3.4.3 updated)
 
 ## General notes
 

@@ -22,6 +22,14 @@
                 </form>
             {% endif %}
 
+            {% if results_url %}
+                <div class="mx-auto max-w-reading">
+                    <c-button href="{{ results_url }}" variant="{% if submit_and_exit_url %}secondary{% else %}primary{% endif %}">
+                        See your results
+                    </c-button>
+                </div>
+            {% endif %}
+
             <c-player-footer :previous_url="previous_url" class="mx-auto max-w-reading">
                 {% if next_url %}
                     <c-button href="{{ next_url }}" icon_right="next" size="small">

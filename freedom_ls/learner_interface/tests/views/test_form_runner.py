@@ -3090,6 +3090,65 @@ def test_closed_form_submit_and_exit_get_is_405_and_finalises_nothing(
     assert attempt.completed_time is None
 
 
+SEE_YOUR_RESULTS = "See your results"
+
+
+def _closed_quiz_with_failed_sitting(client):
+    """A quiz that closed on 1 Jan 2020, which the learner sat and failed."""
+    user = UserFactory()
+    form, questions = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    _sit_math_quiz(course, user, form, questions, ["7", "5", "11"])
+    client.force_login(user)
+    return course
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_links_to_the_results_of_a_completed_attempt(
+    mock_site_context, client
+):
+    course = _closed_quiz_with_failed_sitting(client)
+
+    response = client.get(_item_url(course))
+
+    assert response.context["results_url"] == _complete_url(course)
+    assert SEE_YOUR_RESULTS in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_without_a_completed_attempt_links_no_results(
+    mock_site_context, client
+):
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.get(_item_url(course))
+
+    assert response.context["results_url"] is None
+    assert SEE_YOUR_RESULTS not in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_results_page_of_a_closed_failed_quiz_offers_no_retry(
+    mock_site_context, client
+):
+    course = _closed_quiz_with_failed_sitting(client)
+
+    response = client.get(_complete_url(course))
+
+    content = response.content.decode()
+    assert response.context["quiz_verdict"] == "failed"
+    assert "Retry quiz" not in content
+    assert response.context["item_closed"] is True
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime(2019, 12, 1, 12, 0, tzinfo=UTC), tick=False)
 def test_open_save_on_exit_form_is_not_finalised_by_submit_and_exit(

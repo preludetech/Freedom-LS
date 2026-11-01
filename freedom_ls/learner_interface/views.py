@@ -1371,17 +1371,22 @@ def _render_closed_notice(
 
     Writes nothing: opening a closed item is not a visit, so it moves neither the resume
     point nor the course's start time. A form with an open attempt also carries the URL
-    that submits the attempt as it stands, since continuing it is refused."""
+    that submits the attempt as it stands, since continuing it is refused. A form with a
+    completed attempt carries its results URL, since a learner is always entitled to the
+    score they earned."""
     submit_and_exit_url = None
-    if (
-        isinstance(current_item, Form)
-        and course_progress is not None
-        and get_latest_incomplete(course_progress, collection_item) is not None
-    ):
-        submit_and_exit_url = reverse(
-            "learner_interface:form_submit_and_exit",
-            kwargs={"course_slug": course.slug, "index": index},
-        )
+    results_url = None
+    if isinstance(current_item, Form) and course_progress is not None:
+        if get_latest_incomplete(course_progress, collection_item) is not None:
+            submit_and_exit_url = reverse(
+                "learner_interface:form_submit_and_exit",
+                kwargs={"course_slug": course.slug, "index": index},
+            )
+        if completed_attempts(course_progress, collection_item).exists():
+            results_url = reverse(
+                "learner_interface:course_form_complete",
+                kwargs={"course_slug": course.slug, "index": index},
+            )
     return render(
         request,
         "learner_interface/course_item_closed.html",
@@ -1389,6 +1394,7 @@ def _render_closed_notice(
             "course": course,
             "entry": entry,
             "submit_and_exit_url": submit_and_exit_url,
+            "results_url": results_url,
             "next_url": next_url,
             "previous_url": previous_url,
             **player_context,
@@ -2085,6 +2091,10 @@ def course_form_complete(request, course_slug, index):
         "previous_url": previous_url,
         "retry_url": retry_url,
         "access_ended": access_ended,
+        # A closed form refuses a new sitting, so its results offer no retry.
+        "item_closed": _is_closed_for_learner(
+            course_progress, collection_item, timezone.now()
+        ),
         # Player chrome (outline panel + breadcrumb). Under "nothing" this is the one
         # player page an ended learner still reaches, and it carries no outline, so
         # the chrome is handed an empty index to draw.

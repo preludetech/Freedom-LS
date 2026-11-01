@@ -235,14 +235,15 @@
         The same footer the topic and form start pages use, so finishing a form
         still looks like the rest of the player. Previous steps back through the
         course. Going back into this form is Retry quiz's job, which is why that
-        button keeps its own place on the right.
+        button keeps its own place on the right. A closed form refuses a new sitting, so
+        its failed results offer Continue instead of Retry quiz.
         A learner whose access ended gets no footer: retrying, the next item and
         the finish page are all shut to them, and the outline, where the policy
         keeps it, is the way around.
         {% endcomment %}
         {% if not access_ended %}
             <c-player-footer :previous_url="previous_url" class="mt-8">
-                {% if quiz_verdict == "failed" %}
+                {% if quiz_verdict == "failed" and not item_closed %}
                     <c-button href="{{ retry_url }}" icon_left="retry" size="small">
                         Retry quiz
                     </c-button>
