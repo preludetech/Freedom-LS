@@ -1,0 +1,5 @@
+{
+  "name": "productivity",
+  "version": "1.0.0",
+  "description": "Generic writing and working skills: answer (answer a question and do nothing else), unslop (cut AI tells from any writing) and writing-for-agents (write documents agents consume)"
+}

@@ -43,6 +43,7 @@
       "Skill(ds:*)",
       "Skill(fls-dev:*)",
       "Skill(sdd:*)",
+      "Skill(productivity:*)",
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
@@ -157,7 +158,8 @@
   "enabledPlugins": {
     "ds": true,
     "fls-dev": true,
-    "sdd": true
+    "sdd": true,
+    "productivity": true
   },
   "hooks": {
     "PreToolUse": [
