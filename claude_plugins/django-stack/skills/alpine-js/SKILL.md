@@ -7,16 +7,15 @@ description: How to use Alpine.js for client-side interactivity. Use when adding
 
 ## When to use
 
-Use this skill when:
 - Adding client-side interactivity to templates (toggles, dropdowns, modals, expand/collapse)
 - Working with `x-data`, `x-show`, `x-on`, `x-bind`, `x-cloak`, `x-transition`, or `x-collapse`
 - Deciding whether behaviour should be Alpine.js vs HTMX vs vanilla JS
 
 ## Pick your path first: CSP build or standard build?
 
-Alpine has two mutually-exclusive conventions in this plugin, and which one applies is a project
-config setting. **Before writing any Alpine, read `.claude/ds/config.md` → `## Alpine.js` →
-`CSP build`** and follow exactly one of these two files:
+Alpine has two mutually-exclusive conventions in this plugin, selected by project config. **Before
+writing any Alpine, read `.claude/ds/config.md` → `## Alpine.js` → `CSP build`** and follow exactly
+one of these two files:
 
 | `CSP build` | Convention | Follow this file |
 |-------------|-----------|------------------|
@@ -25,15 +24,15 @@ config setting. **Before writing any Alpine, read `.claude/ds/config.md` → `##
 
 **Read that file before you write any Alpine, not after.** It owns everything build-dependent: how a
 component is structured, what may go in an `x-data` / `x-on` / `x-bind` value, the script set and load
-order, and every JavaScript example. It is self-contained — you never need the other build's file.
+order, and every JavaScript example. It is self-contained; you never need the other build's file.
 
-This file covers only what is byte-for-byte identical under both builds, so nothing here is a
-substitute for reading your build's file.
+This file covers only what is byte-for-byte identical under both builds, so it does not substitute
+for your build's file.
 
 ## Setup
 
-Alpine.js is loaded in `_base.html`, typically via CDN. The exact script set and any required load
-order are covered in your build's resource file.
+Alpine.js is loaded in `_base.html`, typically via CDN. Your build's resource file covers the exact
+script set and any required load order.
 
 ### Check which plugins this project loads
 
@@ -42,7 +41,7 @@ there before using a directive that depends on one.** A directive from a plugin 
 load silently does nothing.
 
 - `x-collapse` requires **`@alpinejs/collapse`**. If it isn't loaded, use `x-show` (plus
-  `x-transition`) instead, or add the plugin — with approval.
+  `x-transition`) instead, or add the plugin with approval.
 - `$persist` requires **`@alpinejs/persist`**. Prefer manual `localStorage` (see your build's file)
   rather than adding the plugin.
 
@@ -52,7 +51,7 @@ Do not add plugins without explicit approval — each one is a new runtime depen
 
 ### Alpine.js is for client-side UI state only
 
-Use Alpine.js for toggling visibility, animations, and local component state. Use HTMX for server
+Use Alpine.js for toggling visibility, animations, and local component state; HTMX for server
 communication. They complement each other:
 
 - **Alpine.js**: open/close, expand/collapse, show/hide, local toggles, dismiss, transitions
@@ -61,17 +60,17 @@ communication. They complement each other:
 
 ### Keep state minimal and local
 
-Each component should be self-contained. Avoid sharing state between components. If components need to
+Keep each component self-contained and avoid sharing state between components. If components need to
 communicate, prefer HTMX server round-trips or Alpine's `$dispatch` events.
 
 ## Build-agnostic patterns
 
-The markup below is valid verbatim under both builds — the directive values are CSS class strings or
+The markup below is valid verbatim under both builds: the directive values are CSS class strings or
 bare property references, never expressions.
 
 ### Transitions
 
-Always use `x-transition` directives for showing/hiding elements. These are CSS classes, so they work
+Always use `x-transition` directives for showing/hiding elements. They are CSS classes, so they work
 identically in both builds:
 
 **Simple fade:**
@@ -110,12 +109,12 @@ Use `x-cloak` on elements that should be hidden on initial page load to prevent 
 ```
 
 `x-cloak` only works if the stylesheet defines `[x-cloak] { display: none !important; }` in
-`@layer base` — check the project's stylesheets and, if the rule is missing, add it there.
+`@layer base`. Check the project's stylesheets and, if the rule is missing, add it there.
 
 ### Expand/collapse with x-collapse (requires `@alpinejs/collapse`)
 
 **Only if the project loads `@alpinejs/collapse`** (check `_base.html`). Where it does, the plugin
-provides smooth height-based animations — prefer `x-collapse` over a bare `x-show` when
+provides smooth height-based animations: prefer `x-collapse` over a bare `x-show` for
 expanding/collapsing content of variable height. Where it doesn't, use `x-show` with `x-transition`.
 
 ```html
@@ -128,7 +127,7 @@ Use `x-collapse.duration.300ms` to customise animation speed if needed.
 
 ### Icons with Alpine
 
-Since a server-rendered icon component (e.g. `<c-icon>`) can't be swapped on the client, toggle icons
+A server-rendered icon component (e.g. `<c-icon>`) can't be swapped on the client, so toggle icons
 with `x-show` on wrapper `<span>` elements:
 
 ```html
@@ -140,22 +139,22 @@ with `x-show` on wrapper `<span>` elements:
 
 ## Rules
 
-Component structure, `x-data` values, and JavaScript go by the rules in your build's resource file
-(`alpine_csp_build.md` **or** `alpine_no_csp.md`) — read that first. The rules below hold regardless of
+Component structure, `x-data` values, and JavaScript go by your build's resource file
+(`alpine_csp_build.md` **or** `alpine_no_csp.md`); read that first. The rules below hold under either
 build:
 
-1. **No $persist** — use manual `localStorage` instead; your build's file shows the form.
-2. **Pass Django values via data attributes** — `data-*` attributes read through `this.$el.dataset`,
+1. **No $persist**: use manual `localStorage` instead; your build's file shows the form.
+2. **Pass Django values via data attributes**: `data-*` attributes read through `this.$el.dataset`,
    rather than baking server values into directive expressions.
-3. **Check the loaded plugins** — read `_base.html` for the `@alpinejs/*` scripts this project actually
+3. **Check the loaded plugins**: read `_base.html` for the `@alpinejs/*` scripts this project actually
    loads, and use only directives those plugins provide. Do not add a plugin without approval.
-4. **Always add transitions** — use `x-transition` when showing/hiding elements.
-5. **Use x-cloak** — on any element hidden by default to prevent FOUC.
-6. **Clean up listeners** — any component that adds an event listener, observer, or timer must remove
+4. **Always add transitions**: use `x-transition` when showing/hiding elements.
+5. **Use x-cloak**: on any element hidden by default to prevent FOUC.
+6. **Clean up listeners**: any component that adds an event listener, observer, or timer must remove
    it when the component leaves the DOM.
-7. **Close dropdowns and menus on outside click** — use the `x-on:click.away` modifier.
-8. **Close overlays on Escape** — use the `x-on:keydown.escape.window` modifier.
-9. **Icons with Alpine** — if icons are server-rendered (e.g. a `<c-icon>` cotton component), toggle them
+7. **Close dropdowns and menus on outside click**: use the `x-on:click.away` modifier.
+8. **Close overlays on Escape**: use the `x-on:keydown.escape.window` modifier.
+9. **Icons with Alpine**: if icons are server-rendered (e.g. a `<c-icon>` cotton component), toggle them
    with `x-show` on wrapper `<span>` elements rather than swapping the icon markup on the client.
 
 # IMPORTANT

@@ -6,7 +6,6 @@ allowed-tools: Read, Grep, Glob
 
 # When to Use This Skill
 
-Use this Skill when:
 - User asks to create a new template, page, or component
 - User wants to edit existing templates
 - User mentions "UI", "frontend", "template", "HTML"
@@ -18,14 +17,14 @@ Use this Skill when:
 
 ## Key Rules
 
-- Pages: `<app>/templates/<app>/<page>.html` — always extend `_base.html`
+- Pages: `<app>/templates/<app>/<page>.html`, always extending `_base.html`
 - Cotton components: project-level `templates/cotton/<name>.html` for shared/design-system components,
-  or `<app>/templates/cotton/<name>.html` for app-specific ones — use `<c-vars>` with defaults
+  or `<app>/templates/cotton/<name>.html` for app-specific ones; use `<c-vars>` with defaults
 - Partials: `<app>/templates/<app>/partials/<name>.html`
 - Use `{% partialdef %}` with kebab-case names for inline partials
-- Don't hardcode URLs — use `{% url 'app:name' %}`
+- Don't hardcode URLs; use `{% url 'app:name' %}`
 - Check existing cotton components before creating new ones
 - Views returning partials use `partial_` prefix
-- Use Django-style comments `{% comment %}...{% endcomment %}` — never Jinja-style `{# ... #}`
+- Use Django-style comments `{% comment %}...{% endcomment %}`, never Jinja-style `{# ... #}`
 
 Refer to `${CLAUDE_PLUGIN_ROOT}/resources/templates_and_cotton.md` for full patterns and examples.

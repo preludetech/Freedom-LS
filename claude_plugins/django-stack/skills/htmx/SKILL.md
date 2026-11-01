@@ -16,9 +16,9 @@ HTMX is loaded globally in `_base.html`. CSRF is handled globally via `hx-header
 Never add CSRF tokens to individual HTMX requests.
 
 **On the `<c-*>` tags in the examples below:** they are illustrative placeholders for whatever
-components this project defines — `ds` does not ship a component library and guarantees no component
-name. Check `templates/cotton/` (project-level and app-local) for what actually exists, and fall back
-to plain HTML elements where it doesn't.
+components this project defines. `ds` ships no component library and guarantees no component name.
+Check `templates/cotton/` (project-level and app-local) for what exists, and fall back to plain HTML
+elements where it doesn't.
 
 ## View Conventions
 
@@ -80,16 +80,16 @@ response["HX-Location"] = json.dumps(
 
 ### Domain events via `HX-Trigger`
 
-To tell other parts of the page a mutation happened — so they can refetch themselves — set
-`HX-Trigger` to a JSON object naming the event and the ids of the entities it touched:
+To tell other parts of the page a mutation happened so they can refetch themselves, set `HX-Trigger`
+to a JSON object naming the event and the ids of the entities it touched:
 
 ```python
 response["HX-Trigger"] = json.dumps({"widgetChanged": {"ids": [str(widget.pk)]}})
 ```
 
 An element elsewhere on the page listens for the event name on `document.body` (or `document`) and
-refetches its own region. This keeps the mutating view and the listening region decoupled: neither
-needs to know about the other, only the event name.
+refetches its own region. The mutating view and the listening region stay decoupled: both need only
+the event name.
 
 ## Template Patterns
 
@@ -163,7 +163,7 @@ HTMX drives loading state with two classes it applies itself, no JavaScript requ
 
 - `.htmx-request` is added to the element issuing the request (or to the element named by
   `hx-indicator`) for the duration of that request.
-- `.htmx-indicator` marks an element that should only be visible while a request is in flight — HTMX's
+- `.htmx-indicator` marks an element that should only be visible while a request is in flight. HTMX's
   own stylesheet gives it `opacity: 0` and raises it to `opacity: 1` under `.htmx-request`.
 
 ### Standalone Loading Indicator
@@ -178,19 +178,19 @@ Point `hx-indicator` at the element that should show the spinner:
 </div>
 ```
 
-**If the project has a loading-indicator component, use it instead of hand-rolling one** — check
+**If the project has a loading-indicator component, use it instead of hand-rolling one.** Check
 `templates/cotton/` (project-level and app-local) before writing the markup above.
 
 ### Inline Button Loading State
 
 For a button that swaps its label while submitting, toggle two spans on the `.htmx-request` state. The
 project may already express this as a component prop (e.g. a `loading` / `loading_text` prop on its
-button component) or as a pair of CSS utility classes — **check what exists before adding either.** If
-nothing exists, the underlying mechanism is:
+button component) or as a pair of CSS utility classes. **Check what exists before adding either.** If
+nothing exists, the mechanism is:
 
 HTMX adds `.htmx-request` to the element that triggered the request, so both spans key off an
 ancestor. Express that with a descendant variant on the markup rather than a pair of classes in a
-stylesheet — the styling then belongs to the button component that uses it:
+stylesheet; the styling then belongs to the button component that uses it:
 
 ```html
 <span class="[.htmx-request_&]:hidden">Save</span>

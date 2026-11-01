@@ -6,13 +6,13 @@ allowed-tools: Read, Grep, Glob
 
 # Testing
 
-This skill helps implement features and fix bugs using Test-Driven Development, following the Red-Green-Refactor cycle.
+This skill implements features and fixes bugs with Test-Driven Development, following the Red-Green-Refactor cycle.
 
 ## When to use this skill
 
-- **Implementing new features** — write tests first, then implement
-- **Fixing bugs** — write a failing test that reproduces the bug, then fix
-- **Refactoring** — ensure tests pass throughout
+- **Implementing new features**: write tests first, then implement
+- **Fixing bugs**: write a failing test that reproduces the bug, then fix
+- **Refactoring**: keep tests passing throughout
 - User mentions "TDD", "test", "pytest"
 
 ## Key rules
@@ -36,9 +36,9 @@ Each pointer names a section of `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` unl
 - pytest: before running it, read `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`. It holds `-n auto`, `--no-cov`, the background rule and the tier to run.
 
 See:
-- `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md` — the tiers, their commands and how to run them
-- `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags
-- `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` — factory patterns
+- `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`: the tiers, their commands and how to run them
+- `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`: full patterns, examples, TDD workflow, red flags
+- `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`: factory patterns
 - The `ds:playwright-tests` skill for browser tests (slow; reach for it only when a real browser is needed, marked `@pytest.mark.playwright`)
 - The `ds:htmx` skill for production-side HTMX rules
 
@@ -49,12 +49,12 @@ See:
 Assert on what a function **returns or does**, not **how it works inside**. Implementation tests break on every refactor and give false security.
 
 ```python
-# BAD — re-implements the check; couples to current internals
+# BAD: re-implements the check; couples to current internals
 def test_is_valid_email():
     email = "test@example.com"
     assert "@" in email and "." in email
 
-# GOOD — asserts the observable contract
+# GOOD: asserts the observable contract
 def test_valid_email_passes():
     assert is_valid_email("test@example.com") is True
 ```
@@ -63,7 +63,7 @@ If you find yourself asserting call counts on internal helpers, reading private 
 
 ### Don't assert the absence of arbitrary things
 
-A negative-existence assertion (`assert not hasattr(obj, "x")`, `assert "x" not in context`) only means something when `x` is a thing the code could *realistically* produce **and** its absence is the observable contract. Asserting the absence of a name the code was never asked to produce passes for any name you invent.
+A negative-existence assertion (`assert not hasattr(obj, "x")`, `assert "x" not in context`) only means something when `x` is a thing the code could *realistically* produce **and** its absence is the observable contract. Asserting the absence of a name the code was never asked to produce passes for any invented name.
 
 When a refactor removes an internal attribute, assert the new observable behaviour and delete any leftover absence-check during REFACTOR.
 
@@ -72,15 +72,15 @@ When a refactor removes an internal attribute, assert the new observable behavio
 A tautological test re-derives the expected value from the input using the same logic as the code under test. It passes by coincidence and catches nothing.
 
 ```python
-# BAD — the test is the implementation, run twice
+# BAD: the test is the implementation, run twice
 expected = price * (1 - rate)
 assert apply_discount(price, rate) == expected
 
-# GOOD — independent oracle; hard-coded answer for hard-coded input
+# GOOD: independent oracle; hard-coded answer for hard-coded input
 assert apply_discount(100, 0.2) == 80
 ```
 
-Any time the expected value is computed with arithmetic, string-building, or a loop over the input the code sees, you are writing a tautology. See "Tautology guidance" in the resource.
+An expected value computed with arithmetic, string-building, or a loop over the input the code sees is a tautology. See "Tautology guidance" in the resource.
 
 ### Name tests after behaviour
 
@@ -92,7 +92,7 @@ Keep the three phases visible and in order. In a test that runs without a browse
 
 ### Mock only at system boundaries
 
-Boundaries are network, external APIs, filesystem, clock, randomness and subprocess. Do not mock code you own: internal helpers, ORM calls, your own service classes. A test that needs more than two mocks means the unit has too many dependencies, so refactor it.
+Boundaries are network, external APIs, filesystem, clock, randomness and subprocess. Do not mock code you own: internal helpers, ORM calls, your own service classes. A test that needs more than two mocks means the unit has too many dependencies; refactor it.
 
 ### Parametrize for inputs, separate tests for behaviours
 

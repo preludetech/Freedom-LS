@@ -5,10 +5,10 @@ description: "Best practices for code comments, docstrings, and inline explanati
 
 # Code Comments
 
-A comment is a promise to the future reader that the code can't keep on its own. Most
-comments break that promise: they restate what the code already says, narrate how the code
-got written, or cite a document the reader doesn't have. Those comments rot, and rotten
-comments are worse than none, because the reader trusts them.
+A comment is a promise to the future reader that the code can't keep on its own. Most comments break
+it: they restate what the code already says, narrate how the code got written, or cite a document the
+reader doesn't have. Those comments rot, and rotten comments are worse than none, because the reader
+trusts them.
 
 The single rule: **a comment must explain *why*, not *what*.** The code already says what.
 
@@ -23,15 +23,15 @@ The reader doesn't care what order the code was written in, or that a block was 
 # the block below preserves the existing category display logic   ← BAD
 ```
 
-Git already records history. A comment that describes *the change* instead of *the code*
-is stale the moment the next change lands.
+Git records history. A comment that describes *the change* instead of *the code* is stale the moment
+the next change lands.
 
 ---
 
 ## Don't restate the code
 
-If the comment and the line say the same thing, the comment is noise, and it's a second
-thing to keep in sync.
+If the comment and the line say the same thing, the comment is noise and a second thing to keep in
+sync.
 
 ```python
 # BAD: the call says exactly this
@@ -43,14 +43,14 @@ response["Cache-Control"] = "no-store"
 response["Cache-Control"] = "no-store"
 ```
 
-In templates, don't list the Tailwind classes that are visible right below:
+In templates, don't list the Tailwind classes visible right below:
 
 ```django
 {% comment %}Progress bar: track bg-border rounded-pill, fill bg-secondary{% endcomment %}  ← BAD
 ```
 
-A short region label (`Progress bar`, `Hero`, `Sign-up panel`) is fine when it helps someone
-scan a long template. Keep the label, drop the class inventory and any citation.
+A short region label (`Progress bar`, `Hero`, `Sign-up panel`) is fine when it helps someone scan a
+long template. Keep the label, drop the class inventory and any citation.
 
 ```django
 {% comment %}Copy does not promise an email: nothing sends one when the item publishes.{% endcomment %}
@@ -60,15 +60,15 @@ scan a long template. Keep the label, drop the class inventory and any citation.
 
 ## Tests document themselves
 
-Test and function names are the documentation. Don't head a group of tests with a label that
-the test names below already say:
+Test and function names are the documentation. Don't head a group of tests with a label the test
+names below already say:
 
 ```python
 # --- submit_and_close ---          ← BAD when every test below is named test_submit_and_close_*
 ```
 
-A plain-English divider label is acceptable when a file has several distinct groups, but if
-the test names directly below already say it, drop the divider entirely.
+A plain-English divider label is acceptable when a file has several distinct groups, but if the test
+names directly below already say it, drop the divider.
 
 ---
 
@@ -77,11 +77,11 @@ the test names directly below already say it, drop the divider entirely.
 Good comments capture what the code *cannot*:
 
 - **Non-obvious constraints:** "No-op for auto-saving forms."
-- **Edge-case rationale:** why a value is excluded, guarded, or defaulted, e.g. excluding
-  the current page's questions so an in-browser tally isn't double-counted.
+- **Edge-case rationale:** why a value is excluded, guarded, or defaulted, e.g. excluding the current
+  page's questions so an in-browser tally isn't double-counted.
 - **Why-not-the-obvious-thing:** why we redirect instead of dereferencing `None` and 500ing.
-- **Scope limits that aren't enforced in the signature:** "Only set for graded forms; ungraded
-  forms have no numeric percentage."
+- **Scope limits that aren't enforced in the signature:** "Only set for graded forms; ungraded forms
+  have no numeric percentage."
 
 ```python
 """Domain event names the order service's actions fire.
@@ -98,10 +98,9 @@ If you can't articulate a *why*, the line probably doesn't need a comment.
 
 ## Respect protected comments
 
-**Never delete `TODO` or `@claude` comments** unless the TODO is actually done. When you find
-one carrying a stale citation, don't delete it and don't just strip the citation into a
-vacuum. **Replace the citation with the concrete detail it was standing in for**, so the TODO
-says what it actually needs:
+**Never delete `TODO` or `@claude` comments** unless the TODO is actually done. When one carries a
+stale citation, don't delete it and don't strip the citation into a vacuum. **Replace the citation
+with the concrete detail it was standing in for**, so the TODO says what it needs:
 
 ```django
 {# BAD #}
