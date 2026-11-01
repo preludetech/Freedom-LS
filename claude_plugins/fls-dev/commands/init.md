@@ -325,9 +325,8 @@ If `.claude/sdd/config.md` exists:
   - `FLS threats: <PLUGINS_ROOT>/claude_plugins/fls-dev/resources/plan_review_fls_threats.md`
 - Ensure `## Review Hooks` exists with both keys. Set a blank `Test standard` to
   `<PLUGINS_ROOT>/claude_plugins/fls-dev/skills/testing/SKILL.md`. Set a blank
-  `Comment standard` to `.claude/skills/code-comments/SKILL.md` only when that file exists in
-  the project; otherwise leave it blank and list "add a comment standard and point
-  `Comment standard` at it" as an outstanding action.
+  `Comment standard`, or one equal to `.claude/skills/code-comments/SKILL.md` when that file
+  does not exist, to `<PLUGINS_ROOT>/claude_plugins/django-stack/skills/code-comments/SKILL.md`.
 - Ensure `## Documentation Hooks` exists. If its list is empty, write, in this order:
   - `App map: ds:app_map`
   - `Upgrade notes: fls-dev:update_upgrade_notes`

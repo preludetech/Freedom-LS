@@ -49,12 +49,13 @@ key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to 
 scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file moves, todo ticking). Spawn
 one per unit from a depth-0 SDD command. Model tiering lives in each agent's `model:` frontmatter.
 
-### Skills (3)
+### Skills (4)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —
 how Claude Code commands/skills/agents actually behave (targets 2.1.x); `git-worktree-setup` — the generic
 bare-repo/worktree mechanics;
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
-`.claude/settings.local.json`.
+`.claude/settings.local.json`; `planning-references-in-code` — keeps spec, plan, slice, batch, QA-bug and
+`spec_dd/` references out of code comments, docstrings and test names.
 
 ### Resources (9)
 `agent_memory_guidelines` — how agents treat memory; `launcher_editing` — how to edit `claude.sh`

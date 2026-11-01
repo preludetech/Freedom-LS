@@ -25,7 +25,7 @@
 
 ## Review Hooks
 
-- Comment standard: .claude/skills/code-comments/SKILL.md
+- Comment standard: claude_plugins/django-stack/skills/code-comments/SKILL.md
 - Test standard: claude_plugins/fls-dev/skills/testing/SKILL.md
 
 ## Documentation Hooks

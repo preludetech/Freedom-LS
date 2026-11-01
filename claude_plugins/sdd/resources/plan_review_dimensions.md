@@ -14,7 +14,7 @@ every other row's judgement call is a `> **Review concern:**`.
 | `generic_plugin` | no project name, path, app or value in a plugin whose README says it is generic | the README and the config file | moving the value into the project's config section |
 | `junk_files` | no step leaves a file that needs manual cleanup | the step | a missing delete-by-name step |
 | `clean_code` | proposed code is clean and simple | the snippet | none; all judgement |
-| `comments` | no proposed comment or docstring points at the spec, plan, a slice, a phase, the QA plan or a section number | the snippet line | the pointer replaced by the fact it stood for |
+| `comments` | no proposed comment or docstring points at the spec, plan, a slice, a phase, the QA plan or a section number | the snippet line, checked against `${CLAUDE_PLUGIN_ROOT}/skills/planning-references-in-code/SKILL.md` | the pointer replaced by the fact it stood for |
 | `vocabulary` | every noun and identifier matches the spec's vocabulary and the codebase's | the spec or source line | a term replaced by the spec's or source's term |
 | `new_threats` | only what the plan adds or changes, one narrow check per trigger (list below) | the step | none; every hit is a judgement call |
 

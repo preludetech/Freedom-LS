@@ -33,8 +33,8 @@ from the project's own code at the point of use, never assumed.
 
 ## What's inside (counted from disk)
 
-### Skills (9)
-`admin-interface`, `alpine-js`, `app-settings`, `frontend-styling`, `htmx`, `playwright-tests`,
+### Skills (10)
+`admin-interface`, `alpine-js`, `app-settings`, `code-comments`, `frontend-styling`, `htmx`, `playwright-tests`,
 `template`, `testing`, `use-playwright`.
 
 ### Commands (10 files)
