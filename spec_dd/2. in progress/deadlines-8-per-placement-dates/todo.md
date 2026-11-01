@@ -21,7 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (user) Update `.claude/skills/domain-glossary/SKILL.md` from the spec's "Documentation and downstream" section: drop `overrides` from the `ContentCollectionItem` row and the "Never `ContentCollectionItem.overrides`" clause, add the placement value and `CoursePartChildDueDate` to the **content default** row, and add a `CoursePartChildDueDate` row and a **placement** entry pointing at `ContentCollectionItem`
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
