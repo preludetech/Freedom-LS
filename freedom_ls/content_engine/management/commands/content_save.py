@@ -51,10 +51,14 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
+    content_key,
     get_all_files,
+    is_skipped_path,
     parse_single_file,
+    resolve_author_path,
     split_yaml_documents,
     validate,
+    validate_due_date_placements,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -494,21 +498,6 @@ def save_course_categories(item, site, base_path):
     return categories
 
 
-def content_key(file_path):
-    """The normalised key every content_by_path entry and lookup uses.
-
-    A path written by an author and a path produced by the directory scan reach
-    the same file by different routes, so both have to be resolved before either
-    is used as a key.
-    """
-    return Path(file_path).resolve()
-
-
-def resolve_author_path(declaring_file, author_path):
-    """An author-written path, relative to the file that declares it."""
-    return content_key(Path(declaring_file).parent / author_path)
-
-
 # The eight price_* columns with no price at all -- the shape `price_columns`
 # starts from and falls back to for a kind that doesn't use a given field.
 EMPTY_PRICE_COLUMNS: dict[str, object] = {
@@ -722,15 +711,6 @@ def save_form_question(item, form_page, site, base_path, order=0):
             update_file_with_option_uuids(item.file_path, question.id, option_uuids)
 
     return question
-
-
-def is_skipped_path(path):
-    """Whether a file/directory should be skipped when scanning collection children.
-
-    Mirrors the filtering rules in `get_all_files`: names starting with `_` or
-    `.` are ignored, along with everything inside such directories.
-    """
-    return path.name.startswith("_") or path.name.startswith(".")
 
 
 def get_file_type_from_extension(file_path):
@@ -1072,6 +1052,12 @@ def save_content_to_db(path, site_name):
         if collection.application_form_id != (form.pk if form else None):
             collection.application_form = form
             collection.save(update_fields=["application_form"])
+
+    # Every placement error at once, inside the transaction, so one load reports all of
+    # them and writes nothing.
+    placement_errors = validate_due_date_placements(all_parsed)
+    if placement_errors:
+        raise ValueError("\n".join(placement_errors))
 
     # Process collection children
     written: list[ContentCollectionItem] = []

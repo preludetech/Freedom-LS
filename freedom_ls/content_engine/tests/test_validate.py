@@ -9,6 +9,7 @@ from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
     validate,
+    validate_due_date_placements,
 )
 
 # Tests for the content scanner: file discovery and cross-file validation
@@ -710,3 +711,104 @@ tags:
 
     assert len(parsed_items) == 1
     assert parsed_items[0].tags == []
+
+
+# Cross-file validation of a due date set on a children: entry.
+
+
+def _activity(path: Path) -> Path:
+    return _write_widget_file(
+        path, "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\nBody\n"
+    )
+
+
+def _part(path: Path) -> Path:
+    return _write_widget_file(
+        path, "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
+    )
+
+
+def _course_with_entries(path: Path, entries: list[str]) -> Path:
+    """A course whose children are the given `path` values, each with a due date."""
+    lines = "".join(
+        f"  - path: {entry}\n    due_days_after_registration: 3\n" for entry in entries
+    )
+    return _write_widget_file(
+        path, f"---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n{lines}---\n"
+    )
+
+
+def _placement_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        for item in parse_single_file(file_path)
+    ]
+    return validate_due_date_placements(parsed)
+
+
+@pytest.mark.parametrize(
+    ("filename", "make_child"),
+    [
+        ("activity.md", _activity),
+        ("article.md", _widget_article),
+        ("part.yaml", _part),
+    ],
+)
+def test_due_keys_on_a_non_topic_non_form_entry_fail_naming_file_entry_and_path(
+    tmp_path: Path, filename: str, make_child
+):
+    make_child(tmp_path / filename)
+    _course_with_entries(tmp_path / "course.md", [filename])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "course.md" in errors[0]
+    assert "children[0]" in errors[0]
+    assert filename in errors[0]
+
+
+def test_two_bad_entries_give_two_messages(tmp_path: Path):
+    _activity(tmp_path / "activity.md")
+    _widget_article(tmp_path / "article.md")
+    _course_with_entries(tmp_path / "course.md", ["activity.md", "article.md"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 2
+
+
+def test_due_keys_on_a_topic_entry_pass(tmp_path: Path):
+    _topic(tmp_path / "topic.md")
+    _course_with_entries(tmp_path / "course.md", ["topic.md"])
+
+    assert _placement_errors(tmp_path) == []
+
+
+def test_a_non_topic_entry_without_due_keys_passes(tmp_path: Path):
+    _activity(tmp_path / "activity.md")
+    _write_widget_file(
+        tmp_path / "course.md",
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        "  - path: activity.md\n---\n",
+    )
+
+    assert _placement_errors(tmp_path) == []
+
+
+def test_a_bad_entry_naming_nothing_gives_no_message_here(tmp_path: Path):
+    _course_with_entries(tmp_path / "course.md", ["missing.md"])
+
+    assert _placement_errors(tmp_path) == []
+
+
+def test_validate_lists_a_due_date_on_an_activity_entry_in_the_report(tmp_path: Path):
+    _activity(tmp_path / "activity.md")
+    _course_with_entries(tmp_path / "course.md", ["activity.md"])
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    assert "Invalid due date placement" in str(exc_info.value)
+    assert "activity.md" in str(exc_info.value)

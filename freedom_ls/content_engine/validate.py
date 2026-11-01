@@ -6,20 +6,47 @@ from the command line run: python validate.py /path/to/content/directory_or_item
 The path can either be a file or a directory. if it is a directory then recurse over all files and validate each one.
 """
 
+import functools
 import logging
 import os.path
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 import frontmatter
 import yaml
 from pydantic import ValidationError
 
-from freedom_ls.content_base.schema import SCHEMAS, ContentType
+from freedom_ls.content_base.schema import SCHEMAS, BaseBaseContentModel, ContentType
+from freedom_ls.content_engine.schema import Child, Course, CoursePart
 
 logger = logging.getLogger(__name__)
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
+
+
+def is_skipped_path(path: Path) -> bool:
+    """Whether a file or directory is ignored when scanning for content.
+
+    Names starting with `_` or `.` are ignored, along with everything inside such
+    directories.
+    """
+    return path.name.startswith("_") or path.name.startswith(".")
+
+
+def content_key(file_path: Path | str) -> Path:
+    """The normalised key every content_by_path entry and lookup uses.
+
+    A path written by an author and a path produced by the directory scan reach
+    the same file by different routes, so both have to be resolved before either
+    is used as a key.
+    """
+    return Path(file_path).resolve()
+
+
+def resolve_author_path(declaring_file: Path | str, author_path: Path | str) -> Path:
+    """An author-written path, relative to the file that declares it."""
+    return content_key(Path(declaring_file).parent / author_path)
 
 
 def get_all_files(path):
@@ -47,7 +74,7 @@ def get_all_files(path):
             return True
 
         # Skip files starting with _ or .
-        if file_path.name.startswith("_") or file_path.name.startswith("."):
+        if is_skipped_path(file_path):
             return True
 
         # Skip files in directories starting with _ or . (only check parents within base_path)
@@ -55,11 +82,7 @@ def get_all_files(path):
             relative_path = file_path.relative_to(base_path)
             for parent in relative_path.parents:
                 # Skip the root parent (which would be '.')
-                if (
-                    parent.name
-                    and parent.name != "."
-                    and (parent.name.startswith("_") or parent.name.startswith("."))
-                ):
+                if parent.name and parent.name != "." and is_skipped_path(parent):
                     return True
         except ValueError:
             # file_path is not relative to base_path
@@ -580,6 +603,52 @@ def validate_widget_references(all_parsed: list) -> list[str]:
     return errors
 
 
+_DUE_DATE_CHILD_TYPES = frozenset({ContentType.TOPIC, ContentType.FORM})
+_placement_error = functools.partial(
+    _reference_error, header="Invalid due date placement"
+)
+
+
+def _direct_entry_errors(
+    item: Course | CoursePart, index: int, entry: Child, target: BaseBaseContentModel
+) -> list[str]:
+    """A due date belongs to a topic or form placement."""
+    if entry.holds_due_value() and target.content_type not in _DUE_DATE_CHILD_TYPES:
+        return [
+            _placement_error(
+                item.file_path,
+                item.content_type,
+                f"children[{index}]",
+                str(entry.path),
+                problem=f"a due date on a {target.content_type} placement",
+                fix="Only a TOPIC or FORM placement takes due keys or no_due_date.",
+            )
+        ]
+    return []
+
+
+def validate_due_date_placements(
+    all_parsed: Sequence[BaseBaseContentModel],
+) -> list[str]:
+    """Check every children: entry that sets a due date against the file it names.
+
+    An entry whose path names nothing is left to the unknown-child check.
+    """
+    errors: list[str] = []
+    # Keyed by content_key, not normpath: an entry's path is resolved the way the loader
+    # resolves it, so the two agree on every file.
+    by_path = {content_key(item.file_path): item for item in all_parsed}
+    for item in all_parsed:
+        if not isinstance(item, (Course, CoursePart)):
+            continue
+        for index, entry in enumerate(item.children or []):
+            target = by_path.get(resolve_author_path(item.file_path, entry.path))
+            if target is None:
+                continue
+            errors.extend(_direct_entry_errors(item, index, entry, target))
+    return errors
+
+
 def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> list[str]:
     """Check every article's `image` against the files the loader would save.
 
@@ -671,6 +740,8 @@ def validate(path):
     for message in validate_category_references(all_parsed):
         failed_files.append((path, message))
     for message in validate_widget_references(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_due_date_placements(all_parsed):
         failed_files.append((path, message))
     # A single-file run has no sibling files to resolve an image against.
     if path.is_dir():

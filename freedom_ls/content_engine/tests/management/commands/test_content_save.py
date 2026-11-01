@@ -3192,3 +3192,68 @@ def test_a_course_without_the_keys_defaults_to_organisation_learners(
     course = Course.objects.get(site=site, title="Org Course")
     assert course.audience == "organisation_learners"
     assert course.organisations.count() == 0
+
+
+# A due date on a children: entry that places something other than a topic or form.
+
+
+def _write_course_with_dated_entries(course_dir: Path, entries: dict[str, str]) -> None:
+    """A course whose children are the given files, each entry carrying a due offset.
+
+    The values are the full text of each child file.
+    """
+    course_dir.mkdir()
+    for name, text in entries.items():
+        (course_dir / name).write_text(text)
+    lines = "".join(
+        f"  - path: {name}\n    due_days_after_registration: 3\n" for name in entries
+    )
+    (course_dir / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Dated course\nuuid: {COURSE_UUID}\n"
+        f"children:\n{lines}---\n"
+    )
+
+
+_ACTIVITY_FILE = "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\nBody\n"
+_ARTICLE_FILE = "---\ncontent_type: ARTICLE\ntitle: An Article\npublished_on: 2026-01-02\n---\nBody\n"
+_PART_FILE = "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        ("activity.md", _ACTIVITY_FILE),
+        ("article.md", _ARTICLE_FILE),
+        ("part.yaml", _PART_FILE),
+    ],
+)
+def test_a_due_key_on_a_non_topic_non_form_entry_fails_the_load_and_writes_nothing(
+    site, mock_site_context, filename: str, text: str
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "dated"
+        _write_course_with_dated_entries(course_dir, {filename: text})
+
+        with pytest.raises(ValueError, match="Invalid due date placement") as exc_info:
+            save_content_to_db(course_dir, site.name)
+
+    assert filename in str(exc_info.value)
+    assert ContentCollectionItem.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_two_bad_entries_fail_the_load_with_one_error_listing_both(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "dated"
+        _write_course_with_dated_entries(
+            course_dir, {"activity.md": _ACTIVITY_FILE, "article.md": _ARTICLE_FILE}
+        )
+
+        with pytest.raises(ValueError, match="Invalid due date placement") as exc_info:
+            save_content_to_db(course_dir, site.name)
+
+    assert "activity.md" in str(exc_info.value)
+    assert "article.md" in str(exc_info.value)
