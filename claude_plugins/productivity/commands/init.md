@@ -18,7 +18,7 @@ after Step 0 may abort: from Step 1 onward, a problem is *reported as an outstan
 raised as a bail-out.
 
 **Nothing is force-deleted.** No step may pass `-f` to `git rm`, `-f`/`-r` to `rm`, or `--force` to
-any command. `productivity:init` deletes nothing at all, but the rule stands for any future edit.
+any command. `productivity:init` deletes nothing, but the rule stands for any future edit.
 
 ## Scope
 
@@ -85,15 +85,13 @@ anything in this step or before it completes.
 | P5 | Classify `claude.sh` per rule **L0** of `${CLAUDE_PLUGIN_ROOT}/resources/launcher_editing.md` | **STOP** if it has zero, or more than one, non-comment line invoking `claude` (P1 already stopped on an absent file) |
 | P8 | `git status --porcelain --` on `claude.sh` and `.claude/settings.json` | **WARN** if dirty |
 
-P1-P3b are STOPs rather than warnings so this command can never write one file and *then* discover
-it cannot finish.
+P1-P3b are STOPs so this command never writes one file and *then* discovers it cannot finish.
 
 **P3b exists because P1 and P2 are not sufficient.** A project that predates the `claude_plugins/`
 layout already *has* a `claude.sh` and a `.claude/settings.json`, so file-existence checks pass and
-this command would run to completion, adding its own `--plugin-dir` line to a launcher still pointing
-at a plugin directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire
-that argument, so it would leave the launcher broken. Checking the arguments themselves, not merely
-that files exist, is the only check that catches this.
+this command would add its own `--plugin-dir` line to a launcher still pointing at a plugin
+directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire that
+argument, so the launcher would stay broken. Only checking the arguments themselves catches this.
 
 ## Step 1: Merge the `productivity` permission and enabledPlugins key
 

@@ -1,6 +1,6 @@
 # FreedomLS visual system
 
-The brand as it reaches markup. FLS is themed: every colour, face and radius reaches a template through a role token or a component, and the `default` theme maps the brand onto those tokens. Style through the token and the component, so a theme that repoints one gets it everywhere. `Skill(fls-dev:frontend-styling)` owns the token mechanics (the `on-*` pairings, which roles have `*-hover`); this file owns what the brand means by them.
+The brand as it reaches markup. FLS is themed: every colour, face and radius reaches a template through a role token or a component, and the `default` theme maps the brand onto those tokens. Style through the token and the component, so a theme that repoints one applies everywhere. `Skill(fls-dev:frontend-styling)` owns the token mechanics (the `on-*` pairings, which roles have `*-hover`); this file owns what the brand means by them.
 
 ## Colour
 
@@ -88,7 +88,7 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 ## Example page
 
-Most of the styling comes from the base layer, the components and the active theme:
+The base layer, the components and the active theme supply most of the styling:
 
 ```html
 {% extends "_base.html" %}

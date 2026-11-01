@@ -7,7 +7,7 @@ description: "FreedomLS brand: the visual system (colour roles, type, components
 
 **FreedomLS is the learning system that lets you teach the way your learners actually need.**
 
-Most learning platforms are digital textbooks: they assume learning is linear, content is static, and one structure fits all. FreedomLS gives educators pedagogical freedom, builders architectural freedom, and content authors format freedom. The common thread: learners come first, everything else flexes to serve them.
+Most learning platforms are digital textbooks: they assume learning is linear, content is static, and one structure fits all. FreedomLS gives educators pedagogical freedom, builders architectural freedom, and content authors format freedom. Learners come first; everything else flexes to serve them.
 
 ## Core Values (in priority order)
 

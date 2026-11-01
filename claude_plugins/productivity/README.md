@@ -1,8 +1,7 @@
 # productivity plugin
 
-Generic writing and working skills for Claude Code: a skill that answers a question and changes
-nothing, a skill that strips AI tells from prose, and a skill for writing the documents agents read.
-It is independent and carries nothing specific to a project.
+Generic writing and working skills for Claude Code: answer a question and change nothing, strip AI
+tells from prose, and write the documents agents read. The plugin carries nothing specific to a project.
 
 Manifest name: `productivity`. Namespace: `/productivity:*`, `Skill(productivity:*)`.
 

@@ -17,7 +17,7 @@ How FreedomLS sounds, in UI text, error messages, docs, README and marketing.
 3. **Teach while you talk**: even marketing copy leaves the reader knowing something new.
 4. **Respect the reader's time**: front-load the important information, and prefer a code example to a long explanation.
 
-The tell of copy that has drifted off-voice is SaaS phrasing: "unlock potential", "empower learners", "drive engagement", "cutting-edge", "robust", "scale your learning". When one of those surfaces, replace it with the specific thing it was gesturing at.
+SaaS phrasing marks copy that has drifted off-voice: "unlock potential", "empower learners", "drive engagement", "cutting-edge", "robust", "scale your learning". Replace each with the specific thing it gestured at.
 
 ## Tone by context
 

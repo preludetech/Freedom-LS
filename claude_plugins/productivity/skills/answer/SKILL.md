@@ -25,7 +25,7 @@ Question: $ARGUMENTS
 ## Output
 
 - Lead with the direct answer. First sentence should answer the question.
-- Be concise. Add only the detail needed to support the answer.
+- Be concise: only the detail that supports the answer.
 - Reference code as `path:line` where it helps.
 - Use a short code snippet or list only if it's clearer than prose.
 - No preamble, no recap of what you looked at, no closing summary.
