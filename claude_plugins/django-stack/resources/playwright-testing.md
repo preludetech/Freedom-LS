@@ -19,13 +19,13 @@ Use pytest instead for:
 - Utility functions
 - API endpoints
 
-**Rule:** If it can be tested with pytest, test it with pytest. Playwright is for browser-required behavior only.
+**Rule:** If pytest can test it, test it with pytest. Playwright is for browser-required behavior only.
 
 For unit-level HTMX patterns (header simulation, `HX-Trigger` assertions, 422 validation responses) and general testing guidelines see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
 ## Portability: the `playwright` marker is the browser set a downstream excludes
 
-Every browser test is marked `@pytest.mark.playwright` and lives under `<app>/tests/playwright/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is the only thing a downstream needs in order to exclude it — so mark every browser test, without exception.
+Every browser test is marked `@pytest.mark.playwright` and lives under `<app>/tests/playwright/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is all a downstream needs to exclude them, so mark every browser test, without exception.
 
 For how the `playwright` marker sits alongside any other project-specific markers and the exact selection a downstream runs, see the `ds:testing` skill's marker guidance.
 
@@ -43,7 +43,7 @@ pytest <app>/tests/playwright/test_comment_flow.py
 
 ## Test Structure
 
-Playwright's `expect()` API auto-waits for conditions to become true and produces clear failure messages. Use it instead of `wait_for_selector` / `is_visible`.
+Playwright's `expect()` API auto-waits and produces clear failure messages. Use it instead of `wait_for_selector` / `is_visible`.
 
 ```python
 import pytest
@@ -65,7 +65,7 @@ def test_user_comment_flow(page, live_server):
 
 1. **Mark with @pytest.mark.playwright** - Required for all Playwright tests
 2. **Test real user behavior** - Click, type, navigate like a user
-3. **Use `expect()` matchers** - `expect(locator).to_be_visible()` and similar matchers auto-wait, integrate with HTMX swaps, and produce better failure messages than `wait_for_selector` / `is_visible`.
+3. **Use `expect()` matchers** - `expect(locator).to_be_visible()` and similar auto-wait, integrate with HTMX swaps, and fail more clearly than `wait_for_selector` / `is_visible`.
 4. **Use semantic locators** - Prefer `get_by_role` / `get_by_label` / `get_by_text` over CSS selectors. See "Locator priority" below.
 5. **Test happy paths first** - Core user journeys
 6. **Write flows** - One journey per test: one login, one data build, many assertions, layout checks looped over the project's viewports at the end. A case that needs its own browser context or a route interception is a separate function in the same file
@@ -75,7 +75,7 @@ def test_user_comment_flow(page, live_server):
 
 ## Locator priority
 
-Pick the highest-priority locator that fits. Lower-priority locators are brittle to refactors and copy edits.
+Pick the highest-priority locator that fits. Lower ones are brittle to refactors and copy edits.
 
 1. `page.get_by_role(...)` — survives copy refactors; mirrors how assistive tech sees the page.
 2. `page.get_by_label(...)` — for form fields; tied to the accessible label, so it follows the field through visual redesigns.
@@ -107,11 +107,11 @@ expect(page.get_by_test_id("new-item")).to_be_visible()
 expect(page.get_by_role("listitem")).to_have_count(5)
 ```
 
-For HTMX request / response patterns at the unit-test level (header simulation, `HX-Trigger` assertions, 422 validation responses) see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (HTMX test patterns section). For production-side HTMX conventions see the `ds:htmx` skill.
+For unit-level HTMX request / response patterns (header simulation, `HX-Trigger` assertions, 422 validation responses) see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (HTMX test patterns section). For production-side HTMX conventions see the `ds:htmx` skill.
 
 ## Trace on failure
 
-Traces are recorded on failure (`--tracing=retain-on-failure`) and written to `test-results/`. A trace holds screenshots, DOM snapshots, network logs and console output, which localises the failing step of a flow.
+Traces are recorded on failure (`--tracing=retain-on-failure`) and written to `test-results/`. A trace holds screenshots, DOM snapshots, network logs and console output, which localise the failing step.
 
 > **Caveat — traces capture DOM state and may contain fixture credentials, session cookies, or PII baked into seeded test data. Treat trace artefacts as sensitive: do not attach them to public bug reports, third-party support tickets, or shared chat channels without first reviewing them. If a trace must be shared externally, scrub or regenerate against a clean fixture set.**
 
@@ -153,4 +153,4 @@ def authed_page(page, live_server):
 - **Fixtures:** `page`, `live_server` vs. `client`, `user`
 - **Assertions:** Visible elements vs. data/responses
 
-Use Playwright to complement pytest, not replace it.
+Playwright complements pytest; it does not replace it.

@@ -13,10 +13,10 @@ templates/              # project-level template dir (on TEMPLATES['DIRS'])
 └── _base.html          # Base template
 ```
 
-**Cotton components can live in either place** — django-cotton discovers `templates/cotton/` on any
+**Cotton components can live in either place**; django-cotton discovers `templates/cotton/` on any
 template-loader path. Use a **project-level `templates/cotton/`** for shared, design-system components
-used across apps (e.g. `<c-button>`, `<c-card>`), and an **app-local `<app>/templates/cotton/`** for
-components specific to one app. Follow whichever layout the project already uses.
+used across apps (e.g. `<c-button>`, `<c-card>`) and an **app-local `<app>/templates/cotton/`** for
+components specific to one app. Follow the layout the project already uses.
 
 **Base template:** `_base.html`, typically at the project-level `templates/_base.html` (or a base
 app's `templates/`).
@@ -87,10 +87,10 @@ Usage:
 <c-modal id="confirm" title="Confirm">Are you sure?</c-modal>
 ```
 
-**These names are illustrative.** `ds` ships no component library and guarantees no component name —
-`<c-button>`, `<c-loading-indicator>` and `<c-modal>` are just plausible examples. List what this
-project actually defines (`ls templates/cotton/ */templates/cotton/`) before using any of them, and use
-plain HTML where there is no component.
+**These names are illustrative.** `ds` ships no component library and guarantees no component name;
+`<c-button>`, `<c-loading-indicator>` and `<c-modal>` are plausible examples. List what this project
+defines (`ls templates/cotton/ */templates/cotton/`) before using any of them, and use plain HTML
+where there is no component.
 
 ### Best Practices
 
@@ -104,9 +104,8 @@ plain HTML where there is no component.
 
 ### Separate Files
 
-**Location:** `<app>/templates/<app_name>/partials/<name>.html` — namespace partials under the app
-directory just like pages, so two apps can each have a `header.html` without colliding on the loader
-path.
+**Location:** `<app>/templates/<app_name>/partials/<name>.html`. Namespace partials under the app
+directory like pages, so two apps can each have a `header.html` without colliding on the loader path.
 
 ```django
 <!-- Include in template -->
@@ -118,7 +117,7 @@ path.
 
 ### Inline Partials (Django built-in)
 
-Inline partials are a Django 6+ built-in feature (`{% partialdef %}` / `{% partial %}` tags are part of the Django Template Language).
+Inline partials are a Django 6+ built-in (`{% partialdef %}` / `{% partial %}`).
 
 ```django
 {% partialdef "partial_name" %}
@@ -140,22 +139,20 @@ Inline partials are a Django 6+ built-in feature (`{% partialdef %}` / `{% parti
 
 ## HTMX
 
-Loaded globally, and used for every interaction that needs the server — fetching data, submitting
-forms, swapping in re-rendered partials. (Use Alpine instead for state that never leaves the browser.)
+Loaded globally; use it for every interaction that needs the server: fetching data, submitting forms,
+swapping in re-rendered partials. (Use Alpine for state that never leaves the browser.)
 
 **Follow the `ds:htmx` skill before writing any HTMX.** It owns the view conventions, the global CSRF
-setup, the attribute patterns, and the loading-indicator mechanics; writing them from memory tends to
+setup, the attribute patterns and the loading-indicator mechanics; writing them from memory tends to
 duplicate the CSRF token or swap the wrong target.
 
 ## Alpine.js
 
-Loaded globally, and used for client-side state that never touches the server — toggles, dropdowns,
-modals, expand/collapse, dismissible elements. (Use HTMX instead whenever the interaction needs data
-from the server.)
+Loaded globally; use it for client-side state that never touches the server: toggles, dropdowns,
+modals, expand/collapse, dismissible elements. (Use HTMX whenever the interaction needs server data.)
 
 **Follow the `ds:alpine-js` skill before writing any Alpine.** The valid syntax depends on which
-Alpine build the project uses, so writing it from memory will produce markup that silently does
-nothing.
+Alpine build the project uses, so markup written from memory silently does nothing.
 
 ## Styling
 
@@ -163,7 +160,7 @@ Templates are styled with Tailwind against the project's own design tokens and c
 Those names are project-specific and live in the project's stylesheets, so markup styled from memory
 reaches for classes that don't exist.
 
-**Follow the `ds:frontend-styling` skill for anything that touches how a template looks** — it owns
+**Follow the `ds:frontend-styling` skill for anything that touches how a template looks.** It owns
 which stylesheets to read, how to reuse what's already there, and how to build CSS.
 
 ## Workflow

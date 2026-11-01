@@ -1,7 +1,6 @@
 # QA diff scoping
 
-Classify the changed paths of a diff into one class, applying the rules in order. The first rule
-that matches decides.
+Classify a diff's changed paths into one class. Apply the rules in order; the first match decides.
 
 ## Rule 1: front-end paths
 

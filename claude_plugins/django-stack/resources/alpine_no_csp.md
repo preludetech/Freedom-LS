@@ -10,13 +10,13 @@ markup that is identical under both builds (transitions, `x-cloak`, `x-collapse`
 ## Setup
 
 Alpine (standard build) is loaded in `_base.html`, typically via CDN. Check `_base.html` for which
-`@alpinejs/*` plugins the project loads alongside it — don't assume any are present. Because there are
-no CSP restrictions, there is no required script load order for a components file, and a per-app
+`@alpinejs/*` plugins the project loads alongside it; don't assume any are present. With no CSP
+restrictions there is no required script load order for a components file, and a per-app
 `alpine-components.js` is only needed if you choose to register components.
 
 ## Inline expressions are allowed
 
-Put state and logic directly in directives — no `Alpine.data()` registration is required:
+Put state and logic directly in directives; no `Alpine.data()` registration is required:
 
 ```html
 <!-- Inline state + handlers: fine under the standard build -->
@@ -28,20 +28,20 @@ Put state and logic directly in directives — no `Alpine.data()` registration i
 </div>
 ```
 
-This is the quickest way to add small, self-contained interactions (a single toggle, a dropdown, a
-dismissible banner) and is the idiomatic standard-Alpine style.
+This is the idiomatic style for small, self-contained interactions (a single toggle, a dropdown, a
+dismissible banner).
 
 ## When to register with Alpine.data() instead
 
-Inline is great for small components. Reach for a registered component when a component:
+Inline suits small components. Register a component when it:
 
 - has more than a couple of methods or non-trivial logic,
 - needs `init()`/`destroy()` lifecycle (event listeners, `matchMedia`, timers),
 - is reused across several templates, or
 - would benefit from being unit-testable in isolation.
 
-Registration is always valid here; it is simply not mandatory. Register in an `alpine-components.js`
-belonging to the app that owns the component:
+Registration is always valid here, just not mandatory. Register in an `alpine-components.js` belonging
+to the app that owns the component:
 
 ```javascript
 document.addEventListener("alpine:init", () => {
@@ -70,8 +70,8 @@ document.addEventListener("alpine:init", () => {
 });
 ```
 
-Reference it by name in the template's `x-data` attribute: `<div x-data="myComponent">`. Inside such a
-template you can still use inline expressions freely alongside the component's own methods.
+Reference it by name in the template's `x-data` attribute: `<div x-data="myComponent">`. Inline
+expressions still work alongside the component's own methods.
 
 ## Patterns
 
@@ -108,7 +108,7 @@ For a simple, safely-quoted value, interpolate straight into `x-data`:
 ```
 
 For anything string-valued, per-loop-item, or user-supplied, use a `data-*` attribute and read it in
-`init()` — no quoting or escaping games inside a JS expression:
+`init()`, which avoids quoting and escaping inside a JS expression:
 
 ```html
 <div x-data="expandablePanel" data-storage-key="panel_{{ item.slug }}_{{ forloop.counter }}">
@@ -200,11 +200,11 @@ Alpine.data("responsiveComponent", () => ({
 
 ## Rules (standard build)
 
-1. **Inline is allowed** — inline expressions in `x-data`, `x-on`, `x-bind`, etc. are fine. Use them
-   for small, local interactions.
-2. **Register non-trivial components** — promote to `Alpine.data()` when logic grows, needs lifecycle
+1. **Inline is allowed.** Inline expressions in `x-data`, `x-on`, `x-bind`, etc. are fine for small,
+   local interactions.
+2. **Register non-trivial components.** Promote to `Alpine.data()` when logic grows, needs lifecycle
    hooks, or is reused (see the criteria above).
-3. **Keep the template readable** — if a directive value needs its own line to be understood, it
+3. **Keep the template readable.** If a directive value needs its own line to be understood, it
    belongs in a method.
 4. All build-agnostic rules from the main `alpine-js` skill still apply (no `$persist`, use only the
    `@alpinejs/*` plugins `_base.html` actually loads, always use `x-transition`, `x-cloak` to prevent

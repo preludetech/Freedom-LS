@@ -9,9 +9,9 @@
 
 **Read `./tailwind.input.css` and every project file it `@import`s before you style anything.** That
 set of files *is* this project's CSS: its design tokens, its base styles, and any component classes it
-defines. Nothing else is authoritative, and nothing may be assumed without it.
+defines. Nothing else is authoritative; assume nothing without it.
 
-`@import "tailwindcss"` is the library, not a project file — don't chase it. Follow the relative paths.
+`@import "tailwindcss"` is the library, not a project file; don't chase it. Follow the relative paths.
 
 (If a project has no `tailwind.input.css`, its `package.json` tailwind script names the entry file with
 the CLI's `-i` flag.)
@@ -27,13 +27,13 @@ already read, work down this list in order:
 2. Look for a **component class** in the `@layer components` blocks you just read (`.btn`, `.card`, and
    the like). These already wire up their own colour and hover handling, so prefer them over
    re-deriving that styling inline.
-3. Only then reach for raw utilities — and keep them for styling that is genuinely one-off: layout,
-   spacing, positioning, anything specific to a single page. When a utility pattern starts repeating,
-   promote it to a cotton component or a component class.
+3. Only then reach for raw utilities, and keep them for genuinely one-off styling: layout, spacing,
+   positioning, anything specific to a single page. When a utility pattern starts repeating, promote
+   it to a cotton component or a component class.
 
 ## Design Tokens — read the theme, never assume it
 
-**Every project defines its own tokens. Read them from the code before you style anything — do not
+**Every project defines its own tokens. Read them from the code before you style anything; don't
 assume a token exists because it is a common name.**
 
 The `@theme {}` blocks in the stylesheets you read above are the authoritative list of tokens. Tailwind
@@ -47,10 +47,10 @@ Rules that hold whatever the theme is named:
   nothing in the theme fits, that is a design question — ask rather than guessing a name.
 - **Never hard-code a colour**: no hex values, and no raw palette utilities (`bg-blue-600`,
   `text-slate-400`) where the theme declares a semantic token for the same job. Raw palette values
-  bypass the theme and survive a re-skin, which is exactly what you don't want.
+  bypass the theme and survive a re-skin.
 - **Respect the theme's foreground/background pairings.** If the theme declares a foreground token
-  intended for a particular background, use that declared pairing on any coloured background instead
-  of picking a text colour by eye — such pairings usually carry the project's contrast guarantees.
+  for a particular background, use that pairing on any coloured background instead of picking a text
+  colour by eye; such pairings usually carry the project's contrast guarantees.
 - **Use the theme's own state variants.** If it declares hover/focus/active variants, apply them.
   Where it doesn't, don't fake one with `hover:brightness-*` or a hard-coded hex.
 - **Prefer semantic tokens over raw palette tokens** when the theme offers both, so a re-skin only
@@ -76,9 +76,9 @@ back to a `<style>` block in the template only where there is genuinely no utili
 (`@starting-style`, `::backdrop`, a selector reaching generated descendants), or where a utility
 would land in the `utilities` layer and beat a rule that has to stay beatable.
 
-Never add a per-widget stylesheet. Splitting one component across a template and a stylesheet of
-its own means anyone overriding it has to find and replace both, and the split has no rule behind
-it that the next person can apply.
+Never add a per-widget stylesheet. Splitting one component across a template and its own stylesheet
+means anyone overriding it must find and replace both, and no rule behind the split lets the next
+person apply it consistently.
 
 ### Which layer
 
@@ -93,11 +93,11 @@ them — including a `<style>` block inside a template, which must wrap its rule
 | A reusable multi-use class (`.btn`, `.card`, `.surface`) | `@layer components { }` |
 | A new custom utility | `@utility name { }` — v4's directive; it lands in the `utilities` layer automatically |
 
-**Never write an unlayered rule.** In the CSS cascade, unlayered declarations beat every layered one,
-so a bare `h1 { font-size: 3rem }` outside a layer overrides `text-2xl` on that heading and no class in
-the markup can win. Layering it as `base` keeps utilities on top, which is the whole point. This
-applies with double force to a `<style>` block in a template: it sits later in document order than
-the linked bundle, so unlayered it would beat everything.
+**Never write an unlayered rule.** Unlayered declarations beat every layered one, so a bare
+`h1 { font-size: 3rem }` outside a layer overrides `text-2xl` on that heading and no class in the
+markup can win. Layering it as `base` keeps utilities on top. This applies with double force to a
+`<style>` block in a template: it sits later in document order than the linked bundle, so unlayered
+it would beat everything.
 
 The corollary for markup: because base styles already size and colour the elements, **don't restate
 them** — adding `text-4xl font-bold` to an `<h1>` the base layer already sizes fights the stylesheet
@@ -105,8 +105,8 @@ and drifts out of sync with it.
 
 ### Moving a hand-written rule to utilities
 
-Converting existing CSS to utilities is where silent breakage lives — an unrecognised class compiles
-to nothing at all, and a wrong-but-valid one compiles to something that never fires. Two habits:
+Converting existing CSS to utilities breaks silently: an unrecognised class compiles to nothing, and
+a wrong-but-valid one compiles to something that never fires. Two habits:
 
 - **Check the compiled bundle, not the build exit code.** The build succeeds either way. Grep the
   output for each new class you introduced; if it is absent, the utility name was wrong.
@@ -137,8 +137,8 @@ template can retune them in place.
 <!-- or, where the project defines component classes: <button class="btn btn-primary">Click</button> -->
 ```
 
-Component and variant names are the project's, not the plugin's — `<c-button variant="primary">` above
-is illustrative. Use whatever this project's component library actually defines.
+Component and variant names are the project's, not the plugin's; `<c-button variant="primary">` above
+is illustrative. Use what this project's component library defines.
 
 ## IMPORTANT
 

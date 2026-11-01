@@ -51,7 +51,7 @@ A factory module imports another app's factory at module scope only in the direc
 
 Where two peer factories need each other, use the dotted-string form instead of a class reference: `factory.SubFactory("myapp.factories.OtherFactory")`, the full import path ending in the class name. `RelatedFactory` takes the same form; see the dotted string in the `RelatedFactory` example below. factory_boy resolves the string at first use, so neither module needs the other at load time.
 
-The string form only breaks the import cycle. It doesn't change which app depends on which, and it doesn't make a factory safe to use when its target app isn't installed. That safety comes from the `INSTALLED_APPS` guard, which belongs in the test file or conftest that imports an optional app's factory, never in the factory module itself. A `factories.py` file imports freely, and the caller carries the guard. See "Collection safety for optional apps" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+The string form only breaks the import cycle. It doesn't change which app depends on which, and it doesn't make a factory safe to use when its target app isn't installed. That safety comes from the `INSTALLED_APPS` guard, which belongs in the test file or conftest that imports an optional app's factory, never in the factory module. A `factories.py` file imports freely; the caller carries the guard. See "Collection safety for optional apps" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
 Two peer feature apps that reference each other are the case a plain import can't handle:
 
@@ -76,7 +76,7 @@ class ReminderFactory(factory.django.DjangoModelFactory):
 
 Use `RelatedFactory` when a related object must be created **after** the parent has been saved — e.g. reverse-FK rows, m2m through-models, or any side object that needs the parent's PK. `SubFactory` runs before save and won't work for these cases.
 
-**Default to opt-in via traits.** A bare `RelatedFactory` runs on every call to the parent factory, so tests that just need an empty parent silently get an extra row. Tests that don't know about it can fail in confusing ways (off-by-one counts, unintended cascade behaviour). Wrap related rows in a trait so callers opt in explicitly:
+**Default to opt-in via traits.** A bare `RelatedFactory` runs on every call to the parent factory, so tests that just need an empty parent silently get an extra row and can fail in confusing ways (off-by-one counts, unintended cascade behaviour). Wrap related rows in a trait so callers opt in explicitly:
 
 ```python
 class TeamFactory(factory.django.DjangoModelFactory):
@@ -99,7 +99,7 @@ TeamFactory()
 TeamFactory(with_initial_member=True)
 ```
 
-Only put `RelatedFactory` directly on the factory (no trait) when **every** test that creates the parent genuinely needs the related row — i.e. the model is unusable without it. That's rare; reach for the trait first.
+Put `RelatedFactory` directly on the factory (no trait) only when **every** test that creates the parent needs the related row, i.e. the model is unusable without it. That's rare; reach for the trait first.
 
 ### LazyAttribute
 

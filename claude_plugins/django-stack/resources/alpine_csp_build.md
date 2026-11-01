@@ -2,9 +2,9 @@
 
 This file applies when `.claude/ds/config.md` → `## Alpine.js` → `CSP build` is **`enabled`** (also the
 default when the file, section, or key is absent). The project uses the **CSP-compatible build** of
-Alpine.js (`@alpinejs/csp`), which does NOT support inline JavaScript expressions in directives — all
-Alpine components must be registered via `Alpine.data()` in a separate JS file. (If CSP is `disabled`
-instead, ignore this file and follow `alpine_no_csp.md`.)
+Alpine.js (`@alpinejs/csp`), which does NOT support inline JavaScript expressions in directives; all
+Alpine components must be registered via `Alpine.data()` in a separate JS file. (If CSP is `disabled`,
+ignore this file and follow `alpine_no_csp.md`.)
 
 This file is self-contained: everything build-dependent is here. The `alpine-js` skill covers only the
 markup that is identical under both builds (transitions, `x-cloak`, `x-collapse`, icon toggling).
@@ -25,7 +25,7 @@ markup that is identical under both builds (transitions, `x-cloak`, `x-collapse`
 
 ## No inline expressions
 
-The `@alpinejs/csp` build forbids inline JavaScript in Alpine directives. This means:
+The `@alpinejs/csp` build forbids inline JavaScript in Alpine directives:
 
 **NOT allowed** (will silently fail):
 ```html
@@ -51,9 +51,9 @@ that component:
 
 ## Registering components with Alpine.data()
 
-Every `x-data` value MUST correspond to an `Alpine.data()` registration — an unregistered component
-name silently fails. Register in the `alpine-components.js` of the app that owns the component (one
-file per app that needs interactivity):
+Every `x-data` value MUST correspond to an `Alpine.data()` registration; an unregistered name fails
+silently. Register in the `alpine-components.js` of the app that owns the component (one file per app
+that needs interactivity):
 
 ```javascript
 document.addEventListener("alpine:init", () => {
@@ -105,9 +105,9 @@ Reference it by name in the template's `x-data` attribute: `<div x-data="myCompo
 | `x-bind:class` | `:class="open ? 'w-64' : ''"` | Inline ternary |
 | `x-init` | `x-init="setTimeout(..."` | Inline function call |
 
-**Note:** `x-show` with a simple property reference (no expression) works in the CSP build. The CSP
-restriction applies to expressions like ternaries, assignments, and function calls in directive
-values — simple property references and method names are allowed.
+**Note:** the CSP restriction applies to expressions (ternaries, assignments, function calls) in
+directive values. Simple property references and method names, including `x-show="open"`, are
+allowed.
 
 ## Patterns
 
@@ -202,7 +202,7 @@ Alpine.data("sidebar", () => ({
 
 ### Closing on outside click and escape
 
-The modifiers are fine — only the values must be method names:
+The modifiers are fine; only the values must be method names:
 
 ```html
 <div x-data="dropdownMenu">
@@ -217,8 +217,7 @@ The modifiers are fine — only the values must be method names:
 
 ### Auto-dismiss (toast messages)
 
-`x-init="setTimeout(...)"` is an inline function call and will silently fail. Handle timing in
-`init()` instead:
+`x-init="setTimeout(...)"` is an inline function call and fails silently. Handle timing in `init()`:
 
 ```javascript
 Alpine.data("message", () => ({
@@ -261,11 +260,11 @@ Alpine.data("responsiveComponent", () => ({
 
 ## CSP-specific rules
 
-1. **No inline expressions** — all logic goes in `Alpine.data()` registrations in
+1. **No inline expressions.** All logic goes in `Alpine.data()` registrations in
    `alpine-components.js`, never inline in templates.
-2. **Register all components** — every `x-data` value must correspond to an `Alpine.data()`
-   registration, or the component silently fails.
-3. **Registrations load first** — every `alpine-components.js` `<script>` comes before the Alpine CSP
+2. **Register all components.** Every `x-data` value must correspond to an `Alpine.data()`
+   registration, or the component fails silently.
+3. **Registrations load first.** Every `alpine-components.js` `<script>` comes before the Alpine CSP
    script in `_base.html`.
 4. All build-agnostic rules from the main `alpine-js` skill still apply (no `$persist`, use only the
    `@alpinejs/*` plugins `_base.html` actually loads, always use `x-transition`, `x-cloak` to prevent

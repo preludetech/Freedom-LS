@@ -3,12 +3,12 @@
 This file applies when `.claude/ds/config.md` → `## Admin` → `Admin theme` is **`unfold`** (and
 django-unfold is installed). Base classes come from `unfold.admin` instead of `django.contrib.admin`.
 
-If the project uses plain Django admin instead, ignore this file and read `admin_standard.md`. Object
-permissions are covered separately in `admin_guardian.md` — only when guardian is enabled.
+If the project uses plain Django admin, ignore this file and read `admin_standard.md`. Object
+permissions are in `admin_guardian.md`, only when guardian is enabled.
 
 ## Base classes
 
-Register with Django's decorator, but inherit from Unfold's classes — that is what picks up the theme.
+Register with Django's decorator, but inherit from Unfold's classes; that is what picks up the theme.
 
 ```python
 from django.contrib import admin
@@ -23,8 +23,8 @@ class ChildInline(TabularInline):  # Unfold's inline, not admin.TabularInline
     extra = 0
 ```
 
-**An admin class that inherits from `admin.ModelAdmin` still works — it just renders unstyled**, which
-is the failure mode to watch for. Everything else (options, methods, registration) is identical to
+**An admin class that inherits from `admin.ModelAdmin` still works but renders unstyled**, which is
+the failure mode to watch for. Everything else (options, methods, registration) is identical to
 standard Django admin.
 
 ## Common Patterns

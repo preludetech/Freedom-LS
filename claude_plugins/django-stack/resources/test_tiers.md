@@ -15,12 +15,11 @@ runs pytest names its tier; the flags live here and nowhere else.
   The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files,
   explicit paths, `--range <rev>..<rev>` (repeatable) for the files a git range changed, and
   `--tests-changed-in <rev>..<rev>` for test files that join a targeted run without ever raising
-  its tier. An untracked file no rule knows is `none`; a tracked one is `full`. Read the `tier:` line: it is the tier that applies, and `none` means there is
-  nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the
+  its tier. An untracked file no rule knows is `none`; a tracked one is `full`. Read the `tier:` line:
+  it is the tier that applies, and `none` means there is nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the
   selection's reasons; quote them when reporting. The generic `none` and escalation lists are the
   two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own
-  are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them, so nobody applies them
-  by hand. Done when every `why:` line is accounted for and the printed command exits zero.
+  are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them; never apply them by hand. Done when every `why:` line is accounted for and the printed command exits zero.
 - **full.** The whole suite, in parallel:
 
   ```
@@ -47,9 +46,9 @@ The TDD RED and GREEN runs of one test:
 uv run pytest <file>::<test> -x --no-cov
 ```
 
-`--no-cov` makes the exit code mean pass or fail. In a project whose `addopts` turns coverage on,
-any run smaller than the whole suite fails the coverage threshold, whatever the test did. The same
-flag applies to `pytest --co` and to any other partial run.
+`--no-cov` makes the exit code mean pass or fail: in a project whose `addopts` turns coverage on,
+any run smaller than the whole suite fails the coverage threshold whatever the test did. The same
+flag applies to `pytest --co` and any other partial run.
 
 ## Reporting
 

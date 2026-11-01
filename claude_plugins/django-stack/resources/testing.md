@@ -18,17 +18,17 @@ Use factory_boy factories for all test data creation. Never use `.objects.create
 
 ## Test organisation and hygiene
 
-Two rules govern how tests are organised: mirroring decides where a test file lives, and dependency direction decides which apps it may import from. The conftest, fixture and factory conventions below follow from those two rules.
+Mirroring decides where a test file lives; dependency direction decides which apps it may import from. The conftest, fixture and factory conventions below follow from those two rules.
 
 ### Mirroring
 
-A test file mirrors its production module: `<app>/<module>.py` becomes `<app>/tests/test_<module>.py`. That is a flat `tests/` package inside the app, one test file per production module, never a top-level mirrored tree and never a colocated `foo_test.py`.
+A test file mirrors its production module: `<app>/<module>.py` becomes `<app>/tests/test_<module>.py`. That is a flat `tests/` package inside the app, one test file per production module; never a top-level mirrored tree or a colocated `foo_test.py`.
 
 A subpackage is mirrored as a test subdirectory: `<app>/templatetags/content_tags.py` becomes `<app>/tests/templatetags/test_content_tags.py`, and `<app>/management/commands/foo.py` becomes `<app>/tests/management/commands/test_foo.py`.
 
 A browser test gets one extra hop, `<app>/tests/playwright/test_<thing>.py`, the same directory the "Markers" section names for browser tests.
 
-A helper or URLconf module that only an app's own tests use lives alongside those tests, for example `<app>/tests/root_urls.py` or `<app>/tests/builders.py`. It never lives in `conftest.py`; see "`conftest.py` vs. plain module" below.
+A helper or URLconf module that only an app's own tests use lives alongside those tests (`<app>/tests/root_urls.py`, `<app>/tests/builders.py`), never in `conftest.py`; see "`conftest.py` vs. plain module" below.
 
 A project can enforce this rule with the `[tool.test_organisation]` table and `${CLAUDE_PLUGIN_ROOT}/scripts/check_test_mirroring.py`.
 
@@ -38,9 +38,7 @@ A project can enforce this rule with the `[tool.test_organisation]` table and `$
 
 ### Cross-cutting tests
 
-Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror, and that's fine.
-
-Group them in a clearly named test subpackage, such as `tests/invariants/` or `tests/migrations/`, so they read as deliberate rather than as unit tests that lost their module.
+Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror. Group them in a clearly named test subpackage, such as `tests/invariants/` or `tests/migrations/`, so they read as deliberate rather than as unit tests that lost their module.
 
 ### Dependency direction
 
@@ -48,11 +46,11 @@ An app's tests import only apps the app depends on at runtime. A test that spans
 
 The project's app dependency map is the source of truth for what an app depends on, and for where the rule is violated today: the `/ds:app_map` command generates it into `docs/app_structure.md`, with a "Runtime deps" column and a "Test-only deps" column per app. A project can enforce the rule with the `[tool.test_organisation]` table and the import-linter contracts `generate_app_map.py` writes from that same table.
 
-Reading Python imports alone misses two dependencies that are just as real. With `[tool.test_organisation]` configured, the generator also sees a model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, and any `get_user_model()` call: both are runtime dependencies on the app that owns the target, and count as runtime edges in the contracts. A settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend, can't be read off an import or a string label, so it is a declared edge instead: a hand-written, reasoned entry in the file the table's `declared_edges` key points at. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
+Python imports alone miss two real dependencies. With `[tool.test_organisation]` configured, the generator also sees a model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, and any `get_user_model()` call. Both are runtime dependencies on the app that owns the target and count as runtime edges in the contracts. A settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend, can't be read off an import or a string label, so it is a declared edge instead: a hand-written, reasoned entry in the file the table's `declared_edges` key points at. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
 
 ### Deciding an allowed exception
 
-Whether an import that crosses the dependency direction is allowed is a judgement made once per case, not a lookup against a fixed list. Ask whether the "wrong" import is intrinsic to what the test checks, meaning the thing under test cannot exist without a real row from the other app, or whether it is standing in for something a local stub or fixture could provide just as well.
+Whether an import that crosses the dependency direction is allowed is a per-case judgement, not a lookup against a fixed list. Ask whether the "wrong" import is intrinsic to what the test checks (the thing under test cannot exist without a real row from the other app) or stands in for something a local stub or fixture could provide just as well.
 
 An intrinsic case gets a one-line comment at the import saying why, and no code change. A stand-in gets replaced; see "Stub-model technique" below.
 
@@ -62,7 +60,7 @@ When an app's code checks permissions through the authorisation layer's standard
 
 ### `conftest.py` vs. plain module
 
-A `conftest.py` holds only `@pytest.fixture` functions, plus the private, underscore-prefixed helpers those fixtures call. A plain function that test files import by hand belongs in a plain module beside the app's tests, such as `helpers.py` or `builders.py`, never in `conftest.py`. pytest does not discover a plain conftest function the way it discovers a fixture, so a test still has to import it explicitly, which defeats the point of putting it there. pytest's own maintainers discourage importing from `conftest.py` for the same reason (pytest issue #13148).
+A `conftest.py` holds only `@pytest.fixture` functions, plus the private, underscore-prefixed helpers those fixtures call. A plain function that test files import by hand belongs in a plain module beside the app's tests, such as `helpers.py` or `builders.py`, never in `conftest.py`. pytest does not discover a plain conftest function the way it discovers a fixture, so a test still has to import it explicitly, which defeats the point of putting it there. pytest's maintainers discourage importing from `conftest.py` for the same reason (pytest issue #13148).
 
 A plain helper may stay in `conftest.py` only when more than one test file in the app needs it, and a comment at its definition says why.
 
@@ -99,7 +97,7 @@ def make_discounted_widget(price: int, discount_percent: int) -> Widget:
 
 ### Fixture placement
 
-Put a fixture in the shallowest directory whose `conftest.py` reaches every consumer. The mechanism is pytest's own: conftest files are collected by walking up from the test being collected, and the nearest definition wins over one defined higher up.
+Put a fixture in the shallowest directory whose `conftest.py` reaches every consumer. pytest collects conftest files by walking up from the test, and the nearest definition wins.
 
 The project root `conftest.py` holds project-wide fixtures only, either autouse or opted into from many apps. An app's `tests/conftest.py` holds fixtures used by more than one test file in that app. A fixture used by only one test file stays in that file.
 
@@ -111,7 +109,7 @@ The app's `conftest.py` imports the model and creates its table with `connection
 
 A stub never gets a migration, so any check that diffs models against migration files must skip models whose module lives under a `tests` package. Without that skip, the check reports the stubs as drift the moment the app that owns them gains a real migration.
 
-Import the stub module under one module path only. Use relative imports (`from .stub_models import StubModel`) in both the conftest and the test files. If the same file gets imported under two module names, Django registers the model twice and raises "Conflicting 'stubmodel' models". Code that Django loads under a different path, such as a test-only URLconf, looks the model up with `apps.get_model(app_label, model_name)` at call time instead of importing it.
+Import the stub module under one module path only: relative imports (`from .stub_models import StubModel`) in both the conftest and the test files. If the same file is imported under two module names, Django registers the model twice and raises "Conflicting 'stubmodel' models". Code that Django loads under a different path, such as a test-only URLconf, looks the model up with `apps.get_model(app_label, model_name)` at call time instead of importing it.
 
 This is the fix for a foundational app's tests reaching for a real downstream model instead of a stub; see "Deciding an allowed exception" above.
 
@@ -165,8 +163,8 @@ def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> I
 ```
 
 Unblock only around the schema work. A `yield` inside `django_db_blocker.unblock()` leaves the
-database unblocked for every later test in the run, so a test without the `django_db` marker
-writes outside any transaction and its rows leak into unrelated tests until the next flush.
+database unblocked for every later test, so a test without the `django_db` marker writes outside
+any transaction and its rows leak into unrelated tests until the next flush.
 
 ### Fixture scope and idempotent reset
 
@@ -192,7 +190,7 @@ def _stub_permissions(db: None) -> None:
 
 ### The thin-wrapper rule
 
-Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories. A fixture is thin when its entire body is one factory call with fixed keyword arguments; delete it and call the factory directly in the test.
+Don't create fixtures that are thin wrappers around factories; use the factories. A fixture is thin when its entire body is one factory call with fixed keyword arguments; delete it and call the factory directly in the test.
 
 A fixture that composes several factory calls, adds relationship logic no single factory expresses, or builds on another fixture is not thin. That's the correct use of a fixture.
 
@@ -247,7 +245,7 @@ For production-side HTMX conventions (header semantics, swap targets, validation
 
 ### Simulating HTMX requests
 
-Pass HTMX request headers via Django test client kwargs to exercise the `HX-Request` branch of a view. The most common kwarg is `HTTP_HX_REQUEST="true"`; related headers (`HTTP_HX_TARGET`, `HTTP_HX_TRIGGER`, `HTTP_HX_CURRENT_URL`) are added when the view inspects them.
+Pass HTMX request headers as Django test client kwargs to exercise a view's `HX-Request` branch. The usual kwarg is `HTTP_HX_REQUEST="true"`; add `HTTP_HX_TARGET`, `HTTP_HX_TRIGGER` or `HTTP_HX_CURRENT_URL` when the view inspects them.
 
 ```python
 @pytest.mark.django_db
@@ -276,7 +274,7 @@ def test_list_returns_full_page_for_normal_request(client):
 
 ### Asserting on `HX-Trigger` response headers
 
-Views can emit client-side events by setting `HX-Trigger`. Tests should assert both that the header is present and that the JSON-shaped event payload matches.
+Views emit client-side events by setting `HX-Trigger`. Assert both that the header is present and that the JSON event payload matches.
 
 ```python
 import json
@@ -341,11 +339,11 @@ def test_action_swaps_counter_oob(client):
     assert 'id="like-count"' in body
 ```
 
-At the unit-test level the response is raw bytes, so OOB assertions are necessarily string-based — they confirm the markup is *emitted*, not that the browser actually swapped it. Match the literal `hx-swap-oob` value the view sets (`"true"`, `"innerHTML"`, `"outerHTML"`, etc.). To check that the swap actually reaches the DOM, use a Playwright test (see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`).
+At the unit-test level the response is raw bytes, so OOB assertions are string-based: they confirm the markup is *emitted*, not that the browser swapped it. Match the literal `hx-swap-oob` value the view sets (`"true"`, `"innerHTML"`, `"outerHTML"`, etc.). To check that the swap actually reaches the DOM, use a Playwright test (see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`).
 
 ### Auth-bypass anti-pattern
 
-Manually constructing a request via `RequestFactory`, attaching `user` directly, and calling the view function looks convenient but skips middleware and the real permission decorators (`@login_required`, custom role checks). Tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
+Building a request with `RequestFactory`, attaching `user` directly and calling the view function skips middleware and the real permission decorators (`@login_required`, custom role checks), so tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
 
 ```python
 from django.test import RequestFactory
@@ -371,9 +369,9 @@ For production-side HTMX conventions see the `ds:htmx` skill.
 
 ## Time-shaped code
 
-Reach for `time-machine` whenever production behaviour depends on the current time: deadline checks, scheduled-job windows, token-expiry logic, "is open / closed" status, anywhere `timezone.now()` or `datetime.now()` drives a branch.
+Use `time-machine` whenever production behaviour depends on the current time: deadline checks, scheduled-job windows, token expiry, "is open / closed" status, anywhere `timezone.now()` or `datetime.now()` drives a branch.
 
-The pattern is to `travel` time around the **act** phase and assert on the resulting state. Do **not** patch out the comparison itself or freeze time around the production check in a way that hides the underlying logic — the test must exercise the real `now()` call inside the production code.
+`travel` time around the **act** phase and assert on the resulting state. Do **not** patch out the comparison or freeze time in a way that hides the logic; the test must exercise the real `now()` call inside the production code.
 
 ```python
 import time_machine
@@ -396,7 +394,7 @@ def test_subscription_not_expired_before_end_date():
 
 ## factory_boy patterns matrix
 
-Decision guidance for which factory_boy primitive to reach for. Deep examples live in `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
+Which factory_boy primitive to use. Deep examples are in `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 
 | Need | Reach for | Cross-link |
 |---|---|---|
@@ -424,7 +422,7 @@ If a test fails only when run in isolation, or only when run as part of the full
 
 ### `transaction=True` is expensive — justify it
 
-The default `@pytest.mark.django_db` runs each test inside a transaction that is rolled back at teardown. `@pytest.mark.django_db(transaction=True)` instead runs each test in its own transaction and **truncates tables** between tests, which is dramatically slower *and* exposes signal handlers and `transaction.on_commit(...)` callbacks that the rollback path was hiding.
+The default `@pytest.mark.django_db` runs each test inside a transaction that is rolled back at teardown. `@pytest.mark.django_db(transaction=True)` instead **truncates tables** between tests, which is far slower *and* exposes signal handlers and `transaction.on_commit(...)` callbacks that the rollback path hid.
 
 Use `transaction=True` **only** when the test genuinely needs:
 - `transaction.on_commit(...)` callbacks to fire (e.g. webhook event delivery).
@@ -438,7 +436,7 @@ When `transaction=True` is used, **add a one-line comment** on the marker explai
 @pytest.mark.django_db(transaction=True)
 ```
 
-If you are tempted to add `transaction=True` for any other reason (it makes a flaky test pass, you don't know why the rollback path is failing), do not — it is masking a real bug in the test or the production code.
+Never add `transaction=True` for any other reason (it makes a flaky test pass, you don't know why the rollback path is failing); it masks a real bug in the test or the production code.
 
 ## Markers
 
@@ -452,7 +450,7 @@ When a test genuinely depends on repo-only, non-distributed fixture data (someth
 
 ## Collection safety for optional apps
 
-A module that imports an optional app's factory or model at **module scope** (e.g. `from myproject.optional_feature.factories import WidgetFactory` at the top of a test file) raises Django's model-registry `RuntimeError: Model class ... isn't in an application in INSTALLED_APPS` at **collection** time when a downstream has legitimately not installed that app. This aborts the *entire* pytest session (`Interrupted: N errors during collection`, exit code 2) — not just the one module.
+A module that imports an optional app's factory or model at **module scope** (e.g. `from myproject.optional_feature.factories import WidgetFactory` at the top of a test file) raises Django's model-registry `RuntimeError: Model class ... isn't in an application in INSTALLED_APPS` at **collection** time when a downstream has legitimately not installed that app. This aborts the *entire* pytest session (`Interrupted: N errors during collection`, exit code 2), not just the one module.
 
 ### The guard (braces)
 
@@ -474,8 +472,8 @@ from myproject.optional_feature.factories import WidgetFactory  # now safe
 
 **Why not `pytest.importorskip` or `@pytest.mark.skipif`:**
 
-- `pytest.importorskip("myproject.optional_feature")` doesn't help — the *package* is importable; it's the **model class definition** that raises `RuntimeError` because the model isn't registered under `INSTALLED_APPS`. `importorskip` only catches `ImportError` unless you pass an explicit `exc_type`.
-- `@pytest.mark.skipif(...)` doesn't help either — the module-scope import statement executes (and raises) while pytest is still *collecting* the module, before the decorator is ever reached.
+- `pytest.importorskip("myproject.optional_feature")` doesn't help: the *package* is importable; the **model class definition** raises `RuntimeError` because the model isn't registered under `INSTALLED_APPS`. `importorskip` only catches `ImportError` unless you pass an explicit `exc_type`.
+- `@pytest.mark.skipif(...)` doesn't help either: the module-scope import executes (and raises) while pytest is still *collecting* the module, before the decorator is reached.
 
 ### The colocated `collect_ignore_glob` conftest (belt)
 
@@ -490,25 +488,25 @@ if not apps.is_installed("myproject.optional_feature"):
     collect_ignore_glob = ["test_*.py"]
 ```
 
-This is defense-in-depth: the conftest never imports the file at all (belt); the module-level guard skips cleanly even if something did import it (braces). Use the conftest for files that live entirely inside the optional app's own `tests/` dir; a test module that lives in a *different* app's `tests/` dir (a cross-app integration test) can't use a directory-level ignore without also hiding its sibling tests, so it relies on the module-top guard alone.
+This is defense-in-depth: the conftest never imports the file (belt); the module-level guard skips cleanly even if something did import it (braces). Use the conftest for files inside the optional app's own `tests/` dir. A test module in a *different* app's `tests/` dir (a cross-app integration test) can't use a directory-level ignore without also hiding its sibling tests, so it relies on the module-top guard alone.
 
 ## Writing High-Value Tests
 
-Every test must justify its existence. A test has value when it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that merely exercise code without asserting anything interesting are noise.
+Every test must justify its existence: it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that exercise code without asserting anything interesting are noise.
 
 ### What to test
 
-- **Business logic and domain rules** — the core "why" of the feature. If a method calculates scores, enforces permissions, or applies rules, test those rules thoroughly.
+- **Business logic and domain rules.** If a method calculates scores, enforces permissions, or applies rules, test those rules thoroughly.
 - **Edge cases that have bitten you** — empty collections, None values, boundary conditions, off-by-one errors.
-- **Integration points** — where two systems meet (view + model, serializer + database, HTMX partial + context). These are where bugs hide.
+- **Integration points** where two systems meet (view + model, serializer + database, HTMX partial + context). Bugs hide here.
 - **Error paths that matter** — invalid user input, missing objects, permission denied. Only test error handling that could realistically occur.
 
 ### What NOT to test
 
 - **Django/framework internals** — don't test that `CharField` stores strings, that `ForeignKey` creates a column, or that `reverse()` resolves a URL you just defined. Trust the framework.
-- **Trivial CRUD with no logic** — a model with only auto-generated fields and no custom methods rarely needs its own test. If `MyModelFactory()` succeeds, you already know the model works.
+- **Trivial CRUD with no logic.** A model with only auto-generated fields and no custom methods rarely needs its own test; if `MyModelFactory()` succeeds, the model works.
 - **Implementation details** — don't assert the exact SQL query, the number of times a method was called, or internal state that could change during refactoring. Test observable behaviour, not how it's achieved.
-- **Duplicate coverage** — if one test already proves a code path works, don't write another that proves the same thing with slightly different data unless the variation exercises a genuinely different branch.
+- **Duplicate coverage.** Don't write a second test proving the same code path with slightly different data unless the variation exercises a different branch.
 - **The absence of arbitrary things** — `assert not hasattr(obj, "x")` or `assert "x" not in context` proves nothing when `x` is a name the code never produces; it passes for any name you invent (`assert not hasattr(obj, "squirrels")`). If a refactor removed something, assert the replacement behaviour, not the disappearance of the old internal.
 
 ### Qualities of a good test
@@ -521,7 +519,7 @@ Every test must justify its existence. A test has value when it catches real bug
 
 ### Tautology guidance — worked example
 
-**Expected values must be hard-coded oracles, independent of the production code.** This rule does not say "do not test derivations" — it says the expected value must come from your understanding of the spec, written down by hand, not from re-running the production formula in the test.
+**Expected values must be hard-coded oracles, independent of the production code.** Derivations can be tested, but the expected value must come from your understanding of the spec, written down by hand, not from re-running the production formula in the test.
 
 ```python
 # BAD — re-runs the production formula; passes by coincidence
@@ -535,13 +533,13 @@ def test_three_of_four_complete_is_seventy_five_percent():
     assert calculate_progress_percent(completed=3, total=4) == 75
 ```
 
-Rule of thumb: **if you delete the production code and your test still computes the expected value correctly, your test is a tautology.** A correct test cannot tell you the right answer on its own — it must compare the production output against a value you wrote down by hand.
+Rule of thumb: **if you delete the production code and your test still computes the expected value correctly, your test is a tautology.** A correct test compares the production output against a value you wrote down by hand.
 
 ### Decoupling tests from ambient config
 
 Never test that a hardcoded configuration value is what it is meant to be. Eg never say `assert config.hardcoded_value == [whatever]` or `assert "something" in config.hardcoded_value`.
 
-This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg reading the shipped `settings.CURRENCIES` and asserting `format_price(100, settings.CURRENCIES["default"]) == "$100.00"`. Configuration exists precisely so it can change; a test like that breaks the day someone edits a setting, even though the code is still correct, and it duplicates the behaviour your controlled-input tests already cover. Test the function with an explicit input instead (`assert format_price(100, {"symbol": "$", "decimals": 2}) == "$100.00"`). If you genuinely need to know that the *real* shipped config still resolves, assert that via a system check / smoke test that the resolution succeeds (no exception) — not by pinning the exact values.
+This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg reading the shipped `settings.CURRENCIES` and asserting `format_price(100, settings.CURRENCIES["default"]) == "$100.00"`. Configuration exists so it can change; such a test breaks the day someone edits a setting though the code is still correct, and it duplicates what your controlled-input tests cover. Test the function with an explicit input instead (`assert format_price(100, {"symbol": "$", "decimals": 2}) == "$100.00"`). To check that the *real* shipped config still resolves, use a system check or smoke test that the resolution succeeds (no exception), not pinned values.
 
 Four techniques for decoupling a test from ambient config:
 

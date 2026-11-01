@@ -3,8 +3,8 @@
 This file applies when `.claude/ds/config.md` → `## Admin` → `Admin theme` is **`standard`** (also the
 default when the file, section, or key is absent). Base classes come from `django.contrib.admin`.
 
-If the project instead sets `Admin theme: unfold`, ignore this file and read `admin_unfold.md`. Object
-permissions are covered separately in `admin_guardian.md` — only when guardian is enabled.
+If the project sets `Admin theme: unfold`, ignore this file and read `admin_unfold.md`. Object
+permissions are in `admin_guardian.md`, only when guardian is enabled.
 
 ## Base classes
 
