@@ -3,12 +3,12 @@ description: Generate or refresh docs/app_structure.md — a mermaid diagram of 
 allowed-tools: Read, Bash
 ---
 
-This command regenerates `docs/app_structure.md`, the authoritative picture of inter-app dependencies in this project. The file serves as both documentation for human readers and a reference for reviewing whether an implementation plan introduces new cross-app dependencies.
+This command regenerates `docs/app_structure.md`, the authoritative picture of inter-app dependencies. It documents the project for humans and is the reference for whether an implementation plan introduces new cross-app dependencies.
 
 Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
 when another command runs you as a hook. Without `mode: hook` you are standalone.
 
-The diagram is generated deterministically from `ast` — it reflects what the code actually imports, not what we wish it imported. If the output surprises you, the code is what's wrong.
+The diagram is generated deterministically from `ast`: it shows what the code imports, not what we wish it imported. If the output surprises you, the code is wrong.
 
 ## Step 1: Run the generator
 
@@ -26,16 +26,16 @@ The script:
 - With `[tool.test_organisation]` configured in `pyproject.toml`, also detects runtime edges that no import shows: a model relation declared by a string label, the user model, and every edge listed in `declared_edges.toml`.
 - Writes the result to `docs/app_structure.md` (mermaid + dependency table + legend).
 - With the same table configured, also writes the import-linter contracts file that forbids each app's tests from importing an app outside its runtime deps.
-- `--check` writes nothing. It exits 1 and names the stale file(s) when `docs/app_structure.md` or the contracts file would change.
+- `--check` writes nothing. It exits 1 and names the stale files when `docs/app_structure.md` or the contracts file would change.
 - If the file already existed, prints a short diff of added/removed edges to stdout.
 
-If the script fails (e.g. no `apps.py` files found), tell the user what happened and stop.
+If the script fails (for example, no `apps.py` files found), tell the user and stop.
 
 ## Step 2: Surface the diff to the user
 
 Read the script's stdout and report:
 
-- If this was the initial generation, say so and mention the output path.
+- On initial generation, say so and give the output path.
 - If edges changed, list the added and removed edges exactly as printed.
 - If nothing changed, say so in one line.
 

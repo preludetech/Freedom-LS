@@ -3,9 +3,9 @@ description: Rebase the current branch onto main, resolve conflicts, verify, and
 allowed-tools: Bash, Read, Edit, Grep, Glob
 ---
 
-Rebase the current branch onto `main`, resolve any conflicts, verify the result, and push. This
-command runs to completion without asking for confirmation along the way; it only stops to report
-`status: ok`, `status: failed`, or `status: blocked`.
+Rebase the current branch onto `main`, resolve conflicts, verify the result, and push. The command
+runs to completion without asking for confirmation; it stops only to report `status: ok`,
+`status: failed`, or `status: blocked`.
 
 Input from the caller: `<tier>`, `targeted` or `full`. Run by hand or without a value, it is
 `targeted`.
@@ -37,11 +37,10 @@ git add -A
 uv run git commit -m "<branch>: wip before rebase onto main"
 ```
 
-A commit, rather than a stash, means the lost-change check in Step 7 covers this work the same way
-it covers every other commit on the branch. This wip commit is not meant to be squashed away later;
-it rides through to the pull request as-is.
+A commit, not a stash, so the lost-change check in Step 7 covers this work like every other commit
+on the branch. Do not squash the wip commit later; it rides through to the pull request as-is.
 
-If a hook rejects the commit, work through it rather than stopping:
+If a hook rejects the commit, work through it:
 
 - A formatter rewrote files (for example `ruff-format`, trailing whitespace, end-of-file fixes) →
   re-stage those files and retry.
@@ -88,8 +87,8 @@ cat "$common"/MERGE_HEAD "$common"/worktrees/*/MERGE_HEAD 2>/dev/null
 
 If any printed sha equals `git rev-parse HEAD`, stop with `status: blocked · reason: a worktree
 has a merge of this branch in progress; finish or abort it there first`. Rewriting the branch now
-would orphan that merge: its MERGE_HEAD would point at a commit no branch holds, and whoever
-started it would be left with a conflicted tree and nothing to finish it against.
+would orphan that merge: its MERGE_HEAD would point at a commit no branch holds, leaving whoever
+started it with a conflicted tree and nothing to finish it against.
 
 Otherwise, record the branch's current tip before rewriting it:
 
@@ -108,13 +107,13 @@ git rebase origin/main
 If the rebase stops on a conflict:
 
 1. Run `git diff --name-only --diff-filter=U` to list the conflicted files.
-2. Read each one and resolve it using the surrounding code, keeping both sides' intent where
-   possible and preferring the branch's own logic where the change was clearly intentional.
+2. Read each one and resolve it from the surrounding code, keeping both sides' intent where
+   possible and the branch's own logic where its change was clearly intentional.
 3. Stage the resolved file with `git add <file>`.
 4. Continue with `GIT_EDITOR=true git rebase --continue`.
 5. Repeat until the rebase completes.
 
-A few rules on top of that loop:
+Rules on top of that loop:
 
 - During a rebase, `--ours` means `origin/main`'s side and `--theirs` means the branch's own
   commit. That is the reverse of what those flags mean in a normal merge. A wholesale

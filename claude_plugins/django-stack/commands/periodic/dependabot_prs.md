@@ -2,7 +2,7 @@ Review all open Dependabot PRs and produce an actionable report.
 
 ## Step 1: Fetch open Dependabot PRs
 
-Run this command to list all open PRs authored by Dependabot:
+List all open PRs authored by Dependabot:
 
 ```
 gh pr list --author "app/dependabot" --state open --json number,title,url,createdAt,labels,headRefName,body --limit 100
@@ -12,11 +12,11 @@ If there are no open Dependabot PRs, tell the user and stop.
 
 ## Step 2: Inspect each PR
 
-For each PR, gather the following information:
+For each PR, gather:
 
 1. **What package is being updated?** Extract the package name and version change (from -> to) from the title and body.
 2. **Is this a major, minor, or patch bump?** Determine from the version numbers.
-3. **What does the changelog say?** Dependabot includes a changelog summary in the PR body — read it.
+3. **What does the changelog say?** Read the changelog summary Dependabot puts in the PR body.
 4. **Are CI checks passing?** Run:
    ```
    gh pr checks <PR_NUMBER>
@@ -25,12 +25,12 @@ For each PR, gather the following information:
    ```
    gh pr view <PR_NUMBER> --json mergeable,mergeStateStatus
    ```
-6. **Is this a dev-only dependency or a production dependency?** Check the PR body and the package name to determine if this is a development/CI tool (e.g. linters, test frameworks, GitHub Actions, type stubs) vs a runtime dependency.
+6. **Is this a dev-only dependency or a production dependency?** Check the PR body and package name: a development/CI tool (e.g. linters, test frameworks, GitHub Actions, type stubs) or a runtime dependency.
 7. **Are there any breaking changes mentioned?** Look for "BREAKING" or "breaking change" in the changelog/release notes in the PR body.
 
 ## Step 3: Assess each PR
 
-Categorise each PR into one of the following:
+Put each PR in one category:
 
 ### Safe to merge
 - CI is green
@@ -54,7 +54,7 @@ Categorise each PR into one of the following:
 
 ## Step 4: Produce the report
 
-Output a structured report in this format:
+Output the report in this format:
 
 ```
 ## Dependabot PR Review Report
@@ -83,11 +83,11 @@ Output a structured report in this format:
 | #101 | package-name | CI failing: test_foo assertion error |
 ```
 
-After the table, add a **Recommended actions** section with numbered steps the user should take, prioritised by risk (close superseded PRs first, then merge safe ones, then address failures, then review risky ones).
+After the tables, add a **Recommended actions** section with numbered steps for the user, prioritised by risk (close superseded PRs first, then merge safe ones, then address failures, then review risky ones).
 
 ## Step 5: Offer to take action
 
-Ask the user if they would like you to:
+Ask the user whether to:
 
 1. **Merge** any of the "Safe to merge" PRs (use `gh pr merge <number> --squash`)
 2. **Close** any of the "Should be closed" PRs (use `gh pr close <number>`)

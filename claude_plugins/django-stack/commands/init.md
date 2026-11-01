@@ -5,52 +5,49 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 # Initialize the django-stack (ds) Plugin
 
-Set up the `ds` Claude Code plugin for this project. `ds` is a portable Django-stack plugin — it
-carries zero product-specific knowledge and depends on no other plugin. This command wires `ds` into
-an existing project and creates the generic launcher/hook/gitignore artifacts a project needs to load
-Claude Code plugins at all — but only when they are missing.
+Set up the `ds` Claude Code plugin for this project. `ds` is a portable Django-stack plugin with
+no product-specific knowledge and no dependency on another plugin. This command wires `ds` into an
+existing project and creates the generic launcher, hook and gitignore artifacts a project needs to
+load Claude Code plugins at all, but only when they are missing.
 
 ## Two rules that override every step below
 
 **Nothing is written before Step 0 finishes.** Step 0 performs every check that can abort this
-command. If Step 0 returns STOP, print the reason and the fix and end — the project is byte-for-byte
-untouched, so re-running after the fix is always safe and always starts from a clean state. No step
-after Step 0 may abort: from Step 1 onward, a problem is *reported as an outstanding action*, never
-raised as a bail-out.
+command. If Step 0 returns STOP, print the reason and the fix and end. The project is byte-for-byte
+untouched, so re-running after the fix is safe. No step after Step 0 may abort: from Step 1 onward, a
+problem is *reported as an outstanding action*, never raised as a bail-out.
 
 **Nothing is force-deleted.** No step may pass `-f` to `git rm`, `-f`/`-r` to `rm`, or `--force` to
-any command. If a deletion is refused — by git, by the filesystem, or by a guard in this file — the
-file stays where it is and the refusal is reported. A file this command cannot prove is disposable is
-not disposable.
+any command. If a deletion is refused (by git, the filesystem, or a guard in this file), the
+file stays and the refusal is reported. A file this command cannot prove is disposable is not
+disposable.
 
 ## Scope
 
 `ds:init` is **plugin-bootstrap only.** It wires the `ds` plugin into an existing project. It does
 NOT scaffold Django project structure (`config/`, `pyproject.toml`, Tailwind config, a `CLAUDE.md`
-skeleton) — those come from the project template. Run `ds:init` after the project already exists.
+skeleton); those come from the project template. Run `ds:init` after the project exists.
 
-`ds:init` writes its **own** slice — the `ds` `enabledPlugins` key, `ds` permissions, the
-`.claude/ds/` config dir, and the `ds` wrapper scripts. Alongside that it creates a few **generic,
-plugin-neutral** artifacts a Claude Code project needs regardless of which plugins are installed, and
-only when they are absent:
+`ds:init` writes its **own** slice: the `ds` `enabledPlugins` key, `ds` permissions, the
+`.claude/ds/` config dir, and the `ds` wrapper scripts. It also creates a few **generic,
+plugin-neutral** artifacts every Claude Code project needs, only when absent:
 
 - the root **`claude.sh`** launcher,
 - the **`SessionStart`** sentinel hook in `.claude/settings.json`,
 - **`.gitignore`** itself when absent, plus its `.claude/settings.local.json` line.
 
 `claude.sh` is a shared file: `ds:init` ensures **its own** `--plugin-dir` line is present and never
-touches any other. If additional plugins are installed, each of their inits adds its own line the
-same way.
+touches any other. Each other installed plugin's init adds its own line the same way.
 
 ## Hard requirements — do not regress
 
 - **`.claude/settings.json` → `permissions`** — merge, don't replace. Add missing `allow`/`deny`
   entries and `"ds": true` to `enabledPlugins` (only this key — never another plugin's). Never
-  replace the whole file, and never remove an entry that already exists. **"Missing" means no
-  byte-identical string is already in the list** — never "no entry semantically covers this". Two
-  entries that overlap (`Bash(npm run tailwind_build)` and `Bash(npm run tailwind_build:*)`) both
-  stay; a redundant allow entry is harmless, and removing one is a permission change this command is
-  not entitled to make.
+  replace the whole file, and never remove an existing entry. **"Missing" means no byte-identical
+  string is already in the list**, never "no entry semantically covers this". Two overlapping
+  entries (`Bash(npm run tailwind_build)` and `Bash(npm run tailwind_build:*)`) both stay; a
+  redundant allow entry is harmless, and removing one is a permission change this command is not
+  entitled to make.
 - **`.claude/settings.json` → `hooks`** — this command owns exactly one thing: the sentinel-check
   entry inside the `SessionStart` event. It may create the `hooks` object, create the `SessionStart`
   array, append its own entry, and rewrite its own entry in place. Nothing else.
@@ -62,13 +59,13 @@ same way.
   - Inside `SessionStart`, an entry is this command's own only if its `command` string contains
     `printf` **and** either the token `CLAUDE_PLUGINS_LOADED` or the legacy sentinel name **preflight
     P4 recorded** (`L0`'s *sentinel* fact). Preflight reads the launcher, so that name is known before
-    Step 1 runs — do not wait for Step 4, which runs later. Every other `SessionStart` entry belongs to
+    Step 1 runs; do not wait for Step 4. Every other `SessionStart` entry belongs to
     someone else and is copied through.
 
-    Getting this wrong is not cosmetic: on a project whose hook still checks a legacy sentinel, failing
-    to recognise the entry as your own means appending a *second* one. Step 4 then renames the
-    sentinel, the stale entry's variable is never set again, and its `"continue": false` aborts every
-    future session.
+    Getting this wrong breaks sessions: on a project whose hook still checks a legacy sentinel, not
+    recognising the entry as your own appends a *second* one. Step 4 then renames the sentinel, the
+    stale entry's variable is never set again, and its `"continue": false` aborts every future
+    session.
   - **Implementation is prescribed:** start from the file's own parsed object, mutate only
     `permissions.allow`, `permissions.deny`, `enabledPlugins["ds"]`, and this command's own
     `SessionStart` entry, then write that object back. Never construct the output from the template
@@ -120,8 +117,8 @@ Use only `Read`, `Glob`, and read-only `Bash` (`ls`, `test`, `git status --porce
 step or before it completes.
 
 Gather the facts below, then evaluate every **STOP** condition **before** proceeding. Record every
-**WARN** — it goes in the Step 8 summary, not into an abort. Carry the facts forward: later steps act
-on Step 0's verdicts and never re-derive them.
+**WARN** for the Step 8 summary; a WARN never aborts. Later steps act on Step 0's verdicts and never
+re-derive them.
 
 | # | Check | Verdict |
 |---|---|---|
@@ -131,7 +128,7 @@ on Step 0's verdicts and never re-derive them.
 | P4 | Read `claude.sh` if present; classify it per rule **L0** of `${CLAUDE_PLUGIN_ROOT}/resources/launcher_editing.md`. **Record the sentinel name** — Step 1's hook-ownership test needs it | **STOP** only if the file exists and has zero, or more than one, non-comment line invoking `claude`. An absent launcher is never a STOP — creating it is this command's job |
 | P5 | Read `CLAUDE.md` line 1 and test it against the exact legacy-line shape in Step 6 | record verdict |
 | P6 | Glob `.claude/ds/scripts/*.sh`; classify each per Step A of `${CLAUDE_PLUGIN_ROOT}/resources/wrapper_script_migration.md` | record |
-| P7 | `git status --porcelain --` each file this run may rewrite (`claude.sh`, `.claude/settings.json`, `CLAUDE.md`, each `.claude/ds/scripts/*.sh`) | **WARN** listing any that are dirty: "uncommitted edits will be rewritten in place; commit first if you want a rollback point". Running the plugin inits back to back before committing is normal, so say so rather than alarming the user |
+| P7 | `git status --porcelain --` each file this run may rewrite (`claude.sh`, `.claude/settings.json`, `CLAUDE.md`, each `.claude/ds/scripts/*.sh`) | **WARN** listing any that are dirty: "uncommitted edits will be rewritten in place; commit first if you want a rollback point". Running the plugin inits back to back before committing is normal, so say so rather than alarm the user |
 | P8 | `${CLAUDE_PLUGIN_ROOT}/scripts/hooks/*.sh` exist and are executable | **WARN** only — these live inside the plugin checkout, not the project, so this command does not fix them |
 
 `ds` never STOPs for a missing project artifact — creating those is its job.
@@ -154,9 +151,10 @@ on Step 0's verdicts and never re-derive them.
    this plugin's template names in `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/` other than
    `claude.sh`:
    - **First, the liveness guard:** `<dir>` must name a plugin that no longer exists by the test in
-     item 5. A `<dir>` matching a currently-installed plugin's name — including this plugin's own — is
-     **never** rewritten, so a literal already pointing at the right directory keeps its separator
-     untouched. Skipping this guard churns `.claude/settings.json` on every run.
+     item 5. A `<dir>` matching a currently-installed plugin's name, this plugin's own included, is
+     **never** rewritten: a literal already pointing at the right directory keeps its separator
+     untouched. Skipping this guard churns `.claude/settings.json` on every run. Only a dead plugin's
+     directory is rewritten.
    - Otherwise rewrite it to `Bash(.claude/ds/scripts/<basename>.sh:*)`, normalising a space
      separator to `:`;
    - if the rewritten entry now duplicates one already in the list, keep one and drop the duplicate;
@@ -164,10 +162,6 @@ on Step 0's verdicts and never re-derive them.
      entry is harmless, and removing one is a permission change this command is not entitled to make.
    - **Never rewrite a literal whose basename is not one of this plugin's template names.** Those
      belong to other plugins, whose inits carry the mirror-image rule.
-   - **Only a dead plugin's directory is rewritten.** `<dir>` must name a plugin that no longer exists
-     by the test in item 5. A `<dir>` matching a currently-installed plugin's name is **never**
-     rewritten — including this plugin's own, so a literal already pointing at the right directory is
-     left exactly as it is, separator and all. Rewriting it would churn the file on every run.
 5. **Report-only.** A plugin name "no longer exists" when no directory under
    `<PLUGINS_ROOT>/claude_plugins/` declares that `name` in its `.claude-plugin/plugin.json`. List
    every `enabledPlugins` key, `Skill(<old>:*)`, or `mcp__plugin_<old>_*` entry naming such a plugin —
@@ -192,7 +186,7 @@ on Step 0's verdicts and never re-derive them.
    default. Preserve every existing value, comment, and ordering.
 4. **Do not prompt for these values.** Tell the user in the summary where the file is and that they
    should review the base URL, the dev credentials, the Alpine CSP-build flag, and the two admin
-   flags — the defaults assume plain Django admin with no django-guardian and no dev login, which is
+   flags. The defaults assume plain Django admin with no django-guardian and no dev login, which is
    wrong for any project that has them.
 
 ## Step 3: Update `.gitignore`
@@ -224,14 +218,14 @@ hard-fails every session.
    `__PLUGINS_ROOT__` with the resolved value, and `chmod +x`. Never overwrite an existing file.
 3. For **every** `.sh` now under `.claude/ds/scripts/`, apply
    `${CLAUDE_PLUGIN_ROOT}/resources/wrapper_script_migration.md` — including the ones just created
-   (where every rule will be a no-op) and any a previous run or another plugin left behind. That
+   (where every rule is a no-op) and any a previous run or another plugin left behind. That
    procedure decides on its own which files it may touch.
 
 ## Step 6: Retire the legacy `CLAUDE.md` plugin-check line
 
 An older init **prepended** one line telling Claude to check the plugin-loaded sentinel each session;
-the `SessionStart` hook does that now. But this is the user's own `CLAUDE.md`, so remove the line only
-on an exact structural match.
+the `SessionStart` hook does that now. `CLAUDE.md` is the user's own file, so remove the line only on an
+exact structural match.
 
 1. Read `CLAUDE.md` at the project root. If absent, skip.
 2. Consider **line 1 only**. It qualifies only if, after collapsing runs of whitespace to a single
@@ -243,15 +237,15 @@ on an exact structural match.
 
    where `${NAME}` is `$` followed by an identifier, optionally brace-wrapped. Nothing else
    qualifies. A line that merely *mentions* the sentinel, a line documenting the launcher, a line the
-   user wrote — none match this shape, and none is removed.
+   user wrote: none match, none is removed.
 3. If line 1 qualifies: delete line 1. Then delete line 2 **only if** line 2 is blank. If line 2 is
    not blank, leave it and delete nothing further. **Report the deletion explicitly in the Step 8
-   summary, quoting the removed line** — this is the only edit this command makes to a file the user
-   authored, and it must never be silent.
+   summary, quoting the removed line**: it is the only edit this command makes to a file the user
+   authored, and it is never silent.
 4. If a line matching that shape appears anywhere **other than line 1**, do **not** delete it.
    Report: "`CLAUDE.md:<n>` looks like a leftover plugin check but is not line 1 — left alone; delete
    it yourself if it is stale."
-5. If a line elsewhere merely mentions the sentinel name, say nothing — that is normal documentation.
+5. If a line elsewhere merely mentions the sentinel name, say nothing; that is normal documentation.
 
 ## Step 7: Validate the setup
 
@@ -260,14 +254,14 @@ Run these checks and report results. A failure here is reported, never fixed sil
 1. `ds` is in `enabledPlugins` in `.claude/settings.json`, and the file is valid JSON.
 2. `claude.sh` exists at the project root, is executable, uses `CLAUDE_PLUGINS_LOADED=1`, declares
    `PLUGINS_ROOT`, and carries exactly **one non-comment `--plugin-dir` argument** whose final path
-   segment is `django-stack`. Count arguments, not lines containing the string — the template's own
-   header comment mentions `--plugin-dir` and must not be counted.
+   segment is `django-stack`. Count arguments, not lines containing the string; the template's own
+   header comment mentions `--plugin-dir` and is not counted.
 3. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
 4. Every wrapper script under `.claude/ds/scripts/` is executable and passes `bash -n`.
 5. The `SessionStart` hook in `.claude/settings.json` checks `$CLAUDE_PLUGINS_LOADED`.
 6. Every wrapper under `.claude/ds/scripts/` classified **Managed** by Step A of the migration
    resource declares `PLUGINS_ROOT`
-   with the resolved value — no `__PLUGINS_ROOT__` and no `FLS_PATH` — and its `PLUGIN_DIR` resolves
+   with the resolved value (no `__PLUGINS_ROOT__`, no `FLS_PATH`), and its `PLUGIN_DIR` resolves
    to a directory that exists. Files classified User-authored are exempt and listed as untouched.
 
    Header comments are checked separately and are **not** a hard failure: migration rules 2 and 3 only
@@ -300,14 +294,13 @@ this is the most consequential outstanding action and must be listed first** - a
 the launcher step retired a pre-split argument. A plugin without a line is simply not loaded, and
 nothing else in the session will hint at why.
 
-Count a plugin only when it actually wires itself into the launcher: it must ship
-`commands/init.md` **and** that file must mention `--plugin-dir`. A plugin whose init does something
-else entirely — scaffolding a config file, installing a validator's dependencies — is not a
-launcher-loaded dev plugin, and telling the user to run it would be wrong advice that repeats on every
-future run. Skip those silently. Take the command prefix from `.claude-plugin/plugin.json`'s `name`,
-never from the directory name. `claude.sh` now loads only `django-stack`. List every
-other plugin under `<PLUGINS_ROOT>/claude_plugins/` and tell the user to run each one's init to
-restore it. **Take the command prefix from each plugin's `.claude-plugin/plugin.json` `name` field,
-not from its directory name** — the directory `django-stack` holds the plugin named `ds`, so the
-command is `/ds:init`, and `/django-stack:init` does not exist — until they do, those plugins are not loaded, and any config dir
-they own is left exactly as it was for their own init to migrate.
+Count a plugin only when it wires itself into the launcher: it must ship `commands/init.md` **and**
+that file must mention `--plugin-dir`. A plugin whose init does something else (scaffolding a config
+file, installing a validator's dependencies) is not a launcher-loaded dev plugin; telling the user to
+run it is wrong advice that repeats on every run. Skip those silently. `claude.sh` now loads only
+`django-stack`. List every other plugin under `<PLUGINS_ROOT>/claude_plugins/` and tell the user to
+run each one's init to restore it. **Take the command prefix from each plugin's
+`.claude-plugin/plugin.json` `name` field, not from its directory name**: the directory
+`django-stack` holds the plugin named `ds`, so the command is `/ds:init`, and `/django-stack:init`
+does not exist. Until they run it, those plugins are not loaded, and any config dir they own is left
+exactly as it was for their own init to migrate.

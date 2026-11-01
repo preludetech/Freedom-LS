@@ -1,7 +1,7 @@
 # django-stack (`ds`) plugin
 
 Portable Django-stack conventions for Claude Code. Everything here helps *any* project on this stack —
-Python 3.13+, Django 6.x, PostgreSQL, HTMX, Tailwind, and optionally Cotton / Alpine / Playwright — and
+Python 3.13+, Django 6.x, PostgreSQL, HTMX, Tailwind, and optionally Cotton / Alpine / Playwright. It
 carries **zero product-specific domain knowledge** and depends on no other plugin. Product-specific
 conventions (multi-tenant / site-aware models, registration, markdown content, brand, etc.) belong in a
 separate downstream plugin that layers thin overlay skills on top of the `ds` skills here.
@@ -17,7 +17,7 @@ Manifest name: `ds`. Namespace: `/ds:*`, `Skill(ds:*)`. `enabledPlugins` key: `d
 ## Per-project config
 
 Where projects legitimately differ, `ds` reads `.claude/ds/config.md` (created by `/ds:init` with
-portable defaults) rather than hard-coding a choice:
+portable defaults) instead of hard-coding a choice:
 
 | Section → key | Values (default) | Read by |
 |---|---|---|
@@ -60,9 +60,9 @@ host project's own reviewer memory (the same convention `sdd` uses for `sdd-qa-d
 `kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
-### Resources (14)
+### Resources (15)
 `admin_standard`, `admin_unfold`, `admin_guardian`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`,
-`frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`, `qa_diff_scoping`, `agent_memory_guidelines`
+`frontend_styling`, `templates_and_cotton`, `testing`, `test_tiers`, `playwright-testing`, `qa_diff_scoping`, `agent_memory_guidelines`
 (a self-contained copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and
 `code-reviewer` reads it), plus `launcher_editing` and `wrapper_script_migration` — the two procedures
 `/ds:init` follows, duplicated into each plugin that edits `claude.sh` or ships wrapper scripts, for
@@ -71,7 +71,7 @@ diff them when you change one.
 
 Config-driven resources come in mutually-exclusive sets, and the owning skill routes to exactly one:
 `admin_standard` **or** `admin_unfold` (plus `admin_guardian` only when enabled), and
-`alpine_csp_build` **or** `alpine_no_csp`. Each file is self-contained so a project never loads
+`alpine_csp_build` **or** `alpine_no_csp`. Each file is self-contained, so a project never loads
 guidance for a setup it doesn't have.
 
 ### Hooks & configs
