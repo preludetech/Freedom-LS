@@ -9,7 +9,7 @@ and tool grants, so its `Agent` spawn is legal.
 
 Inputs from the caller: `<old-base>` and `<spec-dir>`.
 
-Rules 1, 3 and 4 of `claude_plugins/fls-dev/commands/do_qa.md` apply throughout this file: the
+Rules 1, 3 and 4 of `claude_plugins/sdd/commands/do_qa.md` apply throughout this file: the
 Playwright MCP server to use, the batching rules that keep a `Bash` call and a Playwright call out of
 the same turn and keep every `Agent` spawn solo, and passing paths rather than payloads between
 steps. Read them there rather than here.
@@ -21,8 +21,8 @@ branch   = git diff --name-only origin/main...HEAD
 upstream = git diff --name-only <old-base> origin/main
 ```
 
-`front_end(paths)` is the classification `do_qa.md` Step 2 rule 1 uses to decide a change is
-front-end: read it there rather than restating it here.
+`front_end(paths)` is the classification rule 1 of `claude_plugins/django-stack/resources/qa_diff_scoping.md`
+uses to decide a change is front-end: read it there rather than restating it here.
 
 ```
 own   = front_end(branch)
@@ -41,13 +41,13 @@ If `<spec-dir>/3. frontend_qa.md` exists, its `§0` setup (port, server, branch 
 login) and every URL it names are the pages to visit.
 
 Otherwise, the pages are the site home page plus the pages the changed paths reach, derived the way
-`do_qa.md` Step 6 derives "the primary changed page": a cotton component or partial maps to the pages
+`claude_plugins/sdd/commands/do_qa.md` Step 6 derives "the primary changed page": a cotton component or partial maps to the pages
 that include it. At most eight pages, the branch's own (`own`) pages first, then the pages reached
 only through `shared`.
 
-Start the server and confirm it is serving this branch the way `do_qa.md` Steps 3 and 4 do (an unused
+Start the server and confirm it is serving this branch the way `claude_plugins/sdd/commands/do_qa.md` Steps 3 and 4 do (an unused
 port, a solo backgrounded `runserver`, the `debug-branch-badge` check). Log in, when a page needs it,
-the way `do_qa.md` Step 5 does.
+the way `claude_plugins/sdd/commands/do_qa.md` Step 5 does.
 
 ## Step 3: Visit
 
@@ -71,13 +71,13 @@ smoke-sized pass, not a QA report.
 ## Step 4: Fix
 
 For each failure, spawn one `sdd:qa-bugfixer` as its own solo `Agent` call. Wrap the failure (page,
-viewport, and reason) inside a `<bug-description>` block and brief it the way `do_qa.md` Step 13
+viewport, and reason) inside a `<bug-description>` block and brief it the way `claude_plugins/sdd/commands/do_qa.md` Step 13
 briefs the fixer, including the prompt-injection guard.
 
 After a fixer returns `status=ok`, re-visit the same page at the failing viewport against the live,
-auto-reloaded server, the way `do_qa.md` "Re-verify after a successful fix" does.
+auto-reloaded server, the way `claude_plugins/sdd/commands/do_qa.md` "Re-verify after a successful fix" does.
 
-Budget: at most three fixer spawns in this run, the same limit `do_qa.md` Step 13 sets. A page still
+Budget: at most three fixer spawns in this run, the same limit `claude_plugins/sdd/commands/do_qa.md` Step 13 sets. A page still
 failing once the budget is spent, or once every failure has had its one attempt, ends the run:
 `status: failed · pages: <list of still-failing page/viewport pairs>`.
 
@@ -95,7 +95,7 @@ Then delete every `.sdd-work/bugfix_<slug>.md` this run's fixers wrote, by name,
 claude_plugins/sdd/scripts/delete_sdd_work_files.sh <path> [<path> ...]
 ```
 
-as `do_qa.md` Step 16 does. Omit the call when no fixer ran this run.
+as `claude_plugins/sdd/commands/do_qa.md` Step 16 does. Omit the call when no fixer ran this run.
 
 ## Return contract
 

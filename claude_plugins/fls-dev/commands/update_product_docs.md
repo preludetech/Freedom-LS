@@ -108,7 +108,7 @@ Read each `.sdd-work/<doc>.md` file **by path** (never dump its contents into th
 
 Skip this step if Step 1's doc list was empty, if Step 3 applied no edits, or if the feature has no visible UI changes (e.g. a backend-only or CLI feature). Proceed if the feature touches any of: learner-experience, educator-interface, admin-interface, or any other doc that requires screenshots.
 
-**Reuse before you capture.** `/do_qa` has almost certainly already photographed this feature. Do not start a dev server until you have checked the QA screenshots and found a real gap.
+**Reuse before you capture.** `/sdd:do_qa` has almost certainly already photographed this feature. Do not start a dev server until you have checked the QA screenshots and found a real gap.
 
 ### 4a: List the images each doc needs
 
@@ -175,7 +175,7 @@ Every image under `docs/product/screenshots/` must land under the 1024 KB pre-co
 find docs/product/screenshots -type f \( -name '*.png' -o -name '*.jpg' \) -size +1024k
 ```
 
-Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `claude_plugins/sdd/scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
+Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/sdd:do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `claude_plugins/sdd/scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
 
 ### 4e: Reference screenshots from docs
 

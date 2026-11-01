@@ -37,7 +37,7 @@
 
 ## QA Hooks
 
-- QA command: fls-dev:do_qa
+- QA command: sdd:do_qa
 - Playwright MCP: mcp__plugin_ds_playwright__
 - Screenshot directory: qa-screenshots
 - Port finder: .claude/ds/scripts/find_available_port.sh

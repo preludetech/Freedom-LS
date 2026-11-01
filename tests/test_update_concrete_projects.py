@@ -13,13 +13,14 @@ from tests.plugin_markdown import code_fragments
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLS_DEV = REPO_ROOT / "claude_plugins/fls-dev"
 COMMAND = FLS_DEV / "commands/update_concrete_projects.md"
-DO_QA = FLS_DEV / "commands/do_qa.md"
+DO_QA = REPO_ROOT / "claude_plugins/sdd/commands/do_qa.md"
 CONFIG_TEMPLATE = FLS_DEV / "templates/config.local.md"
 SETTINGS = REPO_ROOT / ".claude/settings.json"
 COMMAND_FORM_SOURCES = [
     COMMAND,
     FLS_DEV / "resources/concrete_spec_integration.md",
-    FLS_DEV / "commands/do_qa.md",
+    DO_QA,
+    FLS_DEV / "commands/init.md",
     FLS_DEV / "commands/concrete/update_fls.md",
 ]
 PROJECT_FORM_PREFIXES = (
@@ -236,20 +237,22 @@ def test_project_root_bullets_never_change_directory() -> None:
     assert [f for f in fragments if re.search(r"\bcd\s", f)] == []
 
 
-def test_project_root_manage_and_pytest_forms_carry_directory() -> None:
-    bullets = re.findall(r"^- .*(?:\n  .*)*", project_root_section(), re.M)
+def test_dev_server_start_form_carries_the_project_directory() -> None:
+    """A project-root QA run must start the other project's server, not this one's."""
+    forms = [
+        f
+        for f in code_fragments((FLS_DEV / "commands/init.md").read_text())
+        if "manage.py runserver" in f
+    ]
 
-    assert [
-        b
-        for b in bullets
-        if re.search(r"manage\.py|pytest", b) and "--directory" not in b
-    ] == []
+    assert forms
+    assert [f for f in forms if "--directory <PROJECT_ROOT>" not in f] == []
 
 
 @pytest.mark.parametrize(
     "spelled",
     [
-        "Skill(fls-dev:do_qa)",
+        "Skill(sdd:do_qa)",
         "project-root:",
         "diff-range:",
         "update_concrete_settings_",

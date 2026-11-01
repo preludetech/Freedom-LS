@@ -263,13 +263,10 @@ where it is.
 
 1. Ensure `.claude/fls-dev/` exists.
 2. If `.claude/fls-dev/config.md` does not exist, copy `${CLAUDE_PLUGIN_ROOT}/templates/config.md`
-   verbatim. It ships with dev admin email `demodev@email.com`, the same password, and base URL
-   `http://127.0.0.1:8000`.
+   verbatim. It holds only the title line.
 3. If it exists, add any section or key the template defines but the file lacks, using the template's
    default. Preserve every existing value, comment, and ordering. If it already has everything, leave
    it untouched.
-4. Tell the user in the summary to review the dev credentials and base URL — the defaults are only a
-   starting point.
 
 ## Step 4: Create or extend `.claude/fls-dev/config.local.md`
 
@@ -339,18 +336,22 @@ If `.claude/sdd/config.md` exists:
 
   These are skill names, not paths: `/sdd:document` invokes each with the `Skill` tool.
 
-- Ensure `## QA Hooks` exists with all its keys. Set each blank key to this plugin's value:
+- Ensure `## QA Hooks` exists with all its keys. Set `QA command` to `sdd:do_qa` when it is blank
+  or `fls-dev:do_qa`. Set each other blank key to this plugin's value:
   - `Playwright MCP: mcp__plugin_ds_playwright__`
   - `Screenshot directory: qa-screenshots`
   - `Port finder: .claude/ds/scripts/find_available_port.sh`
-  - `Dev server start:` the inline code span `` `uv run --directory <PROJECT_ROOT> python manage.py runserver <PORT>` ``
+  - `Dev server start:` set to `uv run --directory <PROJECT_ROOT> python manage.py runserver <PORT>`
   - `Dev server stop: .claude/ds/scripts/kill_runserver.sh <PORT>`
   - `Branch badge: debug-branch-badge`
   - `Diff scoping: <PLUGINS_ROOT>/claude_plugins/django-stack/resources/qa_diff_scoping.md`
   - `Data helper guide: <PLUGINS_ROOT>/claude_plugins/fls-dev/resources/qa_data_helper.md`
 - Ensure `## QA Login` and `## QA Dev Data` exist with all their keys. When
-  `.claude/fls-dev/config.md` holds `## Dev Credentials`, a `Base URL` or `## QA Dev Data`, copy
-  each value into the matching `sdd` key, only where that key is blank.
+  `.claude/fls-dev/config.md` holds `## Dev Credentials`, `## Project Settings` or `## QA Dev Data`,
+  copy each value into the matching `sdd` key, only where that key is blank. Then remove those
+  three sections from `.claude/fls-dev/config.md` only when every value they hold is present in
+  `sdd`'s config; otherwise leave them and list them as an outstanding action. Never read or write
+  `.claude/fls-dev/config.local.md` here.
 - Ensure `## Testing Skills` exists. If its list is empty, write `ds:testing`, `fls-dev:testing`,
   `ds:playwright-tests` and `fls-dev:playwright-tests`, one per bullet.
 
@@ -365,8 +366,7 @@ is listed.
 ## Step 9: Validate the setup
 
 1. `fls-dev` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
-2. `.claude/fls-dev/config.md` exists and contains the dev email, password, and base URL keys,
-   plus the `## QA Dev Data` section and its keys.
+2. `.claude/fls-dev/config.md` exists.
 3. Every wrapper under `.claude/fls-dev/scripts/` is executable and passes `bash -n`.
 4. `.claude/fls/` is either gone, or every surviving path is listed in the outstanding actions with a
    per-file reason. For every surviving `.sh` under `.claude/fls/scripts/`, additionally check whether
@@ -405,5 +405,5 @@ is listed.
 
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
-every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. The QA scripts now run from `claude_plugins/sdd/scripts/`. Point the user at `.claude/fls-dev/config.md` for the dev
+every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. The QA scripts now run from `claude_plugins/sdd/scripts/`. Point the user at `.claude/sdd/config.md` for the dev
 credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.

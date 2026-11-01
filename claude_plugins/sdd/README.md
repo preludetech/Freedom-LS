@@ -12,10 +12,10 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 ## What's inside (counted from disk)
 
-### Commands (14 files)
+### Commands (15 files)
 Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
-`make_pr_quickly`, `finish_worktree`, `address_pr_review`.
+`make_pr_quickly`, `finish_worktree`, `address_pr_review`, `do_qa`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
 `.claude/sdd/config.md`, in order, in hook mode. Each hook is a skill that commits
@@ -24,6 +24,12 @@ plus the project's own briefs, which `## Plan Review Hooks` lists; `sdd` names n
 `/sdd:address_pr_review` fetches review comments through the `Fetch PR comments` script under
 `## PR Hooks`, or with `gh` directly when the key is blank. `/sdd:start` writes the `QA command`
 under `## QA Hooks` into the checklist as the QA step, or a by-hand item when there is none.
+
+`/sdd:do_qa` runs a spec's QA plan in a browser. It reads `## QA Hooks`, `## QA Login` and
+`## QA Dev Data` in `.claude/sdd/config.md` once, before it starts, and stops `blocked` naming the
+key when the browser server, port finder or a dev-server command is blank. It makes no data of its
+own: it delegates to `sdd:qa-data-helper` or runs a `## QA Dev Data` command, and lists each change
+in the report.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
 file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
