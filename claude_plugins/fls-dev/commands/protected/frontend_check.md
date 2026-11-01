@@ -12,7 +12,7 @@ Inputs from the caller: `<old-base>` and `<spec-dir>`.
 Rules 1, 3 and 4 of `claude_plugins/sdd/commands/do_qa.md` apply throughout this file: the
 Playwright MCP server to use, the batching rules that keep a `Bash` call and a Playwright call out of
 the same turn and keep every `Agent` spawn solo, and passing paths rather than payloads between
-steps. Read them there rather than here.
+steps. Read them there.
 
 ## Step 1: Scope
 
@@ -65,7 +65,7 @@ A page fails at a viewport on any of:
 - an error-level console entry
 - on the two small viewports only, a navigation that overflows or overlaps the content
 
-Record page, viewport, pass or fail, and a one-line reason. Take no screenshots. This is a
+Record page, viewport, pass or fail, and a one-line reason. Take no screenshots: this is a
 smoke-sized pass, not a QA report.
 
 ## Step 4: Fix

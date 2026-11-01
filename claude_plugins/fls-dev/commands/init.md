@@ -5,41 +5,37 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 # Initialize the fls-dev Plugin
 
-Set up the `fls-dev` Claude Code plugin for this project.
+Set up the `fls-dev` plugin for this project.
 
 ## Two rules that override every step below
 
 **Nothing is written before Step 0 finishes.** Step 0 performs every check that can abort this
 command, and computes every move/delete/keep verdict the later steps act on. If Step 0 returns STOP,
-print the reason and the fix and end — the project is byte-for-byte untouched, so re-running after
-the fix is always safe and always starts from a clean state. No step after Step 0 may abort: from
-Step 1 onward, a problem is *reported as an outstanding action*, never raised as a bail-out.
+print the reason and the fix and end. The project is byte-for-byte untouched, so re-running after
+the fix is safe. No step after Step 0 may abort: from Step 1 onward, a problem is *reported as an
+outstanding action*, never raised as a bail-out.
 
-This ordering is the whole point. An earlier version of this command renamed a directory and deleted
-files in its first two steps, then discovered in a later step that `/ds:init` had not run and aborted
-— leaving a mutated project and no clean way back.
+An earlier version renamed a directory and deleted files in its first two steps, then found in a
+later step that `/ds:init` had not run and aborted, leaving a mutated project and no clean way back.
 
 **Nothing is force-deleted.** No step may pass `-f` to `git rm`, `-f`/`-r` to `rm`, or `--force` to
-any command. If a deletion is refused — by git, by the filesystem, or by a guard in this file — the
+any command. If a deletion is refused (by git, the filesystem or a guard in this file), the
 file stays where it is and the refusal is reported. A file this command cannot prove is disposable is
 not disposable.
 
 ## Scope
 
 `fls-dev:init` is **plugin-bootstrap only.** It wires the `fls-dev` plugin into an existing project.
-It does NOT scaffold Django project structure — `config/`, `pyproject.toml`, Tailwind config, a
-`CLAUDE.md` skeleton, or a `.claude/settings.json` from scratch. Those are scaffolded separately,
-before this command runs.
+It does NOT scaffold Django project structure (`config/`, `pyproject.toml`, Tailwind config, a
+`CLAUDE.md` skeleton, a `.claude/settings.json` from scratch); those are scaffolded before this command runs.
 
 It owns the `fls-dev` slice: its `enabledPlugins` key, its permissions, its `.claude/fls-dev/` config
 dir, and its dev/DB wrapper scripts. Into the shared `claude.sh` it adds **only its own**
 `--plugin-dir` line.
 
-It has one deliberate reach outside that slice: migrating a legacy `.claude/fls/` config dir splits
+It reaches outside that slice twice. First, migrating a legacy `.claude/fls/` config dir splits
 its contents between `.claude/fls-dev/` and `.claude/ds/scripts/`, because the pre-split dir held
-both plugins' wrappers. Step 2 does that relocation and nothing else in `.claude/ds/`.
-
-It has one more reach outside that slice: it sets sdd's `Design check` key in `.claude/sdd/config.md`
+both plugins' wrappers. Step 2 does that relocation and nothing else in `.claude/ds/`. Second, it sets sdd's `Design check` key in `.claude/sdd/config.md`
 and fills the `Plan Review Hooks`, `Review Hooks` and `Documentation Hooks` sections there
 (Steps 8 and 8b).
 
@@ -109,8 +105,7 @@ directory at runtime. Resolve it in this order, stopping at the first step that 
 ## Step 0: Preflight — read everything, write nothing
 
 Use only `Read`, `Glob`, and read-only `Bash` (`ls`, `test`, `diff`, `git status --porcelain`,
-`git ls-files`). Do not create, modify, move, delete, `chmod`, `git mv`, or `git rm` anything in this
-step or before it completes.
+`git ls-files`). Do not create, modify, move, delete, `chmod`, `git mv` or `git rm` anything before this step completes.
 
 | # | Check | Verdict |
 |---|---|---|
@@ -146,22 +141,17 @@ P3 is what makes the `ds` → `fls-dev` order enforced rather than merely docume
    - Otherwise rewrite it to `Bash(.claude/fls-dev/scripts/<basename>.sh:*)`, normalising a space
      separator to `:`;
    - if the rewritten entry duplicates one already present, keep one and drop the duplicate;
-   - otherwise keep it even though `Bash(.claude/fls-dev/scripts/*.sh:*)` subsumes it — a redundant
-     allow entry is harmless, and removing one is a permission change this command is not entitled to
-     make.
+   - otherwise keep it even though `Bash(.claude/fls-dev/scripts/*.sh:*)` subsumes it; removing a
+     redundant allow entry is a permission change this command is not entitled to make.
    - **Never rewrite a literal whose basename is not one of this plugin's template names.** Those
      belong to other plugins, whose inits carry the mirror-image rule.
-   - **Only a dead plugin's directory is rewritten.** `<dir>` must name a plugin that no longer exists
-     by the test in item 5. A `<dir>` matching a currently-installed plugin's name is **never**
-     rewritten — including this plugin's own, so a literal already pointing at the right directory is
-     left exactly as it is, separator and all. Rewriting it would churn the file on every run.
 5. **Report-only.** A plugin name "no longer exists" when no directory under
    `<PLUGINS_ROOT>/claude_plugins/` declares that `name` in its `.claude-plugin/plugin.json`. List
    every surviving `Skill(<old>:*)`, `mcp__plugin_<old>_*`, or `enabledPlugins` key naming such a
    plugin — but **not** a bare `mcp__<name>__*`, which is a directly-configured MCP server rather than
    a plugin-namespaced one and has nothing to do with any plugin - and any `.gitignore` line naming a
    `.claude/<name>/` directory that no longer exists, and point the user at `Skill(sdd:update-claude-project-settings)`. Do not
-   remove them — narrowing permissions is the user's decision. Also list any surviving allow entry
+   remove them; narrowing permissions is the user's decision. Also list any surviving allow entry
    naming `.claude/fls-dev/scripts/<basename>.sh` where `<basename>` is `qa_cleanup`,
    `qa_collect_screenshots`, `compress_screenshots` or `delete_sdd_work_files`: those scripts moved to
    `claude_plugins/sdd/scripts/`, the entry is stale, and the user is pointed at
@@ -172,8 +162,8 @@ P3 is what makes the `ds` → `fls-dev` order enforced rather than merely docume
 
 The product plugin was renamed `fls` → `fls-dev`, so a project set up by an older `/fls:init` has a
 `.claude/fls/` dir. **Do not rename the directory as a unit.** The pre-split dir held both plugins'
-wrappers *and* a `config.md` carrying real dev credentials, and its `config.local.md` is gitignored —
-unrecoverable if destroyed. Act on the Step 0 verdicts, per path; do not re-derive them.
+wrappers *and* a `config.md` carrying real dev credentials, and its `config.local.md` is gitignored,
+so unrecoverable if destroyed. Act on the Step 0 verdicts, per path; do not re-derive them.
 
 ### 2a. Send foreign-owned wrappers straight to their owner
 
@@ -273,8 +263,7 @@ where it is.
 2. If it exists, add any key the template defines but the file lacks. Preserve everything present.
 
 This file carries machine-specific overrides to `config.md`. The shipped template defines no
-default keys yet — it exists so a project has a gitignored place to add local overrides when it
-needs one.
+default keys yet; it gives a project a gitignored place for local overrides.
 
 ## Step 5: Update `.gitignore`
 
@@ -296,7 +285,7 @@ needs one.
 ## Step 7: Ensure the `fls-dev` `--plugin-dir` line
 
 Follow `${CLAUDE_PLUGIN_ROOT}/resources/launcher_editing.md`, using the P5 classification and the
-resolved `PLUGINS_ROOT`. With `<MAY_CREATE>` false this runs L2, L3, L5 and L7 only — it normalises
+resolved `PLUGINS_ROOT`. With `<MAY_CREATE>` false this runs L2, L3, L5 and L7 only: it normalises
 the launcher shape, guarantees `PLUGINS_ROOT` exists before any line expands it, and ensures exactly
 one `fls-dev` `--plugin-dir` line. It never creates the launcher, retires another plugin's argument,
 or touches the sentinel. Write the launcher as **one atomic file replacement** rather than a sequence

@@ -5,7 +5,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Skill, Agent, AskUserQuestio
 
 Update the FreedomLS submodule (`submodules/Freedom-LS`) to the latest version, integrating each completed spec one at a time.
 
-The core flow is: advance the submodule **spec by spec**, integrate each completed spec, run a test gate, and make **one commit per spec** (`Update FLS: <spec-name>`). On top of that, this command reads each spec's structured `upgrade_notes.md` to know exactly which integration steps to run, previews the whole plan before touching anything, guards migrations, and documents how to roll back a failed spec.
+The core flow: advance the submodule **spec by spec**, integrate each completed spec, run a test gate, and make **one commit per spec** (`Update FLS: <spec-name>`). Each spec's structured `upgrade_notes.md` says which integration steps to run. The command previews the whole plan before touching anything, guards migrations, and documents how to roll back a failed spec.
 
 # Step 1: Identify new completed specs
 
@@ -18,7 +18,7 @@ Before anything else, confirm the working tree is clean: `git status --porcelain
 
 # Step 2: Dry-run preview (no changes yet)
 
-Before moving any pointer, show the operator the full plan so they can see what is about to happen.
+Before moving any pointer, show the operator the full plan.
 
 For each pending completed spec, in chronological order, read its upgrade notes at:
 
@@ -26,7 +26,7 @@ For each pending completed spec, in chronological order, read its upgrade notes 
 submodules/Freedom-LS/spec_dd/3. done/<spec-dir>/upgrade_notes.md
 ```
 
-This file is authored as part of FLS's own spec-completion workflow (the `/update_upgrade_notes` command). It carries a YAML frontmatter block of machine-readable flags:
+FLS's spec-completion workflow (the `/update_upgrade_notes` command) authors this file. Its YAML frontmatter carries machine-readable flags:
 
 - `requires_migrations`
 - `requires_template_review` (+ `changed_template_paths`)
@@ -35,9 +35,9 @@ This file is authored as part of FLS's own spec-completion workflow (the `/updat
 - `requires_npm_install` (+ `changed_npm_packages`)
 - `requires_tailwind_rebuild`
 
-Print a preview table — one row per spec — listing the spec name and the flags its notes set. If a spec has **no `upgrade_notes.md`** (older specs predate the artifact), mark that row **"no notes — will infer from spec/plan prose"**.
+Print a preview table, one row per spec, listing the spec name and the flags its notes set. If a spec has **no `upgrade_notes.md`** (older specs predate the artifact), mark that row **"no notes — will infer from spec/plan prose"**.
 
-Present the preview and let the operator confirm before any pointer moves. Do not modify the submodule or the concrete project during this step.
+Let the operator confirm the preview before any pointer moves. Do not modify the submodule or the concrete project during this step.
 
 # Step 3 and 4: integrate
 
@@ -45,7 +45,7 @@ For each pending spec in order, follow `${CLAUDE_PLUGIN_ROOT}/resources/concrete
 
 # Step 5: Commit and push
 
-This is the last step of the run. An integration that only exists locally is a submodule pointer nobody else's checkout can resolve, so the update is not finished until it is pushed.
+This is the last step. An integration that only exists locally is a submodule pointer nobody else's checkout can resolve, so the update is not finished until it is pushed.
 
 1. Confirm nothing is left uncommitted:
 

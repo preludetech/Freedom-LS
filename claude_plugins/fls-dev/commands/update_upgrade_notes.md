@@ -9,11 +9,11 @@ Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as
 when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
 still commit your own work.
 
-This command runs at **depth 0**. It reads the spec, plan, and actual git diff to produce a single structured artifact. No fan-out is needed for a single output file — keep it lean.
+This command runs at **depth 0**. It reads the spec, plan and git diff and produces one structured file. No fan-out.
 
 ## upgrade_notes.md schema
 
-Every run must produce a file with this exact shape. The YAML frontmatter carries machine-readable flags that `update_fls` can parse reliably; the markdown body carries human-readable prose.
+Every run produces a file of this exact shape. The YAML frontmatter carries flags `update_fls` parses; the markdown body carries prose.
 
 ```markdown
 ---
@@ -47,7 +47,7 @@ Flag semantics:
 
 - **`requires_migrations`** — the feature adds or alters models; downstream must run `migrate`.
 - **`requires_template_review`** — one or more templates that downstream projects typically override were changed. List paths in `changed_template_paths`.
-- **`requires_settings_change`** — new or renamed settings keys. List them in `changed_settings`. Distinguish a **hard requirement** (the downstream must supply the value — usually because a new or changed FLS system check enforces it at boot) from an optional/informational change. For a hard requirement, set the flag `true`, name the specific keys, and say in the prose that a boot-time check enforces it, so `update_fls` can point the downstream at `manage.py check` (`freedom_ls_course_access.E001` for `COURSE_ACCESS_BACKEND` and `freedom_ls_content_engine.E001` for `ADMONITION_TYPES` are current examples of such checks, not an exhaustive list — write this rule generally so a future check follows it automatically). Mark hard vs optional entries with an inline `#` comment against each entry — this needs the block-sequence YAML form (`changed_settings:` followed by `- KEY  # ...` lines), since the empty `changed_settings: []` flow style has no entries to attach a per-entry comment to. The schema block above shows the annotated form.
+- **`requires_settings_change`** — new or renamed settings keys. List them in `changed_settings`. Distinguish a **hard requirement** (the downstream must supply the value — usually because a new or changed FLS system check enforces it at boot) from an optional/informational change. For a hard requirement, set the flag `true`, name the specific keys, and say in the prose that a boot-time check enforces it, so `update_fls` can point the downstream at `manage.py check` (`freedom_ls_course_access.E001` for `COURSE_ACCESS_BACKEND` and `freedom_ls_content_engine.E001` for `ADMONITION_TYPES` are current examples, not an exhaustive list, so a future check follows the same rule). Mark hard vs optional entries with an inline `#` comment on each entry. That needs the block-sequence YAML form (`changed_settings:` followed by `- KEY  # ...` lines), since the empty `changed_settings: []` has no entries to comment on. The schema block above shows the annotated form.
 - **`requires_package_upgrade`** — new or updated Python packages. List `package==version` entries in `changed_packages`.
 - **`requires_npm_install`** — new or updated npm packages (e.g. a new `@iconify-json/*` icon set or a build tool). Downstream projects keep their **own** `package.json`, so `uv sync` can't pick these up — they must be mirrored into it and `npm install` run. List `package@version` entries in `changed_npm_packages`.
 - **`requires_tailwind_rebuild`** — Tailwind source changed; downstream must rebuild the CSS bundle.
@@ -62,8 +62,7 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 ## Step 1: Locate the spec directory
 
-Find the spec directory for the current feature: in hook mode `<spec-dir>` is the input; otherwise resolve it the way `pre_step_rebase.md`'s
-"Inputs from the caller" line says.
+In hook mode `<spec-dir>` is the input; otherwise resolve the current feature's spec directory the way `pre_step_rebase.md`'s "Inputs from the caller" line says.
 
 The spec directory is the directory that contains `1. spec.md` (and usually `2. plan.md`).
 
@@ -84,7 +83,7 @@ git log main..HEAD --oneline
 git diff main..HEAD
 ```
 
-Read the output. Focus on:
+Read the output, looking for:
 
 - New or changed migration files → `requires_migrations`
 - Changed templates under `freedom_ls/` → `requires_template_review` + `changed_template_paths`
@@ -105,7 +104,7 @@ Rules for the prose sections:
 - **Breaking changes** — list anything a downstream project must change in their own code to stay working (renamed settings, removed template blocks, changed URLs, altered model fields). Write "None" if there are none.
 - **Manual steps** — list concrete actions the downstream developer must take after pulling (e.g. "run `manage.py migrate`", "rebuild Tailwind", "review and re-apply customisations to `freedom_ls/learner_interface/templates/…`"). Write "None" if there are none.
 
-Keep the prose short and actionable. If there is genuinely nothing for downstream projects to do, say so plainly — an honest "no action needed" is more useful than padding.
+Keep the prose short and actionable. If downstream projects have nothing to do, say "no action needed".
 
 ## Step 4: Verify every name against the tree
 

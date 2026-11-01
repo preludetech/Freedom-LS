@@ -3,7 +3,7 @@ description: Update docs/product/ for the current feature after it ships
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
-Update the product documentation under `docs/product/` to reflect the feature that was just implemented — **if** it changed something a product reader would act on. Plenty of features do not, and for those the correct output is no edit at all.
+Update `docs/product/` for the feature just implemented, **if** it changed something a product reader would act on. Plenty of features do not, and for those the correct output is no edit.
 
 Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
 when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
@@ -11,18 +11,18 @@ still commit your own work.
 
 ## Purpose and audience
 
-`docs/product/` is high-level **product documentation**, not developer or API reference. Its readers evaluate, operate, or integrate FLS — technical decision-makers, downstream integrators, and operators — and need to know *what the product does and what can be configured*, not how it is implemented.
+`docs/product/` is high-level **product documentation**, not developer or API reference. Its readers (technical decision-makers, downstream integrators, operators) evaluate, operate or integrate FLS and need to know *what the product does and what can be configured*, not how it is implemented.
 
 Write to that audience and at that altitude:
 
 - Describe capabilities and configuration surfaces in prose. Name a setting when it is the configuration entry point; do not document its internal schema.
-- **A typical feature update is a few sentences — and many features warrant none at all.** Gauge depth by the *altitude* defined above, not by whatever is already in the file: some existing sections are over-detailed, and where you touch one, trim it toward the audience rather than perpetuating the bloat.
-- **Default to a sentence or two inside an existing section.** A new `## ` section has to earn its place — it needs a capability a reader would scan the contents list looking for, not just a heading for the change you happen to have made. Match the neighbouring sections' *shape* (paragraph length, bullets, bolded lead-ins) even though you do not match their depth.
+- **A typical feature update is a few sentences, and many features warrant none.** Gauge depth by the *altitude* defined above, not by the file's existing depth: some sections are over-detailed, and where you touch one, trim it toward the audience.
+- **Default to a sentence or two inside an existing section.** A new `## ` section has to earn its place: it needs a capability a reader would scan the contents list for. Match the neighbouring sections' *shape* (paragraph length, bullets, bolded lead-ins) even though you do not match their depth.
 - **Do not** dump code blocks, settings dictionaries, or registry contents; enumerate every field or option in a table; narrate internal mechanics, resolution order, or fallbacks; or restate at length anything covered elsewhere — link instead.
 
 <!-- Any change to the litmus test must be mirrored into the worker bullets in Step 2. -->
 
-**Altitude litmus test.** A sentence fails — and must be rephrased into plain product language, moved to its proper home, or cut — if *any* prong catches it:
+**Altitude litmus test.** A sentence that *any* prong catches fails; rephrase it into plain product language, move it to its proper home, or cut it:
 
 - *Symbols.* It names a Python/Django symbol — a view or URL route name, a model, method, field, an ORM type, or an internal status constant (e.g. `BLOCKED`/`READY`). The **only** code symbols that belong in these docs are **the name of a setting** an operator sets, or an author-facing content option — named in prose, never schema-dumped. A settings *key* qualifies; a *value* that might be put in one does not, so system-check and error IDs (`app_label.E001`), dotted import paths, permission codenames and internal event names are symbols however operator-adjacent they feel. A management command is nameable only when running it *is* the capability (`manage.py db_worker`, `content_save`) — never as a way of saying when internal machinery fires.
 - *Mechanics.* It narrates *how* something is configured or behaves internally — specific tuning parameters (regions, checksums, timeouts, sampling rates, retry counts, TTLs), fallback/resolution behaviour beyond a single clause, or explicit-choice edge cases ("can instead opt into X via Y"). State the capability and its default, then stop; link the rest.
@@ -44,13 +44,13 @@ Write to that audience and at that altitude:
 >
 > *What was cut and why:* the check IDs and the three-command list — *symbols*; an ID is a settings **value**, not the name of a setting, and the commands were cited to say when machinery fires, not as something anyone runs. The error-vs-warning rationale and the which-backends-are-exempt rule — *mechanics*. The whole `E001`→`E002` paragraph — *wrong artifact*: it is an upgrade instruction, and the identical text already existed in the feature's `upgrade_notes.md`, which owns it. The `## ` heading survived only because it names something an evaluator scans the contents list for; everything under it still had to earn its place, and most of it did not. Note that `SILENCED_SYSTEM_CHECKS` would have been *allowed* (it is the name of a setting) and was dropped anyway, because the sentence works without it. **Allowed is not the same as worth writing.**
 
-**Last gate — would a reviewer cut it?** For each sentence you are about to add, name the reader who acts differently for having read it. If you cannot, cut the sentence. If that empties the edit, write nothing: "no change needed" is a normal, frequent, correct outcome of this command, and padding a doc to justify having run it is a defect. When genuinely torn, write less and link to the authoritative detail — the code, the spec, or another doc.
+**Last gate: would a reviewer cut it?** For each sentence you are about to add, name the reader who acts differently for having read it. If you cannot, cut it. If that empties the edit, write nothing: "no change needed" is a normal, correct outcome, and padding a doc to justify having run is a defect. When torn, write less and link to the authoritative detail (the code, the spec, or another doc).
 
 ## Fan-out recipe (shared)
 
-This command runs at **depth 0** and fans work out to sub-agents.
+This command runs at **depth 0** and fans work out to subagents.
 
-1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents cannot ask the user, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need.
+1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents cannot ask the user, so bake into each prompt everything the worker needs from what the user said and what is on disk. Never ask what a worker or the code will answer.
 2. **One output path per unit.** Durable artifacts keep their real names; intermediate outputs go in `.sdd-work/` at the project root, named `<doc>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
@@ -64,12 +64,11 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 ## Step 1: Decide whether any doc changes — and which
 
-Find the spec directory: in hook mode `<spec-dir>` is the input; otherwise resolve it the way `pre_step_rebase.md`'s
-"Inputs from the caller" line says. Read its spec file (`1. spec.md`) and plan file (`2. plan.md`) to understand what the feature added or changed.
+In hook mode `<spec-dir>` is the input; otherwise resolve it the way `pre_step_rebase.md`'s "Inputs from the caller" line says. Read its `1. spec.md` and `2. plan.md` to understand what the feature added or changed.
 
-**Relevance gate — apply this before naming any doc.** A doc is affected only if the feature changed something one of *its* readers — an evaluator, an operator, or an integrator — would act on: a capability they can now use or must now account for, a configuration surface they can now reach, or a stated limitation that has moved. Internal refactors, test-only work, error-reporting plumbing, developer ergonomics and pure upgrade mechanics fail the gate even when they are the entire point of the feature. Content that fails the gate usually has a proper home — route it per the *wrong artifact* prong above rather than mirroring it here.
+**Relevance gate: apply before naming any doc.** A doc is affected only if the feature changed something one of *its* readers — an evaluator, an operator, or an integrator — would act on: a capability they can now use or must now account for, a configuration surface they can now reach, or a stated limitation that has moved. Internal refactors, test-only work, error-reporting plumbing, developer ergonomics and pure upgrade mechanics fail the gate even when they are the entire point of the feature. Content that fails the gate usually has a proper home — route it per the *wrong artifact* prong above rather than mirroring it here.
 
-Output a list of `(doc_file, change_summary)` pairs — one per doc that passes the gate, with a one-sentence description of what a reader of that doc can now do differently. **The list may legitimately be empty**, and for a backend-only feature that is the expected result. If it is empty, state in one sentence why the feature is invisible at product altitude and where its content went instead, then skip to Step 5.
+Output a list of `(doc_file, change_summary)` pairs, one per doc that passes the gate, with a one-sentence description of what a reader of that doc can now do differently. **The list may be empty**; for a backend-only feature that is the expected result. If it is empty, state in one sentence why the feature is invisible at product altitude and where its content went instead, then skip to Step 5.
 
 ## Step 2: Draft updates (fan-out)
 
@@ -98,7 +97,7 @@ Accuracy rules that every worker must follow (bake these into each prompt):
 
 ## Step 3: Synthesise — apply edits to the real docs
 
-Read each `.sdd-work/<doc>.md` file **by path** (never dump its contents into this prompt). A draft whose body is `No change needed` is a completed unit — record it and move on; do not open the real doc, and do not re-derive an edit for it. If Step 1's list was empty, or every draft came back `No change needed`, this step applies no edits at all; note that and go to Step 5. For each draft that does carry content, apply it to the real `docs/product/<doc>.md`:
+Read each `.sdd-work/<doc>.md` **by path**. A draft whose body is `No change needed` is a completed unit — record it and move on; do not open the real doc, and do not re-derive an edit for it. If Step 1's list was empty, or every draft came back `No change needed`, this step applies no edits at all; note that and go to Step 5. For each draft that does carry content, apply it to the real `docs/product/<doc>.md`:
 
 - Use `Edit` for targeted section updates; use `Write` only if the doc is new or requires a full replacement.
 - Update the `_Last updated: YYYY-MM-DD_` line to today's date **only on docs you actually edited**.
@@ -106,13 +105,13 @@ Read each `.sdd-work/<doc>.md` file **by path** (never dump its contents into th
 
 ## Step 4: Screenshots (visual features only)
 
-Skip this step if Step 1's doc list was empty, if Step 3 applied no edits, or if the feature has no visible UI changes (e.g. a backend-only or CLI feature). Proceed if the feature touches any of: learner-experience, educator-interface, admin-interface, or any other doc that requires screenshots.
+Skip this step if Step 1's doc list was empty, Step 3 applied no edits, or the feature has no visible UI changes (e.g. a backend-only or CLI feature). Proceed if the feature touches learner-experience, educator-interface, admin-interface, or any other doc that requires screenshots.
 
 **Reuse before you capture.** `/sdd:do_qa` has almost certainly already photographed this feature. Do not start a dev server until you have checked the QA screenshots and found a real gap.
 
 ### 4a: List the images each doc needs
 
-From the Step 1 doc list and the Step 3 edits, write down the images the docs actually need — one line per image: which doc, what the image must show, and a descriptive product-doc filename (e.g. `educator_cohort_progress_report.png`). Keep this list short; a product doc needs an image where the UI *is* the point being made, not one per screen the feature touches.
+From the Step 1 doc list and the Step 3 edits, write one line per image the docs need: which doc, what the image must show, and a descriptive product-doc filename (e.g. `educator_cohort_progress_report.png`). Keep the list short; a product doc needs an image where the UI *is* the point, not one per screen the feature touches.
 
 ### 4b: Shop the QA screenshots first
 
@@ -175,7 +174,7 @@ Every image under `docs/product/screenshots/` must land under the 1024 KB pre-co
 find docs/product/screenshots -type f \( -name '*.png' -o -name '*.jpg' \) -size +1024k
 ```
 
-Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/sdd:do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `claude_plugins/sdd/scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
+Anything listed trips the pre-commit hook. Screenshots copied in 4b are already compressed by `/sdd:do_qa`, so an offender is normally a fresh capture from 4c: re-capture it at a smaller viewport or downscale it. `claude_plugins/sdd/scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
 
 ### 4e: Reference screenshots from docs
 
@@ -189,18 +188,13 @@ Use the extension the file actually has (`.jpg` if QA's compression converted it
 
 ## Step 5: Clean up
 
-Delete this command's scratch files once all doc edits (and any screenshot references) have been
-applied, listing the **explicit, known paths** — one `.sdd-work/<doc>.md` per worker spawned in the
-step-3 fan-out — and letting the wrapper drop the directory once it is empty:
+Once all doc edits (and any screenshot references) are applied, delete this command's scratch files, listing the **explicit, known paths** (one `.sdd-work/<doc>.md` per worker spawned in the Step 2 fan-out) and letting the wrapper drop the directory once it is empty:
 
 ```bash
 claude_plugins/sdd/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/<doc>.md …
 ```
 
-`--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,
-so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never
-wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
-blocked by the `security-guard` PreToolUse hook.
+`--prune-empty` uses `rmdir`, which only removes an **empty** directory, so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never wipe `.sdd-work/` wholesale: other SDD commands share it, and the `security-guard` PreToolUse hook blocks a recursive force-delete.
 
 ## Step 6: Commit and push
 

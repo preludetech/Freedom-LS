@@ -3,7 +3,7 @@ description: Sync the fls-content course-author plugin if this SDD run touched F
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 ---
 
-Sync the `claude_plugins/fls-content/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
+Sync the `claude_plugins/fls-content/` course-author plugin with the FLS authoring changes this SDD run made. A **fast no-op** when nothing authoring-relevant changed.
 
 Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
 when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
@@ -15,7 +15,7 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 ## Step 1: Detect authoring-relevant changes (zero-token)
 
-Run the detection heuristic:
+Run:
 
 ```bash
 git diff main --name-only | grep -qE \
@@ -27,14 +27,14 @@ git diff main --name-only | grep -qE \
 
 ## Step 2: Draft the plugin update (fan-out — on a match only)
 
-Spawn **one `sdd:sdd-worker`** to read only the changed authoring-relevant files, identify exactly what changed, and draft scoped edits. Pass in the prompt:
+Spawn **one `sdd:sdd-worker`** to read only the changed authoring-relevant files and draft scoped edits. Pass in the prompt:
 
 - The list of changed authoring-relevant file paths from Step 1.
 - Instruction to read those files and identify exactly what changed (new/removed/modified: content types, frontmatter fields, `QuestionType` members, form-question field rules (`min`/`max`/`decimal_places` and the `question_bounds_error` checks), widget tags, `MARKDOWN_ALLOWED_TAGS` entries, `ADMONITION_TYPES` keys, convention examples in `demo_content/`).
 - Instruction to produce a concrete, scoped set of edits to:
   - (a) the `fls-content` **reference skills** under `claude_plugins/fls-content/skills/` — kept shallow and author-facing; edit only the sections corresponding to changed files.
   - (b) the **bundled validator** under `claude_plugins/fls-content/validate/` — when any mirrored source changed (`content_base/schema.py`, `content_engine/schema.py`, `content_engine/validate.py`, `form_engine/schema.py`, `form_engine/enums.py`, `form_engine/typed_answers.py`), detail what re-sync is required.
-- Instruction to base every statement on the actual file contents, not inference.
+- Instruction to base every statement on the actual file contents.
 - Instruction to write its output to `.sdd-work/fls_content_sync.md` and end the file with `status: ok` on success, `status: failed` + `reason:` on failure, or `status: blocked` + `needs:` if inputs are unclear.
 
 Apply the standard resume/retry/blocked recipe:
@@ -48,22 +48,18 @@ Apply the standard resume/retry/blocked recipe:
 Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the relevant `claude_plugins/fls-content/` files:
 
 - Use `Edit` for targeted section updates; use `Write` only if a file is new.
-- **When any mirrored source changed** (the six paths listed in Step 2b): re-copy the trimmed validator from the FLS sources and **re-apply every patch listed in the `# Patches applied:` header of `claude_plugins/fls-content/validate/schema.py` and of `claude_plugins/fls-content/validate/validate.py`**. Those two headers are the authoritative patch list — read them before editing, and add a numbered entry there for any new patch. Do not rely on a list duplicated here: one kept drifting out of date, which is the same failure this command exists to catch.
+- **When any mirrored source changed** (the six paths listed in Step 2b): re-copy the trimmed validator from the FLS sources and **re-apply every patch listed in the `# Patches applied:` header of `claude_plugins/fls-content/validate/schema.py` and of `claude_plugins/fls-content/validate/validate.py`**. Those two headers are the authoritative patch list: read them before editing, and add a numbered entry there for any new patch. Do not duplicate the list here; a copy drifted out of date once.
 - Note that `validate/schema.py` bundles **four** sources, not one: `content_base/schema.py`, `content_engine/schema.py`, `form_engine/schema.py`, and a hand-ported mirror of `form_engine/typed_answers.question_bounds_error`.
 - Touch **only** the affected sections — never rewrite the whole plugin and never add detail beyond what the source files express.
 - `skills/widget-reference/resources/custom-widgets.md` and the custom-widget wording in `skills/widget-reference/SKILL.md` are hand-maintained and have no FLS source. Keep them when built-in widget sections are edited.
 
-Delete this command's scratch file after all edits are applied, naming it explicitly and letting the
-wrapper drop the directory once it is empty:
+After all edits are applied, delete this command's scratch file by name and let the wrapper drop the directory once it is empty:
 
 ```bash
 claude_plugins/sdd/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/fls_content_sync.md
 ```
 
-`--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,
-so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never
-wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
-blocked by the `security-guard` PreToolUse hook.
+`--prune-empty` uses `rmdir`, which only removes an **empty** directory, so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never wipe `.sdd-work/` wholesale: other SDD commands share it, and the `security-guard` PreToolUse hook blocks a recursive force-delete.
 
 ## Step 4: Commit and push
 
