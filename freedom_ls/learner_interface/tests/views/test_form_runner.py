@@ -974,6 +974,15 @@ def test_results_page_with_failed_verdict_offers_a_retry(mock_site_context, clie
     assert "Retry quiz" in response.content.decode()
 
 
+@pytest.mark.django_db
+def test_results_page_with_failed_verdict_invites_another_try(
+    mock_site_context, client
+):
+    response = _completed_quiz_results_page(client, score=1, max_score=2)
+
+    assert "Review the material and try again." in response.content.decode()
+
+
 # ---------------------------------------------------------------------------
 # count_form_questions helper
 # ---------------------------------------------------------------------------
@@ -3163,6 +3172,19 @@ def test_results_page_of_a_closed_failed_quiz_offers_no_retry(
     assert response.context["quiz_verdict"] == "failed"
     assert "Retry quiz" not in content
     assert response.context["item_closed"] is True
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_results_page_of_a_closed_failed_quiz_says_it_cannot_be_retaken(
+    mock_site_context, client
+):
+    course = _closed_quiz_with_failed_sitting(client)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert "This quiz has closed, so it can't be retaken." in content
+    assert "try again" not in content
 
 
 @pytest.mark.django_db

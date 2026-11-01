@@ -45,6 +45,7 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormQuestionFactory,
 )
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -1169,6 +1170,32 @@ def test_results_of_a_completed_attempt_stay_open_to_an_ended_learner(
     response = client.get(_player_urls(course)["course_form_complete"])
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_failed_results_tell_an_ended_learner_their_access_ended(
+    mock_site_context,
+):
+    course, form = _ended_course()
+    form.strategy = FormStrategy.QUIZ
+    form.quiz_pass_percentage = 70
+    form.save()
+    user, _record, client = _ended_learner(course)
+    form_attempt(
+        course,
+        user,
+        form,
+        completed_time=REGISTERED_AT,
+        scores={"score": 1, "max_score": 2},
+    )
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    content = response.content.decode()
+    assert response.context["quiz_verdict"] == "failed"
+    assert "Your access to this course has ended." in content
+    assert "try again" not in content
 
 
 @pytest.mark.django_db
