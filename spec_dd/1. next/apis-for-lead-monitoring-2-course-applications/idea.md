@@ -50,4 +50,4 @@ Application data is what lead monitoring reads most. Today it reaches scripts on
 - `spec_dd/1. next/apis-for-lead-monitoring/research_comparable_apis.md`: naming and conventions.
 - Done specs: `more_lead_admin_exports`, `ananomous-course-applications`, `anon-application-improvements`.
 - Code to read: `freedom_ls/course_applications/resources.py` (export and its prefetches), `freedom_ls/form_engine/exports.py` (answer values).
-- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `domain-glossary`.
+- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `fls-dev:domain-glossary`.

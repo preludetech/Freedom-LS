@@ -199,7 +199,7 @@ contact them. A short contact form takes their name, phone number, a good time t
 question. The request records where they were when they asked: the application, and the requirement
 or form page.
 
-The request goes to the reviewers of the application's organisation. The `notifications` skill decides
+The request goes to the reviewers of the application's organisation. The `fls-dev:notifications` skill decides
 whether that is an in-app notification. A signal or webhook lets a deployment push requests into its
 own CRM.
 

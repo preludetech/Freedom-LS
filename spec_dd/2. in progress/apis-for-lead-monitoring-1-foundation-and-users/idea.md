@@ -72,4 +72,4 @@ Lead monitoring needs scripts to pull learner and lead data out of a site withou
 - `research_api_foundation.md` (in this child's directory): codebase findings on site resolution, audit log and app settings, auth options compared, DRF conventions, security notes.
 - `spec_dd/1. next/apis-for-lead-monitoring/research_data_sources.md`: models, admin export columns and hazards.
 - `spec_dd/1. next/apis-for-lead-monitoring/research_comparable_apis.md`: naming and conventions from comparable APIs.
-- Skills: `fls-dev:multi-tenant`, `fls-dev:app-settings`, `ds:testing`, `fls-dev:testing`, `domain-glossary`.
+- Skills: `fls-dev:multi-tenant`, `fls-dev:app-settings`, `ds:testing`, `fls-dev:testing`, `fls-dev:domain-glossary`.

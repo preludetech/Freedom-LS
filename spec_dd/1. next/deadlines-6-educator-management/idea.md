@@ -93,5 +93,5 @@ deadlines out on purpose, so the panels, capabilities and audit entries are all 
 - `spec_dd/1. next/deadlines/research_deadlines_user_sentiment.md`: section (b) and implications 2, 3 and 8.
 - `spec_dd/1. next/educator-interface-8-bulk-operations/idea.md` and
   `spec_dd/1. next/educator-interface-11-audit-log/idea.md`: the framework and the log this spec plugs into.
-- Skills: `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`,
   `brand-guidelines`, `fls-dev:testing`.

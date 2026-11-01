@@ -73,4 +73,4 @@ The personal and device identifiers on a signup attribution (IP address, user ag
 - `docs/product/referral-codes.md` and `docs/product/security-and-data-handling.md`.
 - `freedom_ls/referral_tracking/` (models, `resources.py` for the export columns, `admin.py`).
 - Done specs: `referral-links`, `more_lead_admin_exports`.
-- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `domain-glossary`.
+- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `fls-dev:domain-glossary`.

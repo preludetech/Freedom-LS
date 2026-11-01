@@ -72,4 +72,4 @@ the same funnel. The source idea does not name it, but a lead monitor would want
 - `freedom_ls/learner_management/models.py`: `LearnerCourseRegistration`,
   `CohortCourseRegistration`, `Learner`, `Cohort`.
 - `freedom_ls/course_interest/models.py`: `CourseInterest`.
-- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `domain-glossary`.
+- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `fls-dev:domain-glossary`.

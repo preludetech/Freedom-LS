@@ -96,4 +96,4 @@ incremental pull keyed on the existing timestamps would silently miss those chan
 - `spec_dd/1. next/apis-for-lead-monitoring/research_comparable_apis.md`: resource and field
   naming.
 - `freedom_ls/learner_progress/models.py`: `CourseProgress`.
-- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `domain-glossary`.
+- Skills: `fls-dev:multi-tenant`, `ds:testing`, `fls-dev:testing`, `fls-dev:domain-glossary`.

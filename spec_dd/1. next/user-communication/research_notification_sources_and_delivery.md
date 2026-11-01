@@ -10,7 +10,7 @@ retry spec landing first, described in its pre-change state below unless noted).
 Vocabulary: **learner** (`Learner`, `freedom_ls/learner_management/models.py:51`), never "student".
 Course access is a **registration** (`LearnerCourseRegistration` / `CohortCourseRegistration`), never
 an "enrolment". "Course progress record" for `CourseProgress`. See
-`.claude/skills/domain-glossary/SKILL.md`.
+`claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`.
 
 ## 1. Notification sources
 

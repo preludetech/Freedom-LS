@@ -103,7 +103,7 @@ The last two are the summary actions; `record_run_summary` accepts nothing else.
 is the `is_active` flip done from Members; `role.removed` is a role row deleted along with its
 cohort.
 
-The codes follow the vocabulary in the domain glossary (`.claude/skills/domain-glossary/SKILL.md`,
+The codes follow the vocabulary in the domain glossary (`claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`,
 "Changes"): a glossary noun, then one of its verbs. `tests/invariants/test_vocabulary.py` fails a code that
 uses any other word.
 

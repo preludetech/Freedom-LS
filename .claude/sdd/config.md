@@ -45,7 +45,7 @@
 
 ## Vocabulary Sources
 
-- .claude/skills/domain-glossary/SKILL.md
+- claude_plugins/fls-dev/skills/domain-glossary/SKILL.md
 - freedom_ls/*/models.py
 - docs/product/
 - docs/app_structure.md

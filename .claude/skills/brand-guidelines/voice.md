@@ -34,7 +34,7 @@ In every context, FreedomLS is a community open-source project: acknowledge its 
 
 ## Terminology
 
-The words FreedomLS uses about itself in UI copy, docs and marketing. For the names of models, fields and other code concepts, `Skill(domain-glossary)` is canonical.
+The words FreedomLS uses about itself in UI copy, docs and marketing. For the names of models, fields and other code concepts, `Skill(fls-dev:domain-glossary)` is canonical.
 
 | Use this        | Instead of                | Why |
 |-----------------|---------------------------|-----|

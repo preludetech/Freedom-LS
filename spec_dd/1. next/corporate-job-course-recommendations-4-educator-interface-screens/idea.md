@@ -58,4 +58,4 @@ Specs 1 to 3 give an organisation lists, attributes and rules, but only in the D
 - `spec_dd/1. next/educator-interface-7-learner-administration/idea.md`: the learner detail page this spec adds attributes to.
 - `spec_dd/1. next/educator-interface-11-audit-log/idea.md`: the audit log rule actions and attribute edits appear in.
 - Mockups as visual language: `spec_dd/1. next/educator-interface-full-polish/Educator LMS Interface Design/`.
-- Skills: `domain-glossary`, `brand-guidelines`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:multi-tenant`, `fls-dev:testing`.
+- Skills: `fls-dev:domain-glossary`, `brand-guidelines`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:multi-tenant`, `fls-dev:testing`.

@@ -129,7 +129,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 - `educator-interface-full-polish/htmx-modal-drawer-url-state.md`, the mechanics for the drawer, the modal and URL state, read for specs 1, 2 and 3.
 - `educator-interface-full-polish/comparable-systems-learner-management.md`, what seven LMSs let staff do and where FLS differs, read for specs 6 to 9.
 - Done specs that shaped the data model: `organisations`, `learners-associated-with-organisations`, `better-course-progress-tracking` (its `decision.md` overrides its idea), `basic_reports`, `report-rendered-with-org-name`, `role_based_permission_system_foundations`. All under `spec_dd/3. done/`.
-- Skills every one of these specs should consult: `domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:frontend-styling`, `fls-dev:icon-usage`, `fls-dev:testing`.
+- Skills every one of these specs should consult: `fls-dev:domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:frontend-styling`, `fls-dev:icon-usage`, `fls-dev:testing`.
 
 #### Not yet cut
 
@@ -256,7 +256,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 - Shared research in the parent: `research_notification_sources_and_delivery.md` (event hooks, delivery stack, the cost of Channels), `research_messaging_relationships_and_surfaces.md` (who is an educator of a learner, where the UI goes, site scoping in background work), `research_lms_comms_landscape.md`, `research_comms_patterns.md`, `research_comms_ux_pitfalls.md`.
 - `retry-sent-emails/1. spec.md` (the transport under spec 2) and the Educator interface rebuild section above: the quick view is its spec 3, and the inbox section follows its spec 1's panel API, not today's `ListViewConfig`.
 - Done specs: `email-styling` (themed mail), `organisations`, `learners-associated-with-organisations`, `role_based_permission_system_foundations`.
-- Skills: `domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `ds:app-settings`, `fls-dev:app-settings`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:icon-usage`, `fls-dev:testing`.
+- Skills: `fls-dev:domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `ds:app-settings`, `fls-dev:app-settings`, `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:icon-usage`, `fls-dev:testing`.
 
 ### Test organisation and hygiene
 
@@ -448,7 +448,7 @@ Nobody asked about these; they were judgement calls. Say so in the spec if one t
 - **A rule never reactivates a registration staff deactivated.** It reactivates only rows it
   deactivated itself, as Cornerstone's dynamic reassignment does.
 - **No recommendation for a learner already registered** for the course.
-- **A recommendation raises no notification.** It shows on the dashboard, and the `notifications`
+- **A recommendation raises no notification.** It shows on the dashboard, and the `fls-dev:notifications`
   skill defaults to no.
 - **Attributes are always stored and editable.** The switch gates rules, not attributes.
 - **Rules live in a new app**; attributes, their lists and the switch live in the separate,
@@ -491,8 +491,8 @@ Each of these is an open question in the idea that owns it. Resolve it there and
   unmatching and preview (specs 2, 3, 4).
 - `spec_dd/corporate-readiness/README.md` items 9 and 12, and its `research_corporate_features.md` §2.
 - The Educator interface rebuild section above (its specs 7, 8 and 11).
-- Skills: `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
-  `fls-dev:admin-interface`, `notifications`, `fls-dev:testing`; for 4 and 5 also
+- Skills: `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
+  `fls-dev:admin-interface`, `fls-dev:notifications`, `fls-dev:testing`; for 4 and 5 also
   `fls-dev:template`, `ds:htmx`.
 
 ### Deadlines
@@ -637,7 +637,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 - `research_deadlines_user_sentiment.md`: what learners and educators like and dislike (all).
 - `spec_dd/corporate-readiness/README.md` item 13; done specs `2026-02-19_19:25_deadlines`,
   `better-course-progress-tracking`, `user-communication-3-messaging-policy`.
-- Skills: `domain-glossary`, `notifications`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:notifications`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
   `fls-dev:admin-interface`, `fls-dev:markdown-content`, `fls-dev:testing`; for 4, 6 and 7 also
   `fls-dev:template`, `ds:htmx`, `brand-guidelines`.
 
@@ -752,7 +752,7 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
   `anon-application-improvements`.
 - Standalone spec: `referral-attribution-over-time` (spec 6 depends on it).
 - Skills: `fls-dev:multi-tenant`, `fls-dev:app-settings`, `ds:testing`, `fls-dev:testing`,
-  `domain-glossary`.
+  `fls-dev:domain-glossary`.
 - Every spec updates `docs/product/security-and-data-handling.md`.
 
 ## Standalone specs

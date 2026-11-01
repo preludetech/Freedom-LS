@@ -46,4 +46,4 @@ An organisation with hundreds of staff will not set four attributes per person b
 - `../corporate-job-course-recommendations/research_fls_user_attributes_and_registrations.md`: where learner data and registrations live today.
 - `../corporate-job-course-recommendations/research_enrolment_rule_engines.md`: performance at scale and blast radius of bulk attribute changes.
 - `spec_dd/1. next/educator-interface-8-bulk-operations/idea.md`: the import flow this spec extends.
-- Skills: `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:file-storage`, `ds:htmx`, `fls-dev:testing`.
+- Skills: `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:file-storage`, `ds:htmx`, `fls-dev:testing`.

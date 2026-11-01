@@ -86,5 +86,5 @@ out of it on purpose.
 - `spec_dd/1. next/deadlines/research_deadlines_user_sentiment.md`: section (f) and implication 12.
 - `spec_dd/2. in progress/educator-interface-10-reporting-dashboards/idea.md`: the statuses, the
   dashboard and the cohort report on screen.
-- Skills: `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:template`, `ds:htmx`,
   `brand-guidelines`, `fls-dev:testing`.

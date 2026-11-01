@@ -159,6 +159,6 @@ starts out sending one email per event and has its defaults changed under it lat
     preferences, immediate, daily and weekly email, and where they fail.
   - `research_comms_patterns.md`: notification and preference data-model patterns, the common
     digest batching pattern and a `digest_frequency` preference shape.
-- Skills: `domain-glossary`, `notifications`, `brand-guidelines`, `fls-dev:multi-tenant`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:notifications`, `brand-guidelines`, `fls-dev:multi-tenant`,
   `ds:app-settings`, `fls-dev:app-settings`, `fls-dev:template`, `ds:htmx`,
   `fls-dev:admin-interface`, `fls-dev:testing`.

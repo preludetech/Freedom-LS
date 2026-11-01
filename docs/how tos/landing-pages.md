@@ -191,5 +191,5 @@ traffic is mobile and often on a poor connection, and load time is the best-evid
 variable there is. Form and heading accessibility is the second. A visitor who cannot tell which
 field failed validation abandons the page.
 
-See the `brand-guidelines` skill for tone and the `domain-glossary` skill before you invent a word
+See the `brand-guidelines` skill for tone and the `fls-dev:domain-glossary` skill before you invent a word
 for something FLS already names.

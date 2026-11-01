@@ -96,4 +96,4 @@ and polling stays the path most installs use.
   (the state of `config/asgi.py`) and `docs/product/deployment.md` (the deployment story to
   extend).
 - Skills: `ds:htmx`, `fls-dev:multi-tenant`, `ds:app-settings`, `fls-dev:app-settings`,
-  `fls-dev:testing`, `ds:playwright-tests`, `fls-dev:playwright-tests`, `domain-glossary`.
+  `fls-dev:testing`, `ds:playwright-tests`, `fls-dev:playwright-tests`, `fls-dev:domain-glossary`.

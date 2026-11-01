@@ -22,7 +22,7 @@ Each of the eleven specs documents its own change, but nobody has read the resul
 
 **Polish pass.** Every screen at 390 wide and 1440 wide, in the default theme and in dark mode, matched against the mockups for layout and density. Keyboard through every action. A screen reader through the quick view, the modal and the tables. Fix what is found; a list of what is deliberately left goes in the spec.
 
-**Consistency pass.** Same wording for the same action everywhere (deactivate, reactivate, remove, unregister), the same confirmation shape, the same empty states, the same badge vocabulary. The `domain-glossary` skill is the reference.
+**Consistency pass.** Same wording for the same action everywhere (deactivate, reactivate, remove, unregister), the same confirmation shape, the same empty states, the same badge vocabulary. The `fls-dev:domain-glossary` skill is the reference.
 
 **Upgrade notes.** One consolidated `upgrade_notes.md` for the effort, in addition to each spec's own, listing the URL changes, every template a downstream may have overridden, new settings, new event types, new migrations, and `requires_tailwind_rebuild`. Written to the schema in `claude_plugins/fls-dev/commands/update_upgrade_notes.md`.
 

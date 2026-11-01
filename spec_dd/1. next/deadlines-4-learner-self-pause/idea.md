@@ -78,5 +78,5 @@ within clear limits avoids that. FLS takes no payment, so there is nothing to ch
   from gym and subscription products.
 - `spec_dd/1. next/deadlines/research_deadline_integration_points.md`: section 6, the learner
   interface slots and the rule that a learner's own action does not notify them.
-- Skills: `domain-glossary`, `notifications`, `fls-dev:template`, `ds:htmx`, `brand-guidelines`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:notifications`, `fls-dev:template`, `ds:htmx`, `brand-guidelines`,
   `fls-dev:testing`.

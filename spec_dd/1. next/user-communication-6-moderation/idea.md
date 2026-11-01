@@ -81,5 +81,5 @@ FLS has none of this today.
   scope, and where the educator interface can host a section.
 - `research_lms_comms_landscape.md` (parent): how comparable LMSs restrict peer messaging and
   handle forum moderation.
-- Skills: `domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `fls-dev:admin-interface`,
+- Skills: `fls-dev:domain-glossary`, `brand-guidelines`, `fls-dev:multi-tenant`, `fls-dev:admin-interface`,
   `fls-dev:template`, `ds:htmx`, `fls-dev:alpine-js`, `fls-dev:icon-usage`, `fls-dev:testing`.

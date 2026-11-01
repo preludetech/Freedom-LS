@@ -22,7 +22,7 @@ comparable systems, and also where they fail: one notification per offset, remin
 silently stop for soft or extended deadlines (Docebo), no reminder at all (Canvas), and learners
 who mute a bell that fires too often. FLS has no scheduler of its own, and
 `user-communication-2-notification-email` explicitly leaves deadline reminders to the deadlines
-effort, so this spec owns the scan, the categories and the answers to the `notifications` skill.
+effort, so this spec owns the scan, the categories and the answers to the `fls-dev:notifications` skill.
 The sweep is also the only place a time-driven webhook can come from, since nothing fires at the
 instant a date passes.
 
@@ -53,7 +53,7 @@ instant a date passes.
   moment.
 - **In-app until email exists.** Delivery is the bell. When `user-communication-2-notification-email`
   lands the same categories can be emailed; this spec builds no channel and no digest.
-- **The five questions for the new categories** (the `notifications` skill's checklist):
+- **The five questions for the new categories** (the `fls-dev:notifications` skill's checklist):
   1. Actor: the system, through the sweep. The recipient is never the actor.
   2. Without it the learner learns of the date only by opening the course or the dashboard, and
      an educator only by opening the cohort.
@@ -99,4 +99,4 @@ instant a date passes.
 - `spec_dd/1. next/deadlines/research_deadlines_user_sentiment.md`: section (e) and implications 9 to 11.
 - `spec_dd/1. next/user-communication-2-notification-email/idea.md`: the exclusion that leaves this scan to the
   deadlines effort.
-- Skills: `notifications`, `domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:testing`.
+- Skills: `fls-dev:notifications`, `fls-dev:domain-glossary`, `fls-dev:multi-tenant`, `fls-dev:testing`.

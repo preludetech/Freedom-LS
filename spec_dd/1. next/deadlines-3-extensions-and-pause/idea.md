@@ -87,5 +87,5 @@ item still shows late. One extension action must leave no half-extended state.
   notification rules, access and webhooks.
 - `spec_dd/1. next/deadlines/research_current_deadlines.md`: section 4, no existing expiry or
   pause state.
-- Skills: `domain-glossary`, `notifications`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
+- Skills: `fls-dev:domain-glossary`, `fls-dev:notifications`, `fls-dev:multi-tenant`, `fls-dev:app-settings`,
   `fls-dev:admin-interface`, `fls-dev:testing`.

@@ -4,7 +4,7 @@ Research for cutting `spec_dd/1. next/deadlines/idea.md` into ordered specs. Fac
 only. The existing deadline models are researched elsewhere (another worker); they appear here only
 where they touch an integration point. Paths are relative to the repo root. Project vocabulary
 (`Learner`, `Cohort`, `Organisation`, `CourseProgress`, `LearnerCourseRegistration`,
-`CohortCourseRegistration`) follows `.claude/skills/domain-glossary/SKILL.md`.
+`CohortCourseRegistration`) follows `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`.
 
 ## 1. Time-based work
 
@@ -118,7 +118,7 @@ digest idea lists "any scheduler inside FLS" as out of scope
   only.
 - Not built: preferences, pop-up alerts, retention, SMS/push.
 
-**The `notifications` skill (`.claude/skills/notifications/SKILL.md`) says:**
+**The `fls-dev:notifications` skill (`claude_plugins/fls-dev/skills/notifications/SKILL.md`) says:**
 - Default is **no**. Raise only if (1) someone/something else caused it, or (2) it is "a reminder the
   user would thank us for... time-sensitive and missing it has a real cost: a deadline approaching".
 - Plus all of: user is not the actor; user cannot already see it on the page they land on; it needs
@@ -437,7 +437,7 @@ icon); `qa_helpers` commands; `role_based_permissions/registry.py` (12 mentions)
    webhook needs `site=`.
 3. `deployment/housekeeping.py` is a merge-hot file (three other specs add sweeps).
 4. Spec 7's digest idea refuses to own deadline reminders; the deadlines effort owns the scan, the
-   category (checklist in the `notifications` skill), and the email-urgency question.
+   category (checklist in the `fls-dev:notifications` skill), and the email-urgency question.
 5. No pause/end-date state exists; `is_active` on registration, cohort registration, cohort and
    learner is the only access switch, and it also drives dashboard listing, webhooks and progress
    resolution.
