@@ -78,34 +78,33 @@ This section is shared with every other plugin's init, except the directory name
 legacy variable name a plugin's own migration still accepts. Edit all copies together.
 
 `PLUGINS_ROOT` is the relative path **from the project root** to the checkout that holds
-`claude_plugins/`. It is baked into `claude.sh` and into every wrapper script so they can find the
-plugin directory at runtime. Resolve it exactly like this, in order, stopping at the first step that
-yields a value. **Never prompt the user. Never guess a project-specific path.**
+`claude_plugins/`. It is baked into `claude.sh` and every wrapper script so they can find the plugin
+directory at runtime. Resolve it in this order, stopping at the first step that yields a value.
+**Never prompt the user. Never guess a project-specific path.**
 
 1. **The launcher wins.** If `claude.sh` exists at the project root and contains a line matching
    `^PLUGINS_ROOT="(.*)"$`, the captured value is `PLUGINS_ROOT`.
 2. **A wrapper script is the second source.** Otherwise, if any `.sh` under `.claude/*/scripts/`
    contains a line matching `^(PLUGINS_ROOT|FLS_PATH)="(.*)"$` whose value is not the literal
    `__PLUGINS_ROOT__`, and every such line agrees, use that value. If two disagree, **STOP** and
-   print both — a project cannot have two plugin roots.
+   print both, because a project cannot have two plugin roots.
 
-   `FLS_PATH` is matched here because it is the pre-split name for this same variable. On a
-   pre-split project **every** wrapper still uses it, so omitting it would make this whole step dead
-   on exactly the projects that need it — and a project whose checkout is a submodule would silently
-   fall through to the `.` default and bake the wrong root into every generated file.
-3. **Otherwise the value is `.`** — the project root itself holds `./claude_plugins/`. This is the
-   only default, and it is the only candidate any init offers. **No init names a second candidate or
-   an example path.** A hint present in one init and absent from another is exactly how two inits
-   come to bake different values into the same project.
-4. **Validate before use.** Confirm `<PLUGINS_ROOT>/claude_plugins/fls-dev/` exists, relative to the
-   project root. If it does not, **STOP** without writing anything:
+   `FLS_PATH` is the pre-split name for this same variable. On a pre-split project **every** wrapper
+   still uses it, so omitting it would make this step dead on exactly the projects that need it, and
+   a project whose checkout is a submodule would silently fall through to the `.` default and bake
+   the wrong root into every generated file.
+3. **Otherwise the value is `.`**, the project root itself holding `./claude_plugins/`. This is the
+   only default and the only candidate any init offers. **No init names a second candidate or an
+   example path**: a hint present in one init and absent from another is how two inits come to bake
+   different values into the same project.
+4. **Validate before use.** Confirm `<PLUGINS_ROOT>/claude_plugins/fls-dev/` exists, relative to
+   the project root. If it does not, **STOP** without writing anything:
 
    > Cannot find `claude_plugins/fls-dev/` under `PLUGINS_ROOT="<value>"`. Set `PLUGINS_ROOT` in
    > `claude.sh` to the relative path from the project root to the checkout that holds
    > `claude_plugins/`, then re-run this command. Nothing has been changed.
 
-5. **Record it.** Every later step uses this one value. No step re-derives it and no step substitutes
-   another.
+5. **Record it.** Every later step uses this one value. No step re-derives or substitutes it.
 
 ## Step 0: Preflight — read everything, write nothing
 
