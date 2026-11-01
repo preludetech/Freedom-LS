@@ -534,9 +534,8 @@ def test_bulk_action_posts_with_javascript_off(
         ).to_be_visible()
 
         no_js_page.get_by_role("button", name="Mark processed").click()
-        expect(no_js_page.get_by_text("2 stub models changed.")).to_be_visible()
-        no_js_page.get_by_role("link", name="Back to stub models").click()
         expect(no_js_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
+        expect(no_js_page.get_by_text("2 stub models changed.")).to_be_visible()
 
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))
     assert active_by_name["row-00"] is False
