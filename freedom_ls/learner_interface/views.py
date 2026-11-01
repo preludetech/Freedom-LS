@@ -2044,13 +2044,11 @@ def course_form_complete(request, course_slug, index):
         )
 
     # Get incorrect answers if this is a quiz with show_incorrect enabled
-    incorrect_answers = []
-    if form_progress:
-        incorrect_answers = form_progress.get_incorrect_quiz_answers()
+    incorrect_answers = form_progress.get_incorrect_quiz_answers()
 
     # Only set for QUIZ forms; non-quiz forms do not have a numeric percentage.
     percentage = None
-    if form_progress and form.strategy == FormStrategy.QUIZ:
+    if form.strategy == FormStrategy.QUIZ:
         with contextlib.suppress(ValueError):
             percentage = form_progress.quiz_percentage()
 
@@ -2058,7 +2056,7 @@ def course_form_complete(request, course_slug, index):
     # the marking rules changed can carry a score the review list below it
     # contradicts. The page has to own that rather than let the learner spot it.
     stored_score_outdated = False
-    if form_progress and form.strategy == FormStrategy.QUIZ and form_progress.scores:
+    if form.strategy == FormStrategy.QUIZ and form_progress.scores:
         current_scores = form_progress.compute_quiz_scores()
         # max_score too, not just score: a quiz that gained or lost a question
         # since the attempt shows a stale percentage the score alone cannot catch.
@@ -2071,11 +2069,7 @@ def course_form_complete(request, course_slug, index):
     # there is no bar to clear, so the results page must claim neither outcome.
     # The PDF report and the educator panel use the same guard.
     quiz_verdict = None
-    if (
-        form_progress
-        and percentage is not None
-        and form.quiz_pass_percentage is not None
-    ):
+    if percentage is not None and form.quiz_pass_percentage is not None:
         quiz_verdict = "passed" if form_progress.passed() else "failed"
 
     # Player chrome (outline panel + breadcrumb). Under "nothing" this is the one
@@ -2139,7 +2133,7 @@ def course_form_complete(request, course_slug, index):
         "form": form,
         "form_progress": form_progress,
         "show_scores": True,
-        "scores": form_progress.scores if form_progress else None,
+        "scores": form_progress.scores,
         "incorrect_answers": incorrect_answers,
         "stored_score_outdated": stored_score_outdated,
         "quiz_verdict": quiz_verdict,
