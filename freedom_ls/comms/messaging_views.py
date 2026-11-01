@@ -26,6 +26,7 @@ from freedom_ls.comms.messaging import (
     decode_cursor,
     encode_cursor,
     entry_for_message,
+    has_recipients,
     inbox_for,
     latest_messages,
     latest_page,
@@ -301,9 +302,9 @@ def inbox(request: HttpRequest) -> HttpResponse:
 
 
 def _has_recipients(request: HttpRequest) -> bool:
-    viewer = cast("User", request.user)
-    site = cast("Site", get_cached_site(request))
-    return get_messaging_policy().recipients_for(sender=viewer, site=site).exists()
+    return has_recipients(
+        cast("User", request.user), cast("Site", get_cached_site(request))
+    )
 
 
 @messaging_view
