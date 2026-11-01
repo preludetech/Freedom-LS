@@ -3,6 +3,7 @@
 {% load static %}
 {% load course_icon_tags %}
 {% load fls_base_filters %}
+{% load deadline_tags %}
 
 {% block extra_alpine_components %}
     <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
@@ -190,7 +191,11 @@
                                 {% endif %}
                             </div>
                         {% endif %}
-                        {% if is_coming_soon and not is_registered %}
+                        {% if access_ended_at %}
+                            <c-callout level="warning">
+                                Your access to this course ended on {% local_time access_ended_at %}. Your progress is saved. Ask your educator to restore it.
+                            </c-callout>
+                        {% elif is_coming_soon and not is_registered %}
                             {% comment %}Coming-soon, not-registered: the shared
                             express-interest control (two-state, HTMX-swapped) replaces
                             the generic enrol anchor. is_interested is stamped by the
@@ -278,8 +283,9 @@
                     {% endif %}
 
                     {% comment %}Course content ToC — reuse the existing course-children partialdef.
-                    The partialdef requires children, course, is_registered — all supplied by the view.{% endcomment %}
-                    {% if not course.table_of_contents_in_development %}
+                    The partialdef requires children, course, is_registered — all supplied by the view.
+                    An ended learner whose policy keeps no outline gets no children, and no section.{% endcomment %}
+                    {% if not course.table_of_contents_in_development %}{% if children or not access_ended_at %}
                         <section>
                             <h2>
                                 Course content
@@ -289,7 +295,7 @@
 
                             </div>
                         </section>
-                    {% endif %}
+                    {% endif %}{% endif %}
 
                 </div>
 

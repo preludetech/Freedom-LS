@@ -8,9 +8,11 @@ labels and their icons. Every row leaf (all-courses page) and card leaf
     in_progress    -> play  icon  + "In progress"      (enrolled, >0%)
     complete       -> complete icon + "Completed"
     coming_soon    -> deadline icon + "Coming soon"    (visibility == COMING_SOON)
+    access_ended   -> deadline icon + "Access ended <date>"  (needs access_ended_at)
 
 Params:
-  status    — one of: not_registered | registered | in_progress | complete | coming_soon
+  status    — one of: not_registered | registered | in_progress | complete | coming_soon | access_ended
+  access_ended_at — the instant access ended; read only when status is access_ended
   with_icon — include the reinforcement icon (rows: True; dashboard cards: False)
   as_chip   — render as a muted chip (rows); without it the eyebrow line (cards)
 

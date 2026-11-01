@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from django.db import connection
@@ -10,20 +12,27 @@ from django.urls import reverse
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.admin import TIME_LIMIT_HELP
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
+    SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    CourseDeadlineConfig,
     DeadlineKind,
     LearnerDeadlineOverride,
+    SiteDeadlineConfig,
 )
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohortcourseregistration_change"
 ADD_URL_NAME = "admin:freedom_ls_learner_management_cohortcourseregistration_add"
@@ -725,3 +734,195 @@ def test_the_course_progress_page_query_count_does_not_grow_with_learner_rows(
     assert _progress_page_query_count(
         staff_client, large
     ) == _progress_page_query_count(staff_client, small)
+
+
+SITE_CONFIG_ADD = "admin:freedom_ls_deadlines_sitedeadlineconfig_add"
+COURSE_CONFIG_ADD = "admin:freedom_ls_deadlines_coursedeadlineconfig_add"
+INHERIT_POST = {
+    "mark_overdue": "inherit",
+    "close_items": "inherit",
+    "end_course_access": "inherit",
+    "notify_educators": "inherit",
+    "grace_window": "",
+    "after_access_ended": "inherit",
+}
+
+
+@pytest.mark.django_db
+def test_site_config_add_with_every_select_at_inherit_stores_inherit_and_none(
+    staff_client, mock_site_context
+) -> None:
+    response = staff_client.post(reverse(SITE_CONFIG_ADD), INHERIT_POST)
+
+    row = SiteDeadlineConfig.objects.get()
+    assert response.status_code == 302
+    assert row.close_items == "inherit"
+    assert row.grace_window is None
+
+
+@pytest.mark.django_db
+def test_second_site_config_post_is_a_form_error_and_creates_no_row(
+    staff_client, mock_site_context
+) -> None:
+    SiteDeadlineConfigFactory()
+
+    response = staff_client.post(reverse(SITE_CONFIG_ADD), INHERIT_POST)
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.non_field_errors()
+    assert SiteDeadlineConfig.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_course_config_post_for_another_sites_course_is_refused(
+    staff_client, mock_site_context
+) -> None:
+    other_site = SiteFactory()
+    with site_context(other_site):
+        foreign_course = CourseFactory()
+
+    response = staff_client.post(
+        reverse(COURSE_CONFIG_ADD), {**INHERIT_POST, "course": str(foreign_course.pk)}
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["course"]
+    assert CourseDeadlineConfig.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_shows_the_layer_that_set_each_value(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CourseDeadlineConfigFactory(course=record.course, close_items="on")
+
+    response = _progress_page(staff_client, record)
+
+    content = response.content.decode()
+    assert "<li>close_items: On (course)</li>" in content
+    assert "<li>mark_overdue: On (settings)</li>" in content
+
+
+@pytest.mark.django_db
+def test_the_course_progress_add_page_renders_without_a_policy(
+    staff_client, mock_site_context
+) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_learner_progress_courseprogress_add")
+    )
+
+    assert response.status_code == 200
+    assert "close_items:" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_shows_when_access_ends(
+    staff_client, mock_site_context
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, _ = _record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    CourseDeadlineConfigFactory(course=record.course, end_course_access="on")
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Access ends: " in body
+    assert "SAST" in body.split("Access ends: ")[1].split("</li>")[0]
+
+
+@pytest.mark.django_db
+def test_the_course_progress_page_has_no_access_end_line_when_access_does_not_end(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Access ends" not in body
+
+
+@pytest.mark.django_db
+def test_a_cohort_fixed_date_time_limit_row_is_accepted(
+    staff_client, mock_site_context
+) -> None:
+    registration, _ = _registration_with_item()
+
+    response = _post(
+        staff_client,
+        registration,
+        [
+            {
+                "collection_item": "",
+                "kind": DeadlineKind.FIXED,
+                "due_date": "2026-03-01",
+            }
+        ],
+    )
+
+    row = CohortDeadlineOverride.objects.get()
+    assert response.status_code == 302
+    assert row.collection_item_id is None
+    assert row.due_date == date(2026, 3, 1)
+
+
+@pytest.mark.django_db
+def test_a_learner_fixed_date_time_limit_row_is_accepted(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+
+    response = _learner_post(
+        staff_client,
+        record,
+        [
+            {
+                "collection_item": "",
+                "kind": DeadlineKind.FIXED,
+                "due_date": "2026-03-01",
+            }
+        ],
+    )
+
+    row = LearnerDeadlineOverride.objects.get()
+    assert response.status_code == 302
+    assert row.collection_item_id is None
+    assert row.due_date == date(2026, 3, 1)
+
+
+@pytest.mark.django_db
+def test_the_override_inline_explains_that_a_time_limit_row_restores_ended_access(
+    staff_client, mock_site_context
+) -> None:
+    registration, _ = _registration_with_item()
+
+    page = staff_client.get(reverse(CHANGE_URL_NAME, args=[registration.pk]))
+
+    assert TIME_LIMIT_HELP in page.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "sitedeadlineconfig",
+        "organisationdeadlineconfig",
+        "coursedeadlineconfig",
+        "cohortdeadlineconfig",
+        "cohortcourseregistrationdeadlineconfig",
+        "learnercourseregistrationdeadlineconfig",
+    ],
+)
+def test_a_negative_grace_window_is_a_field_error_on_every_config_admin(
+    staff_client, mock_site_context, model_name
+) -> None:
+    """A negative grace window used to surface only as the raw constraint name."""
+    url = reverse(f"admin:freedom_ls_deadlines_{model_name}_add")
+
+    response = staff_client.post(url, {**INHERIT_POST, "grace_window": "-1 00:00:00"})
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["grace_window"] == [
+        "The grace window cannot be negative."
+    ]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 from uuid import UUID
 
@@ -19,10 +20,20 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.deadlines.consequences import access_end_instant
+from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
+    CONFIG_FIELDS,
+    SWITCH_FIELDS,
+    CohortCourseRegistrationDeadlineConfig,
+    CohortDeadlineConfig,
     CohortDeadlineOverride,
+    CourseDeadlineConfig,
     DeadlineKind,
+    LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
+    OrganisationDeadlineConfig,
+    SiteDeadlineConfig,
 )
 from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
 from freedom_ls.deadlines.resolver import (
@@ -36,6 +47,7 @@ from freedom_ls.deadlines.resolver import (
 from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
 
@@ -45,6 +57,9 @@ VALUE_FIELDS = frozenset(
     {"collection_item", "kind", "due_date", "due_time", "due_days_after_registration"}
 )
 TIME_LIMIT_DUPLICATE = "The course time limit already has an override here."
+TIME_LIMIT_HELP = (
+    "A fixed date or a number of days on the course time limit restores ended access."
+)
 ITEM_DUPLICATE = "This item already has an override here."
 
 
@@ -247,6 +262,7 @@ class DeadlineOverrideInline(TabularInline):
             # are listed once here; left to the field, every row's widget would run the
             # picker query again.
             field.empty_label = "Course time limit"
+            field.help_text = TIME_LIMIT_HELP
             field.choices = [
                 ("", field.empty_label),
                 *((item.pk, field.label_from_instance(item)) for item in items),
@@ -342,6 +358,40 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
     )
 
 
+def _policy_value_text(value: bool | timedelta | str) -> str:
+    if isinstance(value, bool):
+        return "On" if value else "Off"
+    if isinstance(value, timedelta):
+        return str(value)
+    return value.replace("_", " ").capitalize()
+
+
+@admin.display(description="Effective deadline policy")
+def effective_deadline_policy(
+    model_admin: ModelAdmin, record: CourseProgress
+) -> SafeString:
+    """Each setting, its resolved value and the layer that set it, from the same resolver
+    the learner pages read. Values are plain text, so every line goes through format_html."""
+    if record._state.adding:
+        return format_html("{}", "")
+    policy = get_deadline_policy().resolve(record)
+    lines = [
+        (field, _policy_value_text(getattr(policy, field)), policy.sources[field])
+        for field in CONFIG_FIELDS
+    ]
+    ends_at = access_end_instant(course_deadlines(record).time_limit, policy)
+    ends_line = (
+        format_html("<li>Access ends: {}</li>", site_zone_text(ends_at))
+        if ends_at is not None
+        else ""
+    )
+    return format_html(
+        "<ul>{}{}</ul>",
+        format_html_join("", "<li>{}: {} ({})</li>", lines),
+        ends_line,
+    )
+
+
 # This change page belongs to an app below this one in docs/app_structure.md, so the override
 # inline is added from here rather than imported there. The seam adds rather than replaces.
 CohortCourseRegistrationAdmin.inlines = [
@@ -358,15 +408,98 @@ CourseProgressAdmin.inlines = [
 ]
 setattr(CourseProgressAdmin, "effective_deadlines", effective_deadlines)  # noqa: B010
 setattr(  # noqa: B010
+    CourseProgressAdmin, "effective_deadline_policy", effective_deadline_policy
+)
+setattr(  # noqa: B010
     CourseProgressAdmin,
     "readonly_fields",
-    (*CourseProgressAdmin.readonly_fields, "effective_deadlines"),
+    (
+        *CourseProgressAdmin.readonly_fields,
+        "effective_deadlines",
+        "effective_deadline_policy",
+    ),
 )
 setattr(  # noqa: B010
     CourseProgressAdmin,
     "fieldsets",
     (
         *CourseProgressAdmin.fieldsets,
-        ("Deadlines", {"fields": ("effective_deadlines",)}),
+        (
+            "Deadlines",
+            {"fields": ("effective_deadlines", "effective_deadline_policy")},
+        ),
     ),
 )
+
+
+class DeadlineConfigForm(forms.ModelForm):
+    """Refuses a negative grace window as an error on that field, in place of the
+    database constraint's name."""
+
+    def clean_grace_window(self) -> timedelta | None:
+        grace_window: timedelta | None = self.cleaned_data["grace_window"]
+        if grace_window is not None and grace_window < timedelta(0):
+            raise ValidationError("The grace window cannot be negative.")
+        return grace_window
+
+
+class SiteDeadlineConfigForm(DeadlineConfigForm, ConstraintValidationFormMixin):
+    # site is not a form field: SiteAwareModelAdmin fills it from the request before
+    # validation, and un-excluding it here only lets the one-per-site constraint run.
+    constraint_fields = ("site",)
+
+    class Meta:
+        model = SiteDeadlineConfig
+        fields = list(CONFIG_FIELDS)
+
+
+class _DeadlineConfigAdmin(SiteAwareModelAdmin):
+    """Attributes every deadline config admin shares. Not registered itself."""
+
+    form = DeadlineConfigForm
+    list_display = ["__str__", *CONFIG_FIELDS]
+    list_filter = list(SWITCH_FIELDS)
+
+
+@admin.register(SiteDeadlineConfig)
+class SiteDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    form = SiteDeadlineConfigForm
+    list_select_related = ["site"]
+
+
+@admin.register(OrganisationDeadlineConfig)
+class OrganisationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["organisation"]
+    autocomplete_fields = ["organisation"]
+    search_fields = ["organisation__name"]
+
+
+@admin.register(CourseDeadlineConfig)
+class CourseDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["course"]
+    autocomplete_fields = ["course"]
+    search_fields = ["course__title"]
+
+
+@admin.register(CohortDeadlineConfig)
+class CohortDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["cohort"]
+    autocomplete_fields = ["cohort"]
+    search_fields = ["cohort__name"]
+
+
+@admin.register(CohortCourseRegistrationDeadlineConfig)
+class CohortCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = ["cohort_registration__cohort", "cohort_registration__course"]
+    autocomplete_fields = ["cohort_registration"]
+    search_fields = ["cohort_registration__cohort__name"]
+
+
+@admin.register(LearnerCourseRegistrationDeadlineConfig)
+class LearnerCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    list_select_related = [
+        "learner_registration__learner__user",
+        "learner_registration__course",
+    ]
+    autocomplete_fields = ["learner_registration"]
+    search_fields = ["learner_registration__learner__user__email"]

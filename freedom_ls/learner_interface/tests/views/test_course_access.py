@@ -14,25 +14,50 @@ is enforced by the architecture, not these tests.
 
 from __future__ import annotations
 
+import datetime
+from unittest.mock import patch
+
 import pytest
+import time_machine
 
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.course_recommendations.models import RecommendedCourse
+from freedom_ls.deadlines.factories import (
+    CohortDeadlineOverrideFactory,
+    CourseDeadlineConfigFactory,
+    LearnerDeadlineOverrideFactory,
+)
+from freedom_ls.deadlines.models import (
+    AfterAccessEnded,
+    CourseDeadlineConfig,
+    DeadlineKind,
+)
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+)
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.learner_interface.tests.helpers import rendered_section
+from freedom_ls.learner_interface.tests.helpers import (
+    form_attempt,
+    learner_with_two_grants,
+    rendered_section,
+    set_due_date,
+    topic_completion,
+)
 from freedom_ls.learner_interface.utils import BLOCKED
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -41,6 +66,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -993,3 +1019,462 @@ def test_initiate_access_gated_course_records_no_course_registered_event(
     )
 
     assert "google_analytics_events" not in client.session
+
+
+# ---------------------------------------------------------------------------
+# 6. Access ended by a deadline policy
+# ---------------------------------------------------------------------------
+
+REGISTERED_AT = datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC)
+AFTER_END = datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC)
+
+
+def _ended_course(
+    after_access_ended: str = AfterAccessEnded.NOTHING, *, submit_on_exit: bool = True
+) -> tuple:
+    """A time-limited course (a topic, then a form) whose access ends under its policy."""
+    course = CourseFactory(time_limit_days=30)
+    course.items.create(child=TopicFactory(), order=0)
+    form = FormFactory(submit_on_exit=submit_on_exit)
+    course.items.create(child=form, order=1)
+    CourseDeadlineConfigFactory(
+        course=course,
+        end_course_access="on",
+        after_access_ended=after_access_ended,
+    )
+    return course, form
+
+
+def _ended_learner(course) -> tuple:
+    user = UserFactory()
+    record = course_progress_record(course, user, created_at=REGISTERED_AT)
+    client = Client()
+    client.force_login(user)
+    return user, record, client
+
+
+def _detail_url(course) -> str:
+    return reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+
+def _player_urls(course) -> dict[str, str]:
+    kwargs = {"course_slug": course.slug}
+    return {
+        "course_home": reverse("learner_interface:course_home", kwargs=kwargs),
+        "view_course_item": reverse(
+            "learner_interface:view_course_item", kwargs={**kwargs, "index": 1}
+        ),
+        "form_start": reverse(
+            "learner_interface:form_start", kwargs={**kwargs, "index": 2}
+        ),
+        "form_fill_page": reverse(
+            "learner_interface:form_fill_page",
+            kwargs={**kwargs, "index": 2, "page_number": 1},
+        ),
+        "course_finish": reverse("learner_interface:course_finish", kwargs=kwargs),
+        "course_form_complete": reverse(
+            "learner_interface:course_form_complete", kwargs={**kwargs, "index": 2}
+        ),
+        "form_submit_and_exit": reverse(
+            "learner_interface:form_submit_and_exit", kwargs={**kwargs, "index": 2}
+        ),
+    }
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+@pytest.mark.parametrize(
+    "route",
+    [
+        "course_home",
+        "view_course_item",
+        "form_start",
+        "form_fill_page",
+        "course_finish",
+        "course_form_complete",
+    ],
+)
+def test_an_ended_learner_is_sent_to_the_detail_page(mock_site_context, route):
+    course, _form = _ended_course()
+    _user, _record, client = _ended_learner(course)
+
+    response = client.get(_player_urls(course)[route])
+
+    assert response.status_code == 302
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_an_ended_learner_cannot_finish_the_course(mock_site_context):
+    course, _form = _ended_course()
+    _user, record, client = _ended_learner(course)
+
+    client.get(_player_urls(course)["course_finish"])
+
+    record.refresh_from_db()
+    assert record.completed_time is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+@pytest.mark.parametrize("submit_on_exit", [True, False])
+def test_submit_and_exit_finalises_an_open_attempt_for_an_ended_learner(
+    mock_site_context, submit_on_exit
+):
+    course, form = _ended_course(submit_on_exit=submit_on_exit)
+    user, _record, client = _ended_learner(course)
+    attempt = form_attempt(course, user, form)
+
+    response = client.post(_player_urls(course)["form_submit_and_exit"])
+
+    attempt.refresh_from_db()
+    assert response["Location"] == _player_urls(course)["course_form_complete"]
+    assert attempt.completed_time is not None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_submit_and_exit_saves_no_posted_answers_for_an_ended_learner(
+    mock_site_context,
+):
+    """Ended access has no later to resume in: the attempt is scored as it stands."""
+    course, form = _ended_course()
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="short_text", order=0)
+    user, _record, client = _ended_learner(course)
+    attempt = form_attempt(course, user, form)
+
+    client.post(
+        _player_urls(course)["form_submit_and_exit"],
+        {"page_number": "1", f"question_{question.id}": "late answer"},
+    )
+
+    attempt.refresh_from_db()
+    assert attempt.completed_time is not None
+    assert not attempt.answers.exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_results_of_a_completed_attempt_stay_open_to_an_ended_learner(
+    mock_site_context,
+):
+    course, form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_shows_no_outline_or_next_step_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    html = response.content.decode()
+    urls = _player_urls(course)
+    assert response.context["course_index"] == []
+    assert f'href="{urls["form_start"]}"' not in html
+    assert f'href="{urls["view_course_item"]}"' not in html
+    assert f'href="{urls["course_finish"]}"' not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_an_ended_registration_stays_active_and_fires_no_unregistered_webhook(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
+        client.get(_player_urls(course)["course_home"])
+        client.get(_detail_url(course))
+
+    assert (
+        LearnerCourseRegistration.objects.filter(
+            learner__user=user, course=course, is_active=True
+        ).count()
+        == 1
+    )
+    assert "course.unregistered" not in [call.args[0] for call in fire.call_args_list]
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_initiate_access_for_an_ended_learner_creates_no_second_registration(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+
+    response = client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert response["Location"] == _detail_url(course)
+    assert LearnerCourseRegistration.objects.filter(learner__user=user).count() == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_an_ended_learner_is_offered_no_enrol_for_free(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, _client = _ended_learner(course)
+
+    decision = get_course_access_backend().get_access(user=user, course=course)
+
+    assert decision.cta_label is None
+    assert decision.can_self_register is False
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_fixed_date_learner_override_restores_access_and_changes_nothing_stored(
+    mock_site_context,
+):
+    course, form = _ended_course()
+    user, record, client = _ended_learner(course)
+    attempt = form_attempt(course, user, form, completed_time=REGISTERED_AT)
+    stored_before = (
+        record.completed_time,
+        record.progress_percentage,
+        CourseFormAttempt.objects.count(),
+    )
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2026, 9, 2),
+        due_days_after_registration=None,
+    )
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    record.refresh_from_db()
+    attempt.refresh_from_db()
+    assert response.status_code == 200
+    assert (
+        record.completed_time,
+        record.progress_percentage,
+        CourseFormAttempt.objects.count(),
+    ) == stored_before
+    assert attempt.completed_time == REGISTERED_AT
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_cohort_override_restores_a_cohort_member(mock_site_context):
+    course, _form = _ended_course()
+    user, cohort_record, _individual = learner_with_two_grants(course)
+    cohort_record.created_at = REGISTERED_AT
+    cohort_record.save(update_fields=["created_at"])
+    client = Client()
+    client.force_login(user)
+    client_response = client.get(_player_urls(course)["view_course_item"])
+    assert client_response.status_code == 302
+    CohortDeadlineOverrideFactory(
+        cohort_registration=cohort_record.cohort_registration,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2026, 9, 2),
+        due_days_after_registration=None,
+    )
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_closed_item_stays_closed_after_access_is_restored(mock_site_context):
+    course, _form = _ended_course()
+    set_due_date(course, course.viewable_items()[0], due_date=datetime.date(2020, 1, 1))
+    CourseDeadlineConfig.objects.filter(course=course).update(close_items="on")
+    _user, record, client = _ended_learner(course)
+    LearnerDeadlineOverrideFactory(
+        course_progress=record,
+        kind=DeadlineKind.FIXED,
+        due_date=datetime.date(2026, 9, 2),
+        due_days_after_registration=None,
+    )
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 200
+    assert "learner_interface/course_item_closed.html" in [
+        template.name for template in response.templates
+    ]
+
+
+def _ended_outline_course() -> tuple:
+    """An ended course that keeps its outline and results."""
+    return _ended_course(AfterAccessEnded.OUTLINE_AND_RESULTS)
+
+
+def _complete_topic(course, user) -> None:
+    topic_completion(
+        course, user, course.viewable_items()[0], complete_time=REGISTERED_AT
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_topic_opens_for_an_ended_learner_who_keeps_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_form_opens_its_start_page_and_results_for_an_ended_learner(
+    mock_site_context,
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+    kwargs = {"course_slug": course.slug, "index": 2}
+
+    start_page = client.get(
+        reverse("learner_interface:view_course_item", kwargs=kwargs)
+    )
+    results = client.get(_player_urls(course)["course_form_complete"])
+
+    assert start_page.status_code == 200
+    assert results.status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_an_incomplete_item_redirects_an_ended_learner_who_keeps_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    _user, _record, client = _ended_learner(course)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+@pytest.mark.parametrize("route", ["form_start", "form_fill_page", "course_finish"])
+def test_an_ended_learner_cannot_start_refill_or_finish_even_with_the_outline(
+    mock_site_context, route
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)[route])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_a_completed_topic_stays_shut_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    assert response["Location"] == _detail_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_course_detail_shows_no_outline_to_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    course, _form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.context["children"] == []
+    assert "Course content" not in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_course_detail_links_only_completed_rows_for_an_ended_learner_with_the_outline(
+    mock_site_context,
+):
+    course, _form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+
+    response = client.get(_detail_url(course))
+
+    topic_row, form_row = response.context["children"]
+    assert topic_row["url"] is not None
+    assert form_row["url"] is None
+    assert "Course content" in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_player_outline_keeps_urls_only_on_completed_rows(mock_site_context):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=None)
+
+    response = client.get(_player_urls(course)["view_course_item"])
+
+    topic_row, form_row = response.context["course_index"]
+    assert topic_row["url"] is not None
+    assert form_row["url"] is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_keeps_the_outline_for_an_ended_learner_who_keeps_it(
+    mock_site_context,
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    response = client.get(_player_urls(course)["course_form_complete"])
+
+    html = response.content.decode()
+    topic_row, _form_row = response.context["course_index"]
+    assert topic_row["url"] is not None
+    assert f'href="{_player_urls(course)["form_start"]}"' not in html
+    assert f'href="{_player_urls(course)["course_finish"]}"' not in html

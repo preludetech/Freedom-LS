@@ -8,4 +8,4 @@ class DeadlinesConfig(AppConfig):
     verbose_name = "Deadlines"
 
     def ready(self) -> None:
-        from freedom_ls.deadlines import signals  # noqa: F401
+        from freedom_ls.deadlines import checks, signals  # noqa: F401

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import html
 import re
+from datetime import UTC, date, datetime
 
 import pytest
+import time_machine
 
 from django.urls import reverse
 from django.utils import timezone
@@ -11,6 +13,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -26,7 +29,11 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
 )
 from freedom_ls.form_engine.queries import count_form_questions
-from freedom_ls.learner_interface.tests.helpers import course_with_form, form_attempt
+from freedom_ls.learner_interface.tests.helpers import (
+    course_with_form,
+    form_attempt,
+    set_due_date,
+)
 from freedom_ls.learner_interface.utils import form_start_page_buttons, get_course_index
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.tests.helpers import register_user_for_course
@@ -2941,3 +2948,158 @@ def test_quiz_results_page_hides_incorrect_answers_when_disabled(
 
     assert 'data-testid="quiz-score"' in content
     assert 'data-testid="incorrect-answers-section"' not in content
+
+
+# ---------------------------------------------------------------------------
+# Closed form with an open attempt
+# ---------------------------------------------------------------------------
+
+AFTER_CLOSE = datetime(2020, 1, 10, 12, 0, tzinfo=UTC)
+SUBMIT_YOUR_ANSWERS = "Submit your answers"
+
+
+def _closed_form_with_open_attempt(client, *, submit_on_exit):
+    """A form that closed on 1 Jan 2020, with a learner mid-attempt on it."""
+    user = UserFactory()
+    form = FormFactory(submit_on_exit=submit_on_exit)
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(form_page=page, type="short_text", order=0)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    attempt = form_attempt(course, user, form)
+    client.force_login(user)
+    return course, question, attempt
+
+
+def _item_url(course):
+    return reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_offers_to_submit_an_open_attempt(mock_site_context, client):
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.get(_item_url(course))
+
+    assert SUBMIT_YOUR_ANSWERS in response.content.decode()
+    assert response.context["submit_and_exit_url"] == _exit_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_without_an_open_attempt_offers_no_submit(
+    mock_site_context, client
+):
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+    CourseFormAttempt.objects.all().delete()
+
+    response = client.get(_item_url(course))
+
+    assert SUBMIT_YOUR_ANSWERS not in response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_page_post_is_refused_and_saves_no_answers(
+    mock_site_context, client
+):
+    course, question, attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.post(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+        ),
+        {f"question_{question.id}": "late answer"},
+    )
+
+    attempt.refresh_from_db()
+    assert response.status_code == 302
+    assert response["Location"] == _item_url(course)
+    assert attempt.completed_time is None
+    assert not attempt.answers.exists()
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_start_is_sent_to_the_closed_notice(mock_site_context, client):
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == _item_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+@pytest.mark.parametrize("submit_on_exit", [True, False])
+def test_closed_form_submit_and_exit_finalises_without_saving_posted_answers(
+    mock_site_context, client, submit_on_exit
+):
+    course, question, attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=submit_on_exit
+    )
+
+    response = client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "late answer"},
+    )
+
+    attempt.refresh_from_db()
+    assert attempt.completed_time is not None
+    assert not attempt.answers.exists()
+    assert response["Location"] == reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_submit_and_exit_get_is_405_and_finalises_nothing(
+    mock_site_context, client
+):
+    course, _question, attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=True
+    )
+
+    response = client.get(_exit_url(course))
+
+    attempt.refresh_from_db()
+    assert response.status_code == 405
+    assert attempt.completed_time is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2019, 12, 1, 12, 0, tzinfo=UTC), tick=False)
+def test_open_save_on_exit_form_is_not_finalised_by_submit_and_exit(
+    mock_site_context, client
+):
+    course, _question, attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    client.post(_exit_url(course))
+
+    attempt.refresh_from_db()
+    assert attempt.completed_time is None

@@ -1,4 +1,4 @@
-<c-vars level="info" title="" />
+<c-vars level="info" title="" class="" />
 
 {% comment %}
 Callout component for displaying informational alerts and notices.
@@ -6,7 +6,7 @@ Supports levels: info, warning, error, success
 {% endcomment %}
 
 {% partialdef callout_box %}
-<div class="my-6 p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg">
+<div class="my-6 p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg{% if class %} {{ class }}{% endif %}">
     {% if title %}
     <h4 class="text-xl font-semibold {{ title_color }} mb-2">
         <c-icon :name="icon" class="size-5 mr-2" />{{ title }}
@@ -23,7 +23,7 @@ Supports levels: info, warning, error, success
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "warning" %}
-    {% with bg="bg-warning/10" border="border-warning" text="text-warning" title_color="text-warning" icon="warning" %}
+    {% with bg="bg-warning/10" border="border-warning" text="text-on-warning-light" title_color="text-on-warning-light" icon="warning" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "error" %}
@@ -31,7 +31,7 @@ Supports levels: info, warning, error, success
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "success" %}
-    {% with bg="bg-success/10" border="border-success" text="text-success" title_color="text-success" icon="success" %}
+    {% with bg="bg-success/10" border="border-success" text="text-on-success-light" title_color="text-on-success-light" icon="success" %}
         {% partial callout_box %}
     {% endwith %}
 {% endif %}

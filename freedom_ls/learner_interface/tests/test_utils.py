@@ -1,6 +1,6 @@
 """Tests for course helper functions in learner_interface.utils."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -15,14 +15,28 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
+from freedom_ls.deadlines.models import AfterAccessEnded, DeadlineKind
+from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
     NO_DEADLINE,
     CourseDeadlines,
     DeadlineSource,
     ResolvedDeadline,
+    course_deadlines,
 )
-from freedom_ls.learner_interface.tests.helpers import topic_completion
+from freedom_ls.learner_interface.tests.helpers import (
+    learner_override,
+    topic_completion,
+)
 from freedom_ls.learner_interface.utils import (
+    BLOCKED,
+    CLOSED,
+    COMPLETE,
+    FAILED,
+    IN_PROGRESS,
+    READY,
+    current_entry,
+    derive_part_status,
     get_all_courses,
     get_completed_courses,
     get_course_index,
@@ -165,6 +179,23 @@ def test_get_current_courses_have_progress_percentage(mock_site_context):
 # --- get_course_index deadline keys ---
 
 
+def _policy(
+    *,
+    mark_overdue: bool = True,
+    close_items: bool = False,
+    grace_window: timedelta = timedelta(0),
+) -> ResolvedDeadlinePolicy:
+    return ResolvedDeadlinePolicy(
+        mark_overdue=mark_overdue,
+        close_items=close_items,
+        end_course_access=False,
+        notify_educators=False,
+        grace_window=grace_window,
+        after_access_ended=AfterAccessEnded.OUTLINE_AND_RESULTS,
+        sources={},
+    )
+
+
 def _resolved(due_at: datetime | None) -> ResolvedDeadline:
     return ResolvedDeadline(due_at, DeadlineSource.CONTENT)
 
@@ -189,6 +220,7 @@ def test_get_course_index_rows_carry_the_collection_item_id_and_deadline(
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due + timedelta(days=1),
     )
 
@@ -215,6 +247,7 @@ def test_get_course_index_row_is_not_overdue_before_the_due_instant(mock_site_co
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due - timedelta(days=1),
     )
 
@@ -241,6 +274,7 @@ def test_get_course_index_completed_row_is_not_overdue(mock_site_context):
         course_deadlines=CourseDeadlines(
             items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due + timedelta(days=1),
     )
 
@@ -283,6 +317,7 @@ def test_get_course_index_part_rows_carry_no_due_at_but_their_children_do(
         course_deadlines=CourseDeadlines(
             items={topic_item.pk: _resolved(due)}, time_limit=NO_DEADLINE
         ),
+        deadline_policy=_policy(),
         now=due,
     )
 
@@ -337,3 +372,322 @@ def test_get_current_courses_query_count_does_not_grow_with_courses(
 
     with django_assert_max_num_queries(GET_CURRENT_COURSES_MAX_QUERIES):
         get_current_courses(user)
+
+
+@pytest.mark.django_db
+def test_get_course_index_row_is_not_overdue_when_the_policy_does_not_mark_overdue(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topic)
+    due = datetime(2026, 3, 20, tzinfo=UTC)
+
+    (row,) = get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=CourseDeadlines(
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+        ),
+        deadline_policy=_policy(mark_overdue=False),
+        now=due + timedelta(days=1),
+    )
+
+    assert row["due_at"] == due
+    assert row["is_overdue"] is False
+
+
+def test_current_entry_finds_a_top_level_row():
+    index = [{"title": "A"}, {"title": "B", "is_current": True}]
+
+    assert current_entry(index) == {"title": "B", "is_current": True}
+
+
+def test_current_entry_finds_a_row_nested_in_a_part():
+    nested = {"title": "Inner", "is_current": True}
+    index = [{"title": "A"}, {"title": "Part", "children": [{"title": "X"}, nested]}]
+
+    assert current_entry(index) is nested
+
+
+def test_current_entry_is_none_when_no_row_is_current():
+    assert current_entry([{"title": "A", "children": [{"title": "B"}]}]) is None
+
+
+# --- Closing items ---
+
+
+@pytest.mark.parametrize(
+    ("child_statuses", "expected"),
+    [
+        ([CLOSED], CLOSED),
+        ([CLOSED, CLOSED], CLOSED),
+        ([COMPLETE, CLOSED], CLOSED),
+        ([CLOSED, BLOCKED], CLOSED),
+        ([CLOSED, READY], READY),
+        ([COMPLETE, CLOSED, READY], IN_PROGRESS),
+        ([CLOSED, IN_PROGRESS], IN_PROGRESS),
+        ([CLOSED, FAILED], FAILED),
+    ],
+)
+def test_derive_part_status_reads_closed_only_when_no_child_is_open(
+    child_statuses, expected
+):
+    assert derive_part_status(child_statuses) == expected
+
+
+def _closing_course(topic_count: int = 2):
+    """A course of topics in order, a learner with a record, and the record's items."""
+    user = UserFactory()
+    course = CourseFactory()
+    topics = [TopicFactory() for _ in range(topic_count)]
+    for order, topic in enumerate(topics):
+        course.items.create(child=topic, order=order)
+    record = course_progress_record(course, user)
+    return user, course, topics, record
+
+
+def _closing_index(user, course, record, due_by_item, *, now, grace=timedelta(0)):
+    return get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=CourseDeadlines(
+            items={pk: _resolved(due) for pk, due in due_by_item.items()},
+            time_limit=NO_DEADLINE,
+        ),
+        deadline_policy=_policy(close_items=True, grace_window=grace),
+        now=now,
+    )
+
+
+DUE = datetime(2026, 3, 20, 12, 0, tzinfo=UTC)
+
+
+@pytest.mark.django_db
+def test_a_closed_item_that_sequential_unlock_offers_reads_closed_with_a_url(
+    mock_site_context,
+):
+    user, course, topics, record = _closing_course()
+    item = collection_item_for(course, topics[0])
+
+    first, second = _closing_index(
+        user, course, record, {item.pk: DUE}, now=DUE + timedelta(days=1)
+    )
+
+    assert first["status"] == CLOSED
+    assert first["is_closed"] is True
+    assert first["closes_at"] == DUE
+    assert first["url"]
+    assert second["status"] == BLOCKED
+    assert second["url"] is None
+
+
+@pytest.mark.django_db
+def test_an_item_inside_the_grace_window_stays_open_and_names_when_it_closes(
+    mock_site_context,
+):
+    user, course, topics, record = _closing_course()
+    item = collection_item_for(course, topics[0])
+    grace = timedelta(days=3)
+
+    first, _second = _closing_index(
+        user, course, record, {item.pk: DUE}, now=DUE + timedelta(days=1), grace=grace
+    )
+
+    assert first["status"] == READY
+    assert first["is_closed"] is False
+    assert first["closes_at"] == DUE + grace
+
+
+@pytest.mark.django_db
+def test_an_item_that_sequential_unlock_withholds_stays_blocked_past_its_close_instant(
+    mock_site_context,
+):
+    user, course, topics, record = _closing_course()
+    second_item = collection_item_for(course, topics[1])
+
+    _first, second = _closing_index(
+        user, course, record, {second_item.pk: DUE}, now=DUE + timedelta(days=1)
+    )
+
+    assert second["status"] == BLOCKED
+    assert second["url"] is None
+    assert second["is_closed"] is False
+
+
+@pytest.mark.django_db
+def test_a_withheld_item_past_its_close_instant_names_no_close_instant(
+    mock_site_context,
+):
+    """A locked row past its close instant used to carry a close instant, so the outline
+    read "Closes <past date>." for it."""
+    user, course, topics, record = _closing_course()
+    second_item = collection_item_for(course, topics[1])
+
+    _first, second = _closing_index(
+        user,
+        course,
+        record,
+        {second_item.pk: DUE},
+        now=DUE + timedelta(days=10),
+        grace=timedelta(days=3),
+    )
+
+    assert second["status"] == BLOCKED
+    assert second["closes_at"] is None
+
+
+@pytest.mark.django_db
+def test_a_completed_item_past_its_close_instant_stays_complete(mock_site_context):
+    user, course, topics, _record = _closing_course()
+    topic_completion(course, user, topics[0], complete_time=timezone.now())
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topics[0])
+
+    first, _second = _closing_index(
+        user, course, record, {item.pk: DUE}, now=DUE + timedelta(days=1)
+    )
+
+    assert first["status"] == COMPLETE
+    assert first["is_closed"] is False
+
+
+@pytest.mark.django_db
+def test_a_part_whose_open_children_are_all_closed_reads_closed(mock_site_context):
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    topics = [TopicFactory(), TopicFactory()]
+    course.items.create(child=part, order=0)
+    for order, topic in enumerate(topics):
+        part.items.create(child=topic, order=order)
+    record = course_progress_record(course, user)
+    due = {collection_item_for(course, topic).pk: DUE for topic in topics}
+
+    (part_row,) = _closing_index(user, course, record, due, now=DUE + timedelta(days=1))
+
+    assert [child["status"] for child in part_row["children"]] == [CLOSED, BLOCKED]
+    assert part_row["status"] == CLOSED
+    assert part_row["url"] is None
+
+
+@pytest.mark.django_db
+def test_closes_at_moves_with_a_learner_override_of_the_due_date(mock_site_context):
+    user, course, topics, record = _closing_course()
+    item = collection_item_for(course, topics[0])
+    new_due = date(2026, 5, 1)
+    learner_override(
+        record,
+        item,
+        kind=DeadlineKind.FIXED,
+        due_date=new_due,
+        due_days_after_registration=None,
+    )
+
+    (first, _second) = get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=course_deadlines(record),
+        deadline_policy=_policy(close_items=True, grace_window=timedelta(days=2)),
+        now=datetime(2026, 4, 1, tzinfo=UTC),
+    )
+
+    assert first["closes_at"].date() == new_due + timedelta(days=2)
+    assert first["is_closed"] is False
+
+
+def _ended_outline_course() -> tuple:
+    """A learner with a course of part[done, todo], then a lone todo topic."""
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    done, todo, lone = TopicFactory(), TopicFactory(), TopicFactory()
+    course.items.create(child=part, order=0)
+    part.items.create(child=done, order=0)
+    part.items.create(child=todo, order=1)
+    course.items.create(child=lone, order=1)
+    record = course_progress_record(course, user)
+    topic_completion(course, user, done, complete_time=timezone.now())
+    return user, course, record
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_marks_incomplete_rows_blocked_and_keeps_complete_urls(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    done_row, todo_row = part_row["children"]
+    assert (done_row["status"], todo_row["status"]) == (COMPLETE, BLOCKED)
+    assert done_row["url"] is not None
+    assert todo_row["url"] is None
+    assert (lone_row["status"], lone_row["url"]) == (BLOCKED, None)
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_links_a_part_to_its_first_complete_child(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    part_row, _lone_row = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    assert part_row["url"] == part_row["children"][0]["url"]
+
+
+@pytest.mark.django_db
+def test_access_ended_outline_leaves_a_part_without_complete_children_unlinked(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    part.items.create(child=TopicFactory(), order=0)
+    record = course_progress_record(course, user)
+
+    (part_row,) = get_course_index(
+        user,
+        course,
+        can_access_content=False,
+        course_progress=record,
+        access_ended_outline=True,
+    )
+
+    assert part_row["url"] is None
+
+
+@pytest.mark.django_db
+def test_without_access_ended_outline_no_access_leaves_every_row_blocked(
+    mock_site_context,
+):
+    user, course, record = _ended_outline_course()
+
+    rows = get_course_index(
+        user, course, can_access_content=False, course_progress=record
+    )
+
+    assert all(row["status"] == BLOCKED and row["url"] is None for row in rows)

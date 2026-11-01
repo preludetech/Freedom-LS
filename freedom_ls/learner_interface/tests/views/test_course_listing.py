@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 from decimal import Decimal
 from typing import cast
 
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
@@ -25,6 +27,7 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
 from freedom_ls.learner_interface.tests.helpers import (
     rendered_section,
     section_by_slug,
@@ -1963,7 +1966,7 @@ def test_paging_the_applications_panel_returns_the_panel_alone(
 # course's own progress maps, and each course's access decision checks its
 # audience, so the count grows with registrations, but never re-resolves the
 # record the listing already holds.
-ALL_COURSES_MAX_QUERIES = 29
+ALL_COURSES_MAX_QUERIES = 37
 
 
 def _three_registered_courses_with_topics(user: User) -> None:
@@ -2214,3 +2217,31 @@ def test_all_courses_row_shows_the_price_line_nowhere(mock_site_context):
     html = _priced_row_html()
 
     assert '<p class="text-sm font-semibold">' not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(
+    datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC), tick=False
+)
+def test_all_courses_row_says_access_ended_and_links_to_the_detail_page(
+    mock_site_context, logged_in_client
+):
+    user = UserFactory()
+    course = CourseFactory(time_limit_days=30)
+    course.items.create(child=TopicFactory(), order=0)
+    CourseDeadlineConfigFactory(course=course, end_course_access="on")
+    course_progress_record(
+        course,
+        user,
+        created_at=datetime.datetime(2026, 3, 1, 10, 0, tzinfo=datetime.UTC),
+    )
+
+    response = logged_in_client(user).get(reverse("learner_interface:courses"))
+
+    html = response.content.decode()
+    detail = reverse("learner_interface:course_detail", args=[course.slug])
+    home = reverse("learner_interface:course_home", args=[course.slug])
+    assert 'data-testid="course-status-access_ended"' in html
+    assert f'href="{detail}"' in html
+    assert f'href="{home}"' not in html
+    assert "Next up" not in html
