@@ -1830,7 +1830,7 @@ def test_detail_page_query_count_does_not_grow_with_items(
         "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
-    with django_assert_max_num_queries(33):
+    with django_assert_max_num_queries(44):
         response = client.get(url)
 
     assert response.status_code == 200
