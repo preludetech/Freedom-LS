@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+{% load unfold %}
+
+{% block content %}
+    <div class="flex flex-col gap-6">
+        {% component "unfold/components/card.html" with title=api_key.name %}
+            <div class="flex flex-col gap-3">
+                <code class="block break-all rounded-default border border-base-200 bg-base-50 p-3 font-mono text-sm select-all dark:border-base-800 dark:bg-base-900">{{ key_text }}</code>
+                <p class="text-sm">Copy it now. It is not shown again.</p>
+            </div>
+        {% endcomponent %}
+
+        <div>
+            {% component "unfold/components/button.html" with href=changelist_url variant="default" %}
+                Back to API keys
+            {% endcomponent %}
+        </div>
+    </div>
+{% endblock %}

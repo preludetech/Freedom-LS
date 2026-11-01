@@ -14,6 +14,7 @@ Regenerate this file whenever the graph changes: `/app_map`.
 flowchart TB
     accounts
     api
+    api_admin
     audit_log
     base
     blog
@@ -59,6 +60,10 @@ flowchart TB
     accounts --> webhooks
     api --> base
     api --> site_aware_models
+    api_admin --> accounts
+    api_admin --> api
+    api_admin --> audit_log
+    api_admin --> site_aware_models
     audit_log --> accounts
     audit_log --> base
     audit_log --> organisations
@@ -290,6 +295,7 @@ flowchart TB
 | --- | --- | --- |
 | accounts | api, base, mail, markdown_rendering, site_aware_models, webhooks | icons, organisations, referral_tracking |
 | api | base, site_aware_models | — |
+| api_admin | accounts, api, audit_log, site_aware_models | — |
 | audit_log | accounts, base, organisations, site_aware_models | — |
 | base | learner_management | accounts, content_engine, organisations, role_based_permissions |
 | blog | base, content_engine | — |

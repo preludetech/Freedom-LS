@@ -23,6 +23,7 @@ NOUNS = frozenset(
         "bulk_action",
         "import",
         "conversation",
+        "api_key",
     }
 )
 
@@ -42,6 +43,7 @@ VERBS = frozenset(
         "committed",
         "signed_up",
         "viewed",
+        "issued",
     }
 )
 

@@ -180,7 +180,7 @@ fails a code that steps outside this section.
 
 The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
 (a `LearnerCourseRegistration`), `cohort_registration`, `role`, `member` (an `OrganisationMember`),
-`user`, `course`, `bulk_action`, `import`, `conversation`. The verb comes from this list and nowhere else:
+`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`). The verb comes from this list and nowhere else:
 
 | Verb | Means | Not |
 | --- | --- | --- |
@@ -191,6 +191,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `deleted` | A standalone object was deleted: `cohort.deleted`. | |
 | `assigned` | A role was given to a user. Its opposite is `role.deactivated`. | `granted` |
 | `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight. Only for a read worth auditing. | `opened`, `accessed`, `read` |
+| `issued` | An API key was created and its key text shown once: `api_key.issued`. | `generated`, `minted` |
 | `moved`, `renamed`, `resent`, `completed`, `committed`, `signed_up` | As read. `user.signed_up` is an account being created at signup — never `user.registered`, since registration means course access. A verb may carry the thing it acted on when the noun alone would mislead: `learner.setup_email_resent`. | |
 
 The words a person reads follow the same verbs:
