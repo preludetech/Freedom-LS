@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from freedom_ls.api.models import ApiKey
-from freedom_ls.api.permissions import HasApiScope
+from freedom_ls.api.permissions import HasApiKey, HasApiScope
 from freedom_ls.api.scopes import ApiScope
 
 VIEW = SimpleNamespace(required_scope=ApiScope.USERS)
@@ -29,3 +29,11 @@ def test_a_key_missing_the_scope_is_refused_with_a_message_naming_it():
 
     assert allowed is False
     assert permission.message == "This API key does not have the users API scope."
+
+
+def test_has_api_key_refuses_no_key():
+    assert HasApiKey().has_permission(_request(None), VIEW) is False
+
+
+def test_has_api_key_allows_a_key_holding_no_scope():
+    assert HasApiKey().has_permission(_request(ApiKey(scopes=[])), VIEW) is True

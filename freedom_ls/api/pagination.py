@@ -53,6 +53,41 @@ class ApiKeysetPagination(BasePagination):
     def get_paginated_response(self, data: list[dict[str, object]]) -> Response:
         return Response({"next": self._next_link(), "results": data})
 
+    def get_schema_operation_parameters(self, view: APIView) -> list[dict[str, object]]:
+        return [
+            {
+                "name": self.cursor_query_param,
+                "required": False,
+                "in": "query",
+                "description": "Opaque position token taken from the previous page's next link.",
+                "schema": {"type": "string"},
+            },
+            {
+                "name": self.page_size_query_param,
+                "required": False,
+                "in": "query",
+                "description": "Number of results per page.",
+                "schema": {
+                    "type": "integer",
+                    "default": config.API_PAGE_SIZE,
+                    "maximum": config.API_MAX_PAGE_SIZE,
+                    "minimum": 1,
+                },
+            },
+        ]
+
+    def get_paginated_response_schema(
+        self, schema: dict[str, object]
+    ) -> dict[str, object]:
+        return {
+            "type": "object",
+            "required": ["next", "results"],
+            "properties": {
+                "next": {"type": "string", "nullable": True, "format": "uri"},
+                "results": schema,
+            },
+        }
+
     def _page_size(self, request: Request) -> int:
         raw = request.query_params.get(self.page_size_query_param)
         if raw is None:

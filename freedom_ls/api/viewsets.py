@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.openapi import AutoSchema
 
 from django.db.models import Model, QuerySet
 from django.utils.cache import patch_cache_control
@@ -35,6 +36,7 @@ class ReadOnlyApiViewSet(ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     metadata_class = ApiMetadata
     http_method_names = ["get", "head", "options"]
+    schema = AutoSchema()
 
     def get_exception_handler(
         self,

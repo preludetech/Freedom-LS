@@ -7,6 +7,7 @@ import pytest
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
+from rest_framework.views import APIView
 
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.models import ApiKey
@@ -152,3 +153,36 @@ def test_the_next_link_keeps_updated_since_and_page_size(mock_site_context):
 
     assert "updated_since=2020-01-01T00%3A00%3A00Z" in next_link
     assert "page_size=2" in next_link
+
+
+def test_schema_parameters_describe_cursor_and_page_size(settings):
+    settings.API_PAGE_SIZE = 7
+    settings.API_MAX_PAGE_SIZE = 70
+
+    cursor, page_size = ApiKeysetPagination().get_schema_operation_parameters(APIView())
+
+    assert cursor == {
+        "name": "cursor",
+        "required": False,
+        "in": "query",
+        "description": "Opaque position token taken from the previous page's next link.",
+        "schema": {"type": "string"},
+    }
+    assert page_size["name"] == "page_size"
+    assert page_size["schema"] == {
+        "type": "integer",
+        "default": 7,
+        "maximum": 70,
+        "minimum": 1,
+    }
+
+
+def test_paginated_response_schema_has_next_and_results():
+    items = {"type": "array", "items": {"type": "object"}}
+
+    schema = ApiKeysetPagination().get_paginated_response_schema(items)
+
+    assert schema["properties"] == {
+        "next": {"type": "string", "nullable": True, "format": "uri"},
+        "results": items,
+    }

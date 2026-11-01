@@ -8,4 +8,4 @@ class ApiAppConfig(AppConfig):
     verbose_name = "API"
 
     def ready(self) -> None:
-        from . import checks  # noqa: F401
+        from . import checks, schema  # noqa: F401

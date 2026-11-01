@@ -16,3 +16,8 @@ class HasApiScope(BasePermission):
             return True
         self.message = f"This API key does not have the {scope.value} API scope."
         return False
+
+
+class HasApiKey(BasePermission):
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        return isinstance(request.auth, ApiKey)
