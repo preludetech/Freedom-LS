@@ -7006,6 +7006,20 @@ def test_the_add_learners_cap_message_links_to_the_import_page(
 
 
 @pytest.mark.django_db
+def test_posting_to_the_import_link_is_not_allowed(mock_site_context, logged_in_client):
+    """The import action is a link to the import page; it has no submit."""
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+
+    response = _post(
+        logged_in_client(educator),
+        _interface_url(organisation.slug, "learners/__actions/import_learners"),
+    )
+
+    assert response.status_code == 405
+
+
+@pytest.mark.django_db
 def test_an_add_learners_error_that_is_not_the_cap_carries_no_import_link(
     mock_site_context, logged_in_client
 ):

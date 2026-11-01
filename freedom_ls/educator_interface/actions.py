@@ -12,7 +12,13 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction
 from django.db.models import Model, QuerySet
-from django.http import Http404, HttpRequest, HttpResponse, QueryDict
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    QueryDict,
+)
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -1407,6 +1413,10 @@ class ImportLearnersAction(PanelAction):
         if cohort is not None:
             href = f"{href}?{urlencode({'cohort': str(cohort.pk)})}"
         return {**super().get_trigger_context(ctx), "href": href}
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        """A link has nothing to submit."""
+        return HttpResponseNotAllowed(["GET"])
 
 
 class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):
