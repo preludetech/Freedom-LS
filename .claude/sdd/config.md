@@ -46,6 +46,8 @@
 - Branch badge: debug-branch-badge
 - Diff scoping: claude_plugins/django-stack/resources/qa_diff_scoping.md
 - Data helper guide: claude_plugins/fls-dev/resources/qa_data_helper.md
+- Screenshot prep: if #djDebugToolbar is visible, click #djHideToolBarButton so the Django debug toolbar collapses to its tab
+- Layout regions: {"header": "#interface-main > div:first-of-type", "content": "#interface-main > :not(div:first-of-type)", "sidebar": "dialog.side-panel-dialog"}
 
 ## QA Login
 

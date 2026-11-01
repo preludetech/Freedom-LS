@@ -189,6 +189,8 @@ parity and future settings.
    - Branch badge:
    - Diff scoping:
    - Data helper guide:
+   - Screenshot prep:
+   - Layout regions:
 
    ## QA Login
 
@@ -264,7 +266,11 @@ parity and future settings.
    the element id that names the served branch. Blank means the branch check is skipped. **Diff
    scoping** is a file of diff classification rules. Blank means every diff is `FULL`. **Data helper
    guide** is a file of the project's data-creation conventions that `sdd:qa-data-helper` reads.
-   Blank means it works from the codebase.
+   Blank means it works from the codebase. **Screenshot prep** is a one-line instruction the QA
+   command carries out before each screenshot, to clear dev tooling (a debug toolbar, a cookie
+   banner) that would cover the page. Blank means no prep. **Layout regions** is a JSON object mapping
+   a region name to a CSS selector, for the QA command's layout probe: `header` and `content` are
+   checked for alignment and every region for overlap. Blank means the probe checks overflow only.
 
    A blank **QA Login** value skips the login step and makes a test that needs a login PARTIAL. A
    blank **QA Dev Data** value removes that rung of the reset ladder. **Testing Skills** is a list
@@ -321,7 +327,7 @@ in-place edits.
 9. `.claude/sdd/config.md` has a `## Documentation Hooks` section (an empty list is valid).
 10. `.claude/sdd/config.md` has a `## QA Hooks` section with the keys `QA command`, `Playwright MCP`,
    `Screenshot directory`, `Port finder`, `Dev server start`, `Dev server stop`, `Branch badge`,
-   `Diff scoping` and `Data helper guide`, a `## QA Login` section with `Admin email`, `Admin
+   `Diff scoping`, `Data helper guide`, `Screenshot prep` and `Layout regions`, a `## QA Login` section with `Admin email`, `Admin
    password` and `Base URL`, a `## QA Dev Data` section with `Content reset`, `DB drop`, `DB create`
    and `Migrate`, and a `## Testing Skills` section (blank values and an empty list are valid).
 11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank

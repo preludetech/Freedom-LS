@@ -333,6 +333,61 @@ tool response. If bytes are returned, or no file is written, stop and report it;
 rest of the run. If the file lands somewhere else entirely, find the actual write location and pass
 that to Step 10.
 
+### Before every screenshot: clear dev tooling
+
+Carry out the `Screenshot prep` instruction before each screenshot, and check its result in the
+shot: dev tooling covering the page is a broken screenshot, and judging layout from it is how a
+lopsided page gets passed or a sound one failed. A blank value means no prep.
+
+### Layout probe
+
+The probe measures what a glance at a screenshot misses: a header that does not line up with the
+content under it, a region spilling past the viewport, two regions drawn over each other. It
+measures **ink**, meaning text and anything with a border, background or replaced content, so an
+intentionally centred narrow column inside a wide wrapper is not flagged.
+
+**Load it once**, right after this step's capture check, as a solo call. Call
+`<prefix>browser_run_code_unsafe` with:
+
+`async (page) => { await page.context().addInitScript({ path: '<PROJECT_ROOT>/claude_plugins/sdd/resources/qa_layout_probe.js' }); }`
+
+Every page the browser opens from then on defines `window.__qaLayoutProbe`. When `PLUGINS_ROOT` is
+not `.`, the path takes the `<PLUGINS_ROOT>/` prefix as in Rule 3b.
+
+**Run it after every screenshot of a page**, at every viewport, with `<prefix>browser_evaluate`:
+
+`() => window.__qaLayoutProbe(<Layout regions>)`
+
+`<Layout regions>` is the config value pasted literally, or `{}` when it is blank, which leaves only
+the overflow check. Append one record per page and viewport:
+
+```json
+{"type": "layout", "test_id": "1.1", "viewport": "desktop", "url": "/path", "screenshot_path": "page-<timestamp>.png", "status": "pass|fail", "flags": ["…"]}
+```
+
+`status` is `fail` when `flags` is non-empty. A `missing` region on a page that has none (a page
+outside the shell the selectors name) is not a flag. A layout failure is a bug like any other,
+whether or not this branch introduced it.
+
+### Visual review
+
+The probe does not replace looking. For every screenshot, check each of these and record any
+concern as a failing `test` record, never only in its notes:
+
+- **Alignment**: the page header, the content under it and the footer actions share a left edge,
+  or are deliberately centred together.
+- **Consistency with siblings**: pages in the same shell (every page of one player, one panel, one
+  wizard) place their header and content the same way. Compare with the sibling pages already
+  shot this run: one page that sits differently from the rest is a bug even if it looks fine alone.
+- **Space**: no region is squeezed, clipped or cut off, and no large gap opens that the
+  rest of the shell does not have.
+- **Cover**: nothing is hidden under dev tooling, a sticky bar or another region.
+
+When a page looks wrong and you cannot tell whether it is intended, compare it with the most recent
+screenshot of the same page under `spec_dd/3. done/*/screenshots/`. Unchanged since then means
+the look predates this branch. That is a reason to name it as pre-existing in the record, not to
+pass it.
+
 ### Recording results
 
 After completing each test, append one record:
@@ -386,7 +441,7 @@ You do NOT need to re-run every test from Step 7. Focus on:
 - Touch-target sizing — are buttons and links large enough?
 - Any test from Step 7 that involves tables, forms, or multi-column layouts
 
-Capture screenshots and append records exactly as in Step 7 (design comparison included), with `"viewport": "mobile"`.
+Capture screenshots and append records exactly as in Step 7 (screenshot prep, layout probe, visual review and design comparison included), with `"viewport": "mobile"`.
 
 ---
 
@@ -402,7 +457,7 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 - Sidebars and panels — are they still usable or do they crowd the main content?
 - Forms and modals — do they render at a reasonable width?
 
-Capture screenshots and append records exactly as in Step 7 (design comparison included), with `"viewport": "tablet"`.
+Capture screenshots and append records exactly as in Step 7 (screenshot prep, layout probe, visual review and design comparison included), with `"viewport": "tablet"`.
 
 ---
 
@@ -454,8 +509,9 @@ the report can mention it, then continue:
 
 Several failing test records often share one underlying defect (the same broken function seen
 across desktop, mobile, and tablet, or across two related tests). Before spawning the worker, group
-every `"status": "fail"` record, `test` and `design` alike (a design miss is a bug), into **distinct
-bugs, where one bug = one root cause**, and append one record per bug:
+every `"status": "fail"` record, `test`, `design` and `layout` alike (a design miss and a layout
+flag are bugs), into **distinct bugs, where one bug = one root cause**, and append one record per
+bug:
 
 ```json
 {"type": "bug", "bug_id": "B1", "title": "short descriptive title", "manifestations": [{"test_id": "1.1", "viewport": "desktop"}], "screenshots": ["page-<timestamp>.png"], "expected": "…", "actual": "…"}
@@ -493,6 +549,10 @@ the section says "no design states tested".
 **Per-bug sections** — one per `bug` record, not one per failing test record. Each gives the title,
 lists every manifestation (`test_id` + viewport), embeds the relevant screenshots as
 `![](screenshots/<basename>.png)`, and states expected vs actual behaviour.
+
+**`## Layout probe`** — one row per `layout` record, with that exact heading. Columns: test id,
+viewport, URL, screenshot (linked relative to the report) and the result: `clean`, or the flags.
+With no `layout` records, the section says why the probe did not run.
 
 **`## Data changes`** — one row per `data_change` record: what changed, and the agent call or
 command that made it. With no records, the section says "no data changes".
