@@ -1550,6 +1550,11 @@ AFTER_CLOSE = datetime(2020, 1, 10, 12, 0, tzinfo=UTC)
 CLOSED_STATUS = '<span class="sr-only">Closed</span>'
 
 
+def _without_sr_only(html: str) -> str:
+    """The page with its screen-reader-only text removed, so a check reads what is on screen."""
+    return re.sub(r'<span class="sr-only">[^<]*</span>', "", html)
+
+
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
 def test_detail_outline_marks_a_closed_topic_closed_without_a_date(due_topic_course):
@@ -1563,6 +1568,8 @@ def test_detail_outline_marks_a_closed_topic_closed_without_a_date(due_topic_cou
 
     assert CLOSED_STATUS in html
     assert '<span class="sr-only">Not started</span>' not in html
+    # Sighted learners get the chip, not just the icon's colour.
+    assert "Closed" in _without_sr_only(html)
     assert "<time" not in html
 
 
@@ -1609,6 +1616,8 @@ def test_detail_outline_marks_a_part_whose_child_closed_closed(mock_site_context
     html = _detail_html(client, course)
 
     assert html.count(CLOSED_STATUS) == 2
+    # One chip: the topic's own row. The part row summarises its children without a date.
+    assert _without_sr_only(html).count("Closed") == 1
     assert "<time" not in html
 
 
