@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('freedom_ls_learner_management', '0008_bulkactionrun'),
+        ('freedom_ls_learner_management', '0007_delete_deadline_models'),
         ('freedom_ls_organisations', '0001_initial'),
         ('sites', '0002_alter_domain_unique'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
