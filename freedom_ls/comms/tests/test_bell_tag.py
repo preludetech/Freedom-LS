@@ -3,23 +3,38 @@ client, and that every signed-in page shows the bell."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 import pytest
 from lxml import html
+from pytest_django.fixtures import SettingsWrapper
+from pytest_mock import MockerFixture
 
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.sites.models import Site
 from django.db import connection
-from django.test import override_settings
+from django.template import Context
+from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
-from freedom_ls.comms.messaging import can_see_messages_button
+from freedom_ls.comms.messaging import has_conversation
+from freedom_ls.comms.templatetags.comms_tags import messages_button
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.site_aware_models.models import UnknownSite
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import drop_ambient_request
+
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
+
+LoggedInClient = Callable[["User"], Client]
 
 BELL_MARKER = 'aria-labelledby="notification-bell-label"'
 
@@ -214,7 +229,10 @@ class TestMessagesButton:
         ]
 
     def test_it_runs_no_messaging_query_when_messaging_is_off(
-        self, mock_site_context, logged_in_client, settings
+        self,
+        mock_site_context: Site,
+        logged_in_client: LoggedInClient,
+        settings: SettingsWrapper,
     ) -> None:
         settings.MESSAGING_ENABLED = False
         client = logged_in_client(UserFactory())
@@ -227,7 +245,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER not in response.content.decode()
 
     def test_a_user_with_no_learner_row_and_no_conversation_sees_no_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         response = logged_in_client(UserFactory()).get(
             reverse("learner_interface:dashboard")
@@ -236,7 +254,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER not in response.content.decode()
 
     def test_a_staff_user_with_no_recipients_sees_no_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         response = logged_in_client(UserFactory(staff=True)).get(
             reverse("learner_interface:dashboard")
@@ -245,7 +263,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER not in response.content.decode()
 
     def test_a_user_with_no_recipients_but_a_conversation_sees_the_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         ConversationFactory(between=(user, UserFactory()))
@@ -255,7 +273,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER in response.content.decode()
 
     def test_a_conversation_on_another_site_does_not_show_the_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         ConversationFactory(between=(user, UserFactory()), site=SiteFactory())
@@ -265,7 +283,7 @@ class TestMessagesButton:
         assert MESSAGES_MARKER not in response.content.decode()
 
     def test_a_user_with_a_conversation_runs_none_of_the_recipients_queries(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         ConversationFactory(between=(user, UserFactory()))
@@ -278,44 +296,76 @@ class TestMessagesButton:
         assert not [q for q in queries if "sitemessagingconfig" in q["sql"]]
 
     def test_a_user_without_the_button_still_gets_the_messages_page(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         response = logged_in_client(UserFactory()).get(reverse("conversations:inbox"))
 
         assert response.status_code == 200
 
+    def test_the_messages_page_asks_the_policy_for_recipients_once(
+        self,
+        mock_site_context: Site,
+        logged_in_client: LoggedInClient,
+        mocker: MockerFixture,
+    ) -> None:
+        from freedom_ls.comms import messaging_views
+
+        spy = mocker.spy(messaging_views, "has_recipients")
+
+        logged_in_client(UserFactory()).get(reverse("conversations:inbox"))
+
+        assert spy.call_count == 1
+
 
 @pytest.mark.django_db
-class TestCanSeeMessagesButton:
+class TestMessagesButtonTag:
+    def test_an_anonymous_visitor_gets_no_button_and_no_query(
+        self, mock_site_context: Site
+    ) -> None:
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        with CaptureQueriesContext(connection) as queries:
+            result = messages_button(Context({"request": request}))
+
+        assert result == {"enabled": False}
+        assert not queries.captured_queries
+
+    def test_a_rejected_host_gets_no_button_and_no_query(
+        self, mock_site_context: Site, mocker: MockerFixture
+    ) -> None:
+        mocker.patch(
+            "freedom_ls.comms.templatetags.comms_tags.get_cached_site",
+            return_value=UnknownSite(),
+        )
+        request = RequestFactory().get("/")
+        request.user = UserFactory()
+
+        with CaptureQueriesContext(connection) as queries:
+            result = messages_button(Context({"request": request}))
+
+        assert result == {"enabled": False}
+        assert not queries.captured_queries
+
+
+@pytest.mark.django_db
+class TestHasConversation:
     def test_it_is_false_when_the_only_conversation_is_on_another_site(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         site = mock_site_context
         user = UserFactory()
         ConversationFactory(between=(user, UserFactory()), site=SiteFactory())
         drop_ambient_request()
 
-        assert can_see_messages_button(user, site) is False
+        assert has_conversation(user, site) is False
 
     def test_it_is_true_for_the_site_the_conversation_is_on(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         user = UserFactory()
         other_site = SiteFactory()
         ConversationFactory(between=(user, UserFactory()), site=other_site)
         drop_ambient_request()
 
-        assert can_see_messages_button(user, other_site) is True
-
-    def test_it_is_true_for_a_conversation_on_the_site_without_asking_the_policy(
-        self, mock_site_context
-    ) -> None:
-        site = mock_site_context
-        user = UserFactory()
-        ConversationFactory(between=(user, UserFactory()))
-
-        with CaptureQueriesContext(connection) as queries:
-            result = can_see_messages_button(user, site)
-
-        assert result is True
-        assert not [q for q in queries if "sitemessagingconfig" in q["sql"]]
+        assert has_conversation(user, other_site) is True

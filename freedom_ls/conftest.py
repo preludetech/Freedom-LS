@@ -131,12 +131,22 @@ def _clear_messaging_policy_cache():
     """Reset the cached messaging policy before and after each test.
 
     get_messaging_policy() is @functools.cache'd for the process lifetime, so a
-    test that overrides MESSAGING_POLICY would otherwise leak its instance.
+    test that overrides MESSAGING_POLICY would otherwise leak its instance. The
+    header loads the policy on any page render, often while a fixture logs in,
+    so a test that sets MESSAGING_POLICY afterwards also clears the cache then.
     """
+    from django.test.signals import setting_changed
+
     from freedom_ls.comms.messaging_loader import get_messaging_policy
 
+    def clear_on_policy_change(*, setting: str, **kwargs: object) -> None:
+        if setting == "MESSAGING_POLICY":
+            get_messaging_policy.cache_clear()
+
     get_messaging_policy.cache_clear()
+    setting_changed.connect(clear_on_policy_change)
     yield
+    setting_changed.disconnect(clear_on_policy_change)
     get_messaging_policy.cache_clear()
 
 

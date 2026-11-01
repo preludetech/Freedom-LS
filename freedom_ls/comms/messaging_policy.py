@@ -64,8 +64,10 @@ class MessagingPolicy:
     """Answers "may this user message that user?" for every messaging surface.
 
     A plain class rather than an abc.ABC, like CourseAccessBackend. A downstream
-    subclass that forgets a method fails on first use, not at import. Instances
-    are stateless and never cache an answer.
+    subclass that forgets a method fails on first use, not at import. The
+    header calls ``recipients_for`` on every page render for a signed-in user
+    with no conversation, so a subclass without it fails on every page.
+    Instances are stateless and never cache an answer.
     """
 
     def can_start(

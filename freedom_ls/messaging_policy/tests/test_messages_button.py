@@ -4,11 +4,14 @@ educator, and an organisation admin only when their organisation has a learner."
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import cast
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.db.models import Model
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -26,6 +29,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 MESSAGES_MARKER = 'aria-labelledby="messages-button-label"'
 
+LoggedInClient = Callable[[User], Client]
+
 
 def learner_with_a_cohort_admin(user: User, organisation: Model) -> Learner:
     """A Learner for ``user`` in a cohort of ``organisation`` that has an active
@@ -40,7 +45,7 @@ def learner_with_a_cohort_admin(user: User, organisation: Model) -> Learner:
 @pytest.mark.django_db
 class TestMessagesButtonUnderTheShippedPolicy:
     def test_a_learner_who_can_reach_a_cohort_admin_sees_the_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         learner_with_a_cohort_admin(user, OrganisationFactory())
@@ -50,7 +55,7 @@ class TestMessagesButtonUnderTheShippedPolicy:
         assert MESSAGES_MARKER in response.content.decode()
 
     def test_a_learner_whose_organisation_closed_learner_to_educator_sees_no_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         learner = learner_with_a_cohort_admin(user, OrganisationFactory())
@@ -63,7 +68,7 @@ class TestMessagesButtonUnderTheShippedPolicy:
         assert MESSAGES_MARKER not in response.content.decode()
 
     def test_a_learner_sees_the_button_when_any_organisation_is_open(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         closed_org = OrganisationFactory()
@@ -79,7 +84,7 @@ class TestMessagesButtonUnderTheShippedPolicy:
         assert MESSAGES_MARKER in response.content.decode()
 
     def test_an_organisation_admin_with_a_learner_row_sees_the_button(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context: Site, logged_in_client: LoggedInClient
     ) -> None:
         user = UserFactory()
         organisation = OrganisationFactory()

@@ -271,7 +271,7 @@ def _page_context(
     """What every render of the messages page needs beyond the thread itself."""
     return {
         **_inbox_context(request, current),
-        "has_recipients": _has_recipients(request),
+        "has_recipients": request_has_recipients(request),
     }
 
 
@@ -301,10 +301,19 @@ def inbox(request: HttpRequest) -> HttpResponse:
     return render(request, "comms/thread.html", context)
 
 
-def _has_recipients(request: HttpRequest) -> bool:
-    return has_recipients(
-        cast("User", request.user), cast("Site", get_cached_site(request))
-    )
+_HAS_RECIPIENTS_ATTR = "_fls_has_recipients"
+
+
+def request_has_recipients(request: HttpRequest) -> bool:
+    """Whether the policy offers the request's user anyone to message, cached
+    on the request so the header and the messages page share one answer."""
+    cached: bool | None = getattr(request, _HAS_RECIPIENTS_ATTR, None)
+    if cached is None:
+        cached = has_recipients(
+            cast("User", request.user), cast("Site", get_cached_site(request))
+        )
+        setattr(request, _HAS_RECIPIENTS_ATTR, cached)
+    return cached
 
 
 @messaging_view
@@ -328,7 +337,7 @@ def partial_inbox_poll(request: HttpRequest) -> HttpResponse:
     context = _inbox_context(request, current)
     if request.GET.get("state") == context["inbox_state"]:
         return HttpResponse(status=204)
-    context["has_recipients"] = _has_recipients(request)
+    context["has_recipients"] = request_has_recipients(request)
     body = render_to_string(
         "comms/partials/conversation_list.html#conversation-list", context, request
     )
@@ -658,7 +667,7 @@ def partial_recent_conversations(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "comms/partials/messages_panel.html",
-        {"rows": rows, "has_recipients": _has_recipients(request)},
+        {"rows": rows, "has_recipients": request_has_recipients(request)},
     )
 
 
