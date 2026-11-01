@@ -16,7 +16,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `corporate-job-course-recommendations-5-attribute-csv-import`
 - `design_educator-interface-bulk-action`
-- `educator-interface-12-docs-and-polish`
 - `educator-interface-design-learner-csv-upload-design-fix`
 - `failed-login-follow-up`
 - `file-scanning`
@@ -59,7 +58,7 @@ run, so it is twelve.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 12 | `educator-interface-12-docs-and-polish` | The educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
+| 12 | `educator-interface-12-docs-and-polish` | The educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | in progress |
 
 ```
 1 core ──┬── 2 tables ──────┬── 6 cohort admin ──┬── 8 bulk ──────────┐
