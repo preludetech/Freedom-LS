@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-11-01_
 
 ## Summary
 
@@ -86,7 +86,9 @@ dashboard_category: technical
 
 `dashboard_category` can be omitted when a course names exactly one category, and both keys can be left off entirely. Belonging to more than one category is recorded, but only the dashboard category is read anywhere today: there is no catalogue filtering by category yet, so a course's other categories have no visible effect. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 
-**Due dates and time limits.** A topic or form can carry a due date in its own frontmatter, either a fixed `due_date` (such as `2026-03-14`) or `due_days_after_registration`, a number of days after the learner registered on the course. Either can take an optional `due_time`, a quoted 24-hour time such as `"17:00"`; without one, the item falls due at the end of that day in the site's time zone. A course can carry a `time_limit_days`, a whole number of days (at least 1) after registration. An administrator can override these per cohort registration or per learner, see [admin interface](./admin-interface.md#deadline-overrides); what learners see is described in [learner experience](./learner-experience.md#deadlines). Nothing is enforced: a due date or time limit does not lock content or trigger any consequence.
+**Due dates and time limits.** A topic or form can carry a due date in its own frontmatter, either a fixed `due_date` (such as `2026-03-14`) or `due_days_after_registration`, a number of days after the learner registered on the course. Either can take an optional `due_time`, a quoted 24-hour time such as `"17:00"`; without one, the item falls due at the end of that day in the site's time zone. A course can carry a `time_limit_days`, a whole number of days (at least 1) after registration. An administrator can override these per cohort registration or per learner, see [admin interface](./admin-interface.md#deadline-overrides); what learners see is described in [learner experience](./learner-experience.md#deadlines). What happens once a date passes is set by the [deadline policy](./admin-interface.md#deadline-policy).
+
+**Due dates that depend on where content sits.** A topic, form or part placed in more than one course does not have to share one date. A `children:` entry in `course.md` or `part.yaml` can carry the same due keys for that placement alone, or `no_due_date: true` to drop a date the file sets. A `course.md` entry that places a part can list the part's topics and forms by path and give each its own value for that course. The most specific value wins: the course's entry, then the part's, then the file's own. A staff override still beats all of them.
 
 **Organisations.** A course can name the organisations it belongs to, by slug, and who may see it:
 
@@ -109,7 +111,7 @@ uv run python manage.py content_save <path> <site_name>
 
 Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, an invalid price, a malformed due date or time limit (for example, both `due_date` and `due_days_after_registration`, or a `due_time` with neither), and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin. The offline validator checks that `organisations` and `audience` are well-formed but cannot check that a slug exists, since organisations belong to a site; `content_save` does that.
 
-`content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
+`content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped. So does a due key on an entry for an activity, article or part, or a part's entry naming something the part does not contain; every such error is reported at once, and the offline validator catches the same ones.
 
 Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too, as is an article `image` that does not point at an image file in the repository.
 
