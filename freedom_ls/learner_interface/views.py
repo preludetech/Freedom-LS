@@ -954,14 +954,27 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     # get_course_index is anonymous-safe (it fetches user-scoped progress
     # only behind its own is_authenticated / can_access_content guards).
-    # Deadlines are resolved so a closed item reads Closed here as it does in the
-    # player; the template shows none of their dates, which belong to the player.
     course_progress = (
         course_progress_for(cast("User", request.user), course)
         if is_registered
         else None
     )
     shows_ended_outline = _shows_ended_outline(decision)
+    # Deadlines are resolved so a closed item reads Closed here as it does in the
+    # player; the template shows none of their dates, which belong to the player.
+    # Only an open row can close, so the lookups are skipped where no row is open:
+    # without content access every row is locked, and so is every unfinished row of
+    # an ended learner's outline. A policy that closes nothing needs no deadlines.
+    deadline_policy = (
+        _deadline_policy_or_none(course_progress)
+        if decision.can_access_content
+        else None
+    )
+    course_deadlines = (
+        _deadlines_or_none(course_progress)
+        if deadline_policy is not None and deadline_policy.close_items
+        else None
+    )
     children = (
         []
         if decision.access_ended_at is not None and not shows_ended_outline
@@ -970,8 +983,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             course=course,
             can_access_content=decision.can_access_content,
             course_progress=course_progress,
-            course_deadlines=_deadlines_or_none(course_progress),
-            deadline_policy=_deadline_policy_or_none(course_progress),
+            course_deadlines=course_deadlines,
+            deadline_policy=deadline_policy,
             access_ended_outline=shows_ended_outline,
         )
     )

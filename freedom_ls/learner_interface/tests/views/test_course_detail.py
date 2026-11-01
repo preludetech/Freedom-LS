@@ -1839,7 +1839,9 @@ def test_detail_page_query_count_does_not_grow_with_items(
         "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
-    with django_assert_max_num_queries(44):
+    # The policy is resolved for a registered learner; with close_items off, the
+    # deadlines themselves are not, since no row could read Closed.
+    with django_assert_max_num_queries(39):
         response = client.get(url)
 
     assert response.status_code == 200
