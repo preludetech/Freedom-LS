@@ -7,6 +7,7 @@ to the inbox with the row no longer unread, and the layout at each viewport.
 
 from __future__ import annotations
 
+import re
 from typing import cast
 
 import pytest
@@ -515,3 +516,37 @@ def test_composer_stays_inside_the_viewport_on_the_thread_page(
         scroll_height = page.evaluate("document.documentElement.scrollHeight")
         assert max(hint_bottom, send_bottom) <= viewport["height"], viewport
         assert scroll_height <= viewport["height"], viewport
+
+
+def test_thread_opened_from_the_pane_picker_fits_the_viewport(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    """Picking someone in the messages page's pane picker swapped the thread in
+    without the page setup a full load gives it, so the document came out one
+    header taller than the viewport and pushed the composer below the fold."""
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = logged_in_page
+    viewport = {"width": 1920, "height": 1080}
+    page.set_viewport_size(viewport)
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    ConversationFactory(between=(logged_in_user, kai))
+
+    page.goto(reverse_url(live_server, "conversations:inbox"))
+    page.get_by_label("Conversations").get_by_role("link", name="New message").and_(
+        page.locator(":visible")
+    ).click()
+    expect(page.locator("#thread-pane #recipient-picker")).to_be_visible()
+    page.locator("#recipient-results").get_by_role("link", name="Kai Ngata").click()
+
+    send = page.get_by_role("button", name="Send")
+    expect(send).to_be_visible()
+    expect(page).to_have_url(re.compile(r"/messages/[0-9a-f-]{36}/$"))
+    send_bottom = send.evaluate("el => el.getBoundingClientRect().bottom")
+    scroll_height = page.evaluate("document.documentElement.scrollHeight")
+    assert send_bottom <= viewport["height"]
+    assert scroll_height <= viewport["height"]

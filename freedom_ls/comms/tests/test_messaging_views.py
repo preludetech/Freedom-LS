@@ -1077,7 +1077,7 @@ class TestStartPage:
         )
 
         assert response.status_code == 204
-        assert json.loads(response["HX-Location"]) == {"path": thread_url(conversation)}
+        assert response["HX-Redirect"] == thread_url(conversation)
 
     def test_a_recipient_outside_the_recipients_is_404(
         self, mock_site_context, logged_in_client, settings
@@ -1118,7 +1118,7 @@ class TestStartSend:
         }
         return client.post(start_url(), data, **extra)
 
-    def test_an_htmx_post_creates_the_conversation_and_answers_hx_location(
+    def test_an_htmx_post_creates_the_conversation_and_answers_hx_redirect(
         self, mock_site_context, logged_in_client
     ) -> None:
         user, other = UserFactory(), UserFactory()
@@ -1127,9 +1127,7 @@ class TestStartSend:
 
         message = Message.objects.get()
         assert response.status_code == 204
-        assert json.loads(response["HX-Location"]) == {
-            "path": thread_url(message.conversation)
-        }
+        assert response["HX-Redirect"] == thread_url(message.conversation)
         assert message.sender == user
         assert message.body == "Hello there"
 
@@ -2571,7 +2569,7 @@ class TestSendFromTheQuickViewBox:
         conversation = Conversation.objects.get()
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
         assert response.status_code == 200
-        assert "HX-Location" not in response
+        assert "HX-Redirect" not in response
         assert box.xpath(".//li[starts-with(@id, 'msg-')]")
         form = box.xpath(".//form[@id='composer']")[0]
         assert form.get("hx-post") == send_url(conversation)

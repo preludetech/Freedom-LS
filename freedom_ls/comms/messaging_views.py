@@ -415,12 +415,13 @@ def _open_thread_response(
     request: HttpRequest, conversation: Conversation
 ) -> HttpResponse:
     """Take the browser to the conversation's thread: a redirect for a plain
-    request, a 204 with HX-Location for htmx so the whole page loads."""
+    request, a 204 with HX-Redirect for htmx so the whole page loads. HX-Location
+    only swaps the body, which skips the page setup a full load runs."""
     thread_url = reverse("conversations:thread", kwargs={"pk": conversation.pk})
     if request.headers.get("HX-Request") != "true":
         return redirect(thread_url)
     response = HttpResponse(status=204)
-    response["HX-Location"] = json.dumps({"path": thread_url})
+    response["HX-Redirect"] = thread_url
     return response
 
 
