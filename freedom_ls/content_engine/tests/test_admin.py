@@ -26,6 +26,8 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseCategoryFactory,
     CourseFactory,
+    CoursePartChildDueDateFactory,
+    CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import (
@@ -355,3 +357,65 @@ class TestCourseAdminOrganisations:
         course_admin = CourseAdmin(Course, admin.site)
 
         assert field in course_admin.get_readonly_fields(request=None)
+
+
+@pytest.mark.django_db
+class TestPartPlacementChildDueDatesInline:
+    def _change_page(self, staff_client, placement: ContentCollectionItem) -> str:
+        response = staff_client.get(
+            reverse(
+                "admin:freedom_ls_content_engine_contentcollectionitem_change",
+                args=[placement.pk],
+            )
+        )
+        assert response.status_code == 200
+        html: str = response.content.decode()
+        return html
+
+    def _part_placement_with_two_rows(self) -> ContentCollectionItem:
+        part = CoursePartFactory()
+        created = ContentCollectionItemFactory(
+            collection_object=CourseFactory(), child_object=part
+        )
+        part_placement: ContentCollectionItem = ContentCollectionItem.objects.get(
+            pk=created.pk
+        )
+        for order, title in enumerate(["Alpha Topic", "Beta Topic"]):
+            child_placement = ContentCollectionItemFactory(
+                collection_object=part,
+                child_object=TopicFactory(title=title),
+                order=order,
+            )
+            CoursePartChildDueDateFactory(
+                part_collection_item=part_placement,
+                collection_item=child_placement,
+            )
+        return part_placement
+
+    def test_the_change_page_lists_both_child_rows(self, staff_client) -> None:
+        part_placement = self._part_placement_with_two_rows()
+
+        html = self._change_page(staff_client, part_placement)
+
+        assert "Alpha Topic" in html
+        assert "Beta Topic" in html
+
+    def test_the_change_page_offers_no_add_row_and_no_delete_control(
+        self, staff_client
+    ) -> None:
+        part_placement = self._part_placement_with_two_rows()
+
+        html = self._change_page(staff_client, part_placement)
+
+        assert 'name="child_due_dates-MAX_NUM_FORMS" value="0"' in html
+        assert not re.search(r'name="child_due_dates-\d+-DELETE"', html)
+
+    def test_a_topic_placement_lists_no_child_rows(self, staff_client) -> None:
+        topic_placement = ContentCollectionItemFactory(
+            collection_object=CourseFactory(),
+            child_object=TopicFactory(title="Solo Topic"),
+        )
+
+        html = self._change_page(staff_client, topic_placement)
+
+        assert 'name="child_due_dates-TOTAL_FORMS" value="0"' in html

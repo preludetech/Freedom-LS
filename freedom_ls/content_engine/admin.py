@@ -1,3 +1,5 @@
+from unfold.admin import TabularInline
+
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.db.models import QuerySet
@@ -14,6 +16,7 @@ from .models import (
     Course,
     CourseCategory,
     CoursePart,
+    CoursePartChildDueDate,
     File,
     Topic,
 )
@@ -258,8 +261,37 @@ class CoursePartAdmin(SiteAwareModelAdmin):
         return False
 
 
+class CoursePartChildDueDateInline(TabularInline):
+    """The due dates this part placement gives the part's children. Read-only: the loader
+    writes them from course.md."""
+
+    model = CoursePartChildDueDate
+    fk_name = "part_collection_item"
+    fields = (
+        "collection_item",
+        "due_date",
+        "due_time",
+        "due_days_after_registration",
+        "no_due_date",
+    )
+    readonly_fields = fields
+    extra = 0
+    max_num = 0
+    can_delete = False
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[CoursePartChildDueDate]:
+        rows: QuerySet[CoursePartChildDueDate] = super().get_queryset(request)
+        return rows.select_related("collection_item")
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: ContentCollectionItem | None = None
+    ) -> bool:
+        return False
+
+
 @admin.register(ContentCollectionItem)
 class ContentCollectionItemAdmin(SiteAwareModelAdmin):
+    inlines = [CoursePartChildDueDateInline]
     # collection and child are generic FKs, so only the concrete columns behind
     # them can be ordered, filtered or searched. Ordering matters beyond this
     # changelist: it is also the queryset the admins that point a ForeignKey at
