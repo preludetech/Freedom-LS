@@ -17,7 +17,7 @@ Done when the badge names the current branch.
 
 ## Step 2: Data
 
-For each design state, read its "how to reach it" line in the plan's design transcription. Set up the data it names the way `do_qa.md` Rule 2 does: `fls-dev:qa-data-helper`, as a solo `Agent` spawn.
+For each design state, read its "how to reach it" line in the plan's design transcription. Set up the data it names the way `do_qa.md` Rule 2 does: `sdd:qa-data-helper`, as a solo `Agent` spawn.
 
 Done when every state's "how to reach it" line resolves to a URL that renders the state's data.
 

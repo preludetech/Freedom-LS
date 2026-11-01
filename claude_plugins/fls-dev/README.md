@@ -50,10 +50,8 @@ copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocat
 preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
 commands spawn `sdd`-plugin agents.
 
-### Agents (2)
+### Agents (1)
 
-`qa-data-helper` — creates QA test data with factory_boy factories. Its persistent memory lives at
-`.claude/agent-memory/fls-dev-qa-data-helper/`.
 `qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → targeted tier → commit).
 Spawned by `do_qa`'s triage loop.
 
@@ -73,18 +71,18 @@ in every QA session.** Review any new script with the same care as a new allow-l
 it validates its arguments, does not write outside the project, and does not execute its
 arguments as shell code.
 
-### Resources (15)
+### Resources (16)
 
 FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`, `concrete_spec_integration`
 (the per-spec integration procedure a concrete project follows; `concrete/update_fls` follows it).
 Plan review briefs, reached through `## Plan Review Hooks`: `plan_review_structure`,
 `plan_review_fls_threats`.
 FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
-`admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`,
+`admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`, `qa_data_helper` (the conventions `sdd:qa-data-helper` reads),
 `templates_and_cotton`, `testing`, `playwright-testing`.
 `launcher_editing` and `wrapper_script_migration` (copies of the procedures `/fls-dev:init` follows).
 `agent_memory_guidelines` (a copy — the canonical home is the `sdd` plugin; duplicated here because
-`${CLAUDE_PLUGIN_ROOT}` is per-plugin and `qa-data-helper` reads it).
+`${CLAUDE_PLUGIN_ROOT}` is per-plugin).
 
 ### Templates
 

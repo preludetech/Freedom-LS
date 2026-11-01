@@ -45,7 +45,7 @@ step; every other step is unchanged.
   is a port collision.
 - Step 5 reads the credentials and `Base URL` from `<project-root>/.claude/fls-dev/config.md`;
   absent, QA ends `blocked` with that need.
-- Rule 2 rungs 2 and 3 and `fls-dev:qa-data-helper` are off: data that blocks a test makes it
+- Rule 2 rungs 2 and 3 and `sdd:qa-data-helper` are off: data that blocks a test makes it
   PARTIAL.
 - Step 11 passes `"<spec-dir>"` to `compress_screenshots.sh` as its directory argument.
 - Step 13 is off: `qa-bugfixer` is never spawned; bugs stay in the report for the caller.
@@ -81,7 +81,7 @@ blocks a test — missing, stale, or wrong — fix it and carry on testing. **Ne
 asking the user to create, delete, reset or re-seed development data**, including residue this run
 created.
 
-**Missing data** — spawn **`fls-dev:qa-data-helper`** via the `Agent` tool (a paginator with too few
+**Missing data** — spawn **`sdd:qa-data-helper`** via the `Agent` tool (a paginator with too few
 rows, a panel with no instance of the model, a flow with no user/cohort/course). Tell it the exact
 shape you need: entity counts, relationships, which Site, which fixtures. It owns the factory
 conventions — do not hand-roll ORM scripts. Wait for it to confirm, then re-attempt the test.
@@ -91,7 +91,7 @@ earlier run changed. Clear it, cheapest option first. Rungs 2 and 3 run the comm
 `## QA Dev Data` in `.claude/fls-dev/config.md`. Read that section before you need it and substitute
 the literal values it gives.
 
-1. Delegate the delete to `fls-dev:qa-data-helper`, naming the records by pk.
+1. Delegate the delete to `sdd:qa-data-helper`, naming the records by pk.
 2. Run `Content reset`, then the test plan's seed list. It clears content and leaves users,
    organisations and role grants intact.
 3. Full wipe. Run `DB drop`, `DB create`, `Migrate`, then the test plan's own `§0` seed list.
@@ -104,7 +104,7 @@ set up: mark the test PARTIAL and file the Step 15 category-2 item naming the mi
 `.claude/ds/scripts/`. File a `(user)` item only when a command is refused *and* has no allow-listed
 equivalent — naming the command and why you could not issue it.
 
-**Only** mark a test PARTIAL / skipped for one of two reasons: `fls-dev:qa-data-helper` reports the
+**Only** mark a test PARTIAL / skipped for one of two reasons: `sdd:qa-data-helper` reports the
 scenario is impossible to set up, or the ladder above ran out of configured rungs.
 
 ## Rule 3 — Batching safety rules
@@ -128,7 +128,7 @@ prose; never write the literal flag string into a file.
 **3d. The dev-server start (`runserver`) is always a solo call**, and always backgrounded.
 
 **3e. Any `Agent` spawn is always a solo call.** This covers every agent this command spawns:
-`fls-dev:qa-data-helper`, `fls-dev:qa-bugfixer`, `sdd:sdd-worker`, `sdd:sdd-mechanic`.
+`sdd:qa-data-helper`, `fls-dev:qa-bugfixer`, `sdd:sdd-worker`, `sdd:sdd-mechanic`.
 
 **3f. `git revert` (Step 13) is not allow-listed as a solo-safe batch member** — issue it alone.
 
@@ -658,7 +658,7 @@ These five categories, and nothing else:
 
 1. Each **UNRESOLVED** bug, design misses included, green-lane and red-lane alike:
    `add:"<section>|user|Decide what to do about QA bug: <short title> (TDD: failing test first, then fix)"`.
-2. A scenario `fls-dev:qa-data-helper` reported **impossible to set up** — not merely absent, which
+2. A scenario `sdd:qa-data-helper` reported **impossible to set up** — not merely absent, which
    Rule 2 required you to fix during the run:
    `add:"<section>|cmd|<what could not be set up, and why>"`.
 3. A smoke-gate failure:

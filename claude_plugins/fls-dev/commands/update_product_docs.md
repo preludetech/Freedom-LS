@@ -159,7 +159,7 @@ Only for images with no suitable QA screenshot.
 
 2. **Confirm the branch badge.** Navigate to `http://127.0.0.1:$PORT/` using Playwright MCP and look for the `debug-branch-badge` element. It must name the current branch. If it names a different branch there is a port collision — go back to step 1 and pick another port.
 
-3. **Capture.** Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) at a desktop viewport. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `fls-dev:qa-data-helper` agent rather than creating data yourself. Save into `docs/product/screenshots/` under the names from 4a.
+3. **Capture.** Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) at a desktop viewport. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `sdd:qa-data-helper` agent rather than creating data yourself. Save into `docs/product/screenshots/` under the names from 4a.
 
 4. **Kill the dev server** — run this even if capture failed:
 

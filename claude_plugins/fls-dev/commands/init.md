@@ -343,6 +343,7 @@ If `.claude/sdd/config.md` exists:
   - `Dev server stop: .claude/ds/scripts/kill_runserver.sh <PORT>`
   - `Branch badge: debug-branch-badge`
   - `Diff scoping: <PLUGINS_ROOT>/claude_plugins/django-stack/resources/qa_diff_scoping.md`
+  - `Data helper guide: <PLUGINS_ROOT>/claude_plugins/fls-dev/resources/qa_data_helper.md`
 - Ensure `## QA Login` and `## QA Dev Data` exist with all their keys. When
   `.claude/fls-dev/config.md` holds `## Dev Credentials`, a `Base URL` or `## QA Dev Data`, copy
   each value into the matching `sdd` key, only where that key is blank.

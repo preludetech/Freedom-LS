@@ -53,7 +53,7 @@ same way. It also migrates artifacts an older init baked in: the `$FLS_PLUGIN` s
 ### Agents (1)
 `code-reviewer` — a generic Python/Django/HTMX reviewer. Its persistent memory lives at
 `.claude/agent-memory/ds-code-reviewer/`, prefixed with the plugin name so it cannot collide with a
-host project's own reviewer memory (the same convention `fls-dev` uses for `fls-dev-qa-data-helper`).
+host project's own reviewer memory (the same convention `sdd` uses for `sdd-qa-data-helper`).
 
 ### Scripts
 `find_available_port.sh`, `generate_app_map.py`, `db_clear.sh`, `fetch_pr_comments.sh`,

@@ -119,7 +119,7 @@ tier definition. Return `status: failed · reason: <description>` if the tier do
 **Stage only the files you created or modified for this fix** — the production file(s) from Step 3
 and the test file from Step 1, by explicit path. The working tree may hold unrelated changes from
 earlier in the QA run (test data, fixtures, or management commands written by
-`fls-dev:qa-data-helper`), and those must NOT end up in your commit.
+`sdd:qa-data-helper`), and those must NOT end up in your commit.
 
 ```
 uv run git add <production-file> <test-file>      # explicit paths only

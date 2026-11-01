@@ -45,7 +45,7 @@
 - Dev server stop: .claude/ds/scripts/kill_runserver.sh <PORT>
 - Branch badge: debug-branch-badge
 - Diff scoping: claude_plugins/django-stack/resources/qa_diff_scoping.md
-- Data helper guide:
+- Data helper guide: claude_plugins/fls-dev/resources/qa_data_helper.md
 
 ## QA Login
 
