@@ -281,7 +281,10 @@ class CoursePartChildDueDateInline(TabularInline):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[CoursePartChildDueDate]:
         rows: QuerySet[CoursePartChildDueDate] = super().get_queryset(request)
-        return rows.select_related("collection_item")
+        # The child row's heading reads both of its generic foreign keys.
+        return rows.select_related("collection_item").prefetch_related(
+            "collection_item__collection", "collection_item__child"
+        )
 
     def has_add_permission(
         self, request: HttpRequest, obj: ContentCollectionItem | None = None

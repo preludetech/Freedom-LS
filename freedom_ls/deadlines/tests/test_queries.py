@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 
 import pytest
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartChildDueDateFactory,
@@ -24,15 +25,21 @@ from freedom_ls.deadlines.models import (
 from freedom_ls.deadlines.queries import (
     canonical_beneath,
     content_default_for,
+    content_defaults_for,
     layers_beneath,
-    placement_values_for,
 )
-from freedom_ls.deadlines.resolver import DeadlineLayer, DeadlineSource, DeadlineValue
+from freedom_ls.deadlines.resolver import (
+    DeadlineLayer,
+    DeadlineSource,
+    DeadlineValue,
+    course_deadlines,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 def _item_override(**item_columns: object) -> CohortDeadlineOverride:
@@ -307,12 +314,37 @@ def test_canonical_beneath_a_part_row_reads_the_placement_value(mock_site_contex
 
     assert canonical_beneath(override) == "relative:3"
     assert canonical_beneath(
-        override, placement_values=placement_values_for(override.course)
+        override, content_defaults=content_defaults_for(override.course)
     ) == ("relative:3")
 
 
 @pytest.mark.django_db
-def test_placement_values_for_keys_by_child_row_and_ignores_another_courses_placement(
+def test_content_default_for_agrees_with_what_a_learner_is_resolved(mock_site_context):
+    """One reading of a content default: the admin column and the learner's resolved
+    deadline come from the same code, so a course placing one part twice, each placement
+    with its own value, cannot make them disagree."""
+    override, placement, row = _part_row_override(due_days_after_registration=14)
+    course = Course.objects.get(pk=placement.collection_id)
+    second_placement = course.items.create(child=placement.child, order=1)
+    for part_placement, days in ((placement, 3), (second_placement, 8)):
+        CoursePartChildDueDateFactory(
+            part_collection_item=part_placement,
+            collection_item=row,
+            due_days_after_registration=days,
+        )
+    registered = datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    record = course_progress_record(course, UserFactory(), created_at=registered)
+
+    due_at = course_deadlines(record).items[row.pk].due_at
+    shown = content_default_for(override)
+
+    assert due_at is not None
+    assert shown is not None
+    assert (due_at.date() - registered.date()).days == shown.due_days_after_registration
+
+
+@pytest.mark.django_db
+def test_content_defaults_for_keys_by_child_row_and_ignores_another_courses_placement(
     mock_site_context,
 ):
     course_a: Course = CourseFactory()
@@ -332,6 +364,6 @@ def test_placement_values_for_keys_by_child_row_and_ignores_another_courses_plac
         due_days_after_registration=8,
     )
 
-    assert placement_values_for(course_a) == {
+    assert content_defaults_for(course_a) == {
         row.pk: DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=3)
     }

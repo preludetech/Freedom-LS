@@ -6,6 +6,7 @@ Marked `fls_internal`: it reads `demo_content/`, which only this repo ships.
 from __future__ import annotations
 
 from datetime import time
+from pathlib import Path
 
 import pytest
 
@@ -15,11 +16,29 @@ from freedom_ls.content_engine.models import (
     CoursePartChildDueDate,
     Topic,
 )
+from freedom_ls.content_engine.validate import (
+    get_all_files,
+    parse_single_file,
+    validate_due_date_placements,
+)
 from freedom_ls.form_engine.models import Form
 
 pytestmark = pytest.mark.fls_internal
 
 PLACEMENT_COURSE_TITLE = "Functionality Demo - Per-placement Due Dates"
+PLACEMENT_COURSE_DIR = Path("demo_content/functionality_demo_course_parts_placement")
+
+
+def test_the_placement_course_directory_passes_the_placement_check_on_its_own():
+    """The part it places lives in a sibling directory; the nested list is checked against
+    that part all the same, and passes."""
+    parsed = [
+        item
+        for file_path in get_all_files(PLACEMENT_COURSE_DIR)
+        for item in parse_single_file(file_path)
+    ]
+
+    assert validate_due_date_placements(parsed) == []
 
 
 @pytest.mark.django_db

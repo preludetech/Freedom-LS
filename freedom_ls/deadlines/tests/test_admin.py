@@ -4,20 +4,27 @@ from datetime import date
 
 import pytest
 
+from django.contrib import admin
 from django.db import connection
-from django.test import Client
+from django.http import HttpRequest
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
-from django.urls import reverse
+from django.urls import resolve, reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartChildDueDateFactory,
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePartChildDueDate,
+)
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.admin import TIME_LIMIT_HELP
+from freedom_ls.deadlines.admin import TIME_LIMIT_HELP, CohortDeadlineOverrideInline
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
@@ -375,6 +382,99 @@ def _registration_with_part_row(
         course=course
     )
     return registration, placement, row
+
+
+def _registration_with_two_part_rows() -> tuple[
+    CohortCourseRegistration, list[ContentCollectionItem]
+]:
+    """A registration whose course places a part holding two topic rows, each given a
+    placement value."""
+    course: Course = CourseFactory()
+    part = CoursePartFactory()
+    placement = course.items.create(child=part, order=0)
+    rows: list[ContentCollectionItem] = []
+    for order in range(2):
+        row = part.items.create(child=TopicFactory(), order=order)
+        CoursePartChildDueDateFactory(
+            part_collection_item=placement,
+            collection_item=row,
+            due_days_after_registration=3 + order,
+        )
+        rows.append(row)
+    registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        course=course
+    )
+    return registration, rows
+
+
+def _queries_on(captured: CaptureQueriesContext, table: str) -> int:
+    return sum(1 for query in captured.captured_queries if table in query["sql"])
+
+
+@pytest.mark.django_db
+def test_saving_several_rows_reads_the_placement_values_once(
+    staff_client, mock_site_context
+) -> None:
+    registration, rows = _registration_with_two_part_rows()
+    table = CoursePartChildDueDate._meta.db_table
+
+    with CaptureQueriesContext(connection) as captured:
+        response = _post(
+            staff_client,
+            registration,
+            [
+                {
+                    "collection_item": str(row.pk),
+                    "kind": DeadlineKind.RELATIVE,
+                    "due_days_after_registration": "9",
+                }
+                for row in rows
+            ],
+        )
+
+    assert response.status_code == 302
+    assert _queries_on(captured, table) == 1
+    assert sorted(
+        CohortDeadlineOverride.objects.values_list("replaced_value", flat=True)
+    ) == ["relative:3", "relative:4"]
+
+
+def _change_request(registration: CohortCourseRegistration) -> HttpRequest:
+    url = reverse(CHANGE_URL_NAME, args=[registration.pk])
+    request = RequestFactory().get(url)
+    request.resolver_match = resolve(url)
+    request.user = UserFactory(superuser=True)
+    return request
+
+
+@pytest.mark.django_db
+def test_the_inline_reads_the_parent_course_once_per_request(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    registration, _ = _registration_with_two_part_rows()
+    inline = CohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+    request = _change_request(registration)
+
+    with django_assert_num_queries(1):
+        first = inline.parent_course(request)
+        second = inline.parent_course(request)
+
+    assert first == registration.course
+    assert second is first
+
+
+@pytest.mark.django_db
+def test_building_the_formset_reads_the_parent_once(mock_site_context) -> None:
+    registration, _ = _registration_with_two_part_rows()
+    inline = CohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+    request = _change_request(registration)
+    # The admin hands the inline the parent it loaded without its course.
+    parent = CohortCourseRegistration.objects.get(pk=registration.pk)
+
+    with CaptureQueriesContext(connection) as captured:
+        inline.get_formset(request, parent)
+
+    assert _queries_on(captured, CohortCourseRegistration._meta.db_table) == 1
 
 
 @pytest.mark.django_db

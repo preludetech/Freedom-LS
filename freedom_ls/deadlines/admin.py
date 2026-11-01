@@ -36,10 +36,10 @@ from freedom_ls.deadlines.models import (
     SiteDeadlineConfig,
 )
 from freedom_ls.deadlines.queries import (
-    PlacementValues,
+    ContentDefaults,
     canonical_beneath,
     content_default_for,
-    placement_values_for,
+    content_defaults_for,
 )
 from freedom_ls.deadlines.resolver import (
     DeadlineSource,
@@ -104,6 +104,9 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
     so the stamping lives on the formset the inline hands it rather than in save_formset."""
 
     set_by: User
+    # What the inline fetched once for the page, so stamping N rows reads nothing per row.
+    cohort_rows: LayerRows | None = None
+    content_defaults: ContentDefaults | None = None
 
     def clean(self) -> None:
         # Both unique constraints are conditional, which Django's formset uniqueness check
@@ -143,7 +146,9 @@ class DeadlineOverrideFormSet(BaseInlineFormSet):
     ) -> DeadlineOverride:
         instance.set_by = self.set_by
         if restamp:
-            instance.replaced_value = canonical_beneath(instance)
+            instance.replaced_value = canonical_beneath(
+                instance, self.cohort_rows, self.content_defaults
+            )
         if commit:
             instance.save()
         return instance
@@ -195,9 +200,13 @@ class DeadlineOverrideInline(TabularInline):
     # The cohort rows beneath this page's rows, fetched once per request by the inline whose
     # rows have any; None means each row reads its own.
     cohort_rows_beneath: LayerRows | None = None
-    # The values the parent's course gives its parts' children, fetched once per request;
+    # The content default of every row in the parent's course, fetched once per request;
     # None means each row reads its own.
-    placement_values: PlacementValues | None = None
+    content_defaults: ContentDefaults | None = None
+    # The parent's course, read once per request: the admin makes one inline per request,
+    # and both the picker and the formset ask for it.
+    _course_read: bool = False
+    _course: Course | None = None
 
     def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineOverride]:
         rows: models.QuerySet[DeadlineOverride] = super().get_queryset(request)
@@ -208,6 +217,12 @@ class DeadlineOverrideInline(TabularInline):
     def parent_course(self, request: HttpRequest) -> Course | None:
         """The course of the object being edited, or None on the add page or for a malformed id.
         Read through the site-aware manager, so another site's parent is never reached."""
+        if not self._course_read:
+            self._course = self._read_parent_course(request)
+            self._course_read = True
+        return self._course
+
+    def _read_parent_course(self, request: HttpRequest) -> Course | None:
         object_id = (
             request.resolver_match.kwargs.get("object_id")
             if request.resolver_match
@@ -232,10 +247,12 @@ class DeadlineOverrideInline(TabularInline):
             type[DeadlineOverrideFormSet], super().get_formset(request, obj, **kwargs)
         )
         formset.set_by = cast(User, request.user)
-        course = getattr(obj, "course", None)
-        self.placement_values = (
-            placement_values_for(course) if course is not None else {}
+        course = self.parent_course(request)
+        self.content_defaults = (
+            content_defaults_for(course) if course is not None else {}
         )
+        formset.cohort_rows = self.cohort_rows_beneath
+        formset.content_defaults = self.content_defaults
         return formset
 
     def formfield_for_foreignkey(
@@ -285,7 +302,7 @@ class DeadlineOverrideInline(TabularInline):
     def content_default(self, obj: DeadlineOverride) -> str:
         if obj._state.adding:
             return ""
-        return _value_text(content_default_for(obj, self.placement_values), obj)
+        return _value_text(content_default_for(obj, self.content_defaults), obj)
 
     @admin.display(description="Effective")
     def effective_value(self, obj: DeadlineOverride) -> str:
@@ -300,7 +317,7 @@ class DeadlineOverrideInline(TabularInline):
         if obj._state.adding:
             return ""
         beneath = canonical_beneath(
-            obj, self.cohort_rows_beneath, self.placement_values
+            obj, self.cohort_rows_beneath, self.content_defaults
         )
         if obj.replaced_value == beneath:
             return ""

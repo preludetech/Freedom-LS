@@ -52,7 +52,7 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
-    auto_discovered_children,
+    collection_children,
     content_key,
     get_all_files,
     parse_single_file,
@@ -895,12 +895,21 @@ def save_content_to_db(path, site_name):
     image_statuses: list[ImageEncodeStatus] = []
     cache = ImageCache(path)
 
+    content_files = {f for f in all_files if f.suffix in [".md", ".yaml", ".yml"]}
     for file_path in all_files:
-        if file_path.suffix in [".md", ".yaml", ".yml"]:
-            parsed_items = parse_single_file(file_path)
-            all_parsed.extend(parsed_items)
-        else:
-            # Save non-content files (images, documents, etc.) to the database
+        if file_path in content_files:
+            all_parsed.extend(parse_single_file(file_path))
+
+    # Every placement error at once, before anything is written, so one load reports
+    # all of them and leaves nothing behind: the rows roll back with the transaction,
+    # but a file already sent to storage does not.
+    placement_errors = validate_due_date_placements(all_parsed)
+    if placement_errors:
+        raise ValueError("\n".join(placement_errors))
+
+    # Save non-content files (images, documents, etc.) to the database
+    for file_path in all_files:
+        if file_path not in content_files:
             decision = save_file_to_db(file_path, site, path, cache)
             if decision is not None:
                 image_statuses.append(decision.status)
@@ -1056,17 +1065,10 @@ def save_content_to_db(path, site_name):
             collection.application_form = form
             collection.save(update_fields=["application_form"])
 
-    # Every placement error at once, inside the transaction, so one load reports all of
-    # them and writes nothing.
-    placement_errors = validate_due_date_placements(all_parsed)
-    if placement_errors:
-        raise ValueError("\n".join(placement_errors))
-
     # Process collection children
     written: list[ContentCollectionItem] = []
     created: list[ContentCollectionItem] = []
     row_by_placement: dict[tuple[uuid.UUID, Path], ContentCollectionItem] = {}
-    part_placements: list[ContentCollectionItem] = []
     for collection, schema_item in collections_data:
         if schema_item.content_type == SchemaContentType.COURSE:
             # A replace, not a merge: a slug dropped from `categories` and
@@ -1078,16 +1080,9 @@ def save_content_to_db(path, site_name):
                 )
             )
 
-        # Both branches produce (resolved path, entry) pairs, so the lookup
-        # below is the same whichever way the children were arrived at. An
-        # auto-discovered child has no entry.
-        children_list: list[tuple[Path, Child | None]] = [
-            (resolve_author_path(schema_item.file_path, child.path), child)
-            for child in (schema_item.children or [])
-        ] or [(path, None) for path in auto_discovered_children(schema_item.file_path)]
-
-        # Create ContentCollectionItem entries for each child
-        for order, (child_path, entry) in enumerate(children_list):
+        # Create ContentCollectionItem entries for each child. An auto-discovered
+        # child has no entry.
+        for order, (child_path, entry) in enumerate(collection_children(schema_item)):
             child_content = content_by_path.get(child_path)
             if child_content:
                 # Get the Django ContentType for both collection and child
@@ -1112,8 +1107,6 @@ def save_content_to_db(path, site_name):
                 )
                 written.append(row)
                 row_by_placement[(collection.id, child_path)] = row
-                if isinstance(child_content, CoursePart):
-                    part_placements.append(row)
                 if was_created:
                     created.append(row)
                 logger.info(
@@ -1129,13 +1122,17 @@ def save_content_to_db(path, site_name):
                 )
 
     # A course is written before the parts it places, so the part's own rows exist only
-    # now. Every part placement written by this load is reconciled, including one whose
-    # entry no longer has a nested list: its rows go. The load runs with no request, so
-    # the site goes on every write and delete by hand.
+    # now. Every part placement of every course in this load is reconciled: one whose
+    # entry no longer has a nested list, and one the course no longer names at all (a
+    # sync keeps the row a dropped child left behind, so its values would otherwise
+    # stay in force). The load runs with no request, so the site goes on every write
+    # and delete by hand.
     kept: list[uuid.UUID] = []
+    loaded_course_ids: list[uuid.UUID] = []
     for collection, schema_item in collections_data:
         if schema_item.content_type != SchemaContentType.COURSE:
             continue
+        loaded_course_ids.append(collection.id)
         for entry in schema_item.children or []:
             if not entry.children:
                 continue
@@ -1157,7 +1154,11 @@ def save_content_to_db(path, site_name):
                 )
                 kept.append(value.pk)
     CoursePartChildDueDate.objects.filter(
-        site=site, part_collection_item__in=part_placements
+        site=site,
+        part_collection_item__collection_type=DjangoContentType.objects.get_for_model(
+            Course
+        ),
+        part_collection_item__collection_id__in=loaded_course_ids,
     ).exclude(pk__in=kept).delete()
 
     collection_items_synced.send(

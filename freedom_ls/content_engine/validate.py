@@ -10,7 +10,7 @@ import functools
 import logging
 import os.path
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import frontmatter
@@ -685,13 +685,23 @@ def _direct_entry_errors(
     return []
 
 
+def collection_children(
+    collection: Course | CoursePart,
+) -> list[tuple[Path, Child | None]]:
+    """The collection's children as (resolved key, entry) pairs: the listed entries, else
+    the auto-discovered files, which have no entry. The one rule for what a collection
+    holds, shared by the validator and the loader so the two never disagree."""
+    if collection.children:
+        return [
+            (resolve_author_path(collection.file_path, child.path), child)
+            for child in collection.children
+        ]
+    return [(path, None) for path in auto_discovered_children(collection.file_path)]
+
+
 def _children_of_part(part: CoursePart) -> list[Path]:
     """The part's children as resolved keys, listed or auto-discovered."""
-    if part.children:
-        return [
-            resolve_author_path(part.file_path, child.path) for child in part.children
-        ]
-    return auto_discovered_children(part.file_path)
+    return [path for path, _ in collection_children(part)]
 
 
 def _shown_relative_to(path: Path, directory: Path) -> str:
@@ -700,12 +710,36 @@ def _shown_relative_to(path: Path, directory: Path) -> str:
     return str(path.relative_to(base)) if path.is_relative_to(base) else str(path)
 
 
+class _ParsedByPath:
+    """The parsed items by resolved key, reaching outside the validated path when an entry
+    does. A course may place a part from a sibling directory; validating the course's
+    directory alone must still check the part's nested list, so a key not parsed in this
+    run is parsed from disk on first use. A file that does not exist, or does not parse,
+    gives None: the unknown-child check and the file's own validation own those."""
+
+    def __init__(self, all_parsed: Sequence[BaseBaseContentModel]) -> None:
+        self._items = {content_key(item.file_path): item for item in all_parsed}
+        self._read: set[Path] = set()
+
+    def get(self, key: Path) -> BaseBaseContentModel | None:
+        if key not in self._items and key not in self._read:
+            self._read.add(key)
+            if key.is_file():
+                try:
+                    parsed = parse_single_file(key)
+                except ValueError:
+                    parsed = []
+                for item in parsed:
+                    self._items.setdefault(content_key(item.file_path), item)
+        return self._items.get(key)
+
+
 def _nested_list_errors(
     item: Course | CoursePart,
     index: int,
     entry: Child,
     target: BaseBaseContentModel,
-    by_path: Mapping[Path, BaseBaseContentModel],
+    by_path: _ParsedByPath,
 ) -> list[str]:
     """A nested children: list belongs on a course's placement of a part and names the
     part's topics and forms, each once."""
@@ -784,7 +818,7 @@ def validate_due_date_placements(
     errors: list[str] = []
     # Keyed by content_key, not normpath: an entry's path is resolved the way the loader
     # resolves it, so the two agree on every file.
-    by_path = {content_key(item.file_path): item for item in all_parsed}
+    by_path = _ParsedByPath(all_parsed)
     for item in all_parsed:
         if not isinstance(item, (Course, CoursePart)):
             continue

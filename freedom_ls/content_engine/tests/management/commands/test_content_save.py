@@ -3401,6 +3401,54 @@ def test_dropping_the_whole_nested_list_deletes_both_rows(site, mock_site_contex
 
 
 @pytest.mark.django_db
+def test_a_course_that_stops_placing_the_part_loses_its_child_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+        save_content_to_db(course_dir, site.name)
+        stale_placement = _part_placement()
+
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Nested course
+uuid: {COURSE_UUID}
+children:
+  - path: shared.md
+---
+""")
+        save_content_to_db(course_dir, site.name)
+
+        # The sync keeps the placement row it no longer names; its values must not.
+        assert ContentCollectionItem.objects.filter(pk=stale_placement.pk).exists()
+        assert CoursePartChildDueDate.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_broken_nested_list_sends_nothing_to_storage(
+    site, mock_site_context, monkeypatch
+):
+    sent: list[Path] = []
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.management.commands.content_save.save_file_to_db",
+        lambda file_path, *args: sent.append(file_path),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(
+            course_dir,
+            "    children:\n      - path: nowhere.md\n        no_due_date: true\n",
+        )
+        (course_dir / "picture.png").write_bytes(b"")
+
+        with pytest.raises(ValueError, match="Invalid due date placement"):
+            save_content_to_db(course_dir, site.name)
+
+    assert sent == []
+
+
+@pytest.mark.django_db
 def test_resyncing_an_unchanged_nested_list_keeps_the_same_rows(
     site, mock_site_context
 ):

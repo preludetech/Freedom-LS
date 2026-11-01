@@ -949,6 +949,63 @@ def test_a_child_named_twice_in_a_nested_list_fails(tmp_path: Path) -> None:
     assert "children[0].children[1]" in errors[0]
 
 
+def _sibling_part(tmp_path: Path) -> None:
+    """A part in a directory beside the course's, outside what the course's run parses."""
+    _topic(tmp_path / "shared" / "part" / "intro.md")
+    _activity(tmp_path / "shared" / "part" / "act.md")
+    _part_listing(tmp_path / "shared" / "part" / "part.yaml", ["intro.md", "act.md"])
+
+
+def test_a_nested_list_on_a_part_outside_the_validated_directory_passes(
+    tmp_path: Path,
+) -> None:
+    _sibling_part(tmp_path)
+    _course_placing_part(
+        tmp_path / "course" / "course.md", "../shared/part/part.yaml", ["intro.md"]
+    )
+
+    assert _placement_errors(tmp_path / "course") == []
+
+
+def test_a_nested_path_naming_nothing_in_a_part_outside_the_directory_fails(
+    tmp_path: Path,
+) -> None:
+    _sibling_part(tmp_path)
+    _course_placing_part(
+        tmp_path / "course" / "course.md", "../shared/part/part.yaml", ["missing.md"]
+    )
+
+    errors = _placement_errors(tmp_path / "course")
+
+    assert len(errors) == 1
+    assert "the part has no child at this path" in errors[0]
+    assert "intro.md, act.md" in errors[0]
+
+
+def test_a_nested_path_naming_an_activity_outside_the_directory_fails(
+    tmp_path: Path,
+) -> None:
+    _sibling_part(tmp_path)
+    _course_placing_part(
+        tmp_path / "course" / "course.md", "../shared/part/part.yaml", ["act.md"]
+    )
+
+    errors = _placement_errors(tmp_path / "course")
+
+    assert len(errors) == 1
+    assert "this child is a ACTIVITY" in errors[0]
+
+
+def test_a_due_date_on_an_activity_outside_the_directory_fails(tmp_path: Path) -> None:
+    _activity(tmp_path / "shared" / "act.md")
+    _course_with_entries(tmp_path / "course" / "course.md", ["../shared/act.md"])
+
+    errors = _placement_errors(tmp_path / "course")
+
+    assert len(errors) == 1
+    assert "a due date on a ACTIVITY placement" in errors[0]
+
+
 def test_several_nested_rules_in_one_file_give_one_message_each(tmp_path: Path) -> None:
     _topic(tmp_path / "part" / "intro.md")
     _activity(tmp_path / "part" / "act.md")

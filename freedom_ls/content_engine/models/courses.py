@@ -618,3 +618,6 @@ class CoursePartChildDueDate(SiteAwareModel):
                 name="cpcdd_one_value_per_child",
             )
         ]
+
+    def __str__(self):
+        return f"Due date for {self.collection_item}"

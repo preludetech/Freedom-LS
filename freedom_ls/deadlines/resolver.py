@@ -255,6 +255,14 @@ def _layers(
     ]
 
 
+def content_defaults_for_course(course_id: UUID) -> Mapping[UUID, DeadlineValue | None]:
+    """What the content says for every viewable row in one course, keyed by row id: the
+    row's own value, or the value the course's placement of the row's part gives it. The
+    one reading of a content default, shared with the admin so it never drifts from what
+    a learner is resolved."""
+    return _defaults_by_course({course_id})[course_id].items
+
+
 def course_deadlines(course_progress: CourseProgress) -> CourseDeadlines:
     return course_deadlines_for([course_progress])[course_progress.pk]
 

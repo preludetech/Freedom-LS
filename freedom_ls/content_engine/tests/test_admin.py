@@ -8,7 +8,9 @@ from decimal import Decimal
 import pytest
 
 from django.contrib import admin
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.content_engine.admin import (
@@ -399,6 +401,38 @@ class TestPartPlacementChildDueDatesInline:
 
         assert "Alpha Topic" in html
         assert "Beta Topic" in html
+
+    def test_each_row_is_headed_by_its_child_not_by_an_object_id(
+        self, staff_client
+    ) -> None:
+        part_placement = self._part_placement_with_two_rows()
+
+        html = self._change_page(staff_client, part_placement)
+
+        assert "CoursePartChildDueDate object" not in html
+        assert "Due date for" in html
+
+    def test_the_change_page_query_count_does_not_grow_with_child_rows(
+        self, staff_client
+    ) -> None:
+        part_placement = self._part_placement_with_two_rows()
+        with CaptureQueriesContext(connection) as two_rows:
+            self._change_page(staff_client, part_placement)
+        part = part_placement.child
+        for order in range(2, 6):
+            child_placement = ContentCollectionItemFactory(
+                collection_object=part,
+                child_object=TopicFactory(title=f"Topic {order}"),
+                order=order,
+            )
+            CoursePartChildDueDateFactory(
+                part_collection_item=part_placement, collection_item=child_placement
+            )
+
+        with CaptureQueriesContext(connection) as six_rows:
+            self._change_page(staff_client, part_placement)
+
+        assert len(six_rows) == len(two_rows)
 
     def test_the_change_page_offers_no_add_row_and_no_delete_control(
         self, staff_client
