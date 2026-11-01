@@ -6,7 +6,7 @@ and may run beside, the decisions already taken and the assumptions every idea i
 
 ## What
 
-Close the effort. Document the panel framework for the people who will build on it, rewrite the educator product doc as one piece, walk every screen on desktop and mobile with a keyboard and a screen reader, consolidate the upgrade notes for downstream projects, and delete whatever the earlier specs left behind.
+Close the effort. Rewrite the educator product doc as one piece, walk every screen on desktop and mobile with a keyboard and a screen reader, consolidate the upgrade notes for downstream projects, and delete whatever the earlier specs left behind.
 
 ## Why
 
@@ -14,9 +14,7 @@ Each of the eleven specs documents its own change, but nobody has read the resul
 
 ## What is settled
 
-**Developer doc.** `docs/product/panel-framework.md` (or `docs/how tos/`, whichever the existing docs convention favours): what a section is, the three view kinds, panels and tabs and their binding, actions, tables with filters and selection, the modal and the quick view, the permission hooks, URL state, the cotton components, how a downstream project registers a section and overrides a template. Written for a Django developer who has not seen the code, with one worked example.
-
-**An `fls-dev` skill.** `claude_plugins/fls-dev/skills/panel-framework/` so an agent building a section reads the contract instead of guessing from the educator interface. It follows the shape of the existing skills. The `alpine-js` skill's component inventory is corrected to what is registered.
+**Panel framework documentation moved out.** The developer doc and the panel skill are no longer this spec's: `extract_panels_framework-6-claude-plugin` writes both once, in the panel framework's own package. This spec corrects the `alpine-js` skill's component inventory to what is registered.
 
 **Product doc.** `docs/product/educator-interface.md` rewritten as one document, with fresh screenshots from the QA folders, in the order an educator meets the interface: dashboard, learners, cohorts, courses, members, history, reports. `docs/product/roadmap.md` loses the entries this effort closed.
 
@@ -32,7 +30,6 @@ Each of the eleven specs documents its own change, but nobody has read the resul
 
 ## Open until the spec
 
-- Where the developer doc lives under `docs/`.
 - Whether the mockup fidelity check is done by eye or with a screenshot diff. By eye is fine; the mockups are not pixel references.
 
 ## Out of scope

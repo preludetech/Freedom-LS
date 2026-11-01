@@ -15,7 +15,9 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `corporate-job-course-recommendations-5-attribute-csv-import`
+- `design_educator-interface-bulk-action`
 - `educator-interface-12-docs-and-polish`
+- `educator-interface-design-learner-csv-upload-design-fix`
 - `failed-login-follow-up`
 - `file-scanning`
 - `forced-site-name-for-host-based-site-lookup`
@@ -57,7 +59,7 @@ run, so it is twelve.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 12 | `educator-interface-12-docs-and-polish` | Product doc and an `fls-dev` skill for the panel framework, the educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
+| 12 | `educator-interface-12-docs-and-polish` | The educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
 
 ```
 1 core ──┬── 2 tables ──────┬── 6 cohort admin ──┬── 8 bulk ──────────┐
@@ -755,11 +757,139 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
   `fls-dev:domain-glossary`.
 - Every spec updates `docs/product/security-and-data-handling.md`.
 
+### Panel framework extraction
+
+Parent: `extract_panels_framework` (source idea, two shared research files). Cut 2026-11-01 into
+six specs. Read this section before starting any of them; each idea assumes you have.
+
+The source idea moves the panel framework out of FLS into its own installable Django app, because
+another Django project needs it. First the framework is made complete and independent inside FLS,
+then it moves to its own repo and FLS installs it, then a generic Claude Code plugin teaches agents in
+any host project to build with it.
+
+| # | Directory | Scope | Depends on | Status |
+|---|---|---|---|---|
+| 1 | `extract_panels_framework-1-gather-generic-code` | Generic panel code in `educator_interface`, `base`, `comms` and `deployment` moves into the framework, and the framework's own tests cover every component, filter and Alpine name. | `educator-interface-12-docs-and-polish`, `design_educator-interface-bulk-action`, `design_educator_interface_audit_log` | next |
+| 2 | `extract_panels_framework-2-new-capabilities` | The framework gains a required-reason dialog with a reason-choice list, an `as_of` stamp on lazy panels, and expandable table rows with a compact density. | `extract_panels_framework-1-gather-generic-code` | next |
+| 3 | `extract_panels_framework-3-standalone-backend` | The framework's Python stops importing FLS: its own settings and CSV helpers and a request-site hook, with its unit tests running under standalone settings. | `extract_panels_framework-1-gather-generic-code` | next |
+| 4 | `extract_panels_framework-4-template-contract` | The framework's templates, JS and CSS stop assuming FLS: a checked host contract, its own primitives and stylesheet, a Tailwind source command, a standalone browser test tier. | `extract_panels_framework-2-new-capabilities` | next |
+| 5 | `extract_panels_framework-5-package-and-install` | The framework becomes the public `django-panel-framework` repo, tagged `v0.1.0`; FLS installs it by git tag, edits it live in worktrees, drops the old table and writes upgrade notes. | `extract_panels_framework-3-standalone-backend`, `extract_panels_framework-4-template-contract` | next |
+| 6 | `extract_panels_framework-6-claude-plugin` | A generic `panel-framework` Claude Code plugin and developer doc in the package repo, a consumer-suite script, and `fls-dev` reduced to a pointer. | `extract_panels_framework-5-package-and-install` | next |
+
+```
+1 gather ──┬── 2 new capabilities ── 4 template contract ──┬── 5 package and install ── 6 plugin
+           └── 3 standalone backend ───────────────────────┘
+```
+
+External edges: 1 needs `educator-interface-12-docs-and-polish`, `design_educator-interface-bulk-action`
+and `design_educator_interface_audit_log`.
+
+#### Ordering and parallelism
+
+- **The three colliding specs land first.** `educator-interface-12-docs-and-polish`,
+  `design_educator-interface-bulk-action` and `design_educator_interface_audit_log` all edit framework
+  templates and JS. Spec 1 starts when all three are done.
+- **1 runs alone.** It moves code across app boundaries, which every later spec builds on.
+- **2 and 3 run in parallel** after 1. 2 is templates, JS and Python for three features; 3 is the
+  framework's outward Python imports and its test harness. Both edit `tests/conftest.py`: whoever lands
+  second rebases.
+- **4 after 2**, because both rework the same templates and Alpine file, and 4 must cover what 2 adds.
+- **5 after 3 and 4.** It is the move. **6 after 5**: the `update` command needs a tag and a changelog.
+- Shortest path to something the other project can install: 1, 3, 2, 4, 5. 6 can follow while the
+  other project is already using the package.
+- Cautions. `test-organisation-and-hygene-15-educator-interface` re-audits `panel_framework`'s tests:
+  if it runs after 5, its framework half is moot and it covers `educator_interface` only. Every FLS
+  spec touching `educator_interface`, `comms`, `reports` or `learner_management` rebases on 1 (moved
+  imports) and 5 (import prefix). The other project should not install before 5.
+
+#### Decisions already taken
+
+These were settled with the product owner while cutting the specs. The ideas rely on them and do not reopen them.
+
+1. **Another Django project needs a full admin like FLS's educator interface**, on the same stack:
+   django-cotton, HTMX 2, Alpine, Tailwind v4 with role tokens. Completeness is judged against FLS's
+   upcoming specs and that project.
+2. **A standalone public GitHub repo, MIT licensed, released by git tag.** No PyPI for now. No git
+   submodule.
+3. **The package's app label is `panel_framework`, with a clean `0001`.** The deployed
+   `freedom_ls_panel_framework` table holds nothing worth keeping: FLS drops it and its migration
+   history. No data is migrated.
+4. **Multi-site stays.** `BulkActionRun` keeps its FK to `django.contrib.sites`; the package resolves
+   the request's site through a settings-declared callable defaulting to Django's
+   `get_current_site`, and FLS points it at its own resolver.
+5. **The three colliding specs land first**, and spec 12 drops its panel skill and developer doc.
+6. **Three new capabilities ship before the extraction**: a required-reason dialog, an `as_of` stamp
+   on lazy panels, expandable rows with a compact density.
+7. **FLS depends on the package in `[project].dependencies` by PEP 508 git URL at a tag**, not through
+   `[tool.uv.sources]`, so First-Class and the concrete template resolve it with no entry of their
+   own. Live editing on a dev machine is an editable install layered over the synced venv. A
+   gitignored `uv.toml` cannot override a source.
+
+#### Assumptions the ideas make
+
+Nobody asked about these; they were judgement calls. Say so in the spec if one turns out wrong.
+
+- **No shared "core" package.** `AppSettings`, the CSV helpers and the small cotton primitives are
+  copied into the package. If spec 3 or 4 finds it cannot cut a coupling without one, it stops and
+  says so: that is where the extraction stops being cheap.
+- **The package ships its own primitives as overridable defaults** (`button`, `pagination`,
+  `dropdown-menu` and the rest it uses), and the host page shell is a documented contract, not
+  shipped.
+- **The bulk-run sweep moves into the framework** as a callable the host schedules. FLS's
+  `deployment/housekeeping.py` calls it.
+- **The package repo doubles as the plugin marketplace**, and the plugin's version follows the
+  package tag. FLS keeps its `--plugin-dir` practice for dev.
+- **Tags are the release unit.** `CHANGELOG.md` entries carry FLS's upgrade flags; a breaking change
+  keeps the old surface, with a deprecation warning, for one tag.
+- **The two old attempts in `/home/sheena/workspace/lms/django_apps/`** (`content_engine`,
+  `site_aware_models`) are left alone.
+
+#### Unknowns resolved inside a spec
+
+Each of these is an open question in the idea that owns it. Resolve it there and write the answer into any later idea it affects.
+
+| Unknown | Owner | Affects |
+|---|---|---|
+| Where `sidePanel`, `refreshTimer` and the `conversationChanged` event live once the framework's nav stops reaching into `comms` | 1 | 4 |
+| Whether the audit-log design already built expandable rows in the framework or in `educator_interface` | 2 | 4 |
+| How package primitives avoid clashing with a host's same-named cotton components | 4 | 5, 6 |
+| How FLS drops the old table and its `django_migrations` and ContentType rows | 5 | none |
+| Spike: does `uv run` revert a hand-installed editable copy of a locked git package, and does First-Class resolve FLS's git dependency | 5 | 6 |
+| Where the developer doc lives in the package repo | 6 | none |
+
+#### Out of scope for all six
+
+- PyPI publishing, a private repo, a git submodule.
+- A shared core package for `AppSettings` or CSV helpers.
+- Preview-then-confirm lists (corporate spec 4) and an import scaffold (corporate spec 5): those
+  specs build them in the package.
+- Polishing the educator interface (spec 12's job) and new educator features.
+- Supporting a host on a different frontend stack.
+- Tidying `/home/sheena/workspace/lms/django_apps/content_engine` and `site_aware_models`.
+
+#### Shared references
+
+- The source idea, `idea.md`, and in the parent `research_packaging_and_distribution.md` (layout,
+  release discipline; its app-label and `uv.toml` claims are superseded by the decisions above) and
+  `research_coupling_audit.md` (every coupling with file and line, the theme tokens and icon names the
+  templates assume, the reverse import list).
+- In child 1, `research_framework_completeness.md`; in child 5, `research_uv_sources_and_consumers.md`;
+  in child 6, `research_plugin_distribution.md`.
+- First-Class at `/home/sheena/workspace/first_class/First-Class-LMS.git/main` and the concrete
+  template at `/home/sheena/workspace/lms/freedom-ls-concrete-template`, both downstream of FLS.
+- Done specs `educator-interface-1-panel-framework-core` to `-11-audit-log`.
+- Skills: `ds:app-settings`, `fls-dev:app-settings`, `fls-dev:multi-tenant`, `ds:template`,
+  `fls-dev:template`, `ds:alpine-js`, `fls-dev:alpine-js`, `fls-dev:icon-usage`,
+  `fls-dev:frontend-styling`, `ds:testing`, `fls-dev:testing`, `fls-dev:playwright-tests`,
+  `fls-dev:git-worktree-setup`, `fls-dev:update_upgrade_notes`, `sdd:claude-code-authoring` (6).
+
 ## Standalone specs
 
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
 | `cookie-banner` | A cookie banner telling visitors how they are tracked, dismissed once and remembered so it stops showing. | none | next | |
+| `design_educator-interface-bulk-action` | Restyle the educator bulk-action bar to the Claude Design mock: appears on selection with a count, select and clear all, text buttons, a More menu, modal confirmation. | none | next | Design in `design_prompt.md`. Edits framework templates and `tableSelection`, so it lands before `extract_panels_framework-1-gather-generic-code`. |
+| `educator-interface-design-learner-csv-upload-design-fix` | Restyle the educator learner CSV upload to match its Claude Design design. | none | next | Design in `prompt.md`. |
 | `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
 | `forced-site-name-for-host-based-site-lookup` | Make `FORCE_SITE_NAME` reach Django's host-based site lookup in development, so login, signup and admin work on any dev port. | none | next | Pull-in from First-Class-LMS (`ForcedSiteHostMiddleware`). |
@@ -781,6 +911,7 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
 | `design_educator_interface_audit_log` | Tighten the educator audit log table so it reads like a log, ideally with expandable rows. | none | in progress | |
 | `design_learner-interface-deadlines` | Redesign how deadlines and windows look to learners. | none | in progress | |
 | `downstream_bugs_oct_29` | Fix the bugs a downstream project flagged so it can drop its workarounds. | none | in progress | Nests 14 sub-ideas, one per bug. |
+| `hide-messages-icon-in-toolbar-for-some-users` | Decide when the messages icon shows in the header, so learners on free courses without messaging don't see it while organisations with messaging do. | none | in progress | |
 | `learner-facing-ux-refinements` | Compact course rows below `lg`, a single Back link on course detail, and a restyled "Your applications" panel paged three at a time. | `organisation-courses`, `applying-for-courses`, `better-learner-dashboard-course-display` | in progress | |
 | `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
 
@@ -797,4 +928,4 @@ user-communication-ux-improve ──── user-communication-help-desk
 
 `multi-step-course-applications` also depends on the done `corporate-job-course-recommendations-3-recommend-outcome`.
 
-No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `forced-site-name-for-host-based-site-lookup`, `mega-qa`, `referral-attribution-over-time` (`apis-for-lead-monitoring-6-conversions` depends on it), `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
+No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `design_educator-interface-bulk-action` (`extract_panels_framework-1-gather-generic-code` depends on it), `educator-interface-design-learner-csv-upload-design-fix`, `forced-site-name-for-host-based-site-lookup`, `mega-qa`, `referral-attribution-over-time` (`apis-for-lead-monitoring-6-conversions` depends on it), `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
