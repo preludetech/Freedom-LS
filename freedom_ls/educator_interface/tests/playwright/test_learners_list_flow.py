@@ -220,7 +220,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
         assert_no_horizontal_overflow(page)
 
 
-def test_bulk_deactivate_with_javascript_off_shows_the_result_page(
+def test_bulk_deactivate_with_javascript_off_returns_to_the_list_with_a_flash(
     browser: Browser,
     live_server,
     educator_logged_in_page: Page,
@@ -243,11 +243,10 @@ def test_bulk_deactivate_with_javascript_off_shows_the_result_page(
         page.get_by_role("button", name="Deactivate", exact=True).first.click()
         page.get_by_role("button", name="Deactivate", exact=True).last.click()
 
-        expect(page.get_by_text("2 learners changed.")).to_be_visible()
-        page.get_by_role("link", name="Back to learners").click()
         expect(page).to_have_url(
             interface_url(live_server, organisation.slug, "learners")
         )
+        expect(page.get_by_text("2 learners changed.")).to_be_visible()
     finally:
         context.close()
 

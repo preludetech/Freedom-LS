@@ -159,7 +159,7 @@ no design states tested
 
 | Bug | Status |
 |---|---|
-| B1 | **UNRESOLVED** — JavaScript-off bulk action answers with a redirect and toast, not the result page the spec and QA plan describe (reason: product decision; spec R1.4 and QA plan 6.13 say a full result page, commit 10dc8f328 deliberately switched to redirect + flash to stop Back/refresh re-running the action) |
+| B1 | **RESOLVED** — kept the redirect + flash from commit 10dc8f328, so Back and refresh cannot re-run the action; spec R1.4, QA plan 6.13 and the JS-off Playwright test now describe it |
 
 ## General notes
 

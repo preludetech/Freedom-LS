@@ -54,8 +54,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] Fix the course action labels (TDD: failing test first): 'Register for a course' and 'Unregister from a course' on both lists and the learner page
 - [x] Fix the bulk result wording (TDD: failing test first): each skip count reads as a sentence ('2 were already in the cohort.'), the cohort skip reads 'an inactive cohort', the resend skip reads 'setup email sent recently'; update spec R1.3, QA plan §6.11 and the upgrade notes
 - [x] Fix the selection bar (TDD: failing test first): fixed to the bottom below lg, with the table padded so the bar covers no row
-- [ ] (user) Decide what to do about QA bug: JavaScript-off bulk action answers with a redirect and toast, not the result page the spec and QA plan describe (TDD: failing test first, then fix)
-- [ ] (user) Decide whether a JavaScript-off bulk action ends on a result page (spec R1.4, QA plan 6.13) or a redirect with a flash (commit 10dc8f328), then align the spec, the QA plan and panel_framework/views.py
+- [x] (user) Decide what to do about QA bug: JavaScript-off bulk action answers with a redirect and toast, not the result page the spec and QA plan describe (TDD: failing test first, then fix)
+- [x] (user) Decide whether a JavaScript-off bulk action ends on a result page (spec R1.4, QA plan 6.13) or a redirect with a flash (commit 10dc8f328), then align the spec, the QA plan and panel_framework/views.py
+  - Decision: keep the redirect + flash (commit 10dc8f328). Spec R1.4, QA plan 6.13 and the JS-off Playwright test updated.
 
 ## 3b. Portable bulk runs (review follow-up)
 
