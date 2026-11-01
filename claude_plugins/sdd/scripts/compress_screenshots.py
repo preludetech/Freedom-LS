@@ -1,4 +1,3 @@
-# ruff: noqa: T201
 #!/usr/bin/env python3
 """Compress PNG screenshots in a directory (default spec_dd) to stay under the pre-commit 1024KB limit.
 

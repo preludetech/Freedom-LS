@@ -92,7 +92,7 @@ Run this on every path out of this file, including a Playwright error partway th
 Then delete every `.sdd-work/bugfix_<slug>.md` this run's fixers wrote, by name, through:
 
 ```
-.claude/fls-dev/scripts/delete_sdd_work_files.sh <path> [<path> ...]
+claude_plugins/sdd/scripts/delete_sdd_work_files.sh <path> [<path> ...]
 ```
 
 as `do_qa.md` Step 16 does. Omit the call when no fixer ran this run.

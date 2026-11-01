@@ -1,18 +1,31 @@
 #!/bin/bash
 # qa_collect_screenshots.sh — Move screenshots from the shared output dir into the spec dir.
-# Usage: ./qa_collect_screenshots.sh <spec-dir>
+# Usage: qa_collect_screenshots.sh <spec-dir> <source-dir>
 #
-# Takes the QA run's spec directory as $1. Moves every file from
-# ${CLAUDE_PROJECT_DIR}/qa-screenshots/ into <spec-dir>/screenshots/,
-# then removes the now-empty qa-screenshots/ directory so it does not
-# accumulate across runs.
+# Takes the QA run's spec directory as $1 and the screenshot source directory as $2,
+# relative to the project root. Both must resolve to a path strictly inside the project.
+# Moves every file from <source-dir> into <spec-dir>/screenshots/, then removes the
+# now-empty source directory so it does not accumulate across runs.
 
 set -euo pipefail
 
-: "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR must be set}"
+# The Bash tool does not reliably export CLAUDE_PROJECT_DIR. The git work tree is the
+# project root; outside one there is no safe default, so the script stops.
+if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
+  CLAUDE_PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "Error: CLAUDE_PROJECT_DIR is unset and the working directory is not a git work tree" >&2
+    exit 1
+  }
+fi
+export CLAUDE_PROJECT_DIR
 
 if [ -z "${1:-}" ]; then
   echo "Error: spec-dir argument is required" >&2
+  exit 1
+fi
+
+if [ -z "${2:-}" ]; then
+  echo "Error: source-dir argument is required" >&2
   exit 1
 fi
 
@@ -29,15 +42,33 @@ PROJECT_ROOT="$(realpath "$CLAUDE_PROJECT_DIR")"
 
 SPEC_DIR="$(realpath "$1")"
 
-# Validate the spec dir is inside the project (security: the script is
-# allow-listed with arbitrary arguments, so an unvalidated path such as
-# ../../somewhere could move screenshots outside the project).
-if [[ "$SPEC_DIR" != "${PROJECT_ROOT}/"* ]]; then
+# Both paths are checked against the project root (security: the script is
+# allow-listed with arbitrary arguments, and the source directory can come from
+# a project config file, so an unvalidated path such as ../../somewhere could
+# move files out of or into places outside the project).
+inside_project() {
+  [[ "$1" == "${PROJECT_ROOT}/"* ]]
+}
+
+if ! inside_project "$SPEC_DIR"; then
   echo "Error: spec-dir must be inside CLAUDE_PROJECT_DIR" >&2
   exit 1
 fi
 
-SRC_DIR="${PROJECT_ROOT}/qa-screenshots"
+# realpath -m resolves a source directory that does not exist yet, so a missing
+# one is reported below as "nothing to move" rather than as an error.
+# An absolute source-dir is refused outright: joining it to the root would turn
+# /tmp into <root>//tmp and pass the prefix test.
+if [[ "$2" == /* ]]; then
+  echo "Error: source-dir must be relative to CLAUDE_PROJECT_DIR" >&2
+  exit 1
+fi
+SRC_DIR="$(realpath -m "${PROJECT_ROOT}/$2")"
+if ! inside_project "$SRC_DIR"; then
+  echo "Error: source-dir must be inside CLAUDE_PROJECT_DIR" >&2
+  exit 1
+fi
+
 DEST_DIR="${SPEC_DIR}/screenshots"
 
 mkdir -p "$DEST_DIR"

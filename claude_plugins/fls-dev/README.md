@@ -50,14 +50,13 @@ copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocat
 preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
 commands spawn `sdd`-plugin agents.
 
-### Scripts (8)
+### Scripts (7)
 
 `dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh` — per-branch dev/test database
 setup and teardown.
-`qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh` + `compress_screenshots.py`,
-`delete_sdd_work_files.sh` — QA-run artifact cleanup, screenshot collection and compression, and
-scratch-file teardown. They live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is
-per-plugin and their only callers are the `fls-dev` commands `do_qa` and `update_product_docs`.
+`rebuild_after_rebase.sh` — dependency and database rebuild after a rebase.
+`concrete_pointer_move.sh`, `concrete_projects.sh`, `concrete_rollback.sh` — the concrete-project
+integration run.
 
 The project's `.claude/settings.json` allow-list names every script under `.claude/ds/scripts/`
 and `.claude/fls-dev/scripts/` so they run prompt-free during a QA session. **Adding a script
@@ -83,6 +82,5 @@ FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extend
 
 `fls.md`, `fls.local.md` (config templates `/fls-dev:init` copies into `.claude/fls-dev/`), and
 `wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh`,
-`qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`,
-`delete_sdd_work_files.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
+`rebuild_after_rebase.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
 `ds`-owned templates.

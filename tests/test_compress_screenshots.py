@@ -12,7 +12,7 @@ pytestmark = pytest.mark.dev_tooling
 
 SCRIPT = (
     Path(__file__).resolve().parents[1]
-    / "claude_plugins/fls-dev/scripts/compress_screenshots.py"
+    / "claude_plugins/sdd/scripts/compress_screenshots.py"
 )
 
 

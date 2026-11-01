@@ -61,6 +61,13 @@ bare-repo/worktree mechanics;
 `.claude/settings.local.json`; `planning-references-in-code` — keeps spec, plan, slice, batch, QA-bug and
 `spec_dd/` references out of code comments, docstrings and test names.
 
+### Scripts (9 files)
+`upstream_change_scan.sh`, `land_on_main.sh`, `design_screenshots.sh` (+ `design_screenshots.py`) — the
+rebase upstream scan, the close-out landing and design screenshots. The QA scripts, allow-listed at
+`claude_plugins/sdd/scripts/`: `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`
+(+ `compress_screenshots.py`) and `delete_sdd_work_files.sh`. `qa_collect_screenshots.sh` takes the
+spec directory and the screenshot source directory, and refuses either unless it is inside the project.
+
 ### Resources (9)
 `agent_memory_guidelines` — how agents treat memory; `launcher_editing` — how to edit `claude.sh`
 (with `<MAY_CREATE>` false: `sdd` adds its line to an existing launcher and never creates one); `domain_vocabulary` — use the project's existing words, and

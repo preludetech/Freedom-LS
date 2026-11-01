@@ -274,6 +274,8 @@ fixable = ["ALL"]
 "docs/build_product_docx.py" = ["T20"]
 # dev_db CLI tools — allow print() calls (they are CLI tools)
 "dev_db/*.py" = ["T20"]
+# sdd QA script — allow print() calls (it is a CLI tool)
+"claude_plugins/sdd/scripts/compress_screenshots.py" = ["T20"]
 # Conftest — allow unused imports (fixtures are imported for side effects)
 "conftest.py" = ["F401"]
 

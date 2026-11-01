@@ -162,7 +162,11 @@ P3 is what makes the `ds` → `fls-dev` order enforced rather than merely docume
    plugin — but **not** a bare `mcp__<name>__*`, which is a directly-configured MCP server rather than
    a plugin-namespaced one and has nothing to do with any plugin - and any `.gitignore` line naming a
    `.claude/<name>/` directory that no longer exists, and point the user at `Skill(sdd:update-claude-project-settings)`. Do not
-   remove them — narrowing permissions is the user's decision.
+   remove them — narrowing permissions is the user's decision. Also list any surviving allow entry
+   naming `.claude/fls-dev/scripts/<basename>.sh` where `<basename>` is `qa_cleanup`,
+   `qa_collect_screenshots`, `compress_screenshots` or `delete_sdd_work_files`: those scripts moved to
+   `claude_plugins/sdd/scripts/`, the entry is stale, and the user is pointed at
+   `Skill(sdd:update-claude-project-settings)`.
 6. Write the mutated object back and report what changed.
 
 ## Step 2: Migrate a legacy `.claude/fls/` config dir
@@ -401,5 +405,5 @@ is listed.
 
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
-every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. Point the user at `.claude/fls-dev/config.md` for the dev
+every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. The QA scripts now run from `claude_plugins/sdd/scripts/`. Point the user at `.claude/fls-dev/config.md` for the dev
 credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.

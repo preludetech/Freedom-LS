@@ -57,7 +57,7 @@ Delete this command's scratch file after all edits are applied, naming it explic
 wrapper drop the directory once it is empty:
 
 ```bash
-.claude/fls-dev/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/fls_content_sync.md
+claude_plugins/sdd/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/fls_content_sync.md
 ```
 
 `--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,

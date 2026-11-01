@@ -25,7 +25,15 @@
 
 set -euo pipefail
 
-: "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR must be set}"
+# The Bash tool does not reliably export CLAUDE_PROJECT_DIR. The git work tree is the
+# project root; outside one there is no safe default, so the script stops.
+if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
+  CLAUDE_PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "Error: CLAUDE_PROJECT_DIR is unset and the working directory is not a git work tree" >&2
+    exit 1
+  }
+fi
+export CLAUDE_PROJECT_DIR
 
 # Resolve both the project root and the .sdd-work directory itself with realpath
 # so the boundary prefix check compares like-for-like with the resolved file

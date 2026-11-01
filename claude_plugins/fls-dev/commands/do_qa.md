@@ -116,8 +116,10 @@ pre-approved in `.claude/settings.json`. If either could trigger a permission pr
 pre-tool hook, issue the `Bash` call **solo** first, wait for it to complete, then proceed with
 Playwright. A single denied sibling cancels the entire batch — losing all results from that turn.
 
-**3b. Never run a raw recursive force-delete directly.** Deletions go through the committed wrapper
-scripts (`qa_cleanup.sh`, `delete_sdd_work_files.sh`). A raw recursive removal — `rm` plus a
+**3b. Never run a raw recursive force-delete directly.** Deletions go through the `sdd` scripts
+(`claude_plugins/sdd/scripts/qa_cleanup.sh`, `claude_plugins/sdd/scripts/delete_sdd_work_files.sh`).
+When `PLUGINS_ROOT`, resolved by the rule in `init.md`, is not `.`, every `claude_plugins/sdd/scripts/` path in this command takes the prefix `<PLUGINS_ROOT>/`.
+A raw recursive removal — `rm` plus a
 recursive flag plus a force flag — is blocked by the `security-guard` PreToolUse hook, which matches
 on `Bash`, `Write`, and `Edit`, and would stall any batch containing it. Describe such a delete in
 prose; never write the literal flag string into a file.
@@ -163,7 +165,7 @@ project-root mode, see `## Project-root mode`.
 Remove the previous run's `qa_report.md` and `screenshots/` from the spec dir — a **solo** Bash call,
 with the spec dir quoted:
 
-`.claude/fls-dev/scripts/qa_cleanup.sh "<spec-dir>"`
+`claude_plugins/sdd/scripts/qa_cleanup.sh "<spec-dir>"`
 
 No pre-emptive server kill is needed: Step 3 always selects an unused port, and Step 14 kills the
 server this run started. A stale server left by a crashed earlier run is harmless — it just occupies
@@ -402,9 +404,9 @@ this step moves the run's screenshots into `<spec-dir>/screenshots/`.
 
 A **solo** Bash call, spec dir quoted:
 
-`.claude/fls-dev/scripts/qa_collect_screenshots.sh "<spec-dir>"`
+`claude_plugins/sdd/scripts/qa_collect_screenshots.sh "<spec-dir>" qa-screenshots`
 
-The script validates that `<spec-dir>` is inside the project, creates `<spec-dir>/screenshots/`,
+The second argument is the screenshot source directory, relative to the project root. The script validates that both it and `<spec-dir>` are inside the project, creates `<spec-dir>/screenshots/`,
 moves each regular file across, and removes the emptied source directory.
 
 **If it exits non-zero**, something was left behind — a name collision with an earlier collect, or a
@@ -417,7 +419,7 @@ a previous run's screenshots is worse than one with missing images.
 
 Spawn a **solo `sdd:sdd-mechanic`** (Haiku) to run the compression. The mechanic must run exactly:
 
-`.claude/fls-dev/scripts/compress_screenshots.sh`
+`claude_plugins/sdd/scripts/compress_screenshots.sh`
 
 The wrapper locates `compress_screenshots.py` and runs it from the project root, which the script
 requires. The script takes an optional directory argument, default `spec_dd/`, and scans it for
@@ -694,7 +696,7 @@ from the file. `update_todo.md` matches the heading exactly and refuses to creat
 After the report and todo have consumed everything, delete the scratch files this run produced — a
 **solo** Bash call listing the **explicit, known paths**:
 
-`.claude/fls-dev/scripts/delete_sdd_work_files.sh .sdd-work/qa_scratch.jsonl <bugfix-reports…> <probe-files…>`
+`claude_plugins/sdd/scripts/delete_sdd_work_files.sh .sdd-work/qa_scratch.jsonl <bugfix-reports…> <probe-files…>`
 
 Include one `.sdd-work/bugfix_<slug>.md` per fixer spawn (read the slugs from the fixers' return
 lines) and one `.sdd-work/qa_probe_<slug>.md` per Step 7 probe. Omit whichever were not produced.

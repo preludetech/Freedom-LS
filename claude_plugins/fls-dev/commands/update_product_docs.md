@@ -175,7 +175,7 @@ Every image under `docs/product/screenshots/` must land under the 1024 KB pre-co
 find docs/product/screenshots -type f \( -name '*.png' -o -name '*.jpg' \) -size +1024k
 ```
 
-Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
+Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `claude_plugins/sdd/scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
 
 ### 4e: Reference screenshots from docs
 
@@ -194,7 +194,7 @@ applied, listing the **explicit, known paths** — one `.sdd-work/<doc>.md` per 
 step-3 fan-out — and letting the wrapper drop the directory once it is empty:
 
 ```bash
-.claude/fls-dev/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/<doc>.md …
+claude_plugins/sdd/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/<doc>.md …
 ```
 
 `--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,
