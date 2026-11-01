@@ -1,29 +1,35 @@
+from collections.abc import Iterable
+from functools import partial
+from urllib.parse import urlencode
+
+from unfold.dataclasses import UnfoldAction
+from unfold.decorators import action as unfold_action
+
 from django import forms
 from django.contrib import admin
-from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest, HttpResponse
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.shortcuts import redirect
 from django.template.response import TemplateResponse
-from django.urls import reverse
+from django.urls import URLPattern, path, reverse
 from django.utils import timezone
 from django.utils.cache import patch_cache_control
 
 from freedom_ls.api.authentication import host_site
 from freedom_ls.api.models import ApiKey
 from freedom_ls.api.scopes import ApiScope
+from freedom_ls.api_admin.audit import acting_user, key_details
+from freedom_ls.api_admin.filters import ApiKeyStatusFilter
 from freedom_ls.api_admin.forms import ApiKeyAddForm
-from freedom_ls.audit_log.types import JSONValue
+from freedom_ls.api_admin.views import revoke_view
 from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
 
-def key_details(api_key: ApiKey) -> dict[str, JSONValue]:
-    return {
-        "name": api_key.name,
-        "key_prefix": api_key.key_prefix,
-        "scopes": list(api_key.scopes),
-        "expires_at": api_key.expires_at.isoformat() if api_key.expires_at else None,
-    }
+def _revoke_url(ids: Iterable[object]) -> str:
+    url = reverse("admin:freedom_ls_api_apikey_revoke")
+    return f"{url}?{urlencode({'ids': ','.join(str(pk) for pk in ids)})}"
 
 
 @admin.register(ApiKey)
@@ -37,6 +43,76 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         "last_used_at",
         "created_at",
     ]
+    list_filter = [ApiKeyStatusFilter]
+    search_fields = ["name", "key_prefix"]
+    fields = [
+        "name",
+        "key_prefix",
+        "scope_list",
+        "status",
+        "expires_at",
+        "revoked_at",
+        "last_used_at",
+        "created_at",
+        "updated_at",
+    ]
+    readonly_fields = [
+        "key_prefix",
+        "scope_list",
+        "status",
+        "expires_at",
+        "revoked_at",
+        "last_used_at",
+        "created_at",
+        "updated_at",
+    ]
+    actions = ["revoke_selected"]
+    actions_detail = ["revoke_key"]
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: ApiKey | None = None
+    ) -> bool:
+        return False
+
+    def get_readonly_fields(
+        self, request: HttpRequest, obj: ApiKey | None = None
+    ) -> list[str]:
+        if obj is None:
+            return []
+        if not obj.is_active(timezone.now()):
+            return list(self.fields)
+        return list(self.readonly_fields)
+
+    def get_actions_detail(
+        self, request: HttpRequest, object_id: int
+    ) -> list[UnfoldAction]:
+        key = self.get_queryset(request).filter(pk=object_id).first()
+        if key is None or not key.is_active(timezone.now()):
+            return []
+        actions: list[UnfoldAction] = super().get_actions_detail(request, object_id)
+        return actions
+
+    def get_urls(self) -> list[URLPattern]:
+        custom = [
+            path(
+                "revoke/",
+                self.admin_site.admin_view(partial(revoke_view, model_admin=self)),
+                name="freedom_ls_api_apikey_revoke",
+            )
+        ]
+        return custom + list(super().get_urls())
+
+    @admin.action(description="Revoke selected keys")
+    def revoke_selected(
+        self, request: HttpRequest, queryset: QuerySet[ApiKey]
+    ) -> HttpResponseRedirect:
+        return redirect(_revoke_url(queryset.values_list("pk", flat=True)))
+
+    @unfold_action(
+        description="Revoke this key", url_path="revoke-key", permissions=["change"]
+    )
+    def revoke_key(self, request: HttpRequest, object_id: str) -> HttpResponseRedirect:
+        return redirect(_revoke_url([object_id]))
 
     def get_form(
         self,
@@ -69,9 +145,7 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         site = host_site(request)
         if site is None:
             raise PermissionDenied("This host has no site to issue a key for.")
-        actor = request.user
-        if not isinstance(actor, get_user_model()):
-            raise PermissionDenied("Only a signed-in user can issue a key.")
+        actor = acting_user(request)
         obj.issued_key = ApiKey.issue(obj, site=site)
         record_entry(
             action="api_key.issued",

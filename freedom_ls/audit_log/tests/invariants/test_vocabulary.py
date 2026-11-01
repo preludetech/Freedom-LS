@@ -44,6 +44,7 @@ VERBS = frozenset(
         "signed_up",
         "viewed",
         "issued",
+        "revoked",
     }
 )
 
@@ -102,7 +103,15 @@ def test_every_webhook_event_type_has_a_sample_payload():
 
 def test_no_code_uses_a_word_the_glossary_has_retired():
     retired = ("unregister", "suspend", "revoke", "granted", "reregister")
-    for code in [a.code for a in FLS_AUDIT_ACTIONS] + [
+    # The one-way end of an API key, agreed in the glossary.
+    allowed_verbs = {"revoked"}
+    codes = [a.code for a in FLS_AUDIT_ACTIONS] + [
         c for c, _ in FLS_WEBHOOK_EVENT_TYPES
-    ]:
-        assert not any(word in code for word in retired), code
+    ]
+    offending = [
+        code
+        for code in codes
+        if _split(code)[1] not in allowed_verbs
+        and any(word in code for word in retired)
+    ]
+    assert offending == []

@@ -134,6 +134,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("import.committed", "Import committed", _describe_run_summary),
     AuditAction("conversation.viewed", "Conversation viewed"),
     AuditAction("api_key.issued", "API key issued"),
+    AuditAction("api_key.revoked", "API key revoked"),
 )
 
 

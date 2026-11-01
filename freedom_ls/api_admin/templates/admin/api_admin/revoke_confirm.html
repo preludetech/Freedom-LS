@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load unfold %}
+
+{% block content %}
+    {% component "unfold/components/card.html" %}
+        {% component "unfold/components/text.html" %}
+            Scripts using these keys stop at once.
+        {% endcomponent %}
+
+        <section class="mt-6" id="to-revoke">
+            <h2 class="font-semibold">To revoke ({{ to_revoke|length }})</h2>
+            <ul class="mt-2 list-disc pl-6">
+                {% for key in to_revoke %}
+                    <li>{{ key.name }} ({{ key.key_prefix }})</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        {% if already_revoked %}
+            <section class="mt-6" id="already-revoked">
+                <h2 class="font-semibold">Already revoked, skipped ({{ already_revoked|length }})</h2>
+                <ul class="mt-2 list-disc pl-6">
+                    {% for key in already_revoked %}
+                        <li>{{ key.name }} ({{ key.key_prefix }})</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+
+        <form method="post" class="flex flex-wrap items-center gap-4 mt-8">
+            {% csrf_token %}
+            <input type="hidden" name="ids" value="{{ ids }}">
+            {% component "unfold/components/button.html" with submit=1 variant="danger" %}
+                Revoke
+            {% endcomponent %}
+            <a href="{{ cancel_url }}">Cancel</a>
+        </form>
+    {% endcomponent %}
+{% endblock %}

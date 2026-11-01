@@ -167,3 +167,151 @@ def test_the_status_column_names_each_state(
 
     # Act / Assert
     assert model_admin.status(key) == expected
+
+
+@pytest.fixture
+def change_url():
+    def _url(key: ApiKey) -> str:
+        return reverse("admin:freedom_ls_api_apikey_change", args=[key.pk])
+
+    return _url
+
+
+def test_the_list_action_redirects_to_the_revoke_url_with_the_selected_ids(
+    staff_client, mock_site_context
+):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    response = staff_client.post(
+        reverse("admin:freedom_ls_api_apikey_changelist"),
+        {"action": "revoke_selected", "_selected_action": [str(key.pk)]},
+    )
+
+    # Assert
+    assert response.url == (
+        f"{reverse('admin:freedom_ls_api_apikey_revoke')}?ids={key.pk}"
+    )
+
+
+def test_the_detail_action_redirects_to_the_revoke_url_with_its_id(
+    staff_client, mock_site_context
+):
+    # Arrange
+    key = ApiKeyFactory()
+    url = reverse("admin:freedom_ls_api_apikey_revoke_key", args=[key.pk])
+
+    # Act
+    response = staff_client.get(url)
+
+    # Assert
+    assert response.url == (
+        f"{reverse('admin:freedom_ls_api_apikey_revoke')}?ids={key.pk}"
+    )
+
+
+def test_a_live_keys_change_form_accepts_a_new_name(
+    staff_client, mock_site_context, change_url
+):
+    # Arrange
+    key = ApiKeyFactory(name="Before")
+
+    # Act
+    staff_client.post(change_url(key), {"name": "After"})
+
+    # Assert
+    key.refresh_from_db()
+    assert key.name == "After"
+
+
+def test_a_live_keys_change_form_ignores_posted_scopes(
+    staff_client, mock_site_context, change_url
+):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    staff_client.post(change_url(key), {"name": "After", "scopes": ["bogus"]})
+
+    # Assert
+    key.refresh_from_db()
+    assert key.scopes == [ApiScope.USERS]
+
+
+def test_a_live_keys_change_form_ignores_a_posted_expiry(
+    staff_client, mock_site_context, change_url
+):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    staff_client.post(
+        change_url(key),
+        {"name": "After", "expires_at_0": "2030-01-01", "expires_at_1": "00:00:00"},
+    )
+
+    # Assert
+    key.refresh_from_db()
+    assert key.expires_at is None
+
+
+@pytest.mark.parametrize(
+    ("revoked_delta", "expires_delta"),
+    [(timedelta(0), None), (None, timedelta(days=-1))],
+)
+def test_a_revoked_or_expired_key_has_no_editable_field(
+    staff_client, mock_site_context, change_url, revoked_delta, expires_delta
+):
+    # Arrange
+    now = timezone.now()
+    key = ApiKeyFactory(
+        revoked_at=offset_from(now, revoked_delta),
+        expires_at=offset_from(now, expires_delta),
+    )
+
+    # Act
+    response = staff_client.get(change_url(key))
+
+    # Assert
+    assert list(response.context["adminform"].form.fields) == []
+
+
+def test_the_key_hash_appears_on_no_page(staff_client, mock_site_context, change_url):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    changelist = staff_client.get(reverse("admin:freedom_ls_api_apikey_changelist"))
+    change = staff_client.get(change_url(key))
+
+    # Assert
+    assert key.key_hash.encode() not in changelist.content
+    assert key.key_hash.encode() not in change.content
+
+
+def test_delete_is_forbidden(staff_client, mock_site_context, change_url):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    response = staff_client.post(
+        reverse("admin:freedom_ls_api_apikey_delete", args=[key.pk]), {"post": "yes"}
+    )
+
+    # Assert
+    assert response.status_code == 403
+    assert ApiKey.objects.filter(pk=key.pk).exists()
+
+
+def test_the_change_page_offers_no_delete_link(
+    staff_client, mock_site_context, change_url
+):
+    # Arrange
+    key = ApiKeyFactory()
+
+    # Act
+    response = staff_client.get(change_url(key))
+
+    # Assert
+    assert response.context["has_delete_permission"] is False
