@@ -335,6 +335,20 @@ If `.claude/sdd/config.md` exists:
 
   These are skill names, not paths: `/sdd:document` invokes each with the `Skill` tool.
 
+- Ensure `## QA Hooks` exists with all its keys. Set each blank key to this plugin's value:
+  - `Playwright MCP: mcp__plugin_ds_playwright__`
+  - `Screenshot directory: qa-screenshots`
+  - `Port finder: .claude/ds/scripts/find_available_port.sh`
+  - `Dev server start:` the inline code span `` `uv run --directory <PROJECT_ROOT> python manage.py runserver <PORT>` ``
+  - `Dev server stop: .claude/ds/scripts/kill_runserver.sh <PORT>`
+  - `Branch badge: debug-branch-badge`
+  - `Diff scoping: <PLUGINS_ROOT>/claude_plugins/django-stack/resources/qa_diff_scoping.md`
+- Ensure `## QA Login` and `## QA Dev Data` exist with all their keys. When
+  `.claude/fls-dev/config.md` holds `## Dev Credentials`, a `Base URL` or `## QA Dev Data`, copy
+  each value into the matching `sdd` key, only where that key is blank.
+- Ensure `## Testing Skills` exists. If its list is empty, write `ds:testing`, `fls-dev:testing`,
+  `ds:playwright-tests` and `fls-dev:playwright-tests`, one per bullet.
+
 A non-blank key and a non-empty list are left exactly as they are.
 
 If the file does not exist, list "run `/sdd:init`, then `/fls-dev:init` again" as an outstanding

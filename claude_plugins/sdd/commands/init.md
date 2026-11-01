@@ -110,7 +110,7 @@ that files exist — is the only check that catches this.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads ten sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads twelve sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
@@ -123,7 +123,8 @@ review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the co
 test standard its implementer reads and its batch review checks. **Documentation Hooks**:
 `/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
 They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` looks here for the
-command that executes the QA plan, and writes it into the checklist. **PR Hooks**:
+command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
+reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills. **PR Hooks**:
 `/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
 Everything else in this dir exists for
 parity and future settings.
@@ -172,6 +173,31 @@ parity and future settings.
    ## QA Hooks
 
    - QA command:
+   - Playwright MCP:
+   - Screenshot directory:
+   - Port finder:
+   - Dev server start:
+   - Dev server stop:
+   - Branch badge:
+   - Diff scoping:
+   - Data helper guide:
+
+   ## QA Login
+
+   - Admin email:
+   - Admin password:
+   - Base URL:
+
+   ## QA Dev Data
+
+   - Content reset:
+   - DB drop:
+   - DB create:
+   - Migrate:
+
+   ## Testing Skills
+
+   -
 
    ## PR Hooks
 
@@ -220,6 +246,23 @@ parity and future settings.
    means "this project has no QA command", and the checklist tells the user to run the QA plan by
    hand. `sdd` names no product here; if another plugin owns that command, the user names it.
 
+   **Playwright MCP** is the tool-name prefix of the browser server the QA command drives. Blank
+   means the QA command stops `blocked`. **Screenshot directory** is where that server writes
+   screenshots, relative to the project root. Blank means screenshots are collected from the spec
+   directory only. **Port finder** is a command that prints a free port. **Dev server start** and
+   **Dev server stop** are shell commands with `<PORT>` and `<PROJECT_ROOT>` placeholders that the
+   QA command substitutes literally, for example `<command> <PORT>`. If the port finder or either
+   server command is blank, the QA command stops `blocked` and names the key. **Branch badge** is
+   the element id that names the served branch. Blank means the branch check is skipped. **Diff
+   scoping** is a file of diff classification rules. Blank means every diff is `FULL`. **Data helper
+   guide** is a file of the project's data-creation conventions that `sdd:qa-data-helper` reads.
+   Blank means it works from the codebase.
+
+   A blank **QA Login** value skips the login step and makes a test that needs a login PARTIAL. A
+   blank **QA Dev Data** value removes that rung of the reset ladder. **Testing Skills** is a list
+   of `<plugin>:<skill>` names, one per bullet, that the QA bug fixer loads before writing a test.
+   An empty list means none. A section whose list is a lone `-` is empty.
+
    A **Fetch PR comments** value points at a script, run from the project root, that prints a
    pull request's comments as JSON (`issue_comments`, `reviews`, `inline_comments` with an
    `is_outdated` field). Blank means "this project has no such script", and
@@ -232,8 +275,8 @@ parity and future settings.
    not guess them by scanning the repo. With the list empty the commands still work: they fall back
    to the code, where model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
-   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## PR Hooks`
-   and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
+   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
+   `## Testing Skills`, `## PR Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -267,8 +310,11 @@ in-place edits.
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
    `Test standard` keys (blank values are valid).
 9. `.claude/sdd/config.md` has a `## Documentation Hooks` section (an empty list is valid).
-10. `.claude/sdd/config.md` has a `## QA Hooks` section with a `QA command` key (a blank value is
-   valid).
+10. `.claude/sdd/config.md` has a `## QA Hooks` section with the keys `QA command`, `Playwright MCP`,
+   `Screenshot directory`, `Port finder`, `Dev server start`, `Dev server stop`, `Branch badge`,
+   `Diff scoping` and `Data helper guide`, a `## QA Login` section with `Admin email`, `Admin
+   password` and `Base URL`, a `## QA Dev Data` section with `Content reset`, `DB drop`, `DB create`
+   and `Migrate`, and a `## Testing Skills` section (blank values and an empty list are valid).
 11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
    value is valid).
 12. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
@@ -285,7 +331,7 @@ in-place edits.
 Print what was done, then the outstanding actions: every Step 0 WARN, and anything Step 5 flagged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths,
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
-Hooks Comment standard and Test standard paths, the QA Hooks QA command, the PR Hooks Fetch PR
+Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, the PR Hooks Fetch PR
 comments path, and to list the project's Vocabulary Sources.
 
 If `claude.sh` has no `--plugin-dir` line whose final segment is `productivity`, list

@@ -38,6 +38,34 @@
 ## QA Hooks
 
 - QA command: fls-dev:do_qa
+- Playwright MCP: mcp__plugin_ds_playwright__
+- Screenshot directory: qa-screenshots
+- Port finder: .claude/ds/scripts/find_available_port.sh
+- Dev server start: uv run --directory <PROJECT_ROOT> python manage.py runserver <PORT>
+- Dev server stop: .claude/ds/scripts/kill_runserver.sh <PORT>
+- Branch badge: debug-branch-badge
+- Diff scoping: claude_plugins/django-stack/resources/qa_diff_scoping.md
+- Data helper guide:
+
+## QA Login
+
+- Admin email: demodev@email.com
+- Admin password: demodev@email.com  # pragma: allowlist secret
+- Base URL: http://127.0.0.1:8000
+
+## QA Dev Data
+
+- Content reset: uv run python manage.py danger_content_delete --yes
+- DB drop: .claude/fls-dev/scripts/dev_db_delete.sh
+- DB create: .claude/fls-dev/scripts/dev_db_init.sh
+- Migrate: uv run python manage.py migrate
+
+## Testing Skills
+
+- ds:testing
+- fls-dev:testing
+- ds:playwright-tests
+- fls-dev:playwright-tests
 
 ## PR Hooks
 

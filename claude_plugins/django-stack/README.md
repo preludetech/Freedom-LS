@@ -60,9 +60,9 @@ host project's own reviewer memory (the same convention `fls-dev` uses for `fls-
 `kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
-### Resources (13)
+### Resources (14)
 `admin_standard`, `admin_unfold`, `admin_guardian`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`,
-`frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`, `agent_memory_guidelines`
+`frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`, `qa_diff_scoping`, `agent_memory_guidelines`
 (a self-contained copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and
 `code-reviewer` reads it), plus `launcher_editing` and `wrapper_script_migration` — the two procedures
 `/ds:init` follows, duplicated into each plugin that edits `claude.sh` or ships wrapper scripts, for
