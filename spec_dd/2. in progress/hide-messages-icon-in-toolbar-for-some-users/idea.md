@@ -1,0 +1,1 @@
+Sometimes we'll expose free courses where the learner will not need access to messages but we'll have organisations where messages are turned on and learner comms should be allowed. So we'll need to make a call about when the messages button icon should appear in the header area and when it should not.
