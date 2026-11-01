@@ -2038,7 +2038,7 @@ def test_card_shell_article_has_no_zero_padding(mock_site_context):
     assert "p-0" not in article.split()
 
 
-BYLINE_DASHBOARD_MAX_QUERIES = 59
+BYLINE_DASHBOARD_MAX_QUERIES = 60
 
 
 @pytest.mark.django_db

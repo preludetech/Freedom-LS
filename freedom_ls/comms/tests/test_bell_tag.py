@@ -13,10 +13,13 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.messaging import can_see_messages_button
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import drop_ambient_request
 
 BELL_MARKER = 'aria-labelledby="notification-bell-label"'
 
@@ -121,10 +124,10 @@ class TestMessagesButton:
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
 
-        response = logged_in_client(UserFactory()).get(
-            reverse("learner_interface:dashboard")
-        )
+        response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
 
         tree = html.fromstring(response.content)
         assert MESSAGES_MARKER in response.content.decode()
@@ -136,10 +139,10 @@ class TestMessagesButton:
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
 
-        response = logged_in_client(UserFactory()).get(
-            reverse("learner_interface:dashboard")
-        )
+        response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
 
         button = html.fromstring(response.content).xpath(
             "//button[@aria-labelledby='messages-button-label']"
@@ -154,17 +157,20 @@ class TestMessagesButton:
         settings.MESSAGING_ENABLED = True
         user = UserFactory()
         client = logged_in_client(user)
+        first_sender = UserFactory()
+        first_conversation = ConversationFactory(between=(user, first_sender))
         page = html.fromstring(
             client.get(reverse("learner_interface:dashboard")).content
         )
         badge = page.xpath("//*[@id='messages-badge']")[0]
         assert page.xpath("//*[@id='messages-button-label']")
         assert badge.get("hx-get") == reverse("conversations:unread_badge")
-        for _ in range(2):
-            other = UserFactory()
-            MessageFactory(
-                conversation=ConversationFactory(between=(user, other)), sender=other
-            )
+        second_sender = UserFactory()
+        MessageFactory(
+            conversation=ConversationFactory(between=(user, second_sender)),
+            sender=second_sender,
+        )
+        MessageFactory(conversation=first_conversation, sender=first_sender)
 
         fragment = html.fromstring(
             client.get(badge.get("hx-get"), HTTP_HX_REQUEST="true").content.decode()
@@ -178,10 +184,10 @@ class TestMessagesButton:
     ) -> None:
         settings.MESSAGING_ENABLED = True
         settings.MESSAGE_INBOX_POLL_SECONDS = 7
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
 
-        response = logged_in_client(UserFactory()).get(
-            reverse("learner_interface:dashboard")
-        )
+        response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
 
         content = response.content.decode()
         assert 'x-data="refreshTimer"' in content
@@ -193,9 +199,123 @@ class TestMessagesButton:
         self, mock_site_context, logged_in_client, settings
     ) -> None:
         settings.MESSAGING_ENABLED = True
-        client = logged_in_client(UserFactory())
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
+        client = logged_in_client(user)
 
         with CaptureQueriesContext(connection) as queries:
             client.get(reverse("learner_interface:dashboard"))
 
+        # The closing quote excludes the participant table, which render reads.
+        assert not [
+            q
+            for q in queries
+            if 'comms_conversation"' in q["sql"] or "comms_message" in q["sql"]
+        ]
+
+    def test_it_runs_no_messaging_query_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+        client = logged_in_client(UserFactory())
+
+        with CaptureQueriesContext(connection) as queries:
+            response = client.get(reverse("learner_interface:dashboard"))
+
         assert not [q for q in queries if "comms_conversation" in q["sql"]]
+        assert not [q for q in queries if "sitemessagingconfig" in q["sql"]]
+        assert MESSAGES_MARKER not in response.content.decode()
+
+    def test_a_user_with_no_learner_row_and_no_conversation_sees_no_button(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(
+            reverse("learner_interface:dashboard")
+        )
+
+        assert MESSAGES_MARKER not in response.content.decode()
+
+    def test_a_staff_user_with_no_recipients_sees_no_button(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory(staff=True)).get(
+            reverse("learner_interface:dashboard")
+        )
+
+        assert MESSAGES_MARKER not in response.content.decode()
+
+    def test_a_user_with_no_recipients_but_a_conversation_sees_the_button(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
+
+        response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
+
+        assert MESSAGES_MARKER in response.content.decode()
+
+    def test_a_conversation_on_another_site_does_not_show_the_button(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()), site=SiteFactory())
+
+        response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
+
+        assert MESSAGES_MARKER not in response.content.decode()
+
+    def test_a_user_with_a_conversation_runs_none_of_the_recipients_queries(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
+        client = logged_in_client(user)
+        client.get(reverse("learner_interface:dashboard"))
+
+        with CaptureQueriesContext(connection) as queries:
+            client.get(reverse("learner_interface:dashboard"))
+
+        assert not [q for q in queries if "sitemessagingconfig" in q["sql"]]
+
+    def test_a_user_without_the_button_still_gets_the_messages_page(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(reverse("conversations:inbox"))
+
+        assert response.status_code == 200
+
+
+@pytest.mark.django_db
+class TestCanSeeMessagesButton:
+    def test_it_is_false_when_the_only_conversation_is_on_another_site(
+        self, mock_site_context
+    ) -> None:
+        site = mock_site_context
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()), site=SiteFactory())
+        drop_ambient_request()
+
+        assert can_see_messages_button(user, site) is False
+
+    def test_it_is_true_for_the_site_the_conversation_is_on(
+        self, mock_site_context
+    ) -> None:
+        user = UserFactory()
+        other_site = SiteFactory()
+        ConversationFactory(between=(user, UserFactory()), site=other_site)
+        drop_ambient_request()
+
+        assert can_see_messages_button(user, other_site) is True
+
+    def test_it_is_true_for_a_conversation_on_the_site_without_asking_the_policy(
+        self, mock_site_context
+    ) -> None:
+        site = mock_site_context
+        user = UserFactory()
+        ConversationFactory(between=(user, UserFactory()))
+
+        with CaptureQueriesContext(connection) as queries:
+            result = can_see_messages_button(user, site)
+
+        assert result is True
+        assert not [q for q in queries if "sitemessagingconfig" in q["sql"]]

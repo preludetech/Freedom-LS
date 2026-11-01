@@ -138,6 +138,7 @@ def test_picker_search_choose_and_send_on_a_phone(
 ) -> None:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     page.set_viewport_size(PHONE)
     UserFactory(first_name="Kai", last_name="Ngata")
@@ -176,6 +177,7 @@ def test_new_message_from_the_messages_page_on_a_desktop(
 ) -> None:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     page.set_viewport_size({"width": 1280, "height": 800})
     UserFactory(first_name="Kai", last_name="Ngata")
@@ -207,6 +209,7 @@ def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
 ) -> None:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     settings.MESSAGE_THREAD_POLL_SECONDS = 1
     page = logged_in_page
     kai = UserFactory(first_name="Kai", last_name="Ngata")
@@ -242,6 +245,7 @@ def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
 def _open_thread(live_server, page: Page, user: User, settings) -> Conversation:
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     kai = UserFactory(first_name="Kai", last_name="Ngata")
     conversation = cast("Conversation", ConversationFactory(between=(user, kai)))
     MessageFactory(conversation=conversation, sender=kai, body="Welcome to the course")
@@ -409,6 +413,7 @@ def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
     leave scrollTop at 0, jumping the reader to the oldest message."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     kai = UserFactory(first_name="Kai", last_name="Ngata")
     conversation = ConversationFactory(between=(logged_in_user, kai))
@@ -448,6 +453,7 @@ def test_loading_the_last_page_of_earlier_messages_does_not_shift_the_view(
     which grew the log and moved the entry the reader was looking at upward."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     page.set_viewport_size({"width": 1280, "height": 800})
     kai = UserFactory(first_name="Kai", last_name="Ngata")
@@ -492,6 +498,7 @@ def test_composer_stays_inside_the_viewport_on_the_thread_page(
     pane, so the document scrolled and pushed the composer below the fold."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     kai = UserFactory(first_name="Kai", last_name="Ngata")
     conversation = ConversationFactory(between=(logged_in_user, kai))
@@ -530,6 +537,7 @@ def test_thread_opened_from_the_pane_picker_fits_the_viewport(
     header taller than the viewport and pushed the composer below the fold."""
     settings.MESSAGING_ENABLED = True
     settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    get_messaging_policy.cache_clear()
     page = logged_in_page
     viewport = {"width": 1920, "height": 1080}
     page.set_viewport_size(viewport)

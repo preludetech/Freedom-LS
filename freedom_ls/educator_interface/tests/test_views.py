@@ -1985,7 +1985,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 54
+QUERY_BOUND = 56
 
 
 MARKERS = {"You", "Inactive", "Account turned off", "Also a learner"}

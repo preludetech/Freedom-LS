@@ -559,6 +559,25 @@ class RecipientSearch:
         return sum(len(group.users) for group in self.groups)
 
 
+def has_recipients(user: User, site: Site) -> bool:
+    """Whether the policy offers ``user`` anyone to message on ``site``."""
+    return get_messaging_policy().recipients_for(sender=user, site=site).exists()
+
+
+def can_see_messages_button(user: User, site: Site) -> bool:
+    """Whether the header shows ``user`` the Messages button on ``site``.
+
+    A conversation keeps the button whatever the policy says now: messages raise
+    no notification, so the badge is the only way to learn of a reply. That
+    check runs first and short-circuits, so a user with a conversation never
+    pays for the policy's recipients queries. ``site`` is filtered explicitly
+    because the site-aware manager narrows only inside a request.
+    """
+    return ConversationParticipant.objects.filter(
+        site=site, user=user
+    ).exists() or has_recipients(user, site)
+
+
 def search_recipients(
     *,
     sender: User,
