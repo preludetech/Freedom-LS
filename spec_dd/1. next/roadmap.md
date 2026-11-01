@@ -685,7 +685,8 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
 
 - Read only: GET, HEAD and OPTIONS. No write endpoints.
 - Django REST framework, with `django-filter` and `drf-spectacular`. JSON renderer only; no
-  browsable API. `django-ninja` is not used.
+  browsable API. `django-ninja` is not used; spec 1 removes the dependency and the dead code
+  that imports it.
 - Consumers are automated Python scripts. There is no UI on top of the API.
 - One API key belongs to one site and reads only that site's rows. Authentication rejects a key
   used on another site's host, and any request whose site can't be resolved.
@@ -738,7 +739,7 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
 
 - Any UI, browsable API or Swagger UI. Write endpoints. Webhooks or push.
 - Topic progress, form attempts and scores, HR attributes, legal consent records.
-- Removing the `django-ninja` dependency.
+- Deleting the `xapi_learning_record_store` stub app.
 - OAuth. Cross-site keys.
 - Changing the admin exports.
 

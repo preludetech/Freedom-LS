@@ -16,11 +16,16 @@ Lead monitoring needs scripts to pull learner and lead data out of a site withou
 
 **Stack and shape**
 - Read only: GET, HEAD and OPTIONS. No write endpoints.
-- Django REST framework with `django-filter` and `drf-spectacular`. `django-ninja` is not used and its dependency is left alone.
+- Django REST framework with `django-filter` and `drf-spectacular`. `django-ninja` is not used, and this child removes it.
 - JSON renderer only. No browsable API, no Swagger UI. The OpenAPI schema is served by drf-spectacular behind the same key authentication.
 - Consumers are automated Python scripts. There is no UI on top of the API.
 - URLs live under `/api/v1/`, with plural kebab-case resource paths, snake_case fields, explicit field lists (never `__all__`), ISO 8601 timestamps and UUIDs as strings.
 - The admin exports stay as they are.
+
+**Removing `django-ninja`**
+- Nothing routes through ninja today. The `NinjaAPI` mount in `config/urls.py` is commented out, `freedom_ls/learner_interface/apis.py` is commented out in full, and the only live import is `freedom_ls/xapi_learning_record_store/api.py`, in an app that is not in `INSTALLED_APPS`.
+- This child drops `django-ninja` from `pyproject.toml` and deletes the code that imports it: the xapi `api.py` and the `api_urls.py` that mounts it, the commented-out learner API sketch, and the commented `NinjaAPI` block in `config/urls.py`. The mypy override for the xapi module goes with them.
+- The rest of the `xapi_learning_record_store` stub (apps, models, admin, README and its TODOs) stays. It is not ninja's, and deciding its future is a separate call.
 
 **The API key**
 - A custom key model, not an unmaintained third-party key package and not a user token. It carries a site, the chosen scopes, an optional expiry, a revoked state and `last_used_at`.
@@ -63,7 +68,7 @@ Lead monitoring needs scripts to pull learner and lead data out of a site withou
 - Any resource other than users: applications, referral data, registrations and interest, course progress and conversions belong to the sibling specs.
 - Any UI, browsable API or Swagger UI. Write endpoints. Webhooks or push.
 - OAuth. Cross-site keys. Keys tied to users or to the role-based permission system.
-- Removing the `django-ninja` dependency.
+- Deleting the `xapi_learning_record_store` stub app.
 - Changing the admin exports.
 - A deletion feed.
 
