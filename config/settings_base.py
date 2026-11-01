@@ -101,6 +101,9 @@ INSTALLED_APPS = [
     "freedom_ls.base.admin_config.FreedomLSAdminConfig",
     "guardian",
     "health_check",
+    "rest_framework",
+    "django_filters",
+    "drf_spectacular",
     # CUSTOM APPS
     # xapi_learning_record_store
     "freedom_ls.base",

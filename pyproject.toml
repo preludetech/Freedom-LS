@@ -10,7 +10,6 @@ dependencies = [
     "django-click>=2.4.1",
     "django-cotton>=2.1.3",
     "django-guardian>=3.3.0",
-    "django-ninja>=1.5.0",
     "django-unfold>=0.83.0",
     "markdown-headdown>=0.1.3",
     "nh3>=0.3.2",
@@ -38,6 +37,10 @@ dependencies = [
     "weasyprint>=69.0",
     "django-import-export>=4.4.1",
     "babel>=2.18.0",
+    "djangorestframework>=3.18.3",
+    "django-filter>=26.2",
+    "drf-spectacular>=0.30.0",
+    "pydantic>=2.12.5",
 ]
 
 [project.optional-dependencies]
@@ -358,7 +361,7 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
-    "celery.*", "django_filters.*", "debug_toolbar.*",
+    "celery.*", "django_filters.*", "rest_framework.*", "drf_spectacular.*", "debug_toolbar.*",
     "django_extensions.*", "corsheaders.*", "storages.*",
     "boto3.*", "botocore.*", "redis.*",
     "allauth.*", "djclick.*", "frontmatter.*",
@@ -379,10 +382,6 @@ disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "compari
 [[tool.mypy.overrides]]
 module = "config.settings_base"
 disable_error_code = ["import-untyped"]
-
-[[tool.mypy.overrides]]
-module = "freedom_ls.xapi_learning_record_store.*"
-ignore_errors = true  # WIP module with broken imports (api_urls imports non-existent 'api')
 
 [tool.django-stubs]
 django_settings_module = "config.settings_dev"

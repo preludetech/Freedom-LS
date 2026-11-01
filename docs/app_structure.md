@@ -234,7 +234,6 @@ flowchart TB
     tiktok_pixel --> base
     webhooks --> base
     webhooks --> site_aware_models
-    xapi_learning_record_store --> site_aware_models
     accounts -.-> icons
     accounts -.-> organisations
     accounts -.-> referral_tracking
@@ -322,7 +321,7 @@ flowchart TB
 | site_aware_models | base | accounts, content_engine, learner_management, learner_progress, organisations |
 | tiktok_pixel | base | accounts, content_engine, learner_management |
 | webhooks | base, site_aware_models | accounts |
-| xapi_learning_record_store | site_aware_models | — |
+| xapi_learning_record_store | — | — |
 
 ## Legend
 

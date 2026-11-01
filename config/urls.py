@@ -33,15 +33,7 @@ from config.sitemaps import (
 from config.views import robots_txt
 from freedom_ls.blog.config import config as blog_config
 
-# from ninja import NinjaAPI
-
 ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "admin/")
-
-
-# api = NinjaAPI()
-
-# api.add_router("xapi/", "xapi_learning_record_store.api.router")
-# api.add_router("learner/", "learner_interface.apis.router")
 
 
 _sitemaps = {
@@ -72,9 +64,6 @@ urlpatterns = [
         name="sitemap",
     ),
     path("", include("freedom_ls.referral_tracking.urls")),
-    # path("api/", api.urls),
-    # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
-    # path("api/", api.urls),
     # path("content_preview/", include("content_engine.preview_urls")),
     path("educator/", include("freedom_ls.educator_interface.urls")),
     path("", include("freedom_ls.deployment.urls")),
