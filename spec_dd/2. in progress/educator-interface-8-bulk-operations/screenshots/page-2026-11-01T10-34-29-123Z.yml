@@ -1,0 +1,61 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - link "Messages" [ref=f4e9] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f4e10]
+          - status:
+            - generic [ref=f4e13]: Messages
+        - generic [ref=f4e14]:
+          - button "Notifications, none new" [ref=f4e15]:
+            - img "notifications" [ref=f4e17]
+          - status:
+            - generic [ref=f4e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e22]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e23]:
+    - generic [ref=f4e24]:
+      - heading "Notifications" [level=1] [ref=f4e25]
+      - generic [ref=f4e26]:
+        - generic [ref=f4e27]:
+          - navigation "Filter" [ref=f4e28]:
+            - link "All" [ref=f4e29] [cursor=pointer]:
+              - /url: /notifications/
+            - link "Unread" [ref=f4e30] [cursor=pointer]:
+              - /url: /notifications/?filter=unread
+          - button "Mark all as read" [disabled] [ref=f4e31]
+        - generic [ref=f4e35]:
+          - status [ref=f4e36]:
+            - img "success" [ref=f4e37]
+            - text: You're up to date. Everything has been read.
+          - region [ref=f4e39]:
+            - heading "Tuesday 27 October" [level=2] [ref=f4e40]
+            - list [ref=f4e41]:
+              - listitem [ref=f4e42]:
+                - img "check_all" [ref=f4e44]
+                - generic [ref=f4e46]:
+                  - paragraph [ref=f4e47]: "Deactivate finished: 10 learners changed."
+                  - paragraph [ref=f4e48]:
+                    - text: Bulk action ·
+                    - time [ref=f4e49]: 27 Oct
+                - 'button "Mark unread: Deactivate finished: 10 learners changed." [ref=f4e51] [cursor=pointer]':
+                  - generic [ref=f4e55]: Mark unread
+  - contentinfo [ref=f4e56]:
+    - generic [ref=f4e57]:
+      - paragraph [ref=f4e58]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e59]:
+        - link "Terms and Conditions" [ref=f4e60] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e61] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e62] [cursor=pointer]: educator-interface-8-bulk-operations
+  - generic "Show toolbar" [ref=f4e64]: DJDT

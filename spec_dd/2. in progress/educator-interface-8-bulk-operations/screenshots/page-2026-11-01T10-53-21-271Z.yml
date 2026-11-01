@@ -1,0 +1,392 @@
+- generic [active] [ref=f66e1]:
+  - banner [ref=f66e2]:
+    - link [ref=f66e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f66e4]
+      - heading "FirstClass" [level=1] [ref=f66e5]
+    - navigation [ref=f66e6]:
+      - generic [ref=f66e7]:
+        - generic [ref=f66e8]:
+          - link "Messages" [ref=f66e9] [cursor=pointer]:
+            - /url: /messages/
+            - img "message" [ref=f66e10]
+          - status:
+            - generic [ref=f66e13]: Messages
+        - generic [ref=f66e14]:
+          - button "Notifications, none new" [ref=f66e15]:
+            - img "notifications" [ref=f66e17]
+          - status:
+            - generic [ref=f66e19]: Notifications, none new
+        - button "Open user menu for Orla Admin" [ref=f66e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f66e22]: OA
+  - generic:
+    - status
+    - alert
+  - main [ref=f66e23]:
+    - generic [ref=f66e25]:
+      - dialog "Navigation" [ref=f66e26]:
+        - generic [ref=f66e28]:
+          - generic [ref=f66e29]:
+            - paragraph [ref=f66e30]: Organisation
+            - generic [ref=f66e31]:
+              - generic [aria-hidden] [ref=f66e32]: "N"
+              - generic "Northside" [ref=f66e33]
+          - navigation "Sections" [ref=f66e34]:
+            - heading "Teaching" [level=2] [ref=f66e35]
+            - list [ref=f66e36]:
+              - listitem [ref=f66e37]:
+                - link "home Dashboard" [ref=f66e38] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/dashboard
+                  - img "home" [ref=f66e40]
+                  - generic [ref=f66e42]: Dashboard
+              - listitem [ref=f66e43]:
+                - link "cohort Cohorts" [ref=f66e44] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/cohorts
+                  - img "cohort" [ref=f66e46]
+                  - generic [ref=f66e48]: Cohorts
+              - listitem [ref=f66e49]:
+                - link "user Learners" [ref=f66e50] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/learners
+                  - img "user" [ref=f66e52]
+                  - generic [ref=f66e54]: Learners
+              - listitem [ref=f66e55]:
+                - link "course Courses" [ref=f66e56] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/courses
+                  - img "course" [ref=f66e58]
+                  - generic [ref=f66e60]: Courses
+              - listitem [ref=f66e61]:
+                - link "message Messages" [ref=f66e62] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/messages
+                  - img "message" [ref=f66e64]
+                  - generic [ref=f66e66]: Messages
+            - heading "Administration" [level=2] [ref=f66e67]
+            - list [ref=f66e68]:
+              - listitem [ref=f66e69]:
+                - link "user Members" [ref=f66e70] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/members
+                  - img "user" [ref=f66e72]
+                  - generic [ref=f66e74]: Members
+              - listitem [ref=f66e75]:
+                - link "notes Audit log" [ref=f66e76] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/audit-log
+                  - img "notes" [ref=f66e78]
+                  - generic [ref=f66e80]: Audit log
+          - generic [ref=f66e81]:
+            - generic [ref=f66e83]:
+              - generic [aria-hidden] [ref=f66e84]: OA
+              - generic [ref=f66e85]:
+                - generic [ref=f66e86]: Orla Admin
+                - generic [ref=f66e87]: org.admin@qa.test
+            - link "Account settings" [ref=f66e88] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f66e89]
+      - generic [ref=f66e94]:
+        - generic [ref=f66e96]:
+          - heading "Learners" [level=1] [ref=f66e100]
+          - generic [ref=f66e101]:
+            - button "Add learners" [ref=f66e102] [cursor=pointer]
+            - link "Import learners" [ref=f66e103] [cursor=pointer]:
+              - /url: /educator/organisations/northside/learners/import/
+        - generic [ref=f66e108]:
+          - generic [ref=f66e109]:
+            - generic [ref=f66e111]:
+              - generic [ref=f66e112]: Search
+              - searchbox "Search" [ref=f66e114]: Alpha
+            - generic [ref=f66e115]:
+              - group [ref=f66e116]:
+                - generic [ref=f66e118] [cursor=pointer]:
+                  - text: "Status: Active, Pending"
+                  - img "dropdown" [ref=f66e119]
+              - group [ref=f66e121]:
+                - generic [ref=f66e123] [cursor=pointer]:
+                  - text: Add filter
+                  - img "dropdown" [ref=f66e124]
+              - link "Export CSV" [ref=f66e126] [cursor=pointer]:
+                - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-export=csv
+              - generic [ref=f66e127]: Sorted by Learner
+          - generic [ref=f66e128]:
+            - table [ref=f66e130]:
+              - rowgroup [ref=f66e131]:
+                - row [ref=f66e132]:
+                  - columnheader [ref=f66e133]:
+                    - checkbox "Select all on this page" [ref=f66e134] [cursor=pointer]
+                  - columnheader [ref=f66e135]:
+                    - link [ref=f66e136] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-sort=-user__first_name
+                      - text: Learner
+                      - img "sort_asc" [ref=f66e137]
+                  - columnheader "Status" [ref=f66e139]
+                  - columnheader "Cohorts" [ref=f66e140]
+                  - columnheader "Courses" [ref=f66e141]
+                  - columnheader [ref=f66e142]:
+                    - link [ref=f66e143] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-sort=last_active
+                      - text: Last active
+                      - img "sort_neutral" [ref=f66e144]
+              - rowgroup [ref=f66e146]:
+                - row [ref=f66e147]:
+                  - cell [ref=f66e148]:
+                    - checkbox "Select Bulk 01 Alpha" [ref=f66e149] [cursor=pointer]
+                  - cell [ref=f66e150]:
+                    - generic [ref=f66e151]:
+                      - link "Bulk 01 Alpha bulk01@qa.test" [ref=f66e152] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/ed4b905c-cbaf-4d4b-a313-bddd9cd982a1
+                        - generic [ref=f66e153]:
+                          - generic [aria-hidden] [ref=f66e154]: BA
+                          - generic [ref=f66e155]:
+                            - generic [ref=f66e156]: Bulk 01 Alpha
+                            - generic [ref=f66e157]: bulk01@qa.test
+                      - 'link "Quick view: Bulk 01 Alpha" [ref=f66e158] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/ed4b905c-cbaf-4d4b-a313-bddd9cd982a1
+                        - img "quick_view" [ref=f66e159]
+                  - cell "Active" [ref=f66e163]
+                  - cell [ref=f66e165]:
+                    - link "Cohort B" [ref=f66e166] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                    - text: ","
+                    - link "Cohort C" [ref=f66e167] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/372b8f4b-cebc-483f-8d11-26711e29142b
+                  - cell [ref=f66e168]:
+                    - list [ref=f66e169]:
+                      - listitem [ref=f66e170]: Course Hid 0%
+                      - listitem [ref=f66e171]: Course Pub 0%
+                  - cell "Never" [ref=f66e172]
+                - row [ref=f66e173]:
+                  - cell [ref=f66e174]:
+                    - checkbox "Select Bulk 02 Alpha" [ref=f66e175] [cursor=pointer]
+                  - cell [ref=f66e176]:
+                    - generic [ref=f66e177]:
+                      - link "Bulk 02 Alpha bulk02@qa.test" [ref=f66e178] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/ad4698bc-d535-4745-8503-2af15aa5f5b1
+                        - generic [ref=f66e179]:
+                          - generic [aria-hidden] [ref=f66e180]: BA
+                          - generic [ref=f66e181]:
+                            - generic [ref=f66e182]: Bulk 02 Alpha
+                            - generic [ref=f66e183]: bulk02@qa.test
+                      - 'link "Quick view: Bulk 02 Alpha" [ref=f66e184] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/ad4698bc-d535-4745-8503-2af15aa5f5b1
+                        - img "quick_view" [ref=f66e185]
+                  - cell "Active" [ref=f66e189]
+                  - cell [ref=f66e191]:
+                    - link "Cohort B" [ref=f66e192] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                    - text: ","
+                    - link "Cohort C" [ref=f66e193] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/372b8f4b-cebc-483f-8d11-26711e29142b
+                  - cell [ref=f66e194]:
+                    - list [ref=f66e195]:
+                      - listitem [ref=f66e196]: Course Hid 0%
+                      - listitem [ref=f66e197]: Course Pub 0%
+                  - cell "Never" [ref=f66e198]
+                - row [ref=f66e199]:
+                  - cell [ref=f66e200]:
+                    - checkbox "Select Bulk 03 Alpha" [ref=f66e201] [cursor=pointer]
+                  - cell [ref=f66e202]:
+                    - generic [ref=f66e203]:
+                      - link "Bulk 03 Alpha bulk03@qa.test" [ref=f66e204] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/70b75f28-c911-4388-9569-072ec0afc745
+                        - generic [ref=f66e205]:
+                          - generic [aria-hidden] [ref=f66e206]: BA
+                          - generic [ref=f66e207]:
+                            - generic [ref=f66e208]: Bulk 03 Alpha
+                            - generic [ref=f66e209]: bulk03@qa.test
+                      - 'link "Quick view: Bulk 03 Alpha" [ref=f66e210] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/70b75f28-c911-4388-9569-072ec0afc745
+                        - img "quick_view" [ref=f66e211]
+                  - cell "Active" [ref=f66e215]
+                  - cell [ref=f66e217]:
+                    - link "Cohort B" [ref=f66e218] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                    - text: ","
+                    - link "Cohort C" [ref=f66e219] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/372b8f4b-cebc-483f-8d11-26711e29142b
+                  - cell [ref=f66e220]:
+                    - list [ref=f66e221]:
+                      - listitem [ref=f66e222]: Course Hid 0%
+                      - listitem [ref=f66e223]: Course Pub 0%
+                  - cell "Never" [ref=f66e224]
+                - row [ref=f66e225]:
+                  - cell [ref=f66e226]:
+                    - checkbox "Select Bulk 04 Alpha" [ref=f66e227] [cursor=pointer]
+                  - cell [ref=f66e228]:
+                    - generic [ref=f66e229]:
+                      - link "Bulk 04 Alpha bulk04@qa.test" [ref=f66e230] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/da77ca3e-7a21-4453-84b2-67cb8f04d089
+                        - generic [ref=f66e231]:
+                          - generic [aria-hidden] [ref=f66e232]: BA
+                          - generic [ref=f66e233]:
+                            - generic [ref=f66e234]: Bulk 04 Alpha
+                            - generic [ref=f66e235]: bulk04@qa.test
+                      - 'link "Quick view: Bulk 04 Alpha" [ref=f66e236] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/da77ca3e-7a21-4453-84b2-67cb8f04d089
+                        - img "quick_view" [ref=f66e237]
+                  - cell "Active" [ref=f66e241]
+                  - cell [ref=f66e243]:
+                    - link "Cohort B" [ref=f66e244] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e245]:
+                    - list [ref=f66e246]:
+                      - listitem [ref=f66e247]: Course Hid 0%
+                      - listitem [ref=f66e248]: Course Pub 0%
+                  - cell "Never" [ref=f66e249]
+                - row [ref=f66e250]:
+                  - cell [ref=f66e251]:
+                    - checkbox "Select Bulk 05 Alpha" [ref=f66e252] [cursor=pointer]
+                  - cell [ref=f66e253]:
+                    - generic [ref=f66e254]:
+                      - link "Bulk 05 Alpha bulk05@qa.test" [ref=f66e255] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/dc51ccc8-4480-4e77-80d3-57f52b4ae96f
+                        - generic [ref=f66e256]:
+                          - generic [aria-hidden] [ref=f66e257]: BA
+                          - generic [ref=f66e258]:
+                            - generic [ref=f66e259]: Bulk 05 Alpha
+                            - generic [ref=f66e260]: bulk05@qa.test
+                      - 'link "Quick view: Bulk 05 Alpha" [ref=f66e261] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/dc51ccc8-4480-4e77-80d3-57f52b4ae96f
+                        - img "quick_view" [ref=f66e262]
+                  - cell "Active" [ref=f66e266]
+                  - cell "-" [ref=f66e268]
+                  - cell "-" [ref=f66e269]
+                  - cell "Never" [ref=f66e270]
+                - row [ref=f66e271]:
+                  - cell [ref=f66e272]:
+                    - checkbox "Select Bulk 06 Alpha" [ref=f66e273] [cursor=pointer]
+                  - cell [ref=f66e274]:
+                    - generic [ref=f66e275]:
+                      - link "Bulk 06 Alpha bulk06@qa.test" [ref=f66e276] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/add0fa37-0568-49dd-b295-44127116d9e3
+                        - generic [ref=f66e277]:
+                          - generic [aria-hidden] [ref=f66e278]: BA
+                          - generic [ref=f66e279]:
+                            - generic [ref=f66e280]: Bulk 06 Alpha
+                            - generic [ref=f66e281]: bulk06@qa.test
+                      - 'link "Quick view: Bulk 06 Alpha" [ref=f66e282] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/add0fa37-0568-49dd-b295-44127116d9e3
+                        - img "quick_view" [ref=f66e283]
+                  - cell "Active" [ref=f66e287]
+                  - cell [ref=f66e289]:
+                    - link "Cohort B" [ref=f66e290] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e291]:
+                    - list [ref=f66e292]:
+                      - listitem [ref=f66e293]: Course Hid 0%
+                      - listitem [ref=f66e294]: Course Pub 0%
+                  - cell "Never" [ref=f66e295]
+                - row [ref=f66e296]:
+                  - cell [ref=f66e297]:
+                    - checkbox "Select Bulk 07 Alpha" [ref=f66e298] [cursor=pointer]
+                  - cell [ref=f66e299]:
+                    - generic [ref=f66e300]:
+                      - link "Bulk 07 Alpha bulk07@qa.test" [ref=f66e301] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/c3f69933-ec21-4917-8fbb-ab2875efc290
+                        - generic [ref=f66e302]:
+                          - generic [aria-hidden] [ref=f66e303]: BA
+                          - generic [ref=f66e304]:
+                            - generic [ref=f66e305]: Bulk 07 Alpha
+                            - generic [ref=f66e306]: bulk07@qa.test
+                      - 'link "Quick view: Bulk 07 Alpha" [ref=f66e307] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/c3f69933-ec21-4917-8fbb-ab2875efc290
+                        - img "quick_view" [ref=f66e308]
+                  - cell "Active" [ref=f66e312]
+                  - cell [ref=f66e314]:
+                    - link "Cohort B" [ref=f66e315] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e316]:
+                    - list [ref=f66e317]:
+                      - listitem [ref=f66e318]: Course Hid 0%
+                      - listitem [ref=f66e319]: Course Pub 0%
+                  - cell "Never" [ref=f66e320]
+                - row [ref=f66e321]:
+                  - cell [ref=f66e322]:
+                    - checkbox "Select Bulk 08 Alpha" [ref=f66e323] [cursor=pointer]
+                  - cell [ref=f66e324]:
+                    - generic [ref=f66e325]:
+                      - link "Bulk 08 Alpha bulk08@qa.test" [ref=f66e326] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/5b21aadd-2596-4c49-bec8-837727f5f474
+                        - generic [ref=f66e327]:
+                          - generic [aria-hidden] [ref=f66e328]: BA
+                          - generic [ref=f66e329]:
+                            - generic [ref=f66e330]: Bulk 08 Alpha
+                            - generic [ref=f66e331]: bulk08@qa.test
+                      - 'link "Quick view: Bulk 08 Alpha" [ref=f66e332] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/5b21aadd-2596-4c49-bec8-837727f5f474
+                        - img "quick_view" [ref=f66e333]
+                  - cell "Active" [ref=f66e337]
+                  - cell [ref=f66e339]:
+                    - link "Cohort B" [ref=f66e340] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e341]:
+                    - list [ref=f66e342]:
+                      - listitem [ref=f66e343]: Course Hid 0%
+                      - listitem [ref=f66e344]: Course Pub 0%
+                  - cell "Never" [ref=f66e345]
+                - row [ref=f66e346]:
+                  - cell [ref=f66e347]:
+                    - checkbox "Select Bulk 09 Alpha" [ref=f66e348] [cursor=pointer]
+                  - cell [ref=f66e349]:
+                    - generic [ref=f66e350]:
+                      - link "Bulk 09 Alpha bulk09@qa.test" [ref=f66e351] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/2eb4564c-e63a-4f4b-a68b-c4aca82f6581
+                        - generic [ref=f66e352]:
+                          - generic [aria-hidden] [ref=f66e353]: BA
+                          - generic [ref=f66e354]:
+                            - generic [ref=f66e355]: Bulk 09 Alpha
+                            - generic [ref=f66e356]: bulk09@qa.test
+                      - 'link "Quick view: Bulk 09 Alpha" [ref=f66e357] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/2eb4564c-e63a-4f4b-a68b-c4aca82f6581
+                        - img "quick_view" [ref=f66e358]
+                  - cell "Active" [ref=f66e362]
+                  - cell [ref=f66e364]:
+                    - link "Cohort B" [ref=f66e365] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e366]:
+                    - list [ref=f66e367]:
+                      - listitem [ref=f66e368]: Course Hid 0%
+                      - listitem [ref=f66e369]: Course Pub 0%
+                  - cell "Never" [ref=f66e370]
+                - row [ref=f66e371]:
+                  - cell [ref=f66e372]:
+                    - checkbox "Select Bulk 10 Alpha" [ref=f66e373] [cursor=pointer]
+                  - cell [ref=f66e374]:
+                    - generic [ref=f66e375]:
+                      - link "Bulk 10 Alpha bulk10@qa.test" [ref=f66e376] [cursor=pointer]:
+                        - /url: /educator/organisations/northside/learners/5b33f620-4ead-4a15-92f1-77a39d8ddcb2
+                        - generic [ref=f66e377]:
+                          - generic [aria-hidden] [ref=f66e378]: BA
+                          - generic [ref=f66e379]:
+                            - generic [ref=f66e380]: Bulk 10 Alpha
+                            - generic [ref=f66e381]: bulk10@qa.test
+                      - 'link "Quick view: Bulk 10 Alpha" [ref=f66e382] [cursor=pointer]':
+                        - /url: /educator/organisations/northside/learners/5b33f620-4ead-4a15-92f1-77a39d8ddcb2
+                        - img "quick_view" [ref=f66e383]
+                  - cell "Active" [ref=f66e387]
+                  - cell [ref=f66e389]:
+                    - link "Cohort B" [ref=f66e390] [cursor=pointer]:
+                      - /url: /educator/organisations/northside/cohorts/283b0b76-675a-478c-a16a-2f690153ea9a
+                  - cell [ref=f66e391]:
+                    - list [ref=f66e392]:
+                      - listitem [ref=f66e393]: Course Hid 0%
+                      - listitem [ref=f66e394]: Course Pub 0%
+                  - cell "Never" [ref=f66e395]
+            - generic [ref=f66e396]:
+              - generic:
+                - status
+              - generic [ref=f66e397]:
+                - generic [ref=f66e398]: Page 1 of 3
+                - generic [ref=f66e399]:
+                  - generic [ref=f66e400] [cursor=pointer]: "1"
+                  - link "2" [ref=f66e401] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-page=2
+                  - link "3" [ref=f66e402] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-page=3
+                  - link "Next" [ref=f66e403] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners?learners-status=active&learners-status=pending&learners-q=Alpha&learners-page=2
+  - contentinfo [ref=f66e406]:
+    - generic [ref=f66e407]:
+      - paragraph [ref=f66e408]: © 2026 FirstClass
+      - navigation "Legal" [ref=f66e409]:
+        - link "Terms and Conditions" [ref=f66e410] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f66e411] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f66e412] [cursor=pointer]: educator-interface-8-bulk-operations
