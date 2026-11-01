@@ -7,16 +7,16 @@ argument-hint: "[mine|all]"
 Commit what is currently in flight. Fast.
 
 This is the quick path: it runs no tests. Use it mid-implementation, when you already know the state
-of the work and want it recorded. When the commit is a checkpoint you have not verified, use a
-commit command that runs the targeted test tier first, if the project has one.
+of the work and want it recorded. For a checkpoint you have not verified, use a commit command that
+runs the targeted test tier first, if the project has one.
 
 This command runs at **depth 0**, inline. It spawns no subagents.
 
 ## Optimise for the user's time
 
-A hook failure you can fix in under a minute is **not a decision point**. Fix it and move on.
-Escalate only when the retry budget in Step 4 is spent, or the failure is genuinely outside this
-commit. Never turn a fixable hook failure into a conversation.
+A hook failure you can fix in under a minute is **not a decision point**: fix it and move on.
+Escalate only when the retry budget in Step 4 is spent or the failure is genuinely outside this
+commit.
 
 ## The speed contract
 
@@ -29,8 +29,8 @@ commit. Never turn a fixable hook failure into a conversation.
 - spawn a subagent or invoke another slash command
 
 **Once a hook fails**, exactly two things open up: you may read the files the hook named, and you
-may re-run that one check to verify your fix. Nothing else — still no pytest, no full-repo sweeps,
-no patch-mode diff.
+may re-run that one check to verify your fix. Still no pytest, no full-repo sweeps, no patch-mode
+diff.
 
 The commit message comes from the file list and the spec directory name, not from reading the diff.
 Lead the subject with the spec directory name, as every SDD commit does — e.g.
@@ -104,11 +104,10 @@ uv run git commit -m "…"
 
 ### If the hooks reject the commit, fix it — do not stop
 
-Hooks fail in layers: clearing one often reveals the next. That is normal progress, not a reason to
-escalate. Work the loop.
+Hooks fail in layers: clearing one often reveals the next. That is normal progress. Work the loop.
 
 **Budget: up to 5 attempts.** Stop early only when an attempt fails *identically* to the one before
-it — same hook, same finding. That means you are not making progress, and another retry won't help.
+it (same hook, same finding): you are not making progress and another retry won't help.
 
 On each failure, classify what you got:
 

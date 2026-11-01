@@ -1,6 +1,6 @@
 # Spec-Driven Development (SDD)
 
-A step-by-step workflow for taking a rough idea all the way to a merged pull request. Each step produces an artifact that feeds the next one, so you can pause, review, and correct course between stages.
+A step-by-step workflow from a rough idea to a merged pull request. Each step produces an artifact that feeds the next, so you can pause, review and correct course between stages.
 
 ## The workflow at a glance
 
@@ -12,7 +12,7 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
-> `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
+> `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree. Run it once, then do everything else inside the worktree.
 
 > **One-time setup:** any setup a project's hooks need before the first SDD run (for example a diagram a plan review brief reads) is documented by that hook, not here.
 
@@ -20,7 +20,7 @@ These are the five sections of the `todo.md` checklist. Capturing the idea comes
 
 ## Step 0: The spec roadmap
 
-`spec_dd/1. next/roadmap.md` is the spec roadmap: one row for every directory in `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it depends on and whether it is waiting or in flight. It is not `docs/product/roadmap.md`, which is the product roadmap.
+`spec_dd/1. next/roadmap.md` is the spec roadmap: one row per directory in `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it depends on and whether it is waiting or in flight. `docs/product/roadmap.md` is the product roadmap, a different file.
 
 - `/sdd:roadmap` with no argument syncs the file with the directories: adds rows for new directories, drops rows for finished ones, redraws the dependency graphs.
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
@@ -36,7 +36,7 @@ The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_for
 
 ## Step 2: Spec
 
-1. Run `/sdd:spec_from_idea`. It researches the idea, writes the specification, runs the review wave and commits, all in one run. The review wave runs inside this command.
+1. Run `/sdd:spec_from_idea`. It researches the idea, writes the specification, runs the review wave and commits, all in one run.
 2. Review the spec and edit it manually where needed.
 3. After substantial hand edits, run `/sdd:spec_review` to run the review wave again. It is not needed otherwise.
 
@@ -68,7 +68,7 @@ Run the project's QA command: the `QA command` key under `## QA Hooks` in `.clau
 by hand.
 
 How the QA command handles skipped tests, missing test data or the bugs it finds is its own
-business: read its documentation, and check `qa_report.md` for the outcome.
+business: read its documentation and check `qa_report.md` for the outcome.
 
 ## Step 5: Document
 
@@ -89,18 +89,18 @@ Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It reba
 
 ## How the workflow runs
 
-2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `sdd:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `sdd:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the relevant agent file's `model:` frontmatter** (`claude_plugins/sdd/agents/sdd-mechanic.md`, `sdd-worker.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` can force one model for **all** subagents in a pinch — but it **overrides every per-agent `model:` frontmatter**, so it must be left **unset (or `inherit`)** for normal tiered operation.
+2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `sdd:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `sdd:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the agent file's `model:` frontmatter** (`claude_plugins/sdd/agents/sdd-mechanic.md`, `sdd-worker.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` forces one model for **all** subagents, but it **overrides every per-agent `model:` frontmatter**, so leave it **unset (or `inherit`)** for normal tiered operation.
 
-3. **Aliases vs pinned IDs.** The agents use aliases (`haiku`/`sonnet`) for readability. A user who wants frozen, reproducible automation can pin dated IDs (e.g. `claude-haiku-4-5`) in the agent files instead.
+3. **Aliases vs pinned IDs.** The agents use aliases (`haiku`/`sonnet`). For frozen, reproducible automation, pin dated IDs (e.g. `claude-haiku-4-5`) in the agent files instead.
 
-4. **Target Claude Code version.** These files target the current **2.1.x** line — per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. There is no runtime version check; this is a documented target, not enforced.
+4. **Target Claude Code version.** These files target the **2.1.x** line: per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. No runtime version check enforces it.
 
 5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. A command run in hook mode keeps its commit; `/sdd:document` commits for a hook that has no commit step. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged. The one exception is `spec_dd/` bookkeeping that has no worktree yet (`/sdd:start`'s move to in progress, `/sdd:roadmap`'s edits): that is committed on `main` and not pushed.
 
-6. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
+6. **Why it runs this way.** The **`claude-code-authoring`** skill is the canonical reference for the mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
 
 ---
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step. You don't run this helper yourself. The human ticks the `(user)` items and the two PR commands with the approval item. The commit-and-push step runs straight after it.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step; you never run it yourself. The human ticks the `(user)` items and the two PR commands with the approval item. The commit-and-push step runs straight after it.

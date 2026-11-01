@@ -5,9 +5,9 @@ allowed-tools: Bash, Read, Glob, Skill, Agent
 
 This command finishes a spec's worktree. It runs on the feature branch: it rebases the branch,
 makes the close-out commits there (spec directory to done, roadmap row removed, project settings
-tidied), then lands the branch on `main` by fast-forward and brings the main worktree up to date.
-It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` (Haiku) agent. See
-the `claude-code-authoring` skill for the model behind this.
+tidied), lands the branch on `main` by fast-forward and brings the main worktree up to date.
+It runs at **depth 0** and delegates mechanical steps to the `sdd:sdd-mechanic` (Haiku) agent; the
+`claude-code-authoring` skill explains why.
 
 Two rules hold throughout:
 
@@ -26,8 +26,7 @@ On `main` or `master`, stop: this command runs in a feature worktree only.
 # Step 0: Pre-step rebase
 
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
-`full`. Any status other than `ok` is
-this command's own status; relay its reason and stop.
+`full`. Any status other than `ok` is this command's own status; relay its reason and stop.
 
 Two notes for its conflict resolution:
 
@@ -57,9 +56,8 @@ is behind). It never touches untracked files.
 - exit 0 → continue.
 - any other exit → `status: blocked · reason: <the script's output, verbatim>`. Stop.
 
-Running this before anything is committed means a parked operation on `main` is found before the
-branch is touched, and it is what keeps Step 7 from needing a second rebase when local `main` was
-ahead of `origin`.
+Running this before anything is committed finds a parked operation on `main` before the branch is
+touched, and keeps Step 7 from needing a second rebase when local `main` was ahead of `origin`.
 
 # Step 1: Full tier
 
@@ -71,27 +69,25 @@ branch has also passed pre-commit; there is nothing to re-run for that.
 
 # Step 2: Tear down any per-worktree resources
 
-The teardown step (e.g. dropping a per-branch dev database) is project-specific and configured, not hard-coded into the `sdd` plugin.
+Teardown (e.g. dropping a per-branch dev database) is project-specific and configured, not hard-coded into the `sdd` plugin.
 
-Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take precedence). Under the **Worktree Scripts** section, look at the **Teardown script** value:
+Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists; its values take precedence). Under the **Worktree Scripts** section, look at the **Teardown script** value:
 
-- If **Teardown script** is a non-blank path, run that script now.
-- If it is blank, or the config file / section is absent, skip this step — this project has no per-worktree teardown step.
+- A non-blank path: run that script now.
+- Blank, or the config file / section absent: skip this step; this project has no per-worktree teardown.
 
 # Step 3: Update the todo list
 
 Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
 
-- `<todo-path>`: the `todo.md` in the spec directory (still under `spec_dd/2. in progress/…/` at this point)
+- `<todo-path>`: the `todo.md` in the spec directory (still under `spec_dd/2. in progress/…/` here)
 - `tick:"Run `/sdd:finish_worktree`"` (a unique substring; the item's wording has changed over time)
 
 No new items to add.
 
 # Step 4: Move the spec to done
 
-Delegate to `sdd:sdd-mechanic`: move the current spec directory from `in progress` to `done` and name it appropriately with the current date and time.
-
-The spec directory should be named like this:
+Delegate to `sdd:sdd-mechanic`: move the current spec directory from `in progress` to `done`, named with the current date and time:
 
 ```
 yyyy-mm-dd_HH:MM_{spec title}
@@ -110,7 +106,7 @@ travels with it.
 
 # Step 5: Tidy Claude project settings
 
-Invoke the `update-claude-project-settings` skill to promote any useful permissions accumulated in `.claude/settings.local.json` to the shared `.claude/settings.json`, and clean up redundant entries in the project settings.
+Invoke the `update-claude-project-settings` skill to promote useful permissions from `.claude/settings.local.json` to the shared `.claude/settings.json` and clean up redundant entries.
 
 # Step 6: Commit and push
 
@@ -157,7 +153,7 @@ git status --porcelain
 ```
 
 Must be empty in this worktree; anything else is `status: failed` naming the files. The script's
-own post-landing check has already confirmed the main worktree is clean and at the landed commit.
+own post-landing check has confirmed the main worktree is clean and at the landed commit.
 
 Report:
 

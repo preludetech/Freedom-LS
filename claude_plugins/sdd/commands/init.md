@@ -7,15 +7,14 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 Set up the `sdd` Claude Code plugin for this project. `sdd` provides the portable
 spec-driven-development workflow (worker/mechanic agents, workflow commands, authoring skills). It
-needs very little per-project config beyond the shared launcher it expects to exist.
+needs little per-project config beyond the shared launcher it expects to exist.
 
 ## Two rules that override every step below
 
 **Nothing is written before Step 0 finishes.** Step 0 performs every check that can abort this
-command. If Step 0 returns STOP, print the reason and the fix and end — the project is byte-for-byte
-untouched, so re-running after the fix is always safe and always starts from a clean state. No step
-after Step 0 may abort: from Step 1 onward, a problem is *reported as an outstanding action*, never
-raised as a bail-out.
+command. If Step 0 returns STOP, print the reason and the fix and end: the project is byte-for-byte
+untouched, so re-running after the fix is always safe. No step after Step 0 may abort: from Step 1
+onward, a problem is *reported as an outstanding action*, never raised as a bail-out.
 
 **Nothing is force-deleted.** No step may pass `-f` to `git rm`, `-f`/`-r` to `rm`, or `--force` to
 any command. `sdd:init` deletes nothing at all, but the rule stands for any future edit.
@@ -26,8 +25,8 @@ any command. `sdd:init` deletes nothing at all, but the rule stands for any futu
 permission and writes only its own `.claude/sdd/` config dir. Into the shared project-root
 `claude.sh` it adds **only its own** `--plugin-dir` line; it never touches another plugin's.
 
-The generic, plugin-neutral artifacts — the `claude.sh` skeleton, the `SessionStart` hook, and the
-`.claude/settings.local.json` line in `.gitignore` — are created by whatever initialised the
+The plugin-neutral artifacts (the `claude.sh` skeleton, the `SessionStart` hook, and the
+`.claude/settings.local.json` line in `.gitignore`) are created by whatever initialised the
 project's shared Claude Code setup. This command requires them to exist (Step 0) and otherwise
 reports on them.
 
@@ -95,10 +94,10 @@ P1–P3b are STOPs rather than warnings so this command can never write `.claude
 
 **P3b exists because P1 and P2 are not sufficient.** A project that predates the `claude_plugins/`
 layout already *has* a `claude.sh` and a `.claude/settings.json`, so file-existence checks pass and
-this command would run to completion, adding its own `--plugin-dir` line to a launcher still pointing
-at a plugin directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire
-that argument, so it would leave the launcher broken. Checking the arguments themselves — not merely
-that files exist — is the only check that catches this.
+this command would add its own `--plugin-dir` line to a launcher still pointing at a plugin
+directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire that
+argument, so the launcher would stay broken. Only checking the arguments themselves, not merely that
+files exist, catches this.
 
 ## Step 1: Merge the `sdd` permission and enabledPlugins key
 
@@ -131,9 +130,9 @@ parity and future settings.
 **Do not prompt the user for these values.** Write blank defaults and say where the file is.
 
 1. Ensure `.claude/sdd/` exists.
-2. If `.claude/sdd/config.md` does not exist, write this — the reader helpers locate the values by
-   the section and key names, so keep those exact. The file holds only this project's values; what each
-   key means is documented here, not in the file:
+2. If `.claude/sdd/config.md` does not exist, write this. The reader helpers locate the values by
+   the section and key names, so keep those exact. The file holds only this project's values; what
+   each key means is documented here, not in the file:
 
    ```markdown
    # SDD Plugin Configuration
@@ -210,14 +209,14 @@ parity and future settings.
    A **Setup script** runs when a worktree is created (dependency install, per-branch dev DB,
    migrations, seed data); a **Teardown script** runs when one is finished (e.g. dropping that DB).
    Both are blank by default, meaning "this project has no such step". `sdd` is portable and names no
-   product here — if another plugin owns those scripts in this project, the user points these keys at
+   product here; if another plugin owns those scripts in this project, the user points these keys at
    them.
 
    A **Rebase command** value points at a file that rebases the branch onto main; the pre-step
    rebase reads it and follows its steps inline. A **Front-end check** value points at a file that
    verifies front-end pages after a rebase that changed them. Both are blank by default, meaning
-   "this project has no such step" — `sdd` is portable and names no product here either; if another
-   plugin owns those files in this project, the user points these keys at them.
+   "this project has no such step"; if another plugin owns those files in this project, the user
+   points these keys at them.
 
    A **Design check** value points at a file that screenshots the running app for the design states
    it is given and returns their paths; `/sdd:implement_plan` then compares those screenshots with
@@ -225,25 +224,25 @@ parity and future settings.
 
    A **Test tiers** value points at a file that defines the test tiers a step can name and how each
    one runs. Blank means "this project has no tier definition", and `protected/run_test_tier.md`
-   falls back to the project's plain pytest command. `sdd` is portable and names no product here;
-   if another plugin owns that file in this project, the user points this key at it.
+   falls back to the project's plain pytest command. If another plugin owns that file in this
+   project, the user points this key at it.
 
    **Plan Review Hooks** is an ordered list of `<label>: <path>` bullets, and **Documentation
    Hooks** an ordered list of `<label>: <skill>` bullets, where `<skill>` is a plugin skill name
    such as `<plugin>:<command>`. `/sdd:document` invokes each with the `Skill` tool, so the hook
    runs with its own plugin root and tool grants. The label is for reporting and the order is the
    contract. An empty list means "this project has no such hooks", and a non-empty list in
-   `config.local.md` replaces the whole list. `sdd` is portable and names no product here; if
-   another plugin owns those hooks in this project, the user lists them.
+   `config.local.md` replaces the whole list. If another plugin owns those hooks in this project,
+   the user lists them.
 
    **Review Hooks** is keyed. A **Comment standard** value points at a file that states the
    project's comment rules, and a **Test standard** value points at a file that states its test
-   rules. A blank key skips that half of the batch review. `sdd` names no product here either.
+   rules. A blank key skips that half of the batch review.
 
    A **QA command** value is a skill name, `<plugin>:<skill>`, that executes a spec's QA plan.
    `protected/setup_todo_list.md` writes it into `todo.md` as the QA step's slash command. Blank
    means "this project has no QA command", and the checklist tells the user to run the QA plan by
-   hand. `sdd` names no product here; if another plugin owns that command, the user names it.
+   hand. If another plugin owns that command, the user names it.
 
    **Playwright MCP** is the tool-name prefix of the browser server the QA command drives. Blank
    means the QA command stops `blocked`. **Screenshot directory** is where that server writes
@@ -270,9 +269,9 @@ parity and future settings.
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list; each source later becomes one bullet holding a path, most
-   authoritative first. Naming this project's actual sources is the user's job — do
-   not guess them by scanning the repo. With the list empty the commands still work: they fall back
-   to the code, where model class names and field names are the vocabulary of last resort.
+   authoritative first. Naming this project's actual sources is the user's job; do not guess them by
+   scanning the repo. With the list empty the commands still work: they fall back to the code, where
+   model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
    `## Testing Skills`, `## PR Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
@@ -282,15 +281,15 @@ parity and future settings.
 ## Step 3: Update `.gitignore`
 
 1. If `.claude/sdd/config.local.md` is not listed, add it.
-2. Do **not** add the `.claude/settings.local.json` line — that one is shared and not `sdd`'s to add.
+2. Do **not** add the `.claude/settings.local.json` line; that one is shared and not `sdd`'s to add.
 
 ## Step 4: Ensure the `sdd` `--plugin-dir` line
 
 Follow `${CLAUDE_PLUGIN_ROOT}/resources/launcher_editing.md`, using the P5 classification and the
-resolved `PLUGINS_ROOT`. With `<MAY_CREATE>` false this runs L2, L3, L5 and L7 only — it normalises
+resolved `PLUGINS_ROOT`. With `<MAY_CREATE>` false this runs L2, L3, L5 and L7 only: it normalises
 the launcher shape, guarantees `PLUGINS_ROOT` exists before any line expands it, and ensures exactly
 one `sdd` `--plugin-dir` line. It never creates the launcher, retires another plugin's argument, or
-touches the sentinel. Write the launcher as **one atomic file replacement** rather than a sequence of
+touches the sentinel. Write the launcher as **one atomic file replacement**, not a sequence of
 in-place edits.
 
 ## Step 5: Validate the setup

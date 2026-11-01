@@ -15,7 +15,7 @@ You are helping to spin up a new feature spec for this application, from a short
 
 ## Fan-out recipe (shared)
 
-This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring` skill for *why* it works this way (no subagent nesting, fan-out only at depth 0, `AskUserQuestion` is orchestrator-only, file-based hand-off, model tiering). Orchestrating units U1…Un:
+This command runs at **depth 0** and fans work out to sub-agents (the `claude-code-authoring` skill explains why: no subagent nesting, fan-out only at depth 0, `AskUserQuestion` is orchestrator-only, file-based hand-off, model tiering). Orchestrating units U1…Un:
 
 1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Questions only the user can answer are asked at depth 0 *while* the workers run: as early as possible, batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need. Ask once, early, with a default; late questions and review judgement calls follow "When a question comes late" in the `claude-code-authoring` skill's `fanout_recipe.md`.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
@@ -46,7 +46,7 @@ Each brief names the topic's question in one sentence and says the idea file is 
 
 # Step 2: The question batch, while the workers run (depth 0)
 
-Don't wait for the research to finish before asking, and don't ask what it will answer. This is where `AskUserQuestion` is used — workers stay non-interactive.
+Don't wait for the research to finish before asking, and don't ask what it will answer. `AskUserQuestion` is used here; workers stay non-interactive.
 
 1. **Front-load.** As soon as the workers are spawned, ask the questions the idea itself leaves open and no research task bears on: contradictions, ambiguity, edge cases that can go more than one way, and implementation details in the idea where you see a better way (challenge anything that looks wrong). Batch them, up to four per `AskUserQuestion`.
 2. **As each research file lands,** read it, drop the questions it answers, and ask the new ones it raises. The window for asking is the time the workers run; if the first `AskUserQuestion` is already answered, ask a follow-up in a further one.
@@ -68,9 +68,9 @@ this conversation does not count; a later command can't read it.
 
 Read the `research_*.md` files (paths, not dumped contents) and author `1. spec.md`.
 
-Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. It carries the rules every SDD
+Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`, which carries the rules every SDD
 artifact obeys: rewriting means replacing, coverage rather than length, the shared cut-list, where
-overflow goes, and the two finishing passes. What follows is what is specific to a spec.
+overflow goes, and the two finishing passes. What follows is specific to a spec.
 
 Names come from `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. The spec is where the
 vocabulary is fixed, in the identifiers it proposes as much as in its prose.
@@ -78,8 +78,8 @@ vocabulary is fixed, in the identifiers it proposes as much as in its prose.
 ## Read the whole directory first
 
 The idea file, every sibling `*.md` beside it (notes files, `research_*.md`), and the research from
-Step 1. Those are the inputs the spec is written **against**. They are not material to reproduce.
-They sit in the same directory and the next command reads them too.
+Step 1. Those are the inputs the spec is written **against**, not material to reproduce: they sit in the
+same directory and the next command reads them too.
 
 A `design.md`, beside the idea or named under its "Resources", registers a Claude Design design
 (see `/sdd:register_design`). Read the design itself the way that file says, and treat it the way
@@ -96,8 +96,8 @@ design uses into the spec: the spec uses the project's own theme.
 Its readers are `/sdd:plan_from_spec` and the human approving it. It answers one question: what has
 to be true when this work is done.
 
-It is not a record of how the decision was reached. It is not the step-by-step either. The plan
-step does that, and it re-reads the codebase when it does.
+It is not a record of how the decision was reached, and not the step-by-step: the plan step does
+that, re-reading the codebase as it does.
 
 ## The shape
 

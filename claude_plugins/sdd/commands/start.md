@@ -26,21 +26,21 @@ lands. No roadmap, or no row: carry on without comment.
 
 ## Step 1: Set up the todo list
 
-Delegate to `sdd:sdd-mechanic`: have it run the steps in `claude_plugins/sdd/commands/protected/setup_todo_list.md`. Pass through whatever the caller said about which spec or idea this is for, so the helper doesn't have to re-discover it.
+Delegate to `sdd:sdd-mechanic`: have it run the steps in `claude_plugins/sdd/commands/protected/setup_todo_list.md`. Pass through whatever the caller said about which spec or idea this is for, so the helper doesn't re-discover it.
 
-Wait for the mechanic to finish. Note the path to the spec directory it landed on — later steps need it. If the mechanic returns `status: blocked` (e.g. ambiguous spec dir, or an existing `todo.md`), gather the answer from the user via `AskUserQuestion` and re-spawn the mechanic with the answer.
+Wait for the mechanic to finish and note the path to the spec directory it landed on; later steps need it. If the mechanic returns `status: blocked` (e.g. ambiguous spec dir, or an existing `todo.md`), gather the answer from the user via `AskUserQuestion` and re-spawn the mechanic with the answer.
 
 ## Step 2: Move the spec to "in progress" and commit
 
 Delegate to `sdd:sdd-mechanic`: have it run the steps in `claude_plugins/sdd/commands/protected/move_spec_to_in_progress.md`, passing through the spec directory from Step 1.
 
-This moves the spec into `spec_dd/2. in progress/` and commits the move (along with the `todo.md` from Step 1) on the **current** branch — before any worktree exists. Wait for it to finish and confirm the working tree is clean and the move is committed before continuing. Handle any `blocked` return the same way as Step 1 (ask the user, re-spawn).
+This moves the spec into `spec_dd/2. in progress/` and commits the move (with the `todo.md` from Step 1) on the **current** branch, before any worktree exists. Wait for it to finish and confirm the working tree is clean and the move is committed before continuing. Handle any `blocked` return as in Step 1 (ask the user, re-spawn).
 
 ## Step 3: Create the worktree
 
 Delegate to `sdd:sdd-mechanic`: have it run the steps in `claude_plugins/sdd/commands/protected/start_worktree.md`, passing through the spec directory (now under `spec_dd/2. in progress/`).
 
-Only run this **after** Step 2's commit has landed on the current branch — the new worktree must branch off a clean, up-to-date branch that already contains the move. Wait for it to finish. Handle any `blocked` return the same way as Step 1 (ask the user, re-spawn).
+Run this only **after** Step 2's commit has landed on the current branch: the new worktree must branch off a clean, up-to-date branch that already contains the move. Wait for it to finish. Handle any `blocked` return as in Step 1 (ask the user, re-spawn).
 
 ## Step 4: Report back
 

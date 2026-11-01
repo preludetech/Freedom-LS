@@ -12,7 +12,7 @@ You are doing the final check on a feature spec before it is planned. Five worke
 
 ## Fan-out recipe (shared)
 
-This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring` skill for *why* it works this way. Orchestrating units U1…Un:
+This command runs at **depth 0** and fans work out to sub-agents (the `claude-code-authoring` skill explains why). Orchestrating units U1…Un:
 
 1. **Start the work; don't ask permission for it.** Never ask whether to review or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what is on disk. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need. Ask once, early, with a default; late questions and review judgement calls follow "When a question comes late" in the `claude-code-authoring` skill's `fanout_recipe.md`.
 2. **One output path per unit.** Intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.

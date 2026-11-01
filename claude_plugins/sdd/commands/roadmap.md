@@ -20,11 +20,11 @@ Two modes:
 
 ## Fan-out recipe (shared)
 
-This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring`
-skill for why it works this way.
+This command runs at **depth 0** and fans work out to sub-agents (the `claude-code-authoring`
+skill explains why).
 
 1. **Start the work; don't ask permission for it.** Never ask the user whether to research, scan
-   or fan out. Spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt
+   or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt
    everything the worker needs from what the user has already said and what is on disk. Questions
    only the user can answer are asked at depth 0 *while* the workers run: as early as possible,
    batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and
@@ -100,8 +100,9 @@ reason becomes the row's precursor: its Notes cell starts
 ## S5: Confirm
 
 Print the diff: adds, drops, status corrections, retirements, precursors added, start-list
-corrections, unresolved dependencies, and any cycle in the depends-on graph. A drop whose directory is neither done nor in progress is called
-out on its own line. One `AskUserQuestion`: apply, or stop.
+corrections, unresolved dependencies, and any cycle in the depends-on graph. A drop whose
+directory is neither done nor in progress is called out on its own line. One `AskUserQuestion`:
+apply, or stop.
 
 ## S6: Rewrite the file
 
@@ -131,8 +132,8 @@ Delete this run's `.sdd-work/roadmap_entry_*.md` files by name.
 
 Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md` and commit with
 `uv run git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
-`main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, the same
-way `protected/move_spec_to_in_progress.md` commits there without pushing.
+`main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, as in
+`protected/move_spec_to_in_progress.md`, which commits there without pushing.
 
 ---
 
@@ -141,7 +142,7 @@ way `protected/move_spec_to_in_progress.md` commits there without pushing.
 The argument names a directory holding an idea (and possibly a spec, research files and nested
 drafts) that will not fit one SDD run. One spec is one SDD run is one PR. The cut goes by
 user-visible outcome, never by line count. The process is the one that produced the educator
-interface rebuild. Chart a map, research what the code and comparable systems can answer, put the
+interface rebuild: chart a map, research what the code and comparable systems can answer, put the
 rest to the product owner, propose the cut, then write the ideas.
 
 ## C1: Read the directory
@@ -154,8 +155,8 @@ section of the roadmap.
 
 ## C2: Chart the map
 
-Write `.sdd-work/roadmap_map_<dir>.md`. It is scratch. An interrupted run resumes from it, so if it
-already exists read it and carry on from the first unfinished item.
+Write `.sdd-work/roadmap_map_<dir>.md`, scratch that an interrupted run resumes from: if it already
+exists, read it and carry on from the first unfinished item.
 
 - **Destination.** What exists when the cut is done: N ideas under `spec_dd/1. next/`, each
   ready for `/sdd:spec_from_idea` without reopening a design question, and one effort section in
@@ -177,8 +178,8 @@ Do not show the map for approval. Go straight to C3.
 
 ## C3: Research and ask, together
 
-Research and questioning run at the same time, and research comes first in the sense that matters:
-no question goes to the owner if research could answer it.
+Research and questioning run at the same time, but no question goes to the owner if research could
+answer it.
 
 1. **Fan out now.** Apply the recipe: one `sdd:sdd-worker` per research unit, all spawned in
    parallel in the background, each writing its durable `research_<topic>.md` in `<dir>` with a
@@ -186,8 +187,7 @@ no question goes to the owner if research could answer it.
    `setup_todo_list.md` already detects, so keep the naming.
 2. **Ask early, in batches.** While the workers run, ask every queued question that waits on no
    research unit. Batch them, up to four per `AskUserQuestion`, so the owner answers while the
-   research runs and nothing sits idle waiting on the other. A question that waits on a unit
-   stays queued until that unit lands.
+   research runs. A question that waits on a unit stays queued until that unit lands.
 3. **Fold in each research file as it lands.** Read it. Move what it settles into "Notes" or
    "Decisions so far". Strike every queued question it answers or makes moot. Queue the new
    owner-only questions it raises, and ask them in the next batch. For each new question the code
@@ -204,11 +204,12 @@ Repeat 2 to 4 until no worker is running and no question is open.
   under "Assumptions" in the map, with the reason. It surfaces in the cut proposal (C4), where the
   owner can overrule it, and ends up in the effort's "Assumptions the ideas make".
 
-Never ask whether to research, whether to draft the child ideas, whether the map looks right, to confirm what the source already
-says, or anything with one sensible answer. Never ask when or where to produce something the cut
-can produce itself, such as a design brief the source asks for. Produce it in the cut (see C5). Each question quotes the source line or research
-finding that leaves it open, and offers concrete options with the recommended one first. Name
-things per `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`.
+Never ask whether to research, whether to draft the child ideas, whether the map looks right, to
+confirm what the source already says, or anything with one sensible answer. Never ask when or where
+to produce something the cut can produce itself, such as a design brief the source asks for:
+produce it in the cut (see C5). Each question quotes the source line or research finding that
+leaves it open, and offers concrete options with the recommended one first. Name things per
+`${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`.
 
 ## C4: Propose the cut
 
@@ -231,8 +232,9 @@ Print it. `AskUserQuestion`: accept, adjust (loop back with the changes), or sto
 
 One `idea.md` per child at `spec_dd/1. next/<dir>-N-<slug>/`, to the child header and section
 list in the format file, written per the writing standard and the rules in
-`${CLAUDE_PLUGIN_ROOT}/resources/idea_standard.md`. Each is decision-complete: everything settled in C3 that the child needs is
-stated as fact under "What is settled", and nothing claimed by a sibling is claimed again.
+`${CLAUDE_PLUGIN_ROOT}/resources/idea_standard.md`. Each is decision-complete: everything settled in
+C3 that the child needs is stated as fact under "What is settled", and nothing claimed by a sibling
+is claimed again.
 
 With more than three children, fan out: one `sdd:sdd-worker` per child writing
 `.sdd-work/roadmap_idea_<slug>.md`, its prompt carrying the paths of the cut file, the map, the
@@ -258,8 +260,8 @@ Delegate to `sdd:sdd-mechanic`, with the cut file's path:
 
 Run S1 to S6. The new children classify as effort children from their header lines, the parent
 as an effort parent from its blockquote. The parent's old row goes, and so does its bullet in
-"Needs work on main first": the cut was its precursor. Fold the cut file's effort-level sections in as the
-effort's `####` subsections.
+"Needs work on main first": the cut was its precursor. Fold the cut file's effort-level sections in
+as the effort's `####` subsections.
 
 ## C8: Clean up
 

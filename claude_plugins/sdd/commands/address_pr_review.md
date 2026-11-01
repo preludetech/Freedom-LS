@@ -40,7 +40,7 @@ Ignore comments that are purely positive feedback ("what looks good" sections).
 
 ## Step 3: Read the current code
 
-Before making any changes, read the files mentioned in the review comments to understand the current state. Many issues from earlier review rounds may have already been addressed.
+Before making any changes, read the files the review comments mention. Earlier review rounds may already have addressed many issues.
 
 ## Step 4: Address each issue
 
@@ -52,11 +52,11 @@ For each actionable issue that has NOT already been fixed:
 
 ## Step 5: Run the targeted tier
 
-Read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--working-tree`. A failure follows "When a targeted run or full run fails" in the tier definition the helper names. CI re-runs the whole suite on the pushed PR and is the backstop, so the local run is feedback on the review fixes.
+Read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--working-tree`. A failure follows "When a targeted run or full run fails" in the tier definition the helper names. CI re-runs the whole suite on the pushed PR as the backstop, so the local run is feedback on the review fixes.
 
 ## Step 6: Run the pre-commit
 
-Now make sure that the pre-commit passes:
+Make sure the pre-commit passes:
 
 ```
 uv run pre-commit
