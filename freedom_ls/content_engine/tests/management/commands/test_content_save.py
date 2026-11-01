@@ -6,6 +6,7 @@ import io
 import re
 import shutil
 import tempfile
+import uuid
 from datetime import date, time
 from decimal import Decimal
 from pathlib import Path
@@ -40,6 +41,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CourseCategory,
     CoursePart,
+    CoursePartChildDueDate,
     File,
     PriceKind,
     Topic,
@@ -3254,3 +3256,217 @@ def test_two_bad_entries_fail_the_load_with_one_error_listing_both(
 
     assert "activity.md" in str(exc_info.value)
     assert "article.md" in str(exc_info.value)
+
+
+_INTRO_UUID = "20000000-0000-0000-0000-000000000041"
+_SECOND_UUID = "20000000-0000-0000-0000-000000000042"
+_OTHER_COURSE_UUID = "20000000-0000-0000-0000-000000000002"
+_NESTED_PART_UUID = "20000000-0000-0000-0000-000000000043"
+
+
+def _write_nested_course(course_dir: Path, nested: str) -> None:
+    """A course placing one part, whose part.yaml lists two topics and the shared topic
+    one directory up. `nested` is the course entry's children: block, indented to sit
+    under the part's `- path:` line."""
+    shutil.rmtree(course_dir, ignore_errors=True)
+    part_dir = course_dir / "part"
+    part_dir.mkdir(parents=True)
+    for directory, name, topic_uuid in (
+        (part_dir, "intro", _INTRO_UUID),
+        (part_dir, "second", _SECOND_UUID),
+        (course_dir, "shared", _TIMED_TOPIC_UUID),
+    ):
+        (directory / f"{name}.md").write_text(f"""---
+content_type: TOPIC
+title: {name}
+uuid: {topic_uuid}
+---
+
+Body
+""")
+    (part_dir / "part.yaml").write_text(f"""---
+content_type: COURSE_PART
+title: Part
+uuid: {_NESTED_PART_UUID}
+children:
+  - path: intro.md
+  - path: second.md
+  - path: ../shared.md
+""")
+    (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Nested course
+uuid: {COURSE_UUID}
+children:
+  - path: part/part.yaml
+{nested}---
+""")
+
+
+NESTED_BOTH = """    children:
+      - path: intro.md
+        due_date: 2026-05-01
+        due_time: "09:30"
+      - path: second.md
+        no_due_date: true
+"""
+NESTED_INTRO_ONLY = """    children:
+      - path: intro.md
+        due_days_after_registration: 7
+"""
+
+
+def _part_placement() -> ContentCollectionItem:
+    placement: ContentCollectionItem = ContentCollectionItem.objects.get(
+        collection_id=COURSE_UUID, child_id=_NESTED_PART_UUID
+    )
+    return placement
+
+
+def _child_due_dates() -> dict[str, CoursePartChildDueDate]:
+    return {
+        value.collection_item.child.title: value
+        for value in CoursePartChildDueDate.objects.select_related("collection_item")
+    }
+
+
+@pytest.mark.django_db
+def test_a_nested_list_writes_one_row_per_named_child(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+
+        save_content_to_db(course_dir, site.name)
+
+        values = _child_due_dates()
+        assert set(values) == {"intro", "second"}
+        intro = values["intro"]
+        assert intro.part_collection_item == _part_placement()
+        assert intro.site == site
+        assert intro.due_date == date(2026, 5, 1)
+        assert intro.due_time == time(9, 30)
+        assert intro.due_days_after_registration is None
+        assert intro.no_due_date is False
+        assert values["second"].no_due_date is True
+
+
+@pytest.mark.django_db
+def test_a_nested_path_reaching_up_a_directory_names_the_same_child(
+    site, mock_site_context
+):
+    nested = """    children:
+      - path: ../shared.md
+        due_days_after_registration: 2
+"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, nested)
+
+        save_content_to_db(course_dir, site.name)
+
+        (value,) = CoursePartChildDueDate.objects.all()
+        assert value.collection_item.child_id == uuid.UUID(_TIMED_TOPIC_UUID)
+        assert value.collection_item.collection_id == uuid.UUID(_NESTED_PART_UUID)
+
+
+@pytest.mark.django_db
+def test_dropping_one_nested_entry_deletes_that_row_and_keeps_the_other(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+        save_content_to_db(course_dir, site.name)
+
+        _write_nested_course(course_dir, NESTED_INTRO_ONLY)
+        save_content_to_db(course_dir, site.name)
+
+        values = _child_due_dates()
+        assert set(values) == {"intro"}
+        assert values["intro"].due_days_after_registration == 7
+        assert values["intro"].due_date is None
+
+
+@pytest.mark.django_db
+def test_dropping_the_whole_nested_list_deletes_both_rows(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+        save_content_to_db(course_dir, site.name)
+
+        _write_nested_course(course_dir, "")
+        save_content_to_db(course_dir, site.name)
+
+        assert CoursePartChildDueDate.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_resyncing_an_unchanged_nested_list_keeps_the_same_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+        save_content_to_db(course_dir, site.name)
+        before = set(CoursePartChildDueDate.objects.values_list("pk", flat=True))
+
+        save_content_to_db(course_dir, site.name)
+
+        assert (
+            set(CoursePartChildDueDate.objects.values_list("pk", flat=True)) == before
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("nested", "problem"),
+    [
+        (
+            "    children:\n      - path: nowhere.md\n        no_due_date: true\n",
+            "the part has no child at this path",
+        ),
+        (
+            "    children:\n      - path: intro.md\n        no_due_date: true\n"
+            "      - path: intro.md\n        no_due_date: true\n",
+            "this child is named twice",
+        ),
+    ],
+)
+def test_a_broken_nested_list_fails_the_load_naming_the_path(
+    site, mock_site_context, nested: str, problem: str
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, nested)
+
+        with pytest.raises(ValueError, match="Invalid due date placement") as excinfo:
+            save_content_to_db(course_dir, site.name)
+
+    assert problem in str(excinfo.value)
+    assert CoursePartChildDueDate.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_second_course_placing_the_part_without_a_nested_list_gets_no_rows(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "nested"
+        _write_nested_course(course_dir, NESTED_BOTH)
+        (course_dir / "other.md").write_text(f"""---
+content_type: COURSE
+title: Other course
+uuid: {_OTHER_COURSE_UUID}
+children:
+  - path: part/part.yaml
+---
+""")
+
+        save_content_to_db(course_dir, site.name)
+
+        owners = set(
+            CoursePartChildDueDate.objects.values_list(
+                "part_collection_item__collection_id", flat=True
+            )
+        )
+        assert owners == {uuid.UUID(COURSE_UUID)}

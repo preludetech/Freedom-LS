@@ -21,6 +21,7 @@ from freedom_ls.content_engine.schema import (
     DiscountedPrice,
     FixedPrice,
     OnRequestPrice,
+    PartChildDueDate,
     RangePrice,
     Topic,
     slugify,
@@ -672,3 +673,46 @@ def test_a_children_entry_accepts_due_keys() -> None:
 def test_a_children_entry_refuses_overrides() -> None:
     with pytest.raises(ValidationError, match="overrides"):
         Child.model_validate({"path": "intro.md", "overrides": {"title": "x"}})
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"due_date": date(2026, 3, 14)},
+        {"due_days_after_registration": 5},
+        {"due_days_after_registration": 5, "due_time": "09:00"},
+        {"no_due_date": True},
+    ],
+)
+def test_a_part_child_entry_accepts_one_kind_of_value(
+    fields: dict[str, object],
+) -> None:
+    entry = PartChildDueDate.model_validate({"path": "intro.md", **fields})
+
+    assert entry.holds_due_value()
+
+
+def test_a_part_child_entry_with_no_value_is_refused_naming_its_path() -> None:
+    with pytest.raises(
+        ValidationError, match=r"intro\.md: set a due key or no_due_date"
+    ):
+        PartChildDueDate.model_validate({"path": "intro.md"})
+
+
+def test_a_part_child_entry_with_no_due_date_and_a_due_key_is_refused() -> None:
+    with pytest.raises(ValidationError, match="no_due_date takes no due keys"):
+        PartChildDueDate.model_validate(
+            {"path": "intro.md", "no_due_date": True, "due_days_after_registration": 2}
+        )
+
+
+def test_a_children_entry_accepts_a_nested_children_list() -> None:
+    entry = Child.model_validate(
+        {
+            "path": "part/part.yaml",
+            "children": [{"path": "intro.md", "due_days_after_registration": 5}],
+        }
+    )
+
+    assert entry.children is not None
+    assert entry.children[0].due_days_after_registration == 5

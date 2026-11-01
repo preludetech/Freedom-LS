@@ -42,6 +42,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CourseCategory,
     CoursePart,
+    CoursePartChildDueDate,
     File,
     Topic,
 )
@@ -51,9 +52,9 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
     IMAGE_EXTENSIONS,
+    auto_discovered_children,
     content_key,
     get_all_files,
-    is_skipped_path,
     parse_single_file,
     resolve_author_path,
     split_yaml_documents,
@@ -959,12 +960,14 @@ def save_content_to_db(path, site_name):
     for item in grouped.get(SchemaContentType.COURSE, []):
         collection = save_course(item, site, path)
         content_by_path[content_key(item.file_path)] = collection
+        schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
         logger.info(f"Saved Course: {collection.title}")
 
     for item in grouped.get(SchemaContentType.COURSE_PART, []):
         collection = save_course_part(item, site, path)
         content_by_path[content_key(item.file_path)] = collection
+        schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
         logger.info(f"Saved CoursePart: {collection.title}")
 
@@ -1062,6 +1065,8 @@ def save_content_to_db(path, site_name):
     # Process collection children
     written: list[ContentCollectionItem] = []
     created: list[ContentCollectionItem] = []
+    row_by_placement: dict[tuple[uuid.UUID, Path], ContentCollectionItem] = {}
+    part_placements: list[ContentCollectionItem] = []
     for collection, schema_item in collections_data:
         if schema_item.content_type == SchemaContentType.COURSE:
             # A replace, not a merge: a slug dropped from `categories` and
@@ -1079,74 +1084,7 @@ def save_content_to_db(path, site_name):
         children_list: list[tuple[Path, Child | None]] = [
             (resolve_author_path(schema_item.file_path, child.path), child)
             for child in (schema_item.children or [])
-        ]
-
-        # If no children specified, scan the directory for all content files
-        if not children_list:
-            collection_dir = schema_item.file_path.parent
-            # Get all items (both files and directories) in sorted order,
-            # skipping anything starting with _ or . (same rule as get_all_files)
-            all_items = sorted(
-                item for item in collection_dir.iterdir() if not is_skipped_path(item)
-            )
-
-            for item in all_items:
-                if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
-                    # Don't include the collection file itself
-                    if item != schema_item.file_path:
-                        # A loose course_categories.yaml living in a course
-                        # directory belongs at the repo root (validate.py
-                        # rejects it there) -- it is never auto-adopted as a
-                        # child, whatever it is named. An article is loaded in
-                        # its own pass and is never a collection child.
-                        parsed = parse_single_file(item)
-                        if parsed and parsed[0].content_type in (
-                            SchemaContentType.COURSE_CATEGORIES,
-                            SchemaContentType.ARTICLE,
-                        ):
-                            continue
-                        children_list.append((content_key(item), None))
-                elif item.is_dir():
-                    # A subdirectory is either a child collection/form
-                    # (form.md/course.md/part.yaml) or a topic directory
-                    # (content.md). Collection/form roles take priority because a
-                    # COURSE_PART directory also contains topic files.
-                    collection_file = None
-                    topic_file = None
-                    for f in sorted(item.iterdir()):
-                        if is_skipped_path(f):
-                            continue
-                        if not (f.is_file() and f.suffix in [".md", ".yaml", ".yml"]):
-                            continue
-                        parsed = parse_single_file(f)
-                        if not parsed:
-                            continue
-                        content_type = parsed[0].content_type
-                        if content_type in (
-                            SchemaContentType.COURSE_CATEGORIES,
-                            SchemaContentType.ARTICLE,
-                        ):
-                            continue
-                        if content_type in (
-                            SchemaContentType.FORM,
-                            SchemaContentType.COURSE,
-                            SchemaContentType.COURSE_PART,
-                        ):
-                            collection_file = f
-                            break
-                        if (
-                            content_type
-                            in (
-                                SchemaContentType.TOPIC,
-                                SchemaContentType.ACTIVITY,
-                            )
-                            and topic_file is None
-                        ):
-                            topic_file = f
-
-                    main_file = collection_file or topic_file
-                    if main_file:
-                        children_list.append((content_key(main_file), None))
+        ] or [(path, None) for path in auto_discovered_children(schema_item.file_path)]
 
         # Create ContentCollectionItem entries for each child
         for order, (child_path, entry) in enumerate(children_list):
@@ -1173,6 +1111,9 @@ def save_content_to_db(path, site_name):
                     },
                 )
                 written.append(row)
+                row_by_placement[(collection.id, child_path)] = row
+                if isinstance(child_content, CoursePart):
+                    part_placements.append(row)
                 if was_created:
                     created.append(row)
                 logger.info(
@@ -1186,6 +1127,38 @@ def save_content_to_db(path, site_name):
                     f"Collection '{collection.title}' names a child at "
                     f"{child_path} that was not loaded"
                 )
+
+    # A course is written before the parts it places, so the part's own rows exist only
+    # now. Every part placement written by this load is reconciled, including one whose
+    # entry no longer has a nested list: its rows go. The load runs with no request, so
+    # the site goes on every write and delete by hand.
+    kept: list[uuid.UUID] = []
+    for collection, schema_item in collections_data:
+        if schema_item.content_type != SchemaContentType.COURSE:
+            continue
+        for entry in schema_item.children or []:
+            if not entry.children:
+                continue
+            part_path = resolve_author_path(schema_item.file_path, entry.path)
+            part_placement = row_by_placement[(collection.id, part_path)]
+            part_schema = schema_by_path[part_path]
+            for nested in entry.children:
+                child_row = row_by_placement[
+                    (
+                        part_placement.child_id,
+                        resolve_author_path(part_schema.file_path, nested.path),
+                    )
+                ]
+                value, _ = CoursePartChildDueDate.objects.update_or_create(
+                    site=site,
+                    part_collection_item=part_placement,
+                    collection_item=child_row,
+                    defaults=due_date_columns(nested),
+                )
+                kept.append(value.pk)
+    CoursePartChildDueDate.objects.filter(
+        site=site, part_collection_item__in=part_placements
+    ).exclude(pk__in=kept).delete()
 
     collection_items_synced.send(
         sender=ContentCollectionItem, site=site, created=created, written=written

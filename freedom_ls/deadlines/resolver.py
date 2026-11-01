@@ -11,7 +11,12 @@ from zoneinfo import ZoneInfo
 
 from django.contrib.contenttypes.models import ContentType
 
-from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    CoursePartChildDueDate,
+)
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
@@ -155,7 +160,9 @@ def time_limit_value(days: int | None) -> DeadlineValue | None:
     return DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=days)
 
 
-def content_layer_value(row: ContentCollectionItem) -> DeadlineValue | None:
+def content_layer_value(
+    row: ContentCollectionItem | CoursePartChildDueDate,
+) -> DeadlineValue | None:
     """The value a content row's four columns express."""
     return DeadlineValue.from_columns(
         row.due_date, row.due_time, row.due_days_after_registration, row.no_due_date
@@ -163,10 +170,11 @@ def content_layer_value(row: ContentCollectionItem) -> DeadlineValue | None:
 
 
 def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
-    """Three queries whatever the number of courses or rows: the course-level rows, the
-    part-level rows beneath them, and the courses' time limits. Rows whose child is a part are
-    containers, not items, so they carry no value. A part placed in several of the courses
-    has its rows in each of them."""
+    """Four queries whatever the number of courses or rows: the course-level rows, the
+    part-level rows beneath them, the values the courses' part placements give those rows,
+    and the courses' time limits. Rows whose child is a part are containers, not items, so
+    they carry no value. A part placed in several of the courses has its rows in each of
+    them, each with that course's placement value when it sets one."""
     course_type = ContentType.objects.get_for_model(Course)
     part_type = ContentType.objects.get_for_model(CoursePart)
     top_rows = list(
@@ -183,6 +191,21 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
             collection_type=part_type, collection_id__in=courses_of_part
         )
     )
+    # The course each part placement belongs to, so a value keyed by the placement is
+    # credited to that course alone.
+    course_of_part_placement = {
+        row.pk: row.collection_id
+        for row in top_rows
+        if row.child_type_id == part_type.pk
+    }
+    placement_values: dict[tuple[UUID, UUID], DeadlineValue | None] = {}
+    for placement_value in CoursePartChildDueDate.objects.filter(
+        part_collection_item_id__in=course_of_part_placement.keys()
+    ):
+        course_id = course_of_part_placement[placement_value.part_collection_item_id]
+        placement_values[(course_id, placement_value.collection_item_id)] = (
+            content_layer_value(placement_value)
+        )
     time_limit_days = dict(
         Course.objects.filter(pk__in=course_ids).values_list("pk", "time_limit_days")
     )
@@ -203,7 +226,9 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
         )
         value = content_layer_value(row)
         for course_id in placed_in:
-            defaults[course_id].items[row.pk] = value
+            defaults[course_id].items[row.pk] = placement_values.get(
+                (course_id, row.pk), value
+            )
     return defaults
 
 

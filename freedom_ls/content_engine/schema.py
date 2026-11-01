@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -183,8 +183,25 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
         return self
 
 
+class PartChildDueDate(PlacementDueDate):
+    """One child of a placed part, with the deadline this placement gives it. The path is
+    relative to the directory holding the part's part.yaml."""
+
+    @model_validator(mode="after")
+    def _carries_one_value(self) -> Self:
+        if not self.holds_due_value():
+            raise ValueError(
+                f"{self.path}: set a due key or no_due_date; an entry without either does nothing"
+            )
+        return self
+
+
 class Child(PlacementDueDate):
     """A children: entry of a course or part."""
+
+    children: list[PartChildDueDate] | None = Field(
+        None, description="Due dates for the children of a placed part"
+    )
 
 
 class CourseCategoryEntry(BaseModel):

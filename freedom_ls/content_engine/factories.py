@@ -15,6 +15,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CourseCategory,
     CoursePart,
+    CoursePartChildDueDate,
     File,
     Topic,
 )
@@ -116,6 +117,15 @@ class ContentCollectionItemFactory(SiteAwareFactory):
     )
     child_id = factory.LazyAttribute(lambda obj: obj.child_object.pk)
     order = 0
+
+
+class CoursePartChildDueDateFactory(SiteAwareFactory):
+    """Factory for CoursePartChildDueDate; the caller supplies both placements."""
+
+    class Meta:
+        model = CoursePartChildDueDate
+
+    due_days_after_registration = 3
 
 
 class FileFactory(SiteAwareFactory):

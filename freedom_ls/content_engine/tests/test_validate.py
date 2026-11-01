@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from freedom_ls.content_engine.validate import (
+    auto_discovered_children,
     get_all_files,
     parse_single_file,
     validate,
@@ -809,3 +810,180 @@ def test_validate_lists_a_due_date_on_an_activity_entry_in_the_report(tmp_path: 
 
     assert "Invalid due date placement" in str(exc_info.value)
     assert "activity.md" in str(exc_info.value)
+
+
+def _course_placing_part(
+    path: Path, part_path: str, nested: list[str], part_dir_prefix: str = ""
+) -> Path:
+    """A course placing the part at `part_path`, with a nested children: entry per path."""
+    lines = "".join(
+        f"      - path: {entry}\n        due_days_after_registration: 3\n"
+        for entry in nested
+    )
+    return _write_widget_file(
+        path,
+        "---\ncontent_type: COURSE\ntitle: A Course\nchildren:\n"
+        f"  - path: {part_dir_prefix}{part_path}\n    children:\n{lines}---\n",
+    )
+
+
+def _part_listing(path: Path, children: list[str]) -> Path:
+    lines = "".join(f"  - path: {child}\n" for child in children)
+    return _write_widget_file(
+        path,
+        f"---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n{lines}---\n",
+    )
+
+
+def test_a_nested_list_naming_the_parts_children_passes(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md"])
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["intro.md"])
+
+    assert _placement_errors(tmp_path) == []
+
+
+def test_a_nested_list_on_an_auto_discovered_part_passes(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _write_widget_file(
+        tmp_path / "part" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n",
+    )
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["intro.md"])
+
+    assert _placement_errors(tmp_path) == []
+
+
+def test_a_nested_list_in_a_part_yaml_entry_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "intro.md")
+    _write_widget_file(
+        tmp_path / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "  - path: intro.md\n    children:\n"
+        "      - path: intro.md\n        due_days_after_registration: 3\n---\n",
+    )
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "a nested children: list in a part.yaml entry" in errors[0]
+    assert "children[0].children" in errors[0]
+
+
+def test_a_nested_list_on_a_topic_entry_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "topic.md")
+    _course_placing_part(tmp_path / "course.md", "topic.md", ["x.md"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "a nested children: list on a TOPIC placement" in errors[0]
+
+
+def test_a_nested_path_naming_nothing_in_a_listed_part_lists_the_parts_children(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _topic(tmp_path / "part" / "sub" / "deeper.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md", "sub/deeper.md"])
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["missing.md"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "the part has no child at this path" in errors[0]
+    assert "children[0].children[0]" in errors[0]
+    assert "missing.md" in errors[0]
+    assert "intro.md, sub/deeper.md" in errors[0]
+
+
+def test_a_nested_path_naming_nothing_in_an_auto_discovered_part_lists_its_children(
+    tmp_path: Path,
+) -> None:
+    _topic(tmp_path / "part" / "01-intro" / "content.md")
+    _write_widget_file(
+        tmp_path / "part" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n",
+    )
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["missing.md"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "01-intro/content.md" in errors[0]
+
+
+def test_a_nested_path_naming_a_part_fails(tmp_path: Path) -> None:
+    _part_listing(tmp_path / "part" / "part.yaml", ["inner/part.yaml"])
+    _part(tmp_path / "part" / "inner" / "part.yaml")
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["inner/part.yaml"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "this child is a COURSE_PART" in errors[0]
+
+
+def test_a_nested_path_naming_an_activity_fails(tmp_path: Path) -> None:
+    _activity(tmp_path / "part" / "act.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["act.md"])
+    _course_placing_part(tmp_path / "course.md", "part/part.yaml", ["act.md"])
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "this child is a ACTIVITY" in errors[0]
+
+
+def test_a_child_named_twice_in_a_nested_list_fails(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md"])
+    _course_placing_part(
+        tmp_path / "course.md", "part/part.yaml", ["intro.md", "intro.md"]
+    )
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 1
+    assert "this child is named twice" in errors[0]
+    assert "children[0].children[1]" in errors[0]
+
+
+def test_several_nested_rules_in_one_file_give_one_message_each(tmp_path: Path) -> None:
+    _topic(tmp_path / "part" / "intro.md")
+    _activity(tmp_path / "part" / "act.md")
+    _part_listing(tmp_path / "part" / "part.yaml", ["intro.md", "act.md"])
+    _course_placing_part(
+        tmp_path / "course.md",
+        "part/part.yaml",
+        ["missing.md", "act.md", "intro.md", "intro.md"],
+    )
+
+    errors = _placement_errors(tmp_path)
+
+    assert len(errors) == 3
+
+
+def test_auto_discovered_children_skips_what_the_walk_skips(tmp_path: Path) -> None:
+    _topic(tmp_path / "01-topic-dir" / "content.md")
+    _write_widget_file(
+        tmp_path / "02-form-dir" / "form.md",
+        "---\ncontent_type: FORM\ntitle: A Form\nstrategy: UNSCORED\n---\n",
+    )
+    _topic(tmp_path / "03-loose.md")
+    _topic(tmp_path / "_draft" / "content.md")
+    _write_widget_file(
+        tmp_path / "course_categories.yaml",
+        "---\ncontent_type: COURSE_CATEGORIES\ncategories:\n  - slug: a\n    title: A\n---\n",
+    )
+    part_file = _write_widget_file(
+        tmp_path / "part.yaml", "---\ncontent_type: COURSE_PART\ntitle: A Part\n---\n"
+    )
+
+    found = auto_discovered_children(part_file)
+
+    assert found == [
+        (tmp_path / "01-topic-dir" / "content.md").resolve(),
+        (tmp_path / "02-form-dir" / "form.md").resolve(),
+        (tmp_path / "03-loose.md").resolve(),
+    ]

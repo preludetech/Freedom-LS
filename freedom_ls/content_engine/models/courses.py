@@ -593,3 +593,28 @@ class ContentCollectionItem(SiteAwareModel, TimestampedModel):
     def __str__(self):
         collection_title = self.collection.title if self.collection else "Unknown"
         return f"{collection_title} - {self.child} (order={self.order})"
+
+
+class CoursePartChildDueDate(SiteAwareModel):
+    """The due date one part placement gives one child of its part. A part's own rows are
+    shared by every course that places the part, so a value that differs per course lives
+    here, keyed by the course's placement of the part."""
+
+    part_collection_item = models.ForeignKey(
+        ContentCollectionItem, on_delete=models.CASCADE, related_name="child_due_dates"
+    )
+    collection_item = models.ForeignKey(
+        ContentCollectionItem, on_delete=models.CASCADE, related_name="+"
+    )
+    due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
+    due_days_after_registration = models.PositiveIntegerField(null=True, blank=True)
+    no_due_date = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["part_collection_item", "collection_item"],
+                name="cpcdd_one_value_per_child",
+            )
+        ]

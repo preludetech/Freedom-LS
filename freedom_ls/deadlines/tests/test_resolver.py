@@ -11,6 +11,7 @@ from django.conf import settings
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
+    CoursePartChildDueDateFactory,
     CoursePartFactory,
     TopicFactory,
 )
@@ -244,10 +245,34 @@ def test_a_none_kind_override_wins_and_removes_the_deadline():
 
 
 def _course_with_topics(count: int) -> Course:
+    """A course placing one part that holds `count` topics, the first of which the course's
+    placement of the part gives its own due date."""
     course: Course = CourseFactory()
+    part = CoursePartFactory()
+    part_placement = course.items.create(child=part, order=0)
     for order in range(count):
-        course.items.create(child=TopicFactory(), order=order)
+        row = part.items.create(child=TopicFactory(), order=order)
+        if order == 0:
+            CoursePartChildDueDateFactory(
+                part_collection_item=part_placement, collection_item=row
+            )
     return course
+
+
+def _two_courses_placing_one_part(
+    **part_row_columns: object,
+) -> tuple[Course, Course, ContentCollectionItem, ContentCollectionItem]:
+    """Two courses placing one part holding one topic row. Returns both courses, the
+    first course's placement of the part and the topic row."""
+    part = CoursePartFactory()
+    row: ContentCollectionItem = part.items.create(
+        child=TopicFactory(), order=0, **part_row_columns
+    )
+    course_a: Course = CourseFactory()
+    course_b: Course = CourseFactory()
+    placement_a: ContentCollectionItem = course_a.items.create(child=part, order=0)
+    course_b.items.create(child=part, order=0)
+    return course_a, course_b, placement_a, row
 
 
 @pytest.mark.django_db
@@ -292,6 +317,120 @@ def test_a_part_placed_in_two_courses_resolves_its_rows_in_both(mock_site_contex
 
     assert deadlines[record_a.pk].items[row.pk].due_at is not None
     assert deadlines[record_b.pk].items[row.pk].due_at is not None
+
+
+@pytest.mark.django_db
+def test_a_part_placement_value_applies_in_its_own_course_only(mock_site_context):
+    course_a, course_b, placement_a, row = _two_courses_placing_one_part()
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_a,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+    user = UserFactory()
+    record_a = course_progress_record(course_a, user)
+    record_b = course_progress_record(course_b, user)
+
+    deadlines = course_deadlines_for([record_a, record_b])
+
+    assert deadlines[record_a.pk].items[row.pk].due_at is not None
+    assert deadlines[record_b.pk].items[row.pk].due_at is None
+
+
+@pytest.mark.django_db
+def test_a_part_placement_value_beats_the_part_row_value(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    course_a, course_b, placement_a, row = _two_courses_placing_one_part(
+        due_days_after_registration=14
+    )
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_a,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+    registered = datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    user = UserFactory()
+    record_a = course_progress_record(course_a, user, created_at=registered)
+    record_b = course_progress_record(course_b, user, created_at=registered)
+
+    deadlines = course_deadlines_for([record_a, record_b])
+
+    assert deadlines[record_a.pk].items[row.pk].due_at == datetime(
+        2026, 3, 4, 23, 59, 59, 999999, tzinfo=JOHANNESBURG
+    )
+    assert deadlines[record_b.pk].items[row.pk].due_at == datetime(
+        2026, 3, 15, 23, 59, 59, 999999, tzinfo=JOHANNESBURG
+    )
+
+
+@pytest.mark.django_db
+def test_no_due_date_on_a_part_placement_removes_the_part_row_deadline(
+    mock_site_context,
+):
+    course_a, course_b, placement_a, row = _two_courses_placing_one_part(
+        due_days_after_registration=14
+    )
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_a,
+        collection_item=row,
+        due_days_after_registration=None,
+        no_due_date=True,
+    )
+    user = UserFactory()
+    record_a = course_progress_record(course_a, user)
+    record_b = course_progress_record(course_b, user)
+
+    deadlines = course_deadlines_for([record_a, record_b])
+
+    assert deadlines[record_a.pk].items[row.pk].due_at is None
+    assert deadlines[record_b.pk].items[row.pk].due_at is not None
+
+
+@pytest.mark.django_db
+def test_a_cohort_override_beats_a_part_placement_value(mock_site_context):
+    part = CoursePartFactory()
+    row = part.items.create(child=TopicFactory(), order=0)
+    course = CourseFactory()
+    placement = course.items.create(child=part, order=0)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        no_due_date=True,
+        due_days_after_registration=None,
+    )
+    cohort_record, _ = _cohort_and_individual_records(course)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=cohort_record.cohort_registration,
+        collection_item=row,
+        due_days_after_registration=9,
+    )
+
+    resolved = course_deadlines(cohort_record).items[row.pk]
+
+    assert resolved.source == DeadlineSource.COHORT_REGISTRATION
+    assert resolved.due_at is not None
+
+
+@pytest.mark.django_db
+def test_a_part_placement_offset_ignores_the_part_rows_time_of_day(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    course_a, _, placement_a, row = _two_courses_placing_one_part(
+        due_days_after_registration=14, due_time=time(17, 0)
+    )
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_a,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+    record = course_progress_record(
+        course_a, UserFactory(), created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+
+    resolved = course_deadlines(record).items[row.pk]
+
+    assert resolved.due_at == datetime(
+        2026, 3, 4, 23, 59, 59, 999999, tzinfo=JOHANNESBURG
+    )
 
 
 @pytest.mark.django_db
@@ -410,9 +549,9 @@ def test_course_deadlines_cost_the_same_on_a_small_and_a_large_course(
     large = course_progress_record(_course_with_topics(60), UserFactory())
     _warm_process_caches(small)
 
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(7):
         assert len(course_deadlines(small).items) == 6
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(7):
         assert len(course_deadlines(large).items) == 60
 
 
@@ -425,7 +564,7 @@ def test_course_deadlines_for_many_records_costs_the_same_as_for_one(
     ]
     _warm_process_caches(records[0])
 
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(7):
         result = course_deadlines_for(records)
 
     assert set(result) == {record.pk for record in records}
@@ -611,7 +750,7 @@ def test_override_rows_do_not_change_the_query_count(
 ):
     record = record_with_five_overridden_items
 
-    with django_assert_max_num_queries(6):
+    with django_assert_max_num_queries(7):
         result = course_deadlines(record)
 
     assert len(result.items) == 5

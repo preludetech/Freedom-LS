@@ -1528,7 +1528,7 @@ def test_player_page_query_count_does_not_grow_with_items(
     above this ceiling instead.
 
     Shares the ceiling with the test above, cold number and all -- see its
-    docstring for why the budget is the cold 46 rather than the warm 43.
+    docstring for why the budget is the cold 49 rather than the warm figure.
     """
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=big_course)
@@ -1538,7 +1538,7 @@ def test_player_page_query_count_does_not_grow_with_items(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "big-course", "index": 1},
     )
-    with django_assert_max_num_queries(46):
+    with django_assert_max_num_queries(49):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -4071,7 +4071,7 @@ def test_player_page_query_count_with_deadlines_does_not_grow_with_items(
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
-    with django_assert_max_num_queries(46):
+    with django_assert_max_num_queries(49):
         response = client.get(url)
 
     assert response.status_code == 200
