@@ -1,12 +1,11 @@
 # fls-dev (`fls-dev`) plugin
 
 FreedomLS product-specific development tooling for Claude Code. Everything here is tied to how *this*
-product works — multi-tenant / site-aware conventions, the custom user model, registration, markdown
+product works: multi-tenant / site-aware conventions, the custom user model, registration, markdown
 content, admin, icons, brand, the FLS-specific SDD steps, and the downstream-distribution machinery.
-Portable stack conventions live in the separate `ds` (django-stack) plugin, and the generic SDD
-workflow lives in `sdd`. Where a portable skill carried an FLS-specific layer, `fls-dev` keeps a **thin
-overlay skill** that references the `ds` (or `sdd`) skill and adds only the FLS delta — no duplicated
-content.
+Portable stack conventions live in the `ds` (django-stack) plugin, and the generic SDD workflow lives
+in `sdd`. Where a portable skill carried an FLS-specific layer, `fls-dev` keeps a **thin overlay
+skill** that references the `ds` (or `sdd`) skill and adds only the FLS delta.
 
 Manifest name: `fls-dev`. Namespace: `/fls-dev:*`, `Skill(fls-dev:*)`. Config dir: `.claude/fls-dev/`.
 
@@ -15,10 +14,10 @@ Manifest name: `fls-dev`. Namespace: `/fls-dev:*`, `Skill(fls-dev:*)`. Config di
 
 ## What's inside (counted from disk)
 
-### Skills (13)
+### Skills (16)
 
-FLS-specific, moved whole: `icon-usage` (+2 resources), `markdown-content`, `multi-tenant`,
-`registration`.
+FLS-specific: `domain-glossary`, `file-storage`, `icon-usage` (+2 resources), `markdown-content`,
+`multi-tenant`, `notifications`, `registration`.
 
 Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-interface`, `alpine-js`,
 `app-settings`, `frontend-styling`, `playwright-tests`, `template`, `testing`, `use-playwright`
@@ -35,19 +34,18 @@ Top level: `init`, `update_claude_plugin_fls_content`, `update_concrete_projects
 The three `update_*` commands (`update_upgrade_notes`, `update_product_docs`,
 `update_claude_plugin_fls_content`) run as hooks of `/sdd:document`: `## Documentation Hooks` in
 `.claude/sdd/config.md` names them as skills (`fls-dev:update_upgrade_notes`, …), after
-`ds:app_map`. They stay runnable alone. They produce the upgrade notes for downstream projects, the product docs
-under `docs/product/`, and the sync of the course-author plugin.
+`ds:app_map`. They stay runnable alone. They produce the upgrade notes for downstream projects, the
+product docs under `docs/product/`, and the sync of the course-author plugin.
 
 `/fls-dev:init` wires up only the `fls-dev` slice (its `enabledPlugins` key, its permissions, the
 `.claude/fls-dev/` config dir, and its dev/DB wrapper scripts) and detect-and-skips the `ds`-owned
 shared artifacts (root `claude.sh`, `SessionStart` hook, `.gitignore` `settings.local.json` line). It
-also migrates a legacy `.claude/fls/` config dir **per file** — moving what has no counterpart,
-deleting only byte-identical duplicates, and preserving both sides of any conflict as a `.legacy`
+also migrates a legacy `.claude/fls/` config dir **per file**: it moves what has no counterpart,
+deletes only byte-identical duplicates, and preserves both sides of any conflict as a `.legacy`
 copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocated to
 `.claude/ds/scripts/` without editing their contents, and `FLS_PATH` → `PLUGINS_ROOT` plus the
-`fls`-era header comments are rewritten in this plugin's own wrappers. `/ds:init` must run first —
-preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
-commands spawn `sdd`-plugin agents.
+`fls`-era header comments are rewritten in this plugin's own wrappers. `/ds:init` must run first;
+preflight enforces it, and nothing is written until every check passes.
 
 ### Scripts (7)
 
@@ -71,15 +69,16 @@ FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`, `concrete_s
 Plan review briefs, reached through `## Plan Review Hooks`: `plan_review_structure`,
 `plan_review_fls_threats`.
 FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
-`admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`, `qa_data_helper` (the conventions `sdd:qa-data-helper` reads),
-`templates_and_cotton`, `testing`, `playwright-testing`.
+`admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`,
+`qa_data_helper` (the conventions `sdd:qa-data-helper` reads), `templates_and_cotton`, `testing`,
+`playwright-testing`.
 `launcher_editing` and `wrapper_script_migration` (copies of the procedures `/fls-dev:init` follows).
-`agent_memory_guidelines` (a copy — the canonical home is the `sdd` plugin; duplicated here because
+`agent_memory_guidelines` (a copy; the canonical home is the `sdd` plugin, duplicated here because
 `${CLAUDE_PLUGIN_ROOT}` is per-plugin).
 
 ### Templates
 
-`fls.md`, `fls.local.md` (config templates `/fls-dev:init` copies into `.claude/fls-dev/`), and
+`config.md`, `config.local.md` (config templates `/fls-dev:init` copies into `.claude/fls-dev/`), and
 `wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh`,
 `rebuild_after_rebase.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
 `ds`-owned templates.

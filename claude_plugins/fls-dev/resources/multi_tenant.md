@@ -1,6 +1,6 @@
 # Multi-Tenancy (Site Isolation)
 
-Uses Django Sites framework for automatic site isolation.
+The Django Sites framework isolates sites automatically.
 
 ## Core Components
 
@@ -14,7 +14,7 @@ Uses Django Sites framework for automatic site isolation.
 2. On save, models auto-populate `site_id` from thread-local request
 3. Site determined by request domain
 
-**Result:** All queries automatically scope to current site.
+**Result:** every query scopes to the current site.
 
 ## Key Files
 

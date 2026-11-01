@@ -8,7 +8,7 @@ Create data with factory_boy factories. `claude_plugins/fls-dev/resources/factor
 
 ## The `qa_helpers` app
 
-Scripts, management commands and helper utilities for QA data go in the `qa_helpers` app, with commands in `qa_helpers/management/commands/`. A `qa_helpers` command carries no test unless it deletes data. A test for a deleting command carries the `dev_tooling` marker.
+QA data scripts, management commands and helpers go in the `qa_helpers` app, commands in `qa_helpers/management/commands/`. A `qa_helpers` command carries no test unless it deletes data. A test for a deleting command carries the `dev_tooling` marker.
 
 ## Site-aware data
 

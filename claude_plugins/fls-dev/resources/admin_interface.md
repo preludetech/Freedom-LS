@@ -1,6 +1,6 @@
 # Admin interface — FreedomLS addendum
 
-This addendum extends the generic `ds` admin resources (pulled in by `Skill(ds:admin-interface)`). It adds the mandatory `SiteAwareModelAdmin` base and site-field handling. FLS configures `Admin theme: unfold` and `Object permissions (django-guardian): enabled` in `.claude/ds/config.md`, so the `ds` files that apply here are **`admin_unfold.md`** and **`admin_guardian.md`** — read those first (not `admin_standard.md`).
+This addendum extends the `ds` admin resources (pulled in by `Skill(ds:admin-interface)`) with the mandatory `SiteAwareModelAdmin` base and site-field handling. `.claude/ds/config.md` sets `Admin theme: unfold` and `Object permissions (django-guardian): enabled`, so read **`admin_unfold.md`** and **`admin_guardian.md`** first, not `admin_standard.md`.
 
 ## Site-aware models
 
@@ -48,8 +48,7 @@ class TopicAdmin(SiteAwareExportModelAdmin):
     resource_classes = [TopicResource]
 ```
 
-**What it gives:** an "Export selected ..." action and an "Export" changelist button, both
-downloading CSV immediately and gated on the model's view permission. The shared
+**What it gives:** an "Export selected ..." action and an "Export" changelist button, both downloading CSV immediately and gated on the model's view permission. The shared
 `FormulaSafeCSV` format escapes spreadsheet-formula triggers and writes the UTF-8 BOM; the resource
 base excludes `site` and renders dates as ISO 8601. Foreign keys export as the pk unless a `Field`
 with a `ForeignKeyWidget` picks a readable column, as above.
@@ -70,7 +69,7 @@ class CohortAdmin(GuardedModelAdmin):
     exclude = ["site"]  # Required for site-aware models
 ```
 
-Likewise, any admin that does not subclass `SiteAwareModelAdmin` needs `exclude = ["site"]` for a site-aware model. FLS example admin classes (e.g. `CohortCourseRegistrationAdmin(SiteAwareModelAdmin)` with custom display methods) subclass `SiteAwareModelAdmin`.
+Any admin that does not subclass `SiteAwareModelAdmin` needs `exclude = ["site"]` for a site-aware model.
 
 ## FLS key rules
 

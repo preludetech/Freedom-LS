@@ -1,6 +1,6 @@
 # factory_boy — FreedomLS addendum
 
-This addendum extends the generic `ds` `factory_boy.md` resource (pulled in by `Skill(ds:testing)`). It adds the mandatory `SiteAwareFactory` base, FLS model examples, and `mock_site_context` usage. Read the `ds` resource first for the generic factory_boy technique.
+This addendum extends the `ds` `factory_boy.md` resource (pulled in by `Skill(ds:testing)`) with the mandatory `SiteAwareFactory` base, FLS model examples, and `mock_site_context` usage. Read the `ds` resource first.
 
 ## Convention path
 
@@ -20,7 +20,7 @@ class MyModelFactory(SiteAwareFactory):
     name = factory.Sequence(lambda n: f"Item {n}")
 ```
 
-When creating a new factory for a site-aware model, import `SiteAwareFactory` from `freedom_ls.site_aware_models.factories` and subclass it (not `factory.django.DjangoModelFactory` directly).
+A new factory for a site-aware model subclasses `SiteAwareFactory`, never `factory.django.DjangoModelFactory` directly.
 
 ## FLS model examples
 

@@ -1,12 +1,12 @@
 # Playwright testing — FreedomLS addendum
 
-This addendum extends the generic `ds` `playwright-testing.md` resource (pulled in by `Skill(ds:playwright-tests)`). Most of the resource is generic; this file restores the FLS-specific marker framing. Read the `ds` resource first.
+This addendum extends the `ds` `playwright-testing.md` resource (pulled in by `Skill(ds:playwright-tests)`) with the FLS marker framing. Read the `ds` resource first.
 
 ## Marker taxonomy / portability
 
 The `playwright` marker sits alongside FLS's `fls_internal`, `ci_only` and `weasyprint` markers (see `Skill(fls-dev:testing)` for the full taxonomy). A concrete downstream project excludes the browser set, the FLS-internal set, the slow set, the WeasyPrint set and the developer-tooling set. The command is in the marker section of `Skill(fls-dev:testing)`.
 
-FLS's own `uv run pytest` exercises the `playwright` and `fls_internal` tests against FLS's own settings, since that is FLS regression testing.
+FLS's own `uv run pytest` runs the `playwright` and `fls_internal` tests against FLS's own settings, as FLS regression testing.
 
 ## Cross-references and reverse names
 

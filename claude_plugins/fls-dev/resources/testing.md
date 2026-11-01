@@ -1,6 +1,6 @@
 # Testing — FreedomLS addendum
 
-This addendum extends the generic `ds` testing resource (pulled in by `Skill(ds:testing)`). It adds the FreedomLS site-aware, marker-taxonomy, and de-branding material. Read the `ds` resource first for the generic patterns; this file adds only the FLS delta. See also `Skill(fls-dev:testing)`.
+This addendum extends the `ds` testing resource (pulled in by `Skill(ds:testing)`) with the FreedomLS site-aware, marker-taxonomy, and de-branding material. Read the `ds` resource first. See also `Skill(fls-dev:testing)`.
 
 ## Setup
 
@@ -16,8 +16,6 @@ def test_creation(mock_site_context):
     instance = MyModelFactory()
     assert instance.site is not None
 ```
-
-`mock_site_context` handles the site automatically — don't set it by hand.
 
 ## FLS module/model examples
 

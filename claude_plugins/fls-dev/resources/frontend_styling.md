@@ -2,7 +2,7 @@
 
 ## Writing or changing a theme
 
-A theme is `freedom_ls/themes/<slug>/static/themes/<slug>/theme.css`. It holds only the tokens it overrides, and everything else falls through to `default`. The group comments in `default/theme.css` say which token each change goes through: region colours, hover, shape and type, and course cards. Pick your overrides from those comments.
+A theme is `freedom_ls/themes/<slug>/static/themes/<slug>/theme.css`. It holds only the tokens it overrides; everything else falls through to `default`. The group comments in `default/theme.css` name the token each change goes through (region colours, hover, shape and type, course cards). Pick overrides from those comments.
 
 You're done when `FLS_THEME=<slug> npm run tailwind_build` builds cleanly. The build regenerates `tailwind.active_theme.css` for that slug.
 

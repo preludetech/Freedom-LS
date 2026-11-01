@@ -26,7 +26,7 @@ html = topic.rendered_content()
 
 **Location:** `freedom_ls/content_engine/templates/cotton/`
 
-Available: `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, and more.
+Includes `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`.
 
 **Usage:**
 ```markdown

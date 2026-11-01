@@ -2,7 +2,7 @@
 
 ## Overview
 
-FLS provides professional branded HTML+text multipart emails for all django-allauth email flows. Emails use table-based layouts with CSS inlining for maximum email client compatibility. Brand colors are automatically pulled from the Tailwind CSS configuration.
+FLS sends branded HTML+text multipart emails for every django-allauth email flow. Emails use table-based layouts with CSS inlining for email client compatibility. Brand colors come from the active theme's `theme.css`.
 
 ## Base Email Template Structure
 
@@ -43,13 +43,9 @@ To override, create a file at the same path in your project's templates director
 
 ## Context Variables
 
-All of the variables below are injected per-message by `AccountAdapter.send_mail`
-in `freedom_ls/accounts/allauth_account_adapter.py` — they are built only when an
-email is sent, not on every web request.
+`AccountAdapter.send_mail` in `freedom_ls/accounts/allauth_account_adapter.py` injects these variables per message, when an email is sent, not on every web request.
 
-The theme values come from `asdict(get_email_theme())` (see *How Brand Colors
-Work*); their template names match the `EmailTheme` fields, and they are always
-present:
+The theme values come from `asdict(get_email_theme())` (see *How Brand Colors Work*). Their template names match the `EmailTheme` fields and they are always present:
 
 | Variable | `EmailTheme` field / role | Description |
 |---|---|---|
@@ -65,8 +61,7 @@ present:
 | `font_family` | `font_family` | Email-safe font stack derived from the theme |
 | `button_radius` | `button_radius` | CTA button corner radius (from `--fls-radius-md`) |
 
-The branding/site variables below may be `None` (templates reference them with a
-`|default:` fallback or an `{% if %}` guard):
+The branding/site variables below may be `None`; templates reference them with a `|default:` fallback or an `{% if %}` guard:
 
 | Variable | Source | Description |
 |---|---|---|
@@ -99,37 +94,22 @@ Each type has three files: `*_subject.txt`, `*_message.html`, `*_message.txt`.
 
 ## Configuration
 
-Email colours, font, and button radius are **not** settings — they are derived
-from the active theme's `theme.css` lazily and cached by `get_email_theme()`
-(see *How Brand Colors Work*). The genuine settings in `config/settings_base.py`
-are:
+Email colours, font, and button radius are **not** settings. `get_email_theme()` derives them lazily from the active theme's `theme.css` and caches them (see *How Brand Colors Work*). The settings in `config/settings_base.py` are:
 
 | Setting | Default | Description |
 |---|---|---|
 | `EMAIL_LOGO_STATIC_PATH` | `None` | Path to email logo in static files; falls back to `HEADER_LOGO_STATIC_PATH` when unset |
 | `ACCOUNT_EMAIL_NOTIFICATIONS` | `True` | Enable allauth notification emails (password changed, etc.) |
 
-The theme selection that drives the derivation (`FLS_THEME`, `RESOLVED_THEME_DIR`)
-also lives in settings; the path to the active theme's `theme.css` is derived
-from them by `active_theme_css_path()` (paired with `default_theme_css_path()`).
+The theme selection (`FLS_THEME`, `RESOLVED_THEME_DIR`) also lives in settings; `active_theme_css_path()` (paired with `default_theme_css_path()`) derives the active `theme.css` path from them.
 
 ## How CSS Inlining Works
 
-The `base_email.html` template wraps its entire content in `{% premailer %}...{% endpremailer %}` (from `django-premailer`). This converts the `<style>` block into inline `style` attributes on each HTML element at render time. Since this is in the base template, all child templates get CSS inlining automatically.
+The `base_email.html` template wraps its entire content in `{% premailer %}...{% endpremailer %}` (from `django-premailer`). This converts the `<style>` block into inline `style` attributes at render time. Every child template inherits it.
 
 ## How Brand Colors Work
 
-`get_email_theme()` in `freedom_ls/accounts/email_utils.py` reads CSS custom
-properties the first time an email is rendered, and caches the resolved
-`EmailTheme` for the process lifetime (so a future bulk send resolves it once).
-The **default theme's `theme.css` is the single source of default token values**:
-it is parsed as a baseline, then the active theme's tokens are layered on top
-(active wins per-token), so any token the active theme omits falls through to the
-default — there are no hardcoded colour values. `parse_tailwind_tokens` captures
-every `--<name>` token as a raw string; `resolve_color_token` then resolves each
-colour role to an opaque `#rrggbb` value via `resolve_css_color` (backed by
-`coloraide`), which understands hex, `rgb()`, `hsl()`, `oklch()`, `oklab()`,
-`lch()`, `lab()`, named colours, `var()` references, and `color-mix()`:
+`get_email_theme()` in `freedom_ls/accounts/email_utils.py` reads CSS custom properties the first time an email is rendered and caches the resolved `EmailTheme` for the process lifetime. The **default theme's `theme.css` is the single source of default token values**: it is parsed as a baseline, then the active theme's tokens are layered on top (active wins per token), so a token the active theme omits falls through to the default. No colour values are hardcoded. `parse_tailwind_tokens` captures every `--<name>` token as a raw string; `resolve_color_token` then resolves each colour role to an opaque `#rrggbb` value via `resolve_css_color` (backed by `coloraide`), which understands hex, `rgb()`, `hsl()`, `oklch()`, `oklab()`, `lch()`, `lab()`, named colours, `var()` references, and `color-mix()`:
 
 ```python
 theme = get_email_theme()          # cached EmailTheme
@@ -137,16 +117,7 @@ theme.color_primary                 # e.g. "#2b6cb0"
 theme.color_header                  # header band (own role; white under first_class)
 ```
 
-If a required token cannot be resolved even from the default theme, the resolver
-**fails loud** — `resolve_color_token`/`extract_font_family`/`extract_button_radius`
-raise `EmailThemeError` (or `ColorResolveError`) rather than silently rendering a
-wrong colour. The colour roles live in a single source of truth,
-`EMAIL_COLOR_ROLES`, shared by the resolver and the `check_email_colour_tokens`
-system check, which re-resolves the same merged token map and reports any
-unresolvable token as an **Error** at deploy/startup (before a send can raise).
-Changing a token in the active theme's `theme.css` updates email colours on the
-next server restart. Tests that override the theme must call
-`get_email_theme.cache_clear()`.
+If a required token cannot be resolved even from the default theme, the resolver **fails loud**: `resolve_color_token`/`extract_font_family`/`extract_button_radius` raise `EmailThemeError` (or `ColorResolveError`) rather than render a wrong colour. The colour roles live in `EMAIL_COLOR_ROLES`, shared by the resolver and the `check_email_colour_tokens` system check, which re-resolves the same merged token map and reports any unresolvable token as an **Error** at deploy/startup, before a send can raise. Changing a token in the active theme's `theme.css` updates email colours on the next server restart. Tests that override the theme must call `get_email_theme.cache_clear()`.
 
 ## Previewing Emails in Development
 
@@ -159,10 +130,7 @@ EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 ```
 
-Dev's task backend is the inline one, so the queued send runs within the same request
-and Mailpit receives the mail immediately — the queue costs you nothing here, it just
-means development exercises the serialise/rebuild round-trip that a deployment which
-turns queueing on depends on. Production sends in the request unless it opts in.
+Dev's task backend is the inline one, so the queued send runs within the same request and Mailpit receives the mail immediately. Development still exercises the serialise/rebuild round-trip that a deployment with queueing on depends on. Production sends in the request unless it opts in.
 
 Start Mailpit via the `dev_db` composition (`cd dev_db && docker compose up`), trigger an email flow (signup, password reset, etc.), then open `http://localhost:8025` to view it.
 
