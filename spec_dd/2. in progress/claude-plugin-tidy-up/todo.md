@@ -30,3 +30,4 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
+- [ ] (user) Tighten implement_plan.md, plan_from_spec.md and pre_step_rebase.md once test-organisation-and-hygene-2-sdd-review-and-boy-scout lands on main
