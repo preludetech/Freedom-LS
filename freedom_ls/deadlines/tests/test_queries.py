@@ -4,7 +4,13 @@ from datetime import date, time
 
 import pytest
 
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.factories import (
+    CourseFactory,
+    CoursePartChildDueDateFactory,
+    CoursePartFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
@@ -19,6 +25,7 @@ from freedom_ls.deadlines.queries import (
     canonical_beneath,
     content_default_for,
     layers_beneath,
+    placement_values_for,
 )
 from freedom_ls.deadlines.resolver import DeadlineLayer, DeadlineSource, DeadlineValue
 from freedom_ls.learner_management.factories import (
@@ -211,3 +218,120 @@ def test_canonical_beneath_a_learner_row_is_the_cohort_value_when_there_is_one(
     )
 
     assert canonical_beneath(override) == "relative:5"
+
+
+def _part_row_override(
+    **part_row_columns: object,
+) -> tuple[CohortDeadlineOverride, ContentCollectionItem, ContentCollectionItem]:
+    """A cohort row on a topic row inside a part the course places. Returns the override,
+    the course's placement of the part and the topic row."""
+    course: Course = CourseFactory()
+    part = CoursePartFactory()
+    placement = course.items.create(child=part, order=0)
+    row = part.items.create(child=TopicFactory(), order=0, **part_row_columns)
+    override: CohortDeadlineOverride = CohortDeadlineOverrideFactory(
+        cohort_registration=CohortCourseRegistrationFactory(course=course),
+        collection_item=row,
+    )
+    return override, placement, row
+
+
+@pytest.mark.django_db
+def test_content_default_for_a_part_row_is_the_placement_value_when_the_course_sets_one(
+    mock_site_context,
+):
+    override, placement, row = _part_row_override(due_days_after_registration=14)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+
+    assert content_default_for(override) == DeadlineValue(
+        DeadlineKind.RELATIVE, due_days_after_registration=3
+    )
+
+
+@pytest.mark.django_db
+def test_content_default_for_a_part_row_is_its_own_value_without_a_placement_value(
+    mock_site_context,
+):
+    override, _, _ = _part_row_override(due_days_after_registration=14)
+
+    assert content_default_for(override) == DeadlineValue(
+        DeadlineKind.RELATIVE, due_days_after_registration=14
+    )
+
+
+@pytest.mark.django_db
+def test_content_default_for_a_no_due_date_placement_value_is_the_none_value(
+    mock_site_context,
+):
+    override, placement, row = _part_row_override(due_days_after_registration=14)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        due_days_after_registration=None,
+        no_due_date=True,
+    )
+
+    assert content_default_for(override) == DeadlineValue(DeadlineKind.NONE)
+
+
+@pytest.mark.django_db
+def test_content_default_for_uses_a_given_mapping_without_querying(
+    mock_site_context, django_assert_max_num_queries
+):
+    override, _, row = _part_row_override(due_days_after_registration=14)
+    # Load what the row reads before counting, so only the default's own reads are counted.
+    override.collection_item  # noqa: B018
+    override.course  # noqa: B018
+    given = {
+        row.pk: DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=9)
+    }
+
+    with django_assert_max_num_queries(0):
+        value = content_default_for(override, given)
+
+    assert value == given[row.pk]
+
+
+@pytest.mark.django_db
+def test_canonical_beneath_a_part_row_reads_the_placement_value(mock_site_context):
+    override, placement, row = _part_row_override(due_days_after_registration=14)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+
+    assert canonical_beneath(override) == "relative:3"
+    assert canonical_beneath(
+        override, placement_values=placement_values_for(override.course)
+    ) == ("relative:3")
+
+
+@pytest.mark.django_db
+def test_placement_values_for_keys_by_child_row_and_ignores_another_courses_placement(
+    mock_site_context,
+):
+    course_a: Course = CourseFactory()
+    course_b: Course = CourseFactory()
+    part = CoursePartFactory()
+    placement_a = course_a.items.create(child=part, order=0)
+    placement_b = course_b.items.create(child=part, order=0)
+    row = part.items.create(child=TopicFactory(), order=0)
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_a,
+        collection_item=row,
+        due_days_after_registration=3,
+    )
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement_b,
+        collection_item=row,
+        due_days_after_registration=8,
+    )
+
+    assert placement_values_for(course_a) == {
+        row.pk: DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=3)
+    }

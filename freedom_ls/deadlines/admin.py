@@ -35,7 +35,12 @@ from freedom_ls.deadlines.models import (
     OrganisationDeadlineConfig,
     SiteDeadlineConfig,
 )
-from freedom_ls.deadlines.queries import canonical_beneath, content_default_for
+from freedom_ls.deadlines.queries import (
+    PlacementValues,
+    canonical_beneath,
+    content_default_for,
+    placement_values_for,
+)
 from freedom_ls.deadlines.resolver import (
     DeadlineSource,
     DeadlineValue,
@@ -190,6 +195,9 @@ class DeadlineOverrideInline(TabularInline):
     # The cohort rows beneath this page's rows, fetched once per request by the inline whose
     # rows have any; None means each row reads its own.
     cohort_rows_beneath: LayerRows | None = None
+    # The values the parent's course gives its parts' children, fetched once per request;
+    # None means each row reads its own.
+    placement_values: PlacementValues | None = None
 
     def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineOverride]:
         rows: models.QuerySet[DeadlineOverride] = super().get_queryset(request)
@@ -224,6 +232,10 @@ class DeadlineOverrideInline(TabularInline):
             type[DeadlineOverrideFormSet], super().get_formset(request, obj, **kwargs)
         )
         formset.set_by = cast(User, request.user)
+        course = getattr(obj, "course", None)
+        self.placement_values = (
+            placement_values_for(course) if course is not None else {}
+        )
         return formset
 
     def formfield_for_foreignkey(
@@ -273,7 +285,7 @@ class DeadlineOverrideInline(TabularInline):
     def content_default(self, obj: DeadlineOverride) -> str:
         if obj._state.adding:
             return ""
-        return _value_text(content_default_for(obj), obj)
+        return _value_text(content_default_for(obj, self.placement_values), obj)
 
     @admin.display(description="Effective")
     def effective_value(self, obj: DeadlineOverride) -> str:
@@ -287,7 +299,9 @@ class DeadlineOverrideInline(TabularInline):
     def default_changed_note(self, obj: DeadlineOverride) -> str:
         if obj._state.adding:
             return ""
-        beneath = canonical_beneath(obj, self.cohort_rows_beneath)
+        beneath = canonical_beneath(
+            obj, self.cohort_rows_beneath, self.placement_values
+        )
         if obj.replaced_value == beneath:
             return ""
         return (

@@ -9,7 +9,12 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.factories import (
+    CourseFactory,
+    CoursePartChildDueDateFactory,
+    CoursePartFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.admin import TIME_LIMIT_HELP
@@ -350,6 +355,70 @@ def test_the_note_appears_after_the_content_default_changes(
     ) in body
 
 
+def _registration_with_part_row(
+    placement_days: int,
+) -> tuple[CohortCourseRegistration, ContentCollectionItem, ContentCollectionItem]:
+    """A registration whose course places a part holding one topic row with a file value of
+    14 days. Returns the registration, the part placement and the topic row."""
+    course: Course = CourseFactory()
+    part = CoursePartFactory()
+    placement = course.items.create(child=part, order=0)
+    row = part.items.create(
+        child=TopicFactory(), order=0, due_days_after_registration=14
+    )
+    CoursePartChildDueDateFactory(
+        part_collection_item=placement,
+        collection_item=row,
+        due_days_after_registration=placement_days,
+    )
+    registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        course=course
+    )
+    return registration, placement, row
+
+
+@pytest.mark.django_db
+def test_the_content_default_shows_the_placement_value(
+    staff_client, mock_site_context
+) -> None:
+    registration, _, row = _registration_with_part_row(placement_days=3)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=row,
+        due_days_after_registration=9,
+        replaced_value="relative:3",
+    )
+
+    body = staff_client.get(
+        reverse(CHANGE_URL_NAME, args=[registration.pk])
+    ).content.decode()
+
+    assert "3 days after registration" in body
+    assert "14 days after registration" not in body
+    assert "Default has changed" not in body
+
+
+@pytest.mark.django_db
+def test_the_note_appears_after_the_placement_value_changes(
+    staff_client, mock_site_context
+) -> None:
+    registration, _, row = _registration_with_part_row(placement_days=3)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=registration,
+        collection_item=row,
+        replaced_value="relative:14",
+    )
+
+    body = staff_client.get(
+        reverse(CHANGE_URL_NAME, args=[registration.pk])
+    ).content.decode()
+
+    assert (
+        "Default has changed since this override was set "
+        "(was relative:14, now relative:3)"
+    ) in body
+
+
 @pytest.mark.django_db
 def test_a_refused_new_row_has_no_note(staff_client, mock_site_context) -> None:
     """A refused new row used to read 'Default has changed since this override was set
@@ -658,11 +727,16 @@ def _registration_with_overrides(
     item_count: int, override_count: int
 ) -> CohortCourseRegistration:
     course: Course = CourseFactory()
+    part = CoursePartFactory()
+    part_placement = course.items.create(child=part, order=0)
     items = []
     for order in range(item_count):
-        topic = TopicFactory()
-        course.items.create(child=topic, order=order)
-        items.append(collection_item_for(course, topic))
+        row = part.items.create(child=TopicFactory(), order=order)
+        if order % 2 == 0:
+            CoursePartChildDueDateFactory(
+                part_collection_item=part_placement, collection_item=row
+            )
+        items.append(row)
     registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
         course=course
     )
