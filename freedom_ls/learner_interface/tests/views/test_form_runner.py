@@ -3136,6 +3136,22 @@ def test_closed_form_notice_without_a_completed_attempt_links_no_results(
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
+def test_results_url_without_a_completed_attempt_redirects_to_the_item(
+    mock_site_context, client
+):
+    """The results URL used to render "no pass mark" for a learner who never finished a sitting."""
+    course, _question, _attempt = _closed_form_with_open_attempt(
+        client, submit_on_exit=False
+    )
+
+    response = client.get(_complete_url(course))
+
+    assert response.status_code == 302
+    assert response.url == _item_url(course)
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
 def test_results_page_of_a_closed_failed_quiz_offers_no_retry(
     mock_site_context, client
 ):

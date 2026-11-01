@@ -2009,6 +2009,12 @@ def course_form_complete(request, course_slug, index):
         if course_progress is not None
         else None
     )
+    if form_progress is None:
+        return redirect(
+            "learner_interface:view_course_item",
+            course_slug=course_slug,
+            index=index,
+        )
 
     # Get incorrect answers if this is a quiz with show_incorrect enabled
     incorrect_answers = []

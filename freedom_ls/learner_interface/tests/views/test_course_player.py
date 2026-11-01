@@ -276,6 +276,12 @@ def test_form_complete_inside_course_part_should_work(
     Ensures course_form_complete view uses flattened indices.
     """
     first_form = course_with_nested_structure["first_item"]
+    form_attempt(
+        course_with_nested_structure["course"],
+        User.objects.get(),
+        first_form,
+        completed_time=timezone.now(),
+    )
 
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
