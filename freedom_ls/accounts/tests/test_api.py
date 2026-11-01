@@ -7,6 +7,9 @@ from datetime import UTC, datetime
 import pytest
 from allauth.account.models import EmailAddress
 
+from django.conf import settings
+from django.core.cache import cache
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -297,3 +300,29 @@ def test_a_user_verified_after_updated_since_is_in_the_filtered_list(client, aut
     ).json()
 
     assert [row["id"] for row in body["results"]] == [user.pk]
+
+
+@pytest.fixture
+def clean_cache():
+    """Empty the cache so throttle counts from other tests do not carry in."""
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@override_settings(API_THROTTLE_RATE="2/min")
+def test_the_list_past_the_rate_is_429_json_with_retry_after(client, auth, clean_cache):
+    url = reverse(LIST_URL_NAME)
+    statuses = [client.get(url, headers=auth).status_code for _ in range(2)]
+
+    response = client.get(url, headers=auth)
+
+    assert statuses == [200, 200]
+    assert response.status_code == 429
+    assert response["Content-Type"] == "application/json"
+    assert response["Retry-After"].isdigit()
+    assert response.json()["code"] == "throttled"
+
+
+def test_the_project_settings_carry_no_rest_framework_setting():
+    assert not hasattr(settings, "REST_FRAMEWORK")

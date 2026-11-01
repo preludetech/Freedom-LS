@@ -5,9 +5,10 @@ The cases that need two real `Site` rows and a real `Host` header
 to one site, which is the thing they check.
 """
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 
 from django.contrib.sites.models import SITE_CACHE
 from django.http import HttpRequest
@@ -171,3 +172,57 @@ class TestHostMismatch:
         )
 
         assert _authenticate(request) == (None, key_of_site_a)
+
+
+T0 = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
+
+
+def _stored(api_key: ApiKey) -> ApiKey:
+    return ApiKey._base_manager.get(pk=api_key.pk)
+
+
+def test_a_successful_authentication_records_last_used_at(mock_site_context):
+    with time_machine.travel(T0, tick=False):
+        api_key = ApiKeyFactory()
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+
+    assert _stored(api_key).last_used_at == T0
+
+
+def test_a_failed_authentication_leaves_last_used_at_empty(mock_site_context):
+    api_key = ApiKeyFactory()
+
+    _refused(_request(f"Bearer {api_key.issued_key}x"))
+
+    assert _stored(api_key).last_used_at is None
+
+
+def test_a_second_use_inside_the_window_leaves_last_used_at(mock_site_context):
+    with time_machine.travel(T0, tick=False):
+        api_key = ApiKeyFactory()
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+    with time_machine.travel(T0 + timedelta(minutes=4), tick=False):
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+
+    assert _stored(api_key).last_used_at == T0
+
+
+def test_a_use_after_the_window_moves_last_used_at(mock_site_context):
+    later = T0 + timedelta(minutes=6)
+    with time_machine.travel(T0, tick=False):
+        api_key = ApiKeyFactory()
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+    with time_machine.travel(later, tick=False):
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+
+    assert _stored(api_key).last_used_at == later
+
+
+def test_recording_use_leaves_updated_at_alone(mock_site_context):
+    with time_machine.travel(T0, tick=False):
+        api_key = ApiKeyFactory()
+    updated_at = _stored(api_key).updated_at
+    with time_machine.travel(T0 + timedelta(minutes=6), tick=False):
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+
+    assert _stored(api_key).updated_at == updated_at

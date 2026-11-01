@@ -19,6 +19,7 @@ from .models import ApiKey
 from .pagination import ApiKeysetPagination
 from .permissions import HasApiScope
 from .scopes import ApiScope
+from .throttling import ApiKeyRateThrottle
 
 M = TypeVar("M", bound=Model)
 
@@ -28,6 +29,7 @@ class ReadOnlyApiViewSet(ReadOnlyModelViewSet):
 
     authentication_classes = [ApiKeyAuthentication]
     permission_classes = [HasApiScope]
+    throttle_classes = [ApiKeyRateThrottle]
     renderer_classes = [JSONRenderer]
     pagination_class = ApiKeysetPagination
     filter_backends = [DjangoFilterBackend]

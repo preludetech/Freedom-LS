@@ -4,6 +4,7 @@ import hmac
 from datetime import datetime
 
 from django.contrib.sites.models import Site
+from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
@@ -12,7 +13,7 @@ from rest_framework.request import Request
 
 from freedom_ls.site_aware_models.models import SiteResolutionError, get_cached_site
 
-from .models import KEY_TEXT_PREFIX, ApiKey, hash_key
+from .models import KEY_TEXT_PREFIX, LAST_USED_RESOLUTION, ApiKey, hash_key
 
 AUTH_FAILED_MESSAGE = "Invalid API key."
 # A hash no key can match: the hash and compare run for an unknown prefix
@@ -47,6 +48,7 @@ class ApiKeyAuthentication(BaseAuthentication):
             raise AuthenticationFailed(AUTH_FAILED_MESSAGE)
         now = timezone.now()
         api_key = self._match(prefix, key_text, site, now)
+        self._record_use(api_key, now)
         return (None, api_key)
 
     def authenticate_header(self, request: Request) -> str:
@@ -72,3 +74,13 @@ class ApiKeyAuthentication(BaseAuthentication):
         if api_key is None or not matched or not api_key.is_active(now):
             raise AuthenticationFailed(AUTH_FAILED_MESSAGE)
         return api_key
+
+    def _record_use(self, api_key: ApiKey, now: datetime) -> None:
+        # The base manager: authentication has already matched the key to the
+        # host's site, and this runs where the default manager may see no site.
+        # One conditional update per key per resolution window: a crawl of
+        # thousands of pages writes the row once, and update() leaves updated_at alone.
+        ApiKey._base_manager.filter(pk=api_key.pk).filter(
+            Q(last_used_at__isnull=True)
+            | Q(last_used_at__lt=now - LAST_USED_RESOLUTION)
+        ).update(last_used_at=now)
