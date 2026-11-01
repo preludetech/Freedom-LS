@@ -115,6 +115,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 QUERY_BUDGET = 60
 
 if TYPE_CHECKING:
+    from pytest_django.fixtures import SettingsWrapper
+
     from django.test.client import _MonkeyPatchedWSGIResponse
 
 
@@ -1249,6 +1251,7 @@ def _region_text(document: lxml.html.HtmlElement) -> str:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("_messaging_on")
 def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
     staff_client: Client,
 ):
@@ -1262,6 +1265,24 @@ def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
         "overview",
         "courses",
         "messages",
+        "history",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_learner_page_has_no_messages_tab_when_messaging_is_off(
+    staff_client: Client, settings: SettingsWrapper
+):
+    settings.MESSAGING_ENABLED = False
+    learner = LearnerFactory(organisation=OrganisationFactory())
+
+    document = _learner_page(staff_client, learner)
+
+    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
+    links = nav.cssselect("a")
+    assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
+        "overview",
+        "courses",
         "history",
     ]
 
