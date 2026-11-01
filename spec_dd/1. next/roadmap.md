@@ -31,6 +31,7 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `test-organisation-and-hygene-6-small-apps`
 - `test-organisation-and-hygene-7-course-access-and-applications`
 - `user-communication-6-moderation`
+- `user-communication-help-desk`
 
 ## Needs work on main first
 
@@ -772,7 +773,6 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
 | `referral-tracking-referer-host-normalisation` | Helpers that turn a stored referer into a comparable host, for referral tracking's channel and referer features. | none | next | Pull-in from First-Class-LMS. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
 | `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
-| `user-communication-ux-improve` | Messaging polish: an icon-only header with a recent-messages panel, one messages page with a picker to start conversations, learners messaging their educators by default, a Messages tab on the educator's learner page, and audited admin oversight of learner-educator conversations. | none | in progress | |
 | `user-communication-help-desk` | Learners ask for help from the course player, about specific content. Requests land in a shared help-desk queue that educators pick up and link to help tickets. | `user-communication-ux-improve` | next | Split out of `user-communication-ux-improve`. Needs its own queue model, because a `Conversation` is between exactly two users. |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
 | `claude-plugin-tidy-up` | Move the project skills into the productivity, `fls-dev` and `ds` plugins, leaving only brand guidelines in `.claude/skills`, then tighten all agent-facing skills and resources. | none | in progress | |
