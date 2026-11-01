@@ -652,19 +652,6 @@ class _BulkConfirmation:
         }
 
 
-@dataclass(frozen=True)
-class _BulkResultPage:
-    """A confirmed bulk action's result for a JavaScript-off request,
-    rendered as a full interface page. `page_url` is the table's page with
-    the request's query string, so the link back keeps its state."""
-
-    action: BulkAction
-    result: BulkResult
-    noun: str
-    headline: str
-    page_url: str
-
-
 #: The most row ids a bulk result's refresh events carry. Only a quick view
 #: reads them, and a header of hundreds of UUIDs, once per event, can exceed
 #: a proxy's header buffer; past this the events carry none, as a background
@@ -680,17 +667,17 @@ def _result_response(
     noun: str,
     headline: str,
     selected_keys: list[str],
-) -> HttpResponse | _BulkResultPage:
+) -> HttpResponse:
     """The summary of a finished run.
 
     Over htmx it replaces the confirmation in the modal and fires the
     panel's refresh events, so the table updates behind the summary. Without
-    JavaScript it is a page of its own.
+    JavaScript the table page reloads with the summary as a flash, so a
+    refresh or Back cannot submit the confirmed form again.
     """
     if request.headers.get("HX-Request") != "true":
-        return _BulkResultPage(
-            action, result, noun, headline, _history_url(panel, request)
-        )
+        messages.success(request, " ".join([headline, *_result_lines(action, result)]))
+        return HttpResponseRedirect(_history_url(panel, request), status=303)
     ids = selected_keys if len(selected_keys) <= REFRESH_IDS_LIMIT else []
     return bulk_result_fragment(
         request,
@@ -731,6 +718,13 @@ def _table_refresh_events(panel: DataTablePanel) -> tuple[str, ...]:
     return panel.refresh_events
 
 
+def _result_lines(action: BulkAction, result: BulkResult) -> list[str]:
+    """One sentence per kind of skip or failure."""
+    return [
+        action.result_line(item) for item in result.counts if item.status != "changed"
+    ]
+
+
 def _result_context(
     action: BulkAction, result: BulkResult, noun: str, headline: str
 ) -> dict[str, object]:
@@ -739,11 +733,7 @@ def _result_context(
         "result": result,
         "noun": noun,
         "headline": headline,
-        "result_lines": [
-            action.result_line(item)
-            for item in result.counts
-            if item.status != "changed"
-        ],
+        "result_lines": _result_lines(action, result),
     }
 
 
@@ -804,13 +794,13 @@ def _background_wording(queryset: QuerySet, count: int) -> ConfirmationWording:
 
 def _handle_bulk_action(
     request: HttpRequest, action: BulkAction, ctx: PanelContext, panel: DataTablePanel
-) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
+) -> HttpResponse | _BulkConfirmation:
     """Permission, selection, resolution, confirmation and execution for one
     bulk-action POST.
 
     An htmx request always gets an HTML fragment back. A plain request gets
-    a `_BulkConfirmation` or `_BulkResultPage` instead, since both must
-    render with the page's own chrome rather than as a bare fragment.
+    a `_BulkConfirmation` instead, which must render with the page's own
+    chrome rather than as a bare fragment, or a redirect once the action ran.
     """
     if not action.has_permission(request):
         return HttpResponse(status=403)
@@ -934,7 +924,7 @@ def _handle_bulk_action(
 
 def _handle_action(
     request: HttpRequest, resolved: _ResolvedAction, panel: Panel | None = None
-) -> HttpResponse | _BulkConfirmation | _BulkResultPage:
+) -> HttpResponse | _BulkConfirmation:
     """Check permission, then submit (POST, DELETE) or render (GET) the action.
 
     A BulkAction runs the confirm-then-act flow instead, over `panel` — the
@@ -1416,7 +1406,7 @@ def panel_framework_view(
         section_url = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
-        result: HttpResponse | _BulkConfirmation | _BulkResultPage | None = None
+        result: HttpResponse | _BulkConfirmation | None = None
         try:
             resolved = _resolve_path(parts, sections, request, section_url)
             if resolved.quick_view:
@@ -1446,28 +1436,19 @@ def panel_framework_view(
                 )
             raise
         if result is not None:
-            if not isinstance(result, _BulkConfirmation | _BulkResultPage):
+            if not isinstance(result, _BulkConfirmation):
                 return _vary_on_htmx(result)
             # A JavaScript-off bulk-action POST: render its message and
             # confirm form as this page's main content, with the page's own
             # chrome (menu, breadcrumbs) built the same way as any other
             # request below, rather than as a bare fragment.
             heading = result.action.label
-            if isinstance(result, _BulkResultPage):
-                main_template_name = "panel_framework/views/bulk_result.html"
-                main = {
-                    **_result_context(
-                        result.action, result.result, result.noun, result.headline
-                    ),
-                    "page_url": result.page_url,
-                }
-            else:
-                main_template_name = "panel_framework/views/bulk_confirmation.html"
-                main = {
-                    **result.context(),
-                    "page_url": resolved.panel.ctx.page_url,
-                }
-                bulk_status = result.status
+            main_template_name = "panel_framework/views/bulk_confirmation.html"
+            main = {
+                **result.context(),
+                "page_url": resolved.panel.ctx.page_url,
+            }
+            bulk_status = result.status
         else:
             main_template_name, main, heading = _main_for(request, resolved)
 

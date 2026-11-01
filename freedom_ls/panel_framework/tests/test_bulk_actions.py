@@ -412,9 +412,11 @@ def test_a_result_over_many_rows_fires_its_events_without_ids(
     assert json.loads(execute_response["HX-Trigger"]) == {"itemChanged": {"ids": []}}
 
 
-def test_confirmed_plain_post_returns_result_page_with_back_link(
+def test_confirmed_plain_post_returns_to_the_table_with_the_result_as_a_flash(
     mock_site_context: Site,
 ) -> None:
+    """A redirect, not a page: a refresh of the result must not submit the
+    confirmed form again."""
     stub = make_stub(name="row-x")
     path = _action_path(stub.pk)
     request = RequestFactory().post(
@@ -427,19 +429,16 @@ def test_confirmed_plain_post_returns_result_page_with_back_link(
         },
     )
     request.user = make_staff_user()
+    request.session = {}
+    request._messages = FallbackStorage(request)
 
     response = call_view(request, path)
 
-    content = response.content.decode()
-    assert response.status_code == 200
-    assert "<html" in content.lower()
-    assert "1 stub model changed." in content
-    document = lxml.html.fromstring(content)
-    (back,) = [
-        a for a in document.cssselect("a") if a.text_content().startswith("Back to")
-    ]
     expected = f"/test-panel/framework/{_panel_path(stub.pk)}?stub-sort=name"
-    assert back.get("href") == expected
+    assert (response.status_code, response["Location"]) == (303, expected)
+    assert [str(message) for message in get_messages(request)] == [
+        "1 stub model changed."
+    ]
 
 
 def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> None:
