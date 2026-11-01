@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-01_
 
 ## Summary
 
@@ -79,7 +79,7 @@ See [learner experience](./learner-experience.md) for the learner-facing effect 
 
 ## Messaging Policy
 
-[Direct messaging](./messaging.md) is off by default; `MESSAGING_ENABLED` turns it on. Who may message whom comes from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy lets learners message their educators and keeps messaging between learners closed. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
+[Direct messaging](./messaging.md) is off by default; `MESSAGING_ENABLED` turns it on. Who may message whom comes from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy lets learners message their educators and keeps messaging between learners closed. The policy also decides who sees the header Messages button: a user with no one to message and no existing conversation does not see it. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
 
 ## Deadline Policy
 

@@ -1,6 +1,6 @@
 # Direct Messaging
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-01_
 
 ## Summary
 
@@ -19,7 +19,7 @@ Every signed-in user has one messages page listing their conversations, newest a
 
 Messages are plain text with a length limit. Web addresses and email addresses in them become links; nothing else is formatted. Beside the composer, a line says who can read the conversation: the two participants, plus organisation and site admins when it is between a learner and an educator.
 
-The header Messages button is the one signal for new messages, for everyone, educators included. It carries a count of conversations with unread messages and opens a panel of recent conversations. Messages raise no [notification](./notifications.md).
+The header Messages button is the one signal for new messages. It shows to anyone who has someone they may message or an existing conversation, educators included, and is hidden from everyone else. It carries a count of conversations with unread messages and opens a panel of recent conversations. Messages raise no [notification](./notifications.md).
 
 New messages arrive by polling, not push: an open thread, the conversation list and the header count refresh themselves every so often, so a reply can take a few seconds to show. A draft in the composer is never overwritten by a refresh, and a send that is repeated by a double click or a retry is stored once.
 
@@ -37,7 +37,7 @@ Organisation admins and site admins can read a learner's conversations with the 
 
 ## Turning It On
 
-Messaging is hidden until a project sets `MESSAGING_ENABLED`. While it is off, no messaging button, tab or box is shown and the messaging pages do not exist.
+Messaging is hidden until a project sets `MESSAGING_ENABLED`. While it is off, no messaging button, tab or box is shown and the messaging pages do not exist. Once it is on, the header button follows the messaging policy: closing learner-to-educator messaging for an organisation or cohort hides it from those learners, unless they already have a conversation.
 
 Messages are not registered in the Django admin, so site staff cannot browse them there.
 
