@@ -9,4 +9,4 @@ class AccountsConfig(AppConfig):
 
     def ready(self) -> None:
         # Register system checks on app load.
-        from . import checks  # noqa: F401
+        from . import checks, signals  # noqa: F401

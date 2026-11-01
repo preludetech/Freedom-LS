@@ -281,3 +281,19 @@ def test_a_naive_updated_since_is_400_naming_the_parameter(client, auth):
 
     assert response.status_code == 400
     assert "updated_since" in response.json()
+
+
+def test_a_user_verified_after_updated_since_is_in_the_filtered_list(client, auth):
+    user = UserFactory()
+    User._base_manager.filter(pk=user.pk).update(
+        updated_at=datetime(2020, 1, 1, tzinfo=UTC)
+    )
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
+
+    body = client.get(
+        reverse(LIST_URL_NAME), {"updated_since": "2025-01-01T00:00:00Z"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [user.pk]
