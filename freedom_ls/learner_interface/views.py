@@ -128,6 +128,7 @@ from .utils import (
     get_resume_index,
     next_entry,
     outstanding_items,
+    previous_entry,
     stamp_card_organisation,
     stamp_course_access_badge,
 )
@@ -1380,6 +1381,18 @@ def _unlocked_next_url(next_url: str | None, course_index: list[dict]) -> str | 
     return None if after is not None and after["status"] == BLOCKED else next_url
 
 
+def _unlocked_previous_url(
+    previous_url: str | None, course_index: list[dict]
+) -> str | None:
+    """``previous_url``, unless the outline shows the row before the current one as
+    BLOCKED.
+
+    A closed item can be reachable while the item before it is still locked, so a
+    Previous to that row would only bounce the learner to the course detail page."""
+    before = previous_entry(course_index)
+    return None if before is not None and before["status"] == BLOCKED else previous_url
+
+
 def _render_closed_notice(
     request: HttpRequest,
     *,
@@ -1522,7 +1535,7 @@ def view_course_item(request, course_slug, index):
             request,
             entry=entry,
             next_url=_unlocked_next_url(next_url, course_index),
-            previous_url=previous_url,
+            previous_url=_unlocked_previous_url(previous_url, course_index),
             player_context=player_context,
             course=course,
             current_item=current_item,
@@ -2127,6 +2140,8 @@ def course_form_complete(request, course_slug, index):
         if index > 1 and not access_ended
         else None
     )
+    if item_closed:
+        previous_url = _unlocked_previous_url(previous_url, course_index)
 
     context = {
         "course": course,

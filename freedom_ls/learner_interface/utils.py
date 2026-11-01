@@ -568,9 +568,8 @@ def current_entry(course_index: list[dict]) -> dict | None:
     return None
 
 
-def next_entry(course_index: list[dict]) -> dict | None:
-    """The item row after the one marked ``is_current``, in the order the learner reads
-    the outline, or None when no row is current or the current one is last.
+def _item_rows(course_index: list[dict]) -> list[dict]:
+    """The item rows in the order the learner reads the outline.
 
     Walks the top level and one level into a CoursePart's children, the only two places
     an item row lives. A part's own row is passed over: its children carry the items.
@@ -579,10 +578,28 @@ def next_entry(course_index: list[dict]) -> dict | None:
     for entry in course_index:
         children = entry.get("children")
         rows.extend(children if children is not None else [entry])
+    return rows
+
+
+def _neighbour_entry(course_index: list[dict], step: int) -> dict | None:
+    rows = _item_rows(course_index)
     for position, row in enumerate(rows):
         if row.get("is_current"):
-            return rows[position + 1] if position + 1 < len(rows) else None
+            neighbour = position + step
+            return rows[neighbour] if 0 <= neighbour < len(rows) else None
     return None
+
+
+def next_entry(course_index: list[dict]) -> dict | None:
+    """The item row after the one marked ``is_current``, or None when no row is current
+    or the current one is last."""
+    return _neighbour_entry(course_index, 1)
+
+
+def previous_entry(course_index: list[dict]) -> dict | None:
+    """The item row before the one marked ``is_current``, or None when no row is current
+    or the current one is first."""
+    return _neighbour_entry(course_index, -1)
 
 
 def current_entry_status(course_index: list[dict]) -> str | None:

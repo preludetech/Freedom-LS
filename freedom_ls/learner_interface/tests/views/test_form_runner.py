@@ -3223,6 +3223,57 @@ def test_closed_form_notice_offers_no_next_to_a_locked_item(mock_site_context, c
     assert re.search(r">\s*Next\s*<", response.content.decode()) is None
 
 
+def _closed_failed_quiz_after_a_locked_topic(client: Client) -> Course:
+    """Two unread topics, then a closed quiz that was sat: the second topic is locked."""
+    user = UserFactory()
+    form, questions = _math_quiz()
+    course = course_with_form(form)
+    form_item = course.items.get()
+    form_item.order = 2
+    form_item.save()
+    course.items.create(child=TopicFactory(), order=0)
+    course.items.create(child=TopicFactory(), order=1)
+    register_user_for_course(course, user)
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    _sit_math_quiz(course, user, form, questions, ["7", "5", "11"])
+    client.force_login(user)
+    return course
+
+
+def _quiz_url(name: str, course: Course) -> str:
+    return reverse(
+        f"learner_interface:{name}", kwargs={"course_slug": course.slug, "index": 3}
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_offers_no_previous_to_a_locked_item(
+    mock_site_context, client
+):
+    """Previous would land on the locked topic and bounce to the course detail page."""
+    course = _closed_failed_quiz_after_a_locked_topic(client)
+
+    response = client.get(_quiz_url("view_course_item", course))
+
+    assert response.context["previous_url"] is None
+    assert re.search(r">\s*Previous\s*<", response.content.decode()) is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_results_page_of_a_closed_quiz_offers_no_previous_to_a_locked_item(
+    mock_site_context, client
+):
+    course = _closed_failed_quiz_after_a_locked_topic(client)
+
+    response = client.get(_quiz_url("course_form_complete", course))
+
+    assert response.context["previous_url"] is None
+    assert re.search(r">\s*Previous\s*<", response.content.decode()) is None
+
+
 @pytest.mark.django_db
 @time_machine.travel(datetime(2019, 12, 1, 12, 0, tzinfo=UTC), tick=False)
 def test_open_save_on_exit_form_is_not_finalised_by_submit_and_exit(

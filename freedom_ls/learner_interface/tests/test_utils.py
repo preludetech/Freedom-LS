@@ -42,6 +42,7 @@ from freedom_ls.learner_interface.utils import (
     get_course_index,
     get_current_courses,
     next_entry,
+    previous_entry,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
@@ -451,6 +452,19 @@ def test_next_entry_is_none_after_the_last_row():
 
 def test_next_entry_is_none_when_no_row_is_current():
     assert next_entry([{"title": "A"}, {"title": "B"}]) is None
+
+
+def test_previous_entry_steps_out_of_a_part_to_the_row_before_it():
+    index = [
+        {"title": "A"},
+        {"title": "Part", "children": [{"title": "Inner", "is_current": True}]},
+    ]
+
+    assert previous_entry(index) == {"title": "A"}
+
+
+def test_previous_entry_is_none_before_the_first_row():
+    assert previous_entry([{"title": "A", "is_current": True}, {"title": "B"}]) is None
 
 
 # --- Closing items ---
