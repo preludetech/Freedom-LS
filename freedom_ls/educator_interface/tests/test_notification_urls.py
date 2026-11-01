@@ -26,3 +26,19 @@ def test_bulk_run_table_url_is_the_runs_table(mock_site_context) -> None:
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
     )
+
+
+@pytest.mark.django_db
+def test_a_run_whose_organisation_was_deleted_links_nowhere(mock_site_context) -> None:
+    """Nothing cascades to a run, so its scope is gone rather than the run."""
+    organisation = OrganisationFactory()
+    run = BulkActionRun.objects.create(
+        scope=organisation,
+        requested_by=UserFactory(),
+        table_key="cohorts",
+        action_name="deactivate",
+    )
+    organisation.delete()
+
+    run = BulkActionRun.objects.get(pk=run.pk)
+    assert bulk_run_table_url(run) is None

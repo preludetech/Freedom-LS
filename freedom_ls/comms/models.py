@@ -152,7 +152,7 @@ class Notification(SiteAwareModel):
         builder = get_notification_category(self.category).url_builder
         if builder is None or self.target is None:
             return None
-        return cast(str, import_string(builder)(self.target))
+        return cast("str | None", import_string(builder)(self.target))
 
 
 class Conversation(SiteAwareModel):

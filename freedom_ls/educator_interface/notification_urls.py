@@ -12,9 +12,12 @@ if TYPE_CHECKING:
     from freedom_ls.panel_framework.models import BulkActionRun
 
 
-def bulk_run_table_url(run: BulkActionRun) -> str:
+def bulk_run_table_url(run: BulkActionRun) -> str | None:
     """The table the run was started from. An educator run is always scoped
-    to an organisation."""
+    to an organisation; None once that organisation has been deleted, since
+    nothing cascades to the run and there is no table left to link."""
+    if run.scope is None:
+        return None
     return reverse(
         "educator_interface:interface",
         kwargs={
