@@ -55,6 +55,12 @@ def _admin(organisation: Organisation) -> User:
     return user
 
 
+def _confirm_and_run(import_id: str, site_id: int) -> None:
+    """What the preview's POST does before the request or a worker runs it."""
+    LearnerImport.objects.filter(pk=import_id).update(status=ImportStatus.QUEUED)
+    run_learner_import(import_id, site_id)
+
+
 def _labels(learner_import: LearnerImport, field: str = "preview_label") -> list[str]:
     return [
         getattr(row, field)
@@ -179,7 +185,7 @@ def test_a_cohort_cell_matches_the_exact_name_before_a_case_insensitive_one(
     )
 
     learner_import = create_learner_import(admin, organisation, None, upload)
-    run_learner_import(str(learner_import.pk), organisation.site_id)
+    _confirm_and_run(str(learner_import.pk), organisation.site_id)
 
     rows = LearnerImportRow.objects.filter(learner_import=learner_import).order_by(
         "line_number"
@@ -222,7 +228,7 @@ def test_a_cohort_import_adds_every_row_to_its_cohort(
     upload = _file("a@example.com,,,Lagos", f"{existing.user.email},,,")
     learner_import = create_learner_import(admin, organisation, cohort, upload)
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     assert _labels(learner_import, "final_label") == [
         ImportLabel.NEW_ACCOUNT,
@@ -270,7 +276,7 @@ def test_a_commit_adds_the_good_rows_and_labels_the_bad_ones(
     upload = _file(*good, "bad,,,", ",First,,")
     learner_import = create_learner_import(admin, organisation, None, upload)
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     learner_import = LearnerImport.objects.get(pk=learner_import.pk)
     final = _labels(learner_import, "final_label")
@@ -291,12 +297,12 @@ def test_uploading_the_same_file_again_adds_nobody_and_sends_nothing(
     lines = [f"import{n}@learners.test,A,B,Accra" for n in range(3)]
     first = create_learner_import(admin, organisation, None, _file(*lines))
     with django_capture_on_commit_callbacks(execute=True):
-        run_learner_import(str(first.pk), mock_site_context.pk)
+        _confirm_and_run(str(first.pk), mock_site_context.pk)
     sent = len(mailoutbox)
 
     second = create_learner_import(admin, organisation, None, _file(*lines))
     with django_capture_on_commit_callbacks(execute=True):
-        run_learner_import(str(second.pk), mock_site_context.pk)
+        _confirm_and_run(str(second.pk), mock_site_context.pk)
 
     assert _labels(second) == [ImportLabel.ALREADY_MEMBER] * 3
     assert _labels(second, "final_label") == [ImportLabel.ALREADY_MEMBER] * 3
@@ -312,7 +318,7 @@ def test_an_existing_users_names_are_unchanged(
         admin, organisation, None, _file(f"{user.email},Changed,Names,")
     )
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     user.refresh_from_db()
     assert (user.first_name, user.last_name) == ("Original", "Name")
@@ -329,7 +335,7 @@ def test_a_row_whose_state_changed_since_the_preview_reports_its_real_label(
     learner = cast(Learner, LearnerFactory(organisation=organisation, user=user))
     CohortMembershipFactory(learner=learner, cohort=cohort)
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     assert _labels(learner_import) == [ImportLabel.JOINED]
     assert _labels(learner_import, "final_label") == [ImportLabel.ALREADY_MEMBER]
@@ -370,12 +376,29 @@ def test_losing_the_gate_between_preview_and_commit_fails_the_import(
     )
     requester.object_role_assignments.all().delete()
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     learner_import = LearnerImport.objects.get(pk=learner_import.pk)
     assert learner_import.status == RunStatus.FAILED
     assert learner_import.error_message == PERMISSION_LOST_MESSAGE
     assert _labels(learner_import, "final_label") == [None]
+
+
+def test_an_import_that_was_not_confirmed_is_not_run(
+    organisation: Organisation, admin: User, mock_site_context: Site
+) -> None:
+    """A runner claims a queued import; one still previewed, or one a sweep
+    already closed, is left as it is."""
+    learner_import = create_learner_import(
+        admin, organisation, None, _file("a@example.com,,,")
+    )
+
+    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+
+    learner_import.refresh_from_db()
+    assert learner_import.status == ImportStatus.PREVIEWED
+    assert _labels(learner_import, "final_label") == [None]
+    assert not User.objects.filter(email="a@example.com").exists()
 
 
 def test_the_task_path_with_no_ambient_site_writes_site_on_every_row(
@@ -388,7 +411,7 @@ def test_the_task_path_with_no_ambient_site_writes_site_on_every_row(
     )
     drop_ambient_request()
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     rows = LearnerImportRow._base_manager.filter(learner_import=learner_import)
     assert {row.site_id for row in rows} == {mock_site_context.pk}
@@ -406,7 +429,7 @@ def test_a_committed_import_attributes_its_entries_to_the_importer(
         admin, organisation, None, _file("a@example.com,,,", "b@example.com,,,")
     )
 
-    run_learner_import(str(learner_import.pk), mock_site_context.pk)
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
 
     entries = AuditLogEntry.unscoped.filter(action="learner.added")
     assert entries.count() == 2

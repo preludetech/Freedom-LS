@@ -2205,10 +2205,11 @@ def learner_import_preview(
     in_background = add_count > panel_framework_config.BULK_BACKGROUND_THRESHOLD
     if request.method == "POST":
         # Only one of two simultaneous confirmations changes a row, so only one
-        # of them runs or enqueues the import.
+        # of them runs or enqueues the import. Either way the runner claims
+        # the queued import itself.
         started = LearnerImport.objects.filter(
             pk=learner_import.pk, status=ImportStatus.PREVIEWED
-        ).update(status=ImportStatus.QUEUED if in_background else ImportStatus.RUNNING)
+        ).update(status=ImportStatus.QUEUED)
         if started:
             site_id = scoped.organisation.site_id
             if in_background:

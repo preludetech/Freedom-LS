@@ -85,6 +85,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    ImportStatus,
     Learner,
     LearnerImport,
     OrganisationMember,
@@ -4982,6 +4983,9 @@ def test_the_result_of_a_cohort_import_links_to_the_cohorts_learners_tab(
         import_world.organisation,
         cohort,
         _csv_upload("a@example.com,,,"),
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=ImportStatus.QUEUED
     )
     run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
 

@@ -14,7 +14,6 @@ from typing import cast
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.db.models import F, Q, QuerySet
-from django.shortcuts import get_object_or_404
 
 from freedom_ls.accounts.models import User
 from freedom_ls.base.csv_import import LINE_KEY, parse_csv
@@ -44,7 +43,7 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.models import RunStatus
-from freedom_ls.panel_framework.run_records import record_run
+from freedom_ls.panel_framework.run_records import claim_run, record_run
 
 HEADERS = ("email", "first_name", "last_name", "cohort")
 EMAIL_MAX_LENGTH = 254
@@ -338,13 +337,13 @@ def run_learner_import(import_id: str, site_id: int) -> None:
     Callable from a background task, which has no request and so no ambient
     site: the import is read through `_base_manager` filtered on `site_id`.
     """
-    learner_import = get_object_or_404(
-        LearnerImport._base_manager.filter(site_id=site_id).select_related(
-            "organisation", "cohort", "requested_by"
-        ),
-        pk=import_id,
-    )
-    with record_run(learner_import):
+    records = LearnerImport._base_manager.filter(
+        site_id=site_id, pk=import_id
+    ).select_related("organisation", "cohort", "requested_by")
+    learner_import = claim_run(records)
+    if learner_import is None:
+        return
+    with record_run(learner_import, records):
         # The gate is checked against the import's own organisation and cohort,
         # never against anything the request supplied.
         if not check_import_gate(

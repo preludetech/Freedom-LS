@@ -363,30 +363,37 @@ def run_apply(
     tallies: dict[tuple[Status, str], int] = {}
     entries: list[BulkResultEntry] = []
     left_out = 0
-    for processed, obj in enumerate(queryset.iterator(chunk_size=200), start=1):
-        try:
-            with transaction.atomic():
-                outcome = action.apply(user, obj, cleaned_data)
-        except action.failure_exceptions:
-            # A fixed reason: exception text is for developers and never
-            # reaches the page.
-            outcome = BulkOutcome("failed", FAILED_REASON)
-        pair = (outcome.status, outcome.reason)
-        tallies[pair] = tallies.get(pair, 0) + 1
-        if outcome.status != "changed":
-            if len(entries) < RESULT_ENTRY_LIMIT:
-                entries.append(
-                    BulkResultEntry(
-                        key=str(obj.pk),
-                        row_label=action.row_label(obj),
-                        status=outcome.status,
-                        reason=outcome.reason,
+    completed = 0
+    try:
+        for obj in queryset.iterator(chunk_size=200):
+            try:
+                with transaction.atomic():
+                    outcome = action.apply(user, obj, cleaned_data)
+            except action.failure_exceptions:
+                # A fixed reason: exception text is for developers and never
+                # reaches the page.
+                outcome = BulkOutcome("failed", FAILED_REASON)
+            pair = (outcome.status, outcome.reason)
+            tallies[pair] = tallies.get(pair, 0) + 1
+            if outcome.status != "changed":
+                if len(entries) < RESULT_ENTRY_LIMIT:
+                    entries.append(
+                        BulkResultEntry(
+                            key=str(obj.pk),
+                            row_label=action.row_label(obj),
+                            status=outcome.status,
+                            reason=outcome.reason,
+                        )
                     )
-                )
-            else:
-                left_out += 1
-        if on_progress and processed % 50 == 0:
-            on_progress(processed)
+                else:
+                    left_out += 1
+            completed += 1
+            if on_progress and completed % 50 == 0:
+                on_progress(completed)
+    finally:
+        # The final count, so a stopped run says how far it really got.
+        if on_progress is not None:
+            on_progress(completed)
     counts = [
         BulkCount(status=status, reason=reason, count=count)
         for (status, reason), count in tallies.items()

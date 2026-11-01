@@ -9,9 +9,9 @@ from typing import cast
 import pytest
 
 from django.contrib.sites.models import Site
-from django.http import Http404
+from django.db.models import Model
 
-from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkResult
+from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkOutcome, BulkResult
 from freedom_ls.panel_framework.bulk_runs import (
     ACTION_UNAVAILABLE,
     NOT_FOUND,
@@ -89,11 +89,86 @@ def test_a_stale_key_is_reported_as_not_found(mock_site_context: Site):
     assert StubRecordedBulkAction().result_line(result.counts[-1]) == "1 was not found."
 
 
-def test_a_run_of_another_site_is_not_found(mock_site_context: Site):
+def test_a_run_of_another_site_is_left_alone(mock_site_context: Site):
+    stub = make_stub()
+    run = _run_over(stub)
+
+    result = run_bulk_action(str(run.pk), mock_site_context.pk + 1000)
+
+    stub.refresh_from_db()
+    run.refresh_from_db()
+    assert (result.changed, stub.is_active, run.status) == (0, True, RunStatus.QUEUED)
+
+
+def test_a_run_a_sweep_already_closed_is_not_run_again(mock_site_context: Site):
+    """A worker that takes the task after housekeeping closed the run must
+    leave the run, and the rows, as they are."""
+    stub = make_stub()
+    run = _run_over(stub, status=RunStatus.FAILED, error_message="swept")
+
+    _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+
+    stub.refresh_from_db()
+    run.refresh_from_db()
+    assert (stub.is_active, run.error_message) == (True, "swept")
+    assert StubRecordedBulkAction.finished == []
+
+
+def test_a_run_a_sweep_closed_while_it_ran_is_not_reported_again(
+    mock_site_context: Site, monkeypatch
+):
+    def _swept_meanwhile(*args: object, **kwargs: object) -> BulkResult:
+        BulkActionRun._base_manager.filter(pk=run.pk).update(
+            status=RunStatus.FAILED, error_message="swept"
+        )
+        return BulkResult(counts=[], entries=[], left_out=0)
+
+    monkeypatch.setattr(
+        "freedom_ls.panel_framework.bulk_runs.run_apply", _swept_meanwhile
+    )
     run = _run_over(make_stub())
 
-    with pytest.raises(Http404):
-        run_bulk_action(str(run.pk), mock_site_context.pk + 1000)
+    _run_bulk_action_task.func(str(run.pk), mock_site_context.pk)
+
+    run.refresh_from_db()
+    assert (run.status, run.error_message, run.result) == (
+        RunStatus.FAILED,
+        "swept",
+        None,
+    )
+    assert StubRecordedBulkAction.finished == []
+
+
+def test_a_finished_run_records_every_object_processed(mock_site_context: Site):
+    run = _run_over(make_stub(), str(make_stub().pk))
+
+    run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    run.refresh_from_db()
+    assert run.processed_count == 2
+
+
+def test_a_run_that_blows_up_records_how_far_it_got(
+    mock_site_context: Site, monkeypatch
+):
+    def _explode_on_the_second(
+        self: StubRecordedBulkAction, user: object, obj: Model, cleaned_data: object
+    ) -> BulkOutcome:
+        if obj.pk == second.pk:
+            raise RuntimeError("boom")
+        return BulkOutcome("changed")
+
+    monkeypatch.setattr(StubRecordedBulkAction, "apply", _explode_on_the_second)
+    first = make_stub(name="first")
+    second = make_stub(name="second")
+    run = _run_over(first, str(second.pk))
+
+    with pytest.raises(RuntimeError):
+        run_bulk_action(str(run.pk), mock_site_context.pk)
+
+    run.refresh_from_db()
+    assert run.processed_count == 1
+    assert run_summary(run) == "Deactivate stopped after 1 of 2 stub models."
 
 
 def test_the_task_takes_only_the_run_id_and_the_site_id():

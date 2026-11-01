@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from django.db.models import QuerySet
-from django.shortcuts import get_object_or_404
 from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.actions import count_noun, count_phrase
@@ -18,7 +17,7 @@ from freedom_ls.panel_framework.bulk_actions import (
     run_apply,
 )
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
-from freedom_ls.panel_framework.run_records import record_run
+from freedom_ls.panel_framework.run_records import claim_run, record_run
 
 NOT_FOUND = "not found"
 ACTION_UNAVAILABLE = "This action is no longer available."
@@ -81,13 +80,23 @@ def _run_on_site(run_id: str, site_id: int) -> QuerySet[BulkActionRun]:
     )
 
 
-def run_bulk_action(run_id: str, site_id: int) -> BulkResult:
+def run_bulk_action(
+    run_id: str,
+    site_id: int,
+    on_finished: Callable[[BulkActionRun], None] | None = None,
+) -> BulkResult:
     """Apply the run's action to its snapshot of keys and store the result.
 
     It returns the live result so the inline path never parses its own JSON.
+    A run that is no longer queued is left alone and answers an empty result:
+    a sweep closed it, and reported that itself. `on_finished` is told the run
+    is over once this process has closed it, however it ended.
     """
-    run = get_object_or_404(_run_on_site(run_id, site_id))
-    with record_run(run, extra_fields=("result",)):
+    records = _run_on_site(run_id, site_id)
+    run = claim_run(records)
+    if run is None:
+        return BulkResult(counts=[], entries=[], left_out=0)
+    with record_run(run, records, extra_fields=("result",), on_closed=on_finished):
         action = action_for(run)
         if action is None:
             run.status, run.error_message = RunStatus.FAILED, ACTION_UNAVAILABLE
