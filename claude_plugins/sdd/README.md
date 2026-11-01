@@ -2,8 +2,9 @@
 
 The portable spec-driven-development (SDD) workflow for Claude Code: the `sdd-worker` / `sdd-mechanic`
 tiering agents, the generic workflow command files, and the authoring/worktree/project-settings skills.
-It carries the *scaffolding* for taking a feature from idea to merged PR. It is independent: anything
-project-specific reaches it only through the project's configuration in `.claude/sdd/config.md`
+It carries the *scaffolding* for taking a feature from idea to merged PR. `sdd` needs the
+`productivity` plugin loaded, because its writing standard invokes `productivity:unslop`; nothing
+else project-specific reaches it except through the project's configuration in `.claude/sdd/config.md`
 (worktree scripts, rebase, design, test, plan review, review, documentation, QA and PR hooks, and
 vocabulary sources). `/sdd:init` documents every key.
 

@@ -47,7 +47,8 @@ command reads the directory, so nothing is stranded.
 
 ## Finish with two passes
 
-1. Invoke the `unslop` skill over the file.
+1. Invoke the `productivity:unslop` skill over the file. When it cannot be loaded, skip this pass
+   and say so in the summary, pointing at `/productivity:init`.
 2. Re-read it top to bottom as if someone else wrote it, and delete whatever now reads as padding.
 
 Report the before and after line and word counts in your summary. That is an observation, so the

@@ -287,3 +287,6 @@ Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup 
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
 Hooks Comment standard and Test standard paths, the QA Hooks QA command, the PR Hooks Fetch PR
 comments path, and to list the project's Vocabulary Sources.
+
+If `claude.sh` has no `--plugin-dir` line whose final segment is `productivity`, list
+`run /productivity:init` as an outstanding action. This command never adds that line.

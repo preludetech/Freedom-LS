@@ -43,4 +43,4 @@ Each of the eleven specs documents its own change, but nobody has read the resul
 
 - Every idea in `educator-interface-1-*` to `educator-interface-11-*`, and their specs' QA reports.
 - `claude_plugins/fls-dev/commands/update_product_docs.md` and `update_upgrade_notes.md`.
-- Skills: `fls-dev:update_product_docs`, `fls-dev:update_upgrade_notes`, `sdd:claude-code-authoring` for writing the skill, `fls-dev:do_qa`, `unslop`.
+- Skills: `fls-dev:update_product_docs`, `fls-dev:update_upgrade_notes`, `sdd:claude-code-authoring` for writing the skill, `fls-dev:do_qa`, `productivity:unslop`.

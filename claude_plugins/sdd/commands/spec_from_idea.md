@@ -129,8 +129,9 @@ The cut-list is in `${CLAUDE_PLUGIN_ROOT}/resources/spec_review_dimensions.md`, 
 ## Before you finish
 
 Run the completeness pass from the writing standard against the idea, its sibling files and the
-answers from Step 2, then the earning-its-place pass, then `unslop` and a re-read. Report the line
-and word counts.
+answers from Step 2, then the earning-its-place pass, then `productivity:unslop` and a re-read.
+When `productivity:unslop` cannot be loaded, skip that pass and say so in the summary, pointing at
+`/productivity:init`. Report the line and word counts.
 # Step 4: Commit `write the spec`
 
 Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `research_<topic>.md` file for every Step 1 topic. A file
