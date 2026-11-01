@@ -1,177 +1,172 @@
 # Frontend QA report: user-communication-ux-improve
 
-## Summary
-
-| Viewport | Pass | Fail | Skip |
-|----------|------|------|------|
-| Desktop (1920x1080) | 52 | 0 | 2 |
-| Mobile (375x812) | 6 | 0 | 0 |
-| Tablet (768x1024) | 6 | 0 | 0 |
-| Total | 64 | 0 | 2 |
-
-Overall outcome: pass. No test failed and no bug was found. The two skips are §8 (needs a server restart with MESSAGING_ENABLED=False) and §11 (optional).
-
 ## Methodology
 
-- Every test was walked by hand with Playwright MCP at desktop 1920x1080, mobile 375x812 and tablet 768x1024.
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there.
-- Before QA the branch was rebased onto origin/main. 26 commits were replayed and one roadmap conflict was resolved by combining both sides.
-- The full test tier ran after the rebase: 10439 passed.
-- Pre-commit was clean and the branch was pushed.
-- The upstream-change review found `direction: unchanged`.
-- Seed: `qa_create_direct_messaging_scenario`, run on the existing branch database.
-- The dev server ran on port 8637 and the branch badge was confirmed.
+The plan in `3. frontend_qa.md` was driven by hand with Playwright MCP at three viewports: desktop 1920x1080, mobile 375x812 and tablet 768x1024. Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists there. The run started with a rebase onto main (2 spec-only commits) and the scenario seed `qa_create_direct_messaging_scenario`.
 
 ## Diff scoping
 
-Class: FULL. The diff touched 183 files, including the comms templates and static JS (`freedom_ls/comms/...`) and the educator interface data-table cells, modals and panels (`freedom_ls/educator_interface/...`). Nothing was skipped by scoping.
+Class: **FULL**. 35 changed front-end files triggered it, for example `freedom_ls/comms/templates/comms/inbox.html`, `freedom_ls/comms/templates/comms/partials/composer.html`, `freedom_ls/comms/static/comms/js/alpine-components.js`, `freedom_ls/educator_interface/templates/educator_interface/modal/conversation_oversight.html`, `freedom_ls/base/templates/cotton/button.html` and `tailwind.components.css`. Nothing was skipped by scoping.
 
 ## Smoke gate
 
-Outcome: pass. Pages checked: `/` and `/messages/`.
+Outcome: **pass**. Pages checked: `/` and `/messages/`.
 
 ## Results
 
-### §1 Header messages button and panel
+### §1 The header button and the messages panel
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 1.1 | desktop | pass | Icon-only messages button, accessible name "Messages, 1 unread", red badge 1. ![](screenshots/page-2026-10-31T13-30-12-443Z.png) |
-| 1.2 | desktop | pass | Panel headed Messages with New message and See all messages. Eve row (not bold, excerpt, 11 min ago), then Vic row (bold, Unread marker). ![](screenshots/page-2026-10-31T13-30-22-068Z.png) |
-| 1.2 | mobile | pass | Button 40x40. Panel opens as a full-width sheet with a close button, New message and See all messages. No horizontal scroll. ![](screenshots/mobile-1-panel.png) |
-| 1.2 | tablet | pass | Panel is a 382px dropdown anchored under the header button. No overflow. ![](screenshots/tablet-1-panel.png) |
-| 1.3 | desktop | pass | Escape closes and returns focus to `#messages-button`. Outside click closes. |
-| 1.4 | desktop | pass | Opening the bell closes the messages panel and vice versa. Only one panel open. |
-| 1.5 | desktop | pass | Vic row opens the thread. Back on the dashboard the Vic row lost its Unread marker and the badge reads "Messages, none unread". |
-| 1.6 | desktop | pass | See all messages goes to `/messages/`. |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 1.1 | desktop | pass | Icon-only button, accessible name 'Messages, 1 unread', badge 1 | |
+| 1.2 | desktop | pass | Panel headed Messages, New message, See all messages; Eve row (not bold, Lena's newest excerpt, 10 min ago), Vic row bold with Unread marker | ![](screenshots/page-2026-11-01T09-09-02-123Z.png) |
+| 1.2 | mobile | pass | Messages panel opens as full-width sheet (0-375) with close button; header button 40x40 | ![](screenshots/page-2026-11-01T09-23-00-001Z.png) |
+| 1.2 | tablet | pass | Messages panel within viewport (x 265-647) | |
+| 1.3 | desktop | pass | Escape closes and returns focus to #messages-button; outside click closes | |
+| 1.4 | desktop | pass | Opening bell closes messages panel and vice versa | |
+| 1.5 | desktop | pass | Vic row goes to /messages/<uuid>/; afterwards row not bold, badge gone, name 'Messages, none unread' | ![](screenshots/page-2026-11-01T09-09-22-967Z.png) |
+| 1.6 | desktop | pass | See all messages -> /messages/ | |
 
-### §2 Messages page
+### §2 The messages page
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 2.1 | desktop | pass | Two panes. List with New message and two rows. Placeholder "Select a conversation to read it." with New message. No thread, no aria-current. ![](screenshots/page-2026-10-31T13-30-56-865Z.png) |
-| 2.1 | tablet | pass | Two-pane layout kept with the placeholder. No horizontal scroll. ![](screenshots/tablet-2-1-messages.png) |
-| 2.2 | desktop | pass | Thread on the right, Eve row aria-current=true, composer with "Ctrl+Enter to send" and the disclosure line. ![](screenshots/page-2026-10-31T13-31-03-963Z.png) |
-| 2.2 | tablet | pass | Thread beside the list. Composer and disclosure fit the pane width. ![](screenshots/tablet-2-2-thread.png) |
-| 2.3 | desktop | pass | Reload keeps the thread. Back returns to `/messages/` with the placeholder and no current row. |
-| 2.4 | desktop | pass | Bea: "No conversations yet." in the placeholder with New message, plus the list's own empty state. ![](screenshots/page-2-4-bea.png) |
-| 2.5 | desktop | pass | Sam: Sid row (unread), placeholder, no New message button anywhere. ![](screenshots/page-2-5-sam.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 2.1 | desktop | pass | Two panes, placeholder 'Select a conversation to read it.' + New message, no composer, nothing current | ![](screenshots/page-2026-11-01T09-09-29-504Z.png) |
+| 2.2 | desktop | pass | Thread on right, Eve row aria-current=true, composer with 'Ctrl+Enter to send' and disclosure line | ![](screenshots/page-2026-11-01T09-09-42-635Z.png) |
+| 2.3 | desktop | pass | Reload keeps thread; back returns to /messages/ placeholder | |
+| 2.4 | desktop | pass | Bea: 'No conversations yet.' in both panes, New message in list header and placeholder | ![](screenshots/page-2026-11-01T09-10-33-441Z.png) |
+| 2.5 | desktop | pass | Sam: Sid row, placeholder, no New message anywhere | ![](screenshots/page-2026-11-01T09-10-40-596Z.png) |
 
-### §3 Starting a conversation
+### §3 Starting a conversation from the messages page
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 3.1 | desktop | pass | Lara: "No conversations yet." with New message in the list header and the placeholder. |
-| 3.2 | desktop | pass | Right pane swaps to the picker with no page load. List pane stays, URL `/messages/new/`. Eve Educator listed under a "Cohort admin" group heading with no search typed. Vic not listed. ![](screenshots/page-3-2-picker.png) |
-| 3.3 | desktop | pass | "zz" shows "No one you can message matches 'zz'". Clearing brings Eve back. |
-| 3.4 | desktop | pass | "To Eve Educator" with Change link, textarea labelled "Message to Eve Educator", disclosure line. URL `/messages/new/?recipient=89`. ![](screenshots/page-3-4-composer.png) |
-| 3.4 | mobile | pass | Picking Eve from the mobile picker lands on the existing thread. No horizontal scroll. ![](screenshots/mobile-3-4-composer.png) |
-| 3.5 | desktop | pass | Ctrl+Enter navigates to the new thread with the message in the log. Lara's new Eve row is at the top with aria-current. ![](screenshots/page-3-5-sent.png) |
-| 3.6 | desktop | pass | New message then the picker's Eve row lands on the same thread. |
-| 3.7 | desktop | pass | Direct `/messages/new/` is the full-page picker in a narrow column. "Back to messages" goes to `/messages/`. ![](screenshots/page-3-7-fullpage-picker.png) |
-| 3.8 | mobile | pass | As Lara: list fills the screen. Tapping Eve opens a full-screen thread with a "Back to messages" arrow. Back returns to the list. New message opens the full-page picker with the back link. No horizontal scroll. ![](screenshots/mobile-3-8-thread.png) |
-| 3.8 | tablet | pass | New message swaps the right pane to the picker at `/messages/new/`. No horizontal scroll. ![](screenshots/tablet-3-2-picker.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 3.1 | desktop | pass | Lara: No conversations yet., New message in both places | |
+| 3.2 | desktop | pass | Picker swapped in pane without full load (window marker survived), URL /messages/new/, Eve listed under COHORT ADMIN heading, no Vic | ![](screenshots/page-2026-11-01T09-10-48-611Z.png) |
+| 3.3 | desktop | pass | 'No one you can message matches 'zz''; clearing restores Eve | |
+| 3.4 | desktop | pass | To Eve Educator + Change, textarea label 'Message to Eve Educator', disclosure line, URL ?recipient=89 | ![](screenshots/page-2026-11-01T09-11-09-771Z.png) |
+| 3.5 | desktop | **fail** | Functionally correct (lands on /messages/<uuid>/, message in log, row current) but the HX-Location swap leaves the page 72px taller than a direct load (docH 1152 vs 1080): Send button, hint and disclosure line pushed below the fold; branch badge loses its border-radius. A reload fixes it. See B1. | ![](screenshots/page-2026-11-01T09-11-15-962Z.png) |
+| 3.6 | desktop | pass | Picking Eve again lands on same thread. Same post-swap layout defect as 3.5 (Send at y=1116 in 1080 viewport). See B1. | ![](screenshots/page-2026-11-01T09-12-32-569Z.png) |
+| 3.6 | mobile | pass | Picking existing Eve from full-page picker lands on thread; layout matches a direct load (docH 812, Send at 760), so the desktop 3.5 defect does not show at this width | ![](screenshots/page-2026-11-01T09-23-00-002Z.png) |
+| 3.6 | tablet | **fail** | Picking Eve from the in-pane picker lands on the thread via HX-Location; page 72px taller than viewport (docH 1096 vs 1024), Send at y=1044 below the fold, branch badge loses its pill style. Same defect as desktop 3.5. See B1. | ![](screenshots/page-2026-11-01T09-25-00-004Z.png) |
+| 3.7 | desktop | pass | Full-page New message screen with Back to messages -> /messages/ | ![](screenshots/page-2026-11-01T09-12-48-062Z.png) |
+| 3.7 | mobile | pass | Full-page picker readable at 375 | ![](screenshots/page-2026-11-01T09-22-00-003Z.png) |
+| 3.8 | mobile | pass | 375 wide: list fills screen, thread fills screen with 'Back to messages' arrow, back -> list, New message -> full-page picker with back link; scrollWidth 375 throughout | ![](screenshots/page-2026-11-01T09-22-00-002Z.png) |
+| 3.8 | tablet | pass | 768 wide: two-pane messages page, no horizontal scroll (scrollWidth 768); thread Send in view on direct open | ![](screenshots/page-2026-11-01T09-25-00-002Z.png) |
 
-### §4 Refusals and closed conversations
+### §4 A guessed recipient and a send refused after the composer opened
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 4.1 | desktop | pass | As Lara, `/messages/new/?recipient=` with Vic's id, 999999 and abc all return 404. ![](screenshots/page-4-1-404.png) |
-| 4.2 | desktop | pass | Bea picks Eli Educator and types "Are replies closed?" without sending. |
-| 4.3 | desktop | pass | Second context as demodev added an Organisation messaging config for Northside with learner_to_educator=closed. ![](screenshots/page-4-3-admin-config.png) |
-| 4.4 | desktop | pass | POST returned 422. Composer re-rendered in place with "Not sent. This person can't receive messages from you here. Your text is still in the box." Text kept. Bea's `/messages/` still "No conversations yet." ![](screenshots/page-4-4-refused.png) |
-| 4.5 | desktop | pass | Eve's Gus Gone thread shows the "Replies are closed" note with the disclosure line and no textarea. ![](screenshots/page-4-5-closed-note.png) |
-| 4.6 | desktop | pass | Config row deleted in admin. Bea's picker link shows the composer again. |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 4.1 | desktop | pass | recipient=91 (Vic), 999999, abc all 404 | |
+| 4.2 | desktop | pass | Bea picked Eli, typed text | |
+| 4.3 | desktop | pass | Northside OrganisationMessagingConfig with learner_to_educator=closed added in a second context. Admin Save needed form.requestSubmit; a Playwright mouse click on Save did not submit (outside this feature). | |
+| 4.4 | desktop | pass | POST 422, alert 'Not sent. This person can't receive messages from you here. Your text is still in the box.', text kept, Bea's /messages/ still empty | ![](screenshots/page-2026-11-01T09-15-04-377Z.png) |
+| 4.5 | desktop | pass | Eve/Gus: 'Replies are closed' note, disclosure line, no textarea | ![](screenshots/page-2026-11-01T09-15-15-591Z.png) |
+| 4.6 | desktop | pass | Config row deleted; Bea's /messages/new/?recipient=90 shows composer again | |
 
-### §5 Unread counts and the bell
+### §5 Messages raise no notification
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 5.1 | desktop | pass | Eve's badge "Messages, 2 unread" (Lena and Lara), bell "none new". Sent "Checking in" to Luis. ![](screenshots/page-5-1-eve-header.png) |
-| 5.2 | desktop | pass | Luis: messages badge 1, bell "none new" and its panel "Nothing yet." Messages panel lists Eve unread with excerpt "Checking in". ![](screenshots/page-5-2-luis-bell.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 5.1 | desktop | pass | Eve badge 'Messages, 2 unread'; bell none new; sent 'Checking in' to Luis | |
+| 5.2 | desktop | pass | Luis: messages 1 unread, bell 'none new' and panel 'Nothing yet.', messages panel Eve row unread with 'Checking in' | ![](screenshots/page-2026-11-01T09-15-56-600Z.png) |
 
-### §6 Educator sidebar and removed routes
+### §6 The educator Messages section is gone
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 6.1 | desktop | pass | Sidebar Teaching group: Dashboard, Cohorts, Learners, Courses. No Messages. ![](screenshots/page-6-1-sidebar.png) |
-| 6.2 | desktop | pass | The old educator messages routes and `/messages/unread-count/` all 404. |
-| 6.3 | desktop | pass | Header messages panel works on educator pages and lists Eve's conversations. ![](screenshots/page-6-3-educator-panel.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 6.1 | desktop | pass | Teaching: Dashboard, Cohorts, Learners, Courses; no Messages | ![](screenshots/page-2026-11-01T09-16-14-281Z.png) |
+| 6.2 | desktop | pass | messages, messages/<uuid>, messages/unread-count/ all 404 | |
+| 6.3 | desktop | pass | Header panel lists Eve's conversations on educator pages | |
 
-### §7 Learner page Messages tab
+### §7 The Messages tab on the learner page
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 7.1 | desktop | pass | Eve on Lena's page: tabs Overview, Courses, Messages. No History. |
-| 7.2 | desktop | pass | Heading Lena Learner, Load earlier messages, log, composer with disclosure. No Other educator conversations. Header badge dropped 2 to 1. ![](screenshots/page-7-2-messages-tab.png) |
-| 7.3 | desktop | pass | Ctrl+Enter POSTs to the send action (200). Message appended, URL stays on the learner page. ![](screenshots/page-7-3-tab-sent.png) |
-| 7.4 | desktop | pass | Lara's tab shows only the Eve-Lara thread. Luis's shows only Eve-Luis. |
-| 7.5 | desktop | pass | Bea is not in Eve's learner list and her page is a 404 for Eve. |
-| 7.6 | desktop | pass | Eli: "No messages with Bea Learner yet." with composer. Sending "Welcome to Cohort B" re-renders the tab with the thread, still on the learner page. Eli's badge stays "none unread". ![](screenshots/page-7-6-eli-sent.png) |
-| 7.7 | desktop | pass | Vic sees only his own conversation with Lena, a composer, no oversight section. ![](screenshots/page-7-7-vic-tab.png) |
-| 7.8 | desktop | pass | Quick-view drawer Messages box has an "Open conversation" icon link to the learner page's Messages tab. ![](screenshots/page-7-8-quick-view.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 7.1 | desktop | pass | Tabs Overview, Courses, Messages; no History | ![](screenshots/page-2026-11-01T09-16-55-181Z.png) |
+| 7.2 | desktop | pass | Heading Lena Learner, Load earlier messages, composer + disclosure, no oversight section; badge 2 -> 1 | ![](screenshots/page-2026-11-01T09-17-04-469Z.png) |
+| 7.3 | desktop | pass | Sent in place, message appended, URL stays on learner page, no navigation (window marker survived) | |
+| 7.4 | desktop | pass | Lara and Luis tabs show only Eve's own conversation with each | |
+| 7.5 | desktop | pass | Eve opening Bea's page: 404 | |
+| 7.6 | desktop | pass | Eli: 'No messages with Bea Learner yet.', composer 'Message to Bea Learner' + disclosure; send re-renders thread in place; badge unchanged | ![](screenshots/page-2026-11-01T09-17-41-820Z.png) |
+| 7.7 | desktop | pass | Vic sees own conversation with Lena, composer, no oversight section | |
+| 7.8 | desktop | pass | Quick view drawer Messages box; icon link titled 'Open conversation' -> learner page Messages tab | ![](screenshots/page-2026-11-01T09-17-58-775Z.png) |
 
-### §8 Messaging disabled
+### §8 With messaging off the tab is absent
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 8 | desktop | skip | Needs a server restart with MESSAGING_ENABLED=False, which is outside this run. Covered by the parametrised sidebar and view tests. |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 8 | desktop | skip | Skipped as the plan allows: MESSAGING_ENABLED is hardcoded True in config/settings_dev.py, not read from the environment | |
 
-### §9 Educator oversight
+### §9 Oversight: the list and the read-only open
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 9.1 | desktop | pass | Orla: own area "No messages with Lena Learner yet." with composer. Other educator conversations lists Eve Educator and Vic Viewer with excerpt and relative time. ![](screenshots/page-9-1-orla-tab.png) |
-| 9.1 | mobile | pass | Own thread, composer and Other educator conversations stack. No horizontal scroll. Tab row fits. ![](screenshots/mobile-9-1-tab.png) |
-| 9.1 | tablet | pass | Educator sidebar collapses behind the menu button. Messages tab card spans the content width. No horizontal scroll. ![](screenshots/tablet-9-1-tab.png) |
-| 9.2 | desktop | pass | Second context as Eve: badge "Messages, none unread", Lena row read. |
-| 9.3 | desktop | pass | Modal "Conversation with Eve Educator" with Load earlier messages. Banner "Read only. You are viewing this conversation as an organisation admin." plus disclosure. No textarea or Send. ![](screenshots/page-9-3-oversight-modal.png) |
-| 9.3 | mobile | pass | Modal opens as a full-width bottom sheet with the read-only banner and no composer. ![](screenshots/mobile-9-3-modal.png) |
-| 9.3 | tablet | pass | Modal centred at 512px wide. ![](screenshots/tablet-9-3-modal.png) |
-| 9.4 | desktop | pass | Load earlier messages GETs the `older/` URL with a cursor (200). Older entries prepended. Control gone once message 1 shows. |
-| 9.5 | desktop | pass | History shows today, Orla Admin, Conversation viewed. Organisation audit log Target reads "Conversation with Eve Educator". ![](screenshots/page-9-5-history.png) |
-| 9.5 | mobile | pass | History table sits in a horizontally scrollable wrapper. The page itself does not scroll sideways. ![](screenshots/mobile-9-5-history.png) |
-| 9.6 | desktop | pass | A second open adds a second "Conversation viewed" row today. |
-| 9.7 | desktop | pass | Eve's badge and Lena row unchanged after Orla's opens. Lena's Eve row is still unread (Eve's 7.3 reply), so no marker moved. |
-| 9.8 | desktop | pass | Gus Gone (Inactive): no own composer. Oversight reads "No other educator conversations." ![](screenshots/page-9-8-gus.png) |
-| 9.9 | desktop | pass | Orla's "Hello from Orla" stays on the page. After reload it is in the own area and not listed under Other educator conversations. ![](screenshots/page-9-9-orla-own.png) |
-| 9.10 | desktop | pass | Superuser banner "Read only. You are viewing this conversation as a site admin." New History row by demodev@email.com. ![](screenshots/page-9-10-site-admin.png) |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 9.1 | desktop | pass | Orla: own area 'No messages with Lena Learner yet.' + composer; Other educator conversations: Eve (excerpt, time) and Vic | ![](screenshots/page-2026-11-01T09-18-30-281Z.png) |
+| 9.1 | mobile | pass | Learner Messages tab + oversight list fit 375, tabs incl. History visible | ![](screenshots/page-2026-11-01T09-24-00-001Z.png) |
+| 9.1 | tablet | pass | Learner Messages tab fits 768, no horizontal scroll; oversight list below the fold in normal page scroll | ![](screenshots/page-2026-11-01T09-25-00-001Z.png) |
+| 9.2 | desktop | pass | Eve context: none unread, Lena row read; Lena History had 9 rows from earlier runs | |
+| 9.3 | desktop | pass | Modal 'Conversation with Eve Educator', Load earlier messages, read-only org-admin banner + disclosure, no textarea/Send | ![](screenshots/page-2026-11-01T09-18-54-795Z.png) |
+| 9.3 | mobile | pass | Oversight modal as bottom sheet full width, read-only banner visible | ![](screenshots/page-2026-11-01T09-24-00-002Z.png) |
+| 9.4 | desktop | pass | One GET .../conversations/<uuid>/older/?before=... 200, earlier entries prepended down to message 1, control removed | |
+| 9.5 | desktop | pass | History +1: today, Orla Admin, Conversation viewed; org Audit log target 'Conversation with Eve Educator' | |
+| 9.6 | desktop | pass | Second open -> two Conversation viewed rows today | |
+| 9.7 | desktop | pass | Eve's badge/Lena row unchanged; Lena still sees Eve's reply as unread | |
+| 9.8 | desktop | pass | Gus (inactive filter): no own composer, 'No other educator conversations.' | ![](screenshots/page-2026-11-01T09-19-49-125Z.png) |
+| 9.9 | desktop | pass | Orla sends 'Hello from Orla' in place; after reload shown in own area, not in oversight list | |
+| 9.10 | desktop | pass | Superuser banner 'as a site admin'; History row by demodev@email.com | ![](screenshots/page-2026-11-01T09-20-30-000Z.png) |
 
-### §10 Access and tenancy
+### §10 Oversight refused
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 10.1 | desktop | pass | Sid (Southside) on Northside Lena's messages tab: 404. |
-| 10.2 | desktop | pass | Sam's Messages tab: Sid's own conversation plus "No other educator conversations." ![](screenshots/page-10-2-sid-sam.png) |
-| 10.3 | desktop | pass | Eve on the view_conversation action URL: 403 Forbidden page, no thread. Lena's History row count unchanged. |
-| 10.4 | desktop | pass | Orla: another learner's conversation uuid on Luis's path is 404. `conversation=not-a-uuid` is 404. History unchanged. |
-| 10.5 | desktop | pass | `older/` with `before=garbage` is 400, without `before` is 400, with a valid cursor from 9.4 is 200 with entries. History unchanged. |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 10.1 | desktop | pass | Sid on Northside Lena messages tab: 404 | |
+| 10.2 | desktop | pass | Sam's tab: Sid's own conversation + 'No other educator conversations.' | |
+| 10.3 | desktop | pass | Eve GET view_conversation action: 403 Forbidden page; Lena History unchanged (12) | |
+| 10.4 | desktop | pass | Vic-Lena conversation on Luis's path: 404; conversation=not-a-uuid: 404; no History rows | |
+| 10.5 | desktop | pass | older/?before=garbage 400, no before 400, valid cursor 200 with entries; History unchanged | |
 
-### §11 Course-registration notification rollup
+### §11 Notification rollup still works for other categories
 
-| Test | Viewport | Status | Notes |
-|------|----------|--------|-------|
-| 11 | desktop | skip | Optional per plan; not run. The rollup is untouched by this diff and covered by the full test run. |
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 11 | desktop | pass | qa_create_notification_scenarios run; notify.other sees bell 'Notifications, 2 new' with two course registration rows | ![](screenshots/page-2026-11-01T09-21-07-936Z.png) |
 
 ## Design check
 
-no design states tested
+No design states tested.
+
+## B1: Thread opened by the in-pane picker overflows the viewport until reload
+
+Manifestations:
+- 3.5, desktop
+- 3.6, desktop
+- 3.6, tablet
+
+![](screenshots/page-2026-11-01T09-11-15-962Z.png)
+![](screenshots/page-2026-11-01T09-12-32-569Z.png)
+![](screenshots/page-2026-11-01T09-25-00-004Z.png)
+
+**Expected:** After a first send or picking someone with an existing conversation from the two-pane picker, /messages/<uuid>/ renders exactly like a direct load: page fits the viewport, composer hint, Send and disclosure line visible.
+
+**Actual:** comms/messaging_views.py `_open_thread_response` answers htmx with a 204 + HX-Location {path}, which swaps the response into <body> over AJAX instead of the full page load its docstring promises. The swapped page is 72px (header height) taller than the viewport (1152 vs 1080 desktop, 1096 vs 1024 tablet), pushing Send/hint/disclosure below the fold; the debug branch badge loses its border-radius. A reload fixes it. Not seen at 375 wide, where New message opens the full-page picker.
 
 ## Bug status
 
-No bugs found in this run.
+- B1: **FIXED** (commit: 5c3141820) — Thread opened by the in-pane picker overflows the viewport until reload
+
+  `_open_thread_response` now answers htmx with `HX-Redirect`, so the page really reloads. Re-verified in the browser at 768x1024 (scrollHeight 1024, Send bottom 972) and 1920x1080 (scrollHeight 1080, Send bottom 1044). The badge keeps its pill style. Replies on `/messages/<uuid>/` and on the learner Messages tab still send in place.
+
+  ![](screenshots/page-2026-11-01T09-40-00-001Z.png)
+  ![](screenshots/page-2026-11-01T09-40-00-002Z.png)
 
 ## General notes
 
-- §8 was skipped because it needs a server restart with MESSAGING_ENABLED=False.
-- §11 is optional and was not run.
+- §8 was skipped because MESSAGING_ENABLED is hardcoded True in config/settings_dev.py.
+- The Lena History tab already had 9 "Conversation viewed" rows from earlier QA runs (the audit log is not reset by the scenario command), so audit checks counted new rows.
+- In the Django admin a Playwright mouse click on the organisation messaging config Save button did not submit the form (form.requestSubmit did). This is outside this feature and was not investigated.
+- The debug branch badge overlaps the composer's disclosure line at phone width (dev-only element).
+- The quick-view drawer's "Open conversation" control is an icon link whose text is screen-reader-only.
 
-Observations without action:
-
-- The "Load earlier messages" control sits over a partly scrolled bubble at the top of the thread log on desktop. This is cosmetic.
-- The DEBUG-only branch badge covers the bottom line of the composer disclosure on mobile.
-- The Lena learner History tab carries audit rows from earlier QA runs, because the seed command does not clear audit entries.
-- The superuser shows as their email in the History Who column because it has no name.
-- §3.2's "cohort group heading" reads "Cohort admin", which is a role heading.
-
-status: ok · reason: report rendered, 0 bugs documented
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
