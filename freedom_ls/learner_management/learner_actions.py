@@ -160,15 +160,22 @@ def reactivate_cohort(
     return _set_cohort_active(cohort, True, actor, reason)
 
 
+class CohortUnavailableError(ValueError):
+    """The cohort is inactive or belongs to another organisation."""
+
+
 def check_cohort_for(organisation_id: UUID, cohort: Cohort) -> None:
-    """ValueError for an inactive cohort or one in another organisation."""
+    """CohortUnavailableError for an inactive cohort or one in another
+    organisation. Whether it is active is read from the database, not the
+    instance: a long run resolves its cohort once, and the cohort can be
+    deactivated while the run is under way."""
     if cohort.organisation_id != organisation_id:
-        raise ValueError(
+        raise CohortUnavailableError(
             "The cohort belongs to another organisation, so it is not an "
             "active cohort of the organisation."
         )
-    if not cohort.is_active:
-        raise ValueError(
+    if not Cohort._base_manager.filter(pk=cohort.pk, is_active=True).exists():
+        raise CohortUnavailableError(
             "The cohort is inactive, so it is not an active cohort of the organisation."
         )
 
@@ -499,8 +506,8 @@ def add_learner(
     reason: str = "",
 ) -> AddLearnerResult:
     """Make one address a learner of the organisation and put them in the
-    cohort when one is given. Raises ValueError, before touching anything,
-    when the cohort is not an active cohort of the organisation."""
+    cohort when one is given. Raises CohortUnavailableError, before touching
+    anything, when the cohort is not an active cohort of the organisation."""
     if cohort is not None:
         check_cohort_for(organisation.pk, cohort)
     email = entry.email.strip()
@@ -532,17 +539,25 @@ def add_learner(
         is_member=is_member,
         cohort_given=cohort is not None,
     )
+    # The prediction read unlocked rows; the locked writes have the last word,
+    # so two overlapping adds of one address record one change, not two.
     if existing is None:
         learner = ensure_learner(user, organisation)
         _fire("learner.added", learner, {"account_created": account_created})
     else:
         learner = existing
-        if outcome == AddOutcome.REACTIVATED:
-            _set_learner_active(existing, True, event_type="learner.reactivated")
+        if outcome == AddOutcome.REACTIVATED and not _set_learner_active(
+            existing, True, event_type="learner.reactivated"
+        ):
+            outcome = AddOutcome.ALREADY_LEARNER
     if account_created:
         send_account_setup_email(user, organisation.name)
     if cohort is not None:
-        _add_membership(learner, cohort)
+        cohort_outcome = (
+            CohortOutcome.ADDED
+            if _add_membership(learner, cohort)
+            else CohortOutcome.ALREADY_MEMBER
+        )
     # One entry whatever changed, named like the webhook it fired: a learner
     # new here is "added", one switched back on is "reactivated", each with
     # the cohort named when they joined it too; one already active here

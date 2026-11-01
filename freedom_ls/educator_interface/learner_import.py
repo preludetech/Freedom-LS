@@ -23,6 +23,7 @@ from freedom_ls.learner_management.learner_actions import (
     AddLearnerResult,
     AddOutcome,
     CohortOutcome,
+    CohortUnavailableError,
     ImportLookup,
     LearnerEntry,
     add_learner,
@@ -318,7 +319,7 @@ def commit_rows(learner_import: LearnerImport, user: User) -> None:
                         check.cohort,
                         actor=user,
                     )
-                except ValueError:
+                except CohortUnavailableError:
                     reason_override = COHORT_UNAVAILABLE_REASON
             label, reason = label_for(check, result)
             check.row.final_label, check.row.final_reason = (

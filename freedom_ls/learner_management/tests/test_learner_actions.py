@@ -12,6 +12,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience
+from freedom_ls.learner_management import learner_actions
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -23,6 +24,7 @@ from freedom_ls.learner_management.learner_actions import (
     AddLearnerResult,
     AddOutcome,
     CohortOutcome,
+    CohortUnavailableError,
     ImportLookup,
     LearnerEntry,
     add_learner,
@@ -1306,6 +1308,64 @@ class TestCheckCohortFor:
 
         with pytest.raises(ValueError, match="another organisation"):
             check_cohort_for(OrganisationFactory().pk, cohort)
+
+    def test_the_refusal_is_a_cohort_unavailable_error(self, mock_site_context):
+        cohort = CohortFactory(is_active=False)
+
+        with pytest.raises(CohortUnavailableError):
+            check_cohort_for(cohort.organisation_id, cohort)
+
+    def test_a_cohort_deactivated_since_it_was_loaded_is_refused(
+        self, mock_site_context
+    ):
+        """A long run resolves its cohort once; the check reads the row."""
+        cohort = CohortFactory()
+        Cohort.objects.filter(pk=cohort.pk).update(is_active=False)
+
+        with pytest.raises(CohortUnavailableError, match="inactive"):
+            check_cohort_for(cohort.organisation_id, cohort)
+
+
+@pytest.mark.django_db
+class TestAddLearnerUnderARace:
+    """`add_learner` predicts its outcome from unlocked reads; the locked
+    writes decide what is recorded, so two overlapping adds of one address
+    record one change between them."""
+
+    def test_a_learner_reactivated_meanwhile_is_already_a_learner(
+        self, mock_site_context, monkeypatch
+    ):
+        learner = LearnerFactory(is_active=False)
+
+        def _already_active(target: Learner, is_active: bool, event_type: str) -> bool:
+            return False
+
+        monkeypatch.setattr(learner_actions, "_set_learner_active", _already_active)
+
+        result = add_learner(
+            learner.organisation, LearnerEntry(learner.user.email), None
+        )
+
+        assert result.outcome == AddOutcome.ALREADY_LEARNER
+        assert AuditLogEntry.unscoped.count() == 0
+
+    def test_a_member_added_meanwhile_is_already_a_member(
+        self, mock_site_context, monkeypatch
+    ):
+        cohort = CohortFactory()
+        learner = LearnerFactory(organisation=cohort.organisation)
+
+        def _already_a_member(target: Learner, target_cohort: Cohort) -> bool:
+            return False
+
+        monkeypatch.setattr(learner_actions, "_add_membership", _already_a_member)
+
+        result = add_learner(
+            cohort.organisation, LearnerEntry(learner.user.email), cohort
+        )
+
+        assert result.cohort_outcome == CohortOutcome.ALREADY_MEMBER
+        assert AuditLogEntry.unscoped.count() == 0
 
 
 def _scenarios(cohort):

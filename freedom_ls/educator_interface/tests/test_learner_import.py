@@ -13,7 +13,9 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.base.csv_import import CsvImportError
+from freedom_ls.educator_interface import learner_import as learner_import_module
 from freedom_ls.educator_interface.learner_import import (
+    COHORT_UNAVAILABLE_REASON,
     PERMISSION_LOST_MESSAGE,
     commit_rows,
     create_learner_import,
@@ -339,6 +341,64 @@ def test_a_row_whose_state_changed_since_the_preview_reports_its_real_label(
 
     assert _labels(learner_import) == [ImportLabel.JOINED]
     assert _labels(learner_import, "final_label") == [ImportLabel.ALREADY_MEMBER]
+
+
+def test_a_cohort_deactivated_during_the_commit_refuses_the_rows_after_it(
+    organisation: Organisation, admin: User, mock_site_context: Site, monkeypatch
+) -> None:
+    """The cohort cell is resolved once per run, so the check must read the
+    row, not the instance the run holds."""
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Accra"))
+    learner_import = create_learner_import(
+        admin,
+        organisation,
+        None,
+        _file("a@example.com,,,Accra", "b@example.com,,,Accra"),
+    )
+    real_add_learner = learner_import_module.add_learner
+    calls: list[str] = []
+
+    def _deactivating_before_the_second(*args: object, **kwargs: object) -> object:
+        calls.append("row")
+        if len(calls) == 2:
+            Cohort.objects.filter(pk=cohort.pk).update(is_active=False)
+        return real_add_learner(*args, **kwargs)
+
+    monkeypatch.setattr(
+        learner_import_module, "add_learner", _deactivating_before_the_second
+    )
+
+    _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
+
+    rows = LearnerImportRow.objects.filter(learner_import=learner_import).order_by(
+        "line_number"
+    )
+    assert [row.final_label for row in rows] == [
+        ImportLabel.NEW_ACCOUNT,
+        ImportLabel.ERROR,
+    ]
+    assert rows[1].final_reason == COHORT_UNAVAILABLE_REASON
+    assert not User.objects.filter(email="b@example.com").exists()
+
+
+def test_an_unrelated_error_in_a_row_is_not_blamed_on_the_cohort(
+    organisation: Organisation, admin: User, mock_site_context: Site, monkeypatch
+) -> None:
+    learner_import = create_learner_import(
+        admin, organisation, None, _file("a@example.com,,,")
+    )
+
+    def _broken(*args: object, **kwargs: object) -> object:
+        raise ValueError("not about the cohort")
+
+    monkeypatch.setattr(learner_import_module, "add_learner", _broken)
+
+    with pytest.raises(ValueError, match="not about the cohort"):
+        _confirm_and_run(str(learner_import.pk), mock_site_context.pk)
+
+    learner_import.refresh_from_db()
+    assert learner_import.status == RunStatus.FAILED
+    assert _labels(learner_import, "final_label") == [None]
 
 
 def test_a_commit_run_again_does_not_repeat_a_row(
