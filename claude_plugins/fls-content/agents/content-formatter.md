@@ -31,7 +31,7 @@ knowledge a topic body does.
 Use the `Skill` tool to load each one **before doing any work**. What each gives you:
 
 - `conventions` — numbering, role files, UUID rules, scanner skip rules, HTML-escaping.
-- `content-types` — the eight content types, frontmatter schemas, heading rules.
+- `content-types` — the ten content types, frontmatter schemas, heading rules.
 - `markdown-conversion` — the conversion philosophy plus the **complete** auto/propose/never,
   heading-handling, existing-widget, idempotency, and frontmatter-safety rules (in its
   `conversion-patterns.md` resource). **Follow those tables directly; they are the single

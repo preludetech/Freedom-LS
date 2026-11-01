@@ -107,7 +107,7 @@ The `git_hash` on `LegalConsent` is the blob SHA of the document as the user saw
 
 ## Consent Tracking: `LegalConsent`
 
-One row is written per `(user, document_type, document_version, git_hash)` consent event. `LegalConsent` is a `SiteAwareModel` — see `fls:multi-tenant` for what that implies for queries.
+One row is written per `(user, document_type, document_version, git_hash)` consent event. `LegalConsent` is a `SiteAwareModel` — see `fls-dev:multi-tenant` for what that implies for queries.
 
 | Field              | Notes |
 |--------------------|-------|
@@ -128,7 +128,7 @@ One row is written per `(user, document_type, document_version, git_hash)` conse
 
 ### Querying
 
-`LegalConsent.objects` is the site-scoped default manager — queries return only consents for the current site. To audit consents across sites, use the cross-site escape hatch in `fls:multi-tenant`, not the manager directly.
+`LegalConsent.objects` is the site-scoped default manager — queries return only consents for the current site. To audit consents across sites, use the cross-site escape hatch in `fls-dev:multi-tenant`, not the manager directly.
 
 ```python
 # All users on the current site who accepted a specific version of the terms
@@ -208,7 +208,7 @@ Then add `"downstream_project.profiles.forms.PhoneNumberForm"` to the relevant `
 
 ## Testing Patterns
 
-- Use the `mock_site_context` fixture (see `fls:multi-tenant`) anywhere you create site-aware records.
+- Use the `mock_site_context` fixture (see `fls-dev:multi-tenant`) anywhere you create site-aware records.
 - Create a `SiteSignupPolicy` row for non-default behaviour; to test the global default, flip the setting via the `settings` fixture instead.
 - Reuse the test form fixtures in `freedom_ls/accounts/tests/_registration_form_fixtures.py` and `_completion_view_fixtures.py` — don't import private real forms from downstream projects in tests.
 - For tests that touch `legal_docs.py`, the `_git_helpers.py` test helper sets up tiny git repos so you don't depend on the actual project HEAD.
