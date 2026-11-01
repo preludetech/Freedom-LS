@@ -154,7 +154,7 @@ Only for images with no suitable QA screenshot.
    uv run python manage.py runserver $PORT
    ```
 
-   Read `.claude/fls-dev/config.md` for admin credentials. Base URL: `http://127.0.0.1:$PORT/`.
+   Read `## QA Login` in `.claude/sdd/config.md` (`config.local.md` wins) for the admin login. Base URL: `http://127.0.0.1:$PORT/`.
 
 2. **Confirm the branch badge.** Navigate to `http://127.0.0.1:$PORT/` using Playwright MCP and look for the `debug-branch-badge` element. It must name the current branch. If it names a different branch there is a port collision — go back to step 1 and pick another port.
 

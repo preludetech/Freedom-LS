@@ -62,7 +62,7 @@ in every QA session.** Review any new script with the same care as a new allow-l
 it validates its arguments, does not write outside the project, and does not execute its
 arguments as shell code.
 
-### Resources (16)
+### Resources (15)
 
 FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`, `concrete_spec_integration`
 (the per-spec integration procedure a concrete project follows; `concrete/update_fls` follows it).
@@ -73,8 +73,6 @@ FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extend
 `qa_data_helper` (the conventions `sdd:qa-data-helper` reads), `templates_and_cotton`, `testing`,
 `playwright-testing`.
 `launcher_editing` and `wrapper_script_migration` (copies of the procedures `/fls-dev:init` follows).
-`agent_memory_guidelines` (a copy; the canonical home is the `sdd` plugin, duplicated here because
-`${CLAUDE_PLUGIN_ROOT}` is per-plugin).
 
 ### Templates
 

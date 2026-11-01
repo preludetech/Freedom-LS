@@ -37,7 +37,7 @@ definition or `narrowed` with the source it comes from.
 
 | Term | Status | Meaning / source |
 | --- | --- | --- |
-| `ContentCollectionItem` | narrowed | `freedom_ls/content_engine/models.py`, here only the topic case |
+| `<ModelName>` | narrowed | `<app>/models.py`, here only the <one> case |
 | … | coined | … , no existing term because … |
 
 Each line is checkable: a `narrowed` term with no hits in the codebase is wrong, and a `coined` term

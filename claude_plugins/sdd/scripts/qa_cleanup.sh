@@ -2,8 +2,9 @@
 # qa_cleanup.sh — Remove the previous QA run's artifacts from a spec directory.
 # Usage: ./qa_cleanup.sh <spec-dir>
 #
-# Takes the QA run's spec directory as $1 and removes the qa_report.md and
-# screenshots/ directory it holds, so the next run starts clean.
+# Takes the QA run's spec directory as $1, relative to the project root, and
+# removes the qa_report.md and screenshots/ directory it holds, so the next run
+# starts clean.
 
 set -euo pipefail
 
@@ -22,17 +23,27 @@ if [ -z "${1:-}" ]; then
   exit 1
 fi
 
-if [ ! -d "$1" ]; then
-  echo "Error: spec-dir is not a directory: $1" >&2
-  exit 1
-fi
-
 # Resolve the project root with realpath so the boundary check below compares
 # like-for-like with the realpath-resolved SPEC_DIR. Without this, a symlinked
 # component in CLAUDE_PROJECT_DIR would make the prefix check falsely reject a
 # legitimate in-project spec dir.
 PROJECT_ROOT="$(realpath "$CLAUDE_PROJECT_DIR")"
-SPEC_DIR="$(realpath "$1")"
+
+# A relative spec-dir is joined to the project root, not the caller's working
+# directory, so the script behaves the same from any cwd. An absolute one is
+# taken as given and still has to pass the boundary check below.
+if [[ "$1" == /* ]]; then
+  SPEC_DIR="$1"
+else
+  SPEC_DIR="${PROJECT_ROOT}/$1"
+fi
+
+if [ ! -d "$SPEC_DIR" ]; then
+  echo "Error: spec-dir is not a directory: $SPEC_DIR" >&2
+  exit 1
+fi
+
+SPEC_DIR="$(realpath "$SPEC_DIR")"
 
 # Validate the spec dir is inside the project (security: the script is
 # allow-listed with arbitrary arguments, so an unvalidated path such as

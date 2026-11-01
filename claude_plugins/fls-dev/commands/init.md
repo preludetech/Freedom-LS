@@ -127,6 +127,11 @@ P3 is what makes the `ds` → `fls-dev` order enforced rather than merely docume
 1. Add these `allow` entries if missing (never duplicate):
    - `Skill(fls-dev:*)`
    - `Bash(.claude/fls-dev/scripts/*.sh:*)`
+   - for `concrete_pointer_move.sh` and `concrete_rollback.sh`, with `<path>` =
+     `<PLUGINS_ROOT>/claude_plugins/fls-dev/scripts/<name>.sh` and no `./` prefix on `<path>` when
+     `PLUGINS_ROOT` is `.`: `Bash(<path>:*)`, `Bash(bash <path>:*)` and `Bash(./<path>:*)`.
+     `/fls-dev:update_concrete_projects` invokes them by that path; without the entries every call
+     prompts.
 2. Add `"fls-dev": true` to `enabledPlugins`. Do not add or remove another plugin's key.
 3. **Do not** add or modify the `SessionStart` hook, the `$CLAUDE_PLUGINS_LOADED` sentinel, or any
    other `hooks` entry — those are `ds`-owned.
@@ -155,7 +160,11 @@ P3 is what makes the `ds` → `fls-dev` order enforced rather than merely docume
    naming `.claude/fls-dev/scripts/<basename>.sh` where `<basename>` is `qa_cleanup`,
    `qa_collect_screenshots`, `compress_screenshots` or `delete_sdd_work_files`: those scripts moved to
    `claude_plugins/sdd/scripts/`, the entry is stale, and the user is pointed at
-   `Skill(sdd:update-claude-project-settings)`.
+   `Skill(sdd:update-claude-project-settings)`. Also list every file under
+   `.claude/fls-dev/scripts/` with one of those four basenames as a **retired wrapper**: its target
+   moved to `claude_plugins/sdd/scripts/`, so it will not run, and the user deletes it with
+   `git rm`. This command cannot prove such a file disposable (the template it was generated from
+   no longer exists), so it never deletes one.
 6. Write the mutated object back and report what changed.
 
 ## Step 2: Migrate a legacy `.claude/fls/` config dir
@@ -339,7 +348,16 @@ If `.claude/sdd/config.md` exists:
   copy each value into the matching `sdd` key, only where that key is blank. Then remove those
   three sections from `.claude/fls-dev/config.md` only when every value they hold is present in
   `sdd`'s config; otherwise leave them and list them as an outstanding action. Never read or write
-  `.claude/fls-dev/config.local.md` here.
+  `.claude/fls-dev/config.local.md` here. Then set each key that is still blank to this plugin's
+  dev default; `Content reset` has none and stays blank:
+  - `Admin email: demodev@email.com`
+  - `Admin password: demodev@email.com  # pragma: allowlist secret`
+  - `Base URL: http://127.0.0.1:8000`
+  - `DB drop: .claude/fls-dev/scripts/dev_db_delete.sh`
+  - `DB create: .claude/fls-dev/scripts/dev_db_init.sh`
+  - `Migrate: uv run python manage.py migrate`
+
+  A value already there stays; a legacy value fills a blank; the default fills what is still blank.
 - Ensure `## Testing Skills` exists. If its list is empty, write `ds:testing`, `fls-dev:testing`,
   `ds:playwright-tests` and `fls-dev:playwright-tests`, one per bullet.
 
@@ -361,8 +379,9 @@ is listed.
    its `PLUGIN_DIR` resolves to a directory that exists, and if it does not, say so explicitly in the
    hand-off note: the file is preserved because it carries your changes, **but it will not run as-is**
    until those changes are ported and it is deleted.
-5. `.claude/settings.json` contains `Skill(fls-dev:*)` and `Bash(.claude/fls-dev/scripts/*.sh:*)`,
-   and no permission literal still points at `.claude/fls/scripts/`.
+5. `.claude/settings.json` contains `Skill(fls-dev:*)`, `Bash(.claude/fls-dev/scripts/*.sh:*)` and
+   the three entries from Step 1 item 1 for each of `concrete_pointer_move.sh` and
+   `concrete_rollback.sh`, and no permission literal still points at `.claude/fls/scripts/`.
 6. Every wrapper under `.claude/fls-dev/scripts/` classified **Managed** by Step A of the migration
    resource declares
    `PLUGINS_ROOT` with the resolved value — no `__PLUGINS_ROOT__` and no `FLS_PATH` — its header
@@ -370,7 +389,9 @@ is listed.
    exists. Files classified User-authored are exempt and listed as untouched.
 7. Every basename under `.claude/fls-dev/scripts/` either appears in this plugin's
    `templates/wrapper_scripts/`, or appears in **no** plugin's — the user's own file, which belongs
-   to them and is reported as untouched. A **foreign-owned** basename (one belonging to another
+   to them and is reported as untouched. The four retired basenames of Step 1 item 5 are neither:
+   each is listed as a retired wrapper in the outstanding actions, never as untouched. A
+   **foreign-owned** basename (one belonging to another
    plugin's template set) must not be here at all: Step 2a sends those to their owner without ever
    routing them through this directory. One surviving here is a defect, not a pass.
 8. No `.claude/settings.json` permission literal points at a **foreign-owned** basename under
@@ -387,11 +408,14 @@ is listed.
     action is listed. Each path under `## Review Hooks` exists, and each `## Documentation Hooks` skill
     `<plugin>:<command>` resolves to `<PLUGINS_ROOT>/claude_plugins/<plugin dir>/commands/<command>.md`
     (`ds` is `django-stack`), or the Step 8b outstanding action is listed.
-13. Report every issue found.
+13. Under `## QA Login` and `## QA Dev Data` in `.claude/sdd/config.md`, `Admin email`,
+    `Admin password`, `Base URL`, `DB drop`, `DB create` and `Migrate` are each non-blank, or the
+    Step 8b outstanding action is listed.
+14. Report every issue found.
 
 ## Step 10: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
-every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. The QA scripts now run from `claude_plugins/sdd/scripts/`. Point the user at `.claude/sdd/config.md` for the dev
+every report-only finding from **Step 1, item 5**, retired wrappers included. Name the `Design check` key, the `Review Hooks` keys, the `Documentation Hooks` list and the `QA Login` and `QA Dev Data` keys, with their values. The QA scripts now run from `claude_plugins/sdd/scripts/`. Point the user at `.claude/sdd/config.md` for the dev
 credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.

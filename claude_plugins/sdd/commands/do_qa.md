@@ -1,7 +1,7 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
 argument-hint: [path to the test plan file, or the spec dir holding it]
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
 Act like a human QA expert. Execute the given test plan.
@@ -666,11 +666,10 @@ spawning. Pass `<todo-path>`: the `todo.md` in `<spec-dir>`.
 
 ### The `tick:`
 
-Find the item naming the configured `QA command` for **this run's** test plan, or one naming
-`/fls-dev:do_qa` (checklists written before the command moved here still say it; this is the one
-project name this file keeps). A `todo.md` often holds one per plan,
-so match on a substring unique to yours (e.g. the plan's file name, `3b. frontend_qa`), and pass the
-line **verbatim** as it appears in the file. Do not reconstruct the wording from memory; it drifts
+Find the item naming **this run's** test plan. Its command name may be an older QA command: a
+checklist written before `QA command` changed keeps its wording. A `todo.md` often holds one per
+plan, so match on a substring unique to yours (e.g. the plan's file name, `3b. frontend_qa`), and
+pass the line **verbatim** as it appears in the file. Do not reconstruct the wording from memory; it drifts
 between specs.
 
 ### What may be added — this list is closed

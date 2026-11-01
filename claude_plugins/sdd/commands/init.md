@@ -102,13 +102,23 @@ files exist, catches this.
 ## Step 1: Merge the `sdd` permission and enabledPlugins key
 
 1. Add `"Skill(sdd:*)"` to `permissions.allow` if absent (never duplicate).
-2. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.
-3. Do not touch `hooks`.
-4. Write the mutated object back and report what changed.
+2. For every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`, add these three `allow` entries if
+   absent, with `<path>` = `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/<name>.sh` and no `./`
+   prefix on `<path>` when `PLUGINS_ROOT` is `.`:
+   - `Bash(<path>:*)`
+   - `Bash(bash <path>:*)`
+   - `Bash(./<path>:*)`
+
+   "Absent" means no byte-identical string is already in the list. The commands invoke these
+   scripts by that path, so without the entries every call prompts, and a non-interactive agent
+   returns `blocked` instead. Never remove or rewrite an entry here.
+3. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.
+4. Do not touch `hooks`.
+5. Write the mutated object back and report what changed.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads twelve sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads thirteen sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
@@ -295,7 +305,8 @@ in-place edits.
 ## Step 5: Validate the setup
 
 1. `sdd` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
-2. `Skill(sdd:*)` is in `permissions.allow`.
+2. `Skill(sdd:*)` is in `permissions.allow`, and so are the three entries from Step 1 item 2 for
+   every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with both `Setup script` and
    `Teardown script` keys (blank values are valid).
 4. `.claude/sdd/config.md` has a `## Rebase Hooks` section with both `Rebase command` and

@@ -52,18 +52,24 @@ The planning-document rules that used to sit in `code-comments` are now `sdd:pla
 
 1. Add `productivity` to the project's launcher and settings: run `/productivity:init`.
    `/sdd:init` lists it as an outstanding action when `claude.sh` lacks the plugin.
-2. Run `/fls-dev:init`. It sets `QA command` to `sdd:do_qa` and fills the other `## QA Hooks`
+2. Run `/sdd:init`. It adds the `.claude/settings.json` allow entries for the scripts that now run
+   from `claude_plugins/sdd/scripts/`; without them every QA script call prompts.
+3. Run `/fls-dev:init`. It sets `QA command` to `sdd:do_qa` and fills the other `## QA Hooks`
    keys. It copies `## Dev Credentials`, `## Project Settings` and `## QA Dev Data` from
-   `.claude/fls-dev/config.md` into `.claude/sdd/config.md`, and removes those sections once every
-   value is copied. It re-points a `Comment standard` that names the old `code-comments` path. It
+   `.claude/fls-dev/config.md` into `.claude/sdd/config.md`, removes those sections once every
+   value is copied, and fills any `## QA Login` or `## QA Dev Data` key still blank with the FLS
+   dev default. It re-points a `Comment standard` that names the old `code-comments` path. It
    also lists any `.claude/settings.json` allow entries that still name the removed
-   `.claude/fls-dev/scripts/` QA wrappers.
-3. By hand, re-point a `## Vocabulary Sources` entry naming
+   `.claude/fls-dev/scripts/` QA wrappers, and any such wrapper (`qa_cleanup.sh`,
+   `qa_collect_screenshots.sh`, `compress_screenshots.sh`, `delete_sdd_work_files.sh`) still under
+   `.claude/fls-dev/scripts/`. Delete those files yourself: their target moved, so they no longer
+   run.
+4. By hand, re-point a `## Vocabulary Sources` entry naming
    `.claude/skills/domain-glossary/SKILL.md` to
    `<PLUGINS_ROOT>/claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`. No init command does this.
-4. Replace `/answer` with `/productivity:answer`, and any bare skill name from the table above
+5. Replace `/answer` with `/productivity:answer`, and any bare skill name from the table above
    with its namespaced name, in the project's own commands, skills, `CLAUDE.md` and settings
    allow entries.
-5. If the project kept its own QA data-helper memory under
+6. If the project kept its own QA data-helper memory under
    `.claude/agent-memory/fls-dev-qa-data-helper/`, move it to
    `.claude/agent-memory/sdd-qa-data-helper/`.
