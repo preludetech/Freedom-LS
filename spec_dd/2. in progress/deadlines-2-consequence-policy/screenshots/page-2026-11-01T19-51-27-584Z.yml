@@ -1,0 +1,164 @@
+- generic [active] [ref=f110e1]:
+  - banner [ref=f110e2]:
+    - link [ref=f110e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f110e4]
+      - heading "FirstClass" [level=1] [ref=f110e5]
+    - navigation [ref=f110e6]:
+      - generic [ref=f110e7]:
+        - generic [ref=f110e8]:
+          - button "Messages" [ref=f110e9]:
+            - img "message" [ref=f110e11]
+          - status:
+            - generic [ref=f110e13]: Messages
+        - generic [ref=f110e14]:
+          - button "Notifications, none new" [ref=f110e15]:
+            - img "notifications" [ref=f110e17]
+          - status:
+            - generic [ref=f110e19]: Notifications, none new
+        - button "Open user menu for qa_deadline_cohort@email.com" [ref=f110e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f110e22]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f110e23]:
+    - generic [ref=f110e25]:
+      - link "Back" [ref=f110e26] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f110e31]:
+        - generic [ref=f110e32]: Reference
+        - heading "Functionality Demo - Course Parts" [level=1] [ref=f110e33]
+        - paragraph [ref=f110e34]: Demonstrating course organisation with parts
+        - generic [ref=f110e36]:
+          - generic [ref=f110e37]:
+            - img "topic" [ref=f110e38]
+            - generic [ref=f110e40]:
+              - paragraph [ref=f110e41]: Lessons
+              - paragraph [ref=f110e42]: 5 lessons
+          - generic [ref=f110e43]:
+            - img "deadline" [ref=f110e44]
+            - generic [ref=f110e46]:
+              - paragraph [ref=f110e47]: Time limit
+              - paragraph [ref=f110e48]: 90 days
+          - generic [ref=f110e49]:
+            - img "check" [ref=f110e50]
+            - generic [ref=f110e52]:
+              - paragraph [ref=f110e53]: Enrolment
+              - paragraph [ref=f110e54]: Free · open
+      - generic [ref=f110e55]:
+        - complementary [ref=f110e56]:
+          - generic [ref=f110e58]:
+            - generic [ref=f110e59]:
+              - paragraph [ref=f110e60]: Free · open to everyone
+              - paragraph [ref=f110e61]: One click. No credit card.
+            - generic [ref=f110e63]:
+              - text: Your access to this course ended on
+              - time [ref=f110e64]: May 30, 2026, 11:59 PM
+              - text: . Your progress is saved. Ask your educator to restore it.
+            - generic [ref=f110e65]:
+              - heading "This course includes" [level=3] [ref=f110e66]
+              - list [ref=f110e67]:
+                - listitem [ref=f110e68]: 5 lessons
+                - listitem [ref=f110e69]: Includes assessments
+        - generic [ref=f110e71]:
+          - heading "Course content" [level=2] [ref=f110e72]
+          - navigation "Course outline" [ref=f110e74]:
+            - list [ref=f110e75]:
+              - listitem [ref=f110e76]:
+                - button "1. folder Locked Getting Started" [ref=f110e77] [cursor=pointer]:
+                  - generic [ref=f110e78]:
+                    - generic [ref=f110e79]: "1."
+                    - generic [ref=f110e80]:
+                      - img "folder" [ref=f110e81]
+                      - generic [ref=f110e83]: Locked
+                    - generic [ref=f110e84]: Getting Started
+              - listitem [ref=f110e90]:
+                - button "2. folder Locked Core Concepts" [ref=f110e91] [cursor=pointer]:
+                  - generic [ref=f110e92]:
+                    - generic [ref=f110e93]: "2."
+                    - generic [ref=f110e94]:
+                      - img "folder" [ref=f110e95]
+                      - generic [ref=f110e97]: Locked
+                    - generic [ref=f110e98]: Core Concepts
+              - listitem [ref=f110e104]:
+                - button "3. folder Locked Wrapping Up" [ref=f110e105] [cursor=pointer]:
+                  - generic [ref=f110e106]:
+                    - generic [ref=f110e107]: "3."
+                    - generic [ref=f110e108]:
+                      - img "folder" [ref=f110e109]
+                      - generic [ref=f110e111]: Locked
+                    - generic [ref=f110e112]: Wrapping Up
+  - contentinfo [ref=f110e118]:
+    - generic [ref=f110e119]:
+      - paragraph [ref=f110e120]: © 2026 FirstClass
+      - navigation "Legal" [ref=f110e121]:
+        - link "Terms and Conditions" [ref=f110e122] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f110e123] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f110e124] [cursor=pointer]: deadlines-2-consequence-policy
+  - list [ref=f110e126]:
+    - listitem [ref=f110e127]:
+      - link "Hide »" [ref=f110e128] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e129]:
+      - link "Toggle Theme" [ref=f110e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e134] [cursor=pointer]
+      - link "History /courses/functionality-demo-course-parts/detail/" [ref=f110e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e137] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f110e138] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e140] [cursor=pointer]
+      - 'link "Time CPU: 153.47ms (249.41ms)" [ref=f110e141] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f110e142]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e143] [cursor=pointer]
+      - link "Settings" [ref=f110e144] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e145]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e146] [cursor=pointer]
+      - link "Headers" [ref=f110e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e149] [cursor=pointer]
+      - link "Request course_detail" [ref=f110e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e152] [cursor=pointer]
+      - link "SQL 48 queries in 90.34ms" [ref=f110e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e155] [cursor=pointer]
+      - link "Static files 8 files used" [ref=f110e156] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e158] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f110e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e160]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e161] [cursor=pointer]
+      - link "Alerts" [ref=f110e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e163]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e164] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f110e165] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e166]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e167] [cursor=pointer]
+      - link "Signals 116 receivers of 15 signals" [ref=f110e168] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e169]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f110e170] [cursor=pointer]
+      - link "Community" [ref=f110e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f110e172]:
+      - checkbox "Enable for next and successive requests" [ref=f110e173] [cursor=pointer]
+      - generic [ref=f110e174]: Intercept redirects
+    - listitem [ref=f110e175]:
+      - checkbox "Enable for next and successive requests" [ref=f110e176] [cursor=pointer]
+      - generic [ref=f110e177]: Profiling

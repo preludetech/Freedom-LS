@@ -1,0 +1,131 @@
+- generic [active] [ref=f175e1]:
+  - banner [ref=f175e2]:
+    - link [ref=f175e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f175e4]
+    - navigation [ref=f175e5]:
+      - generic [ref=f175e6]:
+        - generic [ref=f175e7]:
+          - button "Messages" [ref=f175e8]:
+            - img "message" [ref=f175e10]
+          - status:
+            - generic [ref=f175e12]: Messages
+        - generic [ref=f175e13]:
+          - button "Notifications, none new" [ref=f175e14]:
+            - img "notifications" [ref=f175e16]
+          - status:
+            - generic [ref=f175e18]: Notifications, none new
+        - button "Open user menu for qa_deadline_solo@email.com" [ref=f175e20] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f175e21]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f175e22]:
+    - generic [ref=f175e25]:
+      - generic [ref=f175e27]:
+        - generic [ref=f175e28]:
+          - button "Open course outline" [ref=f175e29] [cursor=pointer]:
+            - img "table_of_contents" [ref=f175e30]
+          - navigation "Breadcrumb" [ref=f175e33]:
+            - list [ref=f175e34]:
+              - listitem [ref=f175e35]:
+                - link "Functionality Demo - Course Parts" [ref=f175e36] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f175e37]:
+                - generic [aria-hidden] [ref=f175e38]: ">"
+                - link "Core Concepts" [ref=f175e39] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/3/
+              - listitem [ref=f175e40]:
+                - generic [aria-hidden] [ref=f175e41]: ">"
+                - generic "Knowledge Check" [ref=f175e42]
+        - generic [ref=f175e44]:
+          - img "deadline" [ref=f175e45]
+          - text: Closed
+          - time [ref=f175e47]: Aug 17, 2026, 11:59 PM
+        - generic [ref=f175e49]:
+          - progressbar "Progress for Functionality Demo - Course Parts" [ref=f175e50]: 0%
+          - generic [ref=f175e51]: 0%
+        - heading "Knowledge Check" [level=1] [ref=f175e53]
+      - generic [ref=f175e55]:
+        - paragraph [ref=f175e58]:
+          - text: Closed on
+          - time [ref=f175e59]: Aug 17, 2026, 11:59 PM
+          - text: . Ask your educator if you need more time.
+        - link "See your results" [ref=f175e61] [cursor=pointer]:
+          - /url: /courses/functionality-demo-course-parts/5/complete
+        - link "Previous" [ref=f175e64] [cursor=pointer]:
+          - /url: /courses/functionality-demo-course-parts/4/
+  - contentinfo [ref=f175e68]:
+    - generic [ref=f175e69]:
+      - paragraph [ref=f175e70]: © 2026 FirstClass
+      - navigation "Legal" [ref=f175e71]:
+        - link "Terms and Conditions" [ref=f175e72] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f175e73] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f175e74] [cursor=pointer]: deadlines-2-consequence-policy
+  - list [ref=f175e76]:
+    - listitem [ref=f175e77]:
+      - link "Hide »" [ref=f175e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e79]:
+      - link "Toggle Theme" [ref=f175e80] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e83]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e84] [cursor=pointer]
+      - link "History /courses/functionality-demo-course-parts/5/" [ref=f175e85] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e86]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e87] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f175e88] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e89]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e90] [cursor=pointer]
+      - 'link "Time CPU: 166.63ms (275.36ms)" [ref=f175e91] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f175e92]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e93] [cursor=pointer]
+      - link "Settings" [ref=f175e94] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e95]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e96] [cursor=pointer]
+      - link "Headers" [ref=f175e97] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e98]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e99] [cursor=pointer]
+      - link "Request view_course_item" [ref=f175e100] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e101]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e102] [cursor=pointer]
+      - link "SQL 49 queries in 93.05ms" [ref=f175e103] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e104]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e105] [cursor=pointer]
+      - link "Static files 11 files used" [ref=f175e106] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e107]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e108] [cursor=pointer]
+      - link "Templates learner_interface/course_item_closed.html" [ref=f175e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e110]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e111] [cursor=pointer]
+      - link "Alerts" [ref=f175e112] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e113]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e114] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f175e115] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e116]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e117] [cursor=pointer]
+      - link "Signals 116 receivers of 15 signals" [ref=f175e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e119]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f175e120] [cursor=pointer]
+      - link "Community" [ref=f175e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f175e122]:
+      - checkbox "Enable for next and successive requests" [ref=f175e123] [cursor=pointer]
+      - generic [ref=f175e124]: Intercept redirects
+    - listitem [ref=f175e125]:
+      - checkbox "Enable for next and successive requests" [ref=f175e126] [cursor=pointer]
+      - generic [ref=f175e127]: Profiling
