@@ -1,0 +1,18 @@
+<c-vars href="" class="" />
+<a href="{{ href }}"
+   class="inline-flex min-h-11 items-center gap-1.5 rounded-md py-2 pe-2 text-sm font-semibold text-primary no-underline hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring {{ class }}"
+   {{ attrs }}>
+    <span aria-hidden="true"><c-icon name="previous" class="size-4" /></span>
+    {{ slot }}
+</a>
+
+{% comment %}
+The one style for a "back to …" link above a page's heading. Extra attributes
+(hx-*, x-*, data-*) pass through to the anchor.
+
+Usage Examples:
+
+  <c-back-link href="{% url 'conversations:inbox' %}">Back to messages</c-back-link>
+
+  <c-back-link href="{{ url }}" hx-get="{{ url }}" hx-target="#main-content">Learners</c-back-link>
+{% endcomment %}

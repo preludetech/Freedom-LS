@@ -1,8 +1,8 @@
 {% comment %}
 The composer form. It keeps the id #composer through every swap so a refused
 send can replace it in place, and the textarea keeps #message-body so htmx can
-restore focus after the swap. In the narrow quick view, Send sits under the
-textarea so the textarea gets the full width.
+restore focus after the swap. Send sits under the textarea, on the hint's
+row, so the textarea gets the full width.
 
 In a thread the send carries the page's cursor, so its answer holds whatever
 arrived since the last poll as well, and it shares the log's sync scope with
@@ -53,25 +53,14 @@ message.
     <label for="message-body" class="block text-sm font-medium text-on-surface">
         Message to {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
     </label>
-    {% if composer.in_quick_view %}
-        <div class="mt-1">{% partial body %}</div>
-        {% partial error %}
-        <div class="mt-1 flex items-center gap-3">
-            <div class="flex flex-1 items-center justify-between gap-2 text-sm text-muted">
-                {% partial hint %}
-            </div>
-            {% partial send %}
-        </div>
-    {% else %}
-        <div class="mt-1 flex items-end gap-2">
-            {% partial body %}
-            {% partial send %}
-        </div>
-        {% partial error %}
-        <div class="mt-1 flex items-center justify-between gap-2 text-sm text-muted">
+    <div class="mt-1">{% partial body %}</div>
+    {% partial error %}
+    <div class="mt-1 flex items-center gap-3">
+        <div class="flex flex-1 items-center justify-between gap-2 text-sm text-muted">
             {% partial hint %}
         </div>
-    {% endif %}
+        {% partial send %}
+    </div>
     {% include "comms/partials/disclosure_line.html" %}
 </form>
 

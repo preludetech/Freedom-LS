@@ -34,10 +34,7 @@
         <div class="mx-auto max-w-reading">
             <c-content-header :title="article.title" :subtitle="article.subtitle">
                 <c-slot name="top">
-                    <a href="{% url 'blog:index' %}" class="inline-flex items-center gap-2 text-sm font-medium no-underline">
-                        <c-icon name="previous" class="size-4" />
-                        {{ blog_name }}
-                    </a>
+                    <c-back-link href="{% url 'blog:index' %}">{{ blog_name }}</c-back-link>
                 </c-slot>
                 <c-slot name="byline">
                     <c-article-byline :article="article" />

@@ -69,6 +69,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | You need | Use |
 |---|---|
 | A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
+| A back link above a heading | `<c-back-link href="…">Back to messages</c-back-link>`. Never a hand-styled or underlined `<a>` |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Missed deadline, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
@@ -80,6 +81,8 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A modal | `#app-modal` (the shared native `<dialog>`) opened by `<c-modal-trigger>`; it gets its scrim from `.modal-backdrop-host` |
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
+
+The base layer underlines every `<a>`, and an underline means "a link inside prose". A link that works as a control takes no underline: a back link uses `<c-back-link>`, a text action ("Change", "Edit") uses `<c-button variant="link">`, and a clickable list row takes `text-on-surface no-underline` like the conversation rows. Text links and text buttons then look the same.
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise.
 

@@ -54,19 +54,15 @@
     <c-page class="pt-2 lg:pt-2">
         <div class="space-y-2">
 
-            {% comment %}A plain anchor, not the panel framework's back-link partial, which
+            {% comment %}A plain back link, not the panel framework's breadcrumbs partial, which
             navigates by htmx into a #main-content this standalone page does not have.
             historyBackLink steps back through history when the learner came from another
             page on this site; otherwise the href takes them to the dashboard. The CTA's
             target is the forward path: coming back from it is not coming from elsewhere.{% endcomment %}
-            <a href="{% url 'learner_interface:dashboard' %}"
-               x-data="historyBackLink"
-               x-on:click="goBack"
-               data-forward-path="{{ start_url|default:'' }}"
-               class="inline-flex min-h-11 items-center gap-1.5 rounded-md py-2 pe-2 text-sm font-semibold text-primary no-underline hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
-                <span aria-hidden="true"><c-icon name="previous" class="size-4" /></span>
-                Back
-            </a>
+            <c-back-link href="{% url 'learner_interface:dashboard' %}"
+                         x-data="historyBackLink"
+                         x-on:click="goBack"
+                         data-forward-path="{{ start_url|default:'' }}">Back</c-back-link>
 
             {% comment %}Hero: accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}

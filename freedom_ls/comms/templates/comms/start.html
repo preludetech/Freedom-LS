@@ -4,15 +4,12 @@
 
 {% block content %}
     <c-page width="narrow">
-        <a href="{% url 'conversations:inbox' %}" class="inline-flex items-center gap-1 text-sm">
-            <c-icon name="previous" class="size-4" />
-            Back to messages
-        </a>
+        <c-back-link href="{% url 'conversations:inbox' %}">Back to messages</c-back-link>
         <h1 class="mt-2">New message</h1>
         {% if recipient %}
             <p class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>To <span class="font-semibold">{{ recipient.display_name }}</span></span>
-                <a href="{% url 'conversations:start' %}">Change</a>
+                <c-button href="{% url 'conversations:start' %}" variant="link" size="small">Change</c-button>
             </p>
             <div class="mt-4 overflow-hidden rounded-lg border border-border">
                 {% include "comms/partials/composer.html" %}

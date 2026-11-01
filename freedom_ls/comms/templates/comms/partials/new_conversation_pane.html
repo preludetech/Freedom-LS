@@ -10,11 +10,13 @@ the chosen person's composer. Mirrors comms/start.html without a page around it.
         {% if recipient %}
             <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>To <span class="font-semibold">{{ recipient.display_name }}</span></span>
-                <a href="{% url 'conversations:start' %}"
-                   hx-get="{% url 'conversations:start' %}"
-                   hx-target="#thread-pane"
-                   hx-swap="innerHTML"
-                   hx-push-url="true">Change</a>
+                <c-button href="{% url 'conversations:start' %}"
+                          variant="link"
+                          size="small"
+                          hx-get="{% url 'conversations:start' %}"
+                          hx-target="#thread-pane"
+                          hx-swap="innerHTML"
+                          hx-push-url="true">Change</c-button>
             </p>
             <div class="mt-4 overflow-hidden rounded-lg border border-border">
                 {% include "comms/partials/composer.html" %}

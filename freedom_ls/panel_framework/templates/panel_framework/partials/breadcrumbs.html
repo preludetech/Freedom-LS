@@ -8,15 +8,11 @@ the empty div preserves the #breadcrumbs target when there is no link.
 {% endcomment %}
 {% if breadcrumbs|length > 1 and breadcrumbs.0.url %}
     <nav id="breadcrumbs" aria-label="Back" {% if oob %}hx-swap-oob="true"{% endif %}>
-        <a href="{{ breadcrumbs.0.url }}"
-           hx-get="{{ breadcrumbs.0.url }}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           hx-swap="outerHTML"
-           class="inline-flex min-h-11 items-center gap-1.5 rounded-md py-2 pe-2 text-sm font-semibold text-primary no-underline hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
-            <span aria-hidden="true"><c-icon name="previous" class="size-4" /></span>
-            {{ breadcrumbs.0.label }}
-        </a>
+        <c-back-link href="{{ breadcrumbs.0.url }}"
+                     hx-get="{{ breadcrumbs.0.url }}"
+                     hx-target="#main-content"
+                     hx-push-url="true"
+                     hx-swap="outerHTML">{{ breadcrumbs.0.label }}</c-back-link>
     </nav>
 {% else %}
     <div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
