@@ -1,91 +1,98 @@
-# Frontend QA report: hide messages icon in toolbar for some users
-
-All tests passed. 0 bugs found.
+# Frontend QA report: hide-messages-icon-in-toolbar-for-some-users
 
 ## Methodology
 
-- Tested by hand with the Playwright MCP.
-- Viewports: 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet).
-- The dev server ran on its own port (8745). The branch badge was verified before testing.
-- Screenshots were collected into `screenshots/` beside this report. Every image linked below exists there.
+Playwright MCP against a dev server on port 8554 using the dev settings. §5 ran on a scratch settings module with `MESSAGING_ENABLED=False`, which was deleted afterwards. The server was then restarted on the dev settings. Screenshots are collected in `screenshots/` beside this report.
 
 ## Diff scoping
 
-- Class: FULL.
-- Changed files:
-  - `freedom_ls/comms/messaging.py`
-  - `freedom_ls/comms/messaging_policy.py`
-  - `freedom_ls/comms/messaging_views.py`
-  - `freedom_ls/comms/templatetags/comms_tags.py`
-  - `freedom_ls/conftest.py`
-  - tests under `freedom_ls/*/tests/`
-  - `docs/product/*.md`
-  - spec_dd files (spec, plan, screenshots .png, todo.md)
-  - `test_organisation/mirroring_exemptions.txt`
-- Skipped: nothing. Non-.py paths such as .md, .png and .txt make the class FULL (Rule 4), and no template or static paths changed. Mobile and tablet both ran.
+Class: FULL.
+
+Changed files:
+- `freedom_ls/comms/messaging.py`
+- `freedom_ls/comms/messaging_policy.py`
+- `freedom_ls/comms/messaging_views.py`
+- `freedom_ls/comms/templatetags/comms_tags.py`
+- `docs/product/messaging.md`
+- `docs/product/configuration-and-extension.md`
+- spec, plan, research and todo `.md` files
+- tests (`*.py`)
+- `test_organisation/mirroring_exemptions.txt`
+- uncommitted in the worktree: `freedom_ls/comms/templates/comms/partials/messages_panel.html`
+
+Skipped: nothing. Non-.py paths such as .md/.txt make the class FULL, and the uncommitted template change would also trip Rule 1. Everything ran: desktop, mobile and tablet.
 
 ## Smoke gate
 
-Pass. Pages loaded:
+Result: pass.
 
-- http://127.0.0.1:8745/
-- http://127.0.0.1:8745/messages/
+Pages checked:
+- `http://127.0.0.1:8554/` as demodev@email.com: 200, header and main present.
+- `http://127.0.0.1:8554/messages/`: 200, Messages heading.
 
 ## Results
 
-### §1 Messages button for a user who can message
+### §1 A learner with an open route keeps the button
 
 | Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 1.2 | desktop | pass | l3 on dashboard: #messages-button present immediately left of bell. Accessible name after badge load is 'Messages, none unread' (plan said 'Messages'; existing badge wording, not a defect). | ![](screenshots/page-2026-11-01T21-03-25-218Z.png) |
-| 1.3 | desktop | pass | Panel opens: 'No messages yet.' empty state plus 'New message' (header link and button), 'See all messages'. Django debug toolbar handle intercepted the first click; hid the toolbar first. | ![](screenshots/page-2026-11-01T21-03-25-218Z.png) |
-| 1.4 | desktop | pass | Escape closes panel (aria-expanded=false), focus returns to #messages-button. | none |
-| 1.5 | desktop | pass | Course detail /courses/functionality-demo-course-parts/detail/ header still has #messages-button. | ![](screenshots/page-2026-11-01T21-03-35-428Z.png) |
-| 1.2-1.3 | mobile | pass | l3 at 375x812: button x=223 left of bell x=271, both 40x40 at y=12; no horizontal scroll. Panel opens as a full-screen sheet (0,0,375,812) with empty state, New message and a close button. | ![](screenshots/page-2026-11-01T21-07-41-837Z.png) |
-| 1.2-1.3 | tablet | pass | l3 at 768x1024: button x=608, bell x=656, y=16; panel is a 382px dropdown (x=265) within the viewport; scrollWidth=768. | ![](screenshots/page-2026-11-01T21-07-52-538Z.png) |
+| 1.2 | desktop | pass | Lara's dashboard has `#messages-button` beside the bell. The sr-only label reads "Messages, none unread". The plan said "Messages"; that wording predates this branch and is on main. | none |
+| 1.3 | desktop | pass | Panel opens with "No messages yet.", one "New message" link (`/messages/new/`) and "See all messages". | ![](screenshots/page-2026-11-01T21-27-50-366Z.png) |
+| 1.4 | desktop | pass | Escape closes the panel (aria-expanded=false); focus returns to `#messages-button`. | none |
+| 1.5 | desktop | pass | The course detail page `/courses/functionality-demo-course-parts/detail/` header still has the button. | none |
 
-### §2 No messaging relationships: button hidden
+### §2 A learner with no route and no conversation has no button
 
 | Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 2.2 | desktop | pass | s1 (no conversations, no recipients): #messages-button absent from DOM. Bell box x=1800 w=40, avatar x=1848: 8px gap, no hole. | ![](screenshots/page-2026-11-01T21-03-56-067Z.png) |
-| 2.3 | desktop | pass | Bell opens notification-panel ('Nothing yet.'). | ![](screenshots/page-2026-11-01T21-03-58-934Z.png) |
-| 2.4 | desktop | pass | Escape closes the panel, focus returns to the bell. | none |
-| 2.6 | desktop | pass | /messages/ HTTP 200, 'Messages' heading, 'No conversations yet.', 0 'New message' controls. | ![](screenshots/page-2026-11-01T21-04-11-503Z.png) |
-| 2.7 | desktop | pass | /messages/new/ HTTP 200 'New message' page with 'There's no one you can message here. 0 people found'. Not an error page. | ![](screenshots/page-2026-11-01T21-04-10-436Z.png) |
-| 2.5 | mobile | pass | 375x812: no #messages-button; bell x=271 and avatar x=319 aligned at y=12; scrollWidth=375 (no horizontal scroll). Bell panel opens full-width (x=0,w=375) and closes on Escape. | ![](screenshots/page-2026-11-01T21-04-21-204Z.png) |
-| 2.6 | mobile | pass | /messages/ 200 at 375 wide, no horizontal scroll, no New message control. | ![](screenshots/page-2026-11-01T21-04-27-893Z.png) |
-| 2.5 | tablet | pass | 768x1024: no #messages-button; bell x=656, avatar x=704, both y=16; scrollWidth=768. | ![](screenshots/page-2026-11-01T21-04-30-657Z.png) |
+| 2.2 | desktop | pass | Sam has no conversation and no route. `#messages-button` and `#messages-panel` are absent from the DOM. Bell at x=1800, avatar at x=1848 (8px gap), no empty slot. | ![](screenshots/page-2026-11-01T21-28-20-581Z.png) |
+| 2.3 | desktop | pass | Bell opens the notification panel ("Nothing yet."). | none |
+| 2.4 | desktop | pass | Escape closes the notification panel; focus returns to `#notification-bell`. | none |
+| 2.5 | mobile | pass | 375x812: no Messages button. Bell x=271, avatar x=319, same y. scrollWidth=375, so no horizontal scroll. | ![](screenshots/page-s1-dashboard-375.png) |
+| 2.5 | tablet | pass | 768x1024: no Messages button. Bell x=656, avatar x=704, same y. scrollWidth=768. | ![](screenshots/page-s1-dashboard-768.png) |
+| 2.6 | desktop | pass | `/messages/` returns 200: "Messages" heading, "No conversations yet.", no New message control. | ![](screenshots/page-2026-11-01T21-28-37-372Z.png) |
+| 2.7 | desktop | pass | `/messages/new/` returns 200: "New message" page reading "There's no one you can message here. 0 people found". Not an error page. | none |
 
-### §3 Button appears once a conversation exists
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 3.1 | desktop | pass | south.admin (organisation_admin) has #messages-button; panel shows empty state and New message. Users signed in sequentially in one context (cookies cleared) rather than two parallel contexts. | none |
-| 3.2 | desktop | pass | New message picker lists Sam South (Cohort S, 1 person found); sent 'Hello Sam'; thread opens with the sent message. | ![](screenshots/page-2026-11-01T21-05-03-686Z.png) |
-| 3.3 | desktop | pass | Sam's dashboard: #messages-button present again; label 'Messages, 1 unread'. | ![](screenshots/page-2026-11-01T21-05-12-710Z.png) |
-| 3.4 | desktop | pass | Panel lists Sid South, excerpt 'Hello Sam', Unread. No New message control (Sam has no one to start a conversation with): consistent. | ![](screenshots/page-2026-11-01T21-05-15-601Z.png) |
-| 3.5 | desktop | pass | After opening the thread and reloading: button still present, label 'Messages, none unread'. | ![](screenshots/page-2026-11-01T21-05-26-409Z.png) |
-
-### §4 Organisation messaging policy (learner_to_educator closed)
+### §3 An existing conversation brings the button back
 
 | Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 4.2 | desktop | pass | Admin add form: organisation select2 autocomplete -> Northside; learner_to_educator=Closed; saved OK. | ![](screenshots/page-2026-11-01T21-05-53-501Z.png) |
-| 4.3 | desktop | pass | l3 with Northside learner_to_educator closed: #messages-button absent. | ![](screenshots/page-2026-11-01T21-06-44-246Z.png) |
-| 4.4 | desktop | pass | l3 /messages/ 200, 'No conversations yet.', 0 New message controls. | none |
-| 4.5 | desktop | pass | l1 keeps button, 'Messages, 1 unread'; panel lists Eve Educator and Vic Viewer conversations. | ![](screenshots/page-2026-11-01T21-06-53-421Z.png) |
-| 4.6 | desktop | pass | edu keeps button, 'Messages, 1 unread'. | ![](screenshots/page-2026-11-01T21-07-02-362Z.png) |
-| 4.7 | desktop | pass | Deleted the Northside config row via the admin delete confirmation page; list empty. | none |
-| 4.8 | desktop | pass | l3 reload: #messages-button back. | ![](screenshots/page-2026-11-01T21-07-24-641Z.png) |
+| 3.1 | desktop | pass | south.admin (Sid) has the Messages button. | none |
+| 3.2 | desktop | pass | Panel "New message", picked Sam South, sent "Hello Sam". The thread `/messages/abd9b2b6-.../` opened with the message. | ![](screenshots/page-2026-11-01T21-29-22-674Z.png) |
+| 3.3 | desktop | pass | Sam's dashboard after reload: button present, label "Messages, 1 unread". | none |
+| 3.4 | desktop | pass | Panel lists Sid South with excerpt "Hello Sam", marked unread. | ![](screenshots/page-2026-11-01T21-29-34-997Z.png) |
+| 3.5 | desktop | pass | After opening the thread and reloading, the button stays and the label reads "Messages, none unread". | none |
 
-### §5 Messaging disabled globally
+### §4 Closing the organisation's educator route hides the button, except for a conversation
 
 | Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 5.3 | desktop | pass | MESSAGING_ENABLED=False via scratch settings module: l1 (has conversations) has no #messages-button; bell present and opens (aria-expanded=true), closes on Escape. | ![](screenshots/page-2026-11-01T21-08-17-612Z.png) |
-| 5.4 | desktop | pass | /messages/ returns 404. | ![](screenshots/page-2026-11-01T21-08-18-536Z.png) |
-| 5.5 | desktop | pass | Scratch settings module deleted; server restarted on dev settings. | none |
+| 4.2 | desktop | pass | Admin: created OrganisationMessagingConfig for Northside with Learner to educator = Closed (organisation is a select2 autocomplete). | none |
+| 4.3 | desktop | pass | Lara's dashboard: no Messages button. | ![](screenshots/page-l3-closed-route-dashboard.png) |
+| 4.4 | desktop | pass | Lara's `/messages/`: 200, "No conversations yet.", no New message control. | none |
+| 4.5 | desktop | pass | Lena (l1): button present, "Messages, 1 unread". Panel lists Eve Educator and Vic Viewer, with no New message link. | ![](screenshots/page-l1-closed-route-panel.png) |
+| 4.6 | desktop | pass | Eve (edu): button present, "Messages, 1 unread". Panel lists her conversations and offers New message. | none |
+| 4.7-4.8 | desktop | pass | Deleted the Northside config row in the admin. Lara's reload shows the Messages button again. | none |
+
+### §5 Messaging off: no button for anyone
+
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| 5.3 | desktop | pass | `MESSAGING_ENABLED=False` (scratch settings module): Lena has no Messages button. The bell is present and opens its panel. | ![](screenshots/page-messaging-off-l1.png) |
+| 5.4 | desktop | pass | `/messages/` returns 404 with messaging off. | none |
+| 5.5 | desktop | pass | Scratch settings module deleted; server restarted on the dev settings. | none |
+
+### Mobile
+
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| M.1 | mobile | pass | Eve (button kept) at 375x812: messages button, bell and avatar are 40x40 at 8px spacing on one row. The panel opens as a full-width sheet. No horizontal scroll. | ![](screenshots/page-edu-panel-375.png) |
+
+### Tablet
+
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| T.1 | tablet | pass | Eve at 768x1024: header buttons aligned, unread badge visible, dropdown panel 382px wide inside the viewport. No horizontal scroll. | ![](screenshots/page-edu-panel-768.png) |
 
 ## Design check
 
@@ -93,31 +100,27 @@ No design states tested.
 
 ## Bugs
 
-No bugs found.
+No bugs were found.
 
 ## Data changes
 
-| What changed | Via |
+| Via | Change |
 |---|---|
-| Ran qa_create_direct_messaging_scenario --site-name DemoDev (demo data already present, not recreated) | sdd:qa-data-helper |
-| Deleted s1@qa.test's single conversation with south.admin@qa.test (plan §0.3): 1 Conversation, 2 participants, 1 message | sdd:qa-data-helper |
-| Created OrganisationMessagingConfig for Northside with learner_to_educator=Closed (removed again in §4 step 7) | QA plan §4 step 2 (admin UI, as demodev@email.com) |
-| Deleted the Northside OrganisationMessagingConfig row created in §4 step 2 | QA plan §4 step 7 (admin UI) |
-| §6 reset: re-ran qa_create_direct_messaging_scenario --site-name DemoDev; s1 has 1 conversation again (with south.admin), 0 Northside OrganisationMessagingConfig rows | sdd:qa-data-helper |
-| Created scratch config/settings_qa_messaging_off.py (MESSAGING_ENABLED=False), restarted server on it, then deleted the file and restarted on dev settings | QA plan §5 (by hand) |
+| sdd:qa-data-helper | Ran `qa_create_direct_messaging_scenario --site-name DemoDev` (7 conversations created; site/Northside/Southside messaging configs reset to defaults). |
+| sdd:qa-data-helper | Deleted Sam South's (s1@qa.test) only conversation, pk 422011fb-5ea6-4a5a-8760-1166d4da9e22, with south.admin (plan §0.3). |
+| sdd:qa-data-helper | Plan §6 reset: re-ran `qa_create_direct_messaging_scenario --site-name DemoDev`; s1@qa.test is back to exactly one conversation with south.admin. |
 
 ## Bug status
 
-No bugs. No rows.
+No bugs.
 
 ## General notes
 
-- Anonymous visitor and the demodev superuser (no conversations, no recipients) also get no #messages-button; /messages/ answers 200 for the superuser.
-- The plan expects the label 'Messages' for a user with no unread; once the badge loads the accessible name is 'Messages, none unread'. This is the existing badge wording, not part of this change.
-- The Django debug toolbar's 'Hide' handle intercepts clicks on the header Messages button at 1920x1080 until the toolbar is hidden. Dev-only, not a product bug.
-- §3 used one browser context with cookies cleared between Sid and Sam rather than two parallel contexts; the outcome is the same.
-- Playwright accessibility snapshots (.yml) and console logs also landed in qa-screenshots/; they were deleted before collection so only PNGs reached screenshots/.
-- The first qa-data-helper run wrote .claude/agent-memory/sdd-qa-data-helper/ files (MEMORY.md modified, reference_direct_messaging_scenario.md added), which CLAUDE.md forbids. They were left uncommitted for the user to decide.
-- Screenshot compression: ok. No PNG over 1024KB; nothing compressed.
+- The pre-step rebase was a no-op (the branch already contains origin/main).
+- Uncommitted edits to `messages_panel.html` and `test_messaging_views.py` from another process were in the worktree during the run. The dev server served them, so the panel showed a single New message link.
+- The Django debug toolbar handle overlaps the header buttons at desktop until hidden (dev-only).
+- The sr-only label reads "Messages, none unread" (the plan said "Messages"); that wording is already on main.
+- demodev@email.com (superuser) has no Messages button, which fits the rule.
+- The capture-check screenshot `page-2026-11-01T21-25-13-146Z.png` is the anonymous home page.
 
-status: ok · reason: report rendered, 0 bugs documented, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented
