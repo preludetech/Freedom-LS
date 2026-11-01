@@ -4,6 +4,9 @@
     {{ form.title }}
 {% endblock %}
 
+{% comment %}The header lines up with the form's centred column, not the full player column.{% endcomment %}
+{% block header_width %}max-w-xl{% endblock header_width %}
+
 {% block content %}
     <c-page flush="true" class="pt-2 lg:pt-4">
         <div class="mx-auto max-w-xl text-center space-y-6" x-data="coursePlayer">

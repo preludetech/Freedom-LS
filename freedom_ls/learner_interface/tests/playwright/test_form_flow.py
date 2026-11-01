@@ -15,6 +15,7 @@ import pytest
 from playwright.sync_api import Dialog, Page, expect
 
 from freedom_ls.accounts.models import User
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -30,6 +31,7 @@ from freedom_ls.learner_interface.tests.helpers import (
 from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
+    assert_header_lines_up_with_content,
     assert_no_horizontal_overflow,
 )
 
@@ -291,3 +293,34 @@ def test_learner_works_through_forms_and_quizzes(
         )
         expect(page.get_by_text("Alpha", exact=True)).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_form_pages_line_their_header_up_with_their_content(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _scored_quiz_course("Aligned Course", "aligned-course")
+    register_user_for_course(course, logged_in_user)
+    page.set_viewport_size({"width": 1920, "height": 1080})
+
+    navigate_to_form(page, live_server, course)
+    assert_header_lines_up_with_content(page)
+
+    start_form(page)
+    answer_multiple_choice_question(page, "Beta")
+    submit_form(page)
+    expect(page).to_have_url(form_item_url(live_server, course, "course_form_complete"))
+    assert_header_lines_up_with_content(page)
+
+    page.goto(
+        str(
+            reverse_url(
+                live_server,
+                "learner_interface:course_finish",
+                kwargs={"course_slug": course.slug},
+            )
+        )
+    )
+    assert_header_lines_up_with_content(page)

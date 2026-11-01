@@ -2,6 +2,9 @@
 
 {% block item_head_title %}{{ form.title }} — Complete{% endblock %}
 
+{% comment %}The header lines up with the narrow results column, not the full player column.{% endcomment %}
+{% block header_width %}max-w-4xl{% endblock header_width %}
+
 {% block content %}
     <c-page width="narrow" flush="true" class="pt-2 lg:pt-4">
 
