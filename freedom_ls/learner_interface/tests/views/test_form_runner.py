@@ -7,10 +7,12 @@ from datetime import UTC, date, datetime
 import pytest
 import time_machine
 
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
@@ -3102,7 +3104,7 @@ def test_closed_form_submit_and_exit_get_is_405_and_finalises_nothing(
 SEE_YOUR_RESULTS = "See your results"
 
 
-def _closed_quiz_with_failed_sitting(client):
+def _closed_quiz_with_failed_sitting(client: Client) -> Course:
     """A quiz that closed on 1 Jan 2020, which the learner sat and failed."""
     user = UserFactory()
     form, questions = _math_quiz()
@@ -3185,6 +3187,40 @@ def test_results_page_of_a_closed_failed_quiz_says_it_cannot_be_retaken(
 
     assert "This quiz has closed, so it can't be retaken." in content
     assert "try again" not in content
+
+
+def _closed_quiz_with_failed_sitting_then_a_topic(client: Client) -> Course:
+    """The closed, failed quiz with a topic after it that the failure keeps locked."""
+    course = _closed_quiz_with_failed_sitting(client)
+    course.items.create(child=TopicFactory(), order=1)
+    return course
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_results_page_of_a_closed_failed_quiz_offers_no_continue_to_a_locked_item(
+    mock_site_context, client
+):
+    """Continue would land on the locked topic and bounce to the course detail page."""
+    course = _closed_quiz_with_failed_sitting_then_a_topic(client)
+
+    response = client.get(_complete_url(course))
+
+    content = response.content.decode()
+    assert response.context["next_url"] is None
+    assert "Continue" not in content
+    assert "Return to course" in content
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_closed_form_notice_offers_no_next_to_a_locked_item(mock_site_context, client):
+    course = _closed_quiz_with_failed_sitting_then_a_topic(client)
+
+    response = client.get(_item_url(course))
+
+    assert response.context["next_url"] is None
+    assert re.search(r">\s*Next\s*<", response.content.decode()) is None
 
 
 @pytest.mark.django_db

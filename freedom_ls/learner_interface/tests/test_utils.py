@@ -41,6 +41,7 @@ from freedom_ls.learner_interface.utils import (
     get_completed_courses,
     get_course_index,
     get_current_courses,
+    next_entry,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
@@ -417,6 +418,39 @@ def test_current_entry_finds_a_row_nested_in_a_part():
 
 def test_current_entry_is_none_when_no_row_is_current():
     assert current_entry([{"title": "A", "children": [{"title": "B"}]}]) is None
+
+
+def test_next_entry_is_the_top_level_row_after_the_current_one():
+    index = [{"title": "A", "is_current": True}, {"title": "B"}]
+
+    assert next_entry(index) == {"title": "B"}
+
+
+def test_next_entry_steps_from_a_top_level_row_into_the_next_part():
+    first_child = {"title": "Inner"}
+    index = [
+        {"title": "A", "is_current": True},
+        {"title": "Part", "children": [first_child, {"title": "X"}]},
+    ]
+
+    assert next_entry(index) is first_child
+
+
+def test_next_entry_steps_out_of_a_part_to_the_row_after_it():
+    index = [
+        {"title": "Part", "children": [{"title": "Inner", "is_current": True}]},
+        {"title": "B"},
+    ]
+
+    assert next_entry(index) == {"title": "B"}
+
+
+def test_next_entry_is_none_after_the_last_row():
+    assert next_entry([{"title": "A"}, {"title": "B", "is_current": True}]) is None
+
+
+def test_next_entry_is_none_when_no_row_is_current():
+    assert next_entry([{"title": "A"}, {"title": "B"}]) is None
 
 
 # --- Closing items ---

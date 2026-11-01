@@ -243,7 +243,9 @@
         still looks like the rest of the player. Previous steps back through the
         course. Going back into this form is Retry quiz's job, which is why that
         button keeps its own place on the right. A closed form refuses a new sitting, so
-        its failed results offer Continue instead of Retry quiz.
+        its failed results offer no Retry quiz; and since a closed item unlocks nothing
+        after it, the view withholds next_url when the next item is locked, which
+        leaves Return to course.
         A learner whose access ended gets no footer: retrying, the next item and
         the finish page are all shut to them, and the outline, where the policy
         keeps it, is the way around.

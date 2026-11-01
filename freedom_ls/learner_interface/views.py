@@ -125,6 +125,7 @@ from .utils import (
     get_is_registered,
     get_item_part,
     get_resume_index,
+    next_entry,
     outstanding_items,
     stamp_card_organisation,
     stamp_course_access_badge,
@@ -1356,6 +1357,15 @@ def _player_course_index(
     )
 
 
+def _unlocked_next_url(next_url: str | None, course_index: list[dict]) -> str | None:
+    """``next_url``, unless the outline shows the row after the current one as BLOCKED.
+
+    A closed item unlocks nothing after it, so a Next or Continue to that row would only
+    bounce the learner to the course detail page."""
+    after = next_entry(course_index)
+    return None if after is not None and after["status"] == BLOCKED else next_url
+
+
 def _render_closed_notice(
     request: HttpRequest,
     *,
@@ -1496,7 +1506,7 @@ def view_course_item(request, course_slug, index):
         return _render_closed_notice(
             request,
             entry=entry,
-            next_url=next_url,
+            next_url=_unlocked_next_url(next_url, course_index),
             previous_url=previous_url,
             player_context=player_context,
             course=course,
@@ -2053,19 +2063,42 @@ def course_form_complete(request, course_slug, index):
     ):
         quiz_verdict = "passed" if form_progress.passed() else "failed"
 
+    # Player chrome (outline panel + breadcrumb). Under "nothing" this is the one
+    # player page an ended learner still reaches, and it carries no outline, so
+    # the chrome is handed an empty index to draw.
+    chrome = _player_chrome_context(
+        request,
+        course,
+        form,
+        index,
+        course_index=[] if access_ended and not keeps_outline else None,
+        course_progress=course_progress,
+        access_ended_outline=keeps_outline,
+    )
+    course_index = chrome["course_index"]
+    # A closed form refuses a new sitting, so its results offer no retry. Read off
+    # the outline this page draws, as the player's other gates do, so there is one
+    # definition of closed. An ended learner's empty index reads as open, and the
+    # access_ended message and the hidden footer win for them anyway.
+    item_closed = current_entry_status(course_index) == CLOSED
+
     # Calculate next URL for continue button
     total_viewable_items = len(viewable_collection_items)
     is_last_item = index >= total_viewable_items
+    next_url: str | None
     if is_last_item:
         # Last item - go to course finish page
         next_url = reverse(
             "learner_interface:course_finish", kwargs={"course_slug": course_slug}
         )
     else:
-        # Not last item - go to next item
-        next_url = reverse(
-            "learner_interface:view_course_item",
-            kwargs={"course_slug": course_slug, "index": index + 1},
+        # Not last item - go to next item, unless this closed form keeps it locked.
+        next_url = _unlocked_next_url(
+            reverse(
+                "learner_interface:view_course_item",
+                kwargs={"course_slug": course_slug, "index": index + 1},
+            ),
+            course_index,
         )
 
     # Calculate retry URL
@@ -2099,22 +2132,8 @@ def course_form_complete(request, course_slug, index):
         "previous_url": previous_url,
         "retry_url": retry_url,
         "access_ended": access_ended,
-        # A closed form refuses a new sitting, so its results offer no retry.
-        "item_closed": _is_closed_for_learner(
-            course_progress, collection_item, timezone.now()
-        ),
-        # Player chrome (outline panel + breadcrumb). Under "nothing" this is the one
-        # player page an ended learner still reaches, and it carries no outline, so
-        # the chrome is handed an empty index to draw.
-        **_player_chrome_context(
-            request,
-            course,
-            form,
-            index,
-            course_index=[] if access_ended and not keeps_outline else None,
-            course_progress=course_progress,
-            access_ended_outline=keeps_outline,
-        ),
+        "item_closed": item_closed,
+        **chrome,
     }
 
     # Only include percentage in context for QUIZ forms (avoids None littering the context
