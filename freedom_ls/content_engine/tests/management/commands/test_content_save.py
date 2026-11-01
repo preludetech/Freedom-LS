@@ -3194,9 +3194,6 @@ def test_a_course_without_the_keys_defaults_to_organisation_learners(
     assert course.organisations.count() == 0
 
 
-# A due date on a children: entry that places something other than a topic or form.
-
-
 def _write_course_with_dated_entries(course_dir: Path, entries: dict[str, str]) -> None:
     """A course whose children are the given files, each entry carrying a due offset.
 

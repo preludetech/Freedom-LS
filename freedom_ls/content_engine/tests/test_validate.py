@@ -713,9 +713,6 @@ tags:
     assert parsed_items[0].tags == []
 
 
-# Cross-file validation of a due date set on a children: entry.
-
-
 def _activity(path: Path) -> Path:
     return _write_widget_file(
         path, "---\ncontent_type: ACTIVITY\ntitle: An Activity\n---\nBody\n"
