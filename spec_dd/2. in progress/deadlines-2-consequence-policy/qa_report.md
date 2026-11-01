@@ -124,8 +124,8 @@ Manifestations:
 ## Bug status
 
 - B1: **FIXED** (commit: d7d855938) — Form results URL with no completed attempt renders 'Quiz complete' and claims the quiz has no pass mark. Re-verified: with no completed attempt the URL now 302s to the item; results with a completed attempt still render (late learner: Quiz not passed, no Retry; ended cohort learner: results render).
-- B2: **UNRESOLVED** — Failed results page says 'Review the material and try again.' when no retry is offered (reason: product/UX decision — what the failed-verdict copy should say on a closed form and for an ended learner)
-- B3: **UNRESOLVED** — Course detail 'Course content' outline ignores closing: a closed failed quiz reads 'Needs retry' (reason: product decision — the spec does not say whether the course detail outline shows closing)
+- B2: **FIXED** (commit: 6b9386ff5) — Failed results page says 'Review the material and try again.' when no retry is offered. Decision: a closed quiz's failed results say 'This quiz has closed, so it can't be retaken.', an ended learner's say 'Your access to this course has ended.'; a retryable failure keeps the old copy.
+- B3: **FIXED** (commit: 92987bea0) — Course detail 'Course content' outline ignores closing. Decision: the detail outline resolves closing so closed items and parts read 'Closed' as in the player, and still shows no dates.
 
 ## General notes
 
