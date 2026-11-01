@@ -1,29 +1,103 @@
-# Frontend QA Report: educator-interface-8-bulk-operations
+# Frontend QA report: educator-interface-8-bulk-operations
+
+All tests passed. 0 bugs were found.
 
 ## Methodology
 
-QA ran against a local dev server on port 8017 via Playwright MCP at three viewports: desktop 1920x1080, mobile 375x812 and tablet 768x1024. Screenshots are collected into `screenshots/` beside this report, and every referenced image exists there.
-
-The pre-step rebase onto main ran first: 61 commits were replayed with no conflicts, and the full test tier passed (10740 passed). The rebase's front-end check was covered by this QA pass rather than run separately.
+- Playwright MCP run against a dev server on port 8484, driven by a depth-0 agent at 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet).
+- Data was reset with `qa_create_bulk_operations_scenario --site-name DemoDev`.
+- Screenshots were collected into `screenshots/` beside this report, and every image referenced here exists. Compression ran and found nothing over 1MB.
+- Background-run tests (§6.14) used a scratch settings module, `config/settings_qa_background.py` (deleted afterwards), and `db_worker --batch`.
+- Mailpit was checked through its API.
 
 ## Diff scoping
 
-Class: **FULL**. Triggered by template and static changes (28 template/static files changed; the record lists 8):
-
-- `freedom_ls/base/static/base/js/alpine-components.js`
-- `freedom_ls/educator_interface/templates/educator_interface/_shell.html`
-- `freedom_ls/educator_interface/templates/educator_interface/interface.html`
-- `freedom_ls/educator_interface/templates/educator_interface/learner_import_denied.html`
-- `freedom_ls/educator_interface/templates/educator_interface/learner_import_preview.html`
-- `freedom_ls/educator_interface/templates/educator_interface/learner_import_result.html`
-- `freedom_ls/educator_interface/templates/educator_interface/learner_import_upload.html`
-- `freedom_ls/educator_interface/templates/educator_interface/partials/import_learners_link.html`
-
-Skipped: nothing.
+Class: FULL (templates and static files changed; 220 files in the diff, including `alpine-components.js` in `base` and `panel_framework`, and the educator_interface and panel_framework templates). Skipped: nothing.
 
 ## Smoke gate
 
-Status: **pass**. Pages checked: `/` and `/educator/organisations/northside/learners`. No failure URL or reason.
+Status: pass. Pages checked: `/` and `/educator/organisations/northside/learners`. No failure.
+
+## Results
+
+### Desktop (1920x1080)
+
+| Test | Status | Notes | Screenshot |
+|---|---|---|---|
+| 1.1 | pass | Import learners is a link; stepper Upload/Preview/Result with Upload `aria-current=step` and "Step 1 of 3"; file input, code line, "email is required; cohort is matched by name", template link, sidebar and Learners back link present | ![](screenshots/page-2026-11-01T06-49-49-311Z.png) |
+| 1.2 | pass | `learner-import-template.csv`, BOM present, 4 headers and 2 example rows | |
+| 1.3 | pass | 51 lines gives 422 with "Add up to 50 at a time; larger lists are imported from a file." and an "Import a file instead" link | |
+| 1.4 | pass | Cohort C tab link ends `?cohort=<C pk>`; Cohort Old tab has no Import learners link | |
+| 2.excel | pass | 422, focused `role=alert` summary: "This looks like an Excel file. Save it as CSV UTF-8 and upload that." | |
+| 2.latin1 | pass | 422: "Save the file as CSV UTF-8 and upload it again." | |
+| 2.badhead | pass | 422: "Unknown column(s): e-mail, name. Missing required column(s): email. Accepted columns: ..." | |
+| 2.empty | pass | 422: "This file has no rows to import." | |
+| 2.big | pass | 422: "2,431 rows; the limit is 2,000." | |
+| 2.blankhead | pass | 422: "Unknown column(s): unnamed column 2. Accepted columns: ..." | ![](screenshots/page-2026-11-01T06-51-24-886Z.png) |
+| 2.nofile | pass | `required` attribute blocks submit; with `noValidate` a 422 "This field is required."; LearnerImport count 0 after all rejections | |
+| 3.1 | pass | Preview step 2; chip "good.csv · 30 rows" and "Upload a different file"; counts 26/1/1/2 as links; columns as listed, lines from 2; reasons match; three notes present; error CSV `learner-import-errors-2026-11-01.csv` with reason header and 2 rows; "Add 28 learners" and "2 rows with errors will not be added." | ![](screenshots/page-2026-11-01T06-51-51-975Z.png) |
+| 3.2 | pass | `?label=error` shows 2 rows, persists on reload, Back returns the full 30-row table | |
+| 3.3 | pass | dup: new account, "Same email as line 2.", "Email is empty."; button reads "Add 1 learner" (singular) | |
+| 3.4 | pass | Both rows error with the "No active cohort called ..." sentence; no confirm button; "Nothing can be added: every row has an error or is already a member." | |
+| 3.5 | pass | `semi.csv`: 2 new accounts | |
+| 3.6 | pass | `trail.csv`: 1 new account in Cohort C | |
+| 4.1 | pass | Result step 3; "Added 28 learners. 2 rows were not added."; counts 26/1/1/2; "26 setup emails were sent."; Mailpit 26, none to ada or removed; error rows and CSV link; Back to learners, Import another file, "Uploading the whole file again is safe" note | ![](screenshots/page-2026-11-01T06-52-28-524Z.png) |
+| 4.2 | pass | Back to the preview URL redirects to the result | |
+| 4.3 | pass | import01 Pending in Cohort C; Cohort C has 27 members; Rae Removed Active; Ada's name still Ada Lovelace | |
+| 4.4 | pass | Re-upload: "Already a member: 28", 2 errors, no Add button, "Nothing can be added..."; Mailpit 0 | |
+| 4.5 | pass | `dup.csv` confirmed: "Added 1 learner. 2 rows were not added."; error CSV holds exactly the two rows | |
+| 5.1-5.2 | pass | Upload page names Cohort A and says the cohort column is ignored; cohortimp is a new account in Cohort A, Ben added; result links to Cohort A Learners tab showing both | |
+| 6.1 | pass | Checkbox column and "Select all on this page"; `role=status` region exists before ticking; bar buttons hidden; pagination visible | |
+| 6.2 | pass | "2 selected · showing 1–10 of 95 learners"; Add to cohort, Remove from cohort, More actions with Deactivate, Reactivate, Register for a course, Unregister from a course, Resend setup email | ![](screenshots/page-2026-11-01T06-53-51-579Z.png) |
+| 6.3 | pass | Picker above sentence; Confirm disabled until chosen; focus on Cancel; "Add 2 learners to Cohort C."; result "2 learners changed."; rows refreshed to Cohort C | ![](screenshots/page-2026-11-01T06-54-44-133Z.png) |
+| 6.4 | pass | "Add 1 learner to Cohort C. 2 are already in the cohort and will be skipped." then "1 learner changed. 2 were already in the cohort." with per-row reasons; bulk01 alone: "Add 0 learners... 1 is already in the cohort and will be skipped." and Confirm disabled | |
+| 6.5 | pass | "Remove 1 learner from Cohort A. 1 is not a member and will be skipped. They lose access to: Course Pub." Cancelled | |
+| 6.6 | pass | "All 10 on this page are selected." and "Select all 30 matching"; then "All 30 matching are selected.", Clear selection, "Changing page, sort or filters clears the selection."; untick bulk05 gives 29; "Add 29 learners to Cohort B." then "29 learners changed."; Cohort B filter 31, bulk05 absent | |
+| 6.7 | pass | Sort and page change each clear the selection; bar buttons hidden | |
+| 6.8 | pass | Select all 31 matching; "Remove 31 learners from Cohort B." (and "They lose access to: Course Hid and Course Pub."), then "31 learners changed."; Cohort B empty | |
+| 6.9 | pass | Deactivate confirm button `btn-error`; "Deactivate 2 learners." "They lose access to this organisation's courses."; "2 learners changed.", both leave the table; Inactive filter shows both; Reactivate both; mixed: "Reactivate 1 learner. 1 is already active and will be skipped." Cancelled, bulk10 stays inactive | ![](screenshots/page-2026-11-01T06-57-13-692Z.png) |
+| 6.10 | pass | "Register 2 learners for Course Pub." gives 2 changed; solo: "Register 0 learners for Course Pub. 1 is already registered individually and will be skipped." Confirm disabled; Unregister 2 and Unregister 1 (`btn-error`) confirmed; Courses cells no longer list Course Pub | |
+| 6.11 | pass | After server restart: "Resend the setup email to 2 learners. 1 account is already set up and will be skipped."; Mailpit 2 (pending, cohortimp); repeat: "0 learners changed." "2 setup emails were sent recently."; Mailpit still 2 | |
+| 6.12 | pass | Keys mode: bulk40 deactivated in tab 2 gives "1 learner changed. 1 was already inactive." with "Bulk 40 Beta: already inactive". Select-all mode: count change gives 422 "The selection changed since you opened this." and the new count "Deactivate 28 learners."; then reactivated so all 30 Beta active | ![](screenshots/page-2026-11-01T06-59-33-403Z.png) |
+| 6.13 | pass | JS off: Deactivate gives full-page confirmation "Deactivate 2 learners." then full-page "2 learners changed." with "Back to learners" keeping `?learners-q=bulk3`; reactivated. Add to cohort: picker, "Show what changes", disabled Add to cohort; after Cohort C and Show what changes: "Add 2 learners to Cohort C." and enabled; confirm gives "2 learners changed." | |
+| 6.14.1 | pass | "This will affect 30 learners." and "It runs in the background. You'll get a notification when it finishes." | |
+| 6.14.2 | pass | Modal closes, URL unchanged; "Deactivate is running…"; More actions spinner; bar buttons disabled via disabled fieldset; row and header checkboxes and Clear selection disabled; survives page 2 and sort; quick view opens | ![](screenshots/page-2026-11-01T07-02-52-031Z.png) |
+| 6.14.3 | pass | After db_worker: modal opened promptly with "30 learners changed.", table refreshed empty; spinner gone, controls enabled, no row selected; bell unread unchanged (1); newest entry "Deactivate finished: 30 learners changed." read; opens the learners list | ![](screenshots/page-2026-11-01T07-04-31-824Z.png) |
+| 6.14.4 | pass | Open Add learners modal was not replaced when the run finished; after Cancel the result modal opened within about 1s with "30 learners changed." | |
+| 6.14.5 | pass | On Dashboard: no modal; bell went from none to 1 new after about 31s; entry "Deactivate finished: 30 learners changed." opens learners list; 30 listed under Inactive | |
+| 6.14.6 | pass | JS off: 6 rows Reactivate gives "This will affect 6 learners... runs in the background"; back on list with flash "Reactivate is running in the background. You'll get a notification when it finishes."; after worker the 6 are Active and the bell has 1 unread | ![](screenshots/page-6-14-6-nojs-flash.png) |
+| 6.14.7 | pass | Status URL of a finished run `.../northside/learners/__runs/08592a5d-2c04-4f5c-8c42-ed7ef9438053` returns 200 for the requester | |
+| 7.1 | pass | `?cohorts-inactive=1` shows Cohort Old; bar has Register for a course and Unregister from a course buttons; More actions holds Deactivate, Reactivate | ![](screenshots/page-2026-11-01T07-22-22-038Z.png) |
+| 7.2 | pass | "Register 2 cohorts for Course Hid. 1 is an inactive cohort and will be skipped." then "2 cohorts changed. 1 was an inactive cohort."; A and C list Course Hid | |
+| 7.3 | pass | "Register 0 cohorts for Course Hid. 2 are already registered and will be skipped. 1 is an inactive cohort and will be skipped." Confirm disabled | |
+| 7.4 | pass | A+B: "Unregister 2 cohorts from Course Hid." `btn-error`, 2 changed; A+C: "Unregister 1 cohort from Course Hid. 1 is not registered and will be skipped." Cancelled | |
+| 7.5 | pass | Bulk Deactivate Cohort C shows Inactive in list; Reactivate shows Active | |
+| 7.6 | pass | Cohort C page: single Deactivate gives Inactive; Reactivate gives Active | |
+| 8.1 | pass | cohort.admin: checkbox column; More actions holds Register/Unregister only; no Import link on list or Cohort A tab; only Cohort A/B learners (5, no bulk); picker offers A and B; "Add 2 learners to Cohort B." gives 2 changed; import URL 403 "Ask an organisation admin of Northside."; cohorts list Register/Unregister only, no More actions | ![](screenshots/page-8-1-cohort-admin-403.png) |
+| 8.2 | pass | cohort.viewer: no checkbox column, no selection bar; import URL 403 | |
+| 8.3 | pass | south.admin: preview, result, errors.csv and run status URLs all 404 under northside and southside | |
+| 8.4 | pass | Superuser: §4 result URL 404; import page 200 | |
+| 8.5 | pass | Anonymous: import page redirects to login with `next` | |
+| 9.1 | pass | `semi.csv` confirmed in two tabs simultaneously: both land on the same result "Added 2 learners."; semi1/semi2 listed once each; Mailpit one setup email each | |
+| 9.2 | pass | JS off: confirm gives 2 changed; Back and resubmit gives 422 "Add 0 learners to Cohort C. 2 are already in the cohort and will be skipped." | ![](screenshots/page-9-2-nojs-resubmit.png) |
+
+### Mobile (375x812)
+
+| Test | Status | Notes | Screenshot |
+|---|---|---|---|
+| 6.14.2 (viewports) | pass | Fixed bar fits "Deactivate is running…" and disabled More actions with spinner; scrollWidth equals viewport. Stacked bar takes about 280px (a third of the screen). Also checked at 768x1024 | ![](screenshots/page-6-14-2-running-375.png) |
+| 10.1 | pass | Upload, error, preview and result pages: scrollWidth 375; table hidden, preview rows as cards showing email, line, label, reason; stepper on one line; error summary inside viewport | ![](screenshots/page-10-1-375-preview.png) |
+| 10.2 | pass | Two ticked: bar fixed to bottom (593-812); Select all on this page above the card list; More actions opens above trigger, all 5 items in view (36px tall, 56px for the wrapped item, below the 44px touch guideline); confirmation modal fits viewport | ![](screenshots/page-10-2-375-menu.png) |
+| 10.3 | pass | Inline Deactivate 2 gives result modal "2 learners changed." that fits viewport; reactivated after | ![](screenshots/page-10-3-375-result.png) |
+
+### Tablet (768x1024)
+
+| Test | Status | Notes | Screenshot |
+|---|---|---|---|
+| 6.14.2 (viewports) | pass | Fixed bar fits "Deactivate is running…" and disabled More actions with spinner; no horizontal overflow (recorded with the mobile row) | ![](screenshots/page-6-14-2-running-768.png) |
+| 10.1 | pass | Upload, error, preview, result: scrollWidth 768; at md the preview shows the table and it fits | ![](screenshots/page-10-1-768-preview.png) |
+| 10.2 | pass | Bar fixed to bottom (921-1024) with table padded so no row is covered; More actions items all in view; confirmation modal centred and fits | ![](screenshots/page-10-2-768-bar.png) |
+| 10.3 | pass | Inline Deactivate 2 gives result modal that fits; reactivated after | ![](screenshots/page-10-3-768-result.png) |
 
 ## Design check
 
@@ -31,78 +105,26 @@ No design states tested.
 
 ## Bugs
 
-### B1: Select-all-matching bar says 'All N matching are selected.' after rows are unticked
-
-Manifestations:
-- Test 6.6, desktop
-
-Screenshot:
-
-![](screenshots/page-2026-10-30T19-38-43-450Z.png)
-
-**Expected:** Once a row is unticked in select-all-matching mode, the bar no longer claims every matching row is selected (e.g. '29 of 30 matching are selected.').
-
-**Actual:** Search 'Alpha' (30 matching), select all 30 matching, untick bulk05: the bar reads 'All 29 matching are selected.' (`table_selection_bar.html` renders 'All <count> matching are selected.' with the live count).
+No bugs were found.
 
 ## Bug status
 
-| Bug | Status |
-|---|---|
-| B1 | **FIXED** (commit: 69120e42a) — Select-all-matching bar says 'All N matching are selected.' after rows are unticked. Re-verified in the browser: "All 29 matching are selected." becomes "28 of 29 matching are selected." after one untick ![](screenshots/page-2026-10-30T20-07-02-432Z.png) |
-
-## Results
-
-| Test | Viewport | Status | Screenshot | Notes |
-|---|---|---|---|---|
-| 1.1 | desktop | pass | [img](screenshots/page-2026-10-30T19-32-50-887Z.png) | Import learners is a link; stepper Upload aria-current=step, Step 1 of 3; code line, required sentence, template link; sidebar and back link to Learners present |
-| 1.2 | desktop | pass | | learner-import-template.csv, BOM present, four headers, two example rows |
-| 1.3 | desktop | pass | | Fresh dialog shows no cap; 51 lines -> 422 with 'Add up to 50 at a time; larger lists are imported from a file.' and 'Import a file instead' link to import page |
-| 1.4 | desktop | pass | | Cohort C Learners tab link ends ?cohort=<C pk>; Cohort Old tab has none |
-| 2 | desktop | pass | [img](screenshots/page-2026-10-30T19-33-57-492Z.png) | All six bad files refused with 422, focused role=alert summary and the plan's sentences; blankhead names 'unnamed column 2'. No-file submit blocked by required; with noValidate -> 422 'This field is required.' |
-| 3.1 | desktop | pass | [img](screenshots/page-2026-10-30T19-34-18-023Z.png) | good.csv preview: chip 'good.csv · 30 rows', counts 26/1/1/2 as links, columns and line numbers from 2, reasons correct, three notes, error CSV learner-import-errors-2026-10-30.csv with 2 rows, button 'Add 28 learners' plus '2 rows with errors will not be added.' |
-| 3.2 | desktop | pass | | ?label=error shows 2 rows, persists on reload, Back restores 30 |
-| 3.3-3.6 | desktop | pass | | dup: new/Same email as line 2./Email is empty., button 'Add 1 learner' (singular). nocohort: both rows error with the expected sentence, no button, 'Nothing can be added: every row has an error or is already a member.' (also shows '0 new accounts will get a setup email.'). semi: two new accounts. trail: one new account in Cohort C. |
-| 4.1 | desktop | pass | [img](screenshots/page-2026-10-30T19-34-55-658Z.png) | Result step 3 of 3; 'Added 28 learners. 2 rows were not added.'; counts 26/1/1/2; '26 setup emails were sent.'; Mailpit 26, none to ada/removed; error rows inline, CSV link, Back to learners, Import another file, re-upload safety note |
-| 4.2-4.3 | desktop | pass | | Preview URL redirects to result; import01 Pending; Rae Active; Ada in Cohort C, still 'Ada Lovelace'; Cohort C filter 27 (10+10+7) |
-| 4.4-4.5 | desktop | pass | | Re-upload: Already a member 28, Error 2, no button, 'Nothing can be added...'; Mailpit 0. dup.csv confirmed: 'Added 1 learner. 2 rows were not added.', error CSV holds the two |
-| 5 | desktop | pass | | Cohort A import page says 'Every learner in the file is added to Cohort A. The cohort column is ignored.'; preview shows cohortimp in Cohort A (not C), Ben 'Added to the cohort'; result links 'Back to the cohort's learners' (full page) showing both |
-| 6.1-6.2 | desktop | pass | [img](screenshots/page-2026-10-30T19-37-25-940Z.png) | Checkbox column and 'Select all on this page'; empty role=status present before ticking; '2 selected · showing 1–9 of 9 learners'; Add to cohort, Remove from cohort, More actions (Deactivate, Reactivate, Register for a course, Unregister from a course, Resend setup email) |
-| 6.3-6.5 | desktop | pass | | Picker above sentence, confirm disabled until chosen, focus on Cancel; 'Add 2 learners to Cohort C.' -> '2 learners changed.', table refreshed; skips 'Add 1 learner... 2 are already in the cohort and will be skipped.' -> '1 learner changed. 2 were already in the cohort.'; zero case disabled; remove sentence with skip and 'They lose access to: Course Pub.' |
-| 6.6 | desktop | **fail** | [img](screenshots/page-2026-10-30T19-38-43-450Z.png) | Counts and run correct (29 changed; Cohort B 31, bulk05 absent), but after unticking bulk05 in select-all-matching mode the bar reads 'All 29 matching are selected.' while 30 rows match: the sentence claims every matching row is selected when one is excluded (B1) |
-| 6.7-6.8 | desktop | pass | | Sort and page change clear the selection and hide the buttons; 'Remove 31 learners from Cohort B.' -> '31 learners changed.', Cohort B empty |
-| 6.9 | desktop | pass | | Deactivate btn-error, 'Deactivate 2 learners.' + 'They lose access to this organisation's courses.'; both leave table; Inactive filter shows both; reactivate works; mixed 'Reactivate 1 learner. 1 is already active and will be skipped.' cancelled (bulk10 stays inactive) |
-| 6.10 | desktop | pass | | 'Register 2 learners for Course Pub.' -> 2 changed; solo 'Register 0 learners for Course Pub. 1 is already registered individually and will be skipped.' with confirm disabled; unregister 2 and 1 confirmed, Courses cells cleared |
-| 6.11 | desktop | pass | | After restart: 'Resend the setup email to 2 learners. 1 account is already set up and will be skipped.' -> Mailpit 2; repeat -> '0 learners changed.', '2 setup emails were sent recently.', Mailpit still 2. (Repeat confirmation still announces 'Resend ... to 2 learners' since the recent-send skip is only known at run time.) |
-| 6.12 | desktop | pass | [img](screenshots/page-2026-10-30T19-41-02-202Z.png) | Same-count stale run: '1 learner changed. 1 was already inactive.' Select-all stale: 422 'The selection changed since you opened this.' with 'Deactivate 28 learners.'; restored bulk41 and bulk55 (Beta matched 29 at the start because bulk41 was inactive from the first half) |
-| 6.13 | desktop | pass | | JS off: full-page Deactivate confirmation with same sentence, result page with 'Back to learners' keeping ?learners-q=bulk3; Add to cohort page with picker, 'Show what changes', disabled Add to cohort -> enabled with 'Add 2 learners to Cohort C.' -> full page result |
-| 9.2 | desktop | pass | | JS off, Back + resubmit -> 422 'Add 0 learners to Cohort C. 2 are already in the cohort and will be skipped.'; single membership |
-| 6.14.1-6.14.2 | desktop | pass | [img](screenshots/page-2026-10-30T19-42-47-067Z.png) | 'This will affect 30 learners.' + background sentence; modal closes, URL unchanged, bar 'Deactivate is running…', More actions spinner and disabled, Add/Remove disabled, all checkboxes and Clear selection disabled; persists across page 2 and sort; quick view still opens |
-| 6.14.2 | mobile | pass | [img](screenshots/page-2026-10-30T19-42-58-554Z.png) | Fixed bottom bar fits 'Deactivate is running…' and disabled More actions with spinner; scrollWidth 375, no overflow |
-| 6.14.2 | tablet | pass | [img](screenshots/page-2026-10-30T19-43-04-353Z.png) | Bar fits at 768, scrollWidth 768 |
-| 6.14.3 | desktop | pass | [img](screenshots/page-2026-10-30T19-43-24-352Z.png) | After worker, modal '30 learners changed.' opened at once, table refreshed (30 gone); closed: spinner hidden, controls enabled, nothing selected; new 'Deactivate finished: 30 learners changed.' notification already read, badge unchanged; clicking opens learners list. (Panel header '2 unread' counts older notifications left by previous QA passes.) |
-| 6.14.4-6.14.5 | desktop | pass | | Open Add learners modal not replaced; result opened 1.6s after closing it. On Dashboard: no modal; bell '1 new' after 31s; entry unread, opens learners list; 30 listed under Inactive |
-| 6.14.6-6.14.7 | desktop | pass | | JS off: 'This will affect 6 learners.' then flash 'Reactivate is running in the background. You'll get a notification when it finishes.'; after worker 6 Active, bell 1 new. Status URL .../learners/__runs/f5c4ad40-bc1b-4c80-8de7-63efbfe0b5a6 recorded |
-| 7.1-7.6 | desktop | pass | | Bar: Register for a course, Unregister from a course, More actions (Deactivate, Reactivate). 'Register 2 cohorts for Course Hid. 1 is an inactive cohort and will be skipped.' -> A and C gain Course Hid; repeat 'Register 0 cohorts... 2 are already registered... 1 is an inactive cohort' disabled; 'Unregister 2 cohorts from Course Hid.' btn-error, confirmed; 'Unregister 1 cohort from Course Hid. 1 is not registered and will be skipped.' cancelled; Cohort C deactivate/reactivate from list and from its page both work |
-| 9.1 | desktop | pass | | Two tabs confirmed together: same result URL, 'Added 2 learners.'; semi1/semi2 once each; one setup email each |
-| 10.1 | mobile | pass | [img](screenshots/page-2026-10-30T19-47-59-758Z.png) | Upload error summary, preview and result: scrollWidth 375; preview rows render as cards (email, line, label, reason, name, cohort); stepper fits on one line |
-| 10.1-error | mobile | pass | [img](screenshots/page-m-upload-error.png) | badhead error summary wraps legibly |
-| 10.2-10.3 | mobile | pass | [img](screenshots/page-2026-10-30T19-48-15-960Z.png) | Selection bar fixed to bottom (593-812), Select all above the cards, More actions menu flips above trigger with 5 items 36px tall; confirm bottom sheet and result modal within viewport; no overflow; bulk42/43 reactivated |
-| 10.2-confirm | mobile | pass | [img](screenshots/page-m-confirm.png) | Deactivate confirmation bottom sheet fits 375x812 |
-| 10.1-10.3 | tablet | pass | [img](screenshots/page-t-preview.png) | Import upload error, preview (table at md) and result: scrollWidth 768; learners list bar fixed at bottom (921-1024), menu 5 items, confirm and result modals 128-640 wide, within viewport; reactivated afterwards |
-| 8.1 | desktop | pass | [img](screenshots/page-cohortadmin-cohorts.png) | cohort.admin: checkbox column; More actions holds only Register/Unregister; no Import learners link on list or Cohort A tab; only Cohort A/B learners; picker Cohort A, Cohort B; 'Add 2 learners to Cohort B.' -> '2 learners changed.'; import URL 403 'You can't import learners here... Ask an organisation admin of Northside.'; cohorts list Register/Unregister only, no More actions |
-| 8.2-8.5 | desktop | pass | | cohort.viewer: no selection checkboxes/bar (only Status filter checkboxes), import 403. south.admin: preview/result/errors.csv/run status URLs 404 under northside and southside. Superuser: §4 result 404, import page 200. Anonymous: redirected to login with next |
-| 7-viewports | mobile | pass | [img](screenshots/page-cohorts-375.png) | Cohorts list with 2 ticked: scrollWidth 375, bar buttons stacked within width |
-| 7-viewports | tablet | pass | [img](screenshots/page-cohorts-768.png) | Cohorts list with 2 ticked: scrollWidth 768, bar buttons in a row |
+No bugs.
 
 ## General notes
 
-- nocohort.csv preview shows "0 new accounts will get a setup email." next to "Nothing can be added"; harmless but redundant.
-- A repeat Resend setup email confirmation still says "Resend the setup email to 2 learners." when both will be skipped as sent recently; the skip only surfaces in the result.
-- Per-row skip details in result modals read "<Name>: <reason>" (e.g. "Bulk 01 Alpha: already in the cohort"), while the count lines are full sentences.
-- The notification panel header counted "2 unread" from notifications left by earlier QA passes; the scenario reset does not clear notifications.
-- §6.12 deactivated bulk40 from a second learners-list tab rather than the learner's page (same service).
-- Beta matched 29, not 30, at the start of the §6.12 select-all half because bulk41 was still inactive from the first half; the stale check still behaved as specified.
-- More actions menu items are 36px tall on mobile (meets WCAG 2.2 AA 24px target minimum, under the 44px guideline).
-- The dev-only branch badge overlaps pagination at narrow widths; dev-only.
+Observations only; no action attached.
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+- The plan's §6.12 select-all step counted 29 Beta learners, not 30, because the plan's own earlier keys-mode step leaves bulk41 inactive; the 422 and new count behaved as specified.
+- §6.11's repeat run: the confirmation still read "Resend the setup email to 2 learners." although both had just been emailed; the cooldown is reported only in the result ("0 learners changed. 2 setup emails were sent recently.").
+- §3.4 (all-error import) also shows "0 new accounts will get a setup email."; harmless but redundant beside "Nothing can be added".
+- With JavaScript off, the bulk confirmation and result pages render in the plain site shell, without the educator sidebar.
+- At 375px the fixed selection bar stacks its buttons and takes about 220–280px (a quarter to a third of the viewport). The "More actions" menu items are 36px tall, under the 44px touch-target guideline, but usable.
+- The 'More actions' menu order (Deactivate, Reactivate, Register, Unregister, Resend) differs from the plan's listing; the plan does not assert order.
+- The "Remove from cohort" confirm button uses the secondary style, while Deactivate and Unregister use the destructive style; the plan asserts neither for remove.
+- §6.14.7: the run status URL came from the database rather than the network panel.
+- A dev-server restart cleared the session (sessions live in the in-process cache), so the tester logged in again; this is expected in dev.
+- The Django debug toolbar opens by default and blocks clicks; the tester hid it with CSS.
+- The dev-only branch badge overlaps the first selection-bar button at narrow widths.
+
+status: ok · reason: report rendered, 0 bugs documented
