@@ -40,8 +40,12 @@ class DeadlineValue:
         due_date: date | None,
         due_time: time | None,
         due_days_after_registration: int | None,
+        no_due_date: bool,
     ) -> DeadlineValue | None:
-        """The value three nullable columns express, or None when they hold no deadline."""
+        """The value four nullable columns express, or None when they hold no deadline.
+        no_due_date is the content saying there is none, which is a value."""
+        if no_due_date:
+            return cls(DeadlineKind.NONE)
         if due_date is not None:
             return cls(DeadlineKind.FIXED, due_date=due_date, due_time=due_time)
         if due_days_after_registration is not None:
@@ -151,6 +155,13 @@ def time_limit_value(days: int | None) -> DeadlineValue | None:
     return DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=days)
 
 
+def content_layer_value(row: ContentCollectionItem) -> DeadlineValue | None:
+    """The value a content row's four columns express."""
+    return DeadlineValue.from_columns(
+        row.due_date, row.due_time, row.due_days_after_registration, row.no_due_date
+    )
+
+
 def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
     """Three queries whatever the number of courses or rows: the course-level rows, the
     part-level rows beneath them, and the courses' time limits. Rows whose child is a part are
@@ -190,9 +201,7 @@ def _defaults_by_course(course_ids: set[UUID]) -> dict[UUID, _CourseDefaults]:
             if row.collection_type_id == course_type.pk
             else courses_of_part[row.collection_id]
         )
-        value = DeadlineValue.from_columns(
-            row.due_date, row.due_time, row.due_days_after_registration
-        )
+        value = content_layer_value(row)
         for course_id in placed_in:
             defaults[course_id].items[row.pk] = value
     return defaults

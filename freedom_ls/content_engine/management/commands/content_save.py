@@ -26,6 +26,7 @@ from django.utils.text import slugify
 from freedom_ls.content_base.schema import (
     DUE_DATE_FIELD_NAMES,
     BaseBaseContentModel,
+    DueDateFields,
 )
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
@@ -45,6 +46,7 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.content_engine.prices import KIND_FIELDS
+from freedom_ls.content_engine.schema import Child
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.content_engine.validate import (
@@ -360,10 +362,28 @@ def markdown_translate(markdown_content):
     return markdown_content
 
 
-def due_date_columns(schema: BaseBaseContentModel | None) -> dict[str, object]:
-    """The three due columns a child file sets, None for each the file does not carry.
-    Writing None on every sync is what lets an author remove a due date."""
-    return {name: getattr(schema, name, None) for name in DUE_DATE_FIELD_NAMES}
+def due_date_columns(
+    schema: BaseBaseContentModel | DueDateFields | None,
+) -> dict[str, object]:
+    """The four due columns a child file or a children: entry sets, None for each due key it
+    does not carry and no_due_date False when it has none. Writing the absent values on every
+    sync is what lets an author remove a due date."""
+    columns: dict[str, object] = {
+        name: getattr(schema, name, None) for name in DUE_DATE_FIELD_NAMES
+    }
+    columns["no_due_date"] = getattr(schema, "no_due_date", False)
+    return columns
+
+
+def placement_due_columns(
+    entry: Child | None, child_schema: BaseBaseContentModel | None
+) -> dict[str, object]:
+    """The due columns one placement row holds. An entry that sets a value supplies every
+    column, so an entry's relative offset is never given the child file's time of day;
+    otherwise the child file does."""
+    if entry is not None and entry.holds_due_value():
+        return due_date_columns(entry)
+    return due_date_columns(child_schema)
 
 
 def save_topic(item, site, base_path):
@@ -1067,10 +1087,11 @@ def save_content_to_db(path, site_name):
                 )
             )
 
-        # Both branches produce (resolved path, overrides) pairs, so the lookup
-        # below is the same whichever way the children were arrived at.
-        children_list: list[tuple[Path, dict | None]] = [
-            (resolve_author_path(schema_item.file_path, child.path), child.overrides)
+        # Both branches produce (resolved path, entry) pairs, so the lookup
+        # below is the same whichever way the children were arrived at. An
+        # auto-discovered child has no entry.
+        children_list: list[tuple[Path, Child | None]] = [
+            (resolve_author_path(schema_item.file_path, child.path), child)
             for child in (schema_item.children or [])
         ]
 
@@ -1142,7 +1163,7 @@ def save_content_to_db(path, site_name):
                         children_list.append((content_key(main_file), None))
 
         # Create ContentCollectionItem entries for each child
-        for order, (child_path, overrides) in enumerate(children_list):
+        for order, (child_path, entry) in enumerate(children_list):
             child_content = content_by_path.get(child_path)
             if child_content:
                 # Get the Django ContentType for both collection and child
@@ -1162,8 +1183,7 @@ def save_content_to_db(path, site_name):
                     child_id=child_content.id,
                     defaults={
                         "order": order,
-                        "overrides": overrides,
-                        **due_date_columns(schema_by_path.get(child_path)),
+                        **placement_due_columns(entry, schema_by_path.get(child_path)),
                     },
                 )
                 written.append(row)

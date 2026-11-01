@@ -61,7 +61,7 @@ def _layer(source: DeadlineSource, value: DeadlineValue | None) -> DeadlineLayer
 
 
 def test_from_columns_prefers_the_fixed_date():
-    value = DeadlineValue.from_columns(date(2026, 3, 20), time(9, 0), 5)
+    value = DeadlineValue.from_columns(date(2026, 3, 20), time(9, 0), 5, False)
 
     assert value == DeadlineValue(
         DeadlineKind.FIXED, due_date=date(2026, 3, 20), due_time=time(9, 0)
@@ -69,7 +69,7 @@ def test_from_columns_prefers_the_fixed_date():
 
 
 def test_from_columns_reads_a_relative_offset():
-    value = DeadlineValue.from_columns(None, time(9, 0), 5)
+    value = DeadlineValue.from_columns(None, time(9, 0), 5, False)
 
     assert value == DeadlineValue(
         DeadlineKind.RELATIVE, due_time=time(9, 0), due_days_after_registration=5
@@ -77,14 +77,20 @@ def test_from_columns_reads_a_relative_offset():
 
 
 def test_from_columns_reads_a_zero_day_offset():
-    value = DeadlineValue.from_columns(None, None, 0)
+    value = DeadlineValue.from_columns(None, None, 0, False)
 
     assert value is not None
     assert value.due_days_after_registration == 0
 
 
+def test_from_columns_reads_no_due_date_as_a_none_value():
+    value = DeadlineValue.from_columns(None, None, None, True)
+
+    assert value == DeadlineValue(DeadlineKind.NONE)
+
+
 def test_from_columns_is_none_when_no_column_holds_a_deadline():
-    assert DeadlineValue.from_columns(None, time(9, 0), None) is None
+    assert DeadlineValue.from_columns(None, time(9, 0), None, False) is None
 
 
 @pytest.mark.parametrize(
@@ -487,6 +493,33 @@ def test_the_cohort_layer_beats_the_content_default(mock_site_context):
     assert resolved.source == DeadlineSource.COHORT_REGISTRATION
     assert resolved.due_at is not None
     assert resolved.due_at.date() == date(2026, 3, 5)
+
+
+@pytest.mark.django_db
+def test_a_no_due_date_item_resolves_with_no_date_from_the_content_layer(
+    mock_site_context,
+):
+    record, item = _cohort_record_with_item(no_due_date=True)
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.due_at is None
+    assert resolved.source == DeadlineSource.CONTENT
+
+
+@pytest.mark.django_db
+def test_a_cohort_override_beats_a_no_due_date_item(mock_site_context):
+    record, item = _cohort_record_with_item(no_due_date=True)
+    CohortDeadlineOverrideFactory(
+        cohort_registration=record.cohort_registration,
+        collection_item=item,
+        due_days_after_registration=3,
+    )
+
+    resolved = course_deadlines(record).items[item.pk]
+
+    assert resolved.source == DeadlineSource.COHORT_REGISTRATION
+    assert resolved.due_at is not None
 
 
 @pytest.mark.django_db

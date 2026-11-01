@@ -27,6 +27,7 @@ from freedom_ls.content_base.schema import (
     ContentType,
     DueDateFields,
     MarkdownContentModel,
+    PlacementDueDate,
 )
 from freedom_ls.content_engine.prices import price_errors
 
@@ -182,15 +183,8 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
         return self
 
 
-class Child(BaseModel):
-    """A child content reference with optional overrides."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: Path = Field(..., description="Path to the child content file")
-    overrides: dict[str, Any] | None = Field(
-        None, description="Optional overrides as key-value pairs"
-    )
+class Child(PlacementDueDate):
+    """A children: entry of a course or part."""
 
 
 class CourseCategoryEntry(BaseModel):
@@ -364,7 +358,7 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
 
     children: list[Child] = Field(
         default_factory=list,
-        description="List of child content references with optional overrides",
+        description="List of child content references",
     )
 
     content: str | None = Field(None, description="Markdown content body")
@@ -507,7 +501,7 @@ class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
 
     children: list[Child] = Field(
         default_factory=list,
-        description="List of child content references with optional overrides",
+        description="List of child content references",
     )
 
     # content: Optional[str] = Field(None, description="Markdown content body")

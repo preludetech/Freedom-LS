@@ -26,6 +26,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_course,
 )
 from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
     Course,
     CoursePart,
     DifficultyLevel,
@@ -1194,3 +1195,10 @@ def test_single_organisation_without_a_prefetch_gives_the_same_answer(
     course.organisations.add(organisation)
 
     assert Course.objects.get(pk=course.pk).single_organisation() == organisation
+
+
+def test_a_collection_item_has_a_no_due_date_flag_and_no_overrides_field() -> None:
+    field_names = {field.name for field in ContentCollectionItem._meta.get_fields()}
+
+    assert "no_due_date" in field_names
+    assert "overrides" not in field_names

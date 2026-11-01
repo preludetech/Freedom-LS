@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import re
+import shutil
 import tempfile
 from datetime import date, time
 from decimal import Decimal
@@ -2853,6 +2854,163 @@ uuid: {_TIMED_TOPIC_UUID}
 
 Body
 """)
+
+
+def _write_course_with_entry_dates(
+    course_dir: Path, course_entry: str, part_entry: str, topic_front_matter: str
+) -> None:
+    """A course whose own entry and whose part's entry both place shared.md; the entry
+    lines are written under their `- path:` line. An existing directory is rewritten."""
+    shutil.rmtree(course_dir, ignore_errors=True)
+    _write_timed_course(course_dir, topic_front_matter)
+    (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Timed course
+uuid: {COURSE_UUID}
+children:
+  - path: part-a/part.yaml
+  - path: shared.md
+{course_entry}---
+""")
+    (course_dir / "part-a" / "part.yaml").write_text(f"""---
+content_type: COURSE_PART
+title: part-a
+uuid: {_PART_A_UUID}
+children:
+  - path: ../shared.md
+{part_entry}""")
+    (course_dir / "part-b").joinpath("part.yaml").unlink()
+    (course_dir / "part-b").rmdir()
+
+
+def _item_in(collection: Course | CoursePart) -> ContentCollectionItem:
+    item: ContentCollectionItem = ContentCollectionItem.objects.get(
+        collection_id=collection.id, child_id=_TIMED_TOPIC_UUID
+    )
+    return item
+
+
+FILE_DATES = 'due_days_after_registration: 14\ndue_time: "17:00"\n'
+
+
+@pytest.mark.django_db
+def test_a_course_entry_sets_its_own_placement_and_leaves_the_part_placement(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_course_with_entry_dates(
+            course_dir, "    due_date: 2026-05-01\n", "", FILE_DATES
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        course_row = _item_in(Course.objects.get(id=COURSE_UUID))
+        part_row = _item_in(CoursePart.objects.get(id=_PART_A_UUID))
+        assert course_row.due_date == date(2026, 5, 1)
+        assert course_row.due_days_after_registration is None
+        assert part_row.due_days_after_registration == 14
+        assert part_row.due_time == time(17, 0)
+
+
+@pytest.mark.django_db
+def test_a_part_entry_beats_the_child_file_value(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_course_with_entry_dates(
+            course_dir, "", "    due_date: 2026-06-01\n", FILE_DATES
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        part_row = _item_in(CoursePart.objects.get(id=_PART_A_UUID))
+        assert part_row.due_date == date(2026, 6, 1)
+        assert part_row.due_days_after_registration is None
+
+
+@pytest.mark.django_db
+def test_an_entry_offset_is_not_given_the_child_files_time_of_day(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_course_with_entry_dates(
+            course_dir, "    due_days_after_registration: 3\n", "", FILE_DATES
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        course_row = _item_in(Course.objects.get(id=COURSE_UUID))
+        assert course_row.due_days_after_registration == 3
+        assert course_row.due_time is None
+
+
+@pytest.mark.django_db
+def test_no_due_date_on_an_entry_writes_the_flag_and_clears_the_columns(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_course_with_entry_dates(
+            course_dir, "    no_due_date: true\n", "", FILE_DATES
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        course_row = _item_in(Course.objects.get(id=COURSE_UUID))
+        assert course_row.no_due_date is True
+        assert course_row.due_days_after_registration is None
+        assert course_row.due_time is None
+
+
+@pytest.mark.django_db
+def test_removing_an_entrys_keys_restores_the_file_value_and_clears_the_flag(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        _write_course_with_entry_dates(
+            course_dir, "    no_due_date: true\n", "", FILE_DATES
+        )
+        save_content_to_db(course_dir, site.name)
+
+        _write_course_with_entry_dates(course_dir, "", "", FILE_DATES)
+        save_content_to_db(course_dir, site.name)
+
+        course_row = _item_in(Course.objects.get(id=COURSE_UUID))
+        assert course_row.no_due_date is False
+        assert course_row.due_days_after_registration == 14
+        assert course_row.due_time == time(17, 0)
+
+
+@pytest.mark.django_db
+def test_an_auto_discovered_placement_takes_the_file_columns_and_no_flag(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "timed"
+        course_dir.mkdir()
+        (course_dir / "shared.md").write_text(f"""---
+content_type: TOPIC
+title: Shared topic
+uuid: {_TIMED_TOPIC_UUID}
+{FILE_DATES}---
+
+Body
+""")
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Timed course
+uuid: {COURSE_UUID}
+---
+""")
+
+        save_content_to_db(course_dir, site.name)
+
+        course_row = _item_in(Course.objects.get(id=COURSE_UUID))
+        assert course_row.no_due_date is False
+        assert course_row.due_days_after_registration == 14
+        assert course_row.due_time == time(17, 0)
 
 
 @pytest.mark.django_db

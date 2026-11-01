@@ -15,6 +15,7 @@ from freedom_ls.content_base.schema import (
     SCHEMAS,
     ContentType,
     DueDateFields,
+    PlacementDueDate,
 )
 
 
@@ -81,3 +82,52 @@ def test_invalid_due_date_shapes_are_refused(
 ) -> None:
     with pytest.raises(ValidationError, match=message):
         _DueFile.model_validate(fields)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"due_date": date(2026, 3, 14)},
+        {"due_date": date(2026, 3, 14), "due_time": "17:00"},
+        {"due_days_after_registration": 7},
+        {"no_due_date": True},
+    ],
+)
+def test_a_placement_accepts_a_due_value(fields: dict[str, object]) -> None:
+    entry = PlacementDueDate.model_validate({"path": "topics/intro.md", **fields})
+
+    assert entry.holds_due_value() is True
+
+
+def test_a_bare_placement_holds_no_due_value() -> None:
+    entry = PlacementDueDate.model_validate({"path": "topics/intro.md"})
+
+    assert entry.holds_due_value() is False
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        (
+            {"no_due_date": True, "due_days_after_registration": 3},
+            "topics/intro.md: no_due_date takes no due keys",
+        ),
+        (
+            {"no_due_date": True, "due_date": date(2026, 3, 14)},
+            "topics/intro.md: no_due_date takes no due keys",
+        ),
+        (
+            {"due_date": date(2026, 3, 14), "due_days_after_registration": 3},
+            "topics/intro.md: set due_date or due_days_after_registration, not both",
+        ),
+        (
+            {"due_time": "17:00"},
+            "topics/intro.md: due_time needs due_date or due_days_after_registration",
+        ),
+    ],
+)
+def test_a_placement_with_a_contradictory_due_value_is_refused(
+    fields: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        PlacementDueDate.model_validate({"path": "topics/intro.md", **fields})

@@ -62,6 +62,18 @@ def test_content_default_for_an_item_row_reads_the_item_columns(mock_site_contex
 
 
 @pytest.mark.django_db
+def test_content_default_for_a_no_due_date_item_is_the_none_value(mock_site_context):
+    override = _item_override(no_due_date=True)
+
+    assert content_default_for(override) == DeadlineValue(DeadlineKind.NONE)
+
+
+@pytest.mark.django_db
+def test_canonical_beneath_a_no_due_date_item_is_none(mock_site_context):
+    assert canonical_beneath(_item_override(no_due_date=True)) == "none"
+
+
+@pytest.mark.django_db
 def test_content_default_for_an_item_without_a_deadline_is_none(mock_site_context):
     assert content_default_for(_item_override()) is None
 

@@ -555,7 +555,7 @@ class CoursePart(TitledContent):
 
 
 class ContentCollectionItem(SiteAwareModel, TimestampedModel):
-    """Through model for Course/CoursePart children with order and overrides."""
+    """Through model for Course/CoursePart children: one placement, with its order and content default."""
 
     # Generic foreign key to Course or CoursePart
     collection_type = models.ForeignKey(
@@ -576,14 +576,10 @@ class ContentCollectionItem(SiteAwareModel, TimestampedModel):
     child = GenericForeignKey("child_type", "child_id")
 
     order = models.PositiveIntegerField(default=0)
-    overrides = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_("Optional overrides as key-value pairs"),
-    )
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True)
     due_days_after_registration = models.PositiveIntegerField(null=True, blank=True)
+    no_due_date = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["order"]

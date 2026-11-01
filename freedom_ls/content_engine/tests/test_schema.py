@@ -14,6 +14,7 @@ from django.utils.text import slugify as django_slugify
 
 from freedom_ls.content_engine.schema import (
     Article,
+    Child,
     Course,
     CourseCategories,
     CourseCategoryEntry,
@@ -658,3 +659,16 @@ def test_course_audience_and_organisations_validate():
 def test_course_audience_outside_the_choices_is_rejected():
     with pytest.raises(ValidationError):
         Course.model_validate(_course(audience="everyone"))
+
+
+def test_a_children_entry_accepts_due_keys() -> None:
+    entry = Child.model_validate(
+        {"path": "intro.md", "due_days_after_registration": 5, "due_time": "09:00"}
+    )
+
+    assert entry.due_days_after_registration == 5
+
+
+def test_a_children_entry_refuses_overrides() -> None:
+    with pytest.raises(ValidationError, match="overrides"):
+        Child.model_validate({"path": "intro.md", "overrides": {"title": "x"}})

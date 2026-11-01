@@ -11,6 +11,7 @@ from freedom_ls.deadlines.resolver import (
     DeadlineSource,
     DeadlineValue,
     LayerRows,
+    content_layer_value,
     time_limit_value,
 )
 
@@ -21,9 +22,7 @@ def content_default_for(
     """What the content says for the row's item, or the course time limit for a time-limit row."""
     item = row.collection_item
     if item is not None:
-        return DeadlineValue.from_columns(
-            item.due_date, item.due_time, item.due_days_after_registration
-        )
+        return content_layer_value(item)
     course = row.course
     return time_limit_value(course.time_limit_days) if course is not None else None
 

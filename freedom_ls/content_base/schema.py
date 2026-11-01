@@ -2,7 +2,7 @@ import re
 from datetime import date, time
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -77,6 +77,11 @@ class DueDateFields(BaseModel):
         None, ge=0, strict=True, description="Days after the registration date"
     )
 
+    def _due_date_subject(self) -> Path | None:
+        """What an error names: the declaring file. A children: entry has no file of its own
+        and names its path instead."""
+        return getattr(self, "file_path", None)
+
     @field_validator("due_date", mode="before")
     @classmethod
     def _due_date_is_a_date(cls, value: object) -> object:
@@ -100,8 +105,8 @@ class DueDateFields(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _one_kind_of_due_date(self) -> "DueDateFields":
-        file_path = getattr(self, "file_path", None)
+    def _one_kind_of_due_date(self) -> Self:
+        file_path = self._due_date_subject()
         if self.due_date is not None and self.due_days_after_registration is not None:
             raise ValueError(
                 f"{file_path}: set due_date or due_days_after_registration, not both"
@@ -118,6 +123,34 @@ class DueDateFields(BaseModel):
 
 
 DUE_DATE_FIELD_NAMES = frozenset(DueDateFields.model_fields)
+
+
+class PlacementDueDate(DueDateFields):
+    """A children: entry's own deadline: the due keys set one for this placement alone,
+    no_due_date says there is none here, and neither leaves the child file's value in
+    place."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Path = Field(..., description="Path to the child content file")
+    no_due_date: bool = Field(False, description="No deadline for this placement")
+
+    def _due_date_subject(self) -> Path | None:
+        return self.path
+
+    def sets_a_due_key(self) -> bool:
+        return any(getattr(self, name) is not None for name in DUE_DATE_FIELD_NAMES)
+
+    def holds_due_value(self) -> bool:
+        """Whether the entry replaces the child file's value: any due key, or no_due_date."""
+        return self.no_due_date or self.sets_a_due_key()
+
+    @model_validator(mode="after")
+    def _no_due_date_stands_alone(self) -> Self:
+        # no_due_date says there is no deadline here; a due key beside it says the opposite.
+        if self.no_due_date and self.sets_a_due_key():
+            raise ValueError(f"{self.path}: no_due_date takes no due keys")
+        return self
 
 
 # SCHEMAS is automatically built via __init_subclass__
