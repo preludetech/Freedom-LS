@@ -2157,6 +2157,7 @@ def course_form_complete(request, course_slug, index):
         "retry_url": retry_url,
         "access_ended": access_ended,
         "item_closed": item_closed,
+        "hide_outline_panel": access_ended and not keeps_outline,
         **chrome,
     }
 

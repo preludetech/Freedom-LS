@@ -1,0 +1,182 @@
+- generic [active] [ref=f30e1]:
+  - banner [ref=f30e2]:
+    - link [ref=f30e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f30e4]
+      - heading "FirstClass" [level=1] [ref=f30e5]
+    - navigation [ref=f30e6]:
+      - generic [ref=f30e7]:
+        - generic [ref=f30e8]:
+          - button "Messages" [ref=f30e9]:
+            - img "message" [ref=f30e11]
+          - status:
+            - generic [ref=f30e13]: Messages
+        - generic [ref=f30e14]:
+          - button "Notifications, none new" [ref=f30e15]:
+            - img "notifications" [ref=f30e17]
+          - status:
+            - generic [ref=f30e19]: Notifications, none new
+        - button "Open user menu for qa_deadline_solo@email.com" [ref=f30e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f30e22]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f30e23]:
+    - generic [ref=f30e25]:
+      - dialog "Course outline" [ref=f30e26]:
+        - generic [ref=f30e29]:
+          - generic [ref=f30e30]:
+            - generic [ref=f30e31]:
+              - generic [aria-hidden] [ref=f30e32]: QD
+              - generic [ref=f30e33]: QA Deadlines Org
+            - paragraph [ref=f30e34]: Course outline
+            - paragraph [ref=f30e35]: Functionality Demo - Course Parts
+            - generic [ref=f30e37]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f30e38]: 0%
+              - generic [ref=f30e39]: 0% complete
+          - navigation "Course outline" [ref=f30e40]:
+            - list [ref=f30e41]:
+              - listitem [ref=f30e42]:
+                - button "1. folder Closed Getting Started" [ref=f30e43] [cursor=pointer]:
+                  - generic [ref=f30e44]:
+                    - generic [ref=f30e45]: "1."
+                    - generic [ref=f30e46]:
+                      - img "folder" [ref=f30e47]
+                      - generic [ref=f30e49]: Closed
+                    - generic [ref=f30e50]: Getting Started
+              - listitem [ref=f30e56]:
+                - button "2. folder Closed Core Concepts" [expanded] [ref=f30e57] [cursor=pointer]:
+                  - generic [ref=f30e58]:
+                    - generic [ref=f30e59]: "2."
+                    - generic [ref=f30e60]:
+                      - img "folder" [ref=f30e61]
+                      - generic [ref=f30e63]: Closed
+                    - generic [ref=f30e64]: Core Concepts
+                - list [ref=f30e70]:
+                  - listitem [ref=f30e71]:
+                    - generic [ref=f30e72]:
+                      - generic [ref=f30e73]: "2.1"
+                      - generic [ref=f30e74]:
+                        - img "topic" [ref=f30e75]
+                        - generic [ref=f30e77]: Locked
+                      - generic [ref=f30e78]: Key Ideas
+                    - generic [ref=f30e79]:
+                      - generic [ref=f30e80]: Missed deadline
+                      - time [ref=f30e82]: Aug 7, 2026, 05:00 PM
+                  - listitem [ref=f30e83]:
+                    - generic [ref=f30e84]:
+                      - generic [ref=f30e85]: "2.2"
+                      - generic [ref=f30e86]:
+                        - img "topic" [ref=f30e87]
+                        - generic [ref=f30e89]: Locked
+                      - generic [ref=f30e90]: Going Deeper
+                  - listitem [ref=f30e91]:
+                    - generic [ref=f30e92]:
+                      - generic [ref=f30e93]: "2.3"
+                      - generic [ref=f30e94]:
+                        - img "form" [ref=f30e95]
+                        - generic [ref=f30e97]: Closed
+                      - generic [ref=f30e98]: Knowledge Check
+                    - generic [ref=f30e100]:
+                      - img "deadline" [ref=f30e101]
+                      - text: Closed
+                      - time [ref=f30e103]: Aug 17, 2026, 11:59 PM
+              - listitem [ref=f30e104]:
+                - button "3. folder Locked Wrapping Up" [ref=f30e105] [cursor=pointer]:
+                  - generic [ref=f30e106]:
+                    - generic [ref=f30e107]: "3."
+                    - generic [ref=f30e108]:
+                      - img "folder" [ref=f30e109]
+                      - generic [ref=f30e111]: Locked
+                    - generic [ref=f30e112]: Wrapping Up
+      - generic [ref=f30e118]:
+        - generic [ref=f30e120]:
+          - navigation "Breadcrumb" [ref=f30e123]:
+            - list [ref=f30e124]:
+              - listitem [ref=f30e125]:
+                - link "Functionality Demo - Course Parts" [ref=f30e126] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f30e127]:
+                - generic [aria-hidden] [ref=f30e128]: ">"
+                - link "Core Concepts" [ref=f30e129] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/3/
+              - listitem [ref=f30e130]:
+                - generic [aria-hidden] [ref=f30e131]: ">"
+                - generic "Knowledge Check" [ref=f30e132]
+          - generic [ref=f30e134]:
+            - img "deadline" [ref=f30e135]
+            - text: Closed
+            - time [ref=f30e137]: Aug 17, 2026, 11:59 PM
+        - generic [ref=f30e138]:
+          - generic [ref=f30e141]:
+            - img "error" [ref=f30e142]
+            - heading "Quiz not passed" [level=1] [ref=f30e144]
+            - paragraph [ref=f30e145]: You needed 80% to pass. This quiz has closed, so it can't be retaken.
+          - generic [ref=f30e147]:
+            - generic [ref=f30e148]: 0%
+            - generic [ref=f30e154]:
+              - generic [ref=f30e155]: 0 / 3
+              - generic [ref=f30e156]: correct
+          - generic [ref=f30e157]:
+            - heading "Review incorrect answers" [level=2] [ref=f30e158]
+            - generic [ref=f30e159]:
+              - generic [ref=f30e161]:
+                - generic [ref=f30e162]:
+                  - generic [ref=f30e163]:
+                    - paragraph [ref=f30e164]: Question 1
+                    - paragraph [ref=f30e165]:
+                      - img "error" [ref=f30e166]
+                      - text: Marked wrong
+                  - paragraph [ref=f30e168]: What is a course part?
+                - generic [ref=f30e169]:
+                  - paragraph [ref=f30e170]: Your answer
+                  - paragraph [ref=f30e172]: You did not answer this question.
+                - generic [ref=f30e173]:
+                  - paragraph [ref=f30e174]: Correct answer
+                  - generic [ref=f30e176]:
+                    - img "success" [ref=f30e177]
+                    - generic [ref=f30e179]: A way to group related content within a course
+              - generic [ref=f30e181]:
+                - generic [ref=f30e182]:
+                  - generic [ref=f30e183]:
+                    - paragraph [ref=f30e184]: Question 2
+                    - paragraph [ref=f30e185]:
+                      - img "error" [ref=f30e186]
+                      - text: Marked wrong
+                  - paragraph [ref=f30e188]: What types of content can a course part contain?
+                - generic [ref=f30e189]:
+                  - paragraph [ref=f30e190]: Your answer
+                  - paragraph [ref=f30e192]: You did not answer this question.
+                - generic [ref=f30e193]:
+                  - paragraph [ref=f30e194]: Correct answer
+                  - generic [ref=f30e196]:
+                    - img "success" [ref=f30e197]
+                    - generic [ref=f30e199]: Both topics and forms
+              - generic [ref=f30e201]:
+                - generic [ref=f30e202]:
+                  - generic [ref=f30e203]:
+                    - paragraph [ref=f30e204]: Question 3
+                    - paragraph [ref=f30e205]:
+                      - img "error" [ref=f30e206]
+                      - text: Marked wrong
+                  - paragraph [ref=f30e208]: Which file identifies a directory as a course part?
+                - generic [ref=f30e209]:
+                  - paragraph [ref=f30e210]: Your answer
+                  - paragraph [ref=f30e212]: You did not answer this question.
+                - generic [ref=f30e213]:
+                  - paragraph [ref=f30e214]: Correct answer
+                  - generic [ref=f30e216]:
+                    - img "success" [ref=f30e217]
+                    - generic [ref=f30e219]: part.yaml
+          - link "Return to course" [ref=f30e221] [cursor=pointer]:
+            - /url: /courses/functionality-demo-course-parts/1/
+  - contentinfo [ref=f30e225]:
+    - generic [ref=f30e226]:
+      - paragraph [ref=f30e227]: © 2026 FirstClass
+      - navigation "Legal" [ref=f30e228]:
+        - link "Terms and Conditions" [ref=f30e229] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f30e230] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f30e231] [cursor=pointer]: deadlines-2-consequence-policy
+  - generic "Show toolbar" [ref=f30e233]: DJDT

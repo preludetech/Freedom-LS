@@ -24,6 +24,12 @@ keep them single-line so no surrounding whitespace leaks into the attribute
 value. The mobile bottom-sheet presentation is the shared base default, so it is
 not overridden here.
 {% endcomment %}
+{% comment %}
+A page that carries no outline (hide_outline_panel) keeps the panel mobile-only, so it owns
+no desktop column and never docks, and offers no toggle to open it.
+{% endcomment %}
+{% block sidebar_mobile_only_attr %}{% if hide_outline_panel %}data-mobile-only="true"{% endif %}{% endblock sidebar_mobile_only_attr %}
+{% block panel_toggle %}{% if not hide_outline_panel %}{{ block.super }}{% endif %}{% endblock panel_toggle %}
 {% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
 {% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
 
@@ -74,6 +80,7 @@ docked outline panel carries its own progress, so the header stays uncluttered.
     page reload. It sits inside the <dialog> / sidePanel x-data ancestor, so the
     panel's open / scroll / Alpine state survives the swap.
     {% endcomment %}
+    {% if not hide_outline_panel %}
     <div id="course-toc-region">
         {% include "learner_interface/partials/course_toc_header.html" %}
 
@@ -87,4 +94,5 @@ docked outline panel carries its own progress, so the header stays uncluttered.
             {% endwith %}
         {% endif %}
     </div>
+    {% endif %}
 {% endblock sidebar_content %}

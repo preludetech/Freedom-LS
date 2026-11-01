@@ -1219,6 +1219,42 @@ def test_the_results_page_shows_no_outline_or_next_step_to_an_ended_learner_who_
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_draws_no_outline_panel_for_an_ended_learner_who_keeps_nothing(
+    mock_site_context,
+):
+    """The results page used to draw the outline heading, title, progress bar and a
+    drawer toggle around an empty item list."""
+    course, form = _ended_course()
+    user, _record, client = _ended_learner(course)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    html = client.get(_player_urls(course)["course_form_complete"]).content.decode()
+
+    assert ">Course outline<" not in html
+    assert "Open course outline" not in html
+    assert 'id="course-toc-region"' not in html
+    assert "complete</" not in html.split('id="interface-main"')[0]
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
+def test_the_results_page_draws_the_outline_panel_for_an_ended_learner_who_keeps_it(
+    mock_site_context,
+):
+    course, form = _ended_outline_course()
+    user, _record, client = _ended_learner(course)
+    _complete_topic(course, user)
+    form_attempt(course, user, form, completed_time=REGISTERED_AT)
+
+    html = client.get(_player_urls(course)["course_form_complete"]).content.decode()
+
+    assert ">Course outline<" in html
+    assert "Open course outline" in html
+    assert 'id="course-toc-region"' in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_END, tick=False)
 def test_an_ended_registration_stays_active_and_fires_no_unregistered_webhook(
     mock_site_context,
 ):
