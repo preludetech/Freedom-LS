@@ -28,6 +28,8 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.deployment.housekeeping import (
+    ORPHANED_MESSAGE,
+    UNPICKED_MESSAGE,
     BulkRecordModel,
     OrphanReapResult,
     delete_finished_records,
@@ -937,7 +939,7 @@ class TestMarkUnpickedRunsFailed:
             FIXED_NOW,
         )
 
-    def test_error_message_says_the_task_was_never_picked_up(
+    def test_error_message_tells_the_reader_it_did_not_start(
         self, model: BulkRecordModel, mock_site_context
     ) -> None:
         record = _make_bulk_record(
@@ -948,7 +950,21 @@ class TestMarkUnpickedRunsFailed:
             mark_unpicked_runs_failed(model, 3600)
 
         record.refresh_from_db()
-        assert "never picked up" in record.error_message
+        assert record.error_message == UNPICKED_MESSAGE
+
+    def test_each_closed_record_is_reported_to_sentry_separately(
+        self, model: BulkRecordModel, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        for _ in range(2):
+            _make_bulk_record(
+                model, status=RunStatus.QUEUED, created_ago=timedelta(hours=2)
+            )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_unpicked_runs_failed(model, 3600)
+
+        assert sentry.capture_message.call_count == 2
 
     def test_queued_record_inside_the_window_is_left_queued(
         self, model: BulkRecordModel, mock_site_context
@@ -1043,7 +1059,7 @@ class TestMarkOrphanedRunsFailed:
             FIXED_NOW,
         )
 
-    def test_error_message_says_housekeeping_closed_it(
+    def test_error_message_tells_the_reader_it_stopped(
         self, model: BulkRecordModel, mock_site_context
     ) -> None:
         record = _make_bulk_record(
@@ -1054,7 +1070,21 @@ class TestMarkOrphanedRunsFailed:
             mark_orphaned_runs_failed(model, 3600)
 
         record.refresh_from_db()
-        assert "fls_run_housekeeping" in record.error_message
+        assert record.error_message == ORPHANED_MESSAGE
+
+    def test_each_closed_record_is_reported_to_sentry_separately(
+        self, model: BulkRecordModel, mock_site_context, mocker: MockerFixture
+    ) -> None:
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        for _ in range(2):
+            _make_bulk_record(
+                model, status=RunStatus.RUNNING, started_ago=timedelta(hours=2)
+            )
+
+        with time_machine.travel(FIXED_NOW, tick=False):
+            mark_orphaned_runs_failed(model, 3600)
+
+        assert sentry.capture_message.call_count == 2
 
     def test_running_record_started_inside_the_window_is_left_running(
         self, model: BulkRecordModel, mock_site_context

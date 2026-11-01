@@ -243,22 +243,44 @@ def delete_stale_previews() -> int:
     return deleted_per_model.get(LearnerImport._meta.label, 0)
 
 
+#: What the requester reads on a record a sweep closed. The record's page
+#: shows error_message word for word, so it carries no operator detail.
+UNPICKED_MESSAGE = "The background task did not start. Start the action again."
+ORPHANED_MESSAGE = (
+    "The background task stopped before it finished. Check what was applied "
+    "before starting it again."
+)
+
+
 def _close_as_failed(
-    model: BulkRecordModel, records: QuerySet, error_message: str
+    model: BulkRecordModel,
+    records: QuerySet,
+    error_message: str,
+    operator_message: str,
+    max_age_seconds: int,
 ) -> int:
     """Close every record in `records` as FAILED, at the current time, and
     tell a bulk action run's action, which a bare update would skip and
     which is how the requester hears about a run they are no longer
-    watching. Returns how many rows were closed."""
+    watching. The operator hears through Sentry. Returns how many rows were
+    closed."""
     closed = list(records.values_list("pk", "site_id"))
     if not closed:
         return 0
     records.filter(pk__in=[pk for pk, _ in closed]).update(
         status=RunStatus.FAILED, error_message=error_message, finished_at=timezone.now()
     )
-    if model is BulkActionRun:
-        for pk, site_id in closed:
+    for pk, site_id in closed:
+        if model is BulkActionRun:
             report_finished(str(pk), site_id)
+        # A constant message, so every record a sweep closes groups into one
+        # recurring Sentry issue. What varies per row rides on the scope.
+        with sentry_sdk.new_scope() as scope:
+            scope.set_extra("model", model._meta.label)
+            scope.set_extra("record_id", str(pk))
+            scope.set_extra("site_id", str(site_id))
+            scope.set_extra("max_age_seconds", str(max_age_seconds))
+            sentry_sdk.capture_message(operator_message)
     return len(closed)
 
 
@@ -275,9 +297,11 @@ def mark_unpicked_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> i
             status=RunStatus.QUEUED,
             created_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
         ),
-        f"The background task was never picked up within {max_age_seconds}s "
-        f"of being queued, so no worker is consuming. fls_run_housekeeping "
-        f"marked this record failed to say so. Start the action again.",
+        UNPICKED_MESSAGE,
+        "A bulk record was never picked up within the window of being queued, "
+        "so no worker is consuming. fls_run_housekeeping marked it failed. The "
+        "task was not requeued.",
+        max_age_seconds,
     )
 
 
@@ -295,10 +319,11 @@ def mark_orphaned_runs_failed(model: BulkRecordModel, max_age_seconds: int) -> i
             status=RunStatus.RUNNING,
             started_at__lte=timezone.now() - timedelta(seconds=max_age_seconds),
         ),
-        f"Still running {max_age_seconds}s after it started, so the worker "
-        f"running it died without finishing. fls_run_housekeeping marked this "
-        f"record failed to say so. The work was not run again; check what was "
-        f"applied before starting it again.",
+        ORPHANED_MESSAGE,
+        "A bulk record was still running past the window, so the worker running "
+        "it died without finishing. fls_run_housekeeping marked it failed. The "
+        "work was not run again.",
+        max_age_seconds,
     )
 
 
