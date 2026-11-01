@@ -23,10 +23,12 @@ from the command line run:
 The path can either be a file or a directory. if it is a directory then recurse over all files and validate each one.
 """
 
+import functools
 import logging
 import os.path
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import frontmatter
@@ -35,7 +37,11 @@ import yaml
 from pydantic import ValidationError
 from schema import (  # Patch 1: same-directory import (was `from .schema import ...`)
     SCHEMAS,
+    BaseBaseContentModel,
+    Child,
     ContentType,
+    Course,
+    CoursePart,
 )
 
 logger = logging.getLogger(__name__)
@@ -83,6 +89,88 @@ def _load_allowed_access_types() -> None:
         schema.ALLOWED_ACCESS_TYPES = _SHIPPED_ACCESS_TYPES
 
 
+def is_skipped_path(path: Path) -> bool:
+    """Whether a file or directory is ignored when scanning for content.
+
+    Names starting with `_` or `.` are ignored, along with everything inside such
+    directories.
+    """
+    return path.name.startswith("_") or path.name.startswith(".")
+
+
+def content_key(file_path: Path | str) -> Path:
+    """The normalised key every content_by_path entry and lookup uses.
+
+    A path written by an author and a path produced by the directory scan reach
+    the same file by different routes, so both have to be resolved before either
+    is used as a key.
+    """
+    return Path(file_path).resolve()
+
+
+def resolve_author_path(declaring_file: Path | str, author_path: Path | str) -> Path:
+    """An author-written path, relative to the file that declares it."""
+    return content_key(Path(declaring_file).parent / author_path)
+
+
+def auto_discovered_children(collection_file: Path) -> list[Path]:
+    """The children a collection without a children: list gets: every content file and
+    content directory beside it, in name order, skipping what the directory walk skips,
+    course_categories.yaml and articles. Resolved keys, as the loader stores them."""
+    found: list[Path] = []
+    # Anything starting with _ or . is skipped, the same rule as get_all_files.
+    for item in sorted(
+        entry
+        for entry in collection_file.parent.iterdir()
+        if not is_skipped_path(entry)
+    ):
+        if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
+            if item != collection_file:
+                # A loose course_categories.yaml in a course directory belongs at the
+                # repo root, so it is never adopted as a child. An article is loaded in
+                # its own pass and is never a collection child.
+                parsed = parse_single_file(item)
+                if parsed and parsed[0].content_type in (
+                    ContentType.COURSE_CATEGORIES,
+                    ContentType.ARTICLE,
+                ):
+                    continue
+                found.append(content_key(item))
+        elif item.is_dir():
+            # A subdirectory is either a child collection/form (form.md/course.md/
+            # part.yaml) or a topic directory (content.md). Collection and form roles
+            # take priority because a COURSE_PART directory also contains topic files.
+            collection_child: Path | None = None
+            topic_file: Path | None = None
+            for f in sorted(item.iterdir()):
+                if is_skipped_path(f):
+                    continue
+                if not (f.is_file() and f.suffix in [".md", ".yaml", ".yml"]):
+                    continue
+                parsed = parse_single_file(f)
+                if not parsed:
+                    continue
+                content_type = parsed[0].content_type
+                if content_type in (ContentType.COURSE_CATEGORIES, ContentType.ARTICLE):
+                    continue
+                if content_type in (
+                    ContentType.FORM,
+                    ContentType.COURSE,
+                    ContentType.COURSE_PART,
+                ):
+                    collection_child = f
+                    break
+                if (
+                    content_type in (ContentType.TOPIC, ContentType.ACTIVITY)
+                    and topic_file is None
+                ):
+                    topic_file = f
+            main_file = collection_child or topic_file
+            if main_file:
+                found.append(content_key(main_file))
+    return found
+
+
 def get_all_files(path):
     """
     if path points to a regular file, then return it
@@ -108,7 +196,7 @@ def get_all_files(path):
             return True
 
         # Skip files starting with _ or .
-        if file_path.name.startswith("_") or file_path.name.startswith("."):
+        if is_skipped_path(file_path):
             return True
 
         # Skip files in directories starting with _ or . (only check parents within base_path)
@@ -116,11 +204,7 @@ def get_all_files(path):
             relative_path = file_path.relative_to(base_path)
             for parent in relative_path.parents:
                 # Skip the root parent (which would be '.')
-                if (
-                    parent.name
-                    and parent.name != "."
-                    and (parent.name.startswith("_") or parent.name.startswith("."))
-                ):
+                if parent.name and parent.name != "." and is_skipped_path(parent):
                     return True
         except ValueError:
             # file_path is not relative to base_path
@@ -641,6 +725,143 @@ def validate_widget_references(all_parsed: list) -> list[str]:
     return errors
 
 
+_DUE_DATE_CHILD_TYPES = frozenset({ContentType.TOPIC, ContentType.FORM})
+_placement_error = functools.partial(
+    _reference_error, header="Invalid due date placement"
+)
+
+
+def _direct_entry_errors(
+    item: Course | CoursePart, index: int, entry: Child, target: BaseBaseContentModel
+) -> list[str]:
+    """A due date belongs to a topic or form placement."""
+    if entry.holds_due_value() and target.content_type not in _DUE_DATE_CHILD_TYPES:
+        return [
+            _placement_error(
+                item.file_path,
+                item.content_type,
+                f"children[{index}]",
+                str(entry.path),
+                problem=f"a due date on a {target.content_type} placement",
+                fix="Only a TOPIC or FORM placement takes due keys or no_due_date.",
+            )
+        ]
+    return []
+
+
+def _children_of_part(part: CoursePart) -> list[Path]:
+    """The part's children as resolved keys, listed or auto-discovered."""
+    if part.children:
+        return [
+            resolve_author_path(part.file_path, child.path) for child in part.children
+        ]
+    return auto_discovered_children(part.file_path)
+
+
+def _shown_relative_to(path: Path, directory: Path) -> str:
+    """A resolved key as an author would write it under the part's directory."""
+    base = content_key(directory)
+    return str(path.relative_to(base)) if path.is_relative_to(base) else str(path)
+
+
+def _nested_list_errors(
+    item: Course | CoursePart,
+    index: int,
+    entry: Child,
+    target: BaseBaseContentModel,
+    by_path: Mapping[Path, BaseBaseContentModel],
+) -> list[str]:
+    """A nested children: list belongs on a course's placement of a part and names the
+    part's topics and forms, each once."""
+    field = f"children[{index}].children"
+    error = functools.partial(_placement_error, item.file_path, item.content_type)
+    if isinstance(item, CoursePart):
+        return [
+            error(
+                field,
+                str(entry.path),
+                problem="a nested children: list in a part.yaml entry",
+                fix="Set the part's child dates in part.yaml's own children: list.",
+            )
+        ]
+    if not isinstance(target, CoursePart):
+        return [
+            error(
+                field,
+                str(entry.path),
+                problem=f"a nested children: list on a {target.content_type} placement",
+                fix="Only a placed part takes a nested children: list.",
+            )
+        ]
+    part_children = _children_of_part(target)
+    known = set(part_children)
+    listed = ", ".join(
+        _shown_relative_to(p, target.file_path.parent) for p in part_children
+    )
+    errors: list[str] = []
+    seen: set[Path] = set()
+    for nested_index, nested in enumerate(entry.children or []):
+        nested_field = f"{field}[{nested_index}]"
+        resolved = resolve_author_path(target.file_path, nested.path)
+        child = by_path.get(resolved)
+        if resolved not in known:
+            errors.append(
+                error(
+                    nested_field,
+                    str(nested.path),
+                    problem="the part has no child at this path",
+                    fix=(
+                        f"The part's children are: {listed}. "
+                        "Paths are relative to the part's directory."
+                    ),
+                )
+            )
+        elif child is not None and child.content_type not in _DUE_DATE_CHILD_TYPES:
+            errors.append(
+                error(
+                    nested_field,
+                    str(nested.path),
+                    problem=f"this child is a {child.content_type}",
+                    fix="Name the part's topics and forms.",
+                )
+            )
+        elif resolved in seen:
+            errors.append(
+                error(
+                    nested_field,
+                    str(nested.path),
+                    problem="this child is named twice",
+                    fix="Name each child once.",
+                )
+            )
+        seen.add(resolved)
+    return errors
+
+
+def validate_due_date_placements(
+    all_parsed: Sequence[BaseBaseContentModel],
+) -> list[str]:
+    """Check every children: entry that sets a due date against the file it names.
+
+    An entry whose path names nothing is left to the unknown-child check.
+    """
+    errors: list[str] = []
+    # Keyed by content_key, not normpath: an entry's path is resolved the way the loader
+    # resolves it, so the two agree on every file.
+    by_path = {content_key(item.file_path): item for item in all_parsed}
+    for item in all_parsed:
+        if not isinstance(item, (Course, CoursePart)):
+            continue
+        for index, entry in enumerate(item.children or []):
+            target = by_path.get(resolve_author_path(item.file_path, entry.path))
+            if target is None:
+                continue
+            errors.extend(_direct_entry_errors(item, index, entry, target))
+            if entry.children is not None:
+                errors.extend(_nested_list_errors(item, index, entry, target, by_path))
+    return errors
+
+
 def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> list[str]:
     """Check every article's `image` against the files the loader would save.
 
@@ -736,6 +957,8 @@ def validate(path):
     for message in validate_category_references(all_parsed):
         failed_files.append((path, message))
     for message in validate_widget_references(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_due_date_placements(all_parsed):
         failed_files.append((path, message))
 
     # A single-file run has no sibling files to resolve an image against.

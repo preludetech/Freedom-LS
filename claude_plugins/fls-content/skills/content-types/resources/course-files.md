@@ -77,6 +77,38 @@ children:
   - path: 03. quiz/form.md
 ```
 
+### Due dates per placement
+
+A `children:` entry that names a TOPIC or FORM can carry the due keys (`due_date`, `due_days_after_registration`,
+`due_time`) to give that child a deadline for this placement only, or `no_due_date: true` to remove its deadline
+here. `no_due_date` cannot sit beside a due key. An entry with neither keeps the value from the child's own file.
+
+```yaml
+children:
+  - path: 01. intro/content.md
+    due_days_after_registration: 7
+  - path: 03. quiz/form.md
+    no_due_date: true
+```
+
+A course that places a part can set dates for the part's topics and forms with a nested `children:` list on that
+entry. Nested paths are relative to the directory holding the part's `part.yaml`; each entry needs a due key or
+`no_due_date`, and each child is named once.
+
+```yaml
+children:
+  - path: ../shared/Core Concepts/part.yaml
+    children:
+      - path: 01. key-ideas/content.md
+        due_days_after_registration: 3
+      - path: 03. knowledge-check/form.md
+        no_due_date: true
+```
+
+Due keys and `no_due_date` fail on an ACTIVITY, ARTICLE or part entry. A nested `children:` list fails on a topic,
+form or activity entry and in `part.yaml`'s own entries. The old `overrides:` key on a `children:` entry is removed
+and fails validation.
+
 ### Course categories
 
 `categories:` lists the slugs of the categories this course belongs to. Every slug must be

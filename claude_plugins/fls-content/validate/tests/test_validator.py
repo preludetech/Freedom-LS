@@ -1266,6 +1266,225 @@ def test_article_image_not_an_image_file_fails(tmp_path: Path) -> None:
     assert "this file is not an image" in result.stdout + result.stderr
 
 
+def write_course_with_children(directory: Path, children_block: str) -> Path:
+    """Write a COURSE file whose frontmatter ends with the given `children:` block."""
+    path = directory / "course.md"
+    path.write_text(
+        f"---\ncontent_type: COURSE\ntitle: My Course\n{children_block}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_part_tree(content: Path) -> Path:
+    """Write a `part/` directory holding a part.yaml, a topic, a form and a nested part."""
+    part = content / "part"
+    (part / "02. sub").mkdir(parents=True)
+    (part / "part.yaml").write_text(
+        "content_type: COURSE_PART\ntitle: A Part\n", encoding="utf-8"
+    )
+    write_valid_topic(part, "01. intro.md")
+    (part / "03. quiz.md").write_text(
+        "---\ncontent_type: FORM\ntitle: Quiz\nstrategy: QUIZ\n"
+        "quiz_show_incorrect: true\nquiz_pass_percentage: 70\n---\n",
+        encoding="utf-8",
+    )
+    (part / "02. sub" / "part.yaml").write_text(
+        "content_type: COURSE_PART\ntitle: Sub Part\n", encoding="utf-8"
+    )
+    return part
+
+
+def test_due_key_on_a_topic_entry_validates(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_valid_topic(content, "intro.md")
+    write_course_with_children(
+        content, "children:\n- path: intro.md\n  due_days_after_registration: 3\n"
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_course_placing_a_part_with_a_nested_list_validates(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content,
+        "children:\n- path: part/part.yaml\n  children:\n"
+        "  - path: 01. intro.md\n    due_date: 2026-03-14\n"
+        "  - path: 03. quiz.md\n    no_due_date: true\n",
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_overrides_on_an_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_valid_topic(content, "intro.md")
+    write_course_with_children(
+        content, "children:\n- path: intro.md\n  overrides:\n    title: Other\n"
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "overrides")
+    assert "children -> 0 -> overrides" in result.stdout + result.stderr
+
+
+def test_no_due_date_beside_a_due_key_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_valid_topic(content, "intro.md")
+    write_course_with_children(
+        content,
+        "children:\n- path: intro.md\n  no_due_date: true\n"
+        "  due_days_after_registration: 3\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "intro.md: no_due_date takes no due keys")
+
+
+def test_keyless_nested_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content,
+        "children:\n- path: part/part.yaml\n  children:\n  - path: 01. intro.md\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "01. intro.md: set a due key or no_due_date")
+
+
+def test_due_key_on_an_activity_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    (content / "task.md").write_text(
+        "---\ncontent_type: ACTIVITY\ntitle: Task\n---\n", encoding="utf-8"
+    )
+    write_course_with_children(
+        content, "children:\n- path: task.md\n  due_days_after_registration: 3\n"
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "a due date on a ACTIVITY placement")
+    assert "task.md" in result.stdout + result.stderr
+
+
+def test_due_key_on_an_article_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_article(content, "news.md")
+    write_course_with_children(
+        content, "children:\n- path: news.md\n  due_days_after_registration: 3\n"
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "a due date on a ARTICLE placement")
+    assert "news.md" in result.stdout + result.stderr
+
+
+def test_due_key_on_a_part_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content, "children:\n- path: part/part.yaml\n  no_due_date: true\n"
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "a due date on a COURSE_PART placement")
+    assert "part/part.yaml" in result.stdout + result.stderr
+
+
+def test_nested_list_on_a_topic_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_valid_topic(content, "intro.md")
+    write_course_with_children(
+        content,
+        "children:\n- path: intro.md\n  children:\n"
+        "  - path: other.md\n    no_due_date: true\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "a nested children: list on a TOPIC placement")
+    assert "intro.md" in result.stdout + result.stderr
+
+
+def test_nested_list_in_a_part_yaml_entry_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    part = write_part_tree(content)
+    (part / "part.yaml").write_text(
+        "content_type: COURSE_PART\ntitle: A Part\nchildren:\n"
+        "- path: 02. sub/part.yaml\n  children:\n"
+        "  - path: x.md\n    no_due_date: true\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "a nested children: list in a part.yaml entry")
+    assert "02. sub/part.yaml" in result.stdout + result.stderr
+
+
+def test_nested_path_naming_nothing_in_the_part_lists_the_parts_children(
+    tmp_path: Path,
+) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content,
+        "children:\n- path: part/part.yaml\n  children:\n"
+        "  - path: 09. missing.md\n    no_due_date: true\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "the part has no child at this path")
+    output = result.stdout + result.stderr
+    assert "09. missing.md" in output
+    assert "01. intro.md" in output
+    assert "03. quiz.md" in output
+
+
+def test_nested_path_naming_a_part_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content,
+        "children:\n- path: part/part.yaml\n  children:\n"
+        "  - path: 02. sub/part.yaml\n    no_due_date: true\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "this child is a COURSE_PART")
+    assert "02. sub/part.yaml" in result.stdout + result.stderr
+
+
+def test_nested_list_naming_the_same_child_twice_fails(tmp_path: Path) -> None:
+    content = make_content_tree(tmp_path)
+    write_part_tree(content)
+    write_course_with_children(
+        content,
+        "children:\n- path: part/part.yaml\n  children:\n"
+        "  - path: 01. intro.md\n    no_due_date: true\n"
+        "  - path: 01. intro.md\n    due_date: 2026-03-14\n",
+    )
+
+    result = run_validator(content)
+
+    assert_validator_fails(result, "this child is named twice")
+    assert "01. intro.md" in result.stdout + result.stderr
+
+
 DEMO_CONTENT = Path(__file__).resolve().parents[4] / "demo_content"
 
 

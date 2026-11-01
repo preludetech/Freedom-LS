@@ -28,10 +28,11 @@ form is preferred.
 ### Due dates
 
 A topic can carry a due date, set with **one** of `due_date` or `due_days_after_registration`,
-plus an optional `due_time`. Write these in the topic's own `content.md` frontmatter, not in
-the course's `children:` list. `due_time` must be quoted: YAML reads an unquoted `17:00` as a
-number and it is rejected. With no `due_time` the item is due at the end of the day. Remove
-the fields and re-run `content_save` to remove the due date.
+plus an optional `due_time`. Write these in the topic's own `content.md` frontmatter; a
+`children:` entry can replace them for one placement (see `course-files.md`, "Due dates per
+placement"). `due_time` must be quoted: YAML reads an unquoted `17:00` as a number and it is
+rejected. With no `due_time` the item is due at the end of the day. Remove the fields and
+re-run `content_save` to remove the due date.
 
 ```yaml
 ---

@@ -27,7 +27,8 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 
 Due-date fields follow the same rules as on a topic (see `topic-files.md`, "Due dates"). Write them in
-`form.md`, not in the course's `children:` list.
+`form.md`; a `children:` entry can replace them for one placement (see `course-files.md`, "Due dates per
+placement").
 
 ### QUIZ example
 
