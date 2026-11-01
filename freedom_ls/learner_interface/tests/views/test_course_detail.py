@@ -1544,6 +1544,74 @@ def test_detail_outline_shows_a_visitor_no_deadline(due_topic_course):
     assert "Missed deadline" not in html
 
 
+# --- Closing shows on the course detail outline, without dates ---
+
+AFTER_CLOSE = datetime(2020, 1, 10, 12, 0, tzinfo=UTC)
+CLOSED_STATUS = '<span class="sr-only">Closed</span>'
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_detail_outline_marks_a_closed_topic_closed_without_a_date(due_topic_course):
+    """The outline agrees with the player's: a closed item reads Closed, not Not started."""
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+
+    assert CLOSED_STATUS in html
+    assert '<span class="sr-only">Not started</span>' not in html
+    assert "<time" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_detail_outline_marks_a_closed_failed_quiz_closed(mock_site_context):
+    course = CourseFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=70)
+    course.items.create(child=form, order=0)
+    user = UserFactory()
+    set_due_date(course, form, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    form_attempt(
+        course,
+        user,
+        form,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+    client = Client()
+    client.force_login(user)
+
+    html = _detail_html(client, course)
+
+    assert CLOSED_STATUS in html
+    assert "Needs retry" not in html
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_detail_outline_marks_a_part_whose_child_closed_closed(mock_site_context):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    topic = TopicFactory()
+    part.items.create(child=topic, order=0)
+    user = UserFactory()
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    course_progress_record(course, user)
+    client = Client()
+    client.force_login(user)
+
+    html = _detail_html(client, course)
+
+    assert html.count(CLOSED_STATUS) == 2
+    assert "<time" not in html
+
+
 # --- Course time limit on the stats strip ---
 
 

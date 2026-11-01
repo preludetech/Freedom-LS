@@ -295,7 +295,7 @@ A course author can give a topic or form a due date, and a course a time limit; 
 - **Course player outline** — "Deadline" and the date under each incomplete item that has one. Once it has passed, a **Missed deadline** mark takes the place of "Deadline". A completed item shows neither.
 - **Dashboard course card** — one line above the progress bar: the earliest missed deadline with its title and date, else "Next deadline:" with the title and date of the next one. A passed or coming time limit shows as "Course", as in "Missed deadline Course <date>".
 
-The **course detail page** shows no deadlines. It reads the same for everyone, registered or not: where the course has a time limit, a "Time limit" cell gives its length, such as "90 days".
+The **course detail page** shows no deadline dates. Where the course has a time limit, a "Time limit" cell gives its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
 
 ![Course player outline with a missed deadline](screenshots/learner_course_detail_due_dates.png)
 
@@ -306,7 +306,7 @@ Dates show in the learner's own time zone, taken from their browser, with no zon
 **Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
 
 - **Missed deadline mark.** It can be switched off. The deadline's date still shows, without the mark.
-- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards the item carries a **Closed** chip, and opening it shows a notice that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**, and those results offer no retry.
+- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards the item carries a **Closed** chip, and opening it shows a notice that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**. Those results offer no retry, and a failed result says the quiz has closed.
 - **Ending course access.** Access to a course can end a grace window after its time limit. The dashboard card shows "Access ends <date>." and then "Access ended <date>" with no Continue action, and the course detail page says access has ended and offers no button. Depending on the policy, the learner can then still open the outline, their completed items and their results, or nothing. A completed course never ends.
 
 ![A closed topic in the course player, with its Closed chip and notice](screenshots/learner_closed_item_notice.png)

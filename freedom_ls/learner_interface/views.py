@@ -953,8 +953,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
     # get_course_index is anonymous-safe (it fetches user-scoped progress
     # only behind its own is_authenticated / can_access_content guards).
-    # No deadlines are resolved: this page reads the same for every viewer, and
-    # deadlines show in the course player.
+    # Deadlines are resolved so a closed item reads Closed here as it does in the
+    # player; the template shows none of their dates, which belong to the player.
     course_progress = (
         course_progress_for(cast("User", request.user), course)
         if is_registered
@@ -969,6 +969,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             course=course,
             can_access_content=decision.can_access_content,
             course_progress=course_progress,
+            course_deadlines=_deadlines_or_none(course_progress),
+            deadline_policy=_deadline_policy_or_none(course_progress),
             access_ended_outline=shows_ended_outline,
         )
     )
