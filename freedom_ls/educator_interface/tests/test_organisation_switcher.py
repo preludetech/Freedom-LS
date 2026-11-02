@@ -241,6 +241,27 @@ class TestSwitcherRendering:
             in lxml.html.fromstring(switcher).cssselect("p")[0].text_content()
         )
 
+    def test_the_trigger_opens_a_menu_of_radio_options_with_only_the_current_checked(
+        self, logged_in_client
+    ):
+        organisation_a, _organisation_b, _cohort_a, educator = (
+            _two_organisation_educator()
+        )
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation_a.slug, "cohorts"))
+
+        switcher = lxml.html.fromstring(_switcher(response))
+        (trigger,) = switcher.cssselect("button[aria-haspopup='menu']")
+        assert trigger.get("aria-label") == "Switch organisation"
+        (menu,) = switcher.cssselect("[role='menu']")
+        assert menu.get("aria-label") == "Switch organisation"
+        options = menu.cssselect("[role='menuitemradio']")
+        assert [
+            (" ".join(option.text_content().split()), option.get("aria-checked"))
+            for option in options
+        ] == [("OA Org A", "true"), ("OB Org B", "false")]
+
     def test_the_trigger_and_every_option_carry_an_initials_tile(
         self, logged_in_client
     ):

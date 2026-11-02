@@ -57,6 +57,15 @@ def test_instance_dialogs_and_heading(
     )
     expect(heading).to_have_text("Renamed")
 
+    # The tab title opens with the instance name even when the heading's text
+    # is not what the title starts with.
+    page.evaluate("document.title = 'Stale name — Scope — Site'")
+    page.evaluate(
+        "document.dispatchEvent(new CustomEvent('instanceTitleChanged', "
+        "{ detail: { title: 'Renamed again' } }))"
+    )
+    assert page.title() == "Renamed again — Scope — Site"
+
     # A long title with no spaces does not widen the page.
     page.set_viewport_size(_NARROW_VIEWPORT)
     page.goto(f"{base}/{long_stub.pk}")

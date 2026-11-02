@@ -934,7 +934,8 @@ document.addEventListener("htmx:afterSwap", (event) => {
 // their own declared domain events through their own hx-trigger; the page
 // heading is outside every panel, so it is updated here. The browser tab's
 // title opens with the same name (the rest of it names the scope and the
-// site), so only that leading segment is swapped.
+// site), so only that leading segment is swapped: the heading's text when the
+// title starts with it, otherwise whatever precedes the first " — ".
 document.addEventListener("instanceTitleChanged", (event) => {
     const title = event.detail && event.detail.title;
     if (!title) return;
@@ -944,6 +945,11 @@ document.addEventListener("instanceTitleChanged", (event) => {
     heading.textContent = title;
     if (previous && document.title.startsWith(previous)) {
         document.title = title + document.title.slice(previous.length);
+        return;
+    }
+    const separator = document.title.indexOf(" — ");
+    if (separator !== -1) {
+        document.title = title + document.title.slice(separator);
     }
 });
 

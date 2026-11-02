@@ -226,3 +226,30 @@ def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
         ).to_be_visible()
         expect(page.get_by_role("link", name="Flagged Cohort").first).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_the_organisation_switcher_popover_opens_under_its_trigger(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation_a = OrganisationFactory(name="Org A")
+    organisation_b = OrganisationFactory(name="Org B")
+    assign_object_role(educator_user, organisation_a, "organisation_admin")
+    assign_object_role(educator_user, organisation_b, "organisation_admin")
+    page.set_viewport_size({"width": 1024, "height": 768})
+    page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
+
+    trigger = page.get_by_role("button", name="Switch organisation")
+    trigger.click()
+    options = page.get_by_role("menuitemradio")
+    expect(options.first).to_be_visible()
+
+    trigger_box = trigger.bounding_box()
+    options_box = page.get_by_role("menu", name="Switch organisation").bounding_box()
+    assert trigger_box is not None
+    assert options_box is not None
+    assert abs(options_box["y"] - (trigger_box["y"] + trigger_box["height"])) < 16
+    assert options_box["x"] >= trigger_box["x"] - 1
+    assert options_box["x"] < trigger_box["x"] + trigger_box["width"]
