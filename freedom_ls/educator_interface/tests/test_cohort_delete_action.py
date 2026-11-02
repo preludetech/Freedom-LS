@@ -226,7 +226,7 @@ def test_the_delete_dialog_has_a_heading_naming_the_cohort_and_cancel_then_delet
     document = lxml.html.fromstring(client.get(url).content)
 
     (heading,) = document.cssselect("#app-modal-title")
-    assert heading.text_content().strip() == "Delete Empty Cohort"
+    assert heading.text_content().strip() == "Delete Empty Cohort?"
     names = [
         el.text_content().split()[0]
         for el in document.iter("button")

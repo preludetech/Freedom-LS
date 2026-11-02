@@ -2,7 +2,7 @@
 The modal fragment a DeactivateLearnerAction's GET returns. Context: learner,
 on_default_organisation, action_url.
 {% endcomment %}
-<c-modal-header>Deactivate {{ learner.user.display_name }}</c-modal-header>
+<c-modal-header>Deactivate {{ learner.user.display_name }}?</c-modal-header>
 
 <form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
@@ -20,7 +20,7 @@ on_default_organisation, action_url.
 
     <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
         <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
-        <c-button type="submit" variant="secondary" loading="true" loading_text="Deactivating...">
+        <c-button type="submit" variant="primary" loading="true" loading_text="Deactivating…">
             Deactivate
         </c-button>
     </c-button-group>

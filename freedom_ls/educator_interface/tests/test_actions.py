@@ -7374,3 +7374,122 @@ def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
 
     assert title.endswith("?")
     assert str(count) in title
+
+
+# single-row confirmation dialogs
+
+
+def _single_row_dialog_url(name: str, organisation: Organisation) -> str:
+    """The URL of the confirmation dialog `name`, over records made for it."""
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    if name == "deactivate_cohort":
+        return _cohort_url(organisation, cohort, "/__actions/deactivate")
+    if name == "reactivate_cohort":
+        return _cohort_url(organisation, cohort, "/__actions/reactivate")
+    if name == "delete_cohort":
+        empty = cast(Cohort, CohortFactory(organisation=organisation))
+        return _cohort_url(organisation, empty, "/__tabs/settings/__actions/delete")
+    if name == "deactivate_learner":
+        return _learner_state_url(organisation, learner, "deactivate")
+    if name == "reactivate_learner":
+        return _learner_state_url(organisation, learner, "reactivate")
+    if name == "resend_setup_email":
+        return _resend_url(organisation, _pending_learner(organisation))
+    if name == "remove_from_cohort":
+        return _remove_url_from_cohort(organisation, cohort, learner)
+    if name == "move":
+        destination = CohortFactory(organisation=organisation)
+        return (
+            _move_url_from_cohort(organisation, cohort, learner)
+            + f"&destination={destination.pk}"
+        )
+    if name == "deactivate_registration":
+        LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+        return _learner_unregister_url(organisation, learner) + (
+            f"?registration={learner.learnercourseregistration_set.get().pk}"
+        )
+    if name == "reactivate_registration":
+        registration = LearnerCourseRegistrationFactory(
+            learner=learner, is_active=False
+        )
+        return (
+            _learner_reregister_url(organisation, learner)
+            + f"?registration={registration.pk}"
+        )
+    if name == "deactivate_cohort_registration":
+        registration = CohortCourseRegistrationFactory(cohort=cohort)
+        return _unregister_url(organisation, cohort, registration)
+    member = _member_holding("cohort_viewer", cohort)
+    if name == "deactivate_member":
+        return f"{_state_url(organisation, 'deactivate')}?user={member.pk}"
+    if name == "reactivate_member":
+        OrganisationMember.objects.filter(user=member).update(is_active=False)
+        return f"{_state_url(organisation, 'reactivate')}?user={member.pk}"
+    return f"{_remove_role_url(organisation)}?user={member.pk}&role=cohort_viewer"
+
+
+_SINGLE_ROW_DIALOG_WEIGHTS: dict[str, tuple[str, str]] = {
+    "deactivate_cohort": ("primary", "Deactivating…"),
+    "reactivate_cohort": ("primary", "Reactivating…"),
+    "delete_cohort": ("error", "Deleting…"),
+    "deactivate_learner": ("primary", "Deactivating…"),
+    "reactivate_learner": ("primary", "Reactivating…"),
+    "resend_setup_email": ("primary", "Sending…"),
+    "remove_from_cohort": ("error", "Removing…"),
+    "move": ("primary", "Moving…"),
+    "deactivate_registration": ("primary", "Deactivating…"),
+    "reactivate_registration": ("primary", "Reactivating…"),
+    "deactivate_cohort_registration": ("primary", "Deactivating…"),
+    "deactivate_member": ("primary", "Deactivating…"),
+    "reactivate_member": ("primary", "Reactivating…"),
+    "deactivate_role": ("primary", "Deactivating…"),
+}
+
+
+def _single_row_dialog(
+    client: Client, name: str, organisation: Organisation
+) -> lxml.html.HtmlElement:
+    url = _single_row_dialog_url(name, organisation)
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", sorted(_SINGLE_ROW_DIALOG_WEIGHTS))
+def test_single_row_dialog_title_is_a_question(
+    name: str, staff_client: Client, organisation: Organisation
+):
+    document = _single_row_dialog(staff_client, name, organisation)
+
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip().endswith("?")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", sorted(_SINGLE_ROW_DIALOG_WEIGHTS))
+def test_single_row_dialog_focuses_cancel_or_the_move_destination(
+    name: str, staff_client: Client, organisation: Organisation
+):
+    document = _single_row_dialog(staff_client, name, organisation)
+
+    focused = [
+        element.tag if element.tag == "select" else element.text_content().strip()
+        for element in document.cssselect("[autofocus]")
+    ]
+    assert focused == (["select"] if name == "move" else ["Cancel"])
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", sorted(_SINGLE_ROW_DIALOG_WEIGHTS))
+def test_single_row_dialog_confirm_button_weight_and_loading_text(
+    name: str, staff_client: Client, organisation: Organisation
+):
+    document = _single_row_dialog(staff_client, name, organisation)
+
+    (confirm,) = document.cssselect("button[type=submit]")
+    variant, loading_text = _SINGLE_ROW_DIALOG_WEIGHTS[name]
+    assert confirm.get("data-variant") == variant
+    assert loading_text in confirm.text_content()
