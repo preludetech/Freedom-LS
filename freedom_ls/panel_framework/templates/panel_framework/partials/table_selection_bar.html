@@ -14,7 +14,7 @@ would otherwise scroll out of reach below a long card list or table.
         assistive technology has a live region to watch before the count changes.
         {% endcomment %}
         <span role="status" class="text-sm">
-            <span x-show="running" x-cloak><span x-text="runLabel"></span> is running…</span>
+            <span x-show="running" x-cloak class="inline-flex items-center gap-2"><c-icon name="loading" class="size-5 animate-spin" /><span><span x-text="runLabel"></span> is running…</span></span>
             <span x-show="showSelectionCount">
                 <span x-text="count"></span> selected
                 · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
@@ -35,11 +35,7 @@ would otherwise scroll out of reach below a long card list or table.
             <span class="text-muted">Changing page, sort or filters clears the selection.</span>
         </span>
         <span x-ref="excluded" hidden></span>
-        {% comment %}
-        A disabled fieldset disables every button inside it, the "More
-        actions" trigger included, while a background run is going.
-        {% endcomment %}
-        <fieldset x-show="showActions" x-bind:disabled="running" class="m-0 flex min-w-0 flex-wrap items-center gap-4 rounded-none border-0 p-0">
+        <fieldset x-show="actionsVisible" class="m-0 flex min-w-0 flex-wrap items-center gap-4 rounded-none border-0 p-0">
             {% querystring request.GET as qs %}
             {% for entry in bulk_actions|slice:":2" %}
                 <c-button type="submit"
@@ -48,20 +44,14 @@ would otherwise scroll out of reach below a long card list or table.
                           hx-post="{{ entry.url }}{{ qs }}"
                           hx-target="#app-modal-body"
                           hx-swap="innerHTML">
-                    <span class="inline-flex items-center gap-2">
-                        <span x-show="spinsForRun" data-run-actions="{{ entry.action.action_name }}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
-                        {{ entry.action.label }}
-                    </span>
+                    {{ entry.action.label }}
                 </c-button>
             {% endfor %}
             {% with more=bulk_actions|slice:"2:" %}
                 {% if more %}
                     <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
                         <c-slot name="trigger">
-                            <span class="inline-flex items-center gap-2">
-                                <span x-show="spinsForRun" data-run-actions="{% for entry in more %}{{ entry.action.action_name }} {% endfor %}" x-cloak><c-icon name="loading" class="size-5 animate-spin" /></span>
-                                More actions
-                            </span>
+                            More actions
                         </c-slot>
                         {% for entry in more %}
                             <c-button dropdown="true"

@@ -187,13 +187,14 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     expect(modal).to_be_hidden()
     expect(page).to_have_url(learners_url)
     expect(main.get_by_text("Deactivate is running…")).to_be_visible()
-    expect(main.get_by_role("button", name="More actions")).to_be_disabled()
-    expect(
-        main.get_by_role("button", name="Add to cohort", exact=True)
-    ).to_be_disabled()
-    expect(
-        main.get_by_role("button", name="More actions").locator("svg.animate-spin")
-    ).to_be_visible()
+    expect(main.get_by_role("button", name="More actions")).to_be_hidden()
+    expect(main.get_by_role("button", name="Add to cohort", exact=True)).to_be_hidden()
+    expect(main.get_by_role("status").locator("svg.animate-spin")).to_be_visible()
+    page.set_viewport_size({"width": 375, "height": 812})
+    bar_height = main.locator("[data-total-count]").evaluate(
+        "el => el.getBoundingClientRect().height"
+    )
+    assert bar_height < 120
     checkboxes = table.locator("input[name='keys'], input[data-select-all]")
     # A header and a mobile "select all", and a table and a card box per row.
     expect(checkboxes).to_have_count(2 + 2 * len(learners))

@@ -692,15 +692,10 @@ document.addEventListener("alpine:init", () => {
             return this.hasSelection && !this.running;
         },
 
-        get showActions() {
-            return this.hasSelection || this.running;
-        },
-
-        // Whether the spinner this x-show sits on belongs to the running
-        // action: its data-run-actions lists the action names it stands for.
-        spinsForRun() {
-            if (!this.running) return false;
-            return this.$el.dataset.runActions.split(/\s+/).includes(this.run.action);
+        // The action buttons give way to the status line while a run is going,
+        // so the bar does not grow a second row of disabled buttons.
+        get actionsVisible() {
+            return this.hasSelection && !this.running;
         },
 
         get allOnPageSelected() {
