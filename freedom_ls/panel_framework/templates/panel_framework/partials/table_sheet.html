@@ -8,7 +8,7 @@ when htmx swaps this fragment in.
         x-ref="panelDialog"
         data-variant="bottom-sheet"
         class="side-panel-dialog modal-backdrop-host md:hidden"
-        aria-label="Filter and sort">
+        aria-label="{% if toolbar and sortable_columns %}Filter and sort{% elif toolbar %}Filter{% else %}Sort{% endif %}">
     <div class="side-panel-body bg-surface max-lg:in-data-[variant=bottom-sheet]:bottom-sheet overflow-y-auto overscroll-contain">
         <form method="get"
               action="{{ page_url }}"
@@ -21,7 +21,7 @@ when htmx swaps this fragment in.
             {% endfor %}
 
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">Filter &amp; sort</h2>
+                <h2 class="text-lg font-semibold">{% if toolbar and sortable_columns %}Filter and sort{% elif toolbar %}Filter{% else %}Sort{% endif %}</h2>
                 {% querystring request.GET reset_changes as reset_qs %}
                 <a href="{{ page_url }}{{ reset_qs }}"
                    hx-get="{{ base_url }}{{ reset_qs }}"
@@ -46,7 +46,7 @@ when htmx swaps this fragment in.
                         </select>
                     </label>
                 {% else %}
-                    <fieldset class="space-y-2">
+                    <fieldset class="space-y-2 border-0 p-0">
                         <legend class="text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
                         <div class="flex flex-wrap gap-2">
                             {% for choice in entry.choices %}
@@ -65,7 +65,7 @@ when htmx swaps this fragment in.
             {% endfor %}
 
             {% if sortable_columns %}
-                <fieldset class="space-y-1">
+                <fieldset class="space-y-1 border-0 p-0">
                     <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Sort</legend>
                     <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
                         <input type="radio"

@@ -816,6 +816,27 @@ def test_sheet_renders_reset_legends_and_footer_buttons(
     assert sheet.xpath(".//button[@type='submit'][normalize-space()='Show results']")
 
 
+@pytest.mark.parametrize(
+    ("path", "sheet_id", "title"),
+    [
+        ("__tabs/pair", "a-sheet", "Filter and sort"),
+        ("__tabs/children", "children-sheet", "Filter"),
+        ("__tabs/sortonly", "sortonly-sheet", "Sort"),
+    ],
+)
+def test_sheet_title_follows_the_controls_it_holds(
+    mock_site_context: Site, path: str, sheet_id: str, title: str
+) -> None:
+    stub = make_stub(name="row-00")
+
+    html = fetch(f"stubs/{stub.pk}/{path}").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (sheet,) = document.cssselect(f"dialog#{sheet_id}")
+    assert sheet.get("aria-label") == title
+    assert sheet.cssselect("h2")[0].text_content().strip() == title
+
+
 def test_sheet_without_declared_filters_renders_no_filter_fieldset(
     mock_site_context: Site,
 ) -> None:
