@@ -636,10 +636,14 @@ class _BulkConfirmation:
     confirm_disabled: bool = False
     form: forms.Form | None = None
     cleaned_data: dict[str, object] = field(default_factory=dict)
+    #: Set when the action's form has no valid choice yet, so there is no
+    #: cleaned data for the action to word a title from.
+    title: str = ""
 
     def context(self) -> dict[str, object]:
         return {
-            "title": self.action.confirmation_title(self.count, self.cleaned_data),
+            "title": self.title
+            or self.action.confirmation_title(self.count, self.cleaned_data),
             "action": self.action,
             "action_url": self.action_url,
             "selection": self.selection,
@@ -867,6 +871,7 @@ def _handle_bulk_action(
                     expected_count=count,
                     confirm_disabled=True,
                     form=picker,
+                    title=f"{action.label}?",
                 ),
             )
 

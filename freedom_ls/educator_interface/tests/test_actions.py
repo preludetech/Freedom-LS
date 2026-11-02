@@ -27,7 +27,7 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
     AddToCohortBulkAction,
@@ -6396,6 +6396,20 @@ def test_bulk_register_without_a_course_answers_422(staff_client: Client):
 
 
 @pytest.mark.django_db
+def test_bulk_register_dialog_before_a_course_is_chosen_is_titled_by_its_label(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "register_for_course", [learner])
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Register for a course?"
+
+
+@pytest.mark.django_db
 def test_bulk_register_registers_only_learners_without_an_active_registration(
     staff_client: Client,
 ):
@@ -7295,3 +7309,68 @@ def test_a_retired_bulk_action_slug_answers_404_for_a_plain_request(
     )
 
     assert response.status_code == 404
+
+
+_BULK_ACTION_WEIGHTS: dict[str, tuple[str, str, str]] = {
+    "AddToCohortBulkAction": ("secondary", "primary", "Adding…"),
+    "RemoveFromCohortBulkAction": ("error", "error", "Removing…"),
+    "DeactivateLearnersBulkAction": ("secondary", "primary", "Deactivating…"),
+    "ReactivateLearnersBulkAction": ("secondary", "primary", "Reactivating…"),
+    "RegisterForCourseBulkAction": ("secondary", "primary", "Registering…"),
+    "DeactivateRegistrationBulkAction": (
+        "secondary",
+        "primary",
+        "Deactivating…",
+    ),
+    "ResendSetupEmailBulkAction": ("secondary", "primary", "Sending…"),
+    "RegisterCohortForCourseBulkAction": ("secondary", "primary", "Registering…"),
+    "DeactivateCohortRegistrationBulkAction": (
+        "secondary",
+        "primary",
+        "Deactivating…",
+    ),
+    "DeactivateCohortsBulkAction": ("secondary", "primary", "Deactivating…"),
+    "ReactivateCohortsBulkAction": ("secondary", "primary", "Reactivating…"),
+}
+
+
+def test_every_bulk_action_has_an_expected_weight_and_loading_text():
+    registered = {cls.__name__ for cls in actions_module.BULK_ACTIONS.values()}
+
+    assert registered == set(_BULK_ACTION_WEIGHTS)
+
+
+@pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
+def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
+    (action_class,) = [
+        cls
+        for cls in actions_module.BULK_ACTIONS.values()
+        if cls.__name__ == class_name
+    ]
+
+    assert (
+        action_class.variant,
+        action_class.confirm_variant,
+        action_class.loading_text,
+    ) == _BULK_ACTION_WEIGHTS[class_name]
+
+
+@pytest.mark.parametrize("count", [1, 12])
+@pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
+def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
+    class_name: str, count: int
+):
+    (action_class,) = [
+        cls
+        for cls in actions_module.BULK_ACTIONS.values()
+        if cls.__name__ == class_name
+    ]
+    cleaned_data: dict[str, object] = {
+        "cohort": Cohort(name="Cohort A"),
+        "course": Course(title="Algebra"),
+    }
+
+    title = action_class().confirmation_title(count, cleaned_data)
+
+    assert title.endswith("?")
+    assert str(count) in title
