@@ -45,7 +45,7 @@ function showUnavailableInModal(event) {
     const modalBody = document.getElementById("app-modal-body");
     if (!modalBody || !target || target.closest("#app-modal")) return;
     if (target.id === "quick-view-body") {
-        // The drawer holds only its skeleton now: close it, and mark it stale
+        // The drawer holds only its skeleton here: close it, and mark it stale
         // so the next open refetches instead of reusing the skeleton.
         const drawer = document.getElementById("quick-view");
         if (drawer) {
