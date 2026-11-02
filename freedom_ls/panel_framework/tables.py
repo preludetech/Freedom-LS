@@ -211,12 +211,17 @@ class DataTable:
     #: cell rendering) below md, for a denser layout than the generic card
     #: gives. `None` keeps the default.
     card_template: str | None = None
-    #: A template that replaces the fixed "No data available" text when the
-    #: page has no rows. It renders with the table's own context (query,
-    #: any_filter_set, clear_changes, clear_search_changes, page_url, base_url,
-    #: region_id), so it can tell "nothing yet" from "nothing matches" and offer
-    #: the way back.
-    empty_state_template: str | None = None
+    #: The template drawn when the page has no rows. It renders with the
+    #: table's own context (query, any_filter_set, clear_changes,
+    #: clear_search_changes, page_url, base_url, region_id, empty_message,
+    #: empty_no_results, header_actions), so it can tell "nothing yet" from
+    #: "nothing matches" and offer the way back.
+    empty_state_template: str | None = "panel_framework/partials/table_empty.html"
+    #: What the empty state says when the table has no rows and no search or
+    #: filter is in play.
+    empty_message: str = "Nothing to see"
+    #: What the empty state says when a search or filter leaves no rows.
+    empty_no_results: str = ""
     #: The `sort_field` (with a leading "-" for descending) that the queryset's
     #: own ordering already applies. With no sort in the URL that column's
     #: header reads as sorted this way and its first click flips the direction,
@@ -442,6 +447,8 @@ class DataTable:
             "sortable_columns": sortable_columns,
             "card_template": cls.card_template,
             "empty_state_template": cls.empty_state_template,
+            "empty_message": cls.empty_message,
+            "empty_no_results": cls.empty_no_results,
             "sheet_hidden_inputs": hidden_inputs(
                 request, query, exclude=("page", "sort", *filter_keys)
             ),

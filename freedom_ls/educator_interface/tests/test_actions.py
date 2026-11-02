@@ -3453,7 +3453,7 @@ def test_the_empty_members_page_offers_add_member_in_the_header_and_the_empty_st
         .content.decode()
     )
 
-    header, _, empty_state = html.partition("No members in this organisation yet.")
+    header, _, empty_state = html.partition("No members yet.")
     assert "/members/__actions/add_member" in header
     assert "/members/__actions/add_member" in empty_state
 

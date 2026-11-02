@@ -116,11 +116,11 @@ def test_clear_filters_after_a_no_match_search_empties_the_search_box(
     search = main.locator("#members-q")
     search.fill("zzz")
     # The empty state renders once for the table and once for the card list.
-    expect(main.get_by_text("No members match.").first).to_be_visible()
+    expect(main.get_by_text("No members match these filters.").first).to_be_visible()
 
     main.get_by_role("link", name="Clear filters", exact=True).first.click()
 
-    expect(main.get_by_text("No members match.")).to_have_count(0)
+    expect(main.get_by_text("No members match these filters.")).to_have_count(0)
     expect(search).to_have_value("")
 
 

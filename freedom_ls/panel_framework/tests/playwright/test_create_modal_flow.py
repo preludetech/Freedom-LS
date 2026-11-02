@@ -37,7 +37,7 @@ def _open_create_modal(page: Page) -> Locator:
     just after it lands. Typing or pressing Esc inside that window would lose
     focus from the discard confirmation to that late refocus.
     """
-    page.get_by_role("button", name="Create Item").click()
+    page.get_by_role("button", name="Create Item").first.click()
     name_field = page.locator("#app-modal").get_by_label("Name")
     expect(name_field).to_be_visible()
     expect(page.locator("#app-modal-body")).not_to_have_class(

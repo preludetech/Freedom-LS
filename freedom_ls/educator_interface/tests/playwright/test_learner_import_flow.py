@@ -49,7 +49,7 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     )
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
-    page.get_by_role("link", name="Import learners").click()
+    page.get_by_role("link", name="Import learners").first.click()
     page.get_by_label("File").set_input_files(str(upload))
     page.get_by_role("button", name="Upload and preview").click()
 

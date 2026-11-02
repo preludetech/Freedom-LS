@@ -2367,7 +2367,10 @@ def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_clie
 
     (cell,) = document.cssselect("#main-content tbody td")
     (link,) = cell.cssselect("a")
-    assert cell.text_content().split("Clear filters")[0].strip() == "No members match."
+    assert (
+        cell.text_content().split("Clear filters")[0].strip()
+        == "No members match these filters."
+    )
     assert "members-q" not in link.get("href")
 
 
@@ -2382,7 +2385,7 @@ def test_a_filter_with_no_match_says_so(members_client):
     )
 
     (cell,) = document.cssselect("#main-content tbody td")
-    assert "No members match." in cell.text_content()
+    assert "No members match these filters." in cell.text_content()
 
 
 @pytest.mark.django_db
@@ -2396,7 +2399,7 @@ def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_cl
     document = _members_document(logged_in_client(site_admin), organisation)
 
     (cell,) = document.cssselect("#main-content tbody td")
-    assert "No members in this organisation yet." in cell.text_content()
+    assert "No members yet." in cell.text_content()
     assert "Add member" in cell.text_content()
 
 

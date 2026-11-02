@@ -1652,7 +1652,8 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 class MemberDataTable(DataTable):
     search_fields = ["first_name", "last_name", "email"]
     default_sort = "first_name"
-    empty_state_template = "educator_interface/partials/members_empty.html"
+    empty_message = "No members yet. Add the first member to give someone access to this organisation."
+    empty_no_results = "No members match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:

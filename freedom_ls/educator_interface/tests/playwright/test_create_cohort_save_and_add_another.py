@@ -30,7 +30,7 @@ def test_save_and_add_another_keeps_the_dialog_open_and_save_opens_the_last_coho
     educator_user.save()
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
 
-    page.get_by_role("button", name="Create Cohort").click()
+    page.get_by_role("button", name="Create Cohort").first.click()
     dialog = page.locator("#app-modal")
     dialog.get_by_label("Name").fill("First Cohort")
     dialog.get_by_role("button", name="Save and add another").click()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import lxml.html
 import pytest
 import time_machine
 
@@ -201,3 +202,92 @@ def test_the_organisation_log_shows_a_role_removed_through_the_action(
     )
 
     assert "Cohort admin on Cohort A" in response.content.decode()
+
+
+def _members_page(
+    client: Client, organisation: Organisation, query: str = ""
+) -> lxml.html.HtmlElement:
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": "members"},
+        )
+        + query
+    )
+    return lxml.html.fromstring(response.content.decode())
+
+
+@pytest.mark.django_db
+class TestMembersEmptyState:
+    def test_an_organisation_with_no_members_says_so(
+        self, staff_client: Client
+    ) -> None:
+        document = _members_page(staff_client, OrganisationFactory())
+
+        message = document.cssselect("[data-table-region] table tbody td p")[0]
+        assert message.text_content().strip() == (
+            "No members yet. Add the first member to give someone access to this "
+            "organisation."
+        )
+
+    def test_the_add_member_action_is_offered_to_an_admin(
+        self, staff_client: Client
+    ) -> None:
+        document = _members_page(staff_client, OrganisationFactory())
+
+        assert (
+            "Add member"
+            in document.cssselect("[data-table-region] table tbody td")[
+                0
+            ].text_content()
+        )
+
+    def test_the_add_member_action_is_not_offered_to_a_cohort_viewer(
+        self, mock_site_context: Site, logged_in_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        viewer = UserFactory()
+        assign_role(
+            UserFactory(superuser=True),
+            viewer,
+            "cohort_viewer",
+            CohortFactory(organisation=organisation),
+        )
+
+        response = logged_in_client(viewer).get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "members",
+                },
+            )
+        )
+
+        assert "Add member" not in response.content.decode()
+
+    def test_a_search_with_no_match_says_nothing_matched(
+        self, staff_client: Client
+    ) -> None:
+        document = _members_page(staff_client, OrganisationFactory(), "?members-q=zzz")
+
+        message = document.cssselect("[data-table-region] table tbody td p")[0]
+        assert message.text_content().strip() == "No members match these filters."
+
+    def test_clear_filters_drops_the_search_and_filters(
+        self, staff_client: Client
+    ) -> None:
+        document = _members_page(
+            staff_client,
+            OrganisationFactory(),
+            "?members-q=zzz&members-role=organisation_admin",
+        )
+
+        (link,) = [
+            a
+            for a in document.cssselect("[data-table-region] table tbody td a")
+            if a.text_content().strip() == "Clear filters"
+        ]
+        href = link.get("href")
+        assert "members-q" not in href
+        assert "members-role" not in href
