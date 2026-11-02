@@ -231,7 +231,7 @@ def test_educator_manages_cohorts_and_learners(
     page.remove_listener("response", record_failure)
     assert failed == []
 
-    # A grant revoked while the create modal is open denies the submit. The
+    # A grant deactivated while the create modal is open denies the submit. The
     # cohort_viewer grant keeps the organisation reachable afterwards.
     assign_object_role(educator_user, year_nine, "cohort_viewer")
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))

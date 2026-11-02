@@ -38,7 +38,7 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     UserFactory(email="existing@example.com")
-    removed = LearnerFactory(organisation=organisation, is_active=False)
+    inactive_learner = LearnerFactory(organisation=organisation, is_active=False)
     failed: list[str] = []
 
     def record_failure(response: Response) -> None:
@@ -52,7 +52,7 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
 
     main.get_by_role("button", name="Add learners", exact=True).first.click()
     modal.get_by_label("Entries").fill(
-        f"existing@example.com\n{removed.user.email}\nbrand.new@example.com, Bea, Newman"
+        f"existing@example.com\n{inactive_learner.user.email}\nbrand.new@example.com, Bea, Newman"
     )
     modal.get_by_role("button", name="Add learners", exact=True).click()
 
@@ -203,7 +203,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     finished = True
 
     expect(modal.get_by_text("2 learners changed.")).to_be_visible()
-    # The default Status filter hides removed learners, so the refreshed
+    # The default Status filter hides inactive learners, so the refreshed
     # table has no rows left to select.
     expect(table.locator("input[name='keys']")).to_have_count(0)
     modal.get_by_text("Close", exact=True).click()

@@ -121,14 +121,14 @@ def test_learners_list_shows_a_pending_learners_badge(educator_client):
 
 
 @pytest.mark.django_db
-def test_learners_list_hides_a_removed_learner_by_default(educator_client):
+def test_learners_list_hides_an_inactive_learner_by_default(educator_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
-    removed = _make_learner(
+    inactive_learner = _make_learner(
         organisation=organisation, first_name="Grace", last_name="Hopper"
     )
-    removed.is_active = False
-    removed.save(update_fields=["is_active"])
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
 
     response = educator_client(organisation).get(_learners_url(organisation.slug))
 
@@ -138,15 +138,15 @@ def test_learners_list_hides_a_removed_learner_by_default(educator_client):
 
 
 @pytest.mark.django_db
-def test_learners_list_shows_a_removed_learner_when_filtered_to_removed(
+def test_learners_list_shows_an_inactive_learner_when_filtered_to_inactive(
     educator_client,
 ):
     organisation = OrganisationFactory()
-    removed = _make_learner(
+    inactive_learner = _make_learner(
         organisation=organisation, first_name="Grace", last_name="Hopper"
     )
-    removed.is_active = False
-    removed.save(update_fields=["is_active"])
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
 
     response = educator_client(organisation).get(
         _learners_url(organisation.slug), {"learners-status": "inactive"}
@@ -156,18 +156,18 @@ def test_learners_list_shows_a_removed_learner_when_filtered_to_removed(
 
 
 @pytest.mark.django_db
-def test_learners_list_hides_a_removed_learner_when_the_status_filter_is_emptied(
+def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_emptied(
     educator_client,
 ):
     """Clear all, the filter sheet's Reset and unticking every status all
     send the status parameter empty."""
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
-    removed = _make_learner(
+    inactive_learner = _make_learner(
         organisation=organisation, first_name="Grace", last_name="Hopper"
     )
-    removed.is_active = False
-    removed.save(update_fields=["is_active"])
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
 
     response = educator_client(organisation).get(
         _learners_url(organisation.slug), {"learners-status": ""}
@@ -179,14 +179,14 @@ def test_learners_list_hides_a_removed_learner_when_the_status_filter_is_emptied
 
 
 @pytest.mark.django_db
-def test_a_removed_learners_detail_page_answers_200(educator_client):
+def test_an_inactive_learners_detail_page_answers_200(educator_client):
     organisation = OrganisationFactory()
-    removed = _make_learner(organisation=organisation)
-    removed.is_active = False
-    removed.save(update_fields=["is_active"])
+    inactive_learner = _make_learner(organisation=organisation)
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
 
     response = educator_client(organisation).get(
-        _learners_url(organisation.slug, f"learners/{removed.pk}")
+        _learners_url(organisation.slug, f"learners/{inactive_learner.pk}")
     )
 
     assert response.status_code == 200

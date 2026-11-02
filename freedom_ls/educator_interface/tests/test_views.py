@@ -1117,6 +1117,12 @@ def test_the_courses_tab_offers_register_to_a_cohort_admin(
         _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
     )
 
+    (trigger,) = [
+        button
+        for button in document.cssselect("button[hx-get]")
+        if button.get("hx-get", "").endswith("/__actions/register")
+    ]
+    assert " ".join(trigger.text_content().split()) == "Register for a course"
     assert len(_register_triggers(document, cohort)) == 1
 
 
@@ -1151,7 +1157,7 @@ def test_an_inactive_cohorts_courses_tab_shows_no_register_trigger(
     assert _register_triggers(document, cohort) == []
 
 
-def _unregister_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
+def _deactivate_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
     prefix = _interface_url(
         cohort.organisation.slug,
         f"cohorts/{cohort.pk}/__tabs/courses/__actions/deactivate_cohort_registration",
@@ -1164,7 +1170,7 @@ def _unregister_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> lis
 
 
 @pytest.mark.django_db
-def test_the_courses_tab_offers_unregister_only_on_active_registrations(
+def test_the_courses_tab_offers_deactivate_only_on_active_registrations(
     staff_client: Client,
 ):
     cohort = CohortFactory(organisation=OrganisationFactory())
@@ -1181,12 +1187,12 @@ def test_the_courses_tab_offers_unregister_only_on_active_registrations(
     )
 
     # The table and its small-screen card list each render the trigger.
-    (trigger,) = set(_unregister_triggers(document, cohort))
+    (trigger,) = set(_deactivate_triggers(document, cohort))
     assert trigger.endswith(f"?registration={active.pk}")
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohorts_courses_tab_shows_no_unregister_trigger(
+def test_an_inactive_cohorts_courses_tab_shows_no_deactivate_trigger(
     staff_client: Client,
 ):
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
@@ -1197,7 +1203,7 @@ def test_an_inactive_cohorts_courses_tab_shows_no_unregister_trigger(
         _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
     )
 
-    assert _unregister_triggers(document, cohort) == []
+    assert _deactivate_triggers(document, cohort) == []
 
 
 @pytest.mark.django_db
@@ -1553,7 +1559,7 @@ def test_the_history_tab_escapes_user_derived_text(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_history_tab_shows_the_code_of_an_unregistered_action(
+def test_the_history_tab_shows_the_code_of_a_deactivated_action(
     staff_client: Client,
 ):
     learner = LearnerFactory(organisation=OrganisationFactory())
@@ -1988,7 +1994,7 @@ def _scope_lines(row) -> list[str]:
 QUERY_BOUND = 56
 
 
-MARKERS = {"You", "Inactive", "Account turned off", "Also a learner"}
+MARKERS = {"You", "Inactive", "Account inactive", "Also a learner"}
 
 
 def _marker_labels(row) -> set[str]:
@@ -2093,9 +2099,9 @@ def _make_viewer_and_subject(members_client, organisation, case: str):
     subject = UserFactory(email="subject@example.com")
     _hold(subject, "cohort_viewer", CohortFactory(organisation=organisation))
     viewer_client = members_client(organisation, "organisation_admin")
-    if case == "suspended":
+    if case == "membership_inactive":
         OrganisationMember.objects.filter(user=subject).update(is_active=False)
-    elif case == "turned_off":
+    elif case == "account_inactive":
         subject.is_active = False
         subject.save()
     elif case == "learner":
@@ -2110,8 +2116,8 @@ def _make_viewer_and_subject(members_client, organisation, case: str):
     ("case", "expected"),
     [
         ("plain", set()),
-        ("suspended", {"Inactive"}),
-        ("turned_off", {"Account turned off"}),
+        ("membership_inactive", {"Inactive"}),
+        ("account_inactive", {"Account inactive"}),
         ("learner", {"Also a learner"}),
         ("inactive_learner", set()),
     ],
@@ -2126,6 +2132,21 @@ def test_each_marker_appears_for_its_case_only(members_client, case, expected):
 
 
 @pytest.mark.django_db
+def test_the_inactive_marker_is_muted(members_client):
+    organisation = OrganisationFactory()
+    client = _make_viewer_and_subject(
+        members_client, organisation, "membership_inactive"
+    )
+
+    row = _member_row(_members_document(client, organisation), "subject@example.com")
+
+    (marker,) = [
+        e for e in row.cssselect("span") if e.text_content().strip() == "Inactive"
+    ]
+    assert marker.get("data-tone") == "muted"
+
+
+@pytest.mark.django_db
 def test_the_viewers_own_row_is_marked_you(members_client):
     organisation = OrganisationFactory()
     client = members_client(organisation, "organisation_admin")
@@ -2137,7 +2158,7 @@ def test_the_viewers_own_row_is_marked_you(members_client):
 
 
 @pytest.mark.django_db
-def test_a_member_with_no_organisation_member_row_is_suspended(members_client):
+def test_a_member_with_no_organisation_member_row_is_inactive(members_client):
     organisation = OrganisationFactory()
     subject = UserFactory(email="subject@example.com")
     _hold(subject, "organisation_admin", organisation)

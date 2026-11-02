@@ -359,8 +359,8 @@ def test_cohort_not_empty_sentence_counts_inactive_learners_and_inactive_registr
 ):
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, name="Evening group")
-    removed = LearnerFactory(organisation=organisation, is_active=False)
-    CohortMembershipFactory(cohort=cohort, learner=removed)
+    inactive_learner = LearnerFactory(organisation=organisation, is_active=False)
+    CohortMembershipFactory(cohort=cohort, learner=inactive_learner)
     CohortMembershipFactory(
         cohort=cohort, learner=LearnerFactory(organisation=organisation)
     )
@@ -549,7 +549,7 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
     assert not cohort.course_registrations.exists()
 
 
-# unregister
+# deactivate a cohort registration
 
 
 def _unregister_post_url(organisation: Organisation, cohort: Cohort) -> str:
@@ -2264,7 +2264,7 @@ def test_stale_move_post_for_a_departed_member_answers_422_with_the_reason(
     ) == (422, True, False)
 
 
-# register and unregister a learner individually
+# register and deactivate a learner registration individually
 
 
 def _learner_register_url(organisation: Organisation, learner: Learner) -> str:
@@ -3392,9 +3392,9 @@ def test_the_confirmation_for_a_suspended_member_says_the_role_waits_for_reactiv
     admin_client, organisation
 ):
     cohort = CohortFactory(organisation=organisation)
-    suspended = UserFactory(email="ada@example.com")
-    assign_role(UserFactory(superuser=True), suspended, "cohort_viewer", cohort)
-    OrganisationMember.objects.filter(user=suspended).update(is_active=False)
+    inactive_member = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), inactive_member, "cohort_viewer", cohort)
+    OrganisationMember.objects.filter(user=inactive_member).update(is_active=False)
 
     text = _text(
         _submit_role(
@@ -3404,7 +3404,7 @@ def test_the_confirmation_for_a_suspended_member_says_the_role_waits_for_reactiv
     _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
 
     assert "takes effect only once they are reactivated" in text
-    assert not OrganisationMember.objects.get(user=suspended).is_active
+    assert not OrganisationMember.objects.get(user=inactive_member).is_active
 
 
 @pytest.mark.django_db
@@ -6436,7 +6436,7 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
     CohortCourseRegistrationFactory(cohort=cohort, course=course)
     keeps = _bulk_learner(organisation=organisation)
     loses = _bulk_learner(organisation=organisation)
-    unregistered = _bulk_learner(organisation=organisation)
+    without_registration = _bulk_learner(organisation=organisation)
     CohortMembershipFactory(cohort=cohort, learner=keeps)
     for learner in (keeps, loses):
         LearnerCourseRegistrationFactory(learner=learner, course=course)
@@ -6445,7 +6445,7 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
         staff_client,
         organisation,
         "deactivate_registration",
-        [keeps, loses, unregistered],
+        [keeps, loses, without_registration],
         refresh="1",
         course=str(course.pk),
     )
@@ -6954,7 +6954,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     organisation = OrganisationFactory()
     course = CourseFactory(title="Algebra")
     registered = _bulk_cohort(organisation)
-    unregistered = _bulk_cohort(organisation)
+    without_registration = _bulk_cohort(organisation)
     inactive = _bulk_cohort(organisation, is_active=False)
     CohortCourseRegistrationFactory(cohort=registered, course=course)
 
@@ -6962,7 +6962,7 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
         staff_client,
         organisation,
         "deactivate_cohort_registration",
-        [registered, unregistered, inactive],
+        [registered, without_registration, inactive],
         refresh="1",
         course=str(course.pk),
     )

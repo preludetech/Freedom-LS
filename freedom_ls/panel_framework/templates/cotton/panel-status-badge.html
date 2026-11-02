@@ -17,4 +17,4 @@ Attributes:
 where the tinted background is suppressed and only a border remains.
 {% endcomment %}
 
-<c-chip variant="{{ tone|tone }}" size="xs" class="forced-colors:border" :attrs="attrs">{{ label }}</c-chip>
+<c-chip variant="{{ tone|tone }}" size="xs" class="forced-colors:border" data-tone="{{ tone|tone }}" :attrs="attrs">{{ label }}</c-chip>

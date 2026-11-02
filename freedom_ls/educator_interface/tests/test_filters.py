@@ -199,8 +199,8 @@ def _status_learners() -> dict[str, Learner]:
     pending = cast(Learner, LearnerFactory(organisation=organisation))
     pending.user.set_unusable_password()
     pending.user.save(update_fields=["password"])
-    removed = cast(Learner, LearnerFactory(organisation=organisation, is_active=False))
-    return {"active": active, "pending": pending, "inactive": removed}
+    inactive = cast(Learner, LearnerFactory(organisation=organisation, is_active=False))
+    return {"active": active, "pending": pending, "inactive": inactive}
 
 
 @pytest.mark.django_db

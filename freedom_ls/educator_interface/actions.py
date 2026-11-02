@@ -484,7 +484,7 @@ class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
 class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     """Registers the cohort for a course it holds no active registration for."""
 
-    label = "Register"
+    label = "Register for a course"
     action_name = "register"
     capability = "freedom_ls_learner_management.add_cohortcourseregistration"
     submit_buttons = [

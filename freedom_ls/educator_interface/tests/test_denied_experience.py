@@ -209,7 +209,7 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
 
 
 @pytest.mark.django_db
-def test_a_cohort_viewers_pasted_deactivate_url_answers_403(
+def test_a_cohort_viewers_pasted_cohort_deactivate_url_answers_403(
     mock_site_context: Site, logged_in_client
 ) -> None:
     organisation = OrganisationFactory()
@@ -247,7 +247,7 @@ def test_a_cohort_viewers_pasted_register_url_answers_403(
 
 
 @pytest.mark.django_db
-def test_a_cohort_viewers_pasted_unregister_url_answers_403(
+def test_a_cohort_viewers_pasted_deactivate_registration_url_answers_403(
     mock_site_context: Site, logged_in_client
 ) -> None:
     organisation = OrganisationFactory()

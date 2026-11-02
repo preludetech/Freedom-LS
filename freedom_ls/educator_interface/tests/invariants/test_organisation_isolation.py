@@ -414,7 +414,7 @@ class TestCrossOrganisationIsolation:
         assert response.status_code == 422
         assert not CohortCourseRegistration.objects.filter(course=course).exists()
 
-    def test_unregister_naming_another_organisations_registration_answers_404(
+    def test_deactivate_naming_another_organisations_registration_answers_404(
         self, isolation
     ):
         foreign = CohortCourseRegistrationFactory(cohort=isolation.cohort_b)
