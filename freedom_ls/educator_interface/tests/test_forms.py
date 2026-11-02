@@ -14,6 +14,7 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     CohortSetForm,
     LearnerPickerForm,
+    choice_error,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -59,6 +60,12 @@ def test_registration_form_accepts_a_published_course(mock_site_context):
     form = CohortCourseRegistrationForm({"course": str(course.pk)}, cohort=cohort)
 
     assert form.is_valid() is True
+
+
+def test_choice_error_names_the_lowercased_choice() -> None:
+    assert choice_error("Course") == {
+        "invalid_choice": "Choose a course from the list."
+    }
 
 
 def _add_form(entries: str) -> AddLearnersForm:

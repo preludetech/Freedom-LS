@@ -5604,6 +5604,108 @@ def _deactivate_dialog(staff_client: Client, count: int = 2):
 
 
 @pytest.mark.django_db
+def test_a_stale_cohort_in_a_bulk_picker_answers_422_without_the_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation)]
+    stale = str(uuid.uuid4())
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "add_to_cohort",
+        learners,
+        cohort=stale,
+        confirmed="on",
+        expected_count="1",
+    )
+
+    assert response.status_code == 422
+    assert "Choose a cohort from the list." in _bulk_text(response)
+    assert stale not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_stale_course_in_a_bulk_picker_answers_422_without_the_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation)]
+    stale = str(uuid.uuid4())
+
+    response = _bulk_post(
+        staff_client,
+        organisation,
+        "register_for_course",
+        learners,
+        course=stale,
+        confirmed="on",
+        expected_count="1",
+    )
+
+    assert response.status_code == 422
+    assert "Choose a course from the list." in _bulk_text(response)
+    assert stale not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_stale_cohort_in_the_add_to_cohort_picker_answers_422_without_the_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    stale = str(uuid.uuid4())
+
+    response = _post(
+        staff_client, _add_to_cohort_url(organisation, learner), {"cohort": stale}
+    )
+
+    assert response.status_code == 422
+    assert "Choose a cohort from the list." in _bulk_text(response)
+    assert stale not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_stale_learner_in_the_learner_picker_answers_422_without_the_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    stale = str(uuid.uuid4())
+
+    response = staff_client.post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [stale]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert "Choose a learner from the list." in _bulk_text(response)
+    assert stale not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_stale_destination_in_the_move_picker_answers_422_without_the_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    CohortFactory(organisation=organisation)
+    stale = str(uuid.uuid4())
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": stale},
+    )
+
+    assert response.status_code == 422
+    assert "Choose a cohort" in _bulk_text(response)
+    assert stale not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_bulk_deactivate_dialog_title_is_a_question_with_the_count(
     staff_client: Client,
 ):

@@ -21,6 +21,12 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
+def choice_error(label: str) -> dict[str, str]:
+    """The `error_messages` for a picker field. Django's own invalid-choice
+    message quotes the submitted value, which for a stale pick is a bare id."""
+    return {"invalid_choice": f"Choose a {label.lower()} from the list."}
+
+
 class LearnerImportForm(forms.Form):
     file = forms.FileField(label="CSV file")
 
@@ -38,7 +44,9 @@ class BulkTargetPickerForm(forms.Form):
         label: str,
     ) -> None:
         super().__init__(data)
-        self.fields[field_name] = forms.ModelChoiceField(queryset=queryset, label=label)
+        self.fields[field_name] = forms.ModelChoiceField(
+            queryset=queryset, label=label, error_messages=choice_error(label)
+        )
 
 
 class CohortForm(ConstraintValidationFormMixin):
@@ -111,7 +119,9 @@ class CohortPickerForm(forms.Form):
     """Picks one cohort from the queryset the action offers. The field is
     named `cohort` unless `field_name` says otherwise."""
 
-    cohort = forms.ModelChoiceField(queryset=Cohort.objects.none())
+    cohort = forms.ModelChoiceField(
+        queryset=Cohort.objects.none(), error_messages=choice_error("cohort")
+    )
 
     def __init__(
         self,
@@ -137,7 +147,9 @@ class LearnerPickerForm(forms.Form):
     """Picks any number of learners from the queryset the action offers."""
 
     learners = LearnerMultipleChoiceField(
-        queryset=Learner.objects.none(), widget=forms.SelectMultiple
+        queryset=Learner.objects.none(),
+        widget=forms.SelectMultiple,
+        error_messages=choice_error("learner"),
     )
 
     def __init__(
