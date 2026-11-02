@@ -675,3 +675,21 @@ class TestLearnerQuickViewMessageBoxHidden:
         assert response.status_code == 200
         assert "quick-view-message-box" not in response.content.decode()
         assert not [q["sql"] for q in queries if "comms_" in q["sql"]]
+
+
+@pytest.mark.django_db
+def test_a_nameless_learners_quick_view_is_titled_by_their_email(educator_client):
+    organisation = OrganisationFactory()
+    learner = cast(
+        Learner,
+        LearnerFactory(
+            user=UserFactory(first_name="", last_name="", email="nameless@example.com"),
+            organisation=organisation,
+        ),
+    )
+
+    response = _get_quick_view(
+        educator_client(organisation), organisation, f"learners/{learner.pk}"
+    )
+
+    assert 'data-quick-view-title="nameless@example.com"' in response.content.decode()

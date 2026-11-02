@@ -1010,3 +1010,23 @@ def test_reporting_surfaces_never_read_the_stored_progress_percentage(
     source = (Path(__file__).parent.parent / relative_path).read_text()
 
     assert "progress_percentage" not in source
+
+
+@pytest.mark.django_db
+def test_the_attention_card_names_a_nameless_learner_by_their_email(logged_in_client):
+    cohort = CohortFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner__user=UserFactory(
+            first_name="", last_name="", email="nameless@example.com"
+        ),
+    )
+    client = logged_in_client(_org_admin(cohort.organisation))
+
+    region = _attention_region(
+        client, _attention_url(cohort.organisation.slug, cohort.pk)
+    )
+
+    (row,) = region.cssselect("li")
+    assert [a.text_content() for a in row.cssselect("a")] == ["nameless@example.com"]

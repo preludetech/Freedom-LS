@@ -5212,3 +5212,20 @@ def test_active_status_cell_renders_the_badge_tone_for_the_state(
 
     (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
     assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
+
+
+@pytest.mark.django_db
+def test_the_history_tab_names_a_nameless_actor_by_their_email(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    actor = UserFactory(first_name="", last_name="", email="nameless@example.com")
+    record_entry(
+        action="learner.deactivated",
+        actor=actor,
+        target=learner,
+        target_label=learner.user.display_name,
+        organisation=learner.organisation,
+    )
+
+    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    assert [row[1] for row in rows] == ["nameless@example.com"]

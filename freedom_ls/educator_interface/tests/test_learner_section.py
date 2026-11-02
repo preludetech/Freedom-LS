@@ -754,3 +754,41 @@ def test_learners_table_row_label_is_the_display_name():
     learner = LearnerFactory(user=UserFactory(first_name="Ada", last_name="Lovelace"))
 
     assert LearnerDataTable.get_row_label(learner) == learner.user.display_name
+
+
+@pytest.mark.django_db
+def test_learners_list_row_checkbox_is_labelled_by_the_email_of_a_nameless_learner(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    _make_learner(
+        organisation=organisation,
+        first_name="",
+        last_name="",
+        email="nameless@example.com",
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.xpath('//input[@aria-label="Select nameless@example.com"]')
+
+
+@pytest.mark.django_db
+def test_a_nameless_learners_page_names_them_by_email_in_its_document_title(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(
+        organisation=organisation,
+        first_name="",
+        last_name="",
+        email="nameless@example.com",
+    )
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert "nameless@example.com" in document.xpath("//title")[0].text_content()
