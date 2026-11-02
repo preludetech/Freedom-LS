@@ -885,7 +885,7 @@ class TestRecentConversations:
         assert tree.xpath("//li")
         assert not tree.xpath("//li//*[contains(@class, 'line-clamp-1')]")
 
-    def test_the_empty_state_offers_new_message_when_there_are_recipients(
+    def test_the_empty_state_offers_one_new_message_link_when_there_are_recipients(
         self, mock_site_context, logged_in_client
     ) -> None:
         UserFactory()
@@ -895,7 +895,7 @@ class TestRecentConversations:
         )
 
         assert "No messages yet." in content
-        assert content.count(f'href="{start_url()}"') == 2
+        assert content.count(f'href="{start_url()}"') == 1
 
     @pytest.mark.usefixtures("closed_policy")
     def test_the_empty_state_has_no_new_message_without_recipients(

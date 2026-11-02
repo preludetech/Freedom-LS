@@ -502,3 +502,4 @@ decision, and does not retire work already recorded". So the `CourseProgress` ro
 withdrawal is designed behaviour, not leftover state — say so in the report before the tester
 files it as a bug. Verify it by diffing `values("id","progress_percentage","completed_time",
 "last_accessed_time")` before and after.
+- [reference_direct_messaging_scenario.md](reference_direct_messaging_scenario.md) — qa_create_direct_messaging_scenario personas, the s1-zero-conversations delete, CohortMembership uses learner FK
