@@ -153,3 +153,31 @@ def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
         box = control.bounding_box()
         assert box is not None
         assert box["height"] >= 44, f"{control} is {box['height']}px high"
+
+
+def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    for number in range(30):
+        CohortFactory(organisation=organisation, name=f"Cohort {number:02d}")
+    UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(interface_url(live_server, organisation.slug, "members"))
+    modal = page.locator("#app-modal")
+
+    page.locator("#main-content").get_by_role(
+        "button", name="Add member", exact=True
+    ).first.click()
+    modal.get_by_label("Email address").fill("existing@example.com")
+    modal.get_by_role("button", name="Look up", exact=True).click()
+    modal.get_by_text("Cohort admin", exact=True).click()
+
+    expect(
+        modal.get_by_role("button", name="Add member", exact=True)
+    ).to_be_in_viewport(ratio=1)
