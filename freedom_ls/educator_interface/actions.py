@@ -146,6 +146,7 @@ from freedom_ls.panel_framework.actions import (
     changed_response,
     count_noun,
     count_phrase,
+    current_page_within,
     denied_response,
     form_fragment_context,
     join_prose,
@@ -400,7 +401,7 @@ class CohortStateAction(PanelAction):
             return self.refuse_unchanged(ctx, cohort)
         # The page re-renders in full, header included, so no domain event is
         # sent: the panels would only refetch themselves and then be replaced.
-        return navigation_response(ctx.page_url)
+        return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
 class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortStateAction):

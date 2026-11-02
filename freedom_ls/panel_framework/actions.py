@@ -4,6 +4,7 @@ import json
 from collections import Counter
 from collections.abc import Callable
 from typing import cast
+from urllib.parse import urlsplit
 
 from django import forms
 from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
@@ -13,6 +14,7 @@ from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -32,6 +34,21 @@ def navigation_response(path: str) -> HttpResponse:
         {"path": path, "target": "#main-content", "swap": "outerHTML"}
     )
     return response
+
+
+def current_page_within(request: HttpRequest, root: str) -> str:
+    """The path of the page the request was made from, when it lies
+    under `root`; otherwise `root`. The header is client-supplied, so
+    only its path is used and only within the page the action belongs to."""
+    current = request.headers.get("HX-Current-URL", "")
+    if not url_has_allowed_host_and_scheme(
+        current, {request.get_host()}, request.is_secure()
+    ):
+        return root
+    path = urlsplit(current).path
+    if path == root or path.startswith(root.rstrip("/") + "/"):
+        return path
+    return root
 
 
 def changed_response(events: dict[str, list[str]]) -> HttpResponse:

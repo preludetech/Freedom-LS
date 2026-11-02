@@ -23,6 +23,7 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
     changed_response,
     count_noun,
+    current_page_within,
     join_prose,
     navigation_response,
 )
@@ -199,6 +200,30 @@ def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -
         "target": "#main-content",
         "swap": "outerHTML",
     }
+
+
+def test_current_page_within_returns_the_path_the_request_came_from() -> None:
+    request = RequestFactory().post(
+        "/x", HTTP_HX_CURRENT_URL="http://testserver/cohorts/1/courses?page=2"
+    )
+
+    assert current_page_within(request, "/cohorts/1") == "/cohorts/1/courses"
+
+
+@pytest.mark.parametrize(
+    "current",
+    [
+        "http://evil.example/cohorts/1/courses",
+        "//evil.example/cohorts/1/courses",
+        "http://testserver/cohorts/10",
+        "http://testserver/other",
+        "",
+    ],
+)
+def test_current_page_within_falls_back_to_the_root(current: str) -> None:
+    request = RequestFactory().post("/x", HTTP_HX_CURRENT_URL=current)
+
+    assert current_page_within(request, "/cohorts/1") == "/cohorts/1"
 
 
 def test_changed_response_closes_the_modal_and_fires_the_events() -> None:

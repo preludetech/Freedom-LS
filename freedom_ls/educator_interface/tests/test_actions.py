@@ -322,6 +322,21 @@ def test_reactivate_post_sets_the_cohort_active(staff_client: Client):
 
 
 @pytest.mark.django_db
+def test_reactivate_post_from_a_tab_navigates_back_to_that_tab(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1, is_active=False)
+    tab_path = _cohort_url(organisation, cohort, "/courses")
+
+    response = staff_client.post(
+        _cohort_url(organisation, cohort, "/__actions/reactivate"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_CURRENT_URL=f"http://testserver{tab_path}",
+    )
+
+    assert json.loads(response["HX-Location"])["path"] == tab_path
+
+
+@pytest.mark.django_db
 def test_stale_reactivate_on_an_active_cohort_answers_422(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 1)
