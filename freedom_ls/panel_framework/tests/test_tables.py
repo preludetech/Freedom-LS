@@ -1279,3 +1279,59 @@ def test_a_table_without_an_empty_state_template_keeps_the_fixed_text(
     )
 
     assert "Nothing to see" in html
+
+
+def _rendered_table(data: dict[str, str] | None = None) -> lxml.html.HtmlElement:
+    stub = make_stub(name="row-x")
+    html = fetch(_panel_path(stub.pk), data=data or {}).content.decode()
+    (table,) = lxml.html.fromstring(html).cssselect("#stub-table table")
+    return table
+
+
+def test_every_header_cell_has_column_scope(mock_site_context: Site) -> None:
+    table = _rendered_table()
+
+    headers = table.cssselect("thead th")
+    assert headers
+    assert all(th.get("scope") == "col" for th in headers)
+
+
+def test_aria_sort_is_set_on_the_sorted_column_only(mock_site_context: Site) -> None:
+    table = _rendered_table({"stub-sort": "-name"})
+
+    sortable = [th for th in table.cssselect("thead th") if th.cssselect("a")]
+    sorted_states = {th.text_content().strip(): th.get("aria-sort") for th in sortable}
+    assert sorted_states["Name"] == "descending"
+    assert [s for name, s in sorted_states.items() if name != "Name"] == ["none"] * (
+        len(sortable) - 1
+    )
+
+
+def test_a_sort_links_text_is_its_column_header(mock_site_context: Site) -> None:
+    table = _rendered_table()
+
+    (name_link,) = [
+        a for a in table.cssselect("thead th a") if a.text_content().strip() == "Name"
+    ]
+    icons = name_link.cssselect("svg")
+    assert icons
+    assert all(icon.xpath("ancestor::*[@aria-hidden='true']") for icon in icons)
+
+
+def test_the_table_scrolls_in_a_labelled_focusable_region(
+    mock_site_context: Site,
+) -> None:
+    table = _rendered_table()
+
+    region = table.getparent()
+    assert region.get("role") == "region"
+    assert region.get("tabindex") == "0"
+    assert region.get("aria-label")
+
+
+def test_the_table_has_a_caption(mock_site_context: Site) -> None:
+    table = _rendered_table()
+
+    (caption,) = table.cssselect("caption")
+    assert caption.text_content().strip()
+    assert table.get("aria-labelledby") == caption.get("id")

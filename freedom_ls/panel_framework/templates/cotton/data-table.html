@@ -53,16 +53,17 @@
         </div>
     {% endif %}
 
-    <div class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}">
+    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
         {% endcomment %}
-        <table>
+        <table aria-labelledby="{{ region_id }}-caption">
+                <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
                 <thead class="border-b border-border bg-transparent">
                     <tr>
                         {% if bulk_actions %}
-                            <th>
+                            <th scope="col">
                                 <input type="checkbox"
                                        aria-label="Select all on this page"
                                        data-select-all
@@ -71,7 +72,7 @@
                             </th>
                         {% endif %}
                         {% for header in header_columns %}
-                            <th class="font-mono text-xs font-bold uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
+                            <th scope="col"{% if header.column.sortable %} aria-sort="{% if header.state == 'asc' %}ascending{% elif header.state == 'desc' %}descending{% else %}none{% endif %}"{% endif %} class="font-mono text-xs font-bold uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
                                 {% if header.column.sortable %}
                                     {% querystring request.GET header.changes as qs %}
                                     <a href="{{ page_url }}{{ qs }}"
@@ -81,11 +82,11 @@
                                        class="cursor-pointer no-underline text-muted hover:text-primary inline-flex items-center gap-2">
                                         {{ header.column.header }}
                                         {% if header.state == 'asc' %}
-                                            <c-icon name="sort_asc" class="size-4 shrink-0" />
+                                            <span aria-hidden="true"><c-icon name="sort_asc" class="size-4 shrink-0" /></span>
                                         {% elif header.state == 'desc' %}
-                                            <c-icon name="sort_desc" class="size-4 shrink-0" />
+                                            <span aria-hidden="true"><c-icon name="sort_desc" class="size-4 shrink-0" /></span>
                                         {% else %}
-                                            <c-icon name="sort_neutral" class="size-4 shrink-0 text-muted" />
+                                            <span aria-hidden="true"><c-icon name="sort_neutral" class="size-4 shrink-0 text-muted" /></span>
                                         {% endif %}
                                     </a>
                                 {% else %}

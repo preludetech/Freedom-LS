@@ -320,6 +320,19 @@ def test_quick_view_and_learners_list_layout_across_viewports(
         assert_no_horizontal_overflow(page)
         _assert_quick_view_triggers_line_up(page)
 
+    # At tablet width the cohorts table either fits its labelled region or
+    # the region scrolls, so no column is cut off.
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(cohorts_url)
+    region = page.get_by_role("region", name="Cohorts")
+    expect(region).to_be_visible()
+    region_fits_or_scrolls = region.evaluate(
+        "el => el.scrollWidth <= el.clientWidth ||"
+        " getComputedStyle(el).overflowX === 'auto'"
+    )
+    assert region_fits_or_scrolls
+    assert_no_horizontal_overflow(page)
+
     # Docked, the drawer starts below the header and the page makes room, so
     # the list's actions and every table column stay reachable. The page's
     # title and table do not move when the drawer opens or closes.
