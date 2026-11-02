@@ -1681,6 +1681,28 @@ def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
     assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
 
 
+@pytest.mark.django_db
+def test_a_learner_rows_remove_trigger_uses_the_error_variant(staff_client: Client):
+    """The per-row Remove trigger is styled as a destructive action, not secondary."""
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    buttons = [
+        b
+        for b in document.cssselect("button[hx-get]")
+        if "remove_from_cohort?learner=" in b.get("hx-get")
+    ]
+    assert buttons
+    assert all("btn-error" in b.get("class") for b in buttons)
+
+
 def _export_csv(client: Client, path_string: str, organisation: Organisation):
     """The learners table's CSV export for ``path_string``: (header, rows, filename)."""
     response = client.get(
