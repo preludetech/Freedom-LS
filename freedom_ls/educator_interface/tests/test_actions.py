@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Callable
 from typing import cast
 
@@ -7490,3 +7491,48 @@ def test_single_row_dialog_confirm_button_weight_and_loading_text(
     variant, loading_text = _SINGLE_ROW_DIALOG_WEIGHTS[name]
     assert confirm.get("data-variant") == variant
     assert loading_text in confirm.text_content()
+
+
+@pytest.mark.django_db
+def test_a_row_action_on_a_learner_from_another_organisation_answers_the_dialog(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    elsewhere = _bulk_learner(organisation=OrganisationFactory())
+
+    response = staff_client.get(
+        _learner_state_url(organisation, elsewhere, "deactivate"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in _bulk_text(response)
+
+
+@pytest.mark.django_db
+def test_a_row_action_on_an_unknown_learner_answers_the_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+
+    response = staff_client.get(
+        _interface_url(
+            organisation.slug, f"learners/{uuid.uuid4()}/__actions/deactivate"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in _bulk_text(response)
+
+
+@pytest.mark.django_db
+def test_a_bulk_action_that_does_not_exist_answers_the_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+
+    response = staff_client.post(
+        _interface_url(organisation.slug, "learners/__actions/no_such_action"),
+        {"keys": [str(uuid.uuid4())]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in _bulk_text(response)

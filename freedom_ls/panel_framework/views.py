@@ -959,11 +959,19 @@ def _handle_action(
     return render(request, action.template_name, action.get_context_data(ctx))
 
 
-def _is_htmx_action_request(request: HttpRequest, parts: list[str]) -> bool:
+_FRAGMENT_SEGMENTS = frozenset({"__actions", "__runs", "__quick-view"})
+
+
+def _is_htmx_fragment_request(request: HttpRequest, parts: list[str]) -> bool:
+    """Whether htmx asked for a piece of a page (an action, a run's status, a
+    quick view, a table region or the modal body) rather than the page itself."""
+    if request.headers.get("HX-Request") != "true":
+        return False
+    hx_target = request.headers.get("HX-Target", "")
     return (
-        request.headers.get("HX-Request") == "true"
-        and len(parts) >= 2
-        and parts[-2] in ("__actions", "__runs")
+        not _FRAGMENT_SEGMENTS.isdisjoint(parts)
+        or hx_target.endswith("-table")
+        or hx_target == "app-modal-body"
     )
 
 
@@ -1431,10 +1439,10 @@ def panel_framework_view(
             elif resolved.action is not None:
                 result = _handle_action(request, resolved.action, resolved.panel)
         except Http404:
-            # htmx drops a bare 404, so an action the page offered would
+            # htmx drops a bare 404, so a fragment the page offered would
             # silently do nothing once its object left the user's scope, or
             # when it 404s while rendering or submitting.
-            if _is_htmx_action_request(request, parts):
+            if _is_htmx_fragment_request(request, parts):
                 return _vary_on_htmx(
                     render(
                         request,

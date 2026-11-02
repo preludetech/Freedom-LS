@@ -8,6 +8,7 @@ already are.
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -693,3 +694,30 @@ def test_a_nameless_learners_quick_view_is_titled_by_their_email(educator_client
     )
 
     assert 'data-quick-view-title="nameless@example.com"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_quick_view_of_a_learner_from_another_organisation_answers_the_dialog(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    elsewhere = cast(Learner, LearnerFactory(organisation=OrganisationFactory()))
+
+    response = _get_quick_view(
+        educator_client(organisation), organisation, f"learners/{elsewhere.pk}"
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_quick_view_of_an_unknown_learner_answers_the_dialog(educator_client):
+    organisation = OrganisationFactory()
+
+    response = _get_quick_view(
+        educator_client(organisation), organisation, f"learners/{uuid.uuid4()}"
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()

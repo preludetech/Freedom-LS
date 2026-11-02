@@ -19,7 +19,7 @@ from playwright.sync_api import Page, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -86,3 +86,30 @@ def test_a_confirm_in_an_open_dialog_after_losing_access_lands_on_the_not_found_
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(page.get_by_role("heading", name=_NOT_FOUND_HEADING)).to_be_visible()
+
+
+def test_a_quick_view_of_a_learner_who_left_the_scope_opens_the_unavailable_dialog(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = _organisation_run_by(educator_user)
+    learner = LearnerFactory(
+        organisation=organisation,
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+    )
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    trigger = page.get_by_role("link", name="Quick view: Ada Lovelace", exact=True)
+    expect(trigger).to_be_visible()
+
+    learner.organisation = OrganisationFactory(name="Org B")
+    learner.save()
+    trigger.click()
+
+    modal = page.locator("#app-modal")
+    expect(modal).to_be_visible()
+    expect(
+        modal.get_by_role("heading", name="This is no longer available")
+    ).to_be_visible()
+    expect(page.locator("#quick-view")).to_be_hidden()

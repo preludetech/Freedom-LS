@@ -13,11 +13,18 @@
 // action reloads, so polling and scripted refreshes can never loop.
 // #interface-main has its own fallback, and a container that draws its own
 // error state (data-htmx-owns-errors) keeps doing so.
+//
+// A 404 marked data-htmx-swap-error is the action-unavailable dialog. Whatever
+// asked for it (a table region, the quick view), it opens in #app-modal
+// instead of replacing the thing that asked.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
     if (status !== 403 && status !== 404) return;
     const body = event.detail.xhr.responseText || "";
-    if (body.includes("data-htmx-swap-error")) return;
+    if (body.includes("data-htmx-swap-error")) {
+        if (status === 404) showUnavailableInModal(event);
+        return;
+    }
     const trigger =
         event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
     const target = event.detail.target;
@@ -32,6 +39,23 @@ document.addEventListener("htmx:beforeSwap", (event) => {
         window.location.reload();
     }
 });
+
+function showUnavailableInModal(event) {
+    const target = event.detail.target;
+    const modalBody = document.getElementById("app-modal-body");
+    if (!modalBody || !target || target.closest("#app-modal")) return;
+    if (target.id === "quick-view-body") {
+        // The drawer holds only its skeleton now: close it, and mark it stale
+        // so the next open refetches instead of reusing the skeleton.
+        const drawer = document.getElementById("quick-view");
+        if (drawer) {
+            Alpine.$data(drawer)._stale = true;
+            drawer.close();
+        }
+    }
+    event.detail.target = modalBody;
+    event.detail.swapOverride = "innerHTML";
+}
 
 // Adds a listener and records it alongside its target, type and options, so
 // a component's destroy() can remove every listener it registered without

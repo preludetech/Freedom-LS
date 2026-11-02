@@ -99,13 +99,19 @@ def test_an_htmx_get_of_quick_view_returns_the_frame_with_the_consumers_fields(
     assert "Ada" in html
 
 
+def assert_unavailable_dialog(response: HttpResponse) -> None:
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
 def test_quick_view_route_404s_when_the_config_declares_no_quick_view(
     mock_site_context: Site,
 ) -> None:
     stub = make_stub()
 
-    with pytest.raises(Http404):
-        _view(f"no-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
+    response = _view(f"no-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
+
+    assert_unavailable_dialog(response)
 
 
 def test_quick_view_route_404s_when_authorise_instance_denies_the_stub(
@@ -113,8 +119,10 @@ def test_quick_view_route_404s_when_authorise_instance_denies_the_stub(
 ) -> None:
     stub = make_stub(name="secret-stub")
 
-    with pytest.raises(Http404):
-        _view(f"denied-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
+    response = _view(f"denied-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
+
+    assert_unavailable_dialog(response)
+    assert "secret-stub" not in response.content.decode()
 
 
 def test_a_non_htmx_get_of_quick_view_redirects_to_the_instance_page(
@@ -131,8 +139,9 @@ def test_a_non_htmx_get_of_quick_view_redirects_to_the_instance_page(
 def test_quick_view_after_a_tabs_segment_404s(mock_site_context: Site) -> None:
     stub = make_stub()
 
-    with pytest.raises(Http404):
-        fetch(f"stubs/{stub.pk}/__tabs/details/__quick-view", htmx=True)
+    response = fetch(f"stubs/{stub.pk}/__tabs/details/__quick-view", htmx=True)
+
+    assert_unavailable_dialog(response)
 
 
 def test_quick_view_response_varies_on_hx_request(mock_site_context: Site) -> None:
