@@ -4238,6 +4238,66 @@ def test_a_preview_with_nothing_to_add_has_no_confirm_button_and_says_why(
 
 
 @pytest.mark.django_db
+def test_a_preview_with_no_new_accounts_omits_the_setup_email_line(
+    import_world: SimpleNamespace,
+):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, f"{existing.user.email},,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    assert "setup email" not in page.text_content()
+
+
+@pytest.mark.django_db
+def test_a_result_with_nothing_not_added_omits_the_not_added_line(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    text = " ".join(page.text_content().split())
+    assert "Added 1 learner." in text
+    assert "not added" not in text
+
+
+@pytest.mark.django_db
+def test_a_result_with_no_new_accounts_omits_the_setup_email_line(
+    import_world: SimpleNamespace,
+):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, f"{existing.user.email},,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert "setup email" not in page.text_content()
+
+
+@pytest.mark.django_db
 def test_confirming_runs_the_import_and_the_result_page_reports_it(
     import_world: SimpleNamespace,
 ):
@@ -4855,9 +4915,7 @@ def test_the_status_partial_drops_the_trigger_and_holds_the_result_once_done(
     assert done_status.get("id") == "run-status"
     assert done_status.get("hx-trigger") is None
     assert done_status.get("hx-get") is None
-    assert "Added 10 learners. 0 rows were not added." in " ".join(
-        done_status.text_content().split()
-    )
+    assert "Added 10 learners." in " ".join(done_status.text_content().split())
 
 
 @pytest.mark.django_db

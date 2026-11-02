@@ -4,13 +4,13 @@ status partial.
 {% endcomment %}
 <div>
     {% if learner_import.status == "done" %}
-        <p class="font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}. {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.</p>
+        <p class="font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}.{% if not_added_count %} {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.{% endif %}</p>
         <ul class="mt-2 list-disc pl-5 text-sm">
             {% for item in label_counts %}
                 <li>{{ item.name }}: {{ item.count }}</li>
             {% endfor %}
         </ul>
-        <p class="mt-2 text-sm">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</p>
+        {% if new_account_count %}<p class="mt-2 text-sm">{{ new_account_count }} setup email{{ new_account_count|pluralize }} {{ new_account_count|pluralize:"was,were" }} sent.</p>{% endif %}
     {% else %}
         <p class="font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</p>
         {% if learner_import.error_message %}<p class="mt-2 text-sm">{{ learner_import.error_message }}</p>{% endif %}

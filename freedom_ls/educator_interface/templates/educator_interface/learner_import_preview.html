@@ -16,7 +16,7 @@
             {% if label %}<li><a href="{{ preview_url }}">Show all rows</a></li>{% endif %}
         </ul>
         <ul class="mt-4 list-disc pl-5 text-sm">
-            <li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>
+            {% if new_account_count %}<li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>{% endif %}
             <li>Existing accounts keep their names.</li>
             <li>Counts can change if someone else adds these learners before you confirm.</li>
         </ul>
