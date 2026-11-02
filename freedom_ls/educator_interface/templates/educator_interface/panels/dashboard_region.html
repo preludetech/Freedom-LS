@@ -4,7 +4,7 @@
 {% comment %}
 The tiles that need no gather sit in region_content, outside the loaded and
 skeleton states, so the skeleton state shows them too. Required context:
-cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
+cohorts, inline, is_organisation_admin; when loaded, figures.
 {% endcomment %}
 
 {% block region_content %}
@@ -43,7 +43,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
             {% if is_loaded %}
                 {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of {{ figures.figures_as_of|date:"j M Y, H:i" }}</p>{% endif %}
                 {% for excluded in figures.excluded %}
-                    <p class="text-sm text-warning">{{ excluded.cohort.name }} has {{ excluded.learner_count }} learners, over the report limit of {{ max_learners }}, and is not included</p>
+                    <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ excluded.message }}</p>
                 {% endfor %}
             {% endif %}
 

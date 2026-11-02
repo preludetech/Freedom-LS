@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from collections.abc import Callable
 from datetime import timedelta
@@ -311,8 +312,8 @@ def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
     assert (inline["Learners"], inline["Cohorts"]) == ("4", "2")
     assert _tiles(loaded)["Learners needing attention"] == "1"
     assert (
-        "Big has 3 learners, over the report limit of 2, and is not included"
-        in loaded.content.decode()
+        "Big has 3 learners, over the report's learner limit of 2, so it is not "
+        "included." in html.unescape(loaded.content.decode())
     )
 
 
@@ -329,7 +330,8 @@ def test_no_figures_date_is_shown_when_every_cohort_is_over_the_limit(
 
     assert "Figures as of" not in loaded
     assert (
-        "Big has 2 learners, over the report limit of 1, and is not included" in loaded
+        "Big has 2 learners, over the report's learner limit of 1, so it is not "
+        "included." in html.unescape(loaded)
     )
 
 

@@ -27,6 +27,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.educator_interface.reporting import (
     PROGRESS_STATUS_TONES,
     flag_badge,
+    over_limit_message,
     progress_status_badge,
 )
 from freedom_ls.learner_management.factories import (
@@ -144,6 +145,14 @@ def _ready_report(cohort, **fields) -> GeneratedReport:
     )
     report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
     return report
+
+
+@pytest.mark.django_db
+def test_the_over_limit_message_names_the_cohort_its_size_and_the_limit() -> None:
+    assert over_limit_message("Big", 3, 2) == (
+        "Big has 3 learners, over the report's learner limit of 2, "
+        "so it is not included."
+    )
 
 
 @pytest.mark.django_db
@@ -560,7 +569,12 @@ class TestNeedsAttentionCard:
             client, _attention_url(cohort.organisation.slug, cohort.pk)
         )
 
-        assert "exceeding the configured limit of 1" in region.text_content()
+        text = " ".join(region.text_content().split())
+        assert (
+            f"{cohort.name} has 2 learners, over the report's learner limit of 1, "
+            "so it is not included." in text
+        )
+        assert "REPORTS_MAX_LEARNERS" not in text
 
 
 def _body_url(organisation_slug: str, cohort_pk: object) -> str:
@@ -799,7 +813,10 @@ class TestCohortReportBody:
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
-        assert "exceeding the configured limit of 1" in region.text_content()
+        text = " ".join(region.text_content().split())
+        assert f"{cohort.name} has " in text
+        assert "over the report's learner limit of 1, so it is not included." in text
+        assert "REPORTS_MAX_LEARNERS" not in text
         assert region.cssselect("table") == []
 
     def test_the_body_never_shows_wrong_answer_text(self, logged_in_client):

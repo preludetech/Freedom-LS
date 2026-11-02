@@ -220,9 +220,7 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
 
     if len(learner_ids) > config.REPORTS_MAX_LEARNERS:
         raise ReportTooLargeError(
-            f"Cohort '{cohort.name}' has {len(learner_ids)} learners, exceeding "
-            f"the configured limit of {config.REPORTS_MAX_LEARNERS} "
-            "(REPORTS_MAX_LEARNERS)."
+            cohort.name, len(learner_ids), config.REPORTS_MAX_LEARNERS
         )
 
     return CohortRoster(

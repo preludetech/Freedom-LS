@@ -162,6 +162,14 @@ def _pdf_url(url_kwargs: dict[str, str], ready: GeneratedReport | None) -> str:
     )
 
 
+def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
+    """Why a cohort has no report figures: it is over the report's learner limit."""
+    return (
+        f"{cohort_name} has {learner_count} learners, over the report's "
+        f"learner limit of {limit}, so it is not included."
+    )
+
+
 class LazyBodyPanel(Panel):
     """A panel whose body costs a gather: the first render is a skeleton that fetches the body.
 
@@ -192,7 +200,9 @@ class LazyBodyPanel(Panel):
             try:
                 context.update(self.get_loaded_context())
             except ReportTooLargeError as error:
-                context["too_large_message"] = str(error)
+                context["too_large_message"] = over_limit_message(
+                    error.cohort_name, error.learner_count, error.limit
+                )
         return context
 
 
@@ -301,6 +311,12 @@ class ExcludedCohort:
 
     cohort: Cohort
     learner_count: int
+
+    @property
+    def message(self) -> str:
+        return over_limit_message(
+            self.cohort.name, self.learner_count, reports_config.REPORTS_MAX_LEARNERS
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -475,7 +491,6 @@ class DashboardPanel(LazyBodyPanel):
                 "freedom_ls_learner_management.change_cohort",
                 request.organisation,
             ),
-            max_learners=reports_config.REPORTS_MAX_LEARNERS,
         )
         return context
 

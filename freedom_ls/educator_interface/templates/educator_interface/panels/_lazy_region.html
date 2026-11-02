@@ -10,7 +10,7 @@ replace the whole state switch.
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
     {% block region_content %}
         {% if too_large_message %}
-            <c-panel-empty-state :message="too_large_message" />
+            <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ too_large_message }}</p>
         {% elif is_loaded %}
             {% block loaded_body %}{% endblock loaded_body %}
         {% else %}
