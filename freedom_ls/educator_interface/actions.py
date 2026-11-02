@@ -2732,9 +2732,9 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
 
 
 @register_bulk_action
-class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
-    label = "Unregister from a course"
-    action_name = "unregister_from_course"
+class DeactivateRegistrationBulkAction(CourseRegistrationBulkAction):
+    label = "Deactivate a course registration"
+    action_name = "deactivate_registration"
     variant = "error"
     capability = CHANGE_LEARNERCOURSEREGISTRATION
     unchanged_reason = "not registered individually"
@@ -2749,7 +2749,7 @@ class UnregisterFromCourseBulkAction(CourseRegistrationBulkAction):
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
-        return f"Unregister {count_noun(Learner, count)} from {course.title}."
+        return f"Deactivate the {course.title} registration for {count_noun(Learner, count)}."
 
     def consequences(
         self,
@@ -2941,9 +2941,9 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
 
 
 @register_bulk_action
-class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
-    label = "Unregister from a course"
-    action_name = "unregister"
+class DeactivateCohortRegistrationBulkAction(CohortCourseBulkAction):
+    label = "Deactivate a course registration"
+    action_name = "deactivate_cohort_registration"
     variant = "error"
     capability = CHANGE_COHORTCOURSEREGISTRATION
     unchanged_reason = "not registered"
@@ -2967,7 +2967,7 @@ class UnregisterCohortFromCourseBulkAction(CohortCourseBulkAction):
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
-        return f"Unregister {count_noun(Cohort, count)} from {course.title}."
+        return f"Deactivate the {course.title} registration for {count_noun(Cohort, count)}."
 
     def consequences(
         self,

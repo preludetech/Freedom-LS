@@ -3969,7 +3969,7 @@ def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_unde
         "Deactivate",
         "Reactivate",
         "Register for a course",
-        "Unregister from a course",
+        "Deactivate a course registration",
         "Resend setup email",
     ]
 
@@ -3991,7 +3991,7 @@ def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_stat
 
     assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
         "Register for a course",
-        "Unregister from a course",
+        "Deactivate a course registration",
     ]
     assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
 

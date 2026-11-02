@@ -32,12 +32,12 @@ from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
     AddToCohortBulkAction,
     CohortCourseBulkAction,
+    DeactivateCohortRegistrationBulkAction,
     DeactivateLearnersBulkAction,
+    DeactivateRegistrationBulkAction,
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
     RemoveFromCohortBulkAction,
-    UnregisterCohortFromCourseBulkAction,
-    UnregisterFromCourseBulkAction,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -5717,7 +5717,7 @@ def test_a_cohort_admin_may_select_learners_but_not_deactivate_them(
 
     assert request.status_code == 200
     assert "learners/__actions/add_to_cohort" in request.content.decode()
-    assert "learners/__actions/deactivate" not in request.content.decode()
+    assert "learners/__actions/deactivate?" not in request.content.decode()
     assert response.status_code == 403
     member.refresh_from_db()
     assert member.is_active is True
@@ -6444,14 +6444,14 @@ def test_bulk_unregister_confirmation_counts_learners_who_keep_access_through_a_
     response = _bulk_post(
         staff_client,
         organisation,
-        "unregister_from_course",
+        "deactivate_registration",
         [keeps, loses, unregistered],
         refresh="1",
         course=str(course.pk),
     )
 
     text = _bulk_text(response)
-    assert "Unregister 2 learners from Algebra." in text
+    assert "Deactivate the Algebra registration for 2 learners." in text
     assert "1 keeps access through a cohort." in text
     assert "1 is not registered individually and will be skipped." in text
 
@@ -6473,14 +6473,14 @@ def test_bulk_unregister_wording_costs_the_same_for_any_selection_size(
     classified = {str(learner.pk): BulkOutcome("changed") for learner in learners}
 
     with django_assert_num_queries(1):
-        wording = UnregisterFromCourseBulkAction().confirmation_wording(
+        wording = DeactivateRegistrationBulkAction().confirmation_wording(
             RequestFactory().post("/"),
             Learner.objects.filter(pk__in=[learner.pk for learner in learners]),
             classified,
             {"course": course},
         )
 
-    assert wording.sentence == "Unregister 4 learners from Algebra."
+    assert wording.sentence == "Deactivate the Algebra registration for 4 learners."
     assert wording.consequences == ["2 keep access through a cohort."]
 
 
@@ -6495,7 +6495,7 @@ def test_bulk_unregister_deactivates_individual_registrations(staff_client: Clie
     response = _bulk_confirm_with(
         staff_client,
         organisation,
-        "unregister_from_course",
+        "deactivate_registration",
         [registered, other],
         course=str(course.pk),
     )
@@ -6925,7 +6925,7 @@ def test_an_inactive_cohort_the_educator_cannot_change_is_skipped_for_permission
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "action_class",
-    [RegisterCohortForCourseBulkAction, UnregisterCohortFromCourseBulkAction],
+    [RegisterCohortForCourseBulkAction, DeactivateCohortRegistrationBulkAction],
 )
 def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
     mock_site_context: Site, action_class: type[CohortCourseBulkAction]
@@ -6961,14 +6961,14 @@ def test_bulk_cohort_unregister_confirmation_counts_changes_and_skips(
     response = _cohorts_bulk_post(
         staff_client,
         organisation,
-        "unregister",
+        "deactivate_cohort_registration",
         [registered, unregistered, inactive],
         refresh="1",
         course=str(course.pk),
     )
 
     text = _bulk_text(response)
-    assert "Unregister 1 cohort from Algebra." in text
+    assert "Deactivate the Algebra registration for 1 cohort." in text
     assert "1 is not registered and will be skipped." in text
     assert "1 is inactive and will be skipped." in text
 
@@ -6988,7 +6988,7 @@ def test_bulk_cohort_unregister_deactivates_the_active_registration(
         response = _cohorts_bulk_confirm(
             staff_client,
             organisation,
-            "unregister",
+            "deactivate_cohort_registration",
             [registered, other],
             course=str(course.pk),
         )
@@ -7209,3 +7209,44 @@ def test_the_summary_counts_in_the_actions_own_noun(mock_site_context: Site):
     assert run_summary(run) == (
         "Deactivate finished: 3 learners changed, 3 skipped, 1 failed."
     )
+
+
+def _plain_post(client: Client, path: str, **extra: str):
+    return client.post(path, {"keys": ["1"], **extra})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path_template",
+    ["learners/__actions/unregister_from_course", "cohorts/__actions/unregister"],
+)
+def test_a_retired_bulk_action_slug_answers_the_unavailable_dialog_for_htmx(
+    staff_client: Client, path_template: str
+):
+    organisation = OrganisationFactory()
+
+    response = staff_client.post(
+        _interface_url(organisation.slug, path_template),
+        {"keys": ["1"]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in _bulk_text(response)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path_template",
+    ["learners/__actions/unregister_from_course", "cohorts/__actions/unregister"],
+)
+def test_a_retired_bulk_action_slug_answers_404_for_a_plain_request(
+    staff_client: Client, path_template: str
+):
+    organisation = OrganisationFactory()
+
+    response = _plain_post(
+        staff_client, _interface_url(organisation.slug, path_template)
+    )
+
+    assert response.status_code == 404
