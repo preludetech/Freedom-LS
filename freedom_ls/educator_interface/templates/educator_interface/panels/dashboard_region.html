@@ -10,9 +10,9 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
 {% block region_content %}
     {% if not cohorts %}
         {% if is_organisation_admin %}
-            <c-panel-empty-state message="You have no cohorts yet" />
+            <c-panel-empty-state message="You have no cohorts yet." />
         {% else %}
-            <c-panel-empty-state message="No cohorts are assigned to you" />
+            <c-panel-empty-state message="No cohorts are assigned to you." />
         {% endif %}
     {% else %}
         <div class="space-y-6">
@@ -87,7 +87,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
             </c-panel-attention-list>
             {% include "reports/partials/cap_disclosure.html" with shown=figures.attention_rows|length total=figures.attention_count noun="learners flagged" %}
         {% else %}
-            <c-panel-empty-state message="Nobody needs attention right now" />
+            <c-panel-empty-state message="Nobody needs attention right now." />
         {% endif %}
     </c-panel-card>
 
@@ -113,7 +113,7 @@ cohorts, inline, is_organisation_admin, max_learners; when loaded, figures.
                 {% endfor %}
             </ul>
         {% else %}
-            <c-panel-empty-state message="No cohorts could be included in these figures" />
+            <c-panel-empty-state message="No cohorts could be included in these figures." />
         {% endif %}
     </c-panel-card>
 {% endblock loaded_body %}

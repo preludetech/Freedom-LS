@@ -55,6 +55,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.learner_import import (
@@ -1462,7 +1463,7 @@ def test_the_history_tab_renders_its_empty_state(staff_client: Client):
     )
 
     template_names = [t.name for t in response.templates]
-    assert "educator_interface/partials/audit_history_empty.html" in template_names
+    assert "panel_framework/partials/table_empty.html" in template_names
 
 
 def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
@@ -2776,7 +2777,7 @@ def test_the_cohort_history_tab_renders_its_empty_state(staff_client: Client):
     )
 
     template_names = [t.name for t in response.templates]
-    assert "educator_interface/partials/audit_history_empty.html" in template_names
+    assert "panel_framework/partials/table_empty.html" in template_names
 
 
 @pytest.mark.django_db
@@ -2971,7 +2972,7 @@ def test_the_audit_log_renders_its_empty_state(staff_client: Client):
     response = staff_client.get(_audit_log_url(organisation))
 
     template_names = [t.name for t in response.templates]
-    assert "educator_interface/partials/audit_log_empty.html" in template_names
+    assert "panel_framework/partials/table_empty.html" in template_names
 
 
 @pytest.mark.django_db
@@ -3041,7 +3042,7 @@ def test_the_filtered_audit_log_empty_state_offers_a_clear_link(staff_client: Cl
 
     html = response.content.decode()
     template_names = [t.name for t in response.templates]
-    assert "educator_interface/partials/audit_log_empty.html" in template_names
+    assert "panel_framework/partials/table_empty.html" in template_names
     assert "No entries match these filters." in html
     assert "Clear filters" in html
 
@@ -5068,3 +5069,61 @@ def test_the_cohort_learners_tab_hides_the_import_link_from_a_cohort_admin(
 
     hrefs = [link.get("href") or "" for link in page.cssselect("a[href]")]
     assert not [href for href in hrefs if "/learners/import" in href]
+
+
+EDUCATOR_TABLES: list[type[DataTable]] = [
+    educator_views.LearnerDataTable,
+    educator_views.CohortLearnerDataTable,
+    educator_views.CohortDataTable,
+    educator_views.LearnerCohortDataTable,
+    educator_views.CourseDataTable,
+    educator_views.CohortCourseRegistrationDataTable,
+    educator_views.CourseCohortRegistrationDataTable,
+    educator_views.CourseLearnerRegistrationDataTable,
+    educator_views.MemberDataTable,
+    educator_views.OrganisationAuditLogTable,
+]
+
+
+@pytest.mark.parametrize("table", EDUCATOR_TABLES)
+def test_the_first_use_message_is_a_sentence(table: type[DataTable]) -> None:
+    assert table.empty_message.endswith(".")
+    assert table.empty_message != DataTable.empty_message
+
+
+@pytest.mark.parametrize(
+    "panel", [educator_views.LearnerHistoryPanel, educator_views.CohortHistoryPanel]
+)
+def test_a_history_panel_says_what_will_be_recorded(panel: type) -> None:
+    assert panel.empty_message.endswith(".")
+    assert panel.empty_no_results.endswith(".")
+
+
+@pytest.mark.parametrize("table", EDUCATOR_TABLES)
+def test_the_no_results_message_is_a_sentence(table: type[DataTable]) -> None:
+    assert table.empty_no_results.endswith(".")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("table", EDUCATOR_TABLES)
+def test_a_filter_in_play_offers_to_clear_it(
+    table: type[DataTable], mock_site_context: Site
+) -> None:
+    html = render_to_string(
+        "panel_framework/partials/table_empty.html",
+        {
+            "any_filter_set": True,
+            "empty_no_results": table.empty_no_results,
+            "empty_message": table.empty_message,
+            "clear_changes": {},
+            "clear_search_changes": {},
+            "page_url": "/x/",
+            "base_url": "/x/",
+            "region_id": "r",
+        },
+        request=RequestFactory().get("/x/"),
+    )
+
+    assert table.empty_no_results in html
+    assert table.empty_message not in html
+    assert "Clear filters" in html

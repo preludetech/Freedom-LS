@@ -13,6 +13,6 @@
         </c-panel-attention-list>
         {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="learners flagged" %}
     {% else %}
-        <c-panel-empty-state message="Nobody needs attention right now" />
+        <c-panel-empty-state message="Nobody needs attention right now." />
     {% endif %}
 {% endblock loaded_body %}

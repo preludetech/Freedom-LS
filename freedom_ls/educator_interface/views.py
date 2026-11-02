@@ -360,6 +360,8 @@ def _registration_columns() -> list[Column]:
 
 
 class CohortDataTable(DataTable):
+    empty_message = "No cohorts yet. Cohorts you create will appear here."
+    empty_no_results = "No cohorts match these filters."
     search_fields = ["name"]
     default_sort = "name"
 
@@ -453,6 +455,11 @@ class LearnerCohortDataTable(CohortDataTable):
     or not, with search, sort and pagination but no filters. `joined_at` is
     annotated by the panel that lists them."""
 
+    empty_message = (
+        "This learner is not in any cohorts yet. Their cohorts will appear here."
+    )
+    empty_no_results = "No cohorts match this search."
+
     @staticmethod
     def get_columns() -> list[Column]:
         return [
@@ -514,6 +521,8 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
 
 
 class LearnerDataTable(DataTable):
+    empty_message = "No learners yet. Learners you add or import will appear here."
+    empty_no_results = "No learners match these filters."
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     default_sort = "user__first_name"
 
@@ -634,6 +643,11 @@ def _last_active_cell(row: Model) -> str:
 
 class CohortLearnerDataTable(LearnerDataTable):
     """The cohort page's learners: the learners table plus a Remove cell."""
+
+    empty_message = (
+        "This cohort has no learners yet. Learners you add to it will appear here."
+    )
+    empty_no_results = "No learners match these filters."
 
     @staticmethod
     def get_columns() -> list[Column]:
@@ -769,7 +783,8 @@ class LearnerCoursesStack(PanelStack):
 
 class AuditLogEntryTable(DataTable):
     page_size = 25
-    empty_state_template = "educator_interface/partials/audit_history_empty.html"
+    empty_message = "Nothing has been recorded yet."
+    empty_no_results = "No entries match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -823,6 +838,13 @@ class HistoryPanel(DataTablePanel):
     table_key = "history"
     capability = "freedom_ls_audit_log.view_auditlogentry"
     empty_message: str
+    empty_no_results = "No entries match these filters."
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["empty_message"] = self.empty_message
+        context["empty_no_results"] = self.empty_no_results
+        return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
@@ -1089,6 +1111,9 @@ class CohortDetailsPanel(Panel):
 
 
 class CohortCourseRegistrationDataTable(DataTable):
+    empty_message = "This cohort is not registered for any courses yet. Its course registrations will appear here."
+    empty_no_results = "No course registrations match these filters."
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         request = cast(OrganisationScopedRequest, request)
@@ -1424,6 +1449,11 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 
 
 class CourseDataTable(DataTable):
+    empty_message = (
+        "No courses yet. Courses open to this organisation will appear here."
+    )
+    empty_no_results = "No courses match these filters."
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         # Most courses are shared across the site, and a course that belongs
@@ -1547,6 +1577,9 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 
 
 class CourseCohortRegistrationDataTable(DataTable):
+    empty_message = "No cohorts are registered for this course yet. Cohort registrations will appear here."
+    empty_no_results = "No cohort registrations match these filters."
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
@@ -1581,6 +1614,8 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 
 class CourseLearnerRegistrationDataTable(DataTable):
+    empty_message = "No learners are registered for this course yet. Learner registrations will appear here."
+    empty_no_results = "No learner registrations match these filters."
     default_sort = "learner__user__first_name"
 
     @staticmethod
@@ -1774,7 +1809,8 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 
 
 class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
-    empty_state_template = "educator_interface/partials/audit_log_empty.html"
+    empty_message = "Nothing has been recorded for this organisation yet."
+    empty_no_results = "No entries match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
