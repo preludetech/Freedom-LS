@@ -642,6 +642,37 @@ def _seed_report_cache(cohort: Cohort, quiz_confusion: QuizConfusion) -> None:
     )
 
 
+def _seed_quizzes_by_course(
+    cohort: Cohort, quiz_titles_by_course: dict[str, str]
+) -> None:
+    sections = []
+    for course_title, quiz_title in quiz_titles_by_course.items():
+        quiz = QuizColumn(
+            form_id=uuid4(),
+            title=quiz_title,
+            abbreviation=quiz_title[:2],
+            pass_percentage=50,
+        )
+        block = ConfusionBlock(questions=[_confusion()], shown=1, total=1)
+        sections.append(
+            course_section(
+                title=course_title,
+                quizzes=[quiz],
+                summary_tables=[SummaryTable(quizzes=[quiz], rows=[], continued=False)],
+                confusions_by_quiz={quiz.form_id: block},
+            )
+        )
+    cache.set(
+        _cache_key(cohort.site_id, cohort.pk, "report"),
+        cohort_report_data(courses=sections),
+    )
+
+
+def _confusion_headings(region: lxml.html.HtmlElement) -> list[str]:
+    (section,) = region.cssselect("section[aria-labelledby='report-confusions-title']")
+    return [heading.text_content().strip() for heading in section.cssselect("h4")]
+
+
 def _confusion(**overrides: object) -> QuizConfusion:
     defaults: dict[str, object] = {
         "question_number": 1,
@@ -818,6 +849,38 @@ class TestCohortReportBody:
         assert "over the report's learner limit of 1, so it is not included." in text
         assert "REPORTS_MAX_LEARNERS" not in text
         assert region.cssselect("table") == []
+
+    def test_quizzes_sharing_a_title_across_courses_are_headed_with_their_course(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_quizzes_by_course(
+            cohort, {"Algebra": "Checkpoint", "Geometry": "Checkpoint"}
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert _confusion_headings(region) == [
+            "Checkpoint (Algebra)",
+            "Checkpoint (Geometry)",
+        ]
+
+    def test_a_quiz_with_a_unique_title_is_headed_by_the_title_alone(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_quizzes_by_course(
+            cohort, {"Algebra": "Algebra Checkpoint", "Geometry": "Geometry Checkpoint"}
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert _confusion_headings(region) == [
+            "Algebra Checkpoint",
+            "Geometry Checkpoint",
+        ]
 
     def test_the_body_never_shows_wrong_answer_text(self, logged_in_client):
         cohort = _seeded_report_cohort()

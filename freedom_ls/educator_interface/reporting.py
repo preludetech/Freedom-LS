@@ -230,12 +230,27 @@ REFRESH_PARAM = "refresh"
 class QuizConfusionCard:
     quiz: QuizColumn
     block: ConfusionBlock
+    # The quiz title, with its course added when another course in the report
+    # has a quiz of the same title.
+    heading: str
 
 
 def _quiz_confusions(data: CohortReportData) -> list[QuizConfusionCard]:
     """The quizzes with at least one incorrect answer, in course and quiz order."""
+    courses_by_title: defaultdict[str, set[UUID]] = defaultdict(set)
+    for section in data.courses:
+        for quiz in section.quizzes:
+            courses_by_title[quiz.title].add(section.course_id)
     return [
-        QuizConfusionCard(quiz=quiz, block=section.confusions_by_quiz[quiz.form_id])
+        QuizConfusionCard(
+            quiz=quiz,
+            block=section.confusions_by_quiz[quiz.form_id],
+            heading=(
+                f"{quiz.title} ({section.title})"
+                if len(courses_by_title[quiz.title]) > 1
+                else quiz.title
+            ),
+        )
         for section in data.courses
         for quiz in section.quizzes
         if quiz.form_id in section.confusions_by_quiz
