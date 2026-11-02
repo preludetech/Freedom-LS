@@ -2610,7 +2610,9 @@ class LearnerStateBulkAction(LearnerBulkAction):
 class DeactivateLearnersBulkAction(LearnerStateBulkAction):
     label = "Deactivate"
     action_name = "deactivate"
-    variant = "error"
+    variant = "secondary"
+    confirm_variant = "primary"
+    loading_text = "Deactivating…"
     target_state = False
     unchanged_reason = "already inactive"
 
@@ -2619,6 +2621,9 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Deactivate {count_noun(Learner, count)}."
+
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Deactivate {count_noun(Learner, count)}?"
 
     def consequences(
         self,

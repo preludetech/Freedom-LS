@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 from typing import cast
 
+import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
@@ -1128,3 +1129,24 @@ class TestSectionAvailability:
                 RequestFactory().get("/"),
                 "/test-panel/hidden",
             )
+
+
+def test_the_bulk_confirm_button_takes_its_variant_and_loading_text_from_the_action(
+    mock_site_context: Site,
+) -> None:
+    stub = make_stub(name="row-x")
+
+    response = fetch(
+        f"stubs/{stub.pk}/__tabs/default/__actions/stub_bulk",
+        method="post",
+        data={"mode": "keys", "keys": [str(stub.pk)]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (confirm,) = document.cssselect("form button[type=submit]")
+    assert confirm.get("data-variant") == "primary"
+    assert "Saving..." in confirm.text_content()
+    assert document.cssselect("#app-modal-title")[0].text_content().strip() == (
+        "Mark processed?"
+    )

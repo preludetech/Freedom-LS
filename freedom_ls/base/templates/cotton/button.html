@@ -43,6 +43,7 @@ class="{{ computed_class }}"
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
 {% if autofocus %} autofocus{% endif %}
+data-variant="{{ variant }}"
 class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class }}"
 {{ attrs }}
 >

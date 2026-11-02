@@ -1158,3 +1158,7 @@ def test_a_runs_segment_that_is_not_last_is_a_404(mock_site_context: Site) -> No
 
     with pytest.raises(Http404):
         call_view(make_request(path), path)
+
+
+def test_the_default_confirmation_title_is_the_label_as_a_question() -> None:
+    assert StubBulkAction().confirmation_title(3, {}) == "Mark processed?"

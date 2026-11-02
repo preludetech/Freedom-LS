@@ -162,6 +162,11 @@ class BulkAction:
     label: str = ""
     action_name: str = ""
     variant: str = "secondary"
+    #: The variant of the confirm button in the dialog. `variant` keeps
+    #: driving the trigger in the selection bar.
+    confirm_variant: str = "primary"
+    #: The confirm button's label while the request is in flight.
+    loading_text: str = ""
     #: The most rows one run inside the request handles. A selection the
     #: action hands to a background task (see `runs_in_background`) is not
     #: bounded by it.
@@ -174,6 +179,10 @@ class BulkAction:
     #: A form the educator fills in before the action can run, such as a
     #: target picker. Its cleaned data becomes `cleaned_data` everywhere else.
     form_class: type[forms.Form] | None = None
+
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        """The dialog's heading: a question naming what will change."""
+        return f"{self.label}?"
 
     def get_form(
         self, request: HttpRequest, data: QueryDict | None

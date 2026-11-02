@@ -15,6 +15,6 @@
         {% endif %}
         <input type="hidden" name="expected_count" value="{{ expected_count }}">
         <input type="hidden" name="confirmed" value="1">
-        <c-button type="submit" variant="{{ action.variant }}" loading="true" :disabled="confirm_disabled">{{ action.label }}</c-button>
+        <c-button type="submit" variant="{{ action.confirm_variant }}" loading="true" loading_text="{{ action.loading_text|default:'Saving...' }}" :disabled="confirm_disabled">{{ action.label }}</c-button>
     </form>
 {% endif %}

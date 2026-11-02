@@ -5547,20 +5547,65 @@ def _bulk_text(response) -> str:
     )
 
 
+def _deactivate_dialog(staff_client: Client, count: int = 2):
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(count)]
+    response = _bulk_post(staff_client, organisation, "deactivate", learners)
+    return lxml.html.fromstring(response.content.decode())
+
+
 @pytest.mark.django_db
-def test_bulk_deactivate_confirm_button_uses_a_defined_destructive_button_variant(
+def test_bulk_deactivate_dialog_title_is_a_question_with_the_count(
     staff_client: Client,
 ):
-    """The confirm button rendered the undefined `btn-destructive` class, so it looked like plain text."""
+    document = _deactivate_dialog(staff_client, count=2)
+
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Deactivate 2 learners?"
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_confirm_button_is_primary_and_names_the_work_in_flight(
+    staff_client: Client,
+):
+    document = _deactivate_dialog(staff_client)
+
+    (confirm,) = document.cssselect("form button[type=submit]")
+    assert confirm.get("data-variant") == "primary"
+    assert "Deactivating\u2026" in confirm.text_content()
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_cancel_is_focused(staff_client: Client):
+    document = _deactivate_dialog(staff_client)
+
+    cancel = [
+        button
+        for button in document.cssselect("button")
+        if button.text_content().strip() == "Cancel"
+    ]
+    assert cancel[0].get("autofocus") is not None
+
+
+@pytest.mark.django_db
+def test_bulk_deactivate_trigger_in_the_selection_bar_is_secondary(
+    staff_client: Client,
+):
     organisation = OrganisationFactory()
-    learners = [_bulk_learner(organisation=organisation)]
+    _bulk_learner(organisation=organisation)
 
-    response = _bulk_post(staff_client, organisation, "deactivate", learners)
+    response = staff_client.get(_interface_url(organisation.slug, "learners"))
 
-    buttons = lxml.html.fromstring(response.content.decode()).cssselect(
-        "button[type=submit]"
-    )
-    assert any("btn-error" in (button.get("class") or "") for button in buttons)
+    document = lxml.html.fromstring(response.content.decode())
+    triggers = [
+        element
+        for element in document.cssselect("[data-variant][formaction]")
+        if (element.get("formaction") or "")
+        .split("?")[0]
+        .endswith("/__actions/deactivate")
+    ]
+    assert triggers
+    assert {trigger.get("data-variant") for trigger in triggers} == {"secondary"}
 
 
 @pytest.mark.django_db
