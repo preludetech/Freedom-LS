@@ -16,8 +16,18 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: focus lost to <body> after confirming on the learner Registrations card (and other panel refreshes) (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: bulk dialog title count contradicts the sentence count (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: cohort Report tab tables are unnamed and not in a focusable region (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: bulk result message is not announced to screen readers (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: members table and region are named Users (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: text-input borders fail WCAG 1.4.11 in both themes (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: learners list shows the first-use empty state when the default filter hides every learner (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: phone filter sheet Reset control is 36px tall (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Move dialog stale-destination error wording differs from Add to cohort (TDD: failing test first, then fix)
+- [ ] (user) Decide whether a bulk action whose whole selection became inaccessible should show the 'This is no longer available' dialog instead of 'Nothing selected', then change error_response or the QA plan's Test 8.3 to match
 
 ## 4. Documentation and pull request
 
