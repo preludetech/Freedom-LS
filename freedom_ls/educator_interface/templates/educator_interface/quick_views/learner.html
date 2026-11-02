@@ -6,7 +6,7 @@ rows start at their status.
 {% endcomment %}
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Status">
-        {% learner_status_badge learner as badge %}{{ badge.label }}
+        {% learner_status_badge learner as badge %}<c-panel-status-badge tone="{{ badge.tone }}" label="{{ badge.label }}" />
     </c-panel-definition-row>
     <c-panel-definition-row label="Last active">
         {% comment %}

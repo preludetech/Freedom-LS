@@ -126,6 +126,20 @@ class TestLearnerQuickView:
 
         assert 'data-quick-view-title="Ada Lovelace"' in response.content.decode()
 
+    def test_shows_the_learners_status_as_a_toned_badge(self, educator_client):
+        organisation = OrganisationFactory()
+        learner = cast(
+            Learner, LearnerFactory(organisation=organisation, is_active=False)
+        )
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        (badge,) = html.fromstring(response.content).cssselect("[data-tone]")
+        assert badge.text_content().strip() == "Inactive"
+        assert badge.get("data-tone") == "muted"
+
     def test_subtitles_the_drawer_with_the_learners_email(self, educator_client):
         organisation = OrganisationFactory()
         learner = cast(

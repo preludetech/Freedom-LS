@@ -69,6 +69,8 @@ from freedom_ls.educator_interface.tests.interface_walk import (
 )
 from freedom_ls.educator_interface.views import (
     CohortDataTable,
+    active_status_badge,
+    learner_status_badge,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -5127,3 +5129,86 @@ def test_a_filter_in_play_offers_to_clear_it(
     assert table.empty_no_results in html
     assert table.empty_message not in html
     assert "Clear filters" in html
+
+
+def _learner_in_state(state: str) -> Learner:
+    user = UserFactory()
+    if state == "pending":
+        user.set_unusable_password()
+        user.save()
+    learner = cast(
+        Learner,
+        LearnerFactory(
+            user=user, organisation=OrganisationFactory(), is_active=state != "inactive"
+        ),
+    )
+    return learner
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("state", "label", "tone"),
+    [
+        ("active", "Active", "success"),
+        ("pending", "Pending", "info"),
+        ("inactive", "Inactive", "muted"),
+    ],
+)
+def test_learner_status_badge_has_one_label_and_tone_per_state(
+    mock_site_context, state: str, label: str, tone: str
+):
+    badge = learner_status_badge(_learner_in_state(state))
+
+    assert (badge.label, badge.tone) == (label, tone)
+
+
+@pytest.mark.parametrize(
+    ("is_active", "label", "tone"),
+    [(True, "Active", "success"), (False, "Inactive", "muted")],
+)
+def test_active_status_badge_has_one_label_and_tone_per_state(
+    is_active: bool, label: str, tone: str
+):
+    badge = active_status_badge(is_active)
+
+    assert (badge.label, badge.tone) == (label, tone)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("state", "label", "tone"),
+    [
+        ("active", "Active", "success"),
+        ("pending", "Pending", "info"),
+        ("inactive", "Inactive", "muted"),
+    ],
+)
+def test_learner_status_cell_renders_the_badge_tone_for_the_state(
+    mock_site_context, state: str, label: str, tone: str
+):
+    rendered = render_to_string(
+        "educator_interface/data-table-cells/learner_status.html",
+        {"object": _learner_in_state(state)},
+    )
+
+    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
+    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
+
+
+@pytest.mark.parametrize(
+    ("is_active", "label", "tone"),
+    [(True, "Active", "success"), (False, "Inactive", "muted")],
+)
+def test_active_status_cell_renders_the_badge_tone_for_the_state(
+    is_active: bool, label: str, tone: str
+):
+    rendered = render_to_string(
+        "educator_interface/data-table-cells/active_status.html",
+        {
+            "object": SimpleNamespace(is_active=is_active),
+            "column": SimpleNamespace(attr="is_active"),
+        },
+    )
+
+    (badge,) = lxml.html.fromstring(rendered).cssselect("[data-tone]")
+    assert (badge.text_content().strip(), badge.get("data-tone")) == (label, tone)
