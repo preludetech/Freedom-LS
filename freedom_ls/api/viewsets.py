@@ -11,6 +11,7 @@ from django.utils.cache import patch_cache_control
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from .authentication import ApiKeyAuthentication
@@ -25,18 +26,8 @@ from .throttling import ApiKeyRateThrottle
 M = TypeVar("M", bound=Model)
 
 
-class ReadOnlyApiViewSet(ReadOnlyModelViewSet):
-    required_scope: ApiScope
-
-    authentication_classes = [ApiKeyAuthentication]
-    permission_classes = [HasApiScope]
-    throttle_classes = [ApiKeyRateThrottle]
-    renderer_classes = [JSONRenderer]
-    pagination_class = ApiKeysetPagination
-    filter_backends = [DjangoFilterBackend]
-    metadata_class = ApiMetadata
-    http_method_names = ["get", "head", "options"]
-    schema = AutoSchema()
+class ApiResponseMixin(APIView):
+    """The error body and cache headers every API response shares."""
 
     def get_exception_handler(
         self,
@@ -50,6 +41,20 @@ class ReadOnlyApiViewSet(ReadOnlyModelViewSet):
         # Every body is one site's personal data: no shared cache may keep it.
         patch_cache_control(response, private=True, no_store=True)
         return response
+
+
+class ReadOnlyApiViewSet(ApiResponseMixin, ReadOnlyModelViewSet):
+    required_scope: ApiScope
+
+    authentication_classes = [ApiKeyAuthentication]
+    permission_classes = [HasApiScope]
+    throttle_classes = [ApiKeyRateThrottle]
+    renderer_classes = [JSONRenderer]
+    pagination_class = ApiKeysetPagination
+    filter_backends = [DjangoFilterBackend]
+    metadata_class = ApiMetadata
+    http_method_names = ["get", "head", "options"]
+    schema = AutoSchema()
 
     def site_queryset(self, queryset: QuerySet[M]) -> QuerySet[M]:
         """Rows of the authenticated key's site, and nothing when there is no key.

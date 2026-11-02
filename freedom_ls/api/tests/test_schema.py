@@ -28,6 +28,36 @@ def test_schema_without_a_key_is_401():
     assert APIClient().get(reverse("api:schema")).status_code == 401
 
 
+def _cache_directives(response) -> set[str]:
+    return set(response["Cache-Control"].split(", "))
+
+
+def test_schema_without_a_key_is_a_private_unstored_json_error():
+    response = APIClient().get(reverse("api:schema"))
+
+    assert _cache_directives(response) >= {"private", "no-store"}
+    assert response["Content-Type"].startswith("application/json")
+    assert response.json() == {
+        "detail": "Authentication credentials were not provided.",
+        "code": "not_authenticated",
+    }
+
+
+def test_schema_with_a_wrong_key_reports_authentication_failed(mock_site_context):
+    response = APIClient().get(
+        reverse("api:schema"), headers={"Authorization": "Bearer nonsense"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "authentication_failed"
+
+
+def test_schema_document_is_private_and_not_stored(auth):
+    response = APIClient().get(reverse("api:schema"), headers=auth)
+
+    assert _cache_directives(response) >= {"private", "no-store"}
+
+
 def test_schema_with_a_key_holding_no_scope_is_json(auth):
     response = APIClient().get(reverse("api:schema"), headers=auth)
 
