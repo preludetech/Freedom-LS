@@ -98,7 +98,7 @@ def test_quick_view_drawer(
     page.unroute("**/__quick-view")
     expect(content).to_have_text("Alpha")
     expect(page.locator("#quick-view-title")).to_have_text("Alpha")
-    expect(alpha_trigger).to_be_focused()
+    expect(page.locator("#quick-view-title")).to_be_focused()
     expect(alpha_trigger).to_have_attribute("aria-expanded", "true")
 
     # A second row repopulates the drawer while the table stays clickable.
@@ -194,8 +194,8 @@ def test_quick_view_drawer(
         # ends would race the animation.
         expect(quick_view).to_have_css("transform", "none")
 
-        # The drawer is not modal, so the rest of the page stays usable.
-        expect(page.locator("dialog:modal")).to_have_count(0)
+        # Only the phone sheet is modal; beside it the page stays usable.
+        expect(page.locator("dialog:modal")).to_have_count(1 if is_phone else 0)
         assert page.evaluate("getComputedStyle(document.documentElement).overflow") != (
             "hidden"
         )
@@ -243,6 +243,9 @@ def test_quick_view_drawer(
         # the table's one column, so the keyboard reaches that trigger.
         beta_trigger = _trigger(page, "Beta")
         if is_phone:
+            # The modal sheet makes the page inert, so it is dismissed first.
+            page.keyboard.press("Escape")
+            expect(quick_view).to_be_hidden()
             beta_trigger.click()
         else:
             beta_trigger.focus()

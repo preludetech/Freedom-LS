@@ -5,10 +5,11 @@
     }
 
     /* Anchor links and `:focus-visible` autoscroll should land below the
-     * sticky header rather than behind it. ~80px clears `p-3` (≈56px tall)
-     * and `sm:p-4` (≈64px) on both themes with comfortable margin. */
+     * sticky header rather than behind it, and above the selection bar
+     * pinned to the bottom edge. ~80px clears `p-3` (≈56px tall) and `sm:p-4`
+     * (≈64px) on both themes with comfortable margin; 6rem clears the bar. */
     html {
-        scroll-padding-top: 5rem;
+        scroll-padding-block: max(5rem, var(--sidebar-top, 0px)) 6rem;
     }
 
     /* Prevent horizontal scrolling on mobile */

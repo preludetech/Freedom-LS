@@ -68,6 +68,8 @@ function trackListener(handlers, target, type, handler, options) {
     handlers.push([target, type, handler, options]);
 }
 
+const SHEET_QUERY = "(max-width: 767.98px)";
+
 // Returns focus to whichever element opened a dialog, or to #main-content
 // when that element is no longer in the DOM (an htmx navigation that
 // followed the same close can remove it). Shared by appModal and quickView.
@@ -443,11 +445,43 @@ document.addEventListener("alpine:init", () => {
             // Single point every dismiss route (Esc, requestClose()) funnels
             // through.
             trackListener(this._qvHandlers, this._qvDialog, "close", () => {
+                // A dialog reopened in the other mode (see the breakpoint
+                // listener below) is still on screen.
+                if (this._qvDialog.open) return;
                 this._hideDiscardPrompt();
                 this._qvTracker.snapshot();
                 this._qvDirty = false;
                 this._syncExpanded();
                 focusTriggerOrMain(this._qvTrigger);
+            });
+
+            // A modal dialog closes on Escape by itself; cancel routes that
+            // through the same unsaved-draft guard as every other dismiss.
+            trackListener(this._qvHandlers, this._qvDialog, "cancel", (event) => {
+                event.preventDefault();
+                this._requestClose();
+            });
+
+            // A drawer open across the md breakpoint changes mode: the sheet
+            // is modal, the docked drawer is not. Closing and reopening
+            // keeps the content and focus where they are.
+            const sheetQuery = window.matchMedia(SHEET_QUERY);
+            trackListener(this._qvHandlers, sheetQuery, "change", () => {
+                const isModal = this._qvDialog.matches(":modal");
+                if (!this._qvDialog.open || isModal === sheetQuery.matches) return;
+                const focused = document.activeElement;
+                this._qvDialog.close();
+                this._showDialog();
+                if (focused && this._qvDialog.contains(focused)) focused.focus();
+            });
+
+            // A click on the scrim of the modal sheet lands on the dialog
+            // element itself; its content fills the dialog, so no click
+            // inside the drawer has the dialog as its target.
+            trackListener(this._qvHandlers, this._qvDialog, "click", (event) => {
+                if (event.target === this._qvDialog && this._qvDialog.matches(":modal")) {
+                    this._requestClose();
+                }
             });
 
             // show() gives a dialog no Esc-to-close of its own, so this adds
@@ -503,12 +537,22 @@ document.addEventListener("alpine:init", () => {
         retry() {
             this._fetchBody(this._lastUrl);
         },
+        // Below md the drawer is a sheet over the page: modal, so the page
+        // behind it is inert. From md up it docks beside the page, which
+        // stays usable.
+        _showDialog() {
+            if (window.matchMedia(SHEET_QUERY).matches) {
+                this._qvDialog.showModal();
+            } else {
+                this._qvDialog.show();
+            }
+        },
         _open(trigger) {
-            if (!this._qvDialog.open) this._qvDialog.show();
+            if (!this._qvDialog.open) this._showDialog();
             this._openLink.href = trigger.href;
-            // show() moves focus into the drawer; the page stays usable
-            // beside it, so focus goes back to the trigger the reader used.
-            trigger.focus();
+            // Focus moves to the heading so a keyboard reader lands in the
+            // drawer; closing returns it to the trigger.
+            this._title.focus();
             this._qvTrigger = trigger;
             this._syncExpanded();
         },
