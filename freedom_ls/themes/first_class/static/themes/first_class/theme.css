@@ -124,7 +124,7 @@
     }
 
     .chip-secondary {
-        @apply bg-secondary/10 text-secondary;
+        @apply bg-secondary/10 text-on-surface;
     }
     /* .chip-muted: default `bg-surface-2 text-muted` reads correctly on
      * the first_class surfaces, so no override is needed. Retune here

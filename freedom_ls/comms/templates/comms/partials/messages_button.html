@@ -13,7 +13,7 @@ query; the sr-only label inside it is the button's accessible name.
             aria-labelledby="messages-button-label"
             x-bind:aria-expanded="open"
             aria-controls="messages-panel"
-            class="relative inline-flex size-10 items-center justify-center rounded-full text-on-header hover:bg-header-action hover:text-on-header-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2">
+            class="relative inline-flex size-11 md:size-10 items-center justify-center rounded-full text-on-header hover:bg-header-action hover:text-on-header-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2">
         {% comment %}<c-icon> is server-rendered, so the open state toggles
         between two rendered icons rather than swapping one client-side.{% endcomment %}
         <span x-show="!open"><c-icon name="message" class="size-6" /></span>

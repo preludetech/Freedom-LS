@@ -32,6 +32,6 @@ hx-* attributes a live-search toolbar needs.
     <label for="{{ input_id }}" class="{% if label_hidden|flag %}sr-only{% else %}text-sm{% endif %}">{{ label }}</label>
     <div class="relative">
         <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted"><c-icon name="search" class="size-4" /></span>
-        <input type="search" id="{{ input_id }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" class="pl-9"{% if autofocus %} autofocus{% endif %} {{ attrs }}>
+        <input type="search" id="{{ input_id }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" class="pl-9 max-md:min-h-11"{% if autofocus %} autofocus{% endif %} {{ attrs }}>
     </div>
 </div>

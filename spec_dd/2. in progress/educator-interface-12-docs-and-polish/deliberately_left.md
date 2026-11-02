@@ -1,0 +1,10 @@
+# Deliberately left
+
+Findings from the polish walk that are not fixed in this spec.
+
+| screen | issue | WCAG criterion | why left | follow-up idea |
+|---|---|---|---|---|
+| All educator screens | Neither theme has a dark mode: every token in both `theme.css` files is a single light value. | 1.4.3 Contrast (Minimum) is met in light only; no criterion is failed by the absence. | It is a new capability across both token sets, not a polish fix. | `spec_dd/1. next/educator-interface-dark-mode/idea.md` |
+| Dashboard, learners, cohorts, courses (table cells, activity rows) | Inline text links, such as a cohort name inside a learner row or a learner name in a dashboard row, are 19 to 24px high at 390 wide, below the 44px target. The row's own name link and its quick-view trigger are reachable and the 44px controls are all fixed. | 2.5.8 Target Size (Minimum), 2.5.5 Target Size (Enhanced, AAA) | Inline links inside a line of text are exempt from 2.5.8, and growing them to 44px would stretch every card and row on a phone and undo the density the mockups set. | Make each card a single stretched link to its page and leave inner cohort links as secondary. |
+| Every page footer | The "Terms and Conditions" and "Privacy Policy" links are 24px high at 390 wide. | 2.5.8 Target Size (Minimum) is met at 24px; 2.5.5 is not. | The footer is shared with the learner interface and sits outside the educator screens. | Give the footer links `min-h-11` below md in the shared base template. |
+| All educator screens | `screen_reader_checklist.md` has not been run: the walk checks the accessibility tree, names, live regions and keyboard flow in a browser, but no screen reader (NVDA, VoiceOver, TalkBack) was driven through the screens. | 4.1.2 Name, Role, Value; 4.1.3 Status Messages | A screen reader needs a person and a device; it cannot be automated here. | Run the steps in `screen_reader_checklist.md`, written after this plan, and file what it finds. |

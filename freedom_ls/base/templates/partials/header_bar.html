@@ -4,7 +4,7 @@
         x-data="headerScroll"
         x-bind:data-scrolled="scrolled">
     <a href="/"
-       class="flex items-center gap-2 sm:gap-3 flex-shrink min-w-0 no-underline">
+       class="flex min-h-11 items-center gap-2 sm:gap-3 flex-shrink min-w-0 no-underline">
         {% if header_logo_static_path %}
             <img src="{% static header_logo_static_path %}"
                  alt="{{ header_title }}"

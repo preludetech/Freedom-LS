@@ -69,3 +69,31 @@ def test_muted_text_reaches_4_5_to_1_on_every_page_surface(theme_css: Path) -> N
             f"--color-muted {muted} on {background} is "
             f"{_contrast_ratio(muted, background):.2f}:1"
         )
+
+
+def _blend(foreground: str, background: str, alpha: float) -> str:
+    mixed = [
+        round(
+            int(foreground[i : i + 2], 16) * alpha
+            + int(background[i : i + 2], 16) * (1 - alpha)
+        )
+        for i in (1, 3, 5)
+    ]
+    return "#" + "".join(f"{c:02X}" for c in mixed)
+
+
+def test_first_class_secondary_chip_text_reaches_4_5_to_1_on_its_tint() -> None:
+    """The chip's fill is a tint of the secondary colour, so its text cannot
+    be the secondary colour itself; it uses the on-surface text colour."""
+    css = FIRST_CLASS_THEME_CSS.read_text()
+    rule = re.search(r"\.chip-secondary\s*\{[^}]*\}", css)
+    assert rule is not None
+    text_token = re.search(r"\btext-([a-z0-9-]+)", rule.group(0))
+    assert text_token is not None
+    text = _theme_colour(css, text_token.group(1))
+    fill = _blend(
+        _theme_colour(css, "secondary"),
+        _theme_colour(css, "surface"),
+        0.10,
+    )
+    assert _contrast_ratio(text, fill) >= 4.5

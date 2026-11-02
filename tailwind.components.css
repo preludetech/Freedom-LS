@@ -221,6 +221,15 @@
         @apply px-2 py-1.5 text-sm
     }
 
+    /* Below md every button and text field on an interface page, dialogs
+     * included, is at least 44px tall for a finger. */
+    .panel-surface .btn,
+    .panel-canvas .btn,
+    .panel-surface :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]),
+    .panel-canvas :is(input, select):not([type="checkbox"], [type="radio"], [type="hidden"]) {
+        @apply max-md:min-h-11
+    }
+
     .surface {
         @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
     }
