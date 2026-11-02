@@ -102,10 +102,10 @@ no design states tested
 ## Bug status
 
 - **FIXED** (commit: 747d55230) — B1: No-scope add form shows two errors under Scopes. Re-verified: only "Choose at least one API scope." appears.
-- **UNRESOLVED** — B2: Schema endpoint responses lack Cache-Control: private, no-store (reason: security-adjacent; cache headers on an authenticated endpoint are a data-exposure control, so a human decides how the schema view should carry them and whether its 401 should take the {detail, code} shape).
+- **FIXED** (commit: 931b4b072) — B2: Schema endpoint responses lack Cache-Control: private, no-store. Decided: every schema response carries `Cache-Control: private, no-store`, and its errors are `{detail, code}` as `application/json`. The 200 keeps the OpenAPI content type.
 - **FIXED** (commit: 04c466d07) — B3: Revoked key's read-only change page still saves. Re-verified: a revoked key's change page has no save buttons; an active key keeps the editable Name and all three save buttons.
 - **FIXED** (commit: f548c742d) — B4: API key add form overflows horizontally on mobile and tablet. Re-verified: scrollWidth 375 at 375 and 768 at 768. The fix is in shared admin CSS (freedom_ls/site_aware_models/static/site_aware_models/css/admin.css); spot-checks of webhook endpoint add, email address change and API key change pages show no overflow at 375.
-- **UNRESOLVED** — B5: Revoke confirmation with nothing to revoke still offers Revoke and reports "Revoked 0 API keys" (reason: product/UX decision; the spec does not say what the page should offer when every selected key is already revoked).
+- **FIXED** (commit: b211209a5) — B5: Revoke confirmation with nothing to revoke still offers Revoke and reports "Revoked 0 API keys". Decided: the page says "Every selected key is already revoked. Nothing to revoke.", lists the skipped keys, and offers only a Back link. A POST that revokes nothing flashes the warning "No API keys revoked: they were already revoked."
 
 ## General notes
 
