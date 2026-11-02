@@ -215,12 +215,16 @@ def _member_param(ctx: PanelContext) -> User:
     return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
 
 
-def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpResponse:
-    """The 422 fragment for a change aimed at an inactive cohort."""
+def inactive_cohort_response(
+    request: HttpRequest, cohort: Cohort, blocked_phrase: str
+) -> HttpResponse:
+    """The 422 fragment for a change aimed at an inactive cohort.
+    `blocked_phrase` completes "Reactivate the cohort ... to" with what the
+    refused action would have done, such as "deactivate it"."""
     return render(
         request,
         "educator_interface/modal/cohort_inactive.html",
-        {"cohort": cohort},
+        {"cohort": cohort, "blocked_phrase": blocked_phrase},
         status=422,
     )
 
@@ -258,13 +262,20 @@ def cohort_not_empty_sentence(cohort: Cohort) -> str:
 class RequiresActiveCohortMixin(PanelAction):
     """Offers an action only while the cohort is active, and refuses a submit
     for an inactive one. Declared on PanelAction so the overrides type-check;
-    list it before the action it guards in the bases."""
+    list it before the action it guards in the bases. A subclass sets
+    `blocked_phrase`, the refused action in the words of "Reactivate the
+    cohort to ..."; it has no default, so a subclass that forgets fails when
+    it first refuses."""
+
+    blocked_phrase: str
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return cast(Cohort, ctx.instance).is_active
 
     def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
-        return inactive_cohort_response(ctx.request, cast(Cohort, ctx.instance))
+        return inactive_cohort_response(
+            ctx.request, cast(Cohort, ctx.instance), self.blocked_phrase
+        )
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         if not cast(Cohort, ctx.instance).is_active:
@@ -310,6 +321,8 @@ class ReasonMixin(PanelAction):
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
     """Edit, offered only while the cohort is active."""
+
+    blocked_phrase = "change its name"
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         old_name = str(form.initial["name"])
@@ -407,6 +420,7 @@ class CohortStateAction(PanelAction):
 class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortStateAction):
     label = "Deactivate"
     action_name = "deactivate"
+    blocked_phrase = "deactivate it"
     target_state = False
     template_name = "educator_interface/modal/deactivate_confirmation.html"
 
@@ -414,7 +428,7 @@ class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortState
         return deactivate_cohort(cohort, actor=actor, reason=reason)
 
     def refuse_unchanged(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        return inactive_cohort_response(ctx.request, cohort)
+        return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
 
 
 class ReactivateCohortAction(CohortStateAction):
@@ -487,6 +501,7 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
 
     label = "Register for a course"
     action_name = "register"
+    blocked_phrase = "register it for a course"
     capability = "freedom_ls_learner_management.add_cohortcourseregistration"
     submit_buttons = [
         {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
@@ -654,6 +669,7 @@ class DeactivateCohortRegistrationAction(
 
     label = "Deactivate"
     action_name = "deactivate_cohort_registration"
+    blocked_phrase = "deactivate one of its course registrations"
     variant = "secondary"
     renders_in_footer = False
     capability = "freedom_ls_learner_management.change_cohortcourseregistration"
@@ -927,8 +943,10 @@ class MembershipAction(PanelAction):
     The action resolves on the learner page, where the cohort travels as a
     `cohort` parameter, and on the cohort page, where the learner travels as
     a `learner` parameter. It renders per row, never as a footer button.
+    A subclass sets `blocked_phrase`, what an inactive cohort refuses.
     """
 
+    blocked_phrase: str
     variant = "secondary"
     renders_in_footer = False
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
@@ -974,7 +992,7 @@ class MembershipAction(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, cohort = self._pair(ctx)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort)
+            return inactive_cohort_response(ctx.request, cohort, self.blocked_phrase)
         self.perform(learner, cohort, cast("User", ctx.request.user), ctx.reason)
         ids = [str(learner.pk), str(cohort.pk)]
         return _membership_changed_response(ids, ids)
@@ -983,6 +1001,7 @@ class MembershipAction(PanelAction):
 class RemoveFromCohortAction(ReasonMixin, MembershipAction):
     label = "Remove from cohort"
     action_name = "remove_from_cohort"
+    blocked_phrase = "remove learners from it"
     capability = "freedom_ls_learner_management.delete_cohortmembership"
     template_name = "educator_interface/modal/remove_from_cohort_confirmation.html"
 
@@ -1099,7 +1118,9 @@ class MoveToCohortAction(MembershipAction):
             return denied_response(ctx, self)
         for cohort in (source, destination):
             if not cohort.is_active:
-                return inactive_cohort_response(ctx.request, cohort)
+                return inactive_cohort_response(
+                    ctx.request, cohort, "move learners into or out of it"
+                )
         try:
             move_between_cohorts(
                 learner, source, destination, actor=cast("User", ctx.request.user)
@@ -1197,7 +1218,7 @@ class AddToCohortAction(PanelAction):
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
             return denied_response(ctx, self)
         if not cohort.is_active:
-            return inactive_cohort_response(ctx.request, cohort)
+            return inactive_cohort_response(ctx.request, cohort, "add learners to it")
         learner = cast(Learner, ctx.instance)
         add_to_cohort(learner, cohort, actor=cast("User", ctx.request.user))
         return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
@@ -1209,6 +1230,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
 
     label = "Add learners"
     action_name = "add_existing_learners"
+    blocked_phrase = "add learners to it"
     variant = "secondary"
     capability = ADD_COHORTMEMBERSHIP
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
@@ -1366,7 +1388,9 @@ class AddLearnersAction(PanelAction):
                 actor=cast("User", ctx.request.user),
             )
         except ValueError:
-            return inactive_cohort_response(ctx.request, cast(Cohort, cohort))
+            return inactive_cohort_response(
+                ctx.request, cast(Cohort, cohort), "add learners to it"
+            )
         html = render_to_string(
             "educator_interface/modal/add_learners_results.html",
             {"results": results, "cohort": cohort},
@@ -1423,6 +1447,8 @@ class ImportLearnersAction(PanelAction):
 class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):
     """Add learners on a cohort's page, with the cohort preset. Offered only
     to a user who may create learners; others get the existing-learner picker."""
+
+    blocked_phrase = "add learners to it"
 
     def is_offered(self, ctx: PanelContext) -> bool:
         scoped = cast("OrganisationScopedRequest", ctx.request)

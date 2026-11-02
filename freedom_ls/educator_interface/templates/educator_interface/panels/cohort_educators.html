@@ -2,11 +2,14 @@
 
 {% block panel_body %}
     {% if educators %}
-        <c-panel-definition-list>
+        <ul class="m-0 list-none divide-y divide-border p-0">
             {% for user, role in educators %}
-                <c-panel-definition-row :label="user.display_name">{{ role }}</c-panel-definition-row>
+                <li class="flex items-center justify-between gap-3 py-2">
+                    <c-panel-avatar-chip name="{{ user.display_name }}" user_id="{{ user.pk }}" secondary="{% if user.first_name or user.last_name %}{{ user.email }}{% endif %}" class="min-w-0" />
+                    <span class="shrink-0 text-sm text-muted">{{ role }}</span>
+                </li>
             {% endfor %}
-        </c-panel-definition-list>
+        </ul>
     {% else %}
         <c-panel-empty-state message="No educators assigned to this cohort." />
     {% endif %}

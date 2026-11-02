@@ -39,6 +39,7 @@ from freedom_ls.educator_interface.actions import (
     RegisterCohortForCourseBulkAction,
     RegisterForCourseBulkAction,
     RemoveFromCohortBulkAction,
+    RequiresActiveCohortMixin,
     cohort_not_empty_sentence,
     grantable_roles_for,
 )
@@ -256,6 +257,7 @@ def test_stale_deactivate_on_an_inactive_cohort_answers_422_and_changes_nothing(
 
     cohort.refresh_from_db()
     assert response.status_code == 422
+    assert "to deactivate it." in " ".join(response.content.decode().split())
     assert cohort.is_active is False
     assert not AuditLogEntry.unscoped.filter(action="cohort.deactivated").exists()
 
@@ -454,7 +456,25 @@ def test_editing_an_inactive_cohort_answers_422_with_the_inactive_fragment(
     )
 
     assert response.status_code == 422
+    assert "to change its name." in " ".join(response.content.decode().split())
     assert "Old group is inactive" in response.content.decode()
+
+
+def _all_subclasses(cls: type) -> set[type]:
+    found: set[type] = set()
+    for subclass in cls.__subclasses__():
+        found |= {subclass} | _all_subclasses(subclass)
+    return found
+
+
+def test_every_action_guarded_by_an_active_cohort_names_what_it_blocks() -> None:
+    guarded = _all_subclasses(RequiresActiveCohortMixin)
+
+    assert guarded
+    assert all(
+        isinstance(getattr(subclass, "blocked_phrase", None), str)
+        for subclass in guarded
+    )
 
 
 @pytest.mark.django_db
@@ -561,6 +581,7 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
     )
 
     assert response.status_code == 422
+    assert "to register it for a course." in " ".join(response.content.decode().split())
     assert "Old group is inactive" in response.content.decode()
     assert not cohort.course_registrations.exists()
 
@@ -856,6 +877,9 @@ def test_unregister_post_on_an_inactive_cohort_answers_422_and_changes_nothing(
 
     registration.refresh_from_db()
     assert response.status_code == 422
+    assert "to deactivate one of its course registrations." in " ".join(
+        response.content.decode().split()
+    )
     assert "Old group is inactive" in response.content.decode()
     assert registration.is_active is True
 
@@ -1304,6 +1328,7 @@ def test_a_stale_remove_naming_an_inactive_cohort_answers_422_and_changes_nothin
     )
 
     assert response.status_code == 422
+    assert "to remove learners from it." in " ".join(response.content.decode().split())
     assert "is inactive" in response.content.decode()
     assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
 
@@ -1616,6 +1641,7 @@ def test_a_stale_learner_picker_post_on_an_inactive_cohort_answers_422(
     )
 
     assert response.status_code == 422
+    assert "to add learners to it." in " ".join(response.content.decode().split())
     assert not CohortMembership.objects.filter(cohort=cohort).exists()
 
 
@@ -1834,6 +1860,7 @@ def test_a_stale_add_learners_post_on_an_inactive_cohort_answers_422_and_adds_no
     )
 
     assert response.status_code == 422
+    assert "to add learners to it." in " ".join(response.content.decode().split())
     assert not Learner.objects.filter(user__email="new@example.com").exists()
 
 
@@ -2163,6 +2190,9 @@ def test_move_post_naming_an_inactive_source_answers_422_and_changes_nothing(
     )
 
     assert response.status_code == 422
+    assert "to move learners into or out of it." in " ".join(
+        response.content.decode().split()
+    )
     assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
 
 
@@ -2181,6 +2211,9 @@ def test_move_post_naming_an_inactive_destination_answers_422_and_changes_nothin
     )
 
     assert response.status_code == 422
+    assert "to move learners into or out of it." in " ".join(
+        response.content.decode().split()
+    )
     assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
 
 

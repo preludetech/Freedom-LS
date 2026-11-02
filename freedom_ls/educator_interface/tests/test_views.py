@@ -1006,6 +1006,32 @@ def test_educators_block_names_each_educator_and_their_role(
 
 
 @pytest.mark.django_db
+def test_educators_block_shows_a_nameless_educators_email_as_stored(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(
+        user__first_name="",
+        user__last_name="",
+        user__email="Mixed.Case@Example.com",
+        organisation=organisation,
+    ).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, admin, "organisation_admin", organisation)
+
+    document = _get_document(
+        logged_in_client(admin),
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}"),
+    )
+
+    (card,) = document.cssselect("section[data-panel='educators']")
+    assert "Mixed.Case@Example.com" in card.text_content()
+
+
+@pytest.mark.django_db
 def test_educators_panel_lists_a_person_added_from_the_cohort_page(
     mock_site_context, logged_in_client
 ):
