@@ -27,7 +27,9 @@ right and this file needs fixing.
 | `Topic` | `topics.py:8` | A page of markdown content a learner reads. |
 | `Activity` | `:26` | Like a `Topic`, plus a difficulty `level`. Not currently used by FLS courses. |
 | `Form` | `form_engine/models.py:43` | A form or quiz, lives in the `form_engine` app. `FormPage`, `FormContent`, `FormQuestion`, `QuestionOption` hang off it. |
-| `ContentCollectionItem` | `courses.py:278` | **The through model.** One row links a `collection` to a `child`, with an `order` and optional `overrides`. |
+| `ContentCollectionItem` | `courses.py:557` | **The through model.** One row links a `collection` to a `child`, with an `order` and the placement's due keys (`due_date`, `due_time`, `due_days_after_registration`, `no_due_date`). |
+| `CoursePartChildDueDate` | `courses.py:598` | The due date one **part placement** sets for one child of its part. One row per (`part_collection_item`, `collection_item`). A part's own rows are shared by every course that places the part, so a value that differs per course lives here. |
+| **placement** | `ContentCollectionItem` | One child at one position in one collection: the row itself, not a new model. A **part placement** is one whose collection is a `Course` and whose child is a `CoursePart`. |
 | **collection** | `ContentCollectionItem.collection` | The `Course` or `CoursePart` a child sits in. A generic FK. |
 | **child** | `ContentCollectionItem.child` | The `Topic`, `Form` or `CoursePart` sitting in a collection. A generic FK. |
 | `Article` | `articles.py` | A standalone markdown content item (`ContentType.ARTICLE`) that belongs to no course and can be read publicly. Its `ArticleVisibility` is modelled on `CourseVisibility`, with only `published` and `hidden`. |
@@ -67,8 +69,8 @@ children. Do not add a third sense. To be unambiguous, say **collection item** f
 | `LearnerDeadlineOverride` | `freedom_ls/deadlines/models.py` | A **deadline override** set for one learner's `CourseProgress`. Beats a `CohortDeadlineOverride` and the content default. A cohort move mints a new `CourseProgress`, so the old record's overrides stay behind. |
 | `SiteTimeZoneConfig` | `freedom_ls/site_aware_models/models.py` | One row per site naming the time zone its dates are read in, and whether learners see the zone. No row means the default zone. |
 | **registration date** | `CourseProgress.created_at` | The date a relative deadline counts from, read in the site time zone. |
-| **content default** | `ContentCollectionItem.due_date` / `due_time` / `due_days_after_registration`, `Course.time_limit_days` | The deadline the course author set. The lowest layer. |
-| **deadline override** | `CohortDeadlineOverride`, `LearnerDeadlineOverride` | A deadline an admin set over the content default. Never `ContentCollectionItem.overrides`. |
+| **content default** | `CoursePartChildDueDate`, `ContentCollectionItem.due_date` / `due_time` / `due_days_after_registration` / `no_due_date`, `Course.time_limit_days` | The deadline the course author set. The lowest layer. For a child of a part, the course's part placement value (`CoursePartChildDueDate`) when it sets one, else the child's own row. A row holds the placement value from its `children:` entry, or the child file's value when the entry sets no due key. A value replaces the one below it whole; keys are never merged. |
+| **deadline override** | `CohortDeadlineOverride`, `LearnerDeadlineOverride` | A deadline an admin set over the content default. |
 | **time limit end** | `course_deadlines(record).time_limit` | When the course time limit runs out for one learner: registration date plus `time_limit_days`, at the end of that day. |
 | **overdue** | `is_overdue` in `freedom_ls/deadlines/resolver.py` | An incomplete item past its due instant. Deadlines are shown and flagged, never enforced. Learner-facing copy says "Deadline" and "Missed deadline", never "Due" or "Overdue". |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
