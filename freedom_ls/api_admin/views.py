@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -34,12 +35,20 @@ def revoke_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpRespons
         raise Http404
     if request.method == "POST":
         count = _revoke(request, keys)
-        message = ngettext(
-            "Revoked %(count)d API key. Scripts using it stop at once.",
-            "Revoked %(count)d API keys. Scripts using them stop at once.",
-            count,
-        )
-        model_admin.message_user(request, message % {"count": count})
+        if count == 0:
+            # A stale confirmation page can still post keys revoked since.
+            model_admin.message_user(
+                request,
+                "No API keys revoked: they were already revoked.",
+                level=messages.WARNING,
+            )
+        else:
+            message = ngettext(
+                "Revoked %(count)d API key. Scripts using it stop at once.",
+                "Revoked %(count)d API keys. Scripts using them stop at once.",
+                count,
+            )
+            model_admin.message_user(request, message % {"count": count})
         return redirect(_back_url(keys))
     context = {
         "to_revoke": [key for key in keys if key.revoked_at is None],

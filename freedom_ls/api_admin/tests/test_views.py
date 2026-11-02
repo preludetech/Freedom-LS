@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib import messages
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
@@ -112,6 +113,57 @@ def test_post_with_only_a_revoked_key_writes_nothing(staff_client, revoked_key):
 
     # Assert
     assert _revoked_entries() == 0
+
+
+def test_get_with_only_revoked_keys_says_there_is_nothing_to_revoke(
+    staff_client, revoked_key
+):
+    # Act
+    response = staff_client.get(_revoke_url(revoked_key))
+
+    # Assert
+    content = response.content.decode()
+    assert "Every selected key is already revoked. Nothing to revoke." in content
+    assert 'id="already-revoked"' in content
+    assert 'id="to-revoke"' not in content
+    assert "stop at once" not in content
+
+
+def test_get_with_only_revoked_keys_offers_no_revoke_button(staff_client, revoked_key):
+    # Act
+    response = staff_client.get(_revoke_url(revoked_key))
+
+    # Assert
+    content = response.content.decode()
+    assert 'name="ids"' not in content
+    assert f'href="{response.context["cancel_url"]}"' in content
+
+
+def test_get_with_an_active_key_offers_the_revoke_button(
+    staff_client, active_key, revoked_key
+):
+    # Act
+    response = staff_client.get(_revoke_url(active_key, revoked_key))
+
+    # Assert
+    content = response.content.decode()
+    assert 'name="ids"' in content
+    assert 'id="to-revoke"' in content
+
+
+def test_post_with_only_a_revoked_key_warns_that_nothing_was_revoked(
+    staff_client, revoked_key
+):
+    # Act
+    response = staff_client.post(
+        reverse(REVOKE_URL), {"ids": str(revoked_key.pk)}, follow=True
+    )
+
+    # Assert
+    flashed = [(m.level, m.message) for m in response.context["messages"]]
+    assert flashed == [
+        (messages.WARNING, "No API keys revoked: they were already revoked.")
+    ]
 
 
 def test_post_without_the_csrf_token_is_forbidden(staff_client, active_key):
