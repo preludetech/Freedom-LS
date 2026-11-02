@@ -50,7 +50,20 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     page.get_by_role("link", name="Import learners").first.click()
-    page.get_by_label("File").set_input_files(str(upload))
+    file_input = page.get_by_label("File")
+    borders = file_input.evaluate(
+        """el => {
+            const text = document.createElement("input");
+            text.type = "text";
+            el.after(text);
+            const widths = [el, text].map(
+                input => getComputedStyle(input).borderTopWidth);
+            text.remove();
+            return widths;
+        }"""
+    )
+    assert borders[0] == borders[1] != "0px"
+    file_input.set_input_files(str(upload))
     page.get_by_role("button", name="Upload and preview").click()
 
     expect(page.get_by_text("Step 2 of 3")).to_be_visible()
