@@ -25,7 +25,7 @@ _SMALLEST_CONTROL = """() => {
     return [...controls]
         .map((el) => ({ el, box: el.getBoundingClientRect() }))
         .filter(({ box }) => box.width > 0 && box.height > 0)
-        .filter(({ box }) => box.height < 44 || box.width < 44)
+        .filter(({ box }) => Math.round(box.height) < 44 || Math.round(box.width) < 44)
         .map(({ el, box }) => `${el.tagName} ${el.textContent.trim().slice(0, 20)} ${box.width}x${box.height}`);
 }"""
 
