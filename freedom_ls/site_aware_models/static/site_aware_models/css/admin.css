@@ -20,3 +20,10 @@
         overflow-wrap: anywhere;
     }
 }
+
+/* A fieldset's default min-width is its content's min-content width, so a long
+   checkbox label inside it stretches the form past the viewport instead of
+   wrapping. */
+fieldset.module {
+    min-width: 0;
+}
