@@ -370,12 +370,10 @@
     .course-progress-5::-webkit-progress-value { background-color: var(--fls-course-accent-5-to); }
     .course-progress-5::-moz-progress-bar      { background-color: var(--fls-course-accent-5-to); }
 
-    /* Modal scrim — one look for every modal surface. Two hooks because the scrim
-     * is rendered two ways: a real overlay <div> (Alpine modals) vs the ::backdrop
-     * pseudo of a native <dialog>, whose own box stays bg-transparent. Carries
-     * only the scrim look; positioning / transitions stay on each element. */
-    .modal-backdrop,                 /* overlay <div>: Alpine modals  */
-    .modal-backdrop-host::backdrop { /* native <dialog>: its ::backdrop */
+    /* Modal scrim: the ::backdrop pseudo of a native <dialog>, whose own box stays
+     * bg-transparent. Carries only the scrim look; positioning / transitions stay
+     * on each element. */
+    .modal-backdrop-host::backdrop {
         @apply bg-black/50 backdrop-blur-sm;
     }
 

@@ -40,4 +40,4 @@ GOTCHA repeated from [[reference_course_access_types_command]]: `Course.viewable
 `children()` are memoized per instance — re-query a fresh `Course.objects.get(pk=...)`
 before counting viewables after adding a `ContentCollectionItem`.
 
-See [[reference_verified_learner_setup]], [[reference_educator_cmodal_trigger]] (view_cohort perm).
+See [[reference_verified_learner_setup]].

@@ -22,8 +22,8 @@ def test_creation(mock_site_context):
 Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's concrete equivalents include:
 
 - Factory import: `from freedom_ls.accounts.factories import UserFactory`.
-- HTMX tests: `learner_interface:initiate_course_access`, `learner_interface:view_course_item` (GET to view, POST with `mark_complete` to complete), `educator_interface:cohort_create`, with `TopicFactory`, `UserCourseRegistrationFactory`, `CourseFactory`, `id="progress-bar"`, and `enrolled` / `course_id` trigger payloads.
-- Auth-bypass example: `from freedom_ls.educator_interface.views import cohort_detail`, using `educator_interface:cohort_detail` and `cohort_pk`.
+- HTMX tests: `learner_interface:initiate_course_access`, `learner_interface:view_course_item` (GET to view, POST with `mark_complete` to complete), `educator_interface:interface` (with `organisation_slug` and `path_string="cohorts"`), with `TopicFactory`, `UserCourseRegistrationFactory`, `CourseFactory`, `id="progress-bar"`, and `enrolled` / `course_id` trigger payloads.
+- Auth-bypass example: `from freedom_ls.educator_interface.views import learner_import`, using `educator_interface:learner_import` and `organisation_slug`.
 
 ## Markers
 

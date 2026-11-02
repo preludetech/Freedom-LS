@@ -114,7 +114,6 @@ Administrators can set deadlines, either for a whole group or for an individual 
 
 Educators get their own focused panel, separate from both the learner view and the full administration area. It is designed for monitoring rather than configuration.
 
-![The course-progress grid: every learner in a group against every item in a course.](docs/product/screenshots/educator_cohort_progress_matrix.png)
 
 _The course-progress grid: every learner in a group against every item in a course._
 

@@ -10,7 +10,7 @@ routinely write `qa_x DemoDev` for all of them; two of the popular ones then
 exit 2 with `Error: Got unexpected extra argument (DemoDev)`.
 
 POSITIONAL `SITE_NAME` (`@click.argument("site_name")`):
-`qa_create_cohort_progress` (required), `qa_create_large_cohort` (required),
+`qa_create_large_cohort` (required),
 `qa_create_empty_learner_cohort` (required), `qa_create_deadline_overrides`
 (required), `qa_create_soft_deadline` (required), `qa_create_course_visibility`
 (default DemoDev), `qa_create_course_access_types` (default DemoDev),

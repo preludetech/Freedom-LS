@@ -18,8 +18,7 @@ mid-assertion on. Cost of one row is exactly one row.
 
 ## The admin-inline paginator family (unfold `TabularInline`)
 
-Distinct from the educator-interface paginators in
-[[reference_course_progress_pagination]]. In `freedom_ls/learner_management/admin.py`:
+In `freedom_ls/learner_management/admin.py`:
 
 | inline | model | `per_page` | `ordering` |
 |---|---|---|---|

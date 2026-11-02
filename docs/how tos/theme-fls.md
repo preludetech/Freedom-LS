@@ -251,7 +251,7 @@ An optional `--fls-course-accent-pattern` token adds a texture layer above every
 
 The Tier-2 surface is exactly the set of classes in `tailwind.components.css` at the FLS repo root. Their defaults live there — not in any theme. That set is:
 
-`.btn` and its variants, `.chip` and its variants, `.alert` and its variants, `.surface`, `.signup-panel`, `.header`, `.course-card`, `.course-accent-1`–`5`, `.course-progress-1`–`5`, and `.modal-backdrop` / `.modal-backdrop-host`.
+`.btn` and its variants, `.chip` and its variants, `.alert` and its variants, `.surface`, `.signup-panel`, `.header`, `.course-card`, `.course-accent-1`–`5`, `.course-progress-1`–`5`, and `.modal-backdrop-host`.
 
 Nothing else is re-openable this way. A component whose styling lives in its own template — every content widget, and the interface shell's side panel — is restyled at Tier 3 instead. A `theme.css` rule aiming at one of those loses: the template's own `<style>` block sits later in document order than the compiled bundle, so it wins within the same layer.
 

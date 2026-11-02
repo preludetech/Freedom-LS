@@ -1,12 +1,10 @@
 # Memory Index
 
 - [reference_verified_learner_setup.md](reference_verified_learner_setup.md) — Three records needed for a login-ready QA learner (User, verified EmailAddress, UserCourseRegistration); "right password but lands on Verify Your Email Address" = missing/unverified EmailAddress; use update_or_create
-- [reference_course_progress_pagination.md](reference_course_progress_pagination.md) — Educator course-progress panel: rows = CohortMembership@20/page, columns = Topic+Form (CourseParts excluded)@15/page
 - [reference_completing_a_course.md](reference_completing_a_course.md) — How to mark a course Completed for a user; the save-hook and missing-site gotchas to avoid
 - [reference_course_player_learner_command.md](reference_course_player_learner_command.md) — qa_create_course_player_learner command: login-ready learner for the 3 course-player redirect/resume cases
 - [reference_sequential_item_unlock.md](reference_sequential_item_unlock.md) — Player items unlock sequentially; complete items 1..N-1 to make item N reachable (image/lightbox + form/quiz QA)
 - [reference_demo_content_loader.md](reference_demo_content_loader.md) — Use `content_save <dir> <site>` to (re)load demo course content after markdown edits; idempotent via frontmatter UUID; single course dir fails validation (root course_categories.yaml) - load whole `demo_content`
-- [reference_educator_cmodal_trigger.md](reference_educator_cmodal_trigger.md) — Give a QA educator a reachable c-modal trigger (cohort Delete confirmation / Create Cohort modal-form); perms + qa_create_educator_modal_target command
 - [reference_form_question_types_command.md](reference_form_question_types_command.md) — qa_create_form_question_types command: QUIZ form with all 4 question types on a dedicated course for demodev@email.com
 - [reference_rich_dashboard_learner_command.md](reference_rich_dashboard_learner_command.md) — qa_create_rich_dashboard_learner: demodev_s1 with all 3 dashboard sections + real scored/passing quiz attempt + completed course
 - [reference_password_reset_learner_command.md](reference_password_reset_learner_command.md) — qa_create_password_reset_learner command; demodev_s1@email.com is a SHARED fixture (also enrolled by course-player command)
@@ -25,9 +23,7 @@
 - [reference_legacy_checkbox_score_command.md](reference_legacy_checkbox_score_command.md) — qa_create_legacy_checkbox_score: how to craft a pre-fix checkbox attempt whose stored score disagrees with exact-match rescoring (complete() then queryset.update(scores=...)), in a report-ready cohort
 - [reference_checkbox_scoring_quiz_and_reset.md](reference_checkbox_scoring_quiz_and_reset.md) — qa_create_checkbox_scoring_quiz (clean option-backed quiz, OPTIONAL checkbox q so "tick nothing" is submittable) + qa_reset_learner_progress; retake = GET start_form; unanswered != incorrect
 - [reference_qa_command_site_arg_styles.md](reference_qa_command_site_arg_styles.md) — Which qa_ commands take SITE_NAME positionally vs --site-name, plus the required-option / cohort-membership prerequisites that make them exit 2
-- [reference_educator_cohort_visibility_grants.md](reference_educator_cohort_visibility_grants.md) — cohorts_visible_to needs a guardian view_cohort grant; large/empty cohort commands grant none, so assign_perm after running them
 - [reference_demodev_s1_fixture_collisions.md](reference_demodev_s1_fixture_collisions.md) — demodev_s1@email.com is shared by 4 commands that overwrite each other; run order and how to repair
-- [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
 - [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: form_engine + learner_progress tree on a 2nd Site (default Demo) for admin site-scoping QA; explicit site= on every factory call, Learner site comes from its Organisation, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
 - [reference_form_engine_branch_qa_baseline.md](reference_form_engine_branch_qa_baseline.md) — The whole-DB "documented starting state" recipe for the form_engine-extraction QA pass; reset-then-recalculate ordering; CourseProgress.course (not .collection)
 - [reference_proving_allauth_login_works.md](reference_proving_allauth_login_works.md) — Proving a QA user can log in: force_login/check_password are false positives; rolled-back real login POST + verified=False negative control (locmem email backend)
@@ -39,7 +35,6 @@
 - [reference_background_tasks_dev.md](reference_background_tasks_dev.md) — Dev needs NO db_worker: TASKS is pinned to ImmediateBackend, so report PDFs render inline
 - [reference_legacy_report_prefix_staging.md](reference_legacy_report_prefix_staging.md) — Staging a pre-rename `reports/`-prefix GeneratedReport row; in dev ALL storage aliases share MEDIA_ROOT, so only the key prefix separates them
 - [reference_storage_qa_dataset.md](reference_storage_qa_dataset.md) — The whole prod_bucket_setup storage-QA dataset in one recipe; --num-flagged undercounts on a quiz-less course; generate_cohort_report() repairs a row in place
-- [reference_paginated_progress_matrix_command.md](reference_paginated_progress_matrix_command.md) — qa_create_paginated_progress_matrix; org-owned "QA Pagination Cohort" (32 learners / 26 items) WITH a progress spread; already-complete TopicProgress rows never recalculate progress_percentage; educator URLs are organisation-scoped
 - [reference_dual_grant_course_progress_fixture.md](reference_dual_grant_course_progress_fixture.md) — Two grants (cohort + individual) on one course for grant fall-through QA; SiteAwareFactory needs explicit site= outside a request; cohort registration fans out to the WHOLE cohort
 - [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
@@ -56,7 +51,6 @@
 - [reference_form_attempt_history_command.md](reference_form_attempt_history_command.md) — qa_create_form_attempt_history: N genuinely scored completed sittings on consecutive days for the start page's Previous-attempts list + its 5-row slice; the latest attempt alone decides the placement, so ending on a FAIL leaves the progression-block fixture intact
 - [reference_dashboard_paging_fixture_teardown.md](reference_dashboard_paging_fixture_teardown.md) — Tearing down the whole qa_create_dashboard_paging_fixtures seed; delete order forced by 3 PROTECTs (Course.delete() takes its ContentCollectionItems but NOT the child Topics); CourseCategory has `title` not `name`
 - [reference_dashboard_catchall_courses_command.md](reference_dashboard_catchall_courses_command.md) — qa_create_catchall_courses: 2 uncategorised courses so the dashboard catch-all "Available courses" section pages; the catch-all also holds hidden-category and coming_soon courses, and its size is per-persona
-- [reference_course_cohort_registration_pagination.md](reference_course_cohort_registration_pagination.md) — Educator course page's two registration tables: the Cohort Registrations table paginates COHORTS not learners, DataTable.page_size is 5, qa_create_course_cohort_registrations, and which DemoDev cohort is safe to register given the CourseProgress fan-out
 - [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
 - [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
 - [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
@@ -90,19 +84,6 @@ See [[reference_rearming_the_finish_page]].
 **Sixth shape, same branch: "just move this category's `order`".** One-field tweaks on an existing QA fixture (`qa-soon-only` order 0 -> 60) are their own ask now. Recipe: locate + print, `assert` the prior value, `queryset.update(order=...)`, re-read and print, report old AND new. The gotcha is that the seeding command's `update_or_create` `defaults` hold the ORIGINAL order, so a re-run of `qa_create_coming_soon_sections` reverts the tweak — warn about it every time. See [[reference_coming_soon_section_fixtures]].
 
 **The learner-dashboard section/pagination QA pass keeps asking for "section X needs enough courses to page"** (Sep 2026, better-learner-dashboard-course-display): first the "Start here" category section (`qa_create_dashboard_paging_fixtures` Seed A), then its teardown, then the catch-all "Available courses" section (`qa_create_catchall_courses`). The recipe is always the same one-topic filler course; only the categorisation changes (`dashboard_category`+m2m set = a category section, both empty = the catch-all). SECTION_PAGE_SIZE is 3. Remember the section is computed per-persona — registered courses drop out of the discovery sections — so verify with the persona the tester will actually log in as. See [[reference_dashboard_catchall_courses_command]].
-
-The same pass has now spread to the **educator** course page's paginators, and the ask arrived
-phrased WRONGLY: "add enough learners to the cohort that the Cohort Registrations table pages".
-That table's rows are `CohortCourseRegistration` — one row per *cohort* — so learner count is
-irrelevant; it needs >5 registered cohorts. Whenever a QA plan says "add more X so table Y pages",
-read `Y.get_queryset()` and confirm what a ROW is before seeding anything. `DataTable.page_size`
-is **5** for the whole panel_framework family, which is not the course-progress panel's 15/20.
-`qa_create_course_cohort_registrations` wraps it. Also worth flagging back: the sibling "Direct
-Registrations" table on `functionality-demo-show-end-with-topic` has only 2 rows, so *its*
-paginator still does not render — a "check both paginators" brief is only half satisfied by
-seeding the cohort side. The tester duly asked for that side next, so seed BOTH from the start:
-`qa_create_course_cohort_registrations` + `qa_create_direct_course_registrations`. See
-[[reference_course_cohort_registration_pagination]].
 
 Then, same pass, a **fourth** shape: "the section pages, but I can only reach the FALLBACK branch
 of the focus handler". Two pages means every paging action lands on a boundary, so the pressed
@@ -164,13 +145,12 @@ Always **inspect the existing cohort first** — twice now the answer was "alrea
 nothing".
 
 The **terminology-rename (learner_*) browser QA run** was set up once (Aug 2026). Full recipe in
-[[reference_demodev_s1_fixture_collisions]]; the run is: `qa_create_cohort_progress DemoDev`,
-`qa_create_large_cohort DemoDev --course-slug functionality-demo-course-parts`,
+[[reference_demodev_s1_fixture_collisions]]; the run is: `qa_create_large_cohort DemoDev --course-slug functionality-demo-course-parts`,
 `qa_create_empty_learner_cohort DemoDev --course-slug functionality-demo-course-parts`,
 `qa_create_rich_dashboard_learner DemoDev`, `qa_create_course_player_learner DemoDev`,
 `qa_create_organisation_scenarios --site-name DemoDev`,
 `qa_create_password_reset_learner --site-name DemoDev`, `qa_create_course_access_types DemoDev`,
-add demodev_s1 to the progress cohort, `qa_create_deadline_overrides ...`,
+`qa_create_deadline_overrides ...`,
 `qa_create_course_visibility DemoDev`, then assign_perm view_cohort for the large/empty cohorts.
 NO qa_ command output contains the word "student" as of this branch.
 
@@ -185,12 +165,6 @@ repair the deltas: a report row left staged on the legacy `reports/` prefix, and
 flag count short because `--num-flagged`'s `failing` flavour needs a pass-marked quiz.
 If it is asked for a third time, wrap the recipe in one command.
 
-**Course-progress pagination fixtures have now been asked for three times** (large
-cohort, then `qa_create_column_pagination_scenario`, then the org-scoped
-`qa_create_paginated_progress_matrix`). Check which shape is wanted before seeding:
-default-org + 0% (column scenario) vs named organisation + real percentage spread
-(progress matrix). See [[reference_paginated_progress_matrix_command]].
-
 **"Persona X's password works but login bounces to /accounts/confirm-email/" has now been
 reported once** (Eve, better_course_progress_tracking). It is never a password bug: it is a
 missing or unverified allauth `EmailAddress`. Fix the seeding command's user helper (so the
@@ -202,7 +176,7 @@ symptom, which is what confirms the diagnosis. See [[reference_verified_learner_
 
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
-always pass an explicit `--course-slug`, or use `qa_create_column_pagination_scenario`.
+always pass an explicit `--course-slug`.
 
 **Site-scoping / multi-tenant demos need data on a SECOND site. Asked TWICE now** (Bloom form
 tree, then a Demo/site-2 Form + FormProgress + CourseFormAttempt tree for the form_engine app
@@ -218,8 +192,8 @@ The **"put the dev DB into the documented QA starting state" whole-run request**
 list of ~11 commands plus a cleanup pass; see
 [[reference_form_engine_branch_qa_baseline]]. Two things bite every time:
 `qa_reset_learner_progress` zeroes `progress_percentage`, so `recalculate_progress_percentages`
-must run LAST; and QA plans list every command bare, but `qa_create_cohort_progress` REQUIRES a
-positional `DemoDev` ([[reference_qa_command_site_arg_styles]]). If this is asked a third time,
+must run LAST; and QA plans list some commands bare that REQUIRE a positional `DemoDev`
+([[reference_qa_command_site_arg_styles]]). If this is asked a third time,
 wrap the list in a single `qa_setup_qa_baseline` command.
 
 The **"prove a command fires no recalculation" assertion** was asked once (B4, form_engine

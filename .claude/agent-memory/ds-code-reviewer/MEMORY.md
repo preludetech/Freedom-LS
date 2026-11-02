@@ -5,7 +5,7 @@
 - Role colour tokens (the full list): primary, secondary, accent, success, warning, error, info — each with an `on-*` partner; the `-light` status tints and their `on-*-light` partners; success-soft; surface, surface-2, on-surface, border, muted, focus-ring. Utilities follow the token name (`text-on-surface`, `bg-surface-2`, `border-border`).
 - There is NO `foreground`, no `danger`, and no `*-bold` series. `text-foreground`, `text-danger` and `text-primary-bold` resolve to nothing. Body text is `text-on-surface`; the destructive role is `error`.
 - HTMX integration with global CSRF headers via `<body hx-headers=...>`
-- `tailwind.components.css` holds the `@layer base` element rules, the component classes a theme reopens (btn, chip, alert, surface, signup-panel, header, course-card, course-accent-*, course-progress-*, modal-backdrop*), and the `.task-list*` classes the markdown renderer emits. A component's own styling lives in its template instead — utilities on the markup, or a `<style>` block wrapped in `@layer components`.
+- `tailwind.components.css` holds the `@layer base` element rules, the component classes a theme reopens (btn, chip, alert, surface, signup-panel, header, course-card, course-accent-*, course-progress-*, modal-backdrop-host), and the `.task-list*` classes the markdown renderer emits. A component's own styling lives in its template instead — utilities on the markup, or a `<style>` block wrapped in `@layer components`.
 - Modern Python 3.13+ with type hints required on all functions (no Any type)
 
 ## Key Files
@@ -80,7 +80,6 @@
 - `course.items.create(child=...)` pattern still used in some test files (GenericRelation manager)
 
 ## Topic Files
-- [project_panel_framework.md](project_panel_framework.md) — Panel framework architecture: views.py dispatch, OOB patterns, Alpine components
 - [project_admonition_widgets.md](project_admonition_widgets.md) — Admonition/flashcard/accordion widgets: ADMONITION_TYPES registry, icon resolution, callout migration
 - [project_markdown_widget_pipeline.md](project_markdown_widget_pipeline.md) — render_markdown order, why cotton output is trusted, the `{% markdown slot %}` re-sanitise gotcha
 - [project_fls_content_plugin.md](project_fls_content_plugin.md) — Bundled Django-free validator; ruff/mypy/`uv --no-project` gotchas for `claude_plugins/fls-content/`

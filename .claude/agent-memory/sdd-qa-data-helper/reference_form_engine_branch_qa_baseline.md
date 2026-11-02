@@ -26,7 +26,6 @@ qa_create_form_question_types            # positional SITE_NAME, default DemoDev
 qa_create_quiz_progression_block         # --site-name
 qa_create_free_text_survey               # --site-name
 qa_create_learner_deadlines              # positional, default DemoDev
-qa_create_cohort_progress DemoDev        # positional REQUIRED - bare run exits 2
 qa_reset_learner_progress --learner demodev_quizqa@email.com
 qa_reset_learner_progress --learner demodev@email.com \
     --course-slug functionality-demo-show-end-with-quiz --course-slug qa-question-types-course
