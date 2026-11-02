@@ -13,6 +13,8 @@ def scope_choices() -> list[tuple[str, str]]:
 class ApiKeyAddForm(forms.ModelForm):
     scopes = forms.MultipleChoiceField(
         choices=scope_choices,
+        # The model's clean() reports an empty selection, so the field adds no second error.
+        required=False,
         widget=UnfoldAdminCheckboxSelectMultipleWidget,
         help_text="Each API scope names the data a key with it can read.",
     )

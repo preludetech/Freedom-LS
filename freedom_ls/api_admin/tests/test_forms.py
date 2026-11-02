@@ -53,3 +53,13 @@ def test_a_past_expiry_is_invalid():
     # Act / Assert
     assert not form.is_valid()
     assert form.errors["expires_at"] == ["The expiry must be in the future."]
+
+
+def test_an_empty_scope_selection_gives_one_error_under_scopes():
+    """Submitting no scope used to show a required-field error and the model's error."""
+    # Arrange
+    form = ApiKeyAddForm(data={"name": "Reporting", "scopes": []})
+
+    # Act / Assert
+    assert not form.is_valid()
+    assert form.errors["scopes"] == ["Choose at least one API scope."]
