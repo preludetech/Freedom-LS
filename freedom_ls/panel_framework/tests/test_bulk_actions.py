@@ -11,6 +11,7 @@ from typing import cast
 import lxml.html
 import pytest
 
+from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import get_messages
@@ -195,6 +196,41 @@ def _post_all_matching(action: BulkAction) -> HttpResponse:
     response = _handle_action(request, _ResolvedAction(action, panel.ctx), panel)
     assert isinstance(response, HttpResponse)
     return response
+
+
+class _PickerForm(forms.Form):
+    target = forms.CharField()
+
+
+class _PickerBulkAction(StubBulkAction):
+    """A bulk action whose title names the picked target."""
+
+    label = "Move to target"
+    action_name = "stub_picker"
+    form_class = _PickerForm
+
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Move to {cleaned_data['target']}?"
+
+
+def test_empty_selection_with_a_form_action_renders_the_error_instead_of_crashing(
+    mock_site_context: Site,
+) -> None:
+    """A form action's title needs the picked value, which an empty selection
+    never reaches. The bulk POST used to raise a KeyError (HTTP 500)."""
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_picker", {"mode": "keys"}, HTTP_HX_REQUEST="true"
+    )
+    request.user = make_staff_user()
+    panel = _stub_panel(request)
+
+    response = _handle_action(
+        request, _ResolvedAction(_PickerBulkAction(), panel.ctx), panel
+    )
+
+    assert isinstance(response, HttpResponse)
+    assert response.status_code == 422
+    assert "Nothing selected" in response.content.decode()
 
 
 def test_all_matching_over_max_rows_is_422_when_it_would_run_inline(

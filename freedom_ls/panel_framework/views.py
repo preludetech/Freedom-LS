@@ -817,9 +817,21 @@ def _handle_bulk_action(
     def error_response(
         selection: Selection, count: int, error: str
     ) -> HttpResponse | _BulkConfirmation:
+        # A form action words its title from the picked value, which an error
+        # raised before the form is read never has.
+        title = f"{action.label}?" if action.form_class is not None else ""
         return _confirmation_response(
             request,
-            _BulkConfirmation(count, noun, action, action_url, selection, error, 422),
+            _BulkConfirmation(
+                count,
+                noun,
+                action,
+                action_url,
+                selection,
+                error,
+                422,
+                title=title,
+            ),
         )
 
     selection = parse_selection(request)
