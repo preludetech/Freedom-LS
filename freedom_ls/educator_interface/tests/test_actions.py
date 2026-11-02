@@ -7376,9 +7376,6 @@ def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
     assert str(count) in title
 
 
-# single-row confirmation dialogs
-
-
 def _single_row_dialog_url(name: str, organisation: Organisation) -> str:
     """The URL of the confirmation dialog `name`, over records made for it."""
     learner = cast(Learner, LearnerFactory(organisation=organisation))
