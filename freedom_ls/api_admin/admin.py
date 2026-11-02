@@ -136,10 +136,34 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         fields: list[str] = super().get_fields(request, obj)
         return fields
 
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, object] | None = None,
+    ) -> HttpResponse:
+        # A key that is no longer active has nothing editable, so no save
+        # button is offered.
+        key = self.get_queryset(request).filter(pk=object_id).first()
+        if key is not None and not key.is_active(timezone.now()):
+            extra_context = {
+                **(extra_context or {}),
+                "show_save": False,
+                "show_save_and_continue": False,
+                "show_save_and_add_another": False,
+            }
+        response: HttpResponse = super().change_view(
+            request, object_id, form_url, extra_context
+        )
+        return response
+
     def save_model(
         self, request: HttpRequest, obj: ApiKey, form: forms.ModelForm, change: bool
     ) -> None:
         if change:
+            if not obj.is_active(timezone.now()):
+                return
             super().save_model(request, obj, form, change)
             return
         site = host_site(request)

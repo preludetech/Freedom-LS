@@ -277,6 +277,38 @@ def test_a_revoked_or_expired_key_has_no_editable_field(
     assert list(response.context["adminform"].form.fields) == []
 
 
+@pytest.mark.parametrize(
+    "save_button", ["show_save", "show_save_and_continue", "show_save_and_add_another"]
+)
+def test_a_revoked_keys_change_page_offers_no_save_button(
+    staff_client, mock_site_context, change_url, save_button
+):
+    """A revoked key's change page used to render Save buttons for a form with no fields."""
+    # Arrange
+    key = ApiKeyFactory(revoked_at=timezone.now())
+
+    # Act
+    response = staff_client.get(change_url(key))
+
+    # Assert
+    assert response.context[save_button] is False
+
+
+def test_posting_to_a_revoked_keys_change_page_saves_nothing(
+    staff_client, mock_site_context, change_url
+):
+    """A POST to a revoked key used to re-save the row and bump updated_at."""
+    # Arrange
+    key = ApiKeyFactory(revoked_at=timezone.now())
+    before = ApiKey.objects.get(pk=key.pk).updated_at
+
+    # Act
+    staff_client.post(change_url(key), {"name": "After"})
+
+    # Assert
+    assert ApiKey.objects.get(pk=key.pk).updated_at == before
+
+
 def test_the_key_hash_appears_on_no_page(staff_client, mock_site_context, change_url):
     # Arrange
     key = ApiKeyFactory()
