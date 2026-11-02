@@ -179,6 +179,51 @@ def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_empti
 
 
 @pytest.mark.django_db
+def test_learners_status_chip_has_no_remove_control_at_its_default(educator_client):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.xpath("//*[@id='learners-table']//summary") != []
+    assert document.xpath("//a[@aria-label='Remove Status filter']") == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("link_text", ["Clear all", "Reset"])
+def test_clearing_the_status_filter_returns_to_active_and_pending(
+    educator_client, link_text
+):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+    _make_pending_learner(
+        organisation=organisation, first_name="Grace", last_name="Hopper"
+    )
+    inactive_learner = _make_learner(
+        organisation=organisation, first_name="Alan", last_name="Turing"
+    )
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
+    client = educator_client(organisation)
+    filtered = client.get(
+        _learners_url(organisation.slug), {"learners-status": "inactive"}
+    )
+    filtered_document = lxml.html.fromstring(filtered.content.decode())
+    (href,) = {
+        link.get("href")
+        for link in filtered_document.xpath(f"//a[normalize-space()='{link_text}']")
+    }
+
+    response = client.get(href)
+
+    content = response.content.decode()
+    assert "Ada" in content
+    assert "Grace" in content
+    assert "Alan" not in content
+
+
+@pytest.mark.django_db
 def test_an_inactive_learners_detail_page_answers_200(educator_client):
     organisation = OrganisationFactory()
     inactive_learner = _make_learner(organisation=organisation)
