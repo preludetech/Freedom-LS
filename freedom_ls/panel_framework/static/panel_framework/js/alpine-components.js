@@ -1017,37 +1017,6 @@ document.addEventListener("htmx:afterSettle", (event) => {
     if (anchor) anchor.focus();
 });
 
-// A panel refreshes itself in place after a confirmed action, and the dialog
-// that closed just before had returned focus to its trigger, which the swap
-// then removes (a deleted row, a card that re-renders its buttons). The
-// browser drops focus to <body>. When the focused element sat inside the
-// swapped region and is gone afterwards, focus moves to the new region's table
-// anchor, else its first heading, else the page content, so it is never lost.
-let focusWasInSwapTarget = false;
-document.addEventListener("htmx:beforeSwap", (event) => {
-    const active = document.activeElement;
-    const target = event.detail.target;
-    focusWasInSwapTarget = Boolean(
-        target && active && active !== document.body && target.contains(active),
-    );
-});
-document.addEventListener("htmx:afterSettle", (event) => {
-    const wasInside = focusWasInSwapTarget;
-    focusWasInSwapTarget = false;
-    const target = event.detail.target;
-    if (!wasInside || !target || !target.id) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active.isConnected) return;
-    const region = document.getElementById(target.id);
-    if (!region) return;
-    let fallback = region.querySelector("[data-table-anchor]");
-    if (!fallback) {
-        fallback = region.querySelector("h1, h2, h3, h4, h5, h6");
-        if (fallback) fallback.setAttribute("tabindex", "-1");
-    }
-    (fallback || document.getElementById("main-content")).focus();
-});
-
 // A focused search input survives its table region's swap (hx-preserve), but
 // once htmx has moved it into the new region Chromium still reports it as
 // focused while dropping its caret, so further typing goes nowhere. Refocus
