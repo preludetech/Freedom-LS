@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -22,6 +22,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (user) Update the `localTime` row of the Alpine inventory table in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`: its template tag now lives in `base`'s `time_tags` library (`deadline_tags` re-registers it), per the spec's Decision 6
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
