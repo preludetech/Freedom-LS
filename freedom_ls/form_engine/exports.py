@@ -113,20 +113,27 @@ def _qualified(
     ]
 
 
-def on_path_question_ids(
+def off_path_question_ids(
     form_progresses: Collection[FormProgress],
 ) -> dict[UUID, frozenset[UUID]]:
-    """Each sitting's on-path question ids, loading every form's tree once.
+    """Each sitting's own-form questions its path never reached.
 
-    Expects each sitting's answers, with their selected options, to be prefetched.
+    Loads every form's tree once. A question of another form is in no sitting's
+    set. Expects each sitting's answers, with their selected options, to be
+    prefetched.
     """
     forms = {
         form_progress.form_id: form_progress.form for form_progress in form_progresses
     }
     for form in forms.values():
         load_form_tree(form)
+    on_page_by_form = {
+        form_id: frozenset(question.id for question in form_questions(form))
+        for form_id, form in forms.items()
+    }
     return {
-        form_progress.pk: sitting_path(
+        form_progress.pk: on_page_by_form[form_progress.form_id]
+        - sitting_path(
             form_progress,
             {answer.question_id: answer for answer in form_progress.answers.all()},
         ).question_ids

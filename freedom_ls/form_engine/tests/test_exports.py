@@ -10,7 +10,7 @@ from freedom_ls.form_engine.exports import (
     answer_cell,
     answer_columns,
     answer_value,
-    on_path_question_ids,
+    off_path_question_ids,
 )
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -70,7 +70,7 @@ def test_answer_cell_of_a_question_not_asked_says_so(mock_site_context):
     assert answer_cell(None, is_asked=False) == "Not asked"
 
 
-def test_on_path_question_ids_are_per_sitting(mock_site_context):
+def x(mock_site_context):
     form = FormFactory(strategy=FormStrategy.UNSCORED)
     page = FormPageFactory(form=form, order=0)
     choice = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
@@ -93,10 +93,10 @@ def test_on_path_question_ids_are_per_sitting(mock_site_context):
         .prefetch_related("answers__selected_options", "answers__question")
     )
 
-    on_path = on_path_question_ids(loaded)
+    off_path = off_path_question_ids(loaded)
 
-    assert on_path[sittings["yes"].pk] == {choice.id, gated.id}
-    assert on_path[sittings["no"].pk] == {choice.id}
+    assert off_path[sittings["yes"].pk] == frozenset()
+    assert off_path[sittings["no"].pk] == {gated.id}
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(

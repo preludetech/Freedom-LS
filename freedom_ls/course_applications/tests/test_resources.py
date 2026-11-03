@@ -351,7 +351,7 @@ def test_export_query_count_does_not_grow_with_the_number_of_applications(
         CourseApplicationResource().export(CourseApplication.objects.all())
 
 
-def test_applications_to_two_courses_say_not_asked_in_the_other_forms_columns(
+def test_applications_to_two_courses_leave_the_other_forms_columns_empty(
     staff_client,
 ):
     first_course, first_form = gated_course_with_form()
@@ -378,8 +378,8 @@ def test_applications_to_two_courses_say_not_asked_in_the_other_forms_columns(
     assert "Favourite colour" in header
     assert "Your name" in header
     assert by_id[str(first.pk)]["Your name"] == "Ada"
-    assert by_id[str(first.pk)]["Favourite colour"] == "Not asked"
-    assert by_id[str(second.pk)]["Your name"] == "Not asked"
+    assert by_id[str(first.pk)]["Favourite colour"] == ""
+    assert by_id[str(second.pk)]["Your name"] == ""
     assert by_id[str(second.pk)]["Favourite colour"] == "Green"
 
 
