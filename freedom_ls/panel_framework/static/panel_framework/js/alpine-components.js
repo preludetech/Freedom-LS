@@ -1027,7 +1027,8 @@ document.addEventListener("htmx:afterSettle", (event) => {
 // overwritten by whichever swap ran next. The check runs in afterSwap, in the
 // same task as the swap, before any other response can move focus again. The
 // new region's table anchor, else its first heading, else the page content
-// takes focus, so it is never lost.
+// takes focus, so it is never lost. A swap of #main-content itself is a page
+// navigation, and focus goes to #main-content as on any other navigation.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const { target, requestConfig } = event.detail;
     const active = document.activeElement;
@@ -1043,6 +1044,10 @@ document.addEventListener("htmx:afterSwap", (event) => {
     if (active && active !== document.body && active.isConnected) return;
     const region = document.getElementById(target.id);
     if (!region) return;
+    if (region.id === "main-content") {
+        region.focus();
+        return;
+    }
     let fallback = region.querySelector("[data-table-anchor]");
     if (!fallback) {
         fallback = region.querySelector("h1, h2, h3, h4, h5, h6");

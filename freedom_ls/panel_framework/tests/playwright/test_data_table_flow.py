@@ -199,7 +199,10 @@ def test_data_table_interaction(
     page.get_by_role("button", name="Mark processed").click()
     expect(modal).to_be_visible()
     modal.get_by_role("button", name="Mark processed").click()
-    expect(modal.get_by_text("2 stub models changed.")).to_be_visible()
+    expect(modal.locator("#bulk-result-headline")).to_have_text(
+        "2 stub models changed."
+    )
+    expect(modal.locator("#bulk-result-headline")).to_be_visible()
     modal.get_by_role("button", name="Close", exact=True).first.click()
     expect(modal).to_be_hidden()
     active_by_name = dict(StubModel.objects.values_list("name", "is_active"))
@@ -465,7 +468,10 @@ def test_select_all_matching_spans_every_page(
         modal.get_by_text(f"This will affect {matching - 1} stub models.")
     ).to_be_visible()
     modal.get_by_role("button", name="Mark processed").click()
-    expect(modal.get_by_text(f"{matching - 1} stub models changed.")).to_be_visible()
+    expect(modal.locator("#bulk-result-headline")).to_have_text(
+        f"{matching - 1} stub models changed."
+    )
+    expect(modal.locator("#bulk-result-headline")).to_be_visible()
     assert StubModel.objects.filter(is_active=False).count() == matching - 1
     assert StubModel.objects.get(name="pick-00").is_active
     assert not StubModel.objects.filter(
