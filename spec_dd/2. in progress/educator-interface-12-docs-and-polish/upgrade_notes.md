@@ -84,6 +84,12 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
 
   Both are labelled "Deactivate a course registration". Update any import, subclass, panel `get_bulk_actions()` list or hard-coded bulk URL that
   uses the old names.
+
+  A stored `BulkActionRun` names its action class by dotted path, so the data migration
+  `freedom_ls_educator_interface.0001_rename_unregister_bulk_runs` rewrites runs recorded under the
+  old names. Run `migrate` before the background workers restart on the new code: a worker that
+  picks up a queued unregister run before the migration cannot load its action and marks the run
+  failed with "This action is no longer available."
 - **`inactive_cohort_response(request, cohort, blocked_phrase)`** in
   `freedom_ls/educator_interface/actions.py` takes a required third argument: what the refused
   action would have done, completing "Reactivate the cohort … to" (for example
