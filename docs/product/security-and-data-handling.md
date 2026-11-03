@@ -168,7 +168,7 @@ This section applies only to a deployment that has set `EMAIL_BACKEND` to the qu
 
 FLS can report application errors to Sentry once an operator supplies credentials; until then it does nothing. Because FLS holds learner personal data, an error report can incidentally include it — the email of the learner who triggered the error, or the contents of the offending request.
 
-This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it, and that includes the value of the header that carries an API key. Automated redaction before events leave the application is **not yet built**, so a deployment that opts in should treat Sentry as a place that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for configuration.
+This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it. The one value redacted whatever the setting is the header that carries an API key: it is replaced before any event leaves the application, so a live key never reaches Sentry. Nothing else is redacted, so a deployment that opts in should treat Sentry as a place that learner data now lives, with no scrubbing safety net beyond the key. See [deployment](./deployment.md) for configuration.
 
 ### Analytics and Advertising
 

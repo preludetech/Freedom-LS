@@ -211,6 +211,15 @@ def test_the_detail_action_redirects_to_the_revoke_url_with_its_id(
     )
 
 
+def test_a_malformed_id_on_the_change_page_is_not_found(staff_client):
+    response = staff_client.get(
+        reverse("admin:freedom_ls_api_apikey_change", args=["not-a-uuid"])
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("admin:index")
+
+
 def test_a_live_keys_change_form_accepts_a_new_name(
     staff_client, mock_site_context, change_url
 ):

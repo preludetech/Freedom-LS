@@ -7,6 +7,7 @@ from unfold.decorators import action as unfold_action
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
@@ -84,9 +85,9 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         return list(self.readonly_fields)
 
     def get_actions_detail(
-        self, request: HttpRequest, object_id: int
+        self, request: HttpRequest, object_id: str
     ) -> list[UnfoldAction]:
-        key = self.get_queryset(request).filter(pk=object_id).first()
+        key = self.get_object(request, unquote(object_id))
         if key is None or not key.is_active(timezone.now()):
             return []
         actions: list[UnfoldAction] = super().get_actions_detail(request, object_id)
@@ -102,7 +103,7 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         ]
         return custom + list(super().get_urls())
 
-    @admin.action(description="Revoke selected keys")
+    @admin.action(description="Revoke selected keys", permissions=["change"])
     def revoke_selected(
         self, request: HttpRequest, queryset: QuerySet[ApiKey]
     ) -> HttpResponseRedirect:
@@ -144,8 +145,9 @@ class ApiKeyAdmin(SiteAwareModelAdmin):
         extra_context: dict[str, object] | None = None,
     ) -> HttpResponse:
         # A key that is no longer active has nothing editable, so no save
-        # button is offered.
-        key = self.get_queryset(request).filter(pk=object_id).first()
+        # button is offered. get_object, not a filter on the raw id: it
+        # turns a malformed id into None rather than a validation error.
+        key = self.get_object(request, unquote(object_id))
         if key is not None and not key.is_active(timezone.now()):
             extra_context = {
                 **(extra_context or {}),

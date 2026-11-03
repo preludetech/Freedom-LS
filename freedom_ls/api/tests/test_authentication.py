@@ -207,6 +207,19 @@ def test_a_second_use_inside_the_window_leaves_last_used_at(mock_site_context):
     assert _stored(api_key).last_used_at == T0
 
 
+def test_a_second_use_inside_the_window_writes_nothing(
+    mock_site_context, django_assert_num_queries
+):
+    with time_machine.travel(T0, tick=False):
+        api_key = ApiKeyFactory()
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+    with (
+        time_machine.travel(T0 + timedelta(minutes=4), tick=False),
+        django_assert_num_queries(1),  # the key row, and no update
+    ):
+        _authenticate(_request(f"Bearer {api_key.issued_key}"))
+
+
 def test_a_use_after_the_window_moves_last_used_at(mock_site_context):
     later = T0 + timedelta(minutes=6)
     with time_machine.travel(T0, tick=False):

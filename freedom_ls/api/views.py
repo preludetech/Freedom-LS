@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from .authentication import ApiKeyAuthentication
 from .permissions import HasApiKey
+from .throttling import ApiKeyRateThrottle
 from .viewsets import ApiResponseMixin
 
 
@@ -17,6 +18,7 @@ class ApiSchemaView(ApiResponseMixin, SpectacularAPIView):
     schema = None
     authentication_classes = [ApiKeyAuthentication]
     permission_classes = [HasApiKey]
+    throttle_classes = [ApiKeyRateThrottle]
     renderer_classes = [OpenApiJsonRenderer]
     custom_settings = {"TITLE": "Freedom Learning System API", "VERSION": "v1"}
 

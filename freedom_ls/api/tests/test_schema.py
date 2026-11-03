@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from django.core.management import call_command
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -56,6 +57,16 @@ def test_schema_document_is_private_and_not_stored(auth):
     response = APIClient().get(reverse("api:schema"), headers=auth)
 
     assert _cache_directives(response) >= {"private", "no-store"}
+
+
+@override_settings(API_THROTTLE_RATE="1/min")
+def test_schema_past_the_rate_is_429_with_retry_after(auth):
+    APIClient().get(reverse("api:schema"), headers=auth)
+
+    response = APIClient().get(reverse("api:schema"), headers=auth)
+
+    assert response.status_code == 429
+    assert "Retry-After" in response
 
 
 def test_schema_with_a_key_holding_no_scope_is_json(auth):

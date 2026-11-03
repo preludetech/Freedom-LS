@@ -32,8 +32,9 @@ class UserApiViewSet(ReadOnlyApiViewSet):
     serializer_class = UserApiSerializer
 
     def get_queryset(self) -> QuerySet[User]:
-        # The base manager crosses sites; site_queryset narrows to the key's site.
-        return self.site_queryset(annotate_email_verified(User._base_manager.all()))
+        # The base manager crosses sites; the base viewset's filter_queryset
+        # narrows every lookup to the key's site.
+        return annotate_email_verified(User._base_manager.all())
 
 
 router.register("users", UserApiViewSet, basename="user")

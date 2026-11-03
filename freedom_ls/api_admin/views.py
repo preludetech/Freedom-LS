@@ -69,11 +69,20 @@ def _ids_from(request: HttpRequest) -> list[UUID]:
 
 
 def _revoke(request: HttpRequest, keys: list[ApiKey]) -> int:
+    """Revoke the keys that are still live, under a row lock.
+
+    The rows are re-read locked: `keys` came from before the confirmation
+    page was shown, and a concurrent or repeated post of the same ids must
+    not revoke and audit a key twice.
+    """
     actor = acting_user(request)
     now = timezone.now()
     revoked = 0
     with transaction.atomic():
-        for key in keys:
+        locked = ApiKey._base_manager.filter(
+            pk__in=[key.pk for key in keys]
+        ).select_for_update()
+        for key in locked:
             if key.revoked_at is not None:
                 continue
             key.revoke(now)

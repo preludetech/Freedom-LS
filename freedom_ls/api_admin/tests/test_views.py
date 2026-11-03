@@ -13,6 +13,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.models import ApiKey
+from freedom_ls.api_admin.views import _revoke
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.tests.factories import SiteFactory
 
@@ -178,6 +179,47 @@ def test_post_without_the_csrf_token_is_forbidden(staff_client, active_key):
     assert response.status_code == 403
     active_key.refresh_from_db()
     assert active_key.revoked_at is None
+
+
+def _offered_actions(response) -> list[str]:
+    # The admin passes no action form at all when a user has no action.
+    form = response.context["action_form"]
+    if form is None:
+        return []
+    return [name for name, _label in form.fields["action"].choices]
+
+
+def test_the_changelist_offers_the_revoke_action_to_a_user_who_can_change(
+    staff_client, active_key
+):
+    response = staff_client.get(reverse("admin:freedom_ls_api_apikey_changelist"))
+
+    assert "revoke_selected" in _offered_actions(response)
+
+
+def test_the_changelist_hides_the_revoke_action_from_a_view_only_user(
+    view_only_client, active_key
+):
+    response = view_only_client.get(reverse("admin:freedom_ls_api_apikey_changelist"))
+
+    assert "revoke_selected" not in _offered_actions(response)
+
+
+def test_revoking_a_stale_instance_of_a_revoked_key_writes_nothing(active_key, rf):
+    # Arrange: two confirmations loaded the same live key.
+    stale = ApiKey.objects.get(pk=active_key.pk)
+    request = rf.post("/")
+    request.user = UserFactory(superuser=True)
+    _revoke(request, [active_key])
+    revoked_at = ApiKey.objects.get(pk=active_key.pk).revoked_at
+
+    # Act
+    count = _revoke(request, [stale])
+
+    # Assert
+    assert count == 0
+    assert ApiKey.objects.get(pk=active_key.pk).revoked_at == revoked_at
+    assert _revoked_entries() == 1
 
 
 def test_get_by_a_user_with_view_permission_only_is_forbidden(

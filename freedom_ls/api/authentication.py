@@ -76,10 +76,17 @@ class ApiKeyAuthentication(BaseAuthentication):
         return api_key
 
     def _record_use(self, api_key: ApiKey, now: datetime) -> None:
+        # One write per key per resolution window: a crawl of thousands of
+        # pages writes the row once. The fetched row decides whether to write
+        # at all; the conditional update settles a race between two workers.
+        # update() leaves updated_at alone.
+        if (
+            api_key.last_used_at is not None
+            and api_key.last_used_at >= now - LAST_USED_RESOLUTION
+        ):
+            return
         # The base manager: authentication has already matched the key to the
         # host's site, and this runs where the default manager may see no site.
-        # One conditional update per key per resolution window: a crawl of
-        # thousands of pages writes the row once, and update() leaves updated_at alone.
         ApiKey._base_manager.filter(pk=api_key.pk).filter(
             Q(last_used_at__isnull=True)
             | Q(last_used_at__lt=now - LAST_USED_RESOLUTION)

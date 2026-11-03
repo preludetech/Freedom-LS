@@ -17,7 +17,7 @@ from django.db import close_old_connections
 from django.test import Client, RequestFactory, override_settings
 from django.urls import reverse
 
-from freedom_ls.deployment.sentry import init_sentry
+from freedom_ls.deployment.sentry import FILTERED, init_sentry, scrub_authorization
 
 
 @override_settings(SENTRY_DSN=None)
@@ -46,6 +46,22 @@ def test_dsn_set_initializes_sentry_with_configured_kwargs() -> None:
     assert kwargs["release"] == "fls@1.2.3"
     assert kwargs["traces_sample_rate"] == 0.25
     assert kwargs["send_default_pii"] is True
+    assert kwargs["before_send"] is scrub_authorization
+
+
+def test_the_scrub_replaces_the_authorization_header():
+    event = {"request": {"headers": {"Authorization": "Bearer flsk_x.y", "Host": "a"}}}
+
+    assert scrub_authorization(event, {}) == {
+        "request": {"headers": {"Authorization": FILTERED, "Host": "a"}}
+    }
+
+
+@pytest.mark.parametrize(
+    "event", [{}, {"request": {}}, {"request": {"headers": {"Host": "a"}}}]
+)
+def test_the_scrub_leaves_an_event_without_the_header_alone(event):
+    assert scrub_authorization(dict(event), {}) == event
 
 
 class CapturingTransport(Transport):
@@ -57,14 +73,15 @@ class CapturingTransport(Transport):
         self.envelopes.append(envelope)
 
 
-@pytest.fixture
-def captured_sentry() -> Iterator[CapturingTransport]:
+@pytest.fixture(params=[False, True], ids=["pii_off", "pii_on"])
+def captured_sentry(request: pytest.FixtureRequest) -> Iterator[CapturingTransport]:
     transport = CapturingTransport()
     sentry_sdk.init(
         dsn="https://key@o0.ingest.sentry.io/0",
         transport=transport,
         integrations=[DjangoIntegration()],
-        send_default_pii=False,
+        send_default_pii=request.param,
+        before_send=scrub_authorization,
     )
     yield transport
     sentry_sdk.init()  # no DSN: the global client is disabled again for later tests
@@ -100,6 +117,6 @@ def test_an_event_from_a_request_carries_no_authorization_header(
     ]
     assert events
     headers = events[-1]["request"]["headers"]
-    # With send_default_pii off the SDK keeps the header name but replaces its value.
-    assert headers.get("Authorization", "[Filtered]") == "[Filtered]"
+    # The header name stays; the scrub (and, with PII off, the SDK) replaces its value.
+    assert headers.get("Authorization", FILTERED) == FILTERED
     assert "testsecretvalue" not in json.dumps(events[-1])

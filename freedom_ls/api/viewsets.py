@@ -56,6 +56,12 @@ class ReadOnlyApiViewSet(ApiResponseMixin, ReadOnlyModelViewSet):
     http_method_names = ["get", "head", "options"]
     schema = AutoSchema()
 
+    def filter_queryset(self, queryset: QuerySet[M]) -> QuerySet[M]:
+        # The site filter is applied here, on the way into every list and
+        # detail lookup, so an endpoint's get_queryset cannot leave it out.
+        filtered: QuerySet[M] = super().filter_queryset(self.site_queryset(queryset))
+        return filtered
+
     def site_queryset(self, queryset: QuerySet[M]) -> QuerySet[M]:
         """Rows of the authenticated key's site, and nothing when there is no key.
 
@@ -65,4 +71,5 @@ class ReadOnlyApiViewSet(ApiResponseMixin, ReadOnlyModelViewSet):
         api_key = self.request.auth
         if getattr(self, "swagger_fake_view", False) or not isinstance(api_key, ApiKey):
             return queryset.none()
-        return queryset.filter(site=api_key.site)
+        # The id, not the Site row: the key was fetched without its site.
+        return queryset.filter(site_id=api_key.site_id)
