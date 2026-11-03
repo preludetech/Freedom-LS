@@ -1934,6 +1934,219 @@ def test_the_history_tab_renders_within_a_query_budget(
         staff_client.get(url)
 
 
+def _history_export_url(learner: Learner) -> str:
+    return _interface_url(
+        learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
+    )
+
+
+def _export_audit_csv(
+    client: Client, url: str, table_key: str = "history"
+) -> tuple[list[str], list[list[str]], str]:
+    """An audit table's CSV export at ``url``: (header, rows, Content-Disposition)."""
+    response = client.get(url, {f"{table_key}-export": "csv"})
+    assert response.status_code == 200
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    return header, rows, response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_holds_every_entry_naming_the_learner(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    other = LearnerFactory(organisation=organisation)
+    for number in range(30):
+        _history_entry(learner, reason=f"reason {number}")
+    _history_entry(other, reason="not ours")
+
+    header, rows, _disposition = _export_audit_csv(
+        staff_client, _history_export_url(learner)
+    )
+
+    assert header == [
+        "When",
+        "Who",
+        "Actor email",
+        "What",
+        "Action",
+        "Target",
+        "Description",
+        "Reason",
+        "Run ID",
+    ]
+    assert (len(rows), "not ours" in {row[7] for row in rows}) == (30, False)
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_is_named_for_the_learner(staff_client: Client):
+    learner = LearnerFactory(
+        organisation=OrganisationFactory(),
+        user__first_name="Ada",
+        user__last_name="Able",
+    )
+    _history_entry(learner)
+
+    _header, _rows, disposition = _export_audit_csv(
+        staff_client, _history_export_url(learner)
+    )
+
+    assert disposition == (
+        f'attachment; filename="history-ada-able-{timezone.localdate():%Y-%m-%d}.csv"'
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+def test_a_cohort_role_gets_a_404_on_the_learner_history_export(
+    mock_site_context, logged_in_client, role: str
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, role, cohort)
+
+    response = logged_in_client(educator).get(
+        _history_export_url(learner), {"history-export": "csv"}
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_neutralises_a_formula_and_keeps_unicode(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, reason="=1+1", target_label="Zoë Ångström")
+
+    _header, (row,), _disposition = _export_audit_csv(
+        staff_client, _history_export_url(learner)
+    )
+
+    assert (row[7], row[5]) == ("'=1+1", "Zoë Ångström")
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_leaves_actor_email_empty_for_a_system_entry(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, actor=None, actor_label="")
+
+    _header, (row,), _disposition = _export_audit_csv(
+        staff_client, _history_export_url(learner)
+    )
+
+    assert (row[1], row[2]) == ("System", "")
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_leaves_actor_email_empty_for_a_deleted_actor(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    actor = UserFactory(email="gone@example.com")
+    _history_entry(learner, actor=actor, actor_label="Gone Person")
+    actor.delete()
+
+    _header, (row,), _disposition = _export_audit_csv(
+        staff_client, _history_export_url(learner)
+    )
+
+    assert (row[1], row[2]) == ("Gone Person", "")
+
+
+@pytest.mark.django_db
+def test_the_learner_history_toolbar_offers_the_csv_export(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner)
+
+    document = _learner_page(staff_client, learner, "history")
+
+    links = [
+        a for a in document.cssselect("a") if a.text_content().strip() == "Export CSV"
+    ]
+    assert links
+    assert all("history-export=csv" in a.get("href") for a in links)
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_records_one_entry_for_the_organisation(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Able"
+    )
+    for _ in range(3):
+        _history_entry(learner)
+
+    _export_audit_csv(staff_client, _history_export_url(learner))
+
+    entry = AuditLogEntry.objects.get(action="audit_log.exported")
+    assert (
+        entry.actor_id,
+        entry.target_object_id,
+        entry.details,
+    ) == (
+        User.objects.get(is_superuser=True).pk,
+        str(organisation.pk),
+        {"scope": "learner", "scope_label": "Ada Able", "count": 3, "filters": ""},
+    )
+
+
+@pytest.mark.django_db
+def test_an_export_entry_shows_on_the_audit_log_and_not_on_the_learner_history(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Able"
+    )
+    _history_entry(learner)
+    _export_audit_csv(staff_client, _history_export_url(learner))
+
+    audit_rows = _audit_log_rows(
+        _get_document(staff_client, _audit_log_url(organisation))
+    )
+    history_rows = _history_rows(_learner_page(staff_client, learner, "history"))
+
+    exported = [row for row in audit_rows if "Audit log exported" in row[2]]
+    assert (
+        len(exported),
+        "Ada Able: 1 entry" in exported[0][2],
+        len(history_rows),
+    ) == (
+        1,
+        True,
+        1,
+    )
+
+
+@pytest.mark.django_db
+def test_the_learner_history_export_omits_its_own_entry_and_a_second_export_adds_another(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner)
+    url = _history_export_url(learner)
+
+    _header, first_rows, _disposition = _export_audit_csv(staff_client, url)
+    _header, second_rows, _disposition = _export_audit_csv(staff_client, url)
+
+    assert (
+        len(first_rows),
+        len(second_rows),
+        AuditLogEntry.objects.filter(action="audit_log.exported").count(),
+    ) == (1, 1, 2)
+
+
 @pytest.mark.django_db
 def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
     staff_client: Client,
