@@ -18,7 +18,8 @@ The top level is empty, so include a named partial.{% endcomment %}
 {% endpartialdef %}
 
 {% partialdef tier-word %}
-    {% if child.deadline_tier == "MISSED" %}Missed deadline{% elif child.deadline_tier == "CLOSED" %}Closed{% else %}Deadline{% endif %}
+    {% comment %}today_word asks for the header card's longer word.{% endcomment %}
+    {% if child.deadline_tier == "MISSED" %}Missed deadline{% elif child.deadline_tier == "CLOSED" %}Closed{% elif child.deadline_tier == "TODAY" and today_word %}Deadline today{% else %}Deadline{% endif %}
 {% endpartialdef %}
 
 {% partialdef access-ends-line %}

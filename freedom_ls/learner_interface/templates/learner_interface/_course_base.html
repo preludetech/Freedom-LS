@@ -55,17 +55,35 @@ Course progress lives under the breadcrumbs on mobile only — on desktop the
 docked outline panel carries its own progress, so the header stays uncluttered.
 {% endcomment %}
 {% block header_extra %}
-    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2" data-testid="player-item-deadline">
-            {% include "learner_interface/partials/deadline_labels.html#line" with child=current_entry %}
-        </div>
-    {% endif %}
     {% if course_progress %}
         <div class="mt-2 mb-4 lg:hidden">
             <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}" accent_slot_key="{{ course.accent_slot_key }}" label="Progress for {{ course.title }}" bar_class="h-1.5" label_class="text-xs font-medium tabular-nums text-muted" />
         </div>
     {% endif %}
 {% endblock header_extra %}
+
+{% comment %}The item title and its deadline share one row from lg; narrower screens stack them.
+Pages put their title in item_page_title so the card can sit beside it.{% endcomment %}
+{% block page_title %}
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0 flex-1">{% block item_page_title %}{% endblock item_page_title %}</div>
+        {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
+            {% with child=current_entry %}
+                <div class="shrink-0 rounded-lg px-3 py-2 text-sm {% include "learner_interface/partials/deadline_labels.html#tier-tint" %}"
+                     data-testid="player-item-deadline">
+                    <p class="flex items-center gap-1 font-semibold">
+                        {% include "learner_interface/partials/deadline_labels.html#tier-icon" %}
+                        {% include "learner_interface/partials/deadline_labels.html#tier-word" with today_word=True %}
+                    </p>
+                    <p class="text-xs">
+                        {% include "learner_interface/partials/deadline_labels.html#tier-date" %}
+                        {% include "learner_interface/partials/deadline_labels.html#closes-line" %}
+                    </p>
+                </div>
+            {% endwith %}
+        {% endif %}
+    </div>
+{% endblock page_title %}
 
 {% block sidebar_content %}
     {% comment %}

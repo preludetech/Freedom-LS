@@ -4254,6 +4254,101 @@ def closing_topic_course(due_course):
     return course, first, second, user, client
 
 
+def _next_deadline_card_text(html: str) -> str:
+    """The visible text of the outline's next-deadline card."""
+    return _visible_text(
+        lxml.html.tostring(
+            lxml.html.fromstring(html).cssselect(
+                '#course-toc-region [data-testid="next-deadline-card"]'
+            )[0],
+            encoding="unicode",
+        )
+    )
+
+
+@pytest.mark.django_db
+def test_header_card_reads_deadline_with_the_full_date_for_an_upcoming_item(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2999, 1, 1))
+
+    assert _header_deadline_text(_player_html(client, course)).startswith(
+        "Deadline 1 Jan 2999"
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2020, 1, 1, 8, 0, tzinfo=UTC), tick=False)
+def test_header_card_reads_deadline_today_for_an_item_due_today(due_course):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+
+    assert _header_deadline_text(_player_html(client, course)).startswith(
+        "Deadline today 1 Jan 2020"
+    )
+
+
+@pytest.mark.django_db
+def test_header_card_reads_missed_deadline_for_a_past_due_item(due_course):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+
+    assert _header_deadline_text(_player_html(client, course)).startswith(
+        "Missed deadline 1 Jan 2020"
+    )
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_header_card_reads_closed_with_the_close_time_on_the_closed_item_page(
+    closing_topic_course,
+):
+    course, _first, _second, _user, client = closing_topic_course
+
+    html = _player_html(client, course)
+
+    assert CLOSED_NOTICE in html
+    assert _header_deadline_text(html).startswith("Closed 4 Jan 2020, 23:59 UTC")
+
+
+@pytest.mark.django_db
+def test_header_card_is_absent_for_a_completed_item(due_course):
+    course, first, _second, user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+    topic_completion(course, user, first, complete_time=timezone.now())
+
+    assert _header_deadline_text(_player_html(client, course)) == ""
+
+
+@pytest.mark.django_db
+def test_header_card_follows_the_page_title_and_header_extra_holds_no_deadline(
+    due_course,
+):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert html.index('id="page-title"') < html.index(
+        'data-testid="player-item-deadline"'
+    )
+    card = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
+    assert len(card) == 1
+    assert card[0].getparent().cssselect("#page-title")
+
+
+@pytest.mark.django_db
+def test_header_card_never_says_due_or_overdue(due_course):
+    course, first, _second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2020, 1, 1))
+
+    text = _header_deadline_text(_player_html(client, course))
+
+    assert "Due" not in text
+    assert "Overdue" not in text
+
+
 @pytest.mark.django_db
 @time_machine.travel(BEFORE_CLOSE, tick=False)
 def test_a_topic_inside_the_grace_window_opens_and_the_outline_says_when_it_closes(
@@ -4264,7 +4359,8 @@ def test_a_topic_inside_the_grace_window_opens_and_the_outline_says_when_it_clos
     html = _player_html(client, course)
 
     assert CLOSED_NOTICE not in html
-    assert "Closes 4 Jan 2020, 23:59 UTC ." in _visible_text(html)
+    assert "Closes 4 Jan 2020, 23:59 UTC" in _header_deadline_text(html)
+    assert "Closes 4 Jan 2020, 23:59 UTC" in _next_deadline_card_text(html)
 
 
 @pytest.mark.django_db
