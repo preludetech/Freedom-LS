@@ -67,6 +67,8 @@
 - [reference_educator_polish_scenario_command.md](reference_educator_polish_scenario_command.md) — qa_create_educator_polish_scenario: run after the 5 educator seeds (bulk reset strips data); Checkpoint quizzes, over-limit cohort, nameless learner/educator, demodev org_admin; untracked config/settings_local.py via DJANGO_SETTINGS_MODULE; cohort_viewer gets 404 on Members/Audit log
 - [reference_branching_survey_command.md](reference_branching_survey_command.md) — qa_create_branching_survey: 3-page CATEGORY_VALUE_SUM form, page 2 gated on want_extra=yes (condition_option), learner qa.branch@email.com
 
+- [reference_audit_log_history_command.md](reference_audit_log_history_command.md) — qa_create_audit_log_history: learner+cohort History tabs + org Audit log seed (bulk run 56 w/ reason, system + deleted actor); audit entries append-only so run-once; bulk summary never shows on the cohort tab
+
 ## Recurring requests
 
 **"Re-arm the course_completed event for one more page load"** (Sep 2026, google-analytics-setup,
