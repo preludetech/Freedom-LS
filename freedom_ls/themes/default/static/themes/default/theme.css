@@ -51,6 +51,9 @@
     --color-surface-2: #F3F4F6;
     --color-on-surface: #1A2332;
     --color-border: #D1D5DB;
+    /* Text fields, selects and textareas. Darker than `border`, because a
+     * field's edge is all that marks it and must reach 3:1 on every surface. */
+    --color-border-input: #6B7280;
     --color-muted: #4A5568;
 
     /* Hover-mix knobs. Dark themes override `--fls-hover-mix-color: black`

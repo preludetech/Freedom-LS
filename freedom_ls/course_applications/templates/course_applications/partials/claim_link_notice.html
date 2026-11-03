@@ -76,7 +76,7 @@ Renders nothing for a verified application or one with no applicant.
                    x-ref="emailInput"
                    value="{{ field.value|default:applicant.email }}"
                    {% if field.errors %}aria-invalid="true" aria-describedby="claim-link-notice-email-error"{% endif %}
-                   class="w-full flex-1 rounded-md border border-border bg-white px-3 py-2 text-on-surface
+                   class="w-full flex-1 rounded-md border border-border-input bg-white px-3 py-2 text-on-surface
                           focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" />
             <c-button type="submit" loading="true" loading_text="Updating...">Update</c-button>
         </div>

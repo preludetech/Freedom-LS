@@ -17,7 +17,7 @@ widening, removes_role and member_state (missing, inactive or active).
         <p>{{ entry.display_name }} on these cohorts.</p>
         <div x-data="cohortChecklist" class="space-y-2">
             <div class="flex items-center gap-3">
-                <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2">
+                <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border-input bg-surface px-3 py-2">
                 <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
             </div>
             <div class="max-h-48 space-y-1 overflow-y-auto">

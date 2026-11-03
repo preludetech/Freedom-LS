@@ -166,10 +166,13 @@ Light tints are named replacements for ad-hoc opacity modifiers in chip and aler
 | Surface 2 | `--color-surface-2` | `#F3F4F6` |
 | On-surface | `--color-on-surface` | `#1A2332` |
 | Border | `--color-border` | `#D1D5DB` |
+| Input border | `--color-border-input` | `#6B7280` |
 | Muted | `--color-muted` | `#4A5568` |
 
 `--color-surface-2` uses `--color-on-surface` as its foreground (no dedicated pair).
-`--color-border` and `--color-muted` have no `on-*` pair.
+`--color-border`, `--color-border-input` and `--color-muted` have no `on-*` pair.
+`--color-border-input` edges text fields, selects and textareas; keep it at 3:1 or better
+against white, `--color-surface` and `--color-surface-2`, which a test enforces.
 
 #### Focus ring
 

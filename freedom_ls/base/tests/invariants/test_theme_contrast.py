@@ -1,4 +1,5 @@
-"""Muted text must stay readable on every page surface of the shipped themes."""
+"""Muted text and input borders must stay visible on every page surface of the
+shipped themes."""
 
 from __future__ import annotations
 
@@ -68,6 +69,27 @@ def test_muted_text_reaches_4_5_to_1_on_every_page_surface(theme_css: Path) -> N
         assert _contrast_ratio(muted, background) >= 4.5, (
             f"--color-muted {muted} on {background} is "
             f"{_contrast_ratio(muted, background):.2f}:1"
+        )
+
+
+@pytest.mark.parametrize(
+    "theme_css",
+    [DEFAULT_THEME_CSS, FIRST_CLASS_THEME_CSS],
+    ids=["default", "first_class"],
+)
+def test_input_borders_reach_3_to_1_on_every_page_surface(theme_css: Path) -> None:
+    """A text field's border is the only thing that marks where it is, so it
+    needs WCAG AA non-text contrast on white cards, the canvas and surface-2."""
+    css = theme_css.read_text()
+    border = _theme_colour(css, "border-input")
+    for background in (
+        "#FFFFFF",
+        _theme_colour(css, "surface"),
+        _theme_colour(css, "surface-2"),
+    ):
+        assert _contrast_ratio(border, background) >= 3.0, (
+            f"--color-border-input {border} on {background} is "
+            f"{_contrast_ratio(border, background):.2f}:1"
         )
 
 
