@@ -24,7 +24,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (user) Prove the chains on a throwaway spec directory on a local branch, never merged, per the spec's Testing section (start chain with and without a design, chain stop, batch wave with Parallel batches: 2, conflict, resume, older plan, QA chain, document chain, standalone commands)
 - [ ] (user) If `spec_dd/2. in progress/test-organisation-and-hygene-2-sdd-review-and-boy-scout` landed on main first, reconcile `claude_plugins/sdd/commands/implement_plan.md` Step 2 with its commit shapes after `[batch N]`, per the spec's Documentation and downstream section
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
