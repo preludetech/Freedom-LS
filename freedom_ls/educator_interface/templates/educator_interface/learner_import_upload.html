@@ -17,9 +17,26 @@
             {% endif %}
             <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
                 {% csrf_token %}
-                <div>
-                    <label for="{{ form.file.id_for_label }}" class="block text-sm font-medium">{{ form.file.label }}</label>
-                    {{ form.file }}
+                <div x-data="fileDropZone" x-on:change="readInput">
+                    <label for="{{ form.file.id_for_label }}"
+                           data-drop-zone
+                           x-on:dragenter.prevent="enter"
+                           x-on:dragover.prevent="enter"
+                           x-on:dragleave="leave"
+                           x-on:drop.prevent="drop"
+                           x-bind:class="zoneClass"
+                           class="flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 p-6 text-center focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                        <span class="sr-only">{{ form.file.label }}</span>
+                        {{ form.file }}
+                        <span x-show="showPrompt" x-transition class="font-semibold">Drop your CSV here, or <span class="text-primary underline">browse</span></span>
+                        <span x-show="dragging" x-transition x-cloak class="font-semibold">Drop to choose this file</span>
+                        <span x-show="showFile" x-transition x-cloak class="flex flex-col gap-1">
+                            <span class="font-semibold break-all" x-text="fileName"></span>
+                            <span class="text-sm text-muted" x-text="fileSize"></span>
+                            <span class="text-sm text-primary underline">Choose a different file</span>
+                        </span>
+                    </label>
+                    <p id="import-file-limits" class="mt-2 text-center font-mono text-xs text-muted">.csv &middot; up to {{ max_rows }} rows &middot; {{ max_file_size }}</p>
                 </div>
                 {% if cohort %}
                     <p class="text-sm">Every learner in the file is added to <strong>{{ cohort.name }}</strong>. The <code>cohort</code> column is ignored.</p>

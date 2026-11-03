@@ -8,6 +8,7 @@ the preview and result pages at every viewport.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -50,20 +51,27 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     page.get_by_role("link", name="Import learners").first.click()
-    file_input = page.get_by_label("File")
-    borders = file_input.evaluate(
-        """el => {
-            const text = document.createElement("input");
-            text.type = "text";
-            el.after(text);
-            const widths = [el, text].map(
-                input => getComputedStyle(input).borderTopWidth);
-            text.remove();
-            return widths;
-        }"""
+    upload_url = page.url
+    transfer = page.evaluate_handle(
+        """([name, text]) => {
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([text], name, { type: "text/csv" }));
+            return transfer;
+        }""",
+        ["learners.csv", upload.read_text()],
     )
-    assert borders[0] == borders[1] != "0px"
-    file_input.set_input_files(str(upload))
+    zone = page.get_by_text("Drop your CSV here")
+    zone.dispatch_event("dragenter", {"dataTransfer": transfer})
+    zone.dispatch_event("dragover", {"dataTransfer": transfer})
+    expect(page.get_by_text("Drop to choose this file")).to_be_visible()
+    zone.dispatch_event("drop", {"dataTransfer": transfer})
+    expect(page.locator("[data-drop-zone]")).to_contain_text("learners.csv")
+
+    picked = tmp_path / "picked.csv"
+    picked.write_text(upload.read_text())
+    page.get_by_label("CSV file").focus()
+    page.get_by_label("CSV file").set_input_files(str(picked))
+    expect(page.locator("[data-drop-zone]")).to_contain_text("picked.csv")
     page.get_by_role("button", name="Upload and preview").click()
 
     expect(page.get_by_text("Step 2 of 3")).to_be_visible()
@@ -83,11 +91,6 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     expect(rows).to_have_count(1)
     expect(rows.first).to_contain_text("not-an-email")
 
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
-        assert_no_horizontal_overflow(page)
-    page.set_viewport_size(QA_VIEWPORTS[-1])
-
     page.get_by_role("button", name="Add 2 learners").click()
 
     expect(page.get_by_text("Step 3 of 3")).to_be_visible()
@@ -99,6 +102,42 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     assert content.splitlines()[0] == "email,first_name,last_name,cohort,reason"
     assert "not-an-email" in content
 
-    for viewport in QA_VIEWPORTS:
-        page.set_viewport_size(viewport)
-        assert_no_horizontal_overflow(page)
+    result_url = page.url
+
+    bad = tmp_path / "bad-header.csv"
+    bad.write_text("name\nAda\n")
+
+    def show_upload_error() -> None:
+        page.goto(upload_url)
+        page.get_by_label("CSV file").set_input_files(str(bad))
+        page.get_by_role("button", name="Upload and preview").click()
+        expect(page.locator("#main-content [role=alert]")).to_contain_text(
+            "The file could not be uploaded."
+        )
+
+    # A confirmed import's preview URL shows the result, so the preview is
+    # revisited through a fresh upload that is never confirmed.
+    page.goto(upload_url)
+    page.get_by_label("CSV file").set_input_files(str(upload))
+    page.get_by_role("button", name="Upload and preview").click()
+    expect(page.get_by_text("Step 2 of 3")).to_be_visible()
+    preview_url = page.url
+
+    visits: list[tuple[Callable[[], object], bool]] = [
+        (lambda: page.goto(upload_url), False),
+        (show_upload_error, False),
+        (lambda: page.goto(preview_url + "?label=error"), True),
+        (lambda: page.goto(result_url), False),
+    ]
+    for visit, is_preview in visits:
+        for viewport in QA_VIEWPORTS:
+            page.set_viewport_size(viewport)
+            visit()
+            assert_no_horizontal_overflow(page)
+            if is_preview and viewport["width"] == 375:
+                expect(page.get_by_text("Step 2 of 3: Preview")).to_be_visible()
+                # The labels are visually hidden (sr-only), so they stay
+                # "visible" to Playwright; their box collapses to a pixel.
+                label_box = page.locator("[data-step-label]").first.bounding_box()
+                assert label_box is not None
+                assert label_box["width"] <= 1
