@@ -1019,6 +1019,38 @@ document.addEventListener("htmx:afterSettle", (event) => {
     if (anchor) anchor.focus();
 });
 
+// A confirmed row action closes the dialog, which refocuses its trigger; the
+// panel's own refresh then swaps that trigger out (a removed row, a card that
+// re-renders its buttons) and the browser drops focus to <body>. Whether focus
+// sat inside the swap target is noted on that request's own config, because
+// one confirm can refresh several regions at once and a shared flag would be
+// overwritten by whichever swap ran next. The check runs in afterSwap, in the
+// same task as the swap, before any other response can move focus again. The
+// new region's table anchor, else its first heading, else the page content
+// takes focus, so it is never lost.
+document.addEventListener("htmx:beforeSwap", (event) => {
+    const { target, requestConfig } = event.detail;
+    const active = document.activeElement;
+    if (!requestConfig) return;
+    requestConfig.focusWasInTarget = Boolean(
+        target && active && active !== document.body && target.contains(active),
+    );
+});
+document.addEventListener("htmx:afterSwap", (event) => {
+    const { target, requestConfig } = event.detail;
+    if (!requestConfig || !requestConfig.focusWasInTarget || !target || !target.id) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    const region = document.getElementById(target.id);
+    if (!region) return;
+    let fallback = region.querySelector("[data-table-anchor]");
+    if (!fallback) {
+        fallback = region.querySelector("h1, h2, h3, h4, h5, h6");
+        if (fallback) fallback.setAttribute("tabindex", "-1");
+    }
+    (fallback || document.getElementById("main-content")).focus();
+});
+
 // A focused search input survives its table region's swap (hx-preserve), but
 // once htmx has moved it into the new region Chromium still reports it as
 // focused while dropping its caret, so further typing goes nowhere. Refocus

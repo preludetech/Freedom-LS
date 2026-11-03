@@ -12,9 +12,16 @@ from playwright.sync_api import Locator, Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
 from .helpers import interface_url
@@ -130,3 +137,108 @@ def test_confirmation_dialog_opens_with_the_keyboard_and_escape_returns_focus_to
 
     expect(modal).to_be_hidden()
     expect(trigger).to_be_focused()
+
+
+def _admin_of(educator_user: AbstractBaseUser, organisation: object) -> None:
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+
+def _focus_is_on_the_page(page: Page) -> bool:
+    return bool(
+        page.evaluate(
+            "document.activeElement !== null && document.activeElement !== document.body"
+        )
+    )
+
+
+def test_confirming_a_row_removal_does_not_leave_focus_on_the_body(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Confirming "Remove" on a table row refreshes the table, which removes
+    the trigger the closing dialog had just refocused, so focus used to drop
+    to <body>."""
+    page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+    for first_name in ("Ada", "Grace"):
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(
+                organisation=organisation,
+                user=UserFactory(first_name=first_name, last_name="Lovelace"),
+            ),
+        )
+    _admin_of(educator_user, organisation)
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        )
+    )
+    modal = page.locator("#app-modal")
+    main = page.locator("#main-content")
+
+    main.get_by_role("row").filter(has_text="Ada").get_by_role(
+        "button", name="Remove", exact=True
+    ).click()
+    modal.get_by_role("button", name="Remove", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(main.get_by_role("row").filter(has_text="Ada")).to_have_count(0)
+    assert _focus_is_on_the_page(page)
+
+
+def test_reactivating_a_registration_from_the_overview_card_keeps_focus_on_the_page(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The confirm fires two events and three Overview regions refresh at
+    once; the Registrations card re-renders its own trigger, so focus has to
+    be recovered for that swap whatever order the three settle in."""
+    page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Ada", user__last_name="Lovelace"
+    )
+    LearnerCourseRegistrationFactory(
+        learner=learner, course__title="Orbits", is_active=False
+    )
+    _admin_of(educator_user, organisation)
+    page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
+    modal = page.locator("#app-modal")
+    row = page.get_by_test_id("registration-row").filter(has_text="Orbits")
+
+    row.get_by_role("button", name="Reactivate", exact=True).click()
+    modal.get_by_role("button", name="Reactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(row.get_by_text("Active", exact=True)).to_be_visible()
+    assert _focus_is_on_the_page(page)
+
+
+def test_saving_a_cohort_edit_keeps_focus_on_the_page(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Old Name")
+    _admin_of(educator_user, organisation)
+    assign_object_role(educator_user, cohort, "cohort_admin")
+    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
+    modal = page.locator("#app-modal")
+
+    page.get_by_role("button", name="Edit", exact=True).click()
+    modal.locator("#app-modal-body").get_by_label("Name").fill("New Name")
+    modal.get_by_role("button", name="Save", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(page.locator("#instance-title")).to_have_text("New Name")
+    assert _focus_is_on_the_page(page)
