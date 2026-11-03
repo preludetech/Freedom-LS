@@ -812,7 +812,7 @@ def _handle_bulk_action(
         return HttpResponse(status=403)
 
     action_url = action.get_action_url(ctx)
-    noun = str(panel.get_queryset(request).model._meta.verbose_name_plural)
+    noun = panel.noun(request)
 
     def error_response(
         selection: Selection, count: int, error: str
@@ -1025,7 +1025,7 @@ def _handle_run_status(request: HttpRequest, resolved: _Resolved) -> HttpRespons
             request,
             action,
             result,
-            str(model._meta.verbose_name_plural),
+            panel.noun(request),
             f"{count_noun(model, result.changed)} changed.",
             refresh,
         )

@@ -1685,6 +1685,7 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 
 class MemberDataTable(DataTable):
+    noun = "members"
     search_fields = ["first_name", "last_name", "email"]
     default_sort = "first_name"
     empty_message = "No members yet. Add the first member to give someone access to this organisation."

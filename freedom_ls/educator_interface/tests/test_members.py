@@ -218,6 +218,24 @@ def _members_page(
 
 
 @pytest.mark.django_db
+def test_the_members_table_and_its_scroll_region_are_named_members(
+    staff_client: Client,
+) -> None:
+    """The caption and region name follow the page, not the User model."""
+    organisation = OrganisationFactory()
+    assign_role(
+        UserFactory(superuser=True), UserFactory(), "organisation_admin", organisation
+    )
+
+    document = _members_page(staff_client, organisation)
+
+    (caption,) = document.cssselect("[data-table-region] table caption")
+    (region,) = document.cssselect("[data-table-region] [role='region']")
+    assert caption.text_content().strip() == "Members"
+    assert region.get("aria-label") == "Members"
+
+
+@pytest.mark.django_db
 class TestMembersEmptyState:
     def test_an_organisation_with_no_members_says_so(
         self, staff_client: Client

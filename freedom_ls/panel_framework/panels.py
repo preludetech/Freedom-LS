@@ -274,6 +274,12 @@ class DataTablePanel(Panel):
         own bulk actions instead."""
         return []
 
+    def noun(self, request: HttpRequest) -> str:
+        """What this table calls its rows, plural and lower case."""
+        return self.data_table.noun or str(
+            self.get_queryset(request).model._meta.verbose_name_plural
+        )
+
     def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
@@ -302,7 +308,7 @@ class DataTablePanel(Panel):
             for action in self.get_bulk_actions()
             if action.has_permission(self.request)
         ]
-        context["noun"] = queryset.model._meta.verbose_name_plural
+        context["noun"] = self.noun(self.request)
         return context
 
 

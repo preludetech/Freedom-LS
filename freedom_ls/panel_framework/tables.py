@@ -222,6 +222,11 @@ class DataTable:
     empty_message: str = "Nothing to see"
     #: What the empty state says when a search or filter leaves no rows.
     empty_no_results: str = ""
+    #: The plural noun the caption, the scroll region's name, the selection
+    #: bar and the bulk dialogs use for this table's rows, lower case. Empty
+    #: means the model's `verbose_name_plural`, which is wrong when a table
+    #: shows a model under another name (a User as a member).
+    noun: str = ""
     #: The `sort_field` (with a leading "-" for descending) that the queryset's
     #: own ordering already applies. With no sort in the URL that column's
     #: header reads as sorted this way and its first click flips the direction,

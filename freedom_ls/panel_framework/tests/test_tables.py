@@ -1335,3 +1335,24 @@ def test_the_table_has_a_caption(mock_site_context: Site) -> None:
     (caption,) = table.cssselect("caption")
     assert caption.text_content().strip()
     assert table.get("aria-labelledby") == caption.get("id")
+
+
+class _NamedTablePanel(StubDataTablePanel):
+    data_table = type("NamedStubDataTable", (StubDataTable,), {"noun": "widgets"})
+
+
+def test_a_tables_noun_names_its_caption_and_region(mock_site_context: Site) -> None:
+    assert _bind_table_panel(_NamedTablePanel).get_context_data()["noun"] == "widgets"
+
+
+def test_a_table_without_a_noun_is_named_after_its_model(
+    mock_site_context: Site,
+) -> None:
+    context = _bind_table_panel(StubDataTablePanel).get_context_data()
+
+    assert (
+        context["noun"]
+        == StubDataTable.get_queryset(
+            RequestFactory().get("/p")
+        ).model._meta.verbose_name_plural
+    )
