@@ -297,10 +297,6 @@ def test_complete_twice_does_not_re_score(mock_site_context):
     assert progress.scores == {"score": 999, "max_score": 999}
 
 
-# Completing a sitting that branches: the answers it was not asked are dropped
-# and the path it was asked is recorded.
-
-
 @dataclass
 class GatedSitting:
     progress: FormProgress
