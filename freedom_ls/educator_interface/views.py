@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, cast
+from typing import Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
 from django import forms
@@ -37,6 +37,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlencode
@@ -45,7 +46,11 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import RUN_ROWS_KEPT, record_entry, subject_key
-from freedom_ls.base.csv_import import CsvImportError, write_error_csv
+from freedom_ls.base.csv_import import (
+    MAX_UPLOAD_BYTES,
+    CsvImportError,
+    write_error_csv,
+)
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import (
     decode_cursor,
@@ -114,8 +119,11 @@ from freedom_ls.educator_interface.filters import (
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
 from freedom_ls.educator_interface.learner_import import (
     ERROR_CSV_HEADER,
+    FULL_EXAMPLE_ROW,
+    HEADER_DESCRIPTIONS,
     HEADERS,
     NOT_ADDED_LABELS,
+    REQUIRED_HEADERS,
     TEMPLATE_EXAMPLE_ROWS,
     check_import_gate,
     create_learner_import,
@@ -143,6 +151,7 @@ from freedom_ls.educator_interface.reporting import (
 from freedom_ls.educator_interface.staff import staff_role_entries
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
+from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -2319,6 +2328,32 @@ def _import_url(name: str, organisation: Organisation, *args: str) -> str:
     )
 
 
+class FormatRow(NamedTuple):
+    name: str
+    requirement: str
+    description: str
+    example: str
+
+
+def _format_rows(cohort: Cohort | None) -> list[FormatRow]:
+    """One row per accepted column, in header order. On a cohort import the
+    cohort column is never read, so its row says so instead of describing it."""
+    rows = []
+    for index, name in enumerate(HEADERS):
+        description = HEADER_DESCRIPTIONS[name]
+        if cohort is not None and name == "cohort":
+            description = f"Ignored: everyone goes into {cohort.name}."
+        rows.append(
+            FormatRow(
+                name=name,
+                requirement="Required" if name in REQUIRED_HEADERS else "Optional",
+                description=description,
+                example=FULL_EXAMPLE_ROW[index],
+            )
+        )
+    return rows
+
+
 def _import_page(
     request: HttpRequest,
     scoped: OrganisationScopedRequest,
@@ -2471,7 +2506,9 @@ def learner_import(request: HttpRequest, organisation_slug: str) -> HttpResponse
         {
             "form": form,
             "cohort": cohort,
-            "headers": ",".join(HEADERS),
+            "format_rows": _format_rows(cohort),
+            "max_rows": f"{learner_management_config.LEARNER_IMPORT_MAX_ROWS:,}",
+            "max_file_size": filesizeformat(MAX_UPLOAD_BYTES),
             "template_url": _cohort_import_url(
                 "learner_import_template", organisation, cohort
             ),

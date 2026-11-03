@@ -4994,9 +4994,67 @@ def test_the_upload_page_shows_the_headers_the_stepper_and_the_file_input(
     )
 
     assert page.cssselect("input[type=file]")
-    assert page.cssselect("code")[0].text == "email,first_name,last_name,cohort"
+    assert [code.text for code in page.cssselect("[data-format-table] code")] == [
+        "email",
+        "first_name",
+        "last_name",
+        "cohort",
+    ]
     assert page.cssselect("ol li[aria-current='step']")
     assert "Step 1 of 3" in page.text_content()
+
+
+@pytest.mark.django_db
+def test_the_format_table_has_one_row_per_header_with_only_email_required(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    rows = [
+        (row.cssselect("td")[0].text_content().strip(), row.cssselect("td")[1].text)
+        for row in page.cssselect("[data-format-table] tbody tr")
+    ]
+    assert rows == [
+        ("email", "Required"),
+        ("first_name", "Optional"),
+        ("last_name", "Optional"),
+        ("cohort", "Optional"),
+    ]
+
+
+@pytest.mark.django_db
+def test_the_upload_page_states_the_row_and_file_size_limits(
+    import_world: SimpleNamespace, settings, monkeypatch: pytest.MonkeyPatch
+):
+    settings.LEARNER_IMPORT_MAX_ROWS = 1500
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.views.MAX_UPLOAD_BYTES", 2 * 1024 * 1024
+    )
+
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    text = page.text_content().replace("\xa0", " ")
+    assert "Add up to 1,500 learners at once, 2.0 MB per file" in " ".join(text.split())
+
+
+@pytest.mark.django_db
+def test_the_cohort_upload_page_describes_the_cohort_column_as_ignored(
+    import_world: SimpleNamespace,
+):
+    cohort = CohortFactory(organisation=import_world.organisation, name="Accra Jan")
+
+    page = _get_document(
+        import_world.client, _cohort_import_url(import_world.organisation, cohort)
+    )
+
+    cohort_row = page.cssselect("[data-format-table] tbody tr")[3]
+    assert "Ignored: everyone goes into Accra Jan." in " ".join(
+        cohort_row.text_content().split()
+    )
 
 
 @pytest.mark.django_db

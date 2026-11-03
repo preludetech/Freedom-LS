@@ -58,6 +58,16 @@ TEMPLATE_EXAMPLE_ROWS = (
     ("ada@example.com", "Ada", "Lovelace", ""),
     ("grace@example.com", "Grace", "Hopper", "Cohort name"),
 )
+REQUIRED_HEADERS = ("email",)
+#: The template row with a value in every column, shown as the example of each.
+FULL_EXAMPLE_ROW = TEMPLATE_EXAMPLE_ROWS[1]
+#: What each column holds, shown beside the column name on the upload page.
+HEADER_DESCRIPTIONS = {
+    "email": "Used to sign in, and to match learners who already have an account.",
+    "first_name": "Given name. Existing accounts keep their names.",
+    "last_name": "Family name.",
+    "cohort": "The cohort's name, matched exactly.",
+}
 ERROR_CSV_HEADER = (*HEADERS, "reason")
 
 INVALID_EMAIL_REASON = "This isn't a valid email address."
@@ -119,7 +129,7 @@ def create_learner_import(
     rows = parse_csv(
         uploaded_file,
         accepted_headers=HEADERS,
-        required_headers=("email",),
+        required_headers=REQUIRED_HEADERS,
         max_rows=config.LEARNER_IMPORT_MAX_ROWS,
     )
     with transaction.atomic():
