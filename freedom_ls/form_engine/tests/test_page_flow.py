@@ -327,6 +327,14 @@ def _choose(gated: GatedForm, option: QuestionOption) -> None:
     answer.selected_options.set([option])
 
 
+def _context_for_no_answer(gated: GatedForm, page_number: int) -> dict[str, object]:
+    _choose(gated, gated.no)
+    current = resolve_page(current_path(gated.sitting), page_number)
+    return page_context(
+        gated.form, current, gated.sitting, PageSubmission(), _url_for_page
+    )
+
+
 @pytest.mark.django_db
 def test_page_at_an_off_path_page_has_no_questions(gated_form):
     _choose(gated_form, gated_form.no)
@@ -361,48 +369,21 @@ def test_is_last_holds_on_the_last_on_path_page_when_later_pages_exist(gated_for
 
 @pytest.mark.django_db
 def test_page_context_next_skips_an_off_path_page(gated_form):
-    _choose(gated_form, gated_form.no)
-    current = resolve_page(current_path(gated_form.sitting), 1)
-
-    context = page_context(
-        gated_form.form,
-        current,
-        gated_form.sitting,
-        PageSubmission(),
-        _url_for_page,
-    )
+    context = _context_for_no_answer(gated_form, 1)
 
     assert context["next_page_url"] == "/page/3/"
 
 
 @pytest.mark.django_db
 def test_page_context_previous_skips_an_off_path_page(gated_form):
-    _choose(gated_form, gated_form.no)
-    current = resolve_page(current_path(gated_form.sitting), 3)
-
-    context = page_context(
-        gated_form.form,
-        current,
-        gated_form.sitting,
-        PageSubmission(),
-        _url_for_page,
-    )
+    context = _context_for_no_answer(gated_form, 3)
 
     assert context["previous_page_url"] == "/page/1/"
 
 
 @pytest.mark.django_db
 def test_page_context_labels_a_page_by_its_place_on_the_path(gated_form):
-    _choose(gated_form, gated_form.no)
-    current = resolve_page(current_path(gated_form.sitting), 3)
-
-    context = page_context(
-        gated_form.form,
-        current,
-        gated_form.sitting,
-        PageSubmission(),
-        _url_for_page,
-    )
+    context = _context_for_no_answer(gated_form, 3)
 
     assert (context["current_page_num"], context["page_position"]) == (3, 2)
     assert context["total_pages"] == 2
@@ -410,32 +391,14 @@ def test_page_context_labels_a_page_by_its_place_on_the_path(gated_form):
 
 @pytest.mark.django_db
 def test_page_children_exclude_an_off_path_question_and_content_block(gated_form):
-    _choose(gated_form, gated_form.no)
-    current = resolve_page(current_path(gated_form.sitting), 3)
-
-    context = page_context(
-        gated_form.form,
-        current,
-        gated_form.sitting,
-        PageSubmission(),
-        _url_for_page,
-    )
+    context = _context_for_no_answer(gated_form, 3)
 
     assert context["page_children"] == gated_form.last_questions
 
 
 @pytest.mark.django_db
 def test_question_positions_are_consecutive_on_the_path(gated_form):
-    _choose(gated_form, gated_form.no)
-    current = resolve_page(current_path(gated_form.sitting), 3)
-
-    context = page_context(
-        gated_form.form,
-        current,
-        gated_form.sitting,
-        PageSubmission(),
-        _url_for_page,
-    )
+    context = _context_for_no_answer(gated_form, 3)
 
     first, second = gated_form.last_questions
     assert context["question_positions"] == {
