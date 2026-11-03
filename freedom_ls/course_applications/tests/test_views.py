@@ -1033,6 +1033,113 @@ class TestCheckYourAnswers:
 
 
 @pytest.mark.django_db
+class TestCheckYourAnswersFollowsThePath:
+    def test_an_off_path_page_has_no_card(self, client, mock_site_context):
+        app, _yes, no, choice = _gated_application_with_a_skippable_page(client)
+        client.post(_page_url(app, 1), {f"question_{choice.id}": str(no.id)})
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert _page_url(app, 1) in body
+        assert _page_url(app, 2) not in body
+        assert _page_url(app, 3) in body
+
+    def test_an_off_path_question_has_no_row(self, client, mock_site_context):
+        form = FormFactory(strategy=FormStrategy.UNSCORED)
+        page = FormPageFactory(form=form, order=0, title="Only page")
+        choice = FormQuestionFactory(
+            form_page=page, type="multiple_choice", order=0, required=False
+        )
+        yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+        QuestionOptionFactory(question=choice, value="no", order=1)
+        FormQuestionFactory(
+            form_page=page,
+            order=1,
+            type="short_text",
+            required=False,
+            question="Employer name",
+            condition_option=yes,
+        )
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        course.application_form = form
+        course.save(update_fields=["application_form"])
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "Employer name" not in body
+
+    def test_the_fallback_title_counts_on_the_path(self, client, mock_site_context):
+        app, _yes, no, choice = _gated_application_with_a_skippable_page(client)
+        client.post(_page_url(app, 1), {f"question_{choice.id}": str(no.id)})
+
+        response = client.get(_check_url(app))
+
+        assert [s["number"] for s in response.context["sections"]] == [1, 2]
+        assert [s["edit_url"] for s in response.context["sections"]] == [
+            _edit_url(app, 1),
+            _edit_url(app, 3),
+        ]
+
+    def test_a_submitted_sitting_reads_its_recorded_path(
+        self, client, mock_site_context
+    ):
+        app, yes, _no, choice = _gated_application_with_a_skippable_page(client)
+        client.post(_page_url(app, 1), {f"question_{choice.id}": str(yes.id)})
+        hidden = app.form_progress.form.pages.get(order=1).questions.get()
+        third = app.form_progress.form.pages.get(order=2).questions.get()
+        client.post(_page_url(app, 2), {f"question_{hidden.id}": "x"})
+        client.post(_page_url(app, 3), {f"question_{third.id}": "y"})
+        client.post(_check_url(app))
+        page_two = app.form_progress.form.pages.get(order=1)
+        page_two.condition_option = choice.options.get(value="no")
+        page_two.save(update_fields=["condition_option"])
+
+        response = client.get(_check_url(app))
+
+        assert [s["number"] for s in response.context["sections"]] == [1, 2, 3]
+
+
+@pytest.mark.django_db
+class TestEditingFromTheCheckPageWalksNewQuestions:
+    def _application(self, client):
+        app, yes, no, choice = _gated_application_with_a_skippable_page(client)
+        employer = app.form_progress.form.pages.get(order=1).questions.get()
+        employer.required = True
+        employer.save(update_fields=["required"])
+        third = app.form_progress.form.pages.get(order=2).questions.get()
+        client.post(_page_url(app, 1), {f"question_{choice.id}": str(no.id)})
+        client.post(_page_url(app, 3), {f"question_{third.id}": "y"})
+        return app, yes, no, choice, employer
+
+    def test_opening_a_required_page_routes_through_it(self, client, mock_site_context):
+        app, yes, _no, choice, _employer = self._application(client)
+
+        response = client.post(
+            _edit_url(app, 1), {f"question_{choice.id}": str(yes.id)}
+        )
+
+        assert response["Location"] == _edit_url(app, 2)
+
+    def test_saving_the_opened_page_returns_to_review(self, client, mock_site_context):
+        app, yes, _no, choice, employer = self._application(client)
+        client.post(_edit_url(app, 1), {f"question_{choice.id}": str(yes.id)})
+
+        response = client.post(_edit_url(app, 2), {f"question_{employer.id}": "Acme"})
+
+        assert response["Location"] == _check_url(app)
+
+    def test_closing_the_page_returns_straight_to_review(
+        self, client, mock_site_context
+    ):
+        app, _yes, no, choice, _employer = self._application(client)
+
+        response = client.post(_edit_url(app, 1), {f"question_{choice.id}": str(no.id)})
+
+        assert response["Location"] == _check_url(app)
+
+
+@pytest.mark.django_db
 class TestApplicationFormPageMarkup:
     def test_each_question_type_on_the_page_gets_its_input(
         self, client, mock_site_context

@@ -72,11 +72,11 @@ from freedom_ls.form_engine.page_flow import (
     submit_page,
 )
 from freedom_ls.form_engine.paging import (
+    first_page_number_with_unanswered_required,
     resume_page_number,
     unanswered_required_in_form,
     unanswered_required_message,
 )
-from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.form_engine.session_access import allow_anonymous_form_progress
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -755,8 +755,20 @@ def application_form_page(
             return redirect("course_applications:status", pk=app.pk)
         submission = submit_page(current, request.POST, form_progress)
         if submission.accepted:
-            next_number = current_path(form_progress).next_page_number(page_number)
-            if next_number is not None and not return_to_check:
+            path = current_path(form_progress)
+            if return_to_check:
+                # The edit can open a page the applicant has never filled in;
+                # walk them through its required questions before review.
+                onward = first_page_number_with_unanswered_required(
+                    path,
+                    unanswered_required_in_form(form_progress, path),
+                    after=page_number,
+                )
+                if onward is not None:
+                    return redirect(f"{url_for_page(onward)}?return={RETURN_TO_CHECK}")
+                return redirect("course_applications:check_answers", pk=app.pk)
+            next_number = path.next_page_number(page_number)
+            if next_number is not None:
                 return redirect(url_for_page(next_number))
             return redirect("course_applications:check_answers", pk=app.pk)
 
@@ -796,7 +808,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     owned = _owned_application_with_form(request, pk)
     if isinstance(owned, HttpResponse):
         return owned
-    app, form, form_progress = owned
+    app, _form, form_progress = owned
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
 
@@ -828,13 +840,16 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         [form_progress], "answers__selected_options", "answers__answer_file"
     )
     sections = []
-    for number, page in enumerate(form.pages.all(), start=1):
-        questions = page_questions(page)
+    path = sitting_path(form_progress)
+    for position, (number, page) in enumerate(path.numbered_pages(), start=1):
+        questions = path.questions_of(page)
+        if not questions:
+            continue
         answers = form_progress.existing_answers_dict(questions)
         sections.append(
             {
                 "title": page.title,
-                "number": number,
+                "number": position,
                 "edit_url": f"{_page_url(app, number)}?return={RETURN_TO_CHECK}",
                 "rows": [
                     {"question": question, "answer": answers.get(question.id)}
