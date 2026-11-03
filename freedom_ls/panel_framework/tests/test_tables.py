@@ -10,6 +10,7 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.db.models import QuerySet
 from django.http import (
     Http404,
     HttpRequest,
@@ -25,7 +26,13 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import ChoiceFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel
 from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
-from freedom_ls.panel_framework.views import SectionConfigBase
+from freedom_ls.panel_framework.views import (
+    BaseViewConfig,
+    ListViewConfig,
+    NavGroup,
+    SectionConfig,
+    SectionConfigBase,
+)
 from freedom_ls.tests.site_context import drop_ambient_request
 
 from .helpers import make_stub
@@ -35,7 +42,7 @@ from .stub_panels import (
     StubDetailDataTable,
     StubPlainDataTable,
 )
-from .view_helpers import fetch
+from .view_helpers import call_view, fetch, make_request
 
 pytestmark = pytest.mark.django_db
 
@@ -1015,14 +1022,15 @@ def test_export_link_of_a_stacked_table_serves_its_csv(
     stub = make_stub(name="row-x", kind="a")
     html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
     document = lxml.html.fromstring(html)
-    (link,) = [
+    links = [
         a
         for a in document.cssselect("#a-table a")
         if a.text_content().strip() == "Export CSV"
     ]
-    assert "btn-sm" in link.get("class").split()
-    assert link.cssselect("svg[data-icon='download']")
-    href = link.get("href").removeprefix("/test-panel/framework/")
+    assert len({a.get("href") for a in links}) == 1
+    assert all("btn-sm" in a.get("class").split() for a in links)
+    assert all(a.cssselect("svg[data-icon='download']") for a in links)
+    href = links[0].get("href").removeprefix("/test-panel/framework/")
     path_string, _, query = href.partition("?")
 
     response = fetch(path_string, data=dict(QueryDict(query).items()))
@@ -1515,3 +1523,133 @@ def test_get_context_has_no_row_detail_for_a_plain_table(
     assert isinstance(rows, list)
     assert [row["has_row_detail"] for row in rows] == [False]
     assert context["row_detail_template"] is None
+
+
+class _OverriddenExportPanel(StubDataTablePanel):
+    """Exports only "keep" rows, whatever the screen shows, and records each
+    `before_export` call with the names it was handed."""
+
+    calls: list[list[str]] = []
+
+    def get_export_queryset(self, request: HttpRequest) -> QuerySet:
+        return self.get_queryset(request).filter(name__startswith="keep")
+
+    def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        type(self).calls.append([row.name for row in rows])
+        return rows.exclude(name__endswith="-dropped")
+
+
+class _OverriddenExportPanelConfig(BaseViewConfig):
+    url_name = "export-panel"
+    menu_label = "Export panel"
+    panel = _OverriddenExportPanel
+
+
+def _fetch_from(
+    config: SectionConfig, path: str, data: dict[str, str]
+) -> HttpResponse | StreamingHttpResponse:
+    return call_view(
+        make_request(path, data=data), path, config=[NavGroup("Test", [config])]
+    )
+
+
+def test_an_overridden_export_queryset_still_honours_search_filters_and_sort(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="keep-a", kind="a")
+    make_stub(name="keep-c", kind="b")
+    make_stub(name="keep-b", kind="b")
+    make_stub(name="other-b", kind="b")
+    make_stub(name="keep-nomatch", kind="a")
+
+    response = _fetch_from(
+        _OverriddenExportPanelConfig,
+        "export-panel",
+        {
+            "stub-q": "keep-",
+            "stub-kind": "b",
+            "stub-sort": "-name",
+            "stub-export": "csv",
+        },
+    )
+
+    _header, *body = _rows(response)
+    assert [row[0] for row in body] == ["keep-c", "keep-b"]
+
+
+def test_before_export_runs_before_streaming_and_its_rows_are_streamed(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="keep-1")
+    make_stub(name="keep-2-dropped")
+    _OverriddenExportPanel.calls = []
+
+    response = _fetch_from(
+        _OverriddenExportPanelConfig, "export-panel", {"stub-export": "csv"}
+    )
+
+    assert _OverriddenExportPanel.calls == [["keep-1", "keep-2-dropped"]]
+    _header, *body = _rows(response)
+    assert [row[0] for row in body] == ["keep-1"]
+    assert len(_OverriddenExportPanel.calls) == 1
+
+
+class _OverriddenExportListConfig(ListViewConfig):
+    url_name = "export-list"
+    menu_label = "Export list"
+    list_view = StubDataTable
+    table_key = "stubs"
+    before_export_calls: list[list[str]] = []
+
+    @classmethod
+    def get_export_queryset(cls, request: HttpRequest) -> QuerySet:
+        return StubDataTable.get_queryset(request).filter(name__startswith="keep")
+
+    @classmethod
+    def before_export(cls, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        cls.before_export_calls.append([row.name for row in rows])
+        return rows
+
+    @classmethod
+    def get_export_scope_slug(cls, request: HttpRequest) -> str:
+        return "Acme Org"
+
+
+def test_a_list_config_overrides_reach_the_export(mock_site_context: Site) -> None:
+    make_stub(name="keep-1")
+    make_stub(name="skip-1")
+    _OverriddenExportListConfig.before_export_calls = []
+
+    response = _fetch_from(
+        _OverriddenExportListConfig, "export-list", {"stubs-export": "csv"}
+    )
+
+    _header, *body = _rows(response)
+    assert [row[0] for row in body] == ["keep-1"]
+    assert _OverriddenExportListConfig.before_export_calls == [["keep-1"]]
+    today = timezone.localdate().isoformat()
+    assert (
+        response["Content-Disposition"]
+        == f'attachment; filename="stubs-acme-org-{today}.csv"'
+    )
+
+
+def test_a_list_config_without_overrides_exports_the_lists_rows(
+    mock_site_context: Site,
+) -> None:
+    class _PlainListConfig(ListViewConfig):
+        url_name = "export-plain"
+        menu_label = "Export plain"
+        list_view = StubDataTable
+        table_key = "stubs"
+
+    make_stub(name="row-1")
+
+    response = _fetch_from(_PlainListConfig, "export-plain", {"stubs-export": "csv"})
+
+    _header, *body = _rows(response)
+    assert [row[0] for row in body] == ["row-1"]
+    today = timezone.localdate().isoformat()
+    assert (
+        response["Content-Disposition"] == f'attachment; filename="stubs-{today}.csv"'
+    )

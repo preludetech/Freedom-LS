@@ -11,6 +11,7 @@ from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.panels import DataTablePanel
+from freedom_ls.panel_framework.tables import ExportColumn
 
 from ..helpers import make_stub
 from ..stub_panels import (
@@ -19,6 +20,7 @@ from ..stub_panels import (
     StubCardDataTable,
     StubDetailDataTable,
     StubDetailTablePanel,
+    StubPlainDataTable,
 )
 from ..test_tables import _bind_table_panel
 
@@ -186,3 +188,49 @@ def test_a_table_without_a_row_detail_renders_no_toggle_or_detail(
     assert document.cssselect("tr[data-row-detail]") == []
     assert document.cssselect("ul details") == []
     assert document.cssselect("table[x-data]") == []
+
+
+class _PlainExportDataTable(StubPlainDataTable):
+    """No filters and no sortable columns, with export columns."""
+
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        return [ExportColumn("Name", "name")]
+
+
+class _PlainExportTablePanel(DataTablePanel):
+    title = "Plain export"
+    data_table = _PlainExportDataTable
+    table_key = "plainexport"
+
+
+class _PlainNoExportTablePanel(DataTablePanel):
+    title = "Plain"
+    data_table = StubPlainDataTable
+    table_key = "plain"
+
+
+def test_a_table_with_only_an_export_has_an_export_link_in_the_phone_toolbar(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a")
+
+    document = _render(_PlainExportTablePanel)
+
+    (link,) = [
+        a
+        for a in document.cssselect(".md\\:hidden a")
+        if a.text_content().strip() == "Export CSV"
+    ]
+    assert "plainexport-export=csv" in link.get("href")
+    assert not document.cssselect("[x-data=sidePanel]")
+
+
+def test_a_table_without_export_columns_renders_no_export_link(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a")
+
+    document = _render(_PlainNoExportTablePanel)
+
+    assert "Export CSV" not in document.text_content()
