@@ -5701,7 +5701,7 @@ def test_a_stale_destination_in_the_move_picker_answers_422_without_the_id(
     )
 
     assert response.status_code == 422
-    assert "Choose a cohort" in _bulk_text(response)
+    assert "Choose a cohort from the list." in _bulk_text(response)
     assert stale not in response.content.decode()
 
 

@@ -58,6 +58,7 @@ from freedom_ls.educator_interface.forms import (
     LearnerPickerForm,
     MemberEmailForm,
     ReasonForm,
+    choice_error,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.members import (
@@ -1112,7 +1113,7 @@ class MoveToCohortAction(MembershipAction):
             )
         form = self._picker(ctx, learner)
         if not form.is_valid():
-            return self._refusal(ctx, "Choose a cohort to move them to.")
+            return self._refusal(ctx, choice_error("cohort")["invalid_choice"])
         destination = cast(Cohort, form.cleaned_data["destination"])
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, destination):
             return denied_response(ctx, self)
