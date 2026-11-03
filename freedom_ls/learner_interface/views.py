@@ -72,7 +72,12 @@ from freedom_ls.form_engine.page_flow import (
     resolve_page,
     submit_page,
 )
-from freedom_ls.form_engine.paging import answered_counts, resume_page_number
+from freedom_ls.form_engine.paging import (
+    answered_counts,
+    first_page_number_with_unanswered_required,
+    resume_page_number,
+    unanswered_required_in_form,
+)
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_management.learner_actions import self_register
 from freedom_ls.learner_management.queries import (
@@ -2003,7 +2008,14 @@ def form_fill_page(
             if next_number is not None:
                 return redirect(_form_page_url(course_slug, index, next_number))
 
-            # Mark form as completed and calculate scores
+            path = current_path(form_progress)
+            unanswered = unanswered_required_in_form(form_progress, path)
+            onward = first_page_number_with_unanswered_required(path, unanswered)
+            if onward is not None:
+                # A page the answers reopened behind the learner holds a required
+                # question the page-jump nav would otherwise let them skip.
+                return redirect(_form_page_url(course_slug, index, onward))
+
             form_progress.complete()
 
             return redirect(

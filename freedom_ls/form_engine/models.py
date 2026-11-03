@@ -8,7 +8,7 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -435,13 +435,26 @@ class FormProgress(SiteAwareModel):
             answer.save()
         return rejected
 
-    def complete(self):
-        """Mark the form as completed and calculate the final score (idempotent)."""
+    def complete(self) -> None:
+        """Finish the sitting: keep only the answers it was asked, record what it
+        was asked, score it, then tell the apps above (idempotent)."""
         if self.completed_time:
             return
-        self.completed_time = timezone.now()
-        self.score()
-        self.save()
+        # Local import: conditions imports this module.
+        from .conditions import current_path
+
+        with transaction.atomic():
+            path = current_path(self)
+            # Deleting cascades to any attached file row; its receiver removes the
+            # stored object only once this block commits.
+            self.answers.exclude(question_id__in=path.question_ids).delete()
+            self.asked = path.as_asked()
+            self.completed_time = timezone.now()
+            self.score()
+            self.save()
+        # Sent once the block has committed or released its savepoint, not through
+        # on_commit: the receivers that update course progress and webhooks read
+        # the row this block wrote.
         form_attempt_completed.send(
             sender=type(self), user=self.user, form=self.form, attempt=self
         )

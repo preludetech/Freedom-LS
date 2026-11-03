@@ -3491,3 +3491,99 @@ def test_start_screen_keeps_whole_form_counts_when_pages_are_off_path(
 
     assert response.context["question_count"] == 4
     assert response.context["page_count"] == 4
+
+
+# ---------------------------------------------------------------------------
+# Completion on a form with conditions
+# ---------------------------------------------------------------------------
+
+
+def _make_form_whose_second_page_opens_on_yes():
+    """Page 1 asks yes/no; page 2 (required question) opens on "yes"; page 3
+    holds one more question."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page_one = FormPageFactory(form=form, order=0)
+    gate = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=gate, value="yes", order=0)
+    no = QuestionOptionFactory(question=gate, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1, condition_option=yes)
+    gated = FormQuestionFactory(
+        form_page=page_two, type="short_text", order=0, required=True
+    )
+    page_three = FormPageFactory(form=form, order=2)
+    last = FormQuestionFactory(form_page=page_three, type="short_text", order=0)
+    return form, gate, yes, no, gated, last
+
+
+@pytest.mark.django_db
+def test_the_last_page_sends_the_learner_back_to_an_unanswered_required_page(
+    mock_site_context, client
+):
+    """Answering "yes" on page 1 after skipping ahead reopens page 2 behind the
+    learner; submitting page 3 must not complete the sitting."""
+    form, gate, yes, no, _gated, last = _make_form_whose_second_page_opens_on_yes()
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course, 1), {f"question_{gate.id}": str(no.id)})
+    client.post(_fill_page_url(course, 1), {f"question_{gate.id}": str(yes.id)})
+
+    response = client.post(_fill_page_url(course, 3), {f"question_{last.id}": "x"})
+
+    assert response["Location"] == _fill_page_url(course, 2)
+
+
+@pytest.mark.django_db
+def test_the_last_page_leaves_the_sitting_incomplete_while_a_required_page_is_unanswered(
+    mock_site_context, client
+):
+    form, gate, yes, _no, _gated, last = _make_form_whose_second_page_opens_on_yes()
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course, 1), {f"question_{gate.id}": str(yes.id)})
+
+    client.post(_fill_page_url(course, 3), {f"question_{last.id}": "x"})
+
+    assert FormProgress.objects.get(user=user, form=form).completed_time is None
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_on_a_partial_sitting_records_the_unreached_on_path_page(
+    mock_site_context, client
+):
+    form, gate, yes, _no, gated, _last = _make_form_whose_second_page_opens_on_yes()
+    form.submit_on_exit = True
+    form.save()
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{gate.id}": str(yes.id)},
+    )
+
+    asked = FormProgress.objects.get(user=user, form=form).asked
+    assert str(gated.form_page_id) in asked["pages"]

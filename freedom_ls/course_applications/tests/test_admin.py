@@ -638,7 +638,9 @@ def test_deleting_an_applicant_removes_the_sitting_and_its_answers(staff_client)
     assert not QuestionAnswer.objects.filter(form_progress_id=progress_pk).exists()
 
 
-def test_deleting_an_applicant_removes_the_stored_file(staff_client):
+def test_deleting_an_applicant_removes_the_stored_file(
+    staff_client, django_capture_on_commit_callbacks
+):
     unverified = unverified_application_with_file()
     answer_file = QuestionAnswerFile.objects.get(
         answer__form_progress=unverified.sitting
@@ -646,7 +648,8 @@ def test_deleting_an_applicant_removes_the_stored_file(staff_client):
     storage, name = answer_file.file.storage, answer_file.file.name
     url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
 
-    staff_client.post(url, {"post": "yes"})
+    with django_capture_on_commit_callbacks(execute=True):
+        staff_client.post(url, {"post": "yes"})
 
     assert not storage.exists(name)
 
@@ -755,7 +758,7 @@ def test_answer_file_changelist_of_ten_unverified_files_stays_under_a_query_boun
 
 
 def test_erasing_a_claimed_applicants_user_removes_the_applicant_and_its_records(
-    staff_client,
+    staff_client, django_capture_on_commit_callbacks
 ):
     user = UserFactory()
     unverified = unverified_application_with_file()
@@ -772,10 +775,11 @@ def test_erasing_a_claimed_applicants_user_removes_the_applicant_and_its_records
     progress.user = user
     progress.save()
 
-    response = staff_client.post(
-        reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk]),
-        {"post": "yes"},
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        response = staff_client.post(
+            reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk]),
+            {"post": "yes"},
+        )
 
     assert response.status_code == 302
     assert not AnonymousApplicant.objects.filter(pk=applicant.pk).exists()

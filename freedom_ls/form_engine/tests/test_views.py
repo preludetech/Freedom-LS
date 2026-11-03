@@ -317,7 +317,9 @@ def test_removing_a_file_clears_the_answer_row(mock_site_context, client, sittin
 
 
 @pytest.mark.django_db
-def test_removing_a_file_deletes_the_stored_object(mock_site_context, client, sitting):
+def test_removing_a_file_deletes_the_stored_object(
+    mock_site_context, client, sitting, django_capture_on_commit_callbacks
+):
     form_progress, question = sitting
     client.force_login(form_progress.user)
     client.post(
@@ -328,7 +330,8 @@ def test_removing_a_file_deletes_the_stored_object(mock_site_context, client, si
     stored = QuestionAnswerFile.objects.get(answer__question=question)
     storage, name = stored.file.storage, stored.file.name
 
-    client.post(_remove_url(form_progress, question), HTTP_HX_REQUEST="true")
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(_remove_url(form_progress, question), HTTP_HX_REQUEST="true")
 
     assert storage.exists(name) is False
 

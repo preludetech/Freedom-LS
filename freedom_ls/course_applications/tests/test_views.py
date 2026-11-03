@@ -401,6 +401,18 @@ def _questions_on(form, page_number):
     return page_questions(page)
 
 
+def _add_required_page_opened_by_the_search_option(form):
+    """A third page, with one required question, shown only to applicants who
+    picked "Search" for how they heard about the course."""
+    choice = _questions_on(form, 1)[2]
+    page = FormPageFactory(
+        form=form,
+        order=2,
+        condition_option=choice.options.get(text="Search"),
+    )
+    FormQuestionFactory(form_page=page, type="short_text", order=0, required=True)
+
+
 def _applied(client, course):
     """Log a fresh user in and take them through the apply POST."""
     user = UserFactory()
@@ -909,6 +921,39 @@ class TestCheckYourAnswers:
 
         app.form_progress.refresh_from_db()
         assert app.form_progress.completed_time is None
+
+    def test_a_required_question_on_a_page_the_answers_close_does_not_block_submission(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        _add_required_page_opened_by_the_search_option(form)
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        response = client.post(_check_url(app))
+
+        assert response.status_code == 302
+
+    def test_a_required_question_on_a_page_the_answers_open_blocks_submission(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        _add_required_page_opened_by_the_search_option(form)
+        app = _applied(client, course)
+        name, _years, choice, _why = _questions_on(form, 1)
+        client.post(
+            _page_url(app, 1),
+            {
+                f"question_{name.id}": "Ada",
+                f"question_{choice.id}": str(choice.options.get(text="Search").id),
+            },
+        )
+
+        response = client.post(_check_url(app))
+
+        assert response.status_code == 422
+        assert "Question 6 needs an answer" in response.content.decode()
 
     def test_submitting_a_complete_application_stamps_it(
         self, client, mock_site_context

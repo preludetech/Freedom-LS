@@ -277,7 +277,7 @@ def test_deleting_a_course_removes_an_unclaimed_applicants_sitting(mock_site_con
 
 
 def test_deleting_a_course_removes_an_unclaimed_applicants_stored_file(
-    mock_site_context,
+    mock_site_context, django_capture_on_commit_callbacks
 ):
     unverified = unverified_application_with_file()
     answer_file = QuestionAnswerFile.objects.get(
@@ -285,7 +285,8 @@ def test_deleting_a_course_removes_an_unclaimed_applicants_stored_file(
     )
     storage, name = answer_file.file.storage, answer_file.file.name
 
-    unverified.application.course.delete()
+    with django_capture_on_commit_callbacks(execute=True):
+        unverified.application.course.delete()
 
     assert not storage.exists(name)
 
@@ -320,7 +321,9 @@ def test_deleting_a_user_erases_their_unclaimed_applications(mock_site_context):
     assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
 
 
-def test_deleting_a_user_removes_their_unclaimed_applications_files(mock_site_context):
+def test_deleting_a_user_removes_their_unclaimed_applications_files(
+    mock_site_context, django_capture_on_commit_callbacks
+):
     user = UserFactory(email="ada@example.com")
     unverified = _unclaimed_application_for("ada@example.com")
     answer_file = QuestionAnswerFile.objects.get(
@@ -328,7 +331,8 @@ def test_deleting_a_user_removes_their_unclaimed_applications_files(mock_site_co
     )
     storage, name = answer_file.file.storage, answer_file.file.name
 
-    user.delete()
+    with django_capture_on_commit_callbacks(execute=True):
+        user.delete()
 
     assert not storage.exists(name)
 

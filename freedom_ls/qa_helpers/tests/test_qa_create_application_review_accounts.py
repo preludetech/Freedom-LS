@@ -27,7 +27,9 @@ pytestmark = pytest.mark.dev_tooling
 
 
 @pytest.mark.django_db
-def test_the_purge_takes_the_sitting_and_its_stored_file(mock_site_context):
+def test_the_purge_takes_the_sitting_and_its_stored_file(
+    mock_site_context, django_capture_on_commit_callbacks
+):
     answer_file = QuestionAnswerFileFactory()
     sitting = answer_file.answer.form_progress
     user = sitting.user
@@ -35,7 +37,8 @@ def test_the_purge_takes_the_sitting_and_its_stored_file(mock_site_context):
     storage, name = answer_file.file.storage, answer_file.file.name
     assert storage.exists(name)
 
-    counts = _purge_course_data(user)
+    with django_capture_on_commit_callbacks(execute=True):
+        counts = _purge_course_data(user)
 
     assert counts["CourseApplication"] == 1
     assert counts["FormProgress"] == 1

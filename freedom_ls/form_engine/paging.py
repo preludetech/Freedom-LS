@@ -147,6 +147,22 @@ def unanswered_required_in_form(
     ]
 
 
+def first_page_number_with_unanswered_required(
+    path: SittingPath, unanswered: list[FormQuestion], *, after: int = 0
+) -> int | None:
+    """The lowest authored page number above `after` holding one of `unanswered`."""
+    unanswered_ids = {question.id for question in unanswered}
+    return next(
+        (
+            number
+            for number, page in path.numbered_pages()
+            if number > after
+            and any(q.id in unanswered_ids for q in path.questions_of(page))
+        ),
+        None,
+    )
+
+
 def _question_numbers(questions: list[FormQuestion], path: SittingPath) -> list[str]:
     positions = path.question_positions()
     return [str(positions[question.id]) for question in questions]

@@ -39,7 +39,7 @@ def test_erasing_an_applicant_removes_the_sitting(mock_site_context):
 
 
 def test_erasing_an_applicant_removes_the_answer_file_row_and_stored_object(
-    mock_site_context,
+    mock_site_context, django_capture_on_commit_callbacks
 ):
     unverified = unverified_application_with_file()
     answer_file = QuestionAnswerFile.objects.get(
@@ -47,7 +47,8 @@ def test_erasing_an_applicant_removes_the_answer_file_row_and_stored_object(
     )
     storage, name = answer_file.file.storage, answer_file.file.name
 
-    erase_anonymous_applicant(unverified.applicant)
+    with django_capture_on_commit_callbacks(execute=True):
+        erase_anonymous_applicant(unverified.applicant)
 
     assert not QuestionAnswerFile.objects.filter(pk=answer_file.pk).exists()
     assert not storage.exists(name)

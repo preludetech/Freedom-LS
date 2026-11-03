@@ -6,6 +6,7 @@ is never connected, and fails silently rather than loudly.
 
 from __future__ import annotations
 
+from django.db import transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
@@ -21,4 +22,7 @@ def delete_question_answer_file(
     """
     if not instance.file:
         return
-    instance.file.delete(save=False)
+    stored = instance.file
+    # Deferred to commit: a completion that rolls back after deleting the row
+    # must not have already erased the applicant's file.
+    transaction.on_commit(lambda: stored.delete(save=False))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 
 from django.core.files.base import ContentFile
@@ -28,6 +30,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
     question_answer_file_upload_to,
 )
+from freedom_ls.form_engine.signals import form_attempt_completed
 
 # QuestionAnswer.question is PROTECTed against FormQuestion deletion.
 
@@ -70,11 +73,14 @@ def test_the_key_takes_its_extension_from_the_name_fls_chose(
 
 
 @pytest.mark.django_db
-def test_removing_the_answer_deletes_the_stored_object(mock_site_context, answer_file):
+def test_removing_the_answer_deletes_the_stored_object(
+    mock_site_context, answer_file, django_capture_on_commit_callbacks
+):
     storage, name = answer_file.file.storage, answer_file.file.name
     answer = answer_file.answer
 
-    answer.delete()
+    with django_capture_on_commit_callbacks(execute=True):
+        answer.delete()
 
     assert storage.exists(name) is False
 
@@ -90,11 +96,12 @@ def test_removing_the_answer_deletes_the_answer_row(mock_site_context, answer_fi
 
 @pytest.mark.django_db
 def test_deleting_the_applicant_deletes_the_stored_object(
-    mock_site_context, answer_file
+    mock_site_context, answer_file, django_capture_on_commit_callbacks
 ):
     storage, name = answer_file.file.storage, answer_file.file.name
 
-    answer_file.answer.form_progress.user.delete()
+    with django_capture_on_commit_callbacks(execute=True):
+        answer_file.answer.form_progress.user.delete()
 
     assert storage.exists(name) is False
 
@@ -288,6 +295,100 @@ def test_complete_twice_does_not_re_score(mock_site_context):
     progress.complete()
 
     assert progress.scores == {"score": 999, "max_score": 999}
+
+
+# Completing a sitting that branches: the answers it was not asked are dropped
+# and the path it was asked is recorded.
+
+
+@dataclass
+class GatedSitting:
+    progress: FormProgress
+    gate: FormQuestion
+    on_path: FormQuestion
+    off_path: FormQuestion
+
+
+@pytest.fixture
+def gated_sitting(mock_site_context) -> GatedSitting:
+    """Page 1 asks a yes/no question answered "no"; page 2 is open only on "yes",
+    and both pages hold an answered question."""
+    form: Form = FormFactory()
+    page_one = FormPageFactory(form=form, order=0)
+    gate = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=gate, value="yes", order=0)
+    no = QuestionOptionFactory(question=gate, value="no", order=1)
+    on_path = FormQuestionFactory(form_page=page_one, type="short_text", order=1)
+    page_two = FormPageFactory(form=form, order=1, condition_option=yes)
+    off_path = FormQuestionFactory(form_page=page_two, type="short_text", order=0)
+    progress = FormProgressFactory(form=form, user=UserFactory())
+    QuestionAnswerFactory(form_progress=progress, question=gate).selected_options.set(
+        [no]
+    )
+    QuestionAnswerFactory(form_progress=progress, question=on_path)
+    QuestionAnswerFactory(form_progress=progress, question=off_path)
+    return GatedSitting(progress, gate, on_path, off_path)
+
+
+@pytest.mark.django_db
+def test_complete_deletes_the_answers_to_off_path_questions(gated_sitting):
+    gated_sitting.progress.complete()
+
+    assert not gated_sitting.progress.answers.filter(
+        question=gated_sitting.off_path
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_complete_keeps_the_answers_to_on_path_questions(gated_sitting):
+    gated_sitting.progress.complete()
+
+    assert set(
+        gated_sitting.progress.answers.values_list("question_id", flat=True)
+    ) == {
+        gated_sitting.gate.id,
+        gated_sitting.on_path.id,
+    }
+
+
+@pytest.mark.django_db
+def test_complete_records_the_path_the_sitting_was_asked(gated_sitting):
+    expected = current_path(gated_sitting.progress).as_asked()
+
+    gated_sitting.progress.complete()
+
+    gated_sitting.progress.refresh_from_db()
+    assert gated_sitting.progress.asked == expected
+
+
+@pytest.mark.django_db
+def test_complete_twice_leaves_the_recorded_path_alone(gated_sitting):
+    gated_sitting.progress.complete()
+    gated_sitting.progress.refresh_from_db()
+    recorded = gated_sitting.progress.asked
+
+    gated_sitting.progress.complete()
+
+    gated_sitting.progress.refresh_from_db()
+    assert gated_sitting.progress.asked == recorded
+
+
+@pytest.mark.django_db
+def test_form_attempt_completed_is_sent_after_the_row_is_written(gated_sitting):
+    seen: list[dict[str, list[str]]] = []
+
+    def _read_stored_row(
+        sender: type[FormProgress], attempt: FormProgress, **kwargs: object
+    ) -> None:
+        seen.append(FormProgress.objects.get(pk=attempt.pk).asked)
+
+    form_attempt_completed.connect(_read_stored_row)
+    try:
+        gated_sitting.progress.complete()
+    finally:
+        form_attempt_completed.disconnect(_read_stored_row)
+
+    assert seen == [current_path(gated_sitting.progress).as_asked()]
 
 
 # Free-text questions inside a ``strategy: QUIZ`` form.
