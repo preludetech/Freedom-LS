@@ -2,35 +2,30 @@
 
 {% block standalone_main %}
     {% include "educator_interface/partials/import_stepper.html" with step=2 %}
-    <c-panel-card title="Preview">
-        <p class="flex flex-wrap items-center gap-3">
+    <c-panel-card>
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
-            <c-button variant="link" size="small" href="{{ upload_url }}">Upload a different file</c-button>
-        </p>
-        <ul class="mt-4 ml-0 flex list-none flex-wrap gap-x-6 gap-y-1 space-y-0">
-            {% for item in label_counts %}
-                <li>
-                    <c-button variant="link" size="small" href="{{ preview_url }}?label={{ item.label }}" data-label-filter="" aria-current="{% if item.label == label %}true{% else %}false{% endif %}" class="{% if item.label != label %}font-normal{% endif %}">{{ item.name }}: {{ item.count }}</c-button>
-                </li>
-            {% endfor %}
-            {% if label %}<li><c-button variant="link" size="small" href="{{ preview_url }}">Show all rows</c-button></li>{% endif %}
-        </ul>
-        {% if add_count %}
-            <ul class="mt-4 ml-0 list-none space-y-1 text-sm text-muted">
-                {% if new_account_count %}<li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>{% endif %}
-                <li>Existing accounts keep their names.</li>
-                <li>Counts can change if someone else adds these learners before you confirm.</li>
-                {% if in_background %}<li>This import runs in the background. The result page will show progress.</li>{% endif %}
-            </ul>
-            <form method="post" class="mt-4 flex sm:justify-end">
-                {% csrf_token %}
-                <c-button type="submit" class="w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
-            </form>
-        {% else %}
-            <p class="mt-4 font-semibold">Nothing can be added: every row has an error or is already a member.</p>
-            <p class="mt-4"><c-button href="{{ upload_url }}" class="w-full sm:w-auto">Upload a different file</c-button></p>
-        {% endif %}
+            <c-button variant="secondary" size="small" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
+        </div>
     </c-panel-card>
+    <div>
+        <c-panel-stat-row>
+            {% for item in label_counts %}
+                <a data-label-filter href="{{ preview_url }}?label={{ item.label }}" aria-label="{{ item.name }}: {{ item.count }}"
+                   {% if item.label == label %}aria-current="true"{% endif %}
+                   class="block h-full rounded-lg no-underline {% if item.label == label %}ring-2 ring-primary{% endif %}">
+                    {% if item.label == "error" and item.count %}
+                        <c-panel-stat-tile label="{{ item.name }}" class="h-full min-h-11 border-error text-error">
+                            <c-slot name="value_content"><span class="inline-flex items-center gap-1"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                        </c-panel-stat-tile>
+                    {% else %}
+                        <c-panel-stat-tile label="{{ item.name }}" value="{{ item.count }}" class="h-full min-h-11" />
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </c-panel-stat-row>
+        {% if label %}<p class="mt-2 text-sm"><a href="{{ preview_url }}">Clear filter</a></p>{% endif %}
+    </div>
     {% if error_count %}
         {% include "educator_interface/partials/import_error_block.html" with heading_count=error_count %}
     {% endif %}
@@ -57,7 +52,7 @@
                             <td class="px-4 py-2">{{ row.first_name }}</td>
                             <td class="px-4 py-2">{{ row.last_name }}</td>
                             <td class="px-4 py-2">{% firstof learner_import.cohort.name row.cohort_name %}</td>
-                            <td class="px-4 py-2">{{ row.get_preview_label_display }}</td>
+                            <td class="px-4 py-2" data-tone="{{ row.tone }}"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></td>
                             <td class="px-4 py-2">{{ row.preview_reason }}</td>
                         </tr>
                     {% endfor %}
@@ -76,7 +71,7 @@
                         <dt class="text-muted">Line</dt>
                         <dd>{{ row.line_number }}</dd>
                         <dt class="text-muted">Label</dt>
-                        <dd>{{ row.get_preview_label_display }}</dd>
+                        <dd><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></dd>
                         {% if row.preview_reason %}
                             <dt class="text-muted">Reason</dt>
                             <dd class="min-w-0 break-words">{{ row.preview_reason }}</dd>
@@ -108,4 +103,21 @@
         {% endif %}
     </c-panel-card>
     {% endif %}
+    <c-panel-card>
+        {% if add_count %}
+            <ul class="mt-4 ml-0 list-none space-y-1 text-sm text-muted">
+                {% if new_account_count %}<li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>{% endif %}
+                <li>Existing accounts keep their names.</li>
+                <li>Counts can change if someone else adds these learners before you confirm.</li>
+                {% if in_background %}<li>This import runs in the background. The result page will show progress.</li>{% endif %}
+            </ul>
+            <form method="post" class="mt-4 flex sm:justify-end">
+                {% csrf_token %}
+                <c-button type="submit" class="w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
+            </form>
+        {% else %}
+            <p class="mt-4 font-semibold">Nothing can be added: every row has an error or is already a member.</p>
+            <p class="mt-4"><c-button href="{{ upload_url }}" class="w-full sm:w-auto">Upload a different file</c-button></p>
+        {% endif %}
+    </c-panel-card>
 {% endblock standalone_main %}
