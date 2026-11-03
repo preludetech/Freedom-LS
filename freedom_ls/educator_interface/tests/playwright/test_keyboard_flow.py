@@ -7,6 +7,8 @@ browser state the Django test client never runs.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
@@ -21,6 +23,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
@@ -44,8 +47,8 @@ def _tab_to(page: Page, target: Locator) -> None:
     pytest.fail("Tab never reached the target control")
 
 
-def _organisation_with_learner(educator_user: AbstractBaseUser):
-    organisation = OrganisationFactory(name="Org A")
+def _organisation_with_learner(educator_user: AbstractBaseUser) -> Organisation:
+    organisation = cast(Organisation, OrganisationFactory(name="Org A"))
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     LearnerFactory(

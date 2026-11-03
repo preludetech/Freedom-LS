@@ -5596,7 +5596,7 @@ def _bulk_text(response) -> str:
     )
 
 
-def _deactivate_dialog(staff_client: Client, count: int = 2):
+def _deactivate_dialog(staff_client: Client, count: int = 2) -> lxml.html.HtmlElement:
     organisation = OrganisationFactory()
     learners = [_bulk_learner(organisation=organisation) for _ in range(count)]
     response = _bulk_post(staff_client, organisation, "deactivate", learners)

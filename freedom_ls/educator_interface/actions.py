@@ -2433,6 +2433,11 @@ class EducatorBulkAction(RecordedBulkAction):
         """The confirmation sentence for the `count` objects that will change."""
         raise NotImplementedError
 
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        """The sentence, asked: every dialog's heading is its sentence with
+        a question mark, so wording lives in one place."""
+        return self.sentence(count, cleaned_data).removesuffix(".") + "?"
+
     def consequences(
         self,
         queryset: QuerySet,
@@ -2582,10 +2587,6 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
             cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
         )
 
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        cohort = cast(Cohort, cleaned_data["cohort"])
-        return f"Add {count_noun(Learner, count)} to {cohort.name}?"
-
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         cohort = cast(Cohort, cleaned_data["cohort"])
         return f"Add {count_noun(Learner, count)} to {cohort.name}."
@@ -2608,10 +2609,6 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
         return remove_from_cohort(
             cast(Learner, obj), cast(Cohort, cleaned_data["cohort"]), actor=actor
         )
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        cohort = cast(Cohort, cleaned_data["cohort"])
-        return f"Remove {count_noun(Learner, count)} from {cohort.name}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         cohort = cast(Cohort, cleaned_data["cohort"])
@@ -2651,7 +2648,6 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
     label = "Deactivate"
     action_name = "deactivate"
     variant = "secondary"
-    confirm_variant = "primary"
     loading_text = "Deactivating…"
     target_state = False
     unchanged_reason = "already inactive"
@@ -2661,9 +2657,6 @@ class DeactivateLearnersBulkAction(LearnerStateBulkAction):
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Deactivate {count_noun(Learner, count)}."
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        return f"Deactivate {count_noun(Learner, count)}?"
 
     def consequences(
         self,
@@ -2688,9 +2681,6 @@ class ReactivateLearnersBulkAction(LearnerStateBulkAction):
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return reactivate_learner(cast(Learner, obj), actor=actor)
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        return f"Reactivate {count_noun(Learner, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Reactivate {count_noun(Learner, count)}."
@@ -2776,10 +2766,6 @@ class RegisterForCourseBulkAction(CourseRegistrationBulkAction):
             cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Register {count_noun(Learner, count)} for {course.title}?"
-
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
         return f"Register {count_noun(Learner, count)} for {course.title}."
@@ -2790,7 +2776,6 @@ class DeactivateRegistrationBulkAction(CourseRegistrationBulkAction):
     label = "Deactivate a course registration"
     action_name = "deactivate_registration"
     variant = "secondary"
-    confirm_variant = "primary"
     loading_text = "Deactivating…"
     capability = CHANGE_LEARNERCOURSEREGISTRATION
     unchanged_reason = "not registered individually"
@@ -2802,10 +2787,6 @@ class DeactivateRegistrationBulkAction(CourseRegistrationBulkAction):
         return deactivate_registration(
             cast(Learner, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Deactivate the {course.title} registration for {count_noun(Learner, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
@@ -2869,9 +2850,6 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             return BulkOutcome("skipped", self.unchanged_reason)
         except SetupEmailRecentlySent:
             return BulkOutcome("skipped", self.recently_sent_reason)
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        return f"Resend the setup email to {count_noun(Learner, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Resend the setup email to {count_noun(Learner, count)}."
@@ -3000,10 +2978,6 @@ class RegisterCohortForCourseBulkAction(CohortCourseBulkAction):
             cast(Cohort, obj), cast(Course, cleaned_data["course"]), actor=actor
         )
 
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Register {count_noun(Cohort, count)} for {course.title}?"
-
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
         return f"Register {count_noun(Cohort, count)} for {course.title}."
@@ -3014,7 +2988,6 @@ class DeactivateCohortRegistrationBulkAction(CohortCourseBulkAction):
     label = "Deactivate a course registration"
     action_name = "deactivate_cohort_registration"
     variant = "secondary"
-    confirm_variant = "primary"
     loading_text = "Deactivating…"
     capability = CHANGE_COHORTCOURSEREGISTRATION
     unchanged_reason = "not registered"
@@ -3035,10 +3008,6 @@ class DeactivateCohortRegistrationBulkAction(CohortCourseBulkAction):
         if registration is None:
             return False
         return deactivate_cohort_registration(registration, actor=actor)
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        course = cast(Course, cleaned_data["course"])
-        return f"Deactivate the {course.title} registration for {count_noun(Cohort, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         course = cast(Course, cleaned_data["course"])
@@ -3073,16 +3042,12 @@ class DeactivateCohortsBulkAction(CohortStateBulkAction):
     label = "Deactivate"
     action_name = "deactivate"
     variant = "secondary"
-    confirm_variant = "primary"
     loading_text = "Deactivating…"
     target_state = False
     unchanged_reason = "already inactive"
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return deactivate_cohort(cast(Cohort, obj), actor=actor)
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        return f"Deactivate {count_noun(Cohort, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Deactivate {count_noun(Cohort, count)}."
@@ -3112,9 +3077,6 @@ class ReactivateCohortsBulkAction(CohortStateBulkAction):
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return reactivate_cohort(cast(Cohort, obj), actor=actor)
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        return f"Reactivate {count_noun(Cohort, count)}?"
 
     def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
         return f"Reactivate {count_noun(Cohort, count)}."

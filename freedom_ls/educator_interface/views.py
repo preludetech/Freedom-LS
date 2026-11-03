@@ -647,7 +647,6 @@ class CohortLearnerDataTable(LearnerDataTable):
     empty_message = (
         "This cohort has no learners yet. Learners you add to it will appear here."
     )
-    empty_no_results = "No learners match these filters."
 
     @staticmethod
     def get_columns() -> list[Column]:
@@ -838,12 +837,10 @@ class HistoryPanel(DataTablePanel):
     table_key = "history"
     capability = "freedom_ls_audit_log.view_auditlogentry"
     empty_message: str
-    empty_no_results = "No entries match these filters."
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
         context["empty_message"] = self.empty_message
-        context["empty_no_results"] = self.empty_no_results
         return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
@@ -1811,7 +1808,6 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 
 class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
     empty_message = "Nothing has been recorded for this organisation yet."
-    empty_no_results = "No entries match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:

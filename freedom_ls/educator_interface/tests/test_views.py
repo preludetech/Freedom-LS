@@ -5204,7 +5204,7 @@ def test_the_first_use_message_is_a_sentence(table: type[DataTable]) -> None:
 )
 def test_a_history_panel_says_what_will_be_recorded(panel: type) -> None:
     assert panel.empty_message.endswith(".")
-    assert panel.empty_no_results.endswith(".")
+    assert panel.data_table.empty_no_results.endswith(".")
 
 
 @pytest.mark.parametrize("table", EDUCATOR_TABLES)
