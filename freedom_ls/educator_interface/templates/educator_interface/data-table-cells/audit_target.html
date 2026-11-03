@@ -1,0 +1,5 @@
+{% if object.target_is_person %}
+    {% include "educator_interface/partials/audit_person.html" with label=object.target_label user_pk=object.target_user_pk %}
+{% else %}
+    {{ object.target_label }}
+{% endif %}

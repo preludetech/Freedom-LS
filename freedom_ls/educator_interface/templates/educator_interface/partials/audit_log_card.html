@@ -8,4 +8,7 @@ here is marked safe.
     <div class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</div>
     <div class="shrink-0 text-muted">{% include "panel_framework/partials/datetime.html" with value=object.created_at %}</div>
 </div>
-<div class="mt-1 min-w-0 font-bold break-words">{{ object.label }}{% if object.target_label %} <span aria-hidden="true">·</span> {{ object.target_label }}{% endif %}</div>
+<div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    <span class="font-bold break-words">{{ object.label }}</span>
+    {% if object.target_label %}<span aria-hidden="true">·</span>{% include "educator_interface/data-table-cells/audit_target.html" %}{% endif %}
+</div>

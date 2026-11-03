@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import csv
 import io
 import json
@@ -78,6 +79,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
+    StaffMemberFactory,
 )
 from freedom_ls.learner_management.learner_actions import (
     add_to_cohort,
@@ -1692,10 +1694,18 @@ def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
     )
 
 
+def _visible_text(element: lxml.html.HtmlElement) -> str:
+    """The text of `element` without the avatar chip's inline stylesheet."""
+    clone = copy.deepcopy(element)
+    for style in clone.cssselect("style"):
+        style.drop_tree()
+    return str(clone.text_content()).strip()
+
+
 def _entry_rows(document: lxml.html.HtmlElement, selector: str) -> list[list[str]]:
     """Each entry row's data cells, without its toggle cell or its detail row."""
     return [
-        [cell.text_content().strip() for cell in row.cssselect("td")][:-1]
+        [_visible_text(cell) for cell in row.cssselect("td")][:-1]
         for row in document.cssselect(f"{selector} tbody tr:not([data-row-detail])")
     ]
 
@@ -3211,7 +3221,7 @@ def test_the_cohort_history_tab_names_who_each_row_is_about(staff_client: Client
         for th in document.cssselect("[data-tab-set] thead th")
     ]
     rows = _history_rows(document)
-    assert (headers, sorted(row[3] for row in rows)) == (
+    assert (headers, sorted(row[3].split(maxsplit=1)[1] for row in rows)) == (
         ["When", "Who", "What", "Target", "More"],
         ["Ben Learner", "Pat Learner"],
     )
@@ -3553,6 +3563,202 @@ def test_the_audit_log_renders_three_runs_within_a_query_budget(
         _record_run(organisation, [learner] * 5, uuid4())
 
     with django_assert_max_num_queries(QUERY_BUDGET):
+        response = staff_client.get(_audit_log_url(organisation))
+
+    assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
+
+
+def _audit_row_cells(
+    document: lxml.html.HtmlElement, target_label: str
+) -> dict[str, lxml.html.HtmlElement]:
+    """The Who and Target cells of the Audit log row whose Target reads `target_label`."""
+    for row in document.cssselect("tbody tr:not([data-row-detail])"):
+        cells = row.cssselect("td")
+        if _visible_text(cells[3]).endswith(target_label):
+            return {"who": cells[1], "target": cells[3]}
+    raise AssertionError(f"no Audit log row targets {target_label!r}")
+
+
+def _avatar_slot(cell: lxml.html.HtmlElement) -> str | None:
+    """The `panel-avatar-N` class of the initials circle in `cell`, if it has one."""
+    for element in cell.iter():
+        for name in (element.get("class") or "").split():
+            if name.startswith("panel-avatar-"):
+                return name
+    return None
+
+
+def _audit_log_document(
+    staff_client: Client, organisation: Organisation
+) -> lxml.html.HtmlElement:
+    return _get_document(staff_client, _audit_log_url(organisation))
+
+
+@pytest.mark.django_db
+def test_the_system_actor_shows_the_settings_icon_and_no_chip(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Ours", actor_label="")
+
+    cells = _audit_row_cells(_audit_log_document(staff_client, organisation), "Ours")
+
+    who = cells["who"]
+    assert (
+        len(who.cssselect("[aria-label='settings']")),
+        _visible_text(who),
+        _avatar_slot(who),
+    ) == (1, "System", None)
+
+
+@pytest.mark.django_db
+def test_a_deleted_actor_shows_the_user_icon_beside_the_stored_name(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        target=organisation, target_label="Ours", actor=None, actor_label="Gone Person"
+    )
+
+    cells = _audit_row_cells(_audit_log_document(staff_client, organisation), "Ours")
+
+    who = cells["who"]
+    assert (
+        len(who.cssselect("[aria-label='user']")),
+        _visible_text(who),
+        _avatar_slot(who),
+    ) == (1, "Gone Person", None)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("learner_is_active", [True, False])
+def test_a_person_target_has_the_same_avatar_colour_as_that_person_as_actor(
+    staff_client: Client, learner_is_active: bool
+):
+    organisation = OrganisationFactory()
+    user = UserFactory(first_name="Pat", last_name="Person")
+    learner = LearnerFactory(
+        organisation=organisation, user=user, is_active=learner_is_active
+    )
+    member = StaffMemberFactory(organisation=organisation, user=user)
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="As actor",
+        actor=user,
+        actor_label="Pat Person",
+    )
+    for target, label in (
+        (user, "User target"),
+        (learner, "Learner target"),
+        (member, "Member target"),
+    ):
+        AuditLogEntryFactory(
+            target=target,
+            target_label=label,
+            organisation=organisation,
+            action="learner.deactivated",
+        )
+
+    document = _audit_log_document(staff_client, organisation)
+
+    actor_slot = _avatar_slot(_audit_row_cells(document, "As actor")["who"])
+    target_cells = [
+        _audit_row_cells(document, label)["target"]
+        for label in ("User target", "Learner target", "Member target")
+    ]
+    assert actor_slot is not None
+    assert [_avatar_slot(cell) for cell in target_cells] == [actor_slot] * 3
+    assert [len(cell.cssselect("[aria-hidden='true']")) for cell in target_cells] == [
+        1
+    ] * 3
+
+
+@pytest.mark.django_db
+def test_a_learner_target_whose_row_was_deleted_shows_the_user_icon_and_stored_label(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    AuditLogEntryFactory(
+        target=learner,
+        target_label="Gone Learner",
+        organisation=organisation,
+        action="learner.deactivated",
+    )
+    learner.delete()
+
+    cells = _audit_row_cells(
+        _audit_log_document(staff_client, organisation), "Gone Learner"
+    )
+
+    target = cells["target"]
+    assert (len(target.cssselect("[aria-label='user']")), _avatar_slot(target)) == (
+        1,
+        None,
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_target_renders_plain_text_with_no_circle(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    AuditLogEntryFactory(
+        target=cohort, target_label="Spring cohort", organisation=organisation
+    )
+
+    cells = _audit_row_cells(
+        _audit_log_document(staff_client, organisation), "Spring cohort"
+    )
+
+    target = cells["target"]
+    assert (len(target.cssselect("[aria-label]")), _avatar_slot(target)) == (0, None)
+
+
+@pytest.mark.django_db
+def test_a_chip_for_a_user_with_no_name_takes_its_initials_from_the_email_label(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    user = UserFactory(first_name="", last_name="")
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="Ours",
+        actor=user,
+        actor_label="zed@example.com",
+    )
+
+    cells = _audit_row_cells(_audit_log_document(staff_client, organisation), "Ours")
+
+    assert _visible_text(cells["who"]).split()[0] == "Z"
+
+
+@pytest.mark.django_db
+def test_a_person_label_with_markup_renders_escaped(staff_client: Client):
+    organisation = OrganisationFactory()
+    user = UserFactory()
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="Ours",
+        actor=user,
+        actor_label="<b>bold</b>",
+    )
+
+    response = staff_client.get(_audit_log_url(organisation))
+
+    html = response.content.decode()
+    assert ("<b>bold</b>" in html, "&lt;b&gt;bold&lt;/b&gt;" in html) == (False, True)
+
+
+@pytest.mark.django_db
+def test_the_audit_log_renders_three_runs_of_learner_entries_within_a_query_budget(
+    staff_client: Client, django_assert_max_num_queries
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    for _ in range(3):
+        _record_run(
+            organisation, [learner] * 5, uuid4(), target_label=learner.user.email
+        )
+
+    with django_assert_max_num_queries(QUERY_BUDGET + 3):
         response = staff_client.get(_audit_log_url(organisation))
 
     assert len(_audit_log_rows(lxml.html.fromstring(response.content))) == 3
