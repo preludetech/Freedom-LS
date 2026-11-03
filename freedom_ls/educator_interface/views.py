@@ -850,6 +850,11 @@ class AuditLogEntryTable(DataTable):
     row_detail_template = "educator_interface/partials/audit_row_detail.html"
 
     @staticmethod
+    def get_row_label(row: Model) -> str:
+        entry = cast(AuditLogEntry, row)
+        return f"{entry.label}: {entry.target_label}"
+
+    @staticmethod
     def has_row_detail(row: Model) -> bool:
         entry = cast(AuditLogEntry, row)
         return bool(
