@@ -298,11 +298,6 @@ def test_a_non_file_question_is_not_found(mock_site_context, client, sitting):
     assert response.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# Questions the sitting is not asked
-# ---------------------------------------------------------------------------
-
-
 def _gated_file_question(
     form_progress: FormProgress,
 ) -> tuple[FormQuestion, FormQuestion]:
