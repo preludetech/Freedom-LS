@@ -51,7 +51,7 @@ An organisation's roster â€” who belongs to it, independently of any enrolment â
 
 Deactivating a learner is soft: it switches off their access to courses held through that organisation, but never deletes or alters their cohort memberships, course registrations, or progress history, and leaves their standing in any other organisation untouched. Reactivating them restores access with nothing to rebuild. A learner cannot be deleted outright. With the optional HR attributes app installed, moving a learner to another organisation is refused until the job title, department and location they hold from the old organisation are cleared; see [HR attributes](./hr-attributes.md).
 
-The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort cascades to its registrations, so that delete is blocked too, and a course cannot be deleted here at all. Deactivating a registration, removing a cohort member, or marking a learner removed all stay available and leave the recorded progress intact.
+The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort cascades to its registrations, so that delete is blocked too, and a course cannot be deleted here at all. Deactivating a registration or a learner, and removing a cohort member, all stay available and leave the recorded progress intact.
 
 There is no bulk add or remove, no CSV import, and no view showing one person's associations across every organisation at once.
 

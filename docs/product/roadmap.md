@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-03_
 
 ## Summary
 
@@ -19,7 +19,7 @@ Organisations shipped as a grouping layer between a site and its cohorts and reg
 - **No nested organisations** — the structure is flat, with no parent/child relationship.
 - **Bulk and CSV tools are learner-only** — learners can be added to an organisation by CSV import, and deactivated or reactivated in bulk, but an import cannot update existing learners' details, create cohorts or map columns, and there is no bulk delete or bulk cohort move.
 - **No cross-organisation view** — nothing shows one person's associations across every organisation they study with, though a person can hold several.
-- **No notification when a learner is removed** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
+- **No notification when a learner is deactivated** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
 - **No per-organisation domain, subdomain, colours, or theme**, and no organisation branding in emails or certificates.
 - **The organisation switcher has no search, recents, or favourites** — it is a flat list.
 
@@ -132,13 +132,9 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 ## Educator Interface Gaps
 
-**Status: Cohorts and learners can be administered; deadline overrides and the deadline policy cannot.**
+**Status: Deadline overrides and the deadline policy cannot be managed in the educator interface.**
 
-The educator interface manages cohorts, cohort membership and course registration, one at a time or in bulk, and imports learners from a CSV file; its Courses section is read-only. See [educator interface](./educator-interface.md). Deadline overrides, which set or remove a due date or course time limit for a cohort course registration or a single learner, and the [deadline policy](#deadlines) must still be managed in the Django admin by an administrator. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
-
-Also not built in the educator interface: data for the cohort overview's "needs attention" card, which shows a placeholder.
-
-Educators can message learners from within FLS; see [Direct Messaging](#direct-messaging) for what messaging still lacks.
+Deadline overrides, which set or remove a due date or course time limit for a cohort course registration or a single learner, and the [deadline policy](#deadlines) must be managed in the Django admin by an administrator. See [admin interface](./admin-interface.md#deadline-overrides) for where this is done today.
 
 ## Deadlines
 
@@ -149,7 +145,7 @@ Authors can give topics and forms a due date and courses a time limit, and admin
 - **Reminders** — no notification, email or webhook is sent as a date approaches or passes. The policy's notify-educators setting can be saved but does nothing yet.
 - **Extension requests and pause** — a deadline override is the only way to move a date. Learners cannot request an extension, and nobody can pause a course.
 - **Educator-interface screens** — due dates, overrides and the policy are managed in the Django admin only; see [Educator Interface Gaps](#educator-interface-gaps).
-- **Overdue, closed and ended in educator views** — these learners do not appear in a cohort's "needs attention" card or in [cohort reports](./reports.md).
+- **Overdue, closed and ended in educator views** — the "needs attention" lists and [cohort reports](./reports.md) do not flag these learners.
 
 ## Enforcing Content Security Policy
 
@@ -169,7 +165,7 @@ Completing a course produces a finish page but no certificate or downloadable co
 
 The [cohort report](./reports.md) itself is built and shipped. Several capabilities around it were deliberately left out of this release rather than overlooked.
 
-**No scheduled or emailed delivery.** A report is only ever produced on demand, by a staff member triggering it in the admin, and whoever wants it must return there to download it. There is no recurring generation and no notification when one finishes. The feature is built so that adding delivery later is a small addition — the same generation runs regardless of what starts it — but that addition is not here.
+**No scheduled or emailed delivery.** A report is only ever produced on demand, by a staff member with the right role generating it from a cohort's Report tab in the educator interface (or by an administrator in the Django admin), and whoever wants it must return there to download it. There is no recurring generation and no notification when one finishes.
 
 **No control over the platform's attribution mark.** A report carries a small "Powered by" mark naming the site on its cover and in every footer, alongside the organisation's own brand, and there is no setting to remove it. A deployment cannot produce a fully white-labelled report today.
 
