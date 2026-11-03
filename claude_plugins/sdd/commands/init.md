@@ -21,8 +21,8 @@ any command. `sdd:init` deletes nothing at all, but the rule stands for any futu
 
 ## Scope
 
-`sdd:init` is **plugin-bootstrap only.** It merges only **its own** `enabledPlugins` key and
-permission and writes only its own `.claude/sdd/` config dir. Into the shared project-root
+`sdd:init` is **plugin-bootstrap only.** It merges only **its own** `enabledPlugins` key,
+permissions and `worktree.baseRef` setting and writes only its own `.claude/sdd/` config dir. Into the shared project-root
 `claude.sh` it adds **only its own** `--plugin-dir` line; it never touches another plugin's.
 
 The plugin-neutral artifacts (the `claude.sh` skeleton, the `SessionStart` hook, and the
@@ -37,10 +37,12 @@ reports on them.
   already in the list** — never "no entry semantically covers this". A redundant allow entry is
   harmless; removing one is a permission change this command is not entitled to make. **Never touch the `hooks` section**;
   `sdd` does not own the `SessionStart` hook. Mutate the file's own parsed object and write it back —
-  never rebuild it from a template.
+  never rebuild it from a template. Also merge a top-level `"worktree": {"baseRef": "head"}` when
+  the `worktree` key is absent (never overwrite an existing `worktree` object) and three worktree
+  `allow` entries, under the same absent-means-no-byte-identical-string rule (Step 1).
 - **`.claude/sdd/config.md`** — create when absent, otherwise extend (add any key the default defines
   but the file lacks; preserve every existing value, comment, and ordering).
-- **`.gitignore`** — append its own `.claude/sdd/config.local.md` line only. Never remove or reorder,
+- **`.gitignore`** — append its own `.claude/sdd/config.local.md` and `.claude/worktrees/` lines only. Never remove or reorder,
   and never touch the shared `.claude/settings.local.json` line, which `sdd` does not own.
 
 ## The `PLUGINS_ROOT` rule
@@ -112,15 +114,23 @@ files exist, catches this.
    "Absent" means no byte-identical string is already in the list. The commands invoke these
    scripts by that path, so without the entries every call prompts, and a non-interactive agent
    returns `blocked` instead. Never remove or rewrite an entry here.
-3. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.
-4. Do not touch `hooks`.
-5. Write the mutated object back and report what changed.
+3. Merge `"worktree": {"baseRef": "head"}` at the top level of `.claude/settings.json` when the
+   `worktree` key is absent; never overwrite an existing `worktree` object. `baseRef` applies to
+   every worktree Claude Code creates in the project: `head` branches a sub-agent's worktree
+   from the current branch, so a batch worktree starts from the feature branch.
+4. Add these `allow` entries if absent: `Bash(git worktree list*)`,
+   `Bash(git worktree remove --force .claude/worktrees/*)`, `Bash(git cherry-pick *)`. The
+   commands that use the second one build the name they pass from the last path component of
+   a `git worktree list` line and never from free text.
+5. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.
+6. Do not touch `hooks`.
+7. Write the mutated object back and report what changed.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
 `sdd` reads thirteen sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
-teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
+teardown scripts to run, and `/sdd:implement_plan` looks here for the `Parallel batches` count. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
 before a feature-branch SDD step runs. **Design Hooks**: `/sdd:implement_plan` looks here for the
 design check it follows after each slice that builds a designed screen. **Test Hooks**:
@@ -151,6 +161,7 @@ parity and future settings.
 
    - Setup script:
    - Teardown script:
+   - Parallel batches:
 
    ## Rebase Hooks
 
@@ -224,6 +235,12 @@ parity and future settings.
    product here; if another plugin owns those scripts in this project, the user points these keys at
    them.
 
+   **Parallel batches** is read by `/sdd:implement_plan`. Blank or `1` runs batches one at a time
+   in the feature worktree. `n` of two or more lets it run up to `n` independent batches in batch
+   worktrees under `.claude/worktrees/`, each of which runs the Setup script before and the
+   Teardown script after its work. The Setup script must not depend on gitignored files, or the
+   project lists them in `.worktreeinclude`; the Teardown script must be safe to run twice.
+
    A **Rebase command** value points at a file that rebases the branch onto main; the pre-step
    rebase reads it and follows its steps inline. A **Front-end check** value points at a file that
    verifies front-end pages after a rebase that changed them. Both are blank by default, meaning
@@ -290,14 +307,15 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## PR Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## PR Hooks` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches` under `## Worktree Scripts`), using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
 ## Step 3: Update `.gitignore`
 
 1. If `.claude/sdd/config.local.md` is not listed, add it.
-2. Do **not** add the `.claude/settings.local.json` line; that one is shared and not `sdd`'s to add.
+2. If `.claude/worktrees/` is not listed, add it.
+3. Do **not** add the `.claude/settings.local.json` line; that one is shared and not `sdd`'s to add.
 
 ## Step 4: Ensure the `sdd` `--plugin-dir` line
 
@@ -313,8 +331,8 @@ in-place edits.
 1. `sdd` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
 2. `Skill(sdd:*)` is in `permissions.allow`, and so are the three entries from Step 1 item 2 for
    every `.sh` under `${CLAUDE_PLUGIN_ROOT}/scripts/`.
-3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with both `Setup script` and
-   `Teardown script` keys (blank values are valid).
+3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with the `Setup script`,
+   `Teardown script` and `Parallel batches` keys (blank values are valid).
 4. `.claude/sdd/config.md` has a `## Rebase Hooks` section with both `Rebase command` and
    `Front-end check` keys (blank values are valid).
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
@@ -333,18 +351,21 @@ in-place edits.
 11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
    value is valid).
 12. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-13. `.claude/sdd/config.local.md` is listed in `.gitignore`.
+13. `.claude/sdd/config.local.md` and `.claude/worktrees/` are listed in `.gitignore`.
 14. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
 15. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
 16. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
 17. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-18. Report every issue found.
+18. `worktree.baseRef` is present in `.claude/settings.json`, and so are the three entries from
+   Step 1 item 4.
+19. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 
-Print what was done, then the outstanding actions: every Step 0 WARN, and anything Step 5 flagged.
-Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths,
+Print what was done, then the outstanding actions: every Step 0 WARN, anything Step 5 flagged,
+and each worktree setting, allow entry or ignore line that was not merged.
+Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths and Parallel batches count,
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
 Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, the PR Hooks Fetch PR
 comments path, and to list the project's Vocabulary Sources.
