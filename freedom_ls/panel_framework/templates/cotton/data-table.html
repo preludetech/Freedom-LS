@@ -23,6 +23,8 @@
         secondary_columns=""
         sortable_columns=""
         card_template=""
+        row_detail_template=""
+        table_colspan=""
         empty_state_template=""
         empty_no_results=""
         sheet_hidden_inputs=""
@@ -64,7 +66,7 @@
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
         {% endcomment %}
-        <table aria-labelledby="{{ region_id }}-caption">
+        <table{% if row_detail_template %} x-data="rowDetail"{% endif %} aria-labelledby="{{ region_id }}-caption">
                 <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
                 <thead class="border-b border-border bg-transparent">
                     <tr>
@@ -100,6 +102,7 @@
                                 {% endif %}
                             </th>
                         {% endfor %}
+                        {% if row_detail_template %}<th scope="col"><span class="sr-only">More</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -122,12 +125,35 @@
 
                                     </td>
                                 {% endfor %}
+                                {% if row_detail_template %}
+                                    <td class="w-0 text-right">
+                                        {% if row.has_row_detail %}
+                                            <button type="button"
+                                                    class="group inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-on-surface"
+                                                    aria-expanded="false"
+                                                    aria-controls="{{ region_id }}-detail-{{ forloop.counter }}"
+                                                    aria-label="More about {{ row.label }}"
+                                                    x-on:click="toggle">
+                                                <span aria-hidden="true" class="motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                                                    <c-icon name="dropdown" class="size-4" />
+                                                </span>
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
                             </tr>
+                            {% if row.has_row_detail %}
+                                <tr hidden data-row-detail id="{{ region_id }}-detail-{{ forloop.counter }}">
+                                    <td colspan="{{ table_colspan }}" class="bg-surface-2">
+                                        {% include row_detail_template with object=row.object %}
+                                    </td>
+                                </tr>
+                            {% endif %}
                         {% endfor %}
                     {% else %}
                         {# The empty state is not a row, so it takes none of the row hover. #}
                         <tr class="hover:bg-transparent">
-                            <td colspan="{% if bulk_actions %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center text-muted py-8">
+                            <td colspan="{{ table_colspan }}" class="text-center text-muted py-8">
                                 {% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}
                             </td>
                         </tr>
@@ -143,7 +169,8 @@
                                     :primary_column="primary_column"
                                     :secondary_columns="secondary_columns"
                                     :selectable="bulk_actions"
-                                    :card_template="card_template" />
+                                    :card_template="card_template"
+                                    :row_detail_template="row_detail_template" />
             {% endfor %}
         {% else %}
             <li class="py-8 text-center text-muted">{% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}</li>

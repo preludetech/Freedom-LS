@@ -42,6 +42,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `cohortChecklist` | `educator_interface` | `educator_interface/modal/add_staff_member.html`, `educator_interface/modal/change_cohorts.html` | Filters cohort rows by search text and by the chosen role; rows not offered are hidden and disabled |
 | `appModal` | `panel_framework` | `panel_framework/partials/modal_host.html` | Native `<dialog>` host: trigger tracking, open on swap, focus after 422/re-render, close on `closeModal` |
 | `quickView` | `panel_framework` | `panel_framework/partials/quick_view_host.html` | Drawer `<dialog>` host: `show()`/`showModal()` by breakpoint, skeleton while loading, retry on error, `aria-expanded` sync |
+| `rowDetail` | `panel_framework` | `cotton/data-table.html` | Toggles a table row's hidden detail row (named by the button's `aria-controls`) and syncs `aria-expanded`; rows open independently |
 | `tableSelection` | `panel_framework` | `cotton/data-table.html` | Row and header checkbox state for the bulk-action bar, "Select all N matching", the table's background run from the `bulkRuns` store |
 | `listRefresh` | `panel_framework` | `panel_framework/partials/list_refresh.html` | Re-fetches a list's table region, keeping page, sort, search and filters, when a create action's `HX-Trigger` event fires |
 | `headerRefresh` | `panel_framework` | `panel_framework/views/_instance_header.html` | Re-fetches `#instance-header` so an instance page's stats and tab counts follow a panel's change |
