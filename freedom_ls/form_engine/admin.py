@@ -330,6 +330,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
         "last_updated_time",
         "completed_time",
         "scores",
+        "asked",
         "furthest_page_reached",
     )
     change_form_template = "admin/form_engine/answers_change_form.html"
@@ -347,6 +348,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
                     "last_updated_time",
                     "completed_time",
                     "scores",
+                    "asked",
                     "furthest_page_reached",
                 )
             },

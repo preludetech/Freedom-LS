@@ -8,11 +8,23 @@ from django.apps import apps
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import ProtectedError
+from django.utils import timezone
 
 from freedom_ls.content_engine.factories import ArticleFactory
 from freedom_ls.content_engine.models import Article, Course, Topic
-from freedom_ls.form_engine.factories import QuestionAnswerFactory
-from freedom_ls.form_engine.models import FormQuestion, QuestionAnswer
+from freedom_ls.form_engine.factories import (
+    FormPageFactory,
+    FormProgressFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.form_engine.models import (
+    Form,
+    FormPage,
+    FormQuestion,
+    QuestionAnswer,
+    QuestionOption,
+)
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
@@ -73,3 +85,20 @@ def test_danger_content_delete_succeeds_with_registration_rules_present(
 
     assert Course.objects.count() == 0
     assert RegistrationRule.objects.count() == 0
+
+
+def test_danger_content_delete_removes_a_form_whose_page_is_gated_by_its_own_option(
+    mock_site_context,
+):
+    """condition_option is RESTRICT, which the form delete satisfies by
+    collecting the gated row together with the option."""
+    option = QuestionOptionFactory()
+    form = option.question.form_page.form
+    FormPageFactory(form=form, condition_option=option)
+    FormProgressFactory(form=form, completed_time=timezone.now())
+
+    call_command("danger_content_delete", "--yes")
+
+    assert Form.objects.count() == 0
+    assert FormPage.objects.count() == 0
+    assert QuestionOption.objects.count() == 0

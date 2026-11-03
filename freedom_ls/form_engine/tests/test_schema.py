@@ -10,7 +10,15 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from freedom_ls.form_engine.schema import Form, FormQuestion, FormStrategy, QuestionType
+from freedom_ls.form_engine.schema import (
+    Condition,
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    FormStrategy,
+    QuestionType,
+)
 
 
 def test_unscored_form_validates_without_the_quiz_fields():
@@ -328,3 +336,96 @@ def test_a_number_bound_finer_than_the_allowed_decimal_places_is_refused():
                 "max": "70.5",
             }
         )
+
+
+def _condition(**fields: str) -> Condition:
+    return Condition.model_validate(fields)
+
+
+def test_a_condition_with_both_equals_and_includes_is_rejected():
+    with pytest.raises(ValidationError, match="exactly one of equals or includes"):
+        _condition(question="employed", equals="yes", includes="no")
+
+
+def test_a_condition_with_neither_equals_nor_includes_is_rejected():
+    with pytest.raises(ValidationError, match="exactly one of equals or includes"):
+        _condition(question="employed")
+
+
+def test_an_integer_condition_literal_is_compared_as_text():
+    condition = Condition.model_validate({"question": "age_band", "equals": 1})
+
+    assert condition.equals == "1"
+
+
+def test_a_boolean_condition_literal_is_rejected_with_a_hint_to_quote_it():
+    with pytest.raises(ValidationError, match="Quote it"):
+        Condition.model_validate({"question": "employed", "equals": True})
+
+
+def test_a_condition_with_an_unknown_key_is_rejected():
+    with pytest.raises(ValidationError):
+        Condition.model_validate(
+            {"question": "employed", "equals": "yes", "not_equals": "no"}
+        )
+
+
+def test_the_literal_is_whichever_key_carried_it():
+    assert _condition(question="q", includes="a").literal == "a"
+    assert _condition(question="q", equals="b").literal == "b"
+
+
+def test_a_slug_with_spaces_and_capitals_is_rejected():
+    with pytest.raises(ValidationError):
+        FormQuestion.model_validate(
+            {
+                "content_type": "FORM_QUESTION",
+                "file_path": "forms/application/1. about-you.yaml",
+                "question": "Are you employed?",
+                "type": "short_text",
+                "slug": "Bad Slug",
+            }
+        )
+
+
+_WHEN = {"question": "employed", "equals": "yes"}
+
+
+def test_a_page_accepts_when():
+    page = FormPage.model_validate(
+        {
+            "content_type": "FORM_PAGE",
+            "file_path": "forms/application/2. work.yaml",
+            "title": "Work",
+            "when": _WHEN,
+        }
+    )
+
+    assert page.when == _condition(question="employed", equals="yes")
+
+
+def test_a_question_accepts_when():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/2. work.yaml",
+            "question": "Where do you work?",
+            "type": "short_text",
+            "when": _WHEN,
+        }
+    )
+
+    assert question.when == _condition(question="employed", equals="yes")
+
+
+def test_a_content_block_accepts_when():
+    content = FormContent.model_validate(
+        {
+            "content_type": "FORM_CONTENT",
+            "file_path": "forms/application/2. work.yaml",
+            "content": "Thanks",
+            "when": _WHEN,
+        }
+    )
+
+    assert content.when == _condition(question="employed", equals="yes")

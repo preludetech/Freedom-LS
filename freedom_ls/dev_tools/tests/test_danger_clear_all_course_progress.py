@@ -7,9 +7,15 @@ from unittest import mock
 import pytest
 
 from django.core.management import call_command
+from django.utils import timezone
 
 from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.factories import QuestionAnswerFactory
+from freedom_ls.form_engine.factories import (
+    FormPageFactory,
+    FormProgressFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
+)
 from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
@@ -62,3 +68,16 @@ def test_confirming_the_prompt_deletes_progress(mock_site_context):
 
     assert TopicProgress.objects.count() == 0
     assert CourseProgress.objects.count() == 0
+
+
+def test_yes_flag_leaves_a_gated_form_intact(mock_site_context):
+    option = QuestionOptionFactory()
+    form = option.question.form_page.form
+    page = FormPageFactory(form=form, condition_option=option)
+    FormProgressFactory(form=form, completed_time=timezone.now())
+
+    call_command("danger_clear_all_course_progress", "--yes")
+
+    assert FormProgress.objects.count() == 0
+    page.refresh_from_db()
+    assert page.condition_option == option

@@ -94,6 +94,16 @@ class FormPage(TitledContent):
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="pages")
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=200, blank=True, default="")
+    # RESTRICT, not PROTECT: an option deleted on its own would leave a gate
+    # that can never open, but deleting the whole form collects the gated rows
+    # alongside the option and goes through.
+    condition_option = models.ForeignKey(
+        "QuestionOption",
+        null=True,
+        blank=True,
+        on_delete=models.RESTRICT,
+        related_name="gated_pages",
+    )
 
     def children(self):
         """
@@ -125,6 +135,16 @@ class FormContent(MarkdownContent):
         FormPage, on_delete=models.CASCADE, related_name="text_items"
     )
     order = models.PositiveIntegerField(default=0)
+    # RESTRICT, not PROTECT: an option deleted on its own would leave a gate
+    # that can never open, but deleting the whole form collects the gated rows
+    # alongside the option and goes through.
+    condition_option = models.ForeignKey(
+        "QuestionOption",
+        null=True,
+        blank=True,
+        on_delete=models.RESTRICT,
+        related_name="gated_content",
+    )
 
     class Meta:
         ordering = ["order"]
@@ -143,6 +163,24 @@ class FormQuestion(BaseContent):
     )
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=200, blank=True, default="")
+    slug = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=_(
+            "The author's reference name for this question, unique within its form"
+        ),
+    )
+    # RESTRICT, not PROTECT: an option deleted on its own would leave a gate
+    # that can never open, but deleting the whole form collects the gated rows
+    # alongside the option and goes through.
+    condition_option = models.ForeignKey(
+        "QuestionOption",
+        null=True,
+        blank=True,
+        on_delete=models.RESTRICT,
+        related_name="gated_questions",
+    )
 
     question = models.TextField()
     type = models.CharField(
@@ -265,6 +303,14 @@ class FormProgress(SiteAwareModel):
     # answers alone cannot say how far a sitting got. 0 until a page is shown.
     furthest_page_reached = models.PositiveSmallIntegerField(
         default=0, help_text="The highest-numbered page this sitting has been shown"
+    )
+    asked = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=_(
+            "The pages, questions and content this sitting was asked, "
+            "recorded when it completed"
+        ),
     )
 
     class Meta:

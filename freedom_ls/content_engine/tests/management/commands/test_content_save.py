@@ -34,6 +34,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_form_page,
     save_form_question,
     save_topic,
+    update_file_with_uuid,
 )
 from freedom_ls.content_engine.models import (
     Article,
@@ -48,7 +49,13 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.form_engine.models import Form, FormPage
+from freedom_ls.form_engine.models import (
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    QuestionOption,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.images import (
@@ -2211,7 +2218,7 @@ content: This is some instructional text
     # Save to database
 
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(
+    question, _options = save_form_question(
         parsed[1], page, mock_site_context, temp_file.parent, order=0
     )
     text = save_form_content(
@@ -2284,7 +2291,7 @@ options:
 
     # Save to database
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(
+    question, _options = save_form_question(
         parsed[1], page, mock_site_context, temp_file.parent, order=0
     )
 
@@ -3539,3 +3546,158 @@ children:
             )
         )
         assert owners == {uuid.UUID(COURSE_UUID)}
+
+
+_GATE_FORM_UUID = "30000000-0000-0000-0000-000000000001"
+_GATE_SOURCE_PAGE_UUID = "30000000-0000-0000-0000-000000000002"
+_GATE_SOURCE_QUESTION_UUID = "30000000-0000-0000-0000-000000000003"
+_GATE_PAGE_UUID = "30000000-0000-0000-0000-000000000004"
+_GATE_QUESTION_UUID = "30000000-0000-0000-0000-000000000005"
+_GATE_CONTENT_UUID = "30000000-0000-0000-0000-000000000006"
+
+
+def _write_gated_form(
+    directory: Path, *, when: str = "", slug: str = "employed"
+) -> None:
+    """A two-page form whose second page, a question and a text block all name
+    the first page's question in `when`. Options carry no uuid, so every call
+    followed by an import re-creates them.
+    """
+    directory.mkdir(exist_ok=True)
+    (directory / "form.md").write_text(f"""---
+content_type: FORM
+strategy: UNSCORED
+title: Gated form
+uuid: {_GATE_FORM_UUID}
+---
+""")
+    slug_line = f"slug: {slug}\n" if slug else ""
+    (directory / "1. source.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Source
+uuid: {_GATE_SOURCE_PAGE_UUID}
+---
+question: Are you employed?
+type: multiple_choice
+uuid: {_GATE_SOURCE_QUESTION_UUID}
+{slug_line}options:
+  - text: "Yes"
+    value: "yes"
+  - text: "No"
+    value: "no"
+""")
+    when_block = (
+        f'when:\n  question: {slug}\n  equals: "yes"\n' if when == "all" else ""
+    )
+    (directory / "2. gated.yaml").write_text(f"""---
+content_type: FORM_PAGE
+title: Gated
+uuid: {_GATE_PAGE_UUID}
+{when_block}---
+question: Where do you work?
+type: short_text
+uuid: {_GATE_QUESTION_UUID}
+{when_block}---
+content: Thanks for telling us.
+uuid: {_GATE_CONTENT_UUID}
+{when_block}""")
+
+
+@pytest.mark.django_db
+def test_when_points_each_gated_row_at_the_option_this_import_saved(
+    site, mock_site_context, tmp_path
+):
+    _write_gated_form(tmp_path / "gated", when="all")
+
+    save_content_to_db(tmp_path, site.name)
+
+    yes = QuestionOption.objects.get(
+        question_id=_GATE_SOURCE_QUESTION_UUID, value="yes"
+    )
+    assert FormPage.objects.get(id=_GATE_PAGE_UUID).condition_option == yes
+    assert FormQuestion.objects.get(id=_GATE_QUESTION_UUID).condition_option == yes
+    assert FormContent.objects.get(id=_GATE_CONTENT_UUID).condition_option == yes
+
+
+@pytest.mark.django_db
+def test_removing_when_clears_the_stored_condition(site, mock_site_context, tmp_path):
+    _write_gated_form(tmp_path / "gated", when="all")
+    save_content_to_db(tmp_path, site.name)
+
+    _write_gated_form(tmp_path / "gated")
+    save_content_to_db(tmp_path, site.name)
+
+    assert FormPage.objects.get(id=_GATE_PAGE_UUID).condition_option is None
+    assert FormQuestion.objects.get(id=_GATE_QUESTION_UUID).condition_option is None
+    assert FormContent.objects.get(id=_GATE_CONTENT_UUID).condition_option is None
+
+
+@pytest.mark.django_db
+def test_reimporting_the_same_when_follows_options_re_created_without_a_uuid(
+    site, mock_site_context, tmp_path
+):
+    _write_gated_form(tmp_path / "gated", when="all")
+    save_content_to_db(tmp_path, site.name)
+    first_option_id = FormPage.objects.get(id=_GATE_PAGE_UUID).condition_option_id
+
+    _write_gated_form(tmp_path / "gated", when="all")
+    save_content_to_db(tmp_path, site.name)
+
+    page = FormPage.objects.get(id=_GATE_PAGE_UUID)
+    assert page.condition_option_id != first_option_id
+    assert page.condition_option is not None
+    assert page.condition_option.question_id == uuid.UUID(_GATE_SOURCE_QUESTION_UUID)
+    assert page.condition_option.value == "yes"
+
+
+@pytest.mark.django_db
+def test_the_question_slug_is_written_and_then_cleared(
+    site, mock_site_context, tmp_path
+):
+    _write_gated_form(tmp_path / "gated")
+    save_content_to_db(tmp_path, site.name)
+    written = FormQuestion.objects.get(id=_GATE_SOURCE_QUESTION_UUID).slug
+
+    _write_gated_form(tmp_path / "gated", slug="")
+    save_content_to_db(tmp_path, site.name)
+
+    assert written == "employed"
+    assert FormQuestion.objects.get(id=_GATE_SOURCE_QUESTION_UUID).slug == ""
+
+
+@pytest.mark.django_db
+def test_a_when_naming_no_saved_option_stops_the_import(
+    site, mock_site_context, tmp_path
+):
+    _write_gated_form(tmp_path / "gated", when="all", slug="employed")
+    gated = tmp_path / "gated" / "2. gated.yaml"
+    gated.write_text(
+        gated.read_text().replace("question: employed", "question: nobody")
+    )
+
+    with pytest.raises(ValueError, match="nobody = yes"):
+        save_content_to_db(tmp_path, site.name)
+
+
+def test_a_when_block_survives_the_uuid_rewrite_of_its_file(make_temp_file):
+    temp_file = make_temp_file(
+        ".yaml",
+        """---
+content_type: FORM_PAGE
+title: Gated
+---
+question: Where do you work?
+type: short_text
+when:
+  question: employed
+  equals: "yes"
+""",
+    )
+
+    update_file_with_uuid(temp_file, uuid.UUID(_GATE_PAGE_UUID))
+    parsed = parse_single_file(temp_file)
+
+    assert parsed[0].uuid == _GATE_PAGE_UUID
+    assert parsed[1].when is not None
+    assert parsed[1].when.question == "employed"
+    assert parsed[1].when.literal == "yes"

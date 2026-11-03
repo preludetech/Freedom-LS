@@ -4,7 +4,7 @@ import pytest
 
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, RestrictedError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
@@ -359,3 +359,26 @@ def test_a_user_less_sitting_is_labelled_anonymous(mock_site_context):
     sitting = FormProgressFactory(user=None)
 
     assert str(sitting).startswith("Anonymous - ")
+
+
+@pytest.mark.django_db
+def test_deleting_an_option_that_gates_a_page_is_blocked(mock_site_context):
+    option = QuestionOptionFactory()
+    FormPageFactory(condition_option=option)
+
+    with pytest.raises(RestrictedError), transaction.atomic():
+        option.delete()
+
+
+@pytest.mark.django_db
+def test_deleting_a_form_removes_the_pages_gated_by_its_own_options(
+    mock_site_context,
+):
+    option = QuestionOptionFactory()
+    form = option.question.form_page.form
+    gated = FormPageFactory(form=form, condition_option=option)
+
+    form.delete()
+
+    assert not FormPage.objects.filter(pk=gated.pk).exists()
+    assert not QuestionOption.objects.filter(pk=option.pk).exists()

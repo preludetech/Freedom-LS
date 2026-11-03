@@ -8,6 +8,7 @@ import mimetypes
 import re
 import uuid
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 
@@ -69,6 +70,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionOption,
 )
+from freedom_ls.form_engine.schema import Condition
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
@@ -655,43 +657,95 @@ def save_form(item, site, base_path):
     )
 
 
-def save_form_page(item, form, site, base_path, order=0):
+def _resolve_condition(
+    when: Condition | None,
+    options_by_slug: Mapping[str, Mapping[str, QuestionOption]],
+    file_path: Path,
+) -> QuestionOption | None:
+    """The option this run saved for the value `when` names, or None.
+
+    Resolved from this run's saved objects rather than the database, where
+    questions dropped from the YAML and options re-created without a uuid
+    leave stale rows that a value lookup could hit.
+    """
+    if when is None:
+        return None
+    option = options_by_slug.get(when.question, {}).get(when.literal)
+    if option is None:
+        raise ValueError(
+            f"{file_path}: when names {when.question} = {when.literal}, "
+            "which no earlier question in this form saved."
+        )
+    return option
+
+
+def save_form_page(
+    item, form, site, base_path, order=0, condition_option: QuestionOption | None = None
+):
     """Save a FormPage to the database."""
+    # condition_option is written even when None: save_with_uuid drops None
+    # keys, so leaving it out would keep whatever condition the row had from an
+    # earlier import.
     return save_with_uuid(
         FormPage,
         item,
         site,
         base_path,
+        exclude_fields={"when"},
         form=form,
         order=order,
+        condition_option=condition_option,
     )
 
 
-def save_form_content(item, form_page, site, base_path, order=0):
+def save_form_content(
+    item,
+    form_page,
+    site,
+    base_path,
+    order=0,
+    condition_option: QuestionOption | None = None,
+):
     """Save FormContent to the database."""
     return save_with_uuid(
         FormContent,
         item,
         site,
         base_path,
+        exclude_fields={"when"},
         form_page=form_page,
         order=order,
+        condition_option=condition_option,
     )
 
 
-def save_form_question(item, form_page, site, base_path, order=0):
-    """Save FormQuestion and its options to the database."""
-    # Exclude 'options' since they're handled separately below
+def save_form_question(
+    item,
+    form_page,
+    site,
+    base_path,
+    order=0,
+    condition_option: QuestionOption | None = None,
+) -> tuple[FormQuestion, dict[str, QuestionOption]]:
+    """Save FormQuestion and its options to the database.
+
+    Returns the question and the options this call saved, keyed by value.
+    """
+    # Exclude 'options' since they're handled separately below. slug is written
+    # even when the file has none, so removing it clears the stored one.
     question = save_with_uuid(
         FormQuestion,
         item,
         site,
         base_path,
-        exclude_fields={"options"},
+        exclude_fields={"options", "when"},
         form_page=form_page,
         order=order,
+        condition_option=condition_option,
+        slug=item.slug or "",
     )
 
+    saved_options: dict[str, QuestionOption] = {}
     if item.options:
         option_uuids = []
         for idx, option in enumerate(item.options):
@@ -707,12 +761,13 @@ def save_form_question(item, form_page, site, base_path, order=0):
                 value=str(option.value),  # Convert to string for CharField
             )
             option_uuids.append((idx, option_obj.id))
+            saved_options[option_obj.value] = option_obj
 
         # Update file with option UUIDs if any options didn't have UUIDs
         if any(opt.uuid is None for opt in item.options):
             update_file_with_option_uuids(item.file_path, question.id, option_uuids)
 
-    return question
+    return question, saved_options
 
 
 def get_file_type_from_extension(file_path):
@@ -1007,6 +1062,7 @@ def save_content_to_db(path, site_name):
 
     # Save form pages and their content in alphabetical order per form
     for parent_form, form_pages in pages_by_form.items():
+        options_by_slug: dict[str, dict[str, QuestionOption]] = {}
         # Sort pages by file path alphabetically
         for page_order, (file_path, page_items) in enumerate(sorted(form_pages)):
             if page_items:
@@ -1014,7 +1070,14 @@ def save_content_to_db(path, site_name):
                 # Pages are processed in alphabetical order by filename
                 # First page gets order=0, second gets order=1, etc.
                 form_page = save_form_page(
-                    page_item, parent_form, site, path, order=page_order
+                    page_item,
+                    parent_form,
+                    site,
+                    path,
+                    order=page_order,
+                    condition_option=_resolve_condition(
+                        page_item.when, options_by_slug, file_path
+                    ),
                 )
                 logger.info(f"Saved FormPage: {form_page.title} (order={page_order})")
 
@@ -1031,15 +1094,31 @@ def save_content_to_db(path, site_name):
                 for content_order, item in enumerate(file_content_items):
                     if item.content_type == SchemaContentType.FORM_CONTENT:
                         save_form_content(
-                            item, form_page, site, path, order=content_order
+                            item,
+                            form_page,
+                            site,
+                            path,
+                            order=content_order,
+                            condition_option=_resolve_condition(
+                                item.when, options_by_slug, file_path
+                            ),
                         )
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     elif item.content_type == SchemaContentType.FORM_QUESTION:
-                        save_form_question(
-                            item, form_page, site, path, order=content_order
+                        _question, saved_options = save_form_question(
+                            item,
+                            form_page,
+                            site,
+                            path,
+                            order=content_order,
+                            condition_option=_resolve_condition(
+                                item.when, options_by_slug, file_path
+                            ),
                         )
+                        if item.slug:
+                            options_by_slug[item.slug] = saved_options
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
