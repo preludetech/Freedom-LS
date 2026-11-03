@@ -68,6 +68,7 @@
 - [reference_branching_survey_command.md](reference_branching_survey_command.md) — qa_create_branching_survey: 3-page CATEGORY_VALUE_SUM form, page 2 gated on want_extra=yes (condition_option), learner qa.branch@email.com
 - [reference_in_progress_learner_import.md](reference_in_progress_learner_import.md) — LearnerImport staging: RUNNING (script), FAILED (queryset.update), other-org educator via qa_create_single_org_educator --password, cohort admin via --cohort-name; reuse existing 962e2d06/38d52845 first; BULK_BACKGROUND_THRESHOLD is a settings-only AppSettings value (default 250)
 - [reference_empty_db_baseline.md](reference_empty_db_baseline.md) — Empty branch DB ("FORCE_SITE_NAME DemoDev does not match any Site"): create_demo_data --yes + content_save demo_content DemoDev + script granting demodev@ site_admin/organisation_admin on default org `demodev` (50 learners)
+- [reference_deadline_outline_scenario_command.md](reference_deadline_outline_scenario_command.md) — qa_create_deadline_outline_scenario: all deadline tiers in one outline + 3 dashboard cards for demodev; fresh-DB bootstrap; GET on a topic page mutates progress
 
 - [reference_audit_log_history_command.md](reference_audit_log_history_command.md) — qa_create_audit_log_history: learner+cohort History tabs + org Audit log seed (bulk run 56 w/ reason, system + deleted actor); audit entries append-only so run-once; bulk summary never shows on the cohort tab
 
