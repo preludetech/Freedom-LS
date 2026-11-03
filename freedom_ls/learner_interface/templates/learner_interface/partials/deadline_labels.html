@@ -61,6 +61,10 @@ The top level is empty, so include a named partial.{% endcomment %}
     forced-colors:border {% if child.deadline_tier == "UPCOMING" %}bg-surface-2 text-muted{% elif child.deadline_tier == "TODAY" %}bg-warning-light text-on-warning-light{% else %}bg-error-light text-on-error-light{% endif %}
 {% endpartialdef %}
 
+{% partialdef next-deadline-eyebrow %}
+    {% if child.is_past %}{% partial tier-word %}{% else %}Next deadline{% endif %}
+{% endpartialdef %}
+
 {% partialdef line %}
     {% comment %}A chip with the tier word for a missed or closed deadline, then the title when
     given and the date; otherwise "Deadline", the title and the date. Then when it closes.
