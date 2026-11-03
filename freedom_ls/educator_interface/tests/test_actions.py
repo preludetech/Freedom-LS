@@ -1108,6 +1108,26 @@ def test_deactivate_post_answers_204_with_a_location_to_the_learner_page(
 
 
 @pytest.mark.django_db
+def test_learner_header_state_action_from_a_tab_navigates_back_to_that_tab(
+    staff_client: Client,
+):
+    """Deactivating from the history tab used to land on the Overview tab."""
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+    tab_path = _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__tabs/history"
+    )
+
+    response = staff_client.post(
+        _learner_state_url(organisation, learner, "deactivate"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_CURRENT_URL=f"http://testserver{tab_path}",
+    )
+
+    assert json.loads(response["HX-Location"])["path"] == tab_path
+
+
+@pytest.mark.django_db
 def test_deactivate_post_sets_the_learner_inactive(staff_client: Client):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation, is_active=True)

@@ -575,8 +575,8 @@ class LearnerStateAction(PanelAction):
                 status=422,
             )
         # The header's badge and actions change, so the page re-renders in
-        # full and no domain event is sent.
-        return navigation_response(ctx.page_url)
+        # full, on the tab it was on, and no domain event is sent.
+        return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
 class DeactivateLearnerAction(ReasonMixin, LearnerStateAction):
