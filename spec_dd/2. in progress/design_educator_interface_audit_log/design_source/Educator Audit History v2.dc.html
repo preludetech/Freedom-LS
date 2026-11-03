@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js"></script>
+<style>
+  body { background: #E9ECF3; }
+  a { color: var(--color-primary); text-decoration: none; }
+  a:hover { color: var(--color-primary-900); }
+</style>
+</helmet>
+<div style="padding:56px 56px 96px;display:flex;flex-direction:column;gap:40px;font-family:var(--font-body)">
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:28px;color:var(--fg-1);letter-spacing:-0.02em">Audit history v2 — compact log</div>
+    <div style="font-size:14px;color:var(--fg-2);max-width:72ch">One line per action. Click a row to expand changes, reason and event details. Rows with a reason show a note icon.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px" data-screen-label="09 Learner history">
+    <div style="display:flex;align-items:baseline;gap:12px"><div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">09</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Learner record — History tab</div></div>
+    <div style="width:1440px;height:820px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Learners" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-primary);font-weight:600"><i class="ph ph-arrow-left" style="font-size:15px"></i>Learners</div>
+          <i class="ph ph-caret-right" style="font-size:12px;color:var(--fg-4)"></i>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Naledi Kwena</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-pencil-simple" style="font-size:15px"></i>Edit</div>
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 16px;border-radius:8px;background:var(--color-primary);color:#fff;font-size:13.5px;font-weight:600"><i class="ph ph-paper-plane-tilt" style="font-size:15px"></i>Send message</div>
+          </div>
+        </div>
+        <div style="background:#fff;border-bottom:1px solid var(--border);padding:22px 28px 0;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:52px;height:52px;border-radius:999px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;font-family:var(--font-heading)">NK</div>
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;color:var(--fg-1);line-height:1.2">Naledi Kwena</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                <div style="font-size:13px;color:var(--fg-3)">n.kwena@skyward.co.za</div>
+                <div style="width:1px;height:12px;background:var(--border)"></div>
+                <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-3)">LRN-2026-0184</div>
+                <span style="padding:3px 10px;border-radius:999px;background:var(--color-error-light);color:#a52a2a;font-size:11.5px;font-weight:600">Retake due</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:26px">
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Overview</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Courses &amp; progress</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Assessments</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Certificates</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Activity</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:600;color:var(--color-primary);box-shadow:inset 0 -2px 0 var(--color-primary)">History</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;padding:20px 28px">
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;height:100%;overflow:hidden;display:flex;flex-direction:column">
+            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+              <sc-for list="{{ learnerChips }}" as="c" hint-placeholder-count="5">
+                <div onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div>
+              </sc-for>
+              <div onClick="{{ learnerToggleAll }}" style="margin-left:auto;font-size:12.5px;font-weight:600;color:var(--color-primary);cursor:pointer;padding:0 8px">{{ learnerToggleLabel }}</div>
+              <div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border-strong);border-radius:8px;font-size:12.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-download-simple" style="font-size:14px"></i>Export CSV</div>
+            </div>
+            <div style="display:grid;grid-template-columns:16px 112px 18px minmax(0,1fr) 230px 18px;gap:12px;align-items:center;height:32px;flex:0 0 32px;padding:0 16px;background:var(--grey-50);border-bottom:1px solid var(--border)">
+              <div></div><div class="fc-overline">When</div><div></div><div class="fc-overline">Action</div><div class="fc-overline">Source</div><div></div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:auto">
+              <sc-for list="{{ learnerRows }}" as="e" hint-placeholder-count="7">
+                <div style="border-bottom:1px solid var(--grey-100)">
+                  <div onClick="{{ e.onClick }}" style="{{ e.rowStyle }}">
+                    <i class="{{ e.caretClass }}" style="font-size:12px;color:var(--fg-3)"></i>
+                    <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-2);white-space:nowrap">{{ e.dateShort }} <span style="color:var(--fg-4)">{{ e.time }}</span></div>
+                    <i class="{{ e.iconClass }}" style="{{ e.iconColor }}"></i>
+                    <div style="font-size:13px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-weight:600;color:var(--fg-1)">{{ e.actor }}</span> {{ e.verb }} <span style="font-weight:600;color:var(--fg-1)">{{ e.target }}</span>{{ e.tail }}</div>
+                    <div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.source }}</div>
+                    <i class="{{ e.noteClass }}" style="font-size:14px;color:var(--fg-4)"></i>
+                  </div>
+                  <sc-if value="{{ e.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:4px 16px 14px 186px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 200px;gap:24px;background:var(--grey-50)">
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Changes</div>
+                        <sc-for list="{{ e.changes }}" as="ch" hint-placeholder-count="1">
+                          <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;font-size:12.5px;line-height:1.5"><span style="color:var(--fg-3)">{{ ch.field }}</span><span style="font-family:var(--font-mono);color:var(--fg-1)"><sc-if value="{{ ch.hasFrom }}" hint-placeholder-val="{{ true }}"><span style="color:var(--fg-3);text-decoration:line-through">{{ ch.from }}</span> → </sc-if>{{ ch.to }}</span></div>
+                        </sc-for>
+                        <sc-if value="{{ e.noChanges }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:var(--fg-4)">No field changes</div></sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Reason</div>
+                        <div style="{{ e.reasonStyle }}">{{ e.reasonText }}</div>
+                        <sc-if value="{{ e.hasMembers }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+                            <sc-for list="{{ e.members }}" as="m" hint-placeholder-count="3"><span style="padding:2px 8px;border-radius:6px;background:#fff;border:1px solid var(--border);font-size:12px;color:var(--fg-2)">{{ m }}</span></sc-for>
+                            <span style="font-size:12px;font-weight:600;color:var(--color-primary);padding:2px 0">{{ e.more }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:3px;padding-top:8px;font-size:12px;color:var(--fg-3)">
+                        <div class="fc-overline" style="margin-bottom:2px">Event</div>
+                        <div style="font-family:var(--font-mono);color:var(--fg-2)">{{ e.eid }}</div>
+                        <div>{{ e.role }}</div>
+                        <div style="font-family:var(--font-mono)">{{ e.utcLabel }}</div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px" data-screen-label="10 Cohort history">
+    <div style="display:flex;align-items:baseline;gap:12px"><div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">10</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Cohort detail — History tab</div></div>
+    <div style="width:1440px;height:820px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Cohorts" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-primary);font-weight:600"><i class="ph ph-arrow-left" style="font-size:15px"></i>Cohorts</div>
+          <i class="ph ph-caret-right" style="font-size:12px;color:var(--fg-4)"></i>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">RPAS Basic — Lagos, Sept 2026</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-users-three" style="font-size:15px"></i>Enrol learners</div>
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-pencil-simple" style="font-size:15px"></i>Edit cohort</div>
+          </div>
+        </div>
+        <div style="background:#fff;border-bottom:1px solid var(--border);padding:22px 28px 0;display:flex;flex-direction:column;gap:18px">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="padding:3px 10px;border-radius:999px;background:var(--color-success-light);color:#26714a;font-size:11.5px;font-weight:600">Active</span>
+              <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-3)">COH-LAG-0926</div>
+            </div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;color:var(--fg-1);line-height:1.2;margin-top:6px">RPAS Basic — Lagos, Sept 2026</div>
+          </div>
+          <div style="display:flex;gap:26px">
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Overview</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2);display:flex;align-items:center;gap:6px">Learners<span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">31</span></div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Curriculum</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Assessments</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Schedule</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:500;color:var(--fg-2)">Settings</div>
+            <div style="padding:0 2px 12px;font-size:13.5px;font-weight:600;color:var(--color-primary);box-shadow:inset 0 -2px 0 var(--color-primary)">History</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;padding:20px 28px">
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;height:100%;overflow:hidden;display:flex;flex-direction:column">
+            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+              <sc-for list="{{ cohortChips }}" as="c" hint-placeholder-count="4">
+                <div onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div>
+              </sc-for>
+              <div style="margin-left:12px;height:30px;width:200px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--border-strong);border-radius:8px;font-size:12.5px;color:var(--fg-4)"><i class="ph ph-magnifying-glass" style="font-size:14px;color:var(--fg-3)"></i>Find a learner</div>
+              <div onClick="{{ cohortToggleAll }}" style="margin-left:auto;font-size:12.5px;font-weight:600;color:var(--color-primary);cursor:pointer;padding:0 8px">{{ cohortToggleLabel }}</div>
+              <div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border-strong);border-radius:8px;font-size:12.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-download-simple" style="font-size:14px"></i>Export CSV</div>
+            </div>
+            <div style="display:grid;grid-template-columns:16px 112px 18px minmax(0,1fr) 230px 18px;gap:12px;align-items:center;height:32px;flex:0 0 32px;padding:0 16px;background:var(--grey-50);border-bottom:1px solid var(--border)">
+              <div></div><div class="fc-overline">When</div><div></div><div class="fc-overline">Action</div><div class="fc-overline">Source</div><div></div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:auto">
+              <sc-for list="{{ cohortRows }}" as="e" hint-placeholder-count="7">
+                <div style="border-bottom:1px solid var(--grey-100)">
+                  <div onClick="{{ e.onClick }}" style="{{ e.rowStyle }}">
+                    <i class="{{ e.caretClass }}" style="font-size:12px;color:var(--fg-3)"></i>
+                    <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-2);white-space:nowrap">{{ e.dateShort }} <span style="color:var(--fg-4)">{{ e.time }}</span></div>
+                    <i class="{{ e.iconClass }}" style="{{ e.iconColor }}"></i>
+                    <div style="font-size:13px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-weight:600;color:var(--fg-1)">{{ e.actor }}</span> {{ e.verb }} <span style="font-weight:600;color:var(--fg-1)">{{ e.target }}</span>{{ e.tail }}</div>
+                    <div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.source }}</div>
+                    <i class="{{ e.noteClass }}" style="font-size:14px;color:var(--fg-4)"></i>
+                  </div>
+                  <sc-if value="{{ e.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:4px 16px 14px 186px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 200px;gap:24px;background:var(--grey-50)">
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Changes</div>
+                        <sc-for list="{{ e.changes }}" as="ch" hint-placeholder-count="1">
+                          <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;font-size:12.5px;line-height:1.5"><span style="color:var(--fg-3)">{{ ch.field }}</span><span style="font-family:var(--font-mono);color:var(--fg-1)"><sc-if value="{{ ch.hasFrom }}" hint-placeholder-val="{{ true }}"><span style="color:var(--fg-3);text-decoration:line-through">{{ ch.from }}</span> → </sc-if>{{ ch.to }}</span></div>
+                        </sc-for>
+                        <sc-if value="{{ e.noChanges }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:var(--fg-4)">No field changes</div></sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Reason</div>
+                        <div style="{{ e.reasonStyle }}">{{ e.reasonText }}</div>
+                        <sc-if value="{{ e.hasMembers }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+                            <sc-for list="{{ e.members }}" as="m" hint-placeholder-count="3"><span style="padding:2px 8px;border-radius:6px;background:#fff;border:1px solid var(--border);font-size:12px;color:var(--fg-2)">{{ m }}</span></sc-for>
+                            <span style="font-size:12px;font-weight:600;color:var(--color-primary);padding:2px 0">{{ e.more }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:3px;padding-top:8px;font-size:12px;color:var(--fg-3)">
+                        <div class="fc-overline" style="margin-bottom:2px">Event</div>
+                        <div style="font-family:var(--font-mono);color:var(--fg-2)">{{ e.eid }}</div>
+                        <div>{{ e.role }}</div>
+                        <div style="font-family:var(--font-mono)">{{ e.utcLabel }}</div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px" data-screen-label="11 Organization audit log">
+    <div style="display:flex;align-items:baseline;gap:12px"><div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">11</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Audit log — organization-wide</div></div>
+    <div style="width:1440px;height:860px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Audit log" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:10px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Audit log</div>
+          <div style="margin-left:auto;height:38px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-download-simple" style="font-size:15px"></i>Export CSV</div>
+        </div>
+        <div style="flex:1;min-height:0;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:38px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;color:var(--fg-4)"><i class="ph ph-magnifying-glass" style="font-size:15px;color:var(--fg-3)"></i>Search by learner, cohort, educator or event ID</div>
+            <div style="height:38px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;color:var(--fg-1)"><i class="ph ph-user" style="font-size:15px;color:var(--fg-3)"></i>All educators<i class="ph ph-caret-down" style="font-size:13px;color:var(--fg-3)"></i></div>
+            <div style="height:38px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border:1px solid var(--border-strong);border-radius:8px;font-family:var(--font-mono);font-size:12.5px;color:var(--fg-1)"><i class="ph ph-calendar-blank" style="font-size:15px;color:var(--fg-3)"></i>01 Aug – 03 Nov 2026<i class="ph ph-caret-down" style="font-size:13px;color:var(--fg-3)"></i></div>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column">
+            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+              <sc-for list="{{ orgChips }}" as="c" hint-placeholder-count="6">
+                <div onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div>
+              </sc-for>
+              <div onClick="{{ orgToggleAll }}" style="margin-left:auto;font-size:12.5px;font-weight:600;color:var(--color-primary);cursor:pointer;padding:0 8px">{{ orgToggleLabel }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:16px 112px 18px minmax(0,1fr) 130px 200px 18px;gap:12px;align-items:center;height:32px;flex:0 0 32px;padding:0 16px;background:var(--grey-50);border-bottom:1px solid var(--border)">
+              <div></div><div class="fc-overline" style="display:flex;align-items:center;gap:4px;color:var(--color-primary)">When<i class="ph ph-arrow-down" style="font-size:11px"></i></div><div></div><div class="fc-overline">Action</div><div class="fc-overline">Area</div><div class="fc-overline">Source</div><div></div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:auto">
+              <sc-for list="{{ orgRows }}" as="e" hint-placeholder-count="12">
+                <div style="border-bottom:1px solid var(--grey-100)">
+                  <div onClick="{{ e.onClick }}" style="{{ e.rowStyle }}">
+                    <i class="{{ e.caretClass }}" style="font-size:12px;color:var(--fg-3)"></i>
+                    <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-2);white-space:nowrap">{{ e.dateShort }} <span style="color:var(--fg-4)">{{ e.time }}</span></div>
+                    <i class="{{ e.iconClass }}" style="{{ e.iconColor }}"></i>
+                    <div style="font-size:13px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-weight:600;color:var(--fg-1)">{{ e.actor }}</span> {{ e.verb }} <span style="font-weight:600;color:var(--fg-1)">{{ e.target }}</span>{{ e.tail }}</div>
+                    <div><span style="padding:2px 8px;border-radius:6px;background:var(--grey-100);font-size:11.5px;font-weight:500;color:var(--fg-2);white-space:nowrap">{{ e.cat }}</span></div>
+                    <div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.source }}</div>
+                    <i class="{{ e.noteClass }}" style="font-size:14px;color:var(--fg-4)"></i>
+                  </div>
+                  <sc-if value="{{ e.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:4px 16px 14px 186px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 200px;gap:24px;background:var(--grey-50)">
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Changes</div>
+                        <sc-for list="{{ e.changes }}" as="ch" hint-placeholder-count="1">
+                          <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;font-size:12.5px;line-height:1.5"><span style="color:var(--fg-3)">{{ ch.field }}</span><span style="font-family:var(--font-mono);color:var(--fg-1)"><sc-if value="{{ ch.hasFrom }}" hint-placeholder-val="{{ true }}"><span style="color:var(--fg-3);text-decoration:line-through">{{ ch.from }}</span> → </sc-if>{{ ch.to }}</span></div>
+                        </sc-for>
+                        <sc-if value="{{ e.noChanges }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:var(--fg-4)">No field changes</div></sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px">
+                        <div class="fc-overline">Reason</div>
+                        <div style="{{ e.reasonStyle }}">{{ e.reasonText }}</div>
+                        <sc-if value="{{ e.hasMembers }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+                            <sc-for list="{{ e.members }}" as="m" hint-placeholder-count="3"><span style="padding:2px 8px;border-radius:6px;background:#fff;border:1px solid var(--border);font-size:12px;color:var(--fg-2)">{{ m }}</span></sc-for>
+                            <span style="font-size:12px;font-weight:600;color:var(--color-primary);padding:2px 0">{{ e.more }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:3px;padding-top:8px;font-size:12px;color:var(--fg-3)">
+                        <div class="fc-overline" style="margin-bottom:2px">Event</div>
+                        <div style="font-family:var(--font-mono);color:var(--fg-2)">{{ e.eid }}</div>
+                        <div>{{ e.role }}</div>
+                        <div style="font-family:var(--font-mono)">{{ e.utcLabel }}</div>
+                        <a href="#" style="font-weight:600;font-size:12.5px;margin-top:6px">{{ e.openLabel }} →</a>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="height:42px;flex:0 0 42px;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;font-size:12px;color:var(--fg-3)">
+              <span style="font-family:var(--font-mono)">{{ orgCountLabel }}</span>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--fg-2)"><i class="ph ph-caret-left" style="font-size:14px;color:var(--fg-4)"></i><span style="font-family:var(--font-mono)">Page 1 of 9</span><i class="ph ph-caret-right" style="font-size:14px"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ICON_COLORS = { neutral: "var(--fg-3)", error: "var(--color-error)", success: "var(--color-success)", warning: "#8a6412", primary: "var(--color-primary)" };
+const ROLES = { "Tunde Bello": "Organization admin", "Adaeze Okonkwo": "Lead instructor", "Rachel Nwosu": "Assessor", "Joseph Mensah": "Practical examiner" };
+
+const ORG = [
+  { id: "EVT-7F3A21", day: "03 Nov 2026", time: "10:14", actor: "Adaeze Okonkwo", cat: "Assessments", icon: "ph-arrow-counter-clockwise", tone: "warning", verb: "reset an assessment attempt for", target: "Naledi Kwena", tail: " — module 4", source: "Learner record", changes: [["Attempts used", "2 of 3", "1 of 3"]], reason: "Connection dropped 12 minutes into attempt 2. Invigilator confirmed the outage.", open: "Open learner record" },
+  { id: "EVT-7F3A0C", day: "03 Nov 2026", time: "09:02", actor: "Tunde Bello", cat: "Data exports", icon: "ph-download-simple", tone: "neutral", verb: "exported learner records from", target: "Advanced BVLOS Operations", tail: "", source: "Learners table", changes: [["Records", "", "32 learners"], ["Fields", "", "Name, email, progress, scores"], ["Format", "", "CSV"]], reason: "Quarterly NCAA training return.", open: "Open cohort" },
+  { id: "EVT-7E91B4", day: "31 Oct 2026", time: "16:40", actor: "Adaeze Okonkwo", cat: "Cohorts", icon: "ph-arrows-left-right", tone: "primary", verb: "moved", target: "Chinedu Eze", tail: " to RPAS Basic — Accra, Jan 2027", source: "Cohort learners tab", changes: [["Cohort", "RPAS Basic — Lagos, Sept 2026", "RPAS Basic — Accra, Jan 2027"], ["Progress", "", "Kept — 3 of 5 modules"]], reason: "Transferred at the learner’s request after relocating to Accra.", open: "Open learner record" },
+  { id: "EVT-7E2210", day: "28 Oct 2026", time: "14:02", actor: "Tunde Bello", cat: "Learners", icon: "ph-user-check", tone: "success", verb: "reactivated", target: "Naledi Kwena", tail: "", source: "Learner record", changes: [["Status", "Deactivated", "Active"]], reason: "Medical declaration renewed on 27 Oct, copy on file.", open: "Open learner record" },
+  { id: "EVT-7D8C55", day: "24 Oct 2026", time: "11:15", actor: "Tunde Bello", cat: "Cohorts", icon: "ph-sliders-horizontal", tone: "primary", verb: "changed the pass mark for", target: "RPAS Basic — Lagos, Sept 2026", tail: "", source: "Cohort settings", changes: [["Pass mark", "70%", "75%"]], reason: "Aligns with the NCAA Part 21 revision effective 1 Nov.", open: "Open cohort" },
+  { id: "EVT-7D4A9E", day: "22 Oct 2026", time: "08:47", actor: "Tunde Bello", cat: "Educators & roles", icon: "ph-shield-check", tone: "primary", verb: "changed the role of", target: "Rachel Nwosu", tail: "", source: "Educators", changes: [["Role", "Coordinator", "Assessor"]], reason: "Covering assessment for the Lagos and Accra cohorts.", open: "Open educator" },
+  { id: "EVT-7D17F2", day: "21 Oct 2026", time: "09:30", actor: "Tunde Bello", cat: "Learners", icon: "ph-user-minus", tone: "error", verb: "deactivated", target: "4 learners", tail: "", source: "Bulk action · Learners table", changes: [["Status", "Active", "Deactivated"]], reason: "Medical declarations expired 20 Oct. Reactivate each learner once a renewed declaration is on file.", members: ["Naledi Kwena", "Kofi Asante", "Lindiwe Dube", "Musa Banda"], open: "Open learners" },
+  { id: "EVT-7C0E31", day: "14 Oct 2026", time: "13:20", actor: "Adaeze Okonkwo", cat: "Cohorts", icon: "ph-calendar-blank", tone: "primary", verb: "extended the end date of", target: "RPAS Basic — Lagos, Sept 2026", tail: "", source: "Cohort settings", changes: [["Ends", "15 Nov 2026", "30 Nov 2026"]], reason: "Practical days moved after the airfield closure on 9–10 Oct.", open: "Open cohort" },
+  { id: "EVT-7A5D18", day: "02 Sep 2026", time: "15:05", actor: "Rachel Nwosu", cat: "Assessments", icon: "ph-pencil-simple-line", tone: "warning", verb: "overrode a score for", target: "Naledi Kwena", tail: " — module 3", source: "Assessment review", changes: [["Score", "74%", "78%"], ["Result", "Not yet passed", "Passed"]], reason: "Question 12 was marked incorrectly due to an answer key error. Corrected for all learners.", open: "Open learner record" },
+  { id: "EVT-7A4F02", day: "02 Sep 2026", time: "10:00", actor: "Tunde Bello", cat: "Cohorts", icon: "ph-chalkboard-teacher", tone: "primary", verb: "assigned", target: "Joseph Mensah", tail: " to RPAS Basic — Lagos, Sept 2026", source: "Cohort settings", changes: [["Role in cohort", "", "Practical examiner"]], reason: "", open: "Open cohort" },
+  { id: "EVT-79E6C7", day: "28 Aug 2026", time: "12:31", actor: "Tunde Bello", cat: "Cohorts", icon: "ph-file-csv", tone: "primary", verb: "imported 28 learners into", target: "RPAS Basic — Lagos, Sept 2026", tail: "", source: "CSV import · lagos-sept-intake.csv", changes: [["Created", "", "26 new accounts"], ["Existing", "", "2 enrolled, not re-created"]], reason: "", members: ["Amaka Obi", "Chinedu Eze", "Folake Adeyemi", "Ibrahim Musa"], more: "and 24 more", open: "Open cohort" },
+  { id: "EVT-79C201", day: "20 Aug 2026", time: "09:12", actor: "Tunde Bello", cat: "Cohorts", icon: "ph-plus-circle", tone: "success", verb: "created", target: "RPAS Basic — Lagos, Sept 2026", tail: "", source: "Cohorts", changes: [["Course", "", "RPAS Basic Theory & Practical"], ["Dates", "", "01 Sep – 15 Nov 2026"], ["Capacity", "", "35"]], reason: "", open: "Open cohort" }
+];
+
+const LEARNER = [
+  { id: "EVT-7F3A21", day: "03 Nov 2026", time: "10:14", actor: "Adaeze Okonkwo", cat: "Assessments", icon: "ph-arrow-counter-clockwise", tone: "warning", verb: "reset an assessment attempt", target: "", tail: " — module 4", source: "Learner record", changes: [["Attempts used", "2 of 3", "1 of 3"]], reason: "Connection dropped 12 minutes into attempt 2. Invigilator confirmed the outage." },
+  { id: "EVT-7E2210", day: "28 Oct 2026", time: "14:02", actor: "Tunde Bello", cat: "Status", icon: "ph-user-check", tone: "success", verb: "reactivated this learner", target: "", tail: "", source: "Learner record", changes: [["Status", "Deactivated", "Active"]], reason: "Medical declaration renewed on 27 Oct, copy on file." },
+  { id: "EVT-7D17F2", day: "21 Oct 2026", time: "09:30", actor: "Tunde Bello", cat: "Status", icon: "ph-user-minus", tone: "error", verb: "deactivated this learner", target: "", tail: "", source: "Bulk action · 4 learners", changes: [["Status", "Active", "Deactivated"]], reason: "Medical declarations expired 20 Oct. Reactivate each learner once a renewed declaration is on file." },
+  { id: "EVT-7A5D18", day: "02 Sep 2026", time: "15:05", actor: "Rachel Nwosu", cat: "Assessments", icon: "ph-pencil-simple-line", tone: "warning", verb: "overrode the score for", target: "module 3", tail: "", source: "Assessment review", changes: [["Score", "74%", "78%"], ["Result", "Not yet passed", "Passed"]], reason: "Question 12 was marked incorrectly due to an answer key error. Corrected for all learners." },
+  { id: "EVT-79F4A3", day: "15 Aug 2026", time: "11:48", actor: "Adaeze Okonkwo", cat: "Profile", icon: "ph-pencil-simple", tone: "neutral", verb: "edited profile details", target: "", tail: "", source: "Learner record", changes: [["Licence held", "—", "RPL — multirotor"], ["Location", "Pretoria, ZA", "Johannesburg, ZA"]], reason: "" },
+  { id: "EVT-6F2C10", day: "12 Jun 2026", time: "09:05", actor: "Tunde Bello", cat: "Cohorts", icon: "ph-users-three", tone: "primary", verb: "added this learner to", target: "Advanced BVLOS Operations", tail: "", source: "CSV import · johannesburg-june.csv", changes: [], reason: "" },
+  { id: "EVT-6F2C0F", day: "12 Jun 2026", time: "09:05", actor: "Tunde Bello", cat: "Profile", icon: "ph-user-plus", tone: "success", verb: "created this learner account", target: "", tail: "", source: "CSV import · johannesburg-june.csv", changes: [["Invitation", "", "Sent to n.kwena@skyward.co.za"]], reason: "" }
+];
+
+const COHORT = [
+  { id: "EVT-7E91B4", day: "31 Oct 2026", time: "16:40", actor: "Adaeze Okonkwo", cat: "Membership", icon: "ph-user-minus", tone: "error", verb: "removed", target: "Chinedu Eze", tail: " from this cohort", source: "Cohort learners tab", changes: [["Moved to", "", "RPAS Basic — Accra, Jan 2027"], ["Progress", "", "Kept — 3 of 5 modules"]], reason: "Transferred at the learner’s request after relocating to Accra." },
+  { id: "EVT-7D8C55", day: "24 Oct 2026", time: "11:15", actor: "Tunde Bello", cat: "Settings", icon: "ph-sliders-horizontal", tone: "primary", verb: "changed the pass mark", target: "", tail: "", source: "Cohort settings", changes: [["Pass mark", "70%", "75%"]], reason: "Aligns with the NCAA Part 21 revision effective 1 Nov." },
+  { id: "EVT-7C0E31", day: "14 Oct 2026", time: "13:20", actor: "Adaeze Okonkwo", cat: "Settings", icon: "ph-calendar-blank", tone: "primary", verb: "extended the end date", target: "", tail: "", source: "Cohort settings", changes: [["Ends", "15 Nov 2026", "30 Nov 2026"]], reason: "Practical days moved after the airfield closure on 9–10 Oct." },
+  { id: "EVT-7A4F02", day: "02 Sep 2026", time: "10:00", actor: "Tunde Bello", cat: "Staff", icon: "ph-chalkboard-teacher", tone: "primary", verb: "assigned", target: "Joseph Mensah", tail: " as practical examiner", source: "Cohort settings", changes: [], reason: "" },
+  { id: "EVT-79EA77", day: "29 Aug 2026", time: "15:22", actor: "Adaeze Okonkwo", cat: "Membership", icon: "ph-user-plus", tone: "success", verb: "added", target: "Amaka Obi", tail: " to this cohort", source: "Enrol learners", changes: [], reason: "" },
+  { id: "EVT-79E6C7", day: "28 Aug 2026", time: "12:31", actor: "Tunde Bello", cat: "Membership", icon: "ph-file-csv", tone: "primary", verb: "imported", target: "28 learners", tail: "", source: "CSV import · lagos-sept-intake.csv", changes: [["Created", "", "26 new accounts"], ["Existing", "", "2 enrolled, not re-created"]], reason: "", members: ["Chinedu Eze", "Folake Adeyemi", "Ibrahim Musa", "Kemi Lawal", "Obinna Nnaji"], more: "and 23 more" },
+  { id: "EVT-79C201", day: "20 Aug 2026", time: "09:12", actor: "Tunde Bello", cat: "Settings", icon: "ph-plus-circle", tone: "success", verb: "created this cohort", target: "", tail: "", source: "Cohorts", changes: [["Course", "", "RPAS Basic Theory & Practical"], ["Dates", "", "01 Sep – 15 Nov 2026"], ["Capacity", "", "35"]], reason: "" }
+];
+
+const LISTS = { l: LEARNER, c: COHORT, o: ORG };
+const COLS = { l: "16px 112px 18px minmax(0,1fr) 230px 18px", c: "16px 112px 18px minmax(0,1fr) 230px 18px", o: "16px 112px 18px minmax(0,1fr) 130px 200px 18px" };
+
+class Component extends DCLogic {
+  state = { lf: "All", cf: "All", of: "All", open: { "l:EVT-7D17F2": true, "c:EVT-79E6C7": true, "o:EVT-7D17F2": true } };
+
+  toggle(key) { this.setState(s => ({ open: Object.assign({}, s.open, { [key]: !s.open[key] }) })); }
+
+  chips(cats, list, fkey) {
+    const active = this.state[fkey];
+    return ["All"].concat(cats).map(label => {
+      const on = label === active;
+      const n = label === "All" ? list.length : list.filter(e => e.cat === label).length;
+      return {
+        label, count: String(n),
+        onClick: () => this.setState({ [fkey]: label }),
+        style: "height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:999px;font-size:12.5px;cursor:pointer;transition:background-color 200ms cubic-bezier(0.22,1,0.36,1);" +
+          (on ? "background:var(--color-primary);color:#fff;font-weight:600;border:1px solid var(--color-primary)" : "background:#fff;color:var(--fg-2);font-weight:500;border:1px solid var(--border-strong)"),
+        countStyle: "font-family:var(--font-mono);font-size:10.5px;" + (on ? "color:rgba(255,255,255,0.8)" : "color:var(--fg-4)")
+      };
+    });
+  }
+
+  rows(k) {
+    const f = this.state[k + "f"];
+    const list = f === "All" ? LISTS[k] : LISTS[k].filter(e => e.cat === f);
+    return list.map(e => {
+      const key = k + ":" + e.id;
+      const open = !!this.state.open[key];
+      const changes = (e.changes || []).map(c => ({ field: c[0], from: c[1], to: c[2], hasFrom: !!c[1] }));
+      const h = parseInt(e.time.slice(0, 2), 10) - 2;
+      return Object.assign({}, e, {
+        open, eid: e.id, role: ROLES[e.actor],
+        dateShort: e.day.slice(0, 6),
+        utcLabel: e.day + ", " + String(h).padStart(2, "0") + e.time.slice(2) + " UTC",
+        caretClass: "ph " + (open ? "ph-caret-down" : "ph-caret-right"),
+        iconClass: "ph " + e.icon,
+        iconColor: "font-size:16px;color:" + ICON_COLORS[e.tone],
+        noteClass: e.reason ? "ph ph-note" : "",
+        changes, noChanges: changes.length === 0,
+        reasonText: e.reason || "Not required for this action",
+        reasonStyle: e.reason ? "font-size:13px;color:var(--fg-1);line-height:1.5;text-wrap:pretty" : "font-size:12.5px;color:var(--fg-4)",
+        members: e.members || [], hasMembers: !!(e.members && e.members.length), more: e.more || "",
+        openLabel: e.open || "",
+        onClick: () => this.toggle(key),
+        rowStyle: "display:grid;grid-template-columns:" + COLS[k] + ";gap:12px;align-items:center;height:38px;padding:0 16px;cursor:pointer;transition:background-color 200ms cubic-bezier(0.22,1,0.36,1);" +
+          (open ? "background:var(--grey-50)" : "background:#fff")
+      });
+    });
+  }
+
+  toggleAll(k, rows) {
+    const anyClosed = rows.some(r => !r.open);
+    return {
+      label: anyClosed ? "Expand all" : "Collapse all",
+      fn: () => this.setState(s => {
+        const open = Object.assign({}, s.open);
+        rows.forEach(r => { open[k + ":" + r.id] = anyClosed; });
+        return { open };
+      })
+    };
+  }
+
+  renderVals() {
+    const l = this.rows("l"), c = this.rows("c"), o = this.rows("o");
+    const tl = this.toggleAll("l", l), tc = this.toggleAll("c", c), to = this.toggleAll("o", o);
+    return {
+      learnerChips: this.chips(["Status", "Cohorts", "Assessments", "Profile"], LEARNER, "lf"),
+      learnerRows: l, learnerToggleLabel: tl.label, learnerToggleAll: tl.fn,
+      cohortChips: this.chips(["Membership", "Settings", "Staff"], COHORT, "cf"),
+      cohortRows: c, cohortToggleLabel: tc.label, cohortToggleAll: tc.fn,
+      orgChips: this.chips(["Learners", "Cohorts", "Assessments", "Educators & roles", "Data exports"], ORG, "of"),
+      orgRows: o, orgToggleLabel: to.label, orgToggleAll: to.fn,
+      orgCountLabel: "Showing " + o.length + " of 214 entries"
+    };
+  }
+}
+</script>
+</body>
+</html>
