@@ -753,8 +753,6 @@ def test_without_access_ended_outline_no_access_leaves_every_row_blocked(
     assert all(row["status"] == BLOCKED and row["url"] is None for row in rows)
 
 
-# --- deadline_tier ---
-
 TIER_NOW = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
 KIRITIMATI = ZoneInfo("Pacific/Kiritimati")
 
@@ -893,9 +891,6 @@ def test_get_course_index_deadlines_add_no_queries(
             deadline_policy=_policy(),
             now=TIER_NOW,
         )
-
-
-# --- card_deadline_line ---
 
 
 def _row(due_at: datetime, *, deadline_tier: DeadlineTier) -> dict:
