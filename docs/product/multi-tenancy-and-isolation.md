@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-03_
 
 ## Summary
 
@@ -28,6 +28,7 @@ All of the following are site-scoped, so a given site's copy is invisible to eve
 - **Configuration** — signup policy, recommended courses, legal consent records, and the site's time zone.
 - **Webhooks** — endpoints and their encrypted secrets.
 - **Public discoverability surfaces** — the sitemap, `robots.txt`, and structured data on catalogue and course pages. All absolute URLs are built from the requesting site's own domain rather than a fixed host, so a visitor on one site never sees another's courses or URLs.
+- **API access** — each API key belongs to one site and returns only that site's data. A request using it on another site's domain, or on a domain that matches no site, is refused.
 
 Organisations are not on this list. They group cohorts and course registrations *within* a site — see [Organisations](#organisations) below — and add no isolation on top of the site boundary.
 

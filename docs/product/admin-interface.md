@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-03_
 
 ## Summary
 
@@ -25,6 +25,7 @@ _Last updated: 2026-10-30_
 - HR attributes are an optional extra. When that app is installed, the admin lists each organisation's job titles, departments and locations, which can be deactivated rather than deleted, and a learner's page records their job title, department, location and four start dates from their own organisation's entries. An entry a learner holds cannot be deleted. See [HR attributes](./hr-attributes.md).
 - Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. A course registration's admin page shows which rule made it. See [registration rules](./registration-rules.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
+- API keys are issued and revoked in the admin. A key's text is shown once, when it is issued, and a key cannot be deleted. See [API Keys](#api-keys).
 
 ## Unfold
 
@@ -150,3 +151,11 @@ Course categories are authored content too, and the admin is stricter with them:
 ## Webhook Test-Send
 
 A webhook endpoint's admin detail page exposes an action that sends a test payload to the configured URL, so an administrator can confirm the endpoint is reachable and its authentication headers are correct before a live event triggers delivery. The full control set is in [webhooks](./webhooks.md).
+
+## API Keys
+
+An administrator issues keys here for scripts that read the site's data over the [API](./authentication.md#api-client-authentication). A key has a name, one or more API scopes and an optional expiry date, and belongs to the site the admin is being used on. Its full text is shown once, on the page after saving, and never again: a lost key is replaced by issuing a new one and revoking the old.
+
+![](screenshots/admin_api_keys.png)
+
+The list shows each key's scopes, status (active, expired or revoked), expiry and when it was last used. One or several keys are revoked after a confirmation page, and scripts using a revoked key stop at once. Once issued, only an active key's name can be changed, and keys are never deleted, so revoked keys stay listed. How keys are stored and what is recorded about their use is in [security and data handling](./security-and-data-handling.md#api-access-built).

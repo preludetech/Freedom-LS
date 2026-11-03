@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-03_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -19,6 +19,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Built:** every section of the educator interface — Cohorts, Learners, Courses and Members — is permission-checked and denies by default. Members, where roles are assigned and deactivated, opens only for organisation admins and site admins. The Courses list shows published courses plus those registered to a cohort or learner the viewer can see in the current organisation; any other course page is refused as though it did not exist. See [educator interface authorisation](#educator-interface-authorisation-built).
 - **Built:** administrative changes are recorded in an audit log: role and membership changes, learner state, cohort lifecycle, course registrations, renames and setup emails, and an organisation or site admin opening a learner's conversation with an educator. Entries are append-only against application code and kept until an operator chooses to prune them. See [audit log](#audit-log-built).
+- **Built:** a read-only API serves a site's user data to scripts holding a per-site API key. A key is shown once and stored only as a hash, is limited to the data its scopes name, and can be revoked at once. See [API access](#api-access-built).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, applicant-uploaded documents, anonymous applicant data or direct messages, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -106,6 +107,18 @@ An [application-gated course](./learner-experience.md#applying-to-a-course) can 
 
 The details step gives the same response whether or not the email is already registered, so it cannot be used to find out who has an account. The emailed claim link is signed, expires, works once, and takes effect only after the recipient confirms on the page, so a mail scanner opening the link does not trigger it. Details submissions, claim emails and file uploads are rate limited; there is no CAPTCHA. An image whose header declares more than 25 million pixels is refused before it is decoded, so a small file cannot ask the server for gigabytes of memory. Account creation on claim is described in [authentication](./authentication.md#accounts-created-by-claiming-an-application), and the admin's unverified flag in [admin interface](./admin-interface.md).
 
+### API Access (built)
+
+The [API](./authentication.md#api-client-authentication) is read-only and is used by scripts, not people: there are no write endpoints and no per-user sign-in. A key works only on the site it was issued for (see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#what-is-isolated)).
+
+**How keys are held.** A key's full text is shown once, when it is issued, and FLS stores only a hash of it, so neither the admin nor anyone with database access can recover it. A key reads only the data its scopes name, may carry an expiry date, and can be revoked, which ends it for good. A revoked, expired, unknown or wrong-site key all get the same refusal. A key is accepted only in a request header, never in the URL.
+
+**What it exposes.** The users endpoint returns, for every user on the key's site, active or not: email address, first and last name, whether the account is active, staff and email-verified, and when it was created, last logged in and last updated. It returns no password hashes, consent records or signup attribution, and deleted users do not appear. A key with access to users should be guarded like the admin's user export.
+
+**Last use.** FLS records when each key was last used, so an unused key can be found and revoked. That time is kept for as long as the key exists, and keys are never deleted.
+
+**Transport and limits.** Responses are marked private and not cacheable. Requests are rate limited per key, which needs a cache shared across server processes, as the production database cache is. Failed authentication attempts are not rate limited. FLS does not refuse plain-http requests itself, so the API must be reached over HTTPS, and a key sent over plain http should be treated as compromised and revoked.
+
 ---
 
 ## Data Handling
@@ -155,7 +168,7 @@ This section applies only to a deployment that has set `EMAIL_BACKEND` to the qu
 
 FLS can report application errors to Sentry once an operator supplies credentials; until then it does nothing. Because FLS holds learner personal data, an error report can incidentally include it — the email of the learner who triggered the error, or the contents of the offending request.
 
-This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it. Automated redaction before events leave the application is **not yet built**, so a deployment that opts in should treat Sentry as a place that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for configuration.
+This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it, and that includes the value of the header that carries an API key. Automated redaction before events leave the application is **not yet built**, so a deployment that opts in should treat Sentry as a place that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for configuration.
 
 ### Analytics and Advertising
 
@@ -171,7 +184,7 @@ Every acceptance of a legal document is recorded as an append-only record tied t
 
 ### Audit Log (built)
 
-FLS keeps a record of administrative changes: role assignments and deactivations, and roles removed with a deleted cohort; member deactivation and reactivation; learners added, renamed, deactivated and reactivated, and setup emails resent; learners added to, removed from and moved between cohorts; cohorts created, renamed, deactivated, reactivated and deleted; learner and cohort course registrations added, deactivated and reactivated; and organisation admins or site admins opening a learner's conversation with an educator to read it. Admins read it in the [educator interface](./educator-interface.md#history), where these opens also show on the learner's history; the Django admin shows it read-only, to everyone including superusers. It is separate from the [consent audit trail](#consent-audit-trail) and does not cover report downloads (see [cohort report access control](#cohort-report-access-control-built)).
+FLS keeps a record of administrative changes: role assignments and deactivations, and roles removed with a deleted cohort; member deactivation and reactivation; learners added, renamed, deactivated and reactivated, and setup emails resent; learners added to, removed from and moved between cohorts; cohorts created, renamed, deactivated, reactivated and deleted; learner and cohort course registrations added, deactivated and reactivated; API keys issued and revoked, with the key's name, scopes and expiry but never the key itself; and organisation admins or site admins opening a learner's conversation with an educator to read it. Admins read it in the [educator interface](./educator-interface.md#history), where these opens also show on the learner's history; the Django admin shows it read-only, to everyone including superusers. It is separate from the [consent audit trail](#consent-audit-trail) and does not cover report downloads (see [cohort report access control](#cohort-report-access-control-built)).
 
 **Append-only against application code, not against the database.** FLS code cannot edit or delete an entry, but anyone with direct database access can.
 

@@ -1,6 +1,6 @@
 # Authentication
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-11-03_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-10-22_
 - Accounts are hardened with Argon2 hashing, brute-force lockout, login and signup rate limiting, email-enumeration prevention, and a 10-character minimum password.
 - Each site has its own signup policy controlling whether self-registration is open and what is collected, including additional registration forms shown after verification. An anonymous course applicant who follows their emailed claim link also gets an account, even when self-registration is off.
 - Every consent to a legal document is recorded in an append-only audit trail tied to the exact document version accepted.
-- A separate token-based system exists for machine-to-machine API access, but is not enabled in a default installation.
+- Scripts and other systems read a site's data through a read-only API, authenticated by per-site API keys rather than a login session.
 - Multi-factor authentication is **not implemented**; see [roadmap](./roadmap.md).
 
 ## User Accounts
@@ -65,7 +65,7 @@ A successful new registration, including an account created by claiming an appli
 
 ## API Client Authentication
 
-FLS includes a separate token-based authentication system for machine-to-machine API access, where a client authenticates with an API key rather than an email/password session. **It is not enabled in a default installation** — the code exists but the app is commented out of the installed apps.
+Scripts and other systems authenticate to the read-only API under `/api/v1/` with an API key sent as a bearer token, rather than an email and password session. Staff issue and revoke keys in the [admin](./admin-interface.md#api-keys). A key works only on its own [site](./multi-tenancy-and-isolation.md#what-is-isolated), its API scopes limit which data it can read, and revoking it stops it working at once. So far the API has one endpoint, which lists a site's users. How keys are stored and how their use is recorded is in [security and data handling](./security-and-data-handling.md).
 
 ## Multi-Factor Authentication
 
