@@ -2,7 +2,14 @@
 
 {% block standalone_main %}
     {% include "educator_interface/partials/import_stepper.html" with step=3 %}
-    <c-panel-card title="Result">
-        {% include "educator_interface/partials/run_status.html" %}
-    </c-panel-card>
+    <div class="mx-auto w-full md:max-w-2xl">
+        <c-panel-card>
+            {% if in_progress %}
+                <h2 class="font-display text-lg font-semibold">Importing learners</h2>
+                <div class="mt-3">{% include "educator_interface/partials/run_status.html" %}</div>
+            {% else %}
+                {% include "educator_interface/partials/run_status.html" %}
+            {% endif %}
+        </c-panel-card>
+    </div>
 {% endblock standalone_main %}
