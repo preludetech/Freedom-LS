@@ -1,5 +1,5 @@
 # Bundled from freedom_ls/content_engine/schema.py — re-sync via /update_claude_plugin_fls_content
-# NOTE: the form classes below (QuestionType, FormStrategy, Form, FormPage, QuestionOption,
+# NOTE: the form classes below (QuestionType, FormStrategy, Form, Condition, FormPage, QuestionOption,
 #   FormContent, FormQuestion) mirror freedom_ls/form_engine/schema.py, NOT content_engine,
 #   and the bounds helpers above FormQuestion mirror freedom_ls/form_engine/typed_answers.py.
 #   This file bundles FOUR sources: content_base/schema.py, content_engine/schema.py,
@@ -934,8 +934,61 @@ class Form(
         return self
 
 
+class Condition(BaseModel):
+    """`when:` on a page, question or content block."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(
+        ...,
+        description="The slug of the source question, on an earlier page of this form",
+    )
+    equals: str | None = Field(
+        None,
+        description="For a multiple_choice or dropdown source: the option value that must be selected",
+    )
+    includes: str | None = Field(
+        None,
+        description="For a checkboxes source: an option value that must be among those selected",
+    )
+
+    @field_validator("equals", "includes", mode="before")
+    @classmethod
+    def _literal_as_str(cls, value: object) -> str | None:
+        # yaml.safe_load reads an unquoted yes/no/on/off as a bool, so a bool here
+        # is almost always an author who meant the word. The option values it is
+        # compared against are strings (QuestionOption.value), so an int is one too.
+        if isinstance(value, bool):
+            raise ValueError(
+                f'{value} was read as a boolean. Quote it ("{str(value).lower()}") '
+                "so it is compared as text."
+            )
+        if value is None:
+            return None
+        return str(value)
+
+    @model_validator(mode="after")
+    def _exactly_one_test(self) -> "Condition":
+        if (self.equals is None) == (self.includes is None):
+            raise ValueError("when needs exactly one of equals or includes.")
+        return self
+
+    @property
+    def literal(self) -> str:
+        """The option value the condition tests, whichever key carried it."""
+        return self.equals if self.equals is not None else str(self.includes)
+
+
+WHEN_DESCRIPTION = (
+    "Show this only when an earlier answer matches: question (a slug) plus "
+    "exactly one of equals or includes"
+)
+
+
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """A page within a form."""
+
+    when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
 
     def derive_content_type(self, data):
         if "content" in data:
@@ -960,6 +1013,7 @@ class QuestionOption(BaseModel):
 
 class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):
     content: str = Field(..., description="Text")
+    when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
 
 
 # ---------------------------------------------------------------------------
@@ -1153,6 +1207,16 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     """
 
     question: str = Field(..., description="The question text")
+    slug: str | None = Field(
+        None,
+        pattern=r"^[a-z0-9_]+$",
+        max_length=100,
+        description=(
+            "Reference name other pages' `when` uses to name this question. "
+            "Lowercase letters, digits and underscores; unique within the form"
+        ),
+    )
+    when: Condition | None = Field(None, description=WHEN_DESCRIPTION)
     type: QuestionType = Field(
         ...,
         description=(

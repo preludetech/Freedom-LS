@@ -1658,3 +1658,40 @@ def test_a_broken_course_card_path_in_the_demo_content_fails(tmp_path: Path) -> 
 
     assert result.returncode != 0
     assert "no_such_demo/course.md" in result.stdout + result.stderr
+
+
+def write_gated_form(directory: Path, source_slug: str) -> Path:
+    """An UNSCORED form whose second page is gated on the first page's question."""
+    form_dir = directory / "a-form"
+    form_dir.mkdir()
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\ntitle: A Form\nstrategy: UNSCORED\n---\n",
+        encoding="utf-8",
+    )
+    (form_dir / "1. first.yaml").write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: First\n---\n"
+        "question: Who pays?\nslug: employer_pays\ntype: multiple_choice\n"
+        'options:\n  - text: "Yes"\n    value: "yes"\n  - text: "No"\n    value: "no"\n',
+        encoding="utf-8",
+    )
+    (form_dir / "2. second.yaml").write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: Second\n"
+        f'when:\n  question: {source_slug}\n  equals: "yes"\n---\n',
+        encoding="utf-8",
+    )
+    return form_dir
+
+
+def test_a_valid_gated_form_validates(tmp_path: Path) -> None:
+    result = run_validator(write_gated_form(tmp_path, "employer_pays"))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a_condition_naming_an_unknown_slug_fails(tmp_path: Path) -> None:
+    result = run_validator(write_gated_form(tmp_path, "employer_pay"))
+
+    assert_validator_fails(
+        result, 'when.question names "employer_pay", which no question in this form'
+    )
+    assert "Declared slugs: employer_pays." in result.stdout + result.stderr

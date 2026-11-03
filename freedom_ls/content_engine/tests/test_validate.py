@@ -12,6 +12,7 @@ from freedom_ls.content_engine.validate import (
     validate,
     validate_children_lists,
     validate_due_date_placements,
+    validate_form_conditions,
 )
 
 # Tests for the content scanner: file discovery and cross-file validation
@@ -1156,3 +1157,339 @@ def test_auto_discovered_children_skips_what_the_walk_skips(tmp_path: Path) -> N
         (tmp_path / "02-form-dir" / "form.md").resolve(),
         (tmp_path / "03-loose.md").resolve(),
     ]
+
+
+# Cross-file validation of a form's `when` conditions.
+
+
+def _gated_form(
+    directory: Path,
+    pages: dict[str, str],
+    strategy: str = "UNSCORED",
+    quiz_fields: str = "",
+) -> Path:
+    """A form directory holding form.md and one page file per entry in `pages`."""
+    form_dir = directory / "a-form"
+    _write_widget_file(
+        form_dir / "form.md",
+        f"---\ncontent_type: FORM\ntitle: A Form\nstrategy: {strategy}\n"
+        f"{quiz_fields}---\n",
+    )
+    for name, body in pages.items():
+        _write_widget_file(form_dir / name, body)
+    return form_dir
+
+
+def _page(title: str, sections: str = "", when: str = "") -> str:
+    return f"---\ncontent_type: FORM_PAGE\ntitle: {title}\n{when}---\n{sections}"
+
+
+_PAYER_QUESTION = """question: Who pays?
+slug: employer_pays
+type: multiple_choice
+options:
+  - text: "Yes"
+    value: "yes"
+  - text: "No"
+    value: "no"
+"""
+
+_DIET_QUESTION = """question: Dietary needs?
+slug: dietary_needs
+type: checkboxes
+options:
+  - text: Vegan
+    value: vegan
+  - text: Halal
+    value: halal
+"""
+
+_NAME_QUESTION = "question: Full name?\nslug: full_name\ntype: short_text\n"
+
+
+def _when(question: str, key: str, literal: str) -> str:
+    return f'when:\n  question: {question}\n  {key}: "{literal}"\n'
+
+
+def _condition_errors(directory: Path) -> list[str]:
+    parsed = [
+        item
+        for file_path in get_all_files(directory)
+        if file_path.suffix in {".md", ".yaml", ".yml"}
+        for item in parse_single_file(file_path)
+    ]
+    return validate_form_conditions(parsed)
+
+
+def test_a_valid_condition_passes(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First", f"---\n{_PAYER_QUESTION}---\n{_DIET_QUESTION}"
+            ),
+            "2. second.yaml": _page(
+                "Second",
+                f"---\nquestion: Why?\ntype: short_text\n{_when('employer_pays', 'equals', 'yes')}"
+                f"---\ncontent: Note\n{_when('dietary_needs', 'includes', 'vegan')}",
+                when=_when("employer_pays", "equals", "no"),
+            ),
+        },
+    )
+
+    assert _condition_errors(tmp_path) == []
+
+
+def test_a_slug_declared_twice_fails_naming_both_files(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page("Second", f"---\n{_PAYER_QUESTION}"),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert 'slug "employer_pays" is declared twice' in error
+    assert "1. first.yaml" in error
+    assert "2. second.yaml" in error
+
+
+def test_an_unknown_slug_fails_listing_the_declared_slugs(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("employer_pay", "equals", "yes")
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert "2. second.yaml" in error
+    assert 'page "Second" → when' in error
+    assert 'when.question names "employer_pay"' in error
+    assert "Declared slugs: employer_pays." in error
+
+
+def test_a_source_on_the_same_page_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First",
+                f"---\n{_PAYER_QUESTION}---\nquestion: Why?\ntype: short_text\n"
+                f"{_when('employer_pays', 'equals', 'yes')}",
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert 'question "Why?" → when' in error
+    assert "which is on this page or a later one" in error
+    assert "A condition's source has to be on an earlier page." in error
+
+
+def test_a_source_on_a_later_page_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First", when=_when("employer_pays", "equals", "yes")
+            ),
+            "2. second.yaml": _page("Second", f"---\n{_PAYER_QUESTION}"),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert "1. first.yaml" in error
+    assert "which is on this page or a later one" in error
+
+
+def test_a_source_that_is_not_a_choice_question_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_NAME_QUESTION}"),
+            "2. second.yaml": _page("Second", when=_when("full_name", "equals", "x")),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert 'when.question names "full_name", a short_text question.' in error
+    assert "multiple_choice, dropdown or checkboxes" in error
+
+
+def test_equals_on_a_checkboxes_source_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_DIET_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("dietary_needs", "equals", "vegan")
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert 'when.equals cannot test "dietary_needs", a checkboxes question.' in error
+    assert "Use includes." in error
+
+
+def test_includes_on_a_multiple_choice_source_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("employer_pays", "includes", "yes")
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert (
+        'when.includes cannot test "employer_pays", a multiple_choice question.'
+        in error
+    )
+    assert "Use equals." in error
+
+
+def test_a_literal_that_is_not_an_option_value_fails_listing_the_values(
+    tmp_path: Path,
+) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("employer_pays", "equals", "yse")
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert 'when.equals names "yse", which is not a value of "employer_pays".' in error
+    assert "Its values: yes, no." in error
+
+
+def test_a_condition_in_a_quiz_form_fails(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("employer_pays", "equals", "yes")
+            ),
+        },
+        strategy="QUIZ",
+        quiz_fields="quiz_show_incorrect: true\nquiz_pass_percentage: 50\n",
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert "2. second.yaml" in error
+    assert 'page "Second" → when' in error
+    assert "when is not allowed in a QUIZ form." in error
+
+
+def test_a_content_block_with_a_bad_condition_is_named_by_position(
+    tmp_path: Path,
+) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second",
+                f"---\ncontent: One\n---\ncontent: Two\n{_when('nope', 'equals', 'x')}",
+            ),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert "content block 2 → when" in error
+
+
+def test_a_form_with_three_faults_reports_three_errors(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page(
+                "First", f"---\n{_PAYER_QUESTION}---\n{_NAME_QUESTION}"
+            ),
+            "2. second.yaml": _page(
+                "Second",
+                f"---\nquestion: A?\ntype: short_text\n{_when('nope', 'equals', 'x')}"
+                f"---\nquestion: B?\ntype: short_text\n{_when('full_name', 'equals', 'x')}",
+                when=_when("employer_pays", "equals", "yse"),
+            ),
+        },
+    )
+
+    assert len(_condition_errors(tmp_path)) == 3
+
+
+def test_page_ten_sorts_before_page_two_so_its_question_is_an_earlier_source(
+    tmp_path: Path,
+) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "10. later-number.yaml": _page("Ten", f"---\n{_PAYER_QUESTION}"),
+            "2. earlier-number.yaml": _page(
+                "Two", when=_when("employer_pays", "equals", "yes")
+            ),
+        },
+    )
+
+    assert _condition_errors(tmp_path) == []
+
+
+def test_page_two_cannot_source_from_page_ten(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "10. later-number.yaml": _page(
+                "Ten", when=_when("employer_pays", "equals", "yes")
+            ),
+            "2. earlier-number.yaml": _page("Two", f"---\n{_PAYER_QUESTION}"),
+        },
+    )
+
+    (error,) = _condition_errors(tmp_path)
+
+    assert "10. later-number.yaml" in error
+    assert "which is on this page or a later one" in error
+
+
+def test_validate_lists_an_invalid_condition_in_the_report(tmp_path: Path) -> None:
+    _gated_form(
+        tmp_path,
+        {
+            "1. first.yaml": _page("First", f"---\n{_PAYER_QUESTION}"),
+            "2. second.yaml": _page(
+                "Second", when=_when("employer_pay", "equals", "yes")
+            ),
+        },
+    )
+
+    with pytest.raises(ValueError, match="Invalid condition"):
+        validate(tmp_path)
+
+
+@pytest.mark.fls_internal
+def test_the_shipped_demo_content_has_no_condition_errors() -> None:
+    demo_content = Path(__file__).resolve().parents[3] / "demo_content"
+
+    assert _condition_errors(demo_content) == []

@@ -19,6 +19,15 @@ from pydantic import ValidationError
 
 from freedom_ls.content_base.schema import SCHEMAS, BaseBaseContentModel, ContentType
 from freedom_ls.content_engine.schema import Child, Course, CoursePart
+from freedom_ls.form_engine.schema import (
+    Condition,
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    FormStrategy,
+    QuestionType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -879,6 +888,166 @@ def validate_due_date_placements(
     return errors
 
 
+_CONDITION_SOURCE_TYPES = {
+    QuestionType.MULTIPLE_CHOICE,
+    QuestionType.DROPDOWN,
+    QuestionType.CHECKBOXES,
+}
+
+_FormSection = FormPage | FormContent | FormQuestion
+
+
+def _condition_error(
+    file_path: Path, target: str, problem: str, fix: str, field: str = "when"
+) -> str:
+    """Build the error block for an invalid `when` or a duplicated `slug`.
+
+    Same header/field/problem/fix layout as `_reference_error`.
+    """
+    return "\n".join(
+        [
+            f"\n❌ Invalid condition in {file_path}",
+            "",
+            f"  • Field: {target} → {field}",
+            f"    Problem: {problem}",
+            "",
+            f"    {fix}",
+        ]
+    )
+
+
+def _target_label(item: _FormSection, block_number: int) -> str:
+    if isinstance(item, FormPage):
+        return f'page "{item.title}"'
+    if isinstance(item, FormQuestion):
+        return f'question "{item.question}"'
+    return f"content block {block_number}"
+
+
+def _slug_owners(
+    page_files: list[Path], sections_by_file: dict[Path, list[_FormSection]]
+) -> tuple[dict[str, tuple[int, FormQuestion]], list[str]]:
+    """Map each declared slug to its first question and page index, plus an
+    error for every later question that reuses a slug."""
+    owners: dict[str, tuple[int, FormQuestion]] = {}
+    errors: list[str] = []
+    for page_index, page_file in enumerate(page_files):
+        for item in sections_by_file[page_file]:
+            if not isinstance(item, FormQuestion) or item.slug is None:
+                continue
+            if item.slug in owners:
+                first_file = owners[item.slug][1].file_path
+                errors.append(
+                    _condition_error(
+                        item.file_path,
+                        _target_label(item, 0),
+                        f'slug "{item.slug}" is declared twice: in {first_file} '
+                        f"and {item.file_path}.",
+                        "Give each question its own slug.",
+                        field="slug",
+                    )
+                )
+            else:
+                owners[item.slug] = (page_index, item)
+    return owners, errors
+
+
+def _condition_problem(
+    condition: Condition,
+    page_index: int,
+    slug_owner: dict[str, tuple[int, FormQuestion]],
+) -> tuple[str, str] | None:
+    """The problem and fix for the first rule the condition breaks, or None."""
+    source_slug = condition.question
+    if source_slug not in slug_owner:
+        declared = ", ".join(sorted(slug_owner)) or "none"
+        return (
+            f'when.question names "{source_slug}", which no question in this '
+            "form has as its slug.",
+            f"Declared slugs: {declared}.",
+        )
+    source_index, source = slug_owner[source_slug]
+    if source_index >= page_index:
+        return (
+            f'when.question names "{source_slug}", which is on this page or a '
+            "later one.",
+            "A condition's source has to be on an earlier page.",
+        )
+    if source.type not in _CONDITION_SOURCE_TYPES:
+        return (
+            f'when.question names "{source_slug}", a {source.type} question.',
+            "A source has to be a multiple_choice, dropdown or checkboxes question.",
+        )
+    is_checkboxes = source.type == QuestionType.CHECKBOXES
+    if condition.equals is not None and is_checkboxes:
+        return (
+            f'when.equals cannot test "{source_slug}", a checkboxes question.',
+            "Use includes.",
+        )
+    if condition.includes is not None and not is_checkboxes:
+        return (
+            f'when.includes cannot test "{source_slug}", a {source.type} question.',
+            "Use equals.",
+        )
+    values = [str(option.value) for option in source.options or []]
+    if condition.literal not in values:
+        key = "equals" if condition.equals is not None else "includes"
+        return (
+            f'when.{key} names "{condition.literal}", which is not a value of '
+            f'"{source_slug}".',
+            f"Its values: {', '.join(values)}.",
+        )
+    return None
+
+
+def validate_form_conditions(all_parsed: Sequence[BaseBaseContentModel]) -> list[str]:
+    """Check every `when` against the questions the same form declares earlier.
+
+    Page order is the one content_save assigns: the page files sorted as
+    paths, so `10. x.yaml` comes before `2. y.yaml`. Every error is reported,
+    never just the first.
+    """
+    errors: list[str] = []
+    forms = {
+        item.file_path.parent: item for item in all_parsed if isinstance(item, Form)
+    }
+    sections_by_file: dict[Path, list[_FormSection]] = {}
+    for item in all_parsed:
+        if isinstance(item, (FormPage, FormContent, FormQuestion)):
+            sections_by_file.setdefault(item.file_path, []).append(item)
+
+    for form_dir, form in forms.items():
+        page_files = sorted(f for f in sections_by_file if f.parent == form_dir)
+        gated: list[tuple[int, _FormSection, Condition, str]] = []
+        for page_index, page_file in enumerate(page_files):
+            block_number = 0
+            for item in sections_by_file[page_file]:
+                if isinstance(item, FormContent):
+                    block_number += 1
+                if item.when is not None:
+                    label = _target_label(item, block_number)
+                    gated.append((page_index, item, item.when, label))
+        if form.strategy == FormStrategy.QUIZ:
+            if gated:
+                _, first, _, target = gated[0]
+                errors.append(
+                    _condition_error(
+                        first.file_path,
+                        target,
+                        "when is not allowed in a QUIZ form.",
+                        "Remove it, or change the form's strategy.",
+                    )
+                )
+            continue
+        slug_owner, duplicate_errors = _slug_owners(page_files, sections_by_file)
+        errors.extend(duplicate_errors)
+        for page_index, item, condition, target in gated:
+            problem = _condition_problem(condition, page_index, slug_owner)
+            if problem is not None:
+                errors.append(_condition_error(item.file_path, target, *problem))
+    return errors
+
+
 def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> list[str]:
     """Check every article's `image` against the files the loader would save.
 
@@ -974,6 +1143,8 @@ def validate(path):
     for message in validate_children_lists(all_parsed):
         failed_files.append((path, message))
     for message in validate_due_date_placements(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_form_conditions(all_parsed):
         failed_files.append((path, message))
     # A single-file run has no sibling files to resolve an image against.
     if path.is_dir():
