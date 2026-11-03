@@ -34,6 +34,10 @@ substitution, and `<PROJECT_ROOT>` is substituted as one quoted argument.
 Inputs from the caller: `project-root: <abs path>` and `diff-range: <a>..<b>`, passed as `Skill`
 args by a calling command. Without `project-root:` you run as before.
 
+A second form is `mode: hook` with `<spec-dir>`, `<todo-path>` and the test plan path, from a
+command of this plugin that read and followed this file. In hook mode Step 0 is skipped and
+every other step, including the Step 15 tick and the Step 17 commit, runs as it does standalone.
+
 ## Project-root mode
 
 With `project-root:` set, the plan runs against a concrete project's dev server with that
