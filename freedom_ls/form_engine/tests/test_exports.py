@@ -70,7 +70,7 @@ def test_answer_cell_of_a_question_not_asked_says_so(mock_site_context):
     assert answer_cell(None, is_asked=False) == "Not asked"
 
 
-def x(mock_site_context):
+def test_off_path_question_ids_are_per_sitting(mock_site_context):
     form = FormFactory(strategy=FormStrategy.UNSCORED)
     page = FormPageFactory(form=form, order=0)
     choice = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
@@ -80,23 +80,24 @@ def x(mock_site_context):
         form_page=FormPageFactory(form=form, order=1, condition_option=yes),
         order=0,
     )
-    sittings = {}
-    for option in (yes, no):
-        sitting = FormProgressFactory(form=form)
-        QuestionAnswerFactory(
-            form_progress=sitting, question=choice
-        ).selected_options.add(option)
-        sittings[option.value] = sitting
+    yes_sitting = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=yes_sitting, question=choice
+    ).selected_options.add(yes)
+    no_sitting = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=no_sitting, question=choice
+    ).selected_options.add(no)
     loaded = list(
-        FormProgress.objects.filter(pk__in=[s.pk for s in sittings.values()])
+        FormProgress.objects.filter(pk__in=[yes_sitting.pk, no_sitting.pk])
         .select_related("form")
         .prefetch_related("answers__selected_options", "answers__question")
     )
 
     off_path = off_path_question_ids(loaded)
 
-    assert off_path[sittings["yes"].pk] == frozenset()
-    assert off_path[sittings["no"].pk] == {gated.id}
+    assert off_path[yes_sitting.pk] == frozenset()
+    assert off_path[no_sitting.pk] == {gated.id}
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(
