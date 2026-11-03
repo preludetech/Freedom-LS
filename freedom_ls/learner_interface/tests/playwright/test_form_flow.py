@@ -93,7 +93,8 @@ def _four_input_types_course() -> Course:
 
 
 def _two_page_survey_course() -> Course:
-    """A two-page survey: choice and name (required) then checkboxes and notes."""
+    """A survey: choice and name (required), checkboxes and notes, then a follow-up
+    page that only applies to a learner who answered "5" to the first question."""
     form = FormFactory(title="Study Survey", subtitle="A survey for learners")
     first = FormPageFactory(form=form, title="About you", order=0)
     choice = FormQuestionFactory(
@@ -103,8 +104,10 @@ def _two_page_survey_course() -> Course:
         order=0,
         required=True,
     )
-    for order, text in enumerate(["3", "4", "5"]):
+    options = [
         QuestionOptionFactory(question=choice, text=text, order=order)
+        for order, text in enumerate(["3", "4", "5"])
+    ]
     FormQuestionFactory(
         form_page=first,
         type="short_text",
@@ -127,6 +130,16 @@ def _two_page_survey_course() -> Course:
         type="long_text",
         question="Explain your answer",
         order=1,
+        required=False,
+    )
+    follow_up = FormPageFactory(
+        form=form, title="Follow-up", order=2, condition_option=options[2]
+    )
+    FormQuestionFactory(
+        form_page=follow_up,
+        type="short_text",
+        question="How did you get 5?",
+        order=0,
         required=False,
     )
     return course_with_form(form, title="Survey Course", slug="survey-course")
@@ -293,6 +306,25 @@ def test_learner_works_through_forms_and_quizzes(
         )
         expect(page.get_by_text("Alpha", exact=True)).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_page_indicator_counts_a_gated_page_once_its_gate_is_open(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    survey = _two_page_survey_course()
+    register_user_for_course(survey, logged_in_user)
+
+    navigate_to_form(page, live_server, survey)
+    start_form(page)
+    expect(page.get_by_test_id("page-indicator")).to_have_text("Page 1 of 2")
+    answer_multiple_choice_question(page, "5")
+    page.get_by_label("What is your name?").fill("John Doe")
+    click_next(page)
+
+    expect(page.get_by_test_id("page-indicator")).to_have_text("Page 2 of 3")
 
 
 def test_form_pages_line_their_header_up_with_their_content(

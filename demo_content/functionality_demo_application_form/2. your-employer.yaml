@@ -1,0 +1,28 @@
+---
+content_type: FORM_PAGE
+subtitle: So we can invoice the right people
+title: Your employer
+uuid: a348e3d3-08f0-4d31-a705-bcc4e5d35b80
+when:
+  equals: 'yes'
+  question: employer_pays
+---
+content: |-
+  We invoice employers directly. Tell us who they are and where the invoice
+  should go.
+uuid: 453a1bda-852c-41e4-b4af-9cdd61e42c18
+---
+question: What is your employer's name?
+required: true
+type: short_text
+uuid: 62ff8fae-8ebc-4e2d-9609-ed9484b6c316
+---
+question: Who should we send the invoice to?
+required: true
+type: email
+uuid: e245544c-5ef1-4017-a59b-bc57ad218818
+---
+question: Purchase order number, if you have one
+required: false
+type: short_text
+uuid: d70d4806-cdd7-48a2-987a-6d1074f7fad2

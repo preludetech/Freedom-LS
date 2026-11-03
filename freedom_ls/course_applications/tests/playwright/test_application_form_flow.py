@@ -42,7 +42,7 @@ from ..helpers import gated_course_with_form
 def test_an_applicant_can_fill_in_attach_change_and_submit(
     live_server, logged_in_page: Page, logged_in_user, tmp_path
 ):
-    course, _form = gated_course_with_form()
+    course, _form = gated_course_with_form(with_employer_case=True)
     scan = tmp_path / "id-scan.png"
     scan.write_bytes(png_bytes())
 
@@ -57,9 +57,12 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
 
     # Page 1: the required name question, then on to the documents page.
     logged_in_page.get_by_label("Your name").fill("Ada Lovelace")
+    logged_in_page.get_by_text("No", exact=True).click()
     logged_in_page.get_by_role("button", name="Next").click()
 
-    # Page 2: attach the file and see it named back.
+    # Page 2 is the employer page, which "No" skips: the next page is the
+    # documents page, where the file is attached and named back.
+    expect(logged_in_page.get_by_text("Employer name")).to_be_hidden()
     logged_in_page.get_by_label("Upload your ID").set_input_files(str(scan))
     expect(logged_in_page.get_by_text("id-scan.png")).to_be_visible()
 
@@ -102,6 +105,11 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     logged_in_page.get_by_role("button", name="Save and return to your answers").click()
     expect(logged_in_page.get_by_text("Grace Hopper")).to_be_visible()
 
+    # The employer page was never asked, so the review has no card for it.
+    expect(logged_in_page.get_by_role("link", name="Edit Your employer")).to_have_count(
+        0
+    )
+
     # Submitting lands on the dashboard, where the application now waits on
     # a reviewer rather than on the applicant.
     logged_in_page.get_by_role("button", name="Submit application").click()
@@ -123,6 +131,53 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     expect(
         logged_in_page.get_by_role("button", name="Submit application")
     ).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_an_applicant_who_changes_their_mind_gets_the_employer_page_back_with_their_answer(
+    live_server, logged_in_page: Page, logged_in_user
+):
+    course, _form = gated_course_with_form(with_employer_case=True)
+    page = logged_in_page
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    page.get_by_label("Your name").fill("Ada Lovelace")
+    page.get_by_text("Yes", exact=True).click()
+    page.get_by_role("button", name="Next").click()
+    page.get_by_label("Employer name").fill("Analytical Engines Ltd")
+    page.get_by_role("button", name="Next").click()
+
+    # Going back and answering No takes the employer page off the path.
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:form_page",
+            kwargs={"pk": course.applications.get().pk, "page_number": 1},
+        )
+    )
+    page.get_by_text("No", exact=True).click()
+    page.get_by_role("button", name="Next").click()
+    page.get_by_role("button", name="Next").click()
+    expect(page.get_by_role("link", name="Edit Your employer")).to_have_count(0)
+
+    # Editing the answer back to Yes from the review brings the employer page
+    # back on the path. Its required question already has the answer typed
+    # earlier, so the applicant returns straight to a review that shows it.
+    page.get_by_role("link", name="Edit About you").click()
+    page.get_by_text("Yes", exact=True).click()
+    page.get_by_role("button", name="Save and return to your answers").click()
+
+    expect(page.get_by_role("link", name="Edit Your employer")).to_be_visible()
+    expect(page.get_by_text("Analytical Engines Ltd")).to_be_visible()
+    page.get_by_role("link", name="Edit Your employer").click()
+    expect(page.get_by_label("Employer name")).to_have_value("Analytical Engines Ltd")
 
 
 def _upload_requests(page: Page) -> list[str]:

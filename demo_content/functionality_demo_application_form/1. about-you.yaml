@@ -63,6 +63,19 @@ type: multiple_choice
 uuid: 30b739b8-6975-437d-a305-55e0669385d8
 ---
 options:
+- text: 'Yes'
+  uuid: 0fde7349-a009-4e45-b27d-47e0db64d554
+  value: 'yes'
+- text: 'No'
+  uuid: aea578f0-bf9d-4587-aa58-7e8f1e6c177a
+  value: 'no'
+question: Is your employer paying for this course?
+required: true
+slug: employer_pays
+type: multiple_choice
+uuid: bc78f6b8-4b3d-4ce2-99bc-1258d8adb40a
+---
+options:
 - text: Building web applications
   uuid: 048b443b-9319-4362-a8be-1ec89db508ca
   value: web

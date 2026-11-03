@@ -11,7 +11,12 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
-from freedom_ls.form_engine.models import Form, FormQuestion, FormStrategy
+from freedom_ls.form_engine.models import (
+    Form,
+    FormPage,
+    FormQuestion,
+    FormStrategy,
+)
 
 pytestmark = pytest.mark.fls_internal
 
@@ -111,3 +116,17 @@ def test_the_demo_application_form_is_content_of_no_course(
         ).count()
         == 0
     )
+
+
+@pytest.mark.django_db
+def test_the_employer_page_is_gated_on_the_yes_answer_to_the_employer_question(
+    site, loaded_demo_content, mock_site_context
+):
+    page = FormPage.objects.get(
+        form__title=APPLICATION_FORM_TITLE, title="Your employer"
+    )
+    question = FormQuestion.objects.get(
+        form_page__form__title=APPLICATION_FORM_TITLE, slug="employer_pays"
+    )
+
+    assert page.condition_option == question.options.get(value="yes")

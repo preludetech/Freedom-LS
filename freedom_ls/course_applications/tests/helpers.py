@@ -31,12 +31,42 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 
 
-def gated_course_with_form() -> tuple[CourseFactory, FormFactory]:
-    """An application-gated course whose applicants fill in a two-page form.
+def _add_employer_case(form: FormFactory, page_one: FormPageFactory) -> None:
+    """Add the employer question to page 1 and, on page 2, a page only a Yes opens."""
+    employer_pays = FormQuestionFactory(
+        form_page=page_one,
+        type="multiple_choice",
+        order=4,
+        slug="employer_pays",
+        question="Is your employer paying",
+        required=False,
+    )
+    employer_yes = QuestionOptionFactory(
+        question=employer_pays, text="Yes", value="yes", order=0
+    )
+    QuestionOptionFactory(question=employer_pays, text="No", value="no", order=1)
+    employer_page = FormPageFactory(
+        form=form, order=1, title="Your employer", condition_option=employer_yes
+    )
+    FormQuestionFactory(
+        form_page=employer_page,
+        type="short_text",
+        order=0,
+        question="Employer name",
+        required=True,
+    )
 
-    Page 1 carries one question of each non-file type; page 2 carries the file
-    question, so a test can reach a page that needs a real upload without the
-    first page demanding one.
+
+def gated_course_with_form(
+    *, with_employer_case: bool = False
+) -> tuple[CourseFactory, FormFactory]:
+    """An application-gated course whose applicants fill in a form.
+
+    Page 1 carries one question of each non-file type; the last page carries the
+    file question, so a test can reach a page that needs a real upload without
+    the first page demanding one. With `with_employer_case` page 1 also asks
+    whether an employer is paying, and a "Your employer" page between the two
+    applies only to applicants who answer Yes.
     """
     form = FormFactory(strategy=FormStrategy.UNSCORED)
 
@@ -71,10 +101,14 @@ def gated_course_with_form() -> tuple[CourseFactory, FormFactory]:
         question="Why apply",
         required=False,
     )
+    if with_employer_case:
+        _add_employer_case(form, page_one)
 
-    page_two = FormPageFactory(form=form, order=1, title="Supporting documents")
+    documents_page = FormPageFactory(
+        form=form, order=2 if with_employer_case else 1, title="Supporting documents"
+    )
     FormQuestionFactory(
-        form_page=page_two,
+        form_page=documents_page,
         type="file_upload",
         order=0,
         question="Upload your ID",
