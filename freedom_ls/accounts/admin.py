@@ -1,5 +1,7 @@
 import contextlib
 
+from allauth.account.admin import EmailAddressAdmin
+from allauth.account.models import EmailAddress
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 from django.contrib import admin
@@ -26,6 +28,19 @@ USER_ERASURE_CASCADE_MODELS: set[type[Model]] = {LegalConsent}
 # Unregister Django's default Group
 with contextlib.suppress(NotRegistered):
     admin.site.unregister(Group)
+
+# allauth's EmailAddress is not site-aware, so its stock admin lists every
+# site's addresses. Importing EmailAddressAdmin above registers that stock
+# admin; it is swapped for one scoped to the current site's users.
+with contextlib.suppress(NotRegistered):
+    admin.site.unregister(EmailAddress)
+
+
+@admin.register(EmailAddress)
+class SiteAwareEmailAddressAdmin(EmailAddressAdmin):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[EmailAddress]:
+        queryset: QuerySet[EmailAddress] = super().get_queryset(request)
+        return queryset.filter(user__in=User.objects.all())
 
 
 class LegalConsentInline(admin.TabularInline):

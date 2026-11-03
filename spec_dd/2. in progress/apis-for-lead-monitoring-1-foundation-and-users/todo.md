@@ -20,7 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: /api/v1/schema/ responses lack Cache-Control: private, no-store and its 401 lacks the {detail, code} shape (TDD: failing test first, then fix)
 - [x] (user) Decide what the revoke confirmation page offers when every selected key is already revoked (it shows 'To revoke (0)' with a live Revoke button that reports 'Revoked 0 API keys. Scripts using them stop at once.'), then fix it test first
-- [ ] (user) Decide what to do about QA bug: allauth Email addresses admin lists and opens other sites' addresses (security-adjacent cross-site exposure; TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: allauth Email addresses admin lists and opens other sites' addresses (security-adjacent cross-site exposure; TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 

@@ -7,7 +7,11 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
+from freedom_ls.accounts.factories import (
+    EmailAddressFactory,
+    LegalConsentFactory,
+    UserFactory,
+)
 from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.referral_tracking.factories import SignupAttributionFactory
 from freedom_ls.referral_tracking.models import SignupAttribution
@@ -130,3 +134,50 @@ def test_user_export_omits_users_on_another_site(staff_client, site):
     response = staff_client.get(reverse("admin:freedom_ls_accounts_user_export"))
 
     assert other.email not in response.content.decode("utf-8-sig")
+
+
+@pytest.fixture
+def other_site_email_address(db):
+    with site_context(SiteFactory()):
+        return EmailAddressFactory(verified=False)
+
+
+@pytest.mark.django_db
+def test_email_address_changelist_omits_addresses_on_another_site(
+    staff_client, other_site_email_address
+):
+    own = EmailAddressFactory()
+
+    response = staff_client.get(reverse("admin:account_emailaddress_changelist"))
+
+    content = response.content.decode()
+    assert own.email in content
+    assert other_site_email_address.email not in content
+
+
+@pytest.mark.django_db
+def test_email_address_change_view_hides_an_address_on_another_site(
+    staff_client, other_site_email_address
+):
+    response = staff_client.get(
+        reverse("admin:account_emailaddress_change", args=[other_site_email_address.pk])
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("admin:index")
+
+
+@pytest.mark.django_db
+def test_email_address_verify_action_skips_an_address_on_another_site(
+    staff_client, other_site_email_address
+):
+    staff_client.post(
+        reverse("admin:account_emailaddress_changelist"),
+        {
+            "action": "make_verified",
+            "_selected_action": [other_site_email_address.pk],
+        },
+    )
+
+    other_site_email_address.refresh_from_db()
+    assert other_site_email_address.verified is False

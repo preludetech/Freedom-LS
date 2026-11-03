@@ -113,7 +113,7 @@ Actual: It lists all 67 addresses across sites. Opening wrend_s1@email.com (user
 - **FIXED** (commit: 3dfcf9b09) — B2: API scope checkbox labels are cut off with an ellipsis at phone and tablet widths. Re-verified: all four labels wrap with nothing clipped at 375 and 768, and there's no horizontal overflow. Spot check: the user change form at 768 has no overflow.
 
   ![](screenshots/page-2026-11-03T06-03-17-046Z.png)
-- **UNRESOLVED** — B3: allauth Email addresses admin lists and opens other sites' addresses (reason: security-adjacent cross-site data exposure in the admin; deciding how the allauth EmailAddress admin is scoped per site needs a human).
+- **FIXED** — B3: allauth Email addresses admin lists and opens other sites' addresses. Decision: keep the admin (its "Mark as verified" action is still needed) and scope it to the current site's users. `SiteAwareEmailAddressAdmin` in `freedom_ls/accounts/admin.py` replaces allauth's stock admin, and tests cover the changelist, the change view and the verify action.
 
 Full run after the fixes: the B2 fixer ran the full tier on the final HEAD (3dfcf9b09, which contains both fixes): 11532 passed. No separate run was repeated.
 
