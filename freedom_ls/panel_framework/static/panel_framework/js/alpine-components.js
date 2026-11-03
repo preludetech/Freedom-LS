@@ -14,23 +14,29 @@
 // #interface-main has its own fallback, and a container that draws its own
 // error state (data-htmx-owns-errors) keeps doing so.
 //
-// A 404 marked data-htmx-swap-error is the action-unavailable dialog. Whatever
-// asked for it (a table region, the quick view), it opens in #app-modal
-// instead of replacing the thing that asked.
+// A 404 marked data-htmx-swap-error is the action-unavailable dialog. Inside
+// #app-modal it swaps in place (a run poll stops polling once it lands).
+// Elsewhere (a table region, the quick view) it opens in #app-modal instead
+// of replacing the thing that asked, and like the reload it needs a real user
+// action: a table that refetched on a domain event stays as it is, rather
+// than a dialog opening with nothing to explain it.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
     if (status !== 403 && status !== 404) return;
     const body = event.detail.xhr.responseText || "";
-    if (body.includes("data-htmx-swap-error")) {
-        if (status === 404) showUnavailableInModal(event);
-        return;
-    }
     const trigger =
         event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
+    const userAction = Boolean(trigger && trigger.isTrusted);
     const target = event.detail.target;
+    if (body.includes("data-htmx-swap-error")) {
+        if (status === 404 && target && !target.closest("#app-modal")) {
+            if (userAction) showUnavailableInModal(event);
+            else event.detail.shouldSwap = false;
+        }
+        return;
+    }
     if (
-        trigger &&
-        trigger.isTrusted &&
+        userAction &&
         target &&
         target.id !== "interface-main" &&
         !target.closest("[data-htmx-owns-errors]")
@@ -42,14 +48,23 @@ document.addEventListener("htmx:beforeSwap", (event) => {
 
 function showUnavailableInModal(event) {
     const target = event.detail.target;
+    const modal = document.getElementById("app-modal");
     const modalBody = document.getElementById("app-modal-body");
-    if (!modalBody || !target || target.closest("#app-modal")) return;
+    if (!modal || !modalBody) return;
+    // appModal records its trigger only for requests aimed at its body, so
+    // the element to return focus to on close is handed over here: the
+    // control that asked (a sort link, a filter), or the row link that opened
+    // the quick view.
+    const modalData = Alpine.$data(modal);
+    modalData._trigger = event.detail.elt;
     if (target.id === "quick-view-body") {
         // The drawer holds only its skeleton here: close it, and mark it stale
         // so the next open refetches instead of reusing the skeleton.
         const drawer = document.getElementById("quick-view");
         if (drawer) {
-            Alpine.$data(drawer)._stale = true;
+            const drawerData = Alpine.$data(drawer);
+            modalData._trigger = drawerData._qvTrigger;
+            drawerData._stale = true;
             drawer.close();
         }
     }
@@ -178,7 +193,9 @@ document.addEventListener("alpine:init", () => {
                 this._tracker.snapshot();
                 this.dirty = false;
                 // A result announced in this open is not re-read on the next.
-                document.getElementById("app-modal-status").textContent = "";
+                // A host that shadows modal_host.html may lack the region.
+                const status = document.getElementById("app-modal-status");
+                if (status) status.textContent = "";
                 focusTriggerOrMain(this._trigger);
             });
 

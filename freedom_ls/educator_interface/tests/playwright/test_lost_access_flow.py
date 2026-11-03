@@ -19,7 +19,11 @@ from playwright.sync_api import Page, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerFactory,
+)
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -33,6 +37,7 @@ from .helpers import interface_url
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 _NOT_FOUND_HEADING = "We cannot find that page"
+_UNAVAILABLE_HEADING = "This is no longer available"
 
 
 def _organisation_run_by(educator_user: AbstractBaseUser) -> Organisation:
@@ -109,7 +114,56 @@ def test_a_quick_view_of_a_learner_who_left_the_scope_opens_the_unavailable_dial
 
     modal = page.locator("#app-modal")
     expect(modal).to_be_visible()
-    expect(
-        modal.get_by_role("heading", name="This is no longer available")
-    ).to_be_visible()
+    expect(modal.get_by_role("heading", name=_UNAVAILABLE_HEADING)).to_be_visible()
     expect(page.locator("#quick-view")).to_be_hidden()
+
+    page.keyboard.press("Escape")
+
+    expect(modal).to_be_hidden()
+    expect(trigger).to_be_focused()
+
+
+def test_a_table_refetch_of_a_cohort_that_left_the_scope_opens_no_dialog_until_the_user_acts(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = _organisation_run_by(educator_user)
+    cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        ),
+    )
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        )
+    )
+    sort_link = page.locator("#main-content").get_by_role(
+        "link", name="Learner", exact=True
+    )
+    expect(sort_link).to_be_visible()
+    modal = page.locator("#app-modal")
+
+    cohort.organisation = OrganisationFactory(name="Org B")
+    cohort.save()
+    # The refetch a domain event causes is not the user's doing, so its 404
+    # must not open a dialog over a page they were not touching.
+    page.evaluate(
+        "document.body.dispatchEvent(new CustomEvent('cohortChanged', {bubbles: true}))"
+    )
+    # Long enough for the refetch to round-trip before the assertion.
+    page.wait_for_timeout(500)
+    expect(modal).to_be_hidden()
+    expect(sort_link).to_be_visible()
+
+    sort_link.click()
+
+    expect(modal).to_be_visible()
+    expect(modal.get_by_role("heading", name=_UNAVAILABLE_HEADING)).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(sort_link).to_be_focused()
