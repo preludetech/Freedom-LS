@@ -42,11 +42,11 @@
                 <tbody>
                     {% for row in format_rows %}
                         <tr class="border-t border-border">
-                            <td class="py-2 pr-3 align-top"><code>{{ row.name }}</code></td>
+                            <td class="py-2 pr-3 align-top break-words"><code>{{ row.name }}</code></td>
                             <td class="py-2 pr-3 align-top {% if row.requirement == "Required" %}font-semibold{% else %}text-muted{% endif %}">{{ row.requirement }}</td>
                             <td class="py-2 align-top">
                                 {{ row.description }}
-                                <span class="mt-0.5 block font-mono text-xs text-muted">{{ row.example }}</span>
+                                <span class="mt-0.5 block break-all font-mono text-xs text-muted">{{ row.example }}</span>
                             </td>
                         </tr>
                     {% endfor %}
@@ -57,7 +57,7 @@
                     <li class="py-3">
                         <p class="flex items-center justify-between gap-3"><code>{{ row.name }}</code><span class="text-sm {% if row.requirement == "Required" %}font-semibold{% else %}text-muted{% endif %}">{{ row.requirement }}</span></p>
                         <p class="mt-1 text-sm">{{ row.description }}</p>
-                        <p class="mt-0.5 font-mono text-xs text-muted">{{ row.example }}</p>
+                        <p class="mt-0.5 break-all font-mono text-xs text-muted">{{ row.example }}</p>
                     </li>
                 {% endfor %}
             </ul>
