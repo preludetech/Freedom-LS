@@ -115,6 +115,8 @@ from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 QUERY_BUDGET = 60
 
@@ -6205,3 +6207,302 @@ def test_the_audit_log_what_filter_is_a_grouped_checklist_with_one_apply(
     ]
     assert summaries == legends
     assert not sheet.cssselect("label.rounded-full")
+
+
+def _cohort_entry(cohort: Cohort, **overrides: object) -> AuditLogEntry:
+    return cast(
+        AuditLogEntry,
+        AuditLogEntryFactory(
+            target=cohort,
+            organisation=cohort.organisation,
+            action="cohort.updated",
+            **overrides,
+        ),
+    )
+
+
+def _cohort_history_url(cohort: Cohort) -> str:
+    return _interface_url(
+        cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/history"
+    )
+
+
+def _audit_log_export(
+    client: Client, organisation: Organisation, **filters: str
+) -> tuple[list[str], list[list[str]], str]:
+    response = client.get(
+        _audit_log_url(organisation),
+        {"audit_log-export": "csv", **filters},
+    )
+    assert response.status_code == 200
+    body = b"".join(response.streaming_content).decode("utf-8-sig")
+    header, *rows = list(csv.reader(io.StringIO(body, newline="")))
+    return header, rows, response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_the_cohort_history_export_holds_only_entries_naming_the_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    other = CohortFactory(organisation=organisation)
+    for number in range(30):
+        _cohort_entry(cohort, reason=f"reason {number}")
+    _cohort_entry(other, reason="not ours")
+
+    _header, rows, _disposition = _export_audit_csv(
+        staff_client, _cohort_history_url(cohort)
+    )
+
+    assert (len(rows), "not ours" in {row[7] for row in rows}) == (30, False)
+
+
+@pytest.mark.django_db
+def test_the_cohort_history_export_is_named_for_the_cohort(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Spring Intake")
+    _cohort_entry(cohort)
+
+    _header, _rows, disposition = _export_audit_csv(
+        staff_client, _cohort_history_url(cohort)
+    )
+
+    assert disposition == (
+        f'attachment; filename="history-spring-intake-{timezone.localdate():%Y-%m-%d}.csv"'
+    )
+
+
+@pytest.mark.django_db
+def test_the_cohort_history_export_records_an_entry_for_the_audit_log_only(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Spring Intake")
+    _cohort_entry(cohort)
+
+    _export_audit_csv(staff_client, _cohort_history_url(cohort))
+
+    entry = AuditLogEntry.objects.get(action="audit_log.exported")
+    audit_rows = _audit_log_rows(
+        _get_document(staff_client, _audit_log_url(organisation))
+    )
+    history_rows = _history_rows(_cohort_history_tab(staff_client, cohort))
+    assert (
+        entry.details,
+        len([row for row in audit_rows if "Audit log exported" in row[2]]),
+        len(history_rows),
+    ) == (
+        {
+            "scope": "cohort",
+            "scope_label": "Spring Intake",
+            "count": 1,
+            "filters": "",
+        },
+        1,
+        1,
+    )
+
+
+@pytest.mark.django_db
+def test_the_cohort_history_toolbar_offers_the_csv_export(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _cohort_entry(cohort)
+
+    document = _cohort_history_tab(staff_client, cohort)
+
+    links = [
+        a for a in document.cssselect("a") if a.text_content().strip() == "Export CSV"
+    ]
+    assert links
+    assert all("history-export=csv" in a.get("href") for a in links)
+
+
+@pytest.mark.django_db
+def test_the_audit_log_toolbar_offers_the_csv_export(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation)
+
+    document = _audit_log_document(staff_client, organisation)
+
+    links = [
+        a for a in document.cssselect("a") if a.text_content().strip() == "Export CSV"
+    ]
+    assert links
+    assert all("audit_log-export=csv" in a.get("href") for a in links)
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_honours_the_who_filter(staff_client: Client):
+    organisation = OrganisationFactory()
+    ada = UserFactory(first_name="Ada", last_name="Admin")
+    AuditLogEntryFactory(target=organisation, actor=ada, target_label="Match")
+    AuditLogEntryFactory(target=organisation, actor=None, target_label="Other actor")
+
+    _header, rows, _disposition = _audit_log_export(
+        staff_client, organisation, **{"audit_log-who": str(ada.pk)}
+    )
+
+    assert [row[5] for row in rows] == ["Match"]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_honours_the_what_filter(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        target=organisation, action="cohort.created", target_label="Match"
+    )
+    AuditLogEntryFactory(
+        target=organisation, action="role.assigned", target_label="Other action"
+    )
+
+    _header, rows, _disposition = _audit_log_export(
+        staff_client, organisation, **{"audit_log-what": "cohort.created"}
+    )
+
+    assert [row[5] for row in rows] == ["Match"]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_honours_the_when_filter(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Recent")
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="Old",
+        created_at=timezone.now() - timedelta(days=10),
+    )
+
+    _header, rows, _disposition = _audit_log_export(
+        staff_client, organisation, **{"audit_log-when": "today"}
+    )
+
+    assert [row[5] for row in rows] == ["Recent"]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_is_named_for_the_organisation(staff_client: Client):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation)
+
+    _header, _rows, disposition = _audit_log_export(staff_client, organisation)
+
+    assert disposition == (
+        f'attachment; filename="audit_log-{organisation.slug}-{timezone.localdate():%Y-%m-%d}.csv"'
+    )
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_holds_a_runs_summary_and_every_per_object_entry(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learners = [LearnerFactory(organisation=organisation) for _ in range(3)]
+    run_id = uuid4()
+    _record_run(organisation, learners, run_id)
+
+    _header, rows, _disposition = _audit_log_export(staff_client, organisation)
+
+    assert (len(rows), {row[8] for row in rows}) == (4, {str(run_id)})
+
+
+@pytest.mark.django_db
+def test_a_what_filter_on_the_per_object_action_drops_the_runs_summary(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learners = [LearnerFactory(organisation=organisation) for _ in range(3)]
+    _record_run(organisation, learners, uuid4())
+
+    _header, rows, _disposition = _audit_log_export(
+        staff_client, organisation, **{"audit_log-what": "learner.deactivated"}
+    )
+
+    assert [row[3] for row in rows] == ["Learner deactivated"] * 3
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_leaves_out_another_organisations_entries(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Ours")
+    AuditLogEntryFactory(target=OrganisationFactory(), target_label="Theirs")
+
+    _header, rows, _disposition = _audit_log_export(staff_client, organisation)
+
+    assert [row[5] for row in rows] == ["Ours"]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_leaves_out_another_sites_entries(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Ours")
+    with site_context(SiteFactory()):
+        AuditLogEntryFactory(target=organisation, target_label="Other site")
+
+    _header, rows, _disposition = _audit_log_export(staff_client, organisation)
+
+    assert [row[5] for row in rows] == ["Ours"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+@pytest.mark.parametrize("target", ["cohort_history", "audit_log"])
+def test_a_cohort_role_gets_a_404_on_the_cohort_history_and_audit_log_exports(
+    mock_site_context, logged_in_client, role: str, target: str
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, role, cohort)
+    url, key = (
+        (_cohort_history_url(cohort), "history-export")
+        if target == "cohort_history"
+        else (_audit_log_url(organisation), "audit_log-export")
+    )
+
+    response = logged_in_client(educator).get(url, {key: "csv"})
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_records_its_scope_and_applied_filters(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    orla = UserFactory(first_name="Orla", last_name="Admin")
+    AuditLogEntryFactory(target=organisation, actor=orla, action="learner.deactivated")
+
+    _audit_log_export(
+        staff_client,
+        organisation,
+        **{"audit_log-who": str(orla.pk), "audit_log-what": "learner.deactivated"},
+    )
+
+    entry = AuditLogEntry.objects.get(action="audit_log.exported")
+    assert entry.details == {
+        "scope": "organisation",
+        "scope_label": "",
+        "count": 1,
+        "filters": "Who: Orla Admin, What: Learner deactivated",
+    }
+
+
+@pytest.mark.django_db
+def test_the_audit_log_export_omits_its_own_entry_and_a_second_export_holds_it(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(target=organisation, target_label="Ours")
+
+    _header, first_rows, _disposition = _audit_log_export(staff_client, organisation)
+    _header, second_rows, _disposition = _audit_log_export(staff_client, organisation)
+
+    assert (
+        [row[4] for row in first_rows if "exported" in row[4]],
+        len([row for row in second_rows if "exported" in row[4]]),
+    ) == ([], 1)
