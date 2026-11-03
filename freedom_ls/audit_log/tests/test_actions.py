@@ -81,6 +81,18 @@ def test_validate_action_names_the_valid_codes_for_an_unknown_one():
             {"course": "Algebra", "self_service": True},
             "Self-registered for Algebra",
         ),
+        ("audit_log.exported", {"count": 12}, "12 entries"),
+        ("audit_log.exported", {"count": 1}, "1 entry"),
+        (
+            "audit_log.exported",
+            {"count": 12, "scope_label": "Cohort A"},
+            "Cohort A: 12 entries",
+        ),
+        (
+            "audit_log.exported",
+            {"count": 12, "filters": "Who: Orla Admin"},
+            "12 entries, filtered by Who: Orla Admin",
+        ),
         ("registration.reactivated", {"course": "Algebra"}, "Algebra"),
         (
             "registration.reactivated",

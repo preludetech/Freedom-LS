@@ -99,6 +99,20 @@ def _describe_run_summary(entry: AuditLogEntry) -> str:
     )
 
 
+def _describe_export(entry: AuditLogEntry) -> str:
+    """The scope label when the export was one learner's or cohort's
+    history, the row count, and the filters that narrowed it."""
+    count = int(entry.details.get("count", 0))
+    parts = [f"{count} {'entry' if count == 1 else 'entries'}"]
+    scope_label = entry.details.get("scope_label")
+    if scope_label:
+        parts[0] = f"{scope_label}: {parts[0]}"
+    filters = entry.details.get("filters")
+    if filters:
+        parts.append(f"filtered by {filters}")
+    return ", ".join(parts)
+
+
 #: Actions that summarise a bulk run rather than change one object.
 SUMMARY_ACTIONS = frozenset({"bulk_action.completed", "import.committed"})
 
@@ -198,6 +212,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("conversation.viewed", "Conversation viewed"),
     AuditAction("api_key.issued", "API key issued"),
     AuditAction("api_key.revoked", "API key revoked"),
+    AuditAction("audit_log.exported", "Audit log exported", _describe_export),
 )
 
 
