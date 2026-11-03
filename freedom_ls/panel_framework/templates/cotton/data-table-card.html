@@ -1,4 +1,4 @@
-<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" />
+<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" row_detail_template="" />
 
 {% comment %}
 One row of a table rendered as a card below md. `card_template`, when set on
@@ -43,6 +43,12 @@ Cards only exist below md, so every button in one is a 44px touch target.
                     {% endfor %}
                 </dl>
             {% endif %}
+        {% endif %}
+        {% if row_detail_template and row.has_row_detail %}
+            <details class="mt-2">
+                <summary class="min-h-11 cursor-pointer text-sm text-muted">More</summary>
+                <div class="mt-1">{% include row_detail_template with object=row.object %}</div>
+            </details>
         {% endif %}
     </div>
 </li>

@@ -29,7 +29,12 @@ from freedom_ls.panel_framework.views import SectionConfigBase
 from freedom_ls.tests.site_context import drop_ambient_request
 
 from .helpers import make_stub
-from .stub_panels import StubDataTable, StubDataTablePanel
+from .stub_panels import (
+    StubDataTable,
+    StubDataTablePanel,
+    StubDetailDataTable,
+    StubPlainDataTable,
+)
 from .view_helpers import fetch
 
 pytestmark = pytest.mark.django_db
@@ -1462,3 +1467,51 @@ def test_a_table_without_a_noun_is_named_after_its_model(
             RequestFactory().get("/p")
         ).model._meta.verbose_name_plural
     )
+
+
+def test_get_context_marks_each_row_with_the_has_row_detail_predicate(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+    make_stub(name="row-b", kind="b")
+    panel = _bind_table_panel(StubDataTablePanel)
+    query, queryset = panel.narrow(panel.request)
+
+    context = StubDetailDataTable.get_context(
+        panel.request,
+        query,
+        queryset.order_by("name"),
+        base_url="/p",
+        page_url="/p",
+        region_id="r",
+    )
+
+    rows = context["rows"]
+    assert isinstance(rows, list)
+    assert [(row["object"].name, row["has_row_detail"]) for row in rows] == [
+        ("row-a", True),
+        ("row-b", False),
+    ]
+    assert context["row_detail_template"] == StubDetailDataTable.row_detail_template
+
+
+def test_get_context_has_no_row_detail_for_a_plain_table(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+    panel = _bind_table_panel(StubDataTablePanel)
+    query, queryset = panel.narrow(panel.request)
+
+    context = StubPlainDataTable.get_context(
+        panel.request,
+        query,
+        queryset,
+        base_url="/p",
+        page_url="/p",
+        region_id="r",
+    )
+
+    rows = context["rows"]
+    assert isinstance(rows, list)
+    assert [row["has_row_detail"] for row in rows] == [False]
+    assert context["row_detail_template"] is None

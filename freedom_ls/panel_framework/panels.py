@@ -327,6 +327,15 @@ class DataTablePanel(Panel):
             for action in self.get_bulk_actions()
             if action.has_permission(self.request)
         ]
+        # Every column a full-width cell must span: the data columns, the
+        # toggle column when rows have a detail, and the selection column
+        # when bulk actions render.
+        columns = self.data_table.get_columns()
+        context["table_colspan"] = (
+            len(columns)
+            + (1 if self.data_table.row_detail_template else 0)
+            + (1 if context["bulk_actions"] else 0)
+        )
         context["noun"] = self.noun(self.request)
         context["entry_count"] = self.entry_count(
             self.request, cast(Page, context["page_obj"])

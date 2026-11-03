@@ -596,3 +596,59 @@ def test_bulk_action_posts_with_javascript_off(
     assert active_by_name["row-00"] is False
     assert active_by_name["row-01"] is False
     assert active_by_name["row-02"] is True
+
+
+def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    stubs = [make_stub(name=f"row-{i:02d}", kind="a") for i in range(PAGE_SIZE + 2)]
+    detail_url = f"{live_server.url}{_FRAMEWORK_PATH}/stubs/{stubs[0].pk}/__tabs/detail"
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(detail_url)
+    table = page.locator("#detail-table table")
+    first = table.get_by_role("button", name="More about row-00")
+    second = table.get_by_role("button", name="More about row-01")
+    first_detail = table.get_by_text("Detail for row-00")
+    second_detail = table.get_by_text("Detail for row-01")
+
+    expect(first_detail).to_be_hidden()
+    first.click()
+    expect(first_detail).to_be_visible()
+    expect(first).to_have_attribute("aria-expanded", "true")
+
+    # A second row opens without closing the first.
+    second.click()
+    expect(second_detail).to_be_visible()
+    expect(first_detail).to_be_visible()
+
+    first.focus()
+    page.keyboard.press("Enter")
+    expect(first_detail).to_be_hidden()
+    expect(first).to_have_attribute("aria-expanded", "false")
+    expect(first).to_be_focused()
+    expect(second_detail).to_be_visible()
+
+    # Fetching a page replaces the table, so every row starts closed.
+    _page_link(page, 2).click()
+    expect(page).to_have_url(re.compile(r"detail-page=2$"))
+    _expect_swap_settled(page)
+    page.locator("#detail-table").get_by_role(
+        "link", name="1", exact=True
+    ).first.click()
+    expect(page).not_to_have_url(re.compile(r"detail-page=2"))
+    _expect_swap_settled(page)
+    expect(table.get_by_role("button", name="More about row-01")).to_have_attribute(
+        "aria-expanded", "false"
+    )
+    expect(table.get_by_text("Detail for row-01")).to_be_hidden()
+
+    # On a phone the card's summary opens its details.
+    page.set_viewport_size(_PHONE_VIEWPORT)
+    card_detail = page.locator("#detail-table ul details").first
+    expect(card_detail).not_to_have_attribute("open", "")
+    card_detail.get_by_text("More", exact=True).click()
+    expect(card_detail).to_have_attribute("open", "")
+    expect(card_detail.locator("[data-test-detail]")).to_be_visible()

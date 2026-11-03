@@ -226,6 +226,17 @@ class DataTable:
     #: cell rendering) below md, for a denser layout than the generic card
     #: gives. `None` keeps the default.
     card_template: str | None = None
+    #: A template rendered under a row, hidden until the row's toggle opens
+    #: it (a <details> disclosure below md). None means rows have no detail
+    #: and the table renders no toggle column.
+    row_detail_template: str | None = None
+
+    @staticmethod
+    def has_row_detail(row: Model) -> bool:
+        """Whether this row has anything to show under it. Only consulted
+        when `row_detail_template` is set; every row has one by default."""
+        return True
+
     #: The template drawn when the page has no rows. It renders with the
     #: table's own context (query, any_filter_set, clear_changes,
     #: clear_search_changes, page_url, base_url, region_id, empty_message,
@@ -442,7 +453,15 @@ class DataTable:
         def _lazy_label(row: Model) -> SimpleLazyObject:
             return SimpleLazyObject(lambda: cls.get_row_label(row))
 
-        rows = [{"object": row, "label": _lazy_label(row)} for row in page_obj]
+        detailed = cls.row_detail_template is not None
+        rows = [
+            {
+                "object": row,
+                "label": _lazy_label(row),
+                "has_row_detail": detailed and cls.has_row_detail(row),
+            }
+            for row in page_obj
+        ]
         return {
             "columns": columns,
             "header_columns": header_columns,
@@ -470,6 +489,7 @@ class DataTable:
             "secondary_columns": secondary_columns,
             "sortable_columns": sortable_columns,
             "card_template": cls.card_template,
+            "row_detail_template": cls.row_detail_template,
             "empty_state_template": cls.empty_state_template,
             "empty_message": cls.empty_message,
             "empty_no_results": cls.empty_no_results,

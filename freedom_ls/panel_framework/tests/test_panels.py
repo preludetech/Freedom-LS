@@ -642,7 +642,15 @@ def test_a_hidden_tab_has_no_link(mock_site_context: Site) -> None:
 
     links = _tab_links(fetch(f"stubs/{stub.pk}").content.decode())
 
-    assert set(links) == {"Stub", "Details", "Pair", "Children", "Cards", "Sort only"}
+    assert set(links) == {
+        "Stub",
+        "Details",
+        "Pair",
+        "Children",
+        "Cards",
+        "Sort only",
+        "Detail",
+    }
 
 
 def test_a_plain_get_of_a_tab_url_renders_the_full_page_with_that_tab_current(

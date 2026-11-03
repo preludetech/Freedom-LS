@@ -96,11 +96,13 @@
         @apply px-4 py-3 text-sm text-on-surface
     }
 
-    tbody tr {
+    /* A [data-row-detail] row is the expandable panel under a data row and
+       borrows that row's borders, so it takes no border or hover of its own. */
+    tbody tr:not([data-row-detail]) {
         @apply border-b border-border hover:bg-surface-2
     }
 
-    tbody tr:last-child {
+    tbody tr:not([data-row-detail]):last-child {
         @apply border-b-0
     }
 

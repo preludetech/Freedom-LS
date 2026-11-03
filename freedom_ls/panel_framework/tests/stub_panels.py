@@ -379,6 +379,22 @@ class StubPlainDataTable(DataTable):
         ]
 
 
+class StubDetailDataTable(StubPlainDataTable):
+    """The plain table with a row detail shown only for kind "a" rows."""
+
+    row_detail_template = "panel_framework/test_row_detail.html"
+
+    @staticmethod
+    def has_row_detail(row: Model) -> bool:
+        return cast(str, row.kind) == "a"
+
+
+class StubDetailTablePanel(DataTablePanel):
+    title = "Detail"
+    data_table = StubDetailDataTable
+    table_key = "detail"
+
+
 class StubBTablePanel(DataTablePanel):
     title = "B"
     data_table = StubPlainDataTable
@@ -465,6 +481,7 @@ class StubTabSet(TabSet):
         "children": StubChildTablePanel,
         "cards": StubCardTablePanel,
         "sortonly": StubSortOnlyTablePanel,
+        "detail": StubDetailTablePanel,
     }
 
 
