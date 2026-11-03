@@ -1,5 +1,11 @@
 {% extends "admin/base_site.html" %}
-{% load unfold %}
+{% load static unfold %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {# This page is not a ModelAdmin view, so the admin stylesheet is not added for it. #}
+    <link rel="stylesheet" href="{% static 'site_aware_models/css/admin.css' %}">
+{% endblock %}
 
 {% block content %}
     <div class="flex flex-col gap-6">

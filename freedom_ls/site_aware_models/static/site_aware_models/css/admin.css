@@ -27,3 +27,9 @@
 fieldset.module {
     min-width: 0;
 }
+
+/* unfold's stylesheet is prebuilt and ships no break-all utility, so an unbroken
+   string such as an issued API key needs its own rule to wrap inside its box. */
+.break-all {
+    word-break: break-all;
+}
