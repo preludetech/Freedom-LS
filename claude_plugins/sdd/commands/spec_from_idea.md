@@ -25,6 +25,12 @@ This command runs at **depth 0** and fans work out to sub-agents (the `claude-co
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and produce the artifact; it can be retried without re-running workers.
 7. **Clean up on success.** Once the phase artifact is finalised, delete this command's own scratch files **by name** — never the `.sdd-work/` directory itself, which is shared with every other SDD command and may hold a concurrent run's files. Durable artifacts are not deleted; an abandoned `.sdd-work/` from an interrupted run is intentional (it makes resume cheap).
 
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, the idea path, `answers: <path>` and
+`mode: hook`, from a command of this plugin that read and followed this file. Without
+`mode: hook` the command is standalone. In hook mode Step 0 is skipped; every other step runs
+as it does standalone, question batches included, and a `blocked` worker is still answered at
+depth 0.
+
 # Step 0: Pre-step rebase
 
 Read `${CLAUDE_PLUGIN_ROOT}/commands/protected/pre_step_rebase.md` and follow its steps.
@@ -48,6 +54,9 @@ Each brief names the topic's question in one sentence and says the idea file is 
 
 Don't wait for the research to finish before asking, and don't ask what it will answer. `AskUserQuestion` is used here; workers stay non-interactive.
 
+0. **Recorded answers.** Read `<spec-dir>/answers.md` when it exists, in either mode, before
+   asking anything. A question the file answers is never asked again; its answer is a recorded
+   answer for Step 3 and for the review wave's `completeness` dimension.
 1. **Front-load.** As soon as the workers are spawned, ask the questions the idea itself leaves open and no research task bears on: contradictions, ambiguity, edge cases that can go more than one way, and implementation details in the idea where you see a better way (challenge anything that looks wrong). Batch them, up to four per `AskUserQuestion`.
 2. **As each research file lands,** read it, drop the questions it answers, and ask the new ones it raises. The window for asking is the time the workers run; if the first `AskUserQuestion` is already answered, ask a follow-up in a further one.
 
@@ -77,8 +86,8 @@ vocabulary is fixed, in the identifiers it proposes as much as in its prose.
 
 ## Read the whole directory first
 
-The idea file, every sibling `*.md` beside it (notes files, `research_*.md`), and the research from
-Step 1. Those are the inputs the spec is written **against**, not material to reproduce: they sit in the
+The idea file, every sibling `*.md` beside it (notes files, `research_*.md`, `answers.md`), and the
+research from Step 1. Those are the inputs the spec is written **against**, not material to reproduce: they sit in the
 same directory and the next command reads them too.
 
 A `design.md`, beside the idea or named under its "Resources", registers a Claude Design design
@@ -128,19 +137,19 @@ The cut-list is in `${CLAUDE_PLUGIN_ROOT}/resources/spec_review_dimensions.md`, 
 
 ## Before you finish
 
-Run the completeness pass from the writing standard against the idea, its sibling files and the
-answers from Step 2, then the earning-its-place pass, then `productivity:unslop` and a re-read.
+Run the completeness pass from the writing standard against the idea, its sibling files,
+`answers.md` and the answers from Step 2, then the earning-its-place pass, then `productivity:unslop` and a re-read.
 When `productivity:unslop` cannot be loaded, skip that pass and say so in the summary, pointing at
 `/productivity:init`. Report the line and word counts.
 # Step 4: Commit `write the spec`
 
-Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `research_<topic>.md` file for every Step 1 topic. A file
+Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md`, `answers.md` when it exists (a standalone run has none, which is not an error) and the `research_<topic>.md` file for every Step 1 topic. A file
 already committed is staged as unchanged. If it reports any of them missing, the Step 3 gate was
 skipped: stop and report it rather than committing the spec without its research.
 
 # Step 5: Review wave
 
-Spawn the wave the way `${CLAUDE_PLUGIN_ROOT}/commands/spec_review.md` Step 1 does.
+Spawn the wave the way `${CLAUDE_PLUGIN_ROOT}/commands/spec_review.md` Step 1 does. When `answers.md` exists, the `completeness` worker's brief names its path among the sibling files.
 
 # Step 6: Apply the clear fixes
 
