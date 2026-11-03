@@ -18,6 +18,8 @@
                             <span class="answer-text">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                         {% elif row.answer %}
                             {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                        {% elif not row.is_asked %}
+                            <span class="text-font-subtle-light dark:text-font-subtle-dark">Not asked</span>
                         {% else %}
                             <span class="text-font-subtle-light dark:text-font-subtle-dark">Not answered</span>
                         {% endif %}

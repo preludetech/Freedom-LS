@@ -5,6 +5,7 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
+from .conditions import FORM_TREE_LOOKUPS, SittingPath, sitting_path
 from .models import (
     Form,
     FormPage,
@@ -94,6 +95,9 @@ class AnswerRow:
     question: FormQuestion
     # None when the applicant left the question unanswered: a blank answer stores no row.
     answer: QuestionAnswer | None
+    # False when the sitting's path never reached the question; its row then
+    # carries no answer, even one an in-progress sitting still holds.
+    is_asked: bool = True
 
 
 @dataclass(frozen=True)
@@ -102,25 +106,35 @@ class AnswerGroup:
     rows: list[AnswerRow]
 
 
+def _answer_row(
+    question: FormQuestion,
+    answers: dict[UUID, QuestionAnswer],
+    path: SittingPath,
+) -> AnswerRow:
+    is_asked = path.has_question(question.id)
+    return AnswerRow(question, answers.get(question.id) if is_asked else None, is_asked)
+
+
 def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
     """The sitting's answers, laid out the way the form lays out its questions.
 
     Walks the form's current pages, so a question the applicant skipped still
     has a row and a question edited since shows its current wording. The join
-    is to the live form definition, not a snapshot. Answers whose question is
-    on no page follow in a final group.
+    is to the live form definition, not a snapshot. A question the sitting's
+    path never reached is marked not asked. Answers whose question is on no
+    page follow in a final group.
     """
     prefetch_related_objects(
         [form_progress],
         "answers__selected_options",
         "answers__answer_file",
         "answers__question",
-        "form__pages__text_items",
-        "form__pages__questions",
+        *(f"form__{lookup}" for lookup in FORM_TREE_LOOKUPS),
     )
     # One dict for the whole sitting rather than existing_answers_dict per page:
     # the final group needs the answers no page accounts for.
     answers = {answer.question_id: answer for answer in form_progress.answers.all()}
+    path = sitting_path(form_progress, answers)
     groups: list[AnswerGroup] = []
     page_question_ids: set[UUID] = set()
     for page in form_progress.form.pages.all():
@@ -129,10 +143,7 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
         groups.append(
             AnswerGroup(
                 title=page.title,
-                rows=[
-                    AnswerRow(question, answers.get(question.id))
-                    for question in questions
-                ],
+                rows=[_answer_row(question, answers, path) for question in questions],
             )
         )
     # A question can leave every page but never be deleted while answered (the

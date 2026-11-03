@@ -12,7 +12,11 @@ from import_export.widgets import ForeignKeyWidget
 from django.db.models import QuerySet
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.form_engine.exports import answer_cell, answer_columns
+from freedom_ls.form_engine.exports import (
+    answer_cell,
+    answer_columns,
+    on_path_question_ids,
+)
 from freedom_ls.form_engine.models import QuestionAnswer
 from freedom_ls.site_aware_models.admin_exports import (
     IsoDateTimeWidget,
@@ -57,6 +61,7 @@ class CourseApplicationResource(SiteAwareModelResource):
         self._applications: list[CourseApplication] = []
         # Answers by sitting, then by question, built once per export.
         self._answers: dict[UUID, dict[UUID, QuestionAnswer]] = {}
+        self._on_path: dict[UUID, frozenset[UUID]] = {}
 
     def filter_export(
         self, queryset: QuerySet[CourseApplication], **kwargs: object
@@ -87,6 +92,7 @@ class CourseApplicationResource(SiteAwareModelResource):
             sitting.pk: {answer.question_id: answer for answer in sitting.answers.all()}
             for sitting in sittings
         }
+        self._on_path = on_path_question_ids(sittings)
         # A question titled like a fixed column must not share its header: the
         # package drops a field whose column name is already in the order.
         for column in answer_columns(sittings, APPLICATION_EXPORT_FIELDS):
@@ -108,4 +114,8 @@ class CourseApplicationResource(SiteAwareModelResource):
     def _answer_cell(self, application: CourseApplication, question_id: UUID) -> str:
         if application.form_progress is None:
             return ""
-        return answer_cell(self._answers[application.form_progress.pk].get(question_id))
+        pk = application.form_progress.pk
+        return answer_cell(
+            self._answers[pk].get(question_id),
+            is_asked=question_id in self._on_path[pk],
+        )

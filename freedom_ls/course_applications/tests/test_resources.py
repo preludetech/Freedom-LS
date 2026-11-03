@@ -32,6 +32,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
+    QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion
 
@@ -350,7 +351,7 @@ def test_export_query_count_does_not_grow_with_the_number_of_applications(
         CourseApplicationResource().export(CourseApplication.objects.all())
 
 
-def test_applications_to_two_courses_leave_the_other_forms_columns_empty(
+def test_applications_to_two_courses_say_not_asked_in_the_other_forms_columns(
     staff_client,
 ):
     first_course, first_form = gated_course_with_form()
@@ -377,6 +378,33 @@ def test_applications_to_two_courses_leave_the_other_forms_columns_empty(
     assert "Favourite colour" in header
     assert "Your name" in header
     assert by_id[str(first.pk)]["Your name"] == "Ada"
-    assert by_id[str(first.pk)]["Favourite colour"] == ""
-    assert by_id[str(second.pk)]["Your name"] == ""
+    assert by_id[str(first.pk)]["Favourite colour"] == "Not asked"
+    assert by_id[str(second.pk)]["Your name"] == "Not asked"
     assert by_id[str(second.pk)]["Favourite colour"] == "Green"
+
+
+def test_an_off_path_question_exports_not_asked_and_an_on_path_blank_exports_empty(
+    staff_client,
+):
+    course, form = gated_course_with_form()
+    name, _years, choice, _why, _upload = _form_questions(form)
+    gate = QuestionOptionFactory(question=choice, value="gate", order=9)
+    other = QuestionOptionFactory(question=choice, value="other", order=10)
+    FormPageFactory(form=form, order=2, condition_option=gate)
+    FormQuestionFactory(
+        form_page=form.pages.get(order=2),
+        type="short_text",
+        order=0,
+        question="Follow up",
+    )
+    application = _application_for(course, form)
+    _answer(application, name, text_answer="Ada")
+    _answer(application, choice).selected_options.add(other)
+    sitting = application.form_progress
+    assert sitting is not None
+    sitting.complete()
+
+    row = _export_row(staff_client, application)
+
+    assert row["Follow up"] == "Not asked"
+    assert row["Years of experience"] == ""

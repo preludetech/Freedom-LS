@@ -6,7 +6,12 @@ from uuid import uuid4
 
 import pytest
 
-from freedom_ls.form_engine.exports import answer_cell, answer_columns, answer_value
+from freedom_ls.form_engine.exports import (
+    answer_cell,
+    answer_columns,
+    answer_value,
+    on_path_question_ids,
+)
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -16,7 +21,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
+from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
 from freedom_ls.form_engine.queries import form_questions
 
 pytestmark = pytest.mark.django_db
@@ -59,6 +64,39 @@ def test_answer_columns_follow_form_questions_order_with_the_question_text_as_he
 
 def test_answer_cell_of_no_answer_is_empty(mock_site_context):
     assert answer_cell(None) == ""
+
+
+def test_answer_cell_of_a_question_not_asked_says_so(mock_site_context):
+    assert answer_cell(None, is_asked=False) == "Not asked"
+
+
+def test_on_path_question_ids_are_per_sitting(mock_site_context):
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    gated = FormQuestionFactory(
+        form_page=FormPageFactory(form=form, order=1, condition_option=yes),
+        order=0,
+    )
+    sittings = {}
+    for option in (yes, no):
+        sitting = FormProgressFactory(form=form)
+        QuestionAnswerFactory(
+            form_progress=sitting, question=choice
+        ).selected_options.add(option)
+        sittings[option.value] = sitting
+    loaded = list(
+        FormProgress.objects.filter(pk__in=[s.pk for s in sittings.values()])
+        .select_related("form")
+        .prefetch_related("answers__selected_options", "answers__question")
+    )
+
+    on_path = on_path_question_ids(loaded)
+
+    assert on_path[sittings["yes"].pk] == {choice.id, gated.id}
+    assert on_path[sittings["no"].pk] == {choice.id}
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(

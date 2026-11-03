@@ -12,6 +12,7 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
+from .conditions import FORM_TREE_LOOKUPS, load_form_tree, sitting_path
 from .enums import OPTION_QUESTION_TYPES, QuestionType
 from .models import Form, FormProgress, FormQuestion, QuestionAnswer
 from .queries import form_questions
@@ -48,7 +49,7 @@ def answer_columns(
         sittings_by_form.setdefault(form_progress.form_id, []).append(form_progress)
     ordered_forms = sorted(forms.values(), key=lambda form: (form.title, form.id))
     # Pages load once per form here, not once per sitting.
-    prefetch_related_objects(ordered_forms, "pages__text_items", "pages__questions")
+    prefetch_related_objects(ordered_forms, *FORM_TREE_LOOKUPS)
     on_page_by_form = {form.id: form_questions(form) for form in ordered_forms}
     claimed = {
         question.id for on_page in on_page_by_form.values() for question in on_page
@@ -112,6 +113,27 @@ def _qualified(
     ]
 
 
+def on_path_question_ids(
+    form_progresses: Collection[FormProgress],
+) -> dict[UUID, frozenset[UUID]]:
+    """Each sitting's on-path question ids, loading every form's tree once.
+
+    Expects each sitting's answers, with their selected options, to be prefetched.
+    """
+    forms = {
+        form_progress.form_id: form_progress.form for form_progress in form_progresses
+    }
+    for form in forms.values():
+        load_form_tree(form)
+    return {
+        form_progress.pk: sitting_path(
+            form_progress,
+            {answer.question_id: answer for answer in form_progress.answers.all()},
+        ).question_ids
+        for form_progress in form_progresses
+    }
+
+
 def answer_value(answer: QuestionAnswer) -> str | list[str] | None:
     """An answer's value by question type; None when the row holds nothing.
 
@@ -139,8 +161,14 @@ def answer_value(answer: QuestionAnswer) -> str | list[str] | None:
     return answer.text_answer or None
 
 
-def answer_cell(answer: QuestionAnswer | None) -> str:
-    """One answer as spreadsheet text; an empty cell for a question never answered."""
+def answer_cell(answer: QuestionAnswer | None, *, is_asked: bool = True) -> str:
+    """One answer as spreadsheet text.
+
+    "Not asked" for a question the sitting's path never reached; an empty cell
+    for one it reached and the applicant left unanswered.
+    """
+    if not is_asked:
+        return "Not asked"
     if answer is None:
         return ""
     value = answer_value(answer)

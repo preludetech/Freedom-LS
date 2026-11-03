@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.db import connection
@@ -16,8 +18,15 @@ from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
+    QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+)
 from freedom_ls.form_engine.queries import (
     FINAL_GROUP_TITLE,
     answer_groups,
@@ -194,6 +203,98 @@ def test_answer_groups_query_count_does_not_grow_with_the_questions(
         answer_groups(small)
     with django_assert_max_num_queries(len(small_queries)):
         answer_groups(large)
+
+
+def _gated_form() -> tuple[Form, FormQuestion, QuestionOption, FormQuestion]:
+    """A form whose second page opens only on `yes`; returns the form, the
+    choice, the `yes` option and the gated page's question."""
+    form: Form = FormFactory(strategy=FormStrategy.UNSCORED)
+    first_page = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(form_page=first_page, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    QuestionOptionFactory(question=choice, value="no", order=1)
+    gated_page = FormPageFactory(form=form, order=1, condition_option=yes)
+    gated = FormQuestionFactory(form_page=gated_page, type="short_text", order=0)
+    return (
+        form,
+        cast(FormQuestion, choice),
+        cast(QuestionOption, yes),
+        cast(FormQuestion, gated),
+    )
+
+
+def _completed_sitting_answering_no(form: Form, choice: FormQuestion) -> FormProgress:
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=choice).selected_options.add(
+        choice.options.get(value="no")
+    )
+    progress.complete()
+    reloaded: FormProgress = FormProgress.objects.get(pk=progress.pk)
+    return reloaded
+
+
+def _asked_flags(progress: FormProgress) -> list[bool]:
+    return [row.is_asked for group in answer_groups(progress) for row in group.rows]
+
+
+@pytest.mark.django_db
+def test_a_completed_sittings_off_path_question_is_not_asked_and_an_on_path_blank_is_not(
+    mock_site_context,
+):
+    form, choice, _yes, gated = _gated_form()
+    other = FormQuestionFactory(form_page=choice.form_page, type="short_text", order=1)
+    progress = _completed_sitting_answering_no(form, choice)
+
+    rows = {
+        row.question.id: row for group in answer_groups(progress) for row in group.rows
+    }
+
+    assert rows[gated.id].is_asked is False
+    assert rows[gated.id].answer is None
+    assert rows[other.id].is_asked is True
+    assert rows[other.id].answer is None
+
+
+@pytest.mark.django_db
+def test_an_in_progress_sittings_off_path_answer_is_not_asked_and_hides_its_value(
+    mock_site_context,
+):
+    form, choice, _yes, gated = _gated_form()
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=choice).selected_options.add(
+        choice.options.get(value="no")
+    )
+    QuestionAnswerFactory(form_progress=progress, question=gated, text_answer="stale")
+
+    rows = {
+        row.question.id: row
+        for group in answer_groups(FormProgress.objects.get(pk=progress.pk))
+        for row in group.rows
+    }
+
+    assert rows[gated.id].is_asked is False
+    assert rows[gated.id].answer is None
+
+
+@pytest.mark.django_db
+def test_a_completed_sittings_rows_ignore_later_edits_to_the_gated_pages_condition(
+    mock_site_context,
+):
+    form, choice, _yes, gated = _gated_form()
+    progress = _completed_sitting_answering_no(form, choice)
+    before = _asked_flags(progress)
+    gated_page = gated.form_page
+
+    gated_page.condition_option = choice.options.get(value="no")
+    gated_page.save()
+    edited = _asked_flags(FormProgress.objects.get(pk=progress.pk))
+    gated_page.condition_option = None
+    gated_page.save()
+    cleared = _asked_flags(FormProgress.objects.get(pk=progress.pk))
+
+    assert before == [True, False]
+    assert edited == before
+    assert cleared == before
 
 
 def _form_with_pages_prefetched(form: Form) -> Form:
