@@ -741,11 +741,16 @@ document.addEventListener("alpine:init", () => {
         init() {
             const instant = new Date(this.$el.getAttribute("datetime"));
             if (Number.isNaN(instant.getTime())) return;
-            const options = {
-                day: "numeric", month: "short", year: "numeric",
-                hour: "2-digit", minute: "2-digit",
-            };
-            if (this.$el.dataset.showZone === "true") options.timeZoneName = "short";
+            const short = this.$el.dataset.format === "short";
+            const options = short
+                ? { day: "numeric", month: "short" }
+                : {
+                    day: "numeric", month: "short", year: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                };
+            // A short date names its year only when it is not the viewer's current year.
+            if (short && instant.getFullYear() !== new Date().getFullYear()) options.year = "numeric";
+            if (!short && this.$el.dataset.showZone === "true") options.timeZoneName = "short";
             this.$el.textContent = new Intl.DateTimeFormat(undefined, options).format(instant);
         },
     }));

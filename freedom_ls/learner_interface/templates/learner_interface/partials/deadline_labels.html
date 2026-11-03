@@ -25,6 +25,32 @@ The top level is empty, so include a named partial.{% endcomment %}
     {% if course.access_ends_at %}<p class="text-sm text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
 {% endpartialdef %}
 
+{% partialdef tier-date %}
+    {% comment %}A closed deadline is dated by when it closed. The short form of a deadline
+    due today says so instead of repeating the date.{% endcomment %}
+    {% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}
+    {% elif child.deadline_tier == "TODAY" and date_format == "short" %}{% local_time child.due_at format="today" %}
+    {% else %}{% local_time child.due_at format=date_format %}{% endif %}
+{% endpartialdef %}
+
+{% partialdef tier-chip-body %}
+    {% partial tier-icon %}
+    {% if child.deadline_tier == "MISSED" %}<span class="sr-only">{% partial tier-word %}</span>{% elif child.deadline_tier == "CLOSED" %}{% partial tier-word %}{% endif %}
+    {% partial tier-date %}
+{% endpartialdef %}
+
+{% partialdef tier-chip %}
+    {% comment %}An upcoming deadline is a muted icon and a date; the other tiers are a chip. The
+    variant is picked by branching because a cotton attribute cannot hold a template tag.{% endcomment %}
+    {% if child.deadline_tier == "UPCOMING" %}
+        <span class="inline-flex items-center gap-1 text-muted whitespace-nowrap">{% partial tier-icon %}{% partial tier-date %}</span>
+    {% elif child.deadline_tier == "TODAY" %}
+        <c-chip variant="warning" size="xs" class="forced-colors:border whitespace-nowrap">{% partial tier-chip-body %}</c-chip>
+    {% else %}
+        <c-chip variant="error" size="xs" class="forced-colors:border whitespace-nowrap">{% partial tier-chip-body %}</c-chip>
+    {% endif %}
+{% endpartialdef %}
+
 {% partialdef line %}
     {% comment %}A chip with the tier word for a missed or closed deadline, then the title when
     given and the date; otherwise "Deadline", the title and the date. Then when it closes.
@@ -34,9 +60,9 @@ The top level is empty, so include a named partial.{% endcomment %}
         {% with text_class=title|yesno:"text-muted,text-muted text-xs whitespace-nowrap" %}
             {% if child.deadline_tier == "MISSED" or child.deadline_tier == "CLOSED" %}
                 <c-chip variant="error" size="xs" class="forced-colors:border">{% partial tier-icon %}{% partial tier-word %}</c-chip>
-                <span class="{{ text_class }}">{% if title %}{{ title }} {% endif %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at %}{% else %}{% local_time child.due_at %}{% endif %}</span>
+                <span class="{{ text_class }}">{% if title %}{{ title }} {% endif %}{% partial tier-date %}</span>
             {% else %}
-                <span class="{{ text_class }}">Deadline {% if title %}{{ title }} {% endif %}{% local_time child.due_at %}.</span>
+                <span class="{{ text_class }}">Deadline {% if title %}{{ title }} {% endif %}{% partial tier-date %}.</span>
             {% endif %}
             {% if child.closes_at and not child.is_closed %}
                 <span class="{{ text_class }}">Closes {% local_time child.closes_at %}.</span>

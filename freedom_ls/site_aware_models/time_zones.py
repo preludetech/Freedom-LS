@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
+from django.utils import timezone
 
 from freedom_ls.site_aware_models.models import SiteTimeZoneConfig, _thread_locals
 
@@ -41,7 +42,15 @@ def shows_time_zone_to_learners(site: Site) -> bool:
     return row.show_time_zone_to_learners if row is not None else False
 
 
-def site_zone_text(instant: datetime) -> str:
+def site_zone_text(instant: datetime, *, short: bool = False) -> str:
     """An instant written in the site zone with the zone named, as the admin shows it and as
-    the learner pages show it before the browser rewrites it."""
+    the learner pages show it before the browser rewrites it.
+
+    The short form is the day and abbreviated month, plus the year only when it is not this
+    year, judged in the instant's own zone."""
+    if short:
+        text = f"{instant.day} {instant:%b}"
+        if instant.year != timezone.now().astimezone(instant.tzinfo).year:
+            text += f" {instant:%Y}"
+        return text
     return f"{instant.day} {instant:%b %Y, %H:%M} {instant.tzname()}"

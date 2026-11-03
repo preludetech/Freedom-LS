@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
+import time_machine
 
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -107,3 +108,31 @@ def test_site_zone_text_writes_a_single_digit_day_without_a_zero() -> None:
     instant = datetime(2026, 3, 4, 17, 0, tzinfo=ZoneInfo("Africa/Johannesburg"))
 
     assert site_zone_text(instant) == "4 Mar 2026, 17:00 SAST"
+
+
+@time_machine.travel(datetime(2026, 6, 1, tzinfo=UTC), tick=False)
+def test_short_site_zone_text_omits_the_year_in_the_current_year() -> None:
+    instant = datetime(2026, 1, 1, 8, tzinfo=ZoneInfo("Africa/Johannesburg"))
+
+    assert site_zone_text(instant, short=True) == "1 Jan"
+
+
+@time_machine.travel(datetime(2026, 6, 1, tzinfo=UTC), tick=False)
+def test_short_site_zone_text_names_the_year_otherwise() -> None:
+    instant = datetime(2020, 1, 1, 8, tzinfo=ZoneInfo("Africa/Johannesburg"))
+
+    assert site_zone_text(instant, short=True) == "1 Jan 2020"
+
+
+@time_machine.travel(datetime(2026, 12, 31, 23, 0, tzinfo=UTC), tick=False)
+def test_short_site_zone_text_judges_the_year_in_the_instants_own_zone() -> None:
+    """It is already 1 Jan 2027 in Johannesburg, so a 2027 instant there is this year."""
+    instant = datetime(2027, 1, 5, 8, tzinfo=ZoneInfo("Africa/Johannesburg"))
+
+    assert site_zone_text(instant, short=True) == "5 Jan"
+
+
+def test_long_site_zone_text_is_unchanged_by_the_short_option() -> None:
+    instant = datetime(2026, 3, 15, 23, 59, tzinfo=ZoneInfo("Africa/Johannesburg"))
+
+    assert site_zone_text(instant) == "15 Mar 2026, 23:59 SAST"
