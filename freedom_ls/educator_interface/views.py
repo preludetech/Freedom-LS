@@ -2359,7 +2359,14 @@ def learner_import_preview(
         return _see_other(result_url)
     # An unknown label shows every row rather than none.
     label = request.GET.get("label", "")
-    shown = rows.filter(preview_label=label) if label in ImportLabel.values else rows
+    if label not in ImportLabel.values:
+        label = ""
+    if label:
+        shown = rows.filter(preview_label=label)
+    else:
+        # Error rows have their own block above the table, so the unfiltered
+        # table holds only the rows that will be added or are already members.
+        shown = rows.exclude(preview_label=ImportLabel.ERROR)
     page_obj = Paginator(
         shown.order_by("line_number"), IMPORT_PREVIEW_PAGE_SIZE
     ).get_page(request.GET.get("page"))
@@ -2370,7 +2377,7 @@ def learner_import_preview(
         {
             "learner_import": learner_import,
             "page_obj": page_obj,
-            "label": label if label in ImportLabel.values else "",
+            "label": label,
             "preview_url": _import_url(
                 "learner_import_preview", scoped.organisation, import_id
             ),
@@ -2381,6 +2388,7 @@ def learner_import_preview(
             "label_counts": counts,
             "new_account_count": _count_of(counts, ImportLabel.NEW_ACCOUNT),
             "error_count": _count_of(counts, ImportLabel.ERROR),
+            "error_rows": _capped_error_rows(learner_import),
             "add_count": add_count,
             "in_background": in_background,
         },
@@ -2442,6 +2450,14 @@ def learner_import_errors(
     )
 
 
+def _capped_error_rows(learner_import: LearnerImport) -> list[dict[str, object]]:
+    """The first IMPORT_RESULT_ERROR_ROWS error rows with their reasons."""
+    return [
+        {"row": row, "reason": error_reason(row)}
+        for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
+    ]
+
+
 def _import_status_context(
     scoped: OrganisationScopedRequest, learner_import: LearnerImport
 ) -> dict[str, object]:
@@ -2471,10 +2487,7 @@ def _import_status_context(
         label_counts=counts,
         added_count=added,
         not_added_count=total - added,
-        error_rows=[
-            {"row": row, "reason": error_reason(row)}
-            for row in error_rows(learner_import)[:IMPORT_RESULT_ERROR_ROWS]
-        ],
+        error_rows=_capped_error_rows(learner_import),
         error_count=_count_of(counts, ImportLabel.ERROR),
         errors_url=_import_url("learner_import_errors", scoped.organisation, import_id),
         new_account_count=_count_of(counts, ImportLabel.NEW_ACCOUNT),

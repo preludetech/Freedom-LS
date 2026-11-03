@@ -4602,7 +4602,7 @@ def test_the_preview_counts_each_label_and_offers_to_add_the_rows_that_can_be_ad
         button.text_content().strip()
         for button in page.cssselect("#main-content button[type=submit]")
     ] == ["Add 2 learners"]
-    assert len(page.cssselect("tbody tr")) == 4
+    assert len(page.cssselect("[data-import-rows] tbody tr")) == 3
 
 
 @pytest.mark.django_db
@@ -4820,7 +4820,10 @@ def test_the_preview_filters_its_rows_to_the_label_in_the_query_string(
         + "?label=error",
     )
 
-    emails = [cell.text for cell in page.cssselect("table tbody tr td:nth-child(2)")]
+    emails = [
+        cell.text
+        for cell in page.cssselect("[data-import-rows] tbody tr td:nth-child(2)")
+    ]
     assert emails == ["bad"]
 
 
@@ -4860,8 +4863,8 @@ def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
 
     next_link = first.cssselect("a[rel='next']")[0]
     assert (
-        len(first.cssselect("table tbody tr")),
-        len(second.cssselect("table tbody tr")),
+        len(first.cssselect("[data-import-rows] tbody tr")),
+        len(second.cssselect("[data-import-rows] tbody tr")),
         next_link.get("href"),
     ) == (50, 1, "?label=error&page=2")
 
@@ -4936,6 +4939,148 @@ def test_the_preview_links_to_the_error_rows_download_only_when_there_are_errors
         ["Download the 1 error row"],
         [],
     )
+
+
+def _preview_page(
+    import_world: SimpleNamespace, learner_import: LearnerImport, query: str = ""
+):
+    return _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+        + query,
+    )
+
+
+@pytest.mark.django_db
+def test_the_unfiltered_preview_rows_table_holds_no_error_rows(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    emails = [
+        c.text for c in page.cssselect("[data-import-rows] tbody tr td:nth-child(2)")
+    ]
+    assert emails == ["good@example.com"]
+
+
+@pytest.mark.django_db
+def test_the_preview_filtered_to_errors_lists_only_error_rows_in_the_rows_table(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import, "?label=error")
+
+    emails = [
+        c.text for c in page.cssselect("[data-import-rows] tbody tr td:nth-child(2)")
+    ]
+    assert emails == ["bad"]
+
+
+@pytest.mark.django_db
+def test_the_error_block_lists_the_line_email_and_reason_of_each_error_row(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    cells = [
+        c.text for c in page.cssselect("[data-error-block] table[data-error-rows] td")
+    ]
+    assert cells == ["3", "bad", "This isn't a valid email address."]
+
+
+@pytest.mark.django_db
+def test_the_error_block_links_to_the_download_and_the_corrected_file_upload(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    download = page.cssselect("[data-error-block] a[data-error-download]")[0]
+    reupload = page.cssselect("[data-error-block] a[data-error-reupload]")[0]
+    assert (download.get("href"), reupload.get("href")) == (
+        _import_url(import_world.organisation, "learner_import_errors", learner_import),
+        _import_url(import_world.organisation, "learner_import"),
+    )
+
+
+@pytest.mark.django_db
+def test_the_error_block_shows_fifty_error_rows_and_says_how_many_there_are(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, *_numbered_lines(1, 51)
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    block = page.cssselect("[data-error-block]")[0]
+    assert len(block.cssselect("table[data-error-rows] tbody tr")) == 50
+    assert "Showing the first 50 of 51." in " ".join(block.text_content().split())
+
+
+@pytest.mark.django_db
+def test_a_preview_without_errors_has_no_error_block(import_world: SimpleNamespace):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    assert not page.cssselect("[data-error-block]")
+
+
+@pytest.mark.django_db
+def test_the_setup_email_line_is_absent_when_no_new_accounts_will_be_made(
+    import_world: SimpleNamespace,
+):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        f"{existing.user.email},,,",
+        "bad,,,",
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    assert "will get a setup email" not in page.text_content()
+
+
+@pytest.mark.django_db
+def test_an_all_errors_preview_has_no_rows_card_and_offers_a_different_file_button(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    buttons = page.cssselect("#main-content a.btn")
+    different = [
+        b
+        for b in buttons
+        if " ".join(b.text_content().split()) == "Upload a different file"
+    ]
+    assert not page.cssselect("[data-import-rows]")
+    assert "Nothing can be added" in page.text_content()
+    assert [b.get("href") for b in different] == [
+        _import_url(import_world.organisation, "learner_import")
+    ]
 
 
 @pytest.mark.django_db
@@ -5170,6 +5315,27 @@ def test_the_result_shows_only_the_first_fifty_error_rows(
     )
 
     assert len(page.cssselect("table[data-error-rows] tbody tr")) == 50
+    assert "Showing the first 50 of 51." in " ".join(page.text_content().split())
+
+
+@pytest.mark.django_db
+def test_the_result_error_block_has_no_corrected_file_link(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    assert page.cssselect("[data-error-block]")
+    assert not page.cssselect("a[data-error-reupload]")
 
 
 @pytest.mark.django_db
@@ -5467,7 +5633,7 @@ def test_the_preview_of_a_cohort_import_shows_the_target_cohort_on_every_row(
 
     table_cells = [
         " ".join(row.cssselect("td")[4].text_content().split())
-        for row in page.cssselect("tbody tr")
+        for row in page.cssselect("[data-import-rows] tbody tr")
     ]
     card_values = [
         " ".join(dd.text_content().split())
