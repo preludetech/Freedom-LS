@@ -17,7 +17,9 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionAnswerFileFactory,
+    QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
     FormPage,
@@ -289,6 +291,103 @@ def test_a_non_file_question_is_not_found(mock_site_context, client, sitting):
 
     response = client.post(
         _upload_url(form_progress, text_question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Questions the sitting is not asked
+# ---------------------------------------------------------------------------
+
+
+def _gated_file_question(
+    form_progress: FormProgress,
+) -> tuple[FormQuestion, FormQuestion]:
+    """The sitting's choice question, and a file question that opens only on
+    that choice's `yes` option."""
+    form = form_progress.form
+    choice_page = FormPageFactory(form=form, order=1)
+    choice: FormQuestion = FormQuestionFactory(
+        form_page=choice_page, type="multiple_choice", order=0
+    )
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    gated_page = FormPageFactory(form=form, order=2)
+    gated: FormQuestion = FormQuestionFactory(
+        form_page=gated_page, type="file_upload", order=0, condition_option=yes
+    )
+    return choice, gated
+
+
+@pytest.mark.django_db
+def test_attaching_to_a_question_the_sitting_is_not_asked_is_not_found(
+    mock_site_context, client, sitting
+):
+    form_progress, _question = sitting
+    _choice, gated = _gated_file_question(form_progress)
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, gated),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert QuestionAnswerFile.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_removing_from_a_question_the_sitting_is_not_asked_is_not_found(
+    mock_site_context, client, sitting
+):
+    form_progress, _question = sitting
+    _choice, gated = _gated_file_question(form_progress)
+    stored: QuestionAnswerFile = QuestionAnswerFileFactory(
+        answer__form_progress=form_progress, answer__question=gated
+    )
+    client.force_login(form_progress.user)
+
+    response = client.post(_remove_url(form_progress, gated), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+    assert QuestionAnswerFile.objects.filter(pk=stored.pk).exists()
+
+
+@pytest.mark.django_db
+def test_attaching_to_a_question_the_sitting_is_asked_still_works(
+    mock_site_context, client, sitting
+):
+    form_progress, _question = sitting
+    choice, gated = _gated_file_question(form_progress)
+    yes = choice.options.get(value="yes")
+    answer = QuestionAnswerFactory(form_progress=form_progress, question=choice)
+    answer.selected_options.set([yes])
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, gated),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert QuestionAnswerFile.objects.filter(answer__question=gated).exists()
+
+
+@pytest.mark.django_db
+def test_a_completed_sitting_is_not_found_for_a_question_it_was_not_asked(
+    mock_site_context, client, sitting
+):
+    form_progress, _question = sitting
+    _choice, gated = _gated_file_question(form_progress)
+    form_progress.complete()
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, gated),
         {"file": _png_upload()},
         HTTP_HX_REQUEST="true",
     )

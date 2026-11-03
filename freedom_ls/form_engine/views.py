@@ -19,6 +19,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from freedom_ls.form_engine.conditions import sitting_path
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.models import (
     FormProgress,
@@ -39,7 +40,9 @@ def _owned_file_question(
     """The sitting and the file question, or 404.
 
     The question is matched against the sitting's own form, so a question id
-    lifted from another form reaches nothing.
+    lifted from another form reaches nothing. A question the sitting is not
+    asked is refused too, judged on `sitting_path` so a completed sitting is
+    held to what it was asked rather than to what its answers would open now.
     """
     form_progress = get_object_or_404(
         owned_form_progress(request).select_related("form"),
@@ -51,6 +54,8 @@ def _owned_file_question(
         form_page__form=form_progress.form,
         type=QuestionType.FILE_UPLOAD,
     )
+    if not sitting_path(form_progress).has_question(question.id):
+        raise Http404("This question is not asked in this sitting.")
     return form_progress, question
 
 
