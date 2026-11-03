@@ -87,7 +87,7 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
         assert set(markers) == {"none"}
     page.get_by_role("link", name="Error: 1").click()
     expect(page).to_have_url(re.compile(r"label=error"))
-    rows = page.locator("table tbody tr")
+    rows = page.locator("[data-import-rows] tbody tr")
     expect(rows).to_have_count(1)
     expect(rows.first).to_contain_text("not-an-email")
 
