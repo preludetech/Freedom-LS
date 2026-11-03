@@ -2124,10 +2124,11 @@ def test_the_learners_tab_toolbar_offers_the_csv_export(staff_client: Client):
         ),
     )
 
-    (link,) = [
+    links = [
         a for a in document.cssselect("a") if a.text_content().strip() == "Export CSV"
     ]
-    assert "learners-export=csv" in link.get("href")
+    assert links
+    assert all("learners-export=csv" in a.get("href") for a in links)
 
 
 @pytest.mark.django_db

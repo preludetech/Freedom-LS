@@ -299,13 +299,31 @@ class DataTablePanel(Panel):
             )
         return count_phrase(count, self.noun_singular(request), self.noun(request))
 
-    def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
+    def get_export_queryset(self, request: HttpRequest) -> QuerySet:
+        """The rows the CSV export narrows with the same search, filters
+        and sort as the screen. Defaults to the screen's own rows; a panel
+        overrides it to add a `select_related` the screen does not need."""
+        return self.get_queryset(request)
+
+    def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        """Runs once after narrowing and before the streaming response is
+        built, while the request's site is still the ambient scope, so a
+        panel can record the export. Returns the rows to stream."""
+        return rows
+
+    def narrow(
+        self, request: HttpRequest, queryset: QuerySet | None = None
+    ) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
-        applied, so a render and an export narrow identically."""
+        applied, so a render and an export narrow identically. `queryset`
+        replaces the panel's own rows as the starting point (the export
+        passes `get_export_queryset`)."""
         query = self.data_table.parse_query(request, self.table_key)
         rows = self.data_table.filter_queryset(
-            request, self.get_queryset(request), query
+            request,
+            self.get_queryset(request) if queryset is None else queryset,
+            query,
         )
         return query, rows
 

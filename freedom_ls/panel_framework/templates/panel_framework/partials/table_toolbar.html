@@ -174,11 +174,11 @@ work with JavaScript off.
         {% endif %}
     </div>
 
-    {% if toolbar or sortable_columns %}
+    {% if toolbar or sortable_columns or exports %}
         <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden"
-             x-data="sidePanel"
+             {% if toolbar or sortable_columns %}x-data="sidePanel"
              data-storage-key="{{ query.key }}-sheet"
-             data-mobile-only="true">
+             data-mobile-only="true"{% endif %}>
             {% for entry in toolbar %}
                 {% if entry.values %}
                     <c-chip variant="secondary">
@@ -228,6 +228,11 @@ work with JavaScript off.
                 </c-dropdown-menu>
             {% endif %}
             </div>
+
+            {% if exports %}
+                {% querystring request.GET export_changes as export_qs %}
+                <c-button variant="secondary" size="small" icon_left="download" class="min-h-11" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
+            {% endif %}
 
             {% if toolbar %}
                 {% include "panel_framework/partials/table_sheet.html" %}

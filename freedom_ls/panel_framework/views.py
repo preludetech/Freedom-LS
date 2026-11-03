@@ -292,6 +292,26 @@ class ListViewConfig(SectionConfigBase):
         return {}
 
     @classmethod
+    def get_export_queryset(cls, request: HttpRequest) -> QuerySet:
+        """The rows the CSV export narrows. Defaults to the list's own rows."""
+        if cls.list_view is None:
+            raise ValueError(f"{cls.__name__} must define list_view")
+        return cls.list_view.get_queryset(request)
+
+    @classmethod
+    def before_export(cls, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        """Runs once before the CSV streams, while the request's site is
+        still the ambient scope. Returns the rows to stream."""
+        return rows
+
+    @classmethod
+    def get_export_scope_slug(cls, request: HttpRequest) -> str:
+        """A URL-safe fragment naming the list's scope in its export
+        filename. The list page has no instance, so the config is the only
+        place that knows it. Empty by default."""
+        return ""
+
+    @classmethod
     def get_action(cls, request: HttpRequest, action_name: str) -> PanelAction | None:
         return _find_action(cls.get_actions(request), action_name)
 
@@ -353,13 +373,25 @@ class ListViewPanel(DataTablePanel):
     same way a table panel does. `bulk_actions` is set the same way, from the
     config's `get_bulk_actions`. `cell_context` is set from the config's
     `get_cell_context` and merged into the context the cell templates render
-    with.
+    with. `config` is the bound ListViewConfig, and the export hooks
+    (`get_export_queryset`, `before_export`, `get_export_scope_slug`) forward
+    to it.
     """
 
     title = ""
     actions: list[PanelAction] = []
     bulk_actions: list[BulkAction] = []
     cell_context: dict[str, object] = {}
+    config: type[ListViewConfig]
+
+    def get_export_queryset(self, request: HttpRequest) -> QuerySet:
+        return self.config.get_export_queryset(request)
+
+    def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        return self.config.before_export(request, rows)
+
+    def get_export_scope_slug(self, request: HttpRequest) -> str:
+        return self.config.get_export_scope_slug(request)
 
     def get_actions(self) -> list[PanelAction]:
         return self.actions
@@ -497,6 +529,7 @@ def _bind_root(
             table.actions = section.get_actions(request)
             table.bulk_actions = section.get_bulk_actions(request)
             table.cell_context = section.get_cell_context(request)
+            table.config = section
             return table, None, 1
         instance_view = section.get_instance_view(request, parts[1])
         instance_base_url = f"{section_url}/{parts[1]}"
@@ -1234,7 +1267,8 @@ def _export_response(
         raise Http404("This table has no CSV export")
     if request.GET.get(f"{panel.table_key}-export") != "csv":
         raise Http404("Unsupported export format")
-    _query, queryset = panel.narrow(request)
+    _query, queryset = panel.narrow(request, panel.get_export_queryset(request))
+    queryset = panel.before_export(request, queryset)
 
     def rows() -> Iterator[str]:
         echo = EchoWriter()
