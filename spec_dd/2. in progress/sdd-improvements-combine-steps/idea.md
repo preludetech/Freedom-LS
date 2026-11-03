@@ -19,3 +19,9 @@ As soon as the plan is implemented, then run the QA.
 That we may want to run the QA again after making changes to the code So it still needs to be something we can run independently
 
 Again, make use of parallel subagents wherever possible in order to protect context and speed things up.
+
+3. If you see anything else that can be chained please go ahead
+
+4. implement plan
+
+If it would make sense to use short-lived git worktrees to allow parallel coding, please implement this.
