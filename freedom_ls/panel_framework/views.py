@@ -843,6 +843,10 @@ def _handle_bulk_action(
     queryset = resolve_selection(panel, request, selection)
     count = queryset.count()
     if count == 0:
+        if selection.mode == "keys" and selection.keys:
+            # Rows were ticked but none resolves: they left the user's scope
+            # after the page loaded, the same 404 a single-row action gives.
+            raise Http404("None of the selected rows is available")
         return error_response(selection, count, "Nothing selected")
     in_background = action.runs_in_background(count)
     # A whole filtered table is bounded only when a task does the work.

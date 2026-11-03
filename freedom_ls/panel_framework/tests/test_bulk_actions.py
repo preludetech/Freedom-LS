@@ -751,6 +751,43 @@ def test_plain_post_error_is_full_page_422(mock_site_context: Site) -> None:
     assert "<html" in content.lower()
 
 
+def test_ticked_rows_that_no_longer_resolve_are_a_404_dialog_for_htmx(
+    mock_site_context: Site,
+) -> None:
+    """Keys were ticked, so this is not an empty selection: the rows left the
+    user's scope after the page loaded, which the unavailable dialog says."""
+    stub = make_stub(name="row-x")
+    gone = make_stub(name="row-gone")
+    gone_pk = gone.pk
+    gone.delete()
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={"mode": "keys", "keys": [str(gone_pk)]},
+        htmx=True,
+    )
+
+    assert response.status_code == 404
+    assert "no longer available" in _text(response).lower()
+
+
+def test_ticked_rows_that_no_longer_resolve_are_a_plain_404(
+    mock_site_context: Site,
+) -> None:
+    stub = make_stub(name="row-x")
+    gone = make_stub(name="row-gone")
+    gone_pk = gone.pk
+    gone.delete()
+
+    with pytest.raises(Http404):
+        fetch(
+            _action_path(stub.pk),
+            method="post",
+            data={"mode": "keys", "keys": [str(gone_pk)]},
+        )
+
+
 def test_htmx_post_renders_modal_confirmation(mock_site_context: Site) -> None:
     stub = make_stub(name="row-x")
 

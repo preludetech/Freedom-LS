@@ -7455,6 +7455,28 @@ def _plain_post(client: Client, path: str, **extra: str):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("action_name", ["register_for_course", "add_to_cohort"])
+def test_a_bulk_action_on_rows_that_left_the_scope_answers_the_unavailable_dialog(
+    staff_client: Client, action_name: str
+):
+    """Ticked rows the educator can no longer see are a 404, like a single-row
+    action on them, with the same body as for a row that never existed."""
+    organisation = OrganisationFactory()
+    elsewhere = _bulk_learner(organisation=OrganisationFactory())
+
+    gone = _bulk_post(staff_client, organisation, action_name, [elsewhere])
+    never = staff_client.post(
+        _learners_bulk_url(organisation, action_name),
+        {"keys": [str(uuid.uuid4())]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert gone.status_code == 404
+    assert "This is no longer available" in _bulk_text(gone)
+    assert gone.content == never.content
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "path_template",
     ["learners/__actions/unregister_from_course", "cohorts/__actions/unregister"],
