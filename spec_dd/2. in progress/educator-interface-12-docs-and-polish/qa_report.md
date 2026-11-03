@@ -215,18 +215,18 @@ No design states were tested. The plan's mockup comparison (Test 1) is notes-onl
 
 | Bug | Title | Status |
 |---|---|---|
-- **FIXED** (commit: 2a97cde06) — B1: Bulk actions with a form return 500 when the whole selection has become inaccessible. Re-verified: register_for_course and add_to_cohort now return 422 with a "Nothing selected" dialog; adjacent bulk flows still work. Open question (see B1-decision below): the plan expected the "This is no longer available" dialog instead.
-- **UNRESOLVED** — B2: Focus is lost to `<body>` after several confirmations (reason: fix 9b3bc4d41 kept focus on the page for cohort Learners-tab Remove and cohort rename, but the learner Overview Registrations card still dropped focus to `<body>` in 2 of 4 runs; reverted in 4d396f942 per the re-verify rule. The reverted beforeSwap/afterSettle approach in panel_framework alpine-components.js is a good starting point).
+- **FIXED** (commit: 2a97cde06, then ca6d659f4) — B1: Bulk actions with a form return 500 when the whole selection has become inaccessible. First fix answered 422 "Nothing selected"; the decision below settled on the 404 dialog, which the second commit implements. Re-verified: register_for_course and add_to_cohort on a selection from another organisation answer 404 with "This is no longer available", body identical to a never-existing id; an empty selection still answers 422 "Nothing selected".
+- **FIXED** (commit: 5e520bdae) — B2: Focus is lost to `<body>` after several confirmations. The earlier fix (9b3bc4d41, reverted) kept one shared flag that overlapping swaps overwrote; the learner Overview refetches three regions per confirm. Focus is now tracked per request and recovered in `htmx:afterSwap`. Three browser tests (cohort Learners row Remove, Registrations card Reactivate, cohort rename) failed on five of five runs before the fix and passed on five of five after.
 - **FIXED** (commit: 1faeffb7e) — B3: Row "Remove" trigger uses secondary instead of error style. Re-verified on the cohort Learners tab and the learner page Cohorts card.
-- **UNRESOLVED** — B4: Bulk dialog title count contradicts the sentence count (reason: product/copy decision on which count the title states).
-- **UNRESOLVED** — B5: Cohort Report tab tables are unnamed and not in a focusable region (reason: fix budget exhausted this run).
-- **UNRESOLVED** — B6: Bulk result message is not announced to screen readers (reason: fix budget exhausted this run).
-- **UNRESOLVED** — B7: Members table and region are named "Users" (reason: fix budget exhausted this run).
-- **UNRESOLVED** — B8: Text-input boundary fails WCAG 1.4.11 non-text contrast in both themes (reason: theme token/design decision — fix the border token or record it in deliberately_left.md).
-- **UNRESOLVED** — B9: Learners list shows the first-use empty state when the default filter hides every learner (reason: product decision on the empty-state wording/behaviour).
-- **UNRESOLVED** — B10: Phone filter sheet Reset control is 36px tall (reason: fix budget exhausted this run).
-- **UNRESOLVED** — B11: Move dialog's stale-destination error wording differs from Add to cohort (reason: copy decision; no UUID leaks, which was the defect the plan targeted).
-- **B1-decision** — should a bulk action whose whole selection has become inaccessible show the 404 "This is no longer available" dialog (as the plan's Test 8.3 says) instead of the 422 "Nothing selected" dialog it now shows?
+- **FIXED** (commit: 3afc1cf1f) — B4: Bulk dialog title count contradicts the sentence count. Decision: the title counts the rows that will change, as the sentence does; "Reactivate 0 learners?" with the confirm disabled when nothing will change.
+- **FIXED** (commit: de69f5cd7) — B5: Cohort Report tab tables are unnamed and not in a focusable region. Each summary and confusion table has an sr-only caption (course title, "(continued)" for a split table, or the quiz heading) and scrolls in a `role="region" tabindex="0"` wrapper named by it.
+- **FIXED** (commit: 80c7cfa43) — B6: Bulk result message is not announced to screen readers. A polite `role="status"` region inside the dialog host (`#app-modal-status`) receives the headline out of band, since the page's live regions are inert under a modal dialog; Close is also `aria-describedby` the headline. Re-verify: after a bulk result, `#app-modal-status` holds the headline (the Playwright learners flow asserts it); `#toast-region-polite` stays empty by design.
+- **FIXED** (commit: 185f8fa36) — B7: Members table and region are named "Users". `DataTable.noun` overrides the model name; the members table says "Members".
+- **FIXED** (commit: 7c0cdf96f) — B8: Text-input boundary fails WCAG 1.4.11 in both themes. New `--color-border-input` token (`#6B7280` default, `#64748B` first_class) edges text fields, selects and textareas product-wide; a theme invariant test holds it at 3:1 or better against white, surface and surface-2.
+- **FIXED** (commit: a6af21faf) — B9: Learners list shows the first-use empty state when the default filter hides every learner. An empty page under untouched default filters, with rows in scope, now shows "No learners match these filters." and a "Show all learners" link that selects every status. Clearing still returns to Active + Pending.
+- **FIXED** (commit: f7f6a5ab0) — B10: Phone filter sheet Reset control is 36px tall. Reset and the status chips in the sheet are 44px; the touch-target test opens the sheet and measures links too.
+- **FIXED** (commit: 4481d4067) — B11: Move dialog's stale-destination error wording differs from Add to cohort. Both read "Choose a cohort from the list." through the one `choice_error` helper.
+- **DECIDED** — B1-decision: a bulk action whose whole selection has left the user's scope answers 404 with the "This is no longer available" dialog, as the spec's Decisions and the QA plan's Test 8.3 say; the code changed (ca6d659f4) and the plan stands.
 
 ## General notes
 
@@ -242,4 +242,4 @@ No design states were tested. The plan's mockup comparison (Test 1) is notes-onl
 - The dev badge and the debug toolbar were hidden for the doc screenshots.
 - On tablet the learners table (877px in a 718px region) has no visual scroll cue, and the Learner column takes about 430px.
 
-status: ok · reason: 11 bugs — 2 fixed, 9 unresolved (1 fix reverted after re-verification); report rendered, screenshots verified
+status: ok · reason: 11 bugs — 11 fixed (B2 on its second fix, after the first was reverted on re-verification), B1-decision decided; report rendered, screenshots verified
