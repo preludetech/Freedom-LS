@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js"></script>
+<style>
+  body { background: #E9ECF3; }
+  a { color: var(--color-primary); text-decoration: none; }
+  a:hover { color: var(--color-primary-900); }
+</style>
+</helmet>
+    <div style="width:1440px;min-height:900px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Learners" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-primary);font-weight:600;cursor:pointer"><i class="ph ph-arrow-left" style="font-size:15px"></i>Learners</div>
+          <i class="ph ph-caret-right" style="font-size:12px;color:var(--fg-4)"></i>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Import learners</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:22px">
+            <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:24px;height:24px;border-radius:999px;background:{{ s.dotBg }};color:{{ s.dotColor }};border:1px solid {{ s.dotBorder }};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11.5px;font-weight:500">{{ s.mark }}</div>
+                <div style="font-size:13px;font-weight:600;color:{{ s.labelColor }}">{{ s.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <input type="file" accept=".csv,text/csv" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none"></input>
+
+        <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:32px 28px 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;color:var(--fg-1);letter-spacing:-0.01em">Upload a CSV file</div>
+                <div style="font-size:14px;color:var(--fg-2);margin-top:6px;line-height:1.55;max-width:52ch">Add up to 1,000 learners at once. Nothing is created until you review the file and confirm.</div>
+              </div>
+              <div onClick="{{ browse }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="background:{{ dropBg }};border:1.5px dashed {{ dropBorder }};border-radius:12px;padding:44px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;cursor:pointer;transition:background-color 200ms, border-color 200ms">
+                <div style="width:52px;height:52px;border-radius:999px;background:var(--grey-100);display:flex;align-items:center;justify-content:center;color:var(--color-primary)"><i class="ph ph-file-csv" style="font-size:26px"></i></div>
+                <div style="font-size:15px;font-weight:600;color:var(--fg-1)">Drop your CSV here, or <span style="color:var(--color-primary)">browse</span></div>
+                <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">.csv · UTF-8 · max 5 MB · 1,000 rows</div>
+              </div>
+              <sc-if value="{{ hasFileError }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--color-error-light);border-radius:10px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+                  <i class="ph ph-warning-circle" style="font-size:18px;color:#a52a2a;margin-top:1px"></i>
+                  <div style="font-size:13px;color:#a52a2a;line-height:1.5">{{ fileError }}</div>
+                </div>
+              </sc-if>
+              <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--fg-3)">
+                <div style="flex:1;height:1px;background:var(--border)"></div>No file to hand?<div style="flex:1;height:1px;background:var(--border)"></div>
+              </div>
+              <div onClick="{{ useSample }}" style="height:44px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--fg-2);cursor:pointer" style-hover="border-color:var(--color-primary);color:var(--color-primary)"><i class="ph ph-flask" style="font-size:16px"></i>Use sample file (46 rows)</div>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+                <div>
+                  <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">File format</div>
+                  <div style="font-size:12.5px;color:var(--fg-3);margin-top:2px">One learner per row. The first row must contain these column headers.</div>
+                </div>
+                <div onClick="{{ downloadTemplate }}" style="margin-left:auto;height:38px;flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:0 14px;border-radius:8px;background:var(--color-primary);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:#1f2a73"><i class="ph ph-download-simple" style="font-size:16px"></i>Download template</div>
+              </div>
+              <div style="display:grid;grid-template-columns:150px 92px minmax(0,1fr);align-items:center;height:38px;background:var(--grey-50);border-bottom:1px solid var(--border);padding:0 22px">
+                <div class="fc-overline">Column</div><div class="fc-overline">Required</div><div class="fc-overline">Format</div>
+              </div>
+              <sc-for list="{{ columns }}" as="c" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:150px 92px minmax(0,1fr);align-items:start;padding:11px 22px;border-bottom:1px solid var(--grey-100)">
+                  <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-1);font-weight:500;padding-top:1px">{{ c.key }}</div>
+                  <div style="font-size:12.5px;color:{{ c.reqColor }};font-weight:600">{{ c.req }}</div>
+                  <div style="font-size:13px;color:var(--fg-2);line-height:1.5">{{ c.note }}<span style="display:block;font-family:var(--font-mono);font-size:12px;color:var(--fg-3);margin-top:2px">{{ c.example }}</span></div>
+                </div>
+              </sc-for>
+              <div style="padding:16px 22px;display:flex;flex-direction:column;gap:10px">
+                <div class="fc-overline">Cohort codes for Skyward Aviation Academy</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ cohortList }}" as="ch" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--grey-50)">
+                      <span style="font-family:var(--font-mono);font-size:12px;color:var(--fg-1);font-weight:500">{{ ch.code }}</span>
+                      <span style="font-size:12.5px;color:var(--fg-3)">{{ ch.name }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font-size:12.5px;color:var(--fg-3);line-height:1.55;margin-top:4px">Learners whose email already exists on the platform are matched, not duplicated. You choose whether to update or skip them in the next step.</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:28px 28px 0;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:44px;height:44px;border-radius:10px;background:var(--grey-100);display:flex;align-items:center;justify-content:center;color:var(--color-primary)"><i class="ph ph-file-csv" style="font-size:22px"></i></div>
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em">Review import</div>
+                <div style="font-size:13px;color:var(--fg-3);margin-top:2px"><span style="font-family:var(--font-mono);color:var(--fg-2)">{{ fileName }}</span> · {{ totalLabel }}</div>
+              </div>
+              <div onClick="{{ browse }}" style="margin-left:auto;height:38px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;font-size:13.5px;font-weight:600;color:var(--fg-2);cursor:pointer" style-hover="border-color:var(--color-primary);color:var(--color-primary)"><i class="ph ph-arrows-clockwise" style="font-size:15px"></i>Replace file</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+              <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+                <div class="fc-overline" style="margin-bottom:8px">New learners</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:30px;color:var(--fg-1);line-height:1">{{ nNew }}</div>
+                <div style="font-size:12.5px;color:var(--fg-3);margin-top:8px">Accounts will be created</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+                <div class="fc-overline" style="margin-bottom:8px">Already on platform</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:30px;color:var(--fg-1);line-height:1">{{ nExisting }}</div>
+                <div style="font-size:12.5px;color:var(--fg-3);margin-top:8px">{{ existingNote }}</div>
+              </div>
+              <div style="background:#fff;border:1px solid {{ errCardBorder }};border-radius:12px;padding:16px 18px">
+                <div class="fc-overline" style="margin-bottom:8px">Rows with errors</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:30px;color:{{ errCountColor }};line-height:1">{{ nErrors }}</div>
+                <div style="font-size:12.5px;color:var(--fg-3);margin-top:8px">{{ errorNote }}</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+                <div class="fc-overline" style="margin-bottom:10px">By cohort</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ cohortCounts }}" as="cc" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px">
+                      <span style="font-family:var(--font-mono);color:var(--fg-2)">{{ cc.code }}</span>
+                      <span style="flex:1;height:1px;background:var(--grey-100)"></span>
+                      <span style="font-family:var(--font-mono);color:var(--fg-1);font-weight:500">{{ cc.n }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <sc-if value="{{ hasErrors }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+                <div style="padding:16px 22px;background:var(--color-error-light);display:flex;align-items:center;gap:12px">
+                  <i class="ph ph-warning-circle" style="font-size:20px;color:#a52a2a"></i>
+                  <div>
+                    <div style="font-size:14px;font-weight:600;color:#a52a2a">{{ errorHeadline }}</div>
+                    <div style="font-size:12.5px;color:#a52a2a;margin-top:2px">Fix them in your file and re-upload, or continue and import the valid rows only.</div>
+                  </div>
+                  <div style="margin-left:auto;display:flex;gap:8px">
+                    <div onClick="{{ downloadErrors }}" style="height:36px;display:flex;align-items:center;gap:7px;padding:0 12px;border:1px solid #e9b4b4;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#a52a2a;cursor:pointer"><i class="ph ph-download-simple" style="font-size:15px"></i>Error report</div>
+                    <div onClick="{{ browse }}" style="height:36px;display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:8px;background:#a52a2a;color:#fff;font-size:13px;font-weight:600;cursor:pointer"><i class="ph ph-upload-simple" style="font-size:15px"></i>Re-upload corrected file</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);align-items:center;height:38px;background:var(--grey-50);border-bottom:1px solid var(--border);padding:0 22px">
+                  <div class="fc-overline">Row</div><div class="fc-overline">Name</div><div class="fc-overline">Email</div><div class="fc-overline">Issue</div>
+                </div>
+                <div style="max-height:236px;overflow:auto">
+                  <sc-for list="{{ errorRows }}" as="e" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);align-items:center;min-height:46px;padding:8px 22px;border-bottom:1px solid var(--grey-100)">
+                      <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-3)">{{ e.line }}</div>
+                      <div style="font-size:13.5px;color:var(--fg-1);font-weight:500">{{ e.name }}</div>
+                      <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-2);overflow:hidden;text-overflow:ellipsis">{{ e.email }}</div>
+                      <div style="font-size:13px;color:#a52a2a;line-height:1.45">{{ e.issue }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">Preview</div>
+                <div style="font-size:12.5px;color:var(--fg-3)">{{ sampleLabel }}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.4fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 110px;align-items:center;height:38px;background:var(--grey-50);border-bottom:1px solid var(--border);padding:0 22px">
+                <div class="fc-overline">Learner</div><div class="fc-overline">Email</div><div class="fc-overline">Cohort</div><div class="fc-overline">Location</div><div class="fc-overline">Licence held</div><div class="fc-overline">Action</div>
+              </div>
+              <sc-for list="{{ sampleRows }}" as="r" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.4fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 110px;align-items:center;height:52px;border-bottom:1px solid var(--grey-100);padding:0 22px">
+                  <div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ r.initials }}</div><div style="font-size:13.5px;font-weight:600;color:var(--fg-1)">{{ r.name }}</div></div>
+                  <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--fg-2);overflow:hidden;text-overflow:ellipsis">{{ r.email }}</div>
+                  <div style="font-size:13px;color:var(--fg-2)">{{ r.cohortName }}</div>
+                  <div style="font-size:13px;color:var(--fg-2)">{{ r.location }}</div>
+                  <div style="font-size:13px;color:var(--fg-2)">{{ r.licence }}</div>
+                  <div><span style="padding:4px 10px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.badgeColor }};font-size:11.5px;font-weight:600">{{ r.action }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 22px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px">
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--fg-1);margin-bottom:10px">Learners already on the platform</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div onClick="{{ setUpdate }}" style="display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--fg-1);cursor:pointer">
+                    <div style="width:18px;height:18px;border-radius:999px;border:{{ updateRing }};box-sizing:border-box"></div>Update their details and cohort
+                  </div>
+                  <div onClick="{{ setSkip }}" style="display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--fg-1);cursor:pointer">
+                    <div style="width:18px;height:18px;border-radius:999px;border:{{ skipRing }};box-sizing:border-box"></div>Skip them — leave existing records unchanged
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--fg-1);margin-bottom:10px">Invitations</div>
+                <div onClick="{{ toggleInvite }}" style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--fg-1);cursor:pointer">
+                  <div style="width:18px;height:18px;flex:0 0 18px;border-radius:4px;background:{{ inviteBg }};border:1.5px solid {{ inviteBorder }};box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#fff;margin-top:1px"><i class="ph ph-check" style="font-size:11px"></i></div>
+                  <div>Email new learners an invitation to set their password<div style="font-size:12.5px;color:var(--fg-3);margin-top:3px">Invitations expire after 7 days. You can resend them from the learner table.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="position:sticky;bottom:0;margin-top:20px;background:#fff;border-top:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:12px">
+            <div style="font-size:13px;color:var(--fg-2)">{{ footerSummary }}</div>
+            <div style="margin-left:auto;display:flex;gap:10px">
+              <div onClick="{{ cancel }}" style="height:42px;padding:0 16px;border-radius:8px;border:1px solid var(--border-strong);color:var(--fg-2);display:flex;align-items:center;font-size:13.5px;font-weight:600;cursor:pointer">Cancel</div>
+              <div onClick="{{ accept }}" style="height:42px;padding:0 20px;border-radius:8px;background:{{ acceptBg }};color:{{ acceptColor }};display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:{{ acceptCursor }}"><i class="ph ph-check" style="font-size:15px"></i>{{ acceptLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isImporting }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px">
+            <div style="width:520px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px 30px;display:flex;flex-direction:column;gap:16px">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Importing learners</div>
+              <div style="font-size:13.5px;color:var(--fg-2)">{{ progressLabel }}</div>
+              <div style="height:8px;border-radius:999px;background:var(--grey-100);overflow:hidden"><div style="width:{{ progressPct }};height:100%;background:var(--color-secondary);transition:width 500ms cubic-bezier(0.22,1,0.36,1)"></div></div>
+              <div style="font-size:12.5px;color:var(--fg-3)">You can leave this page — the import continues in the background.</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px">
+            <div style="width:560px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:32px 32px 28px;display:flex;flex-direction:column;gap:20px">
+              <div style="width:52px;height:52px;border-radius:999px;background:var(--color-success-light);display:flex;align-items:center;justify-content:center;color:var(--color-success)"><i class="ph ph-check-circle" style="font-size:28px"></i></div>
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;color:var(--fg-1);letter-spacing:-0.01em">{{ doneHeadline }}</div>
+                <div style="font-size:13.5px;color:var(--fg-3);margin-top:4px"><span style="font-family:var(--font-mono)">{{ fileName }}</span> · completed today, {{ doneTime }}</div>
+              </div>
+              <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+                <sc-for list="{{ doneLines }}" as="d" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--grey-100);font-size:13.5px;color:var(--fg-1)">
+                    <i class="ph {{ d.icon }}" style="font-size:17px;color:{{ d.color }}"></i>{{ d.label }}
+                    <span style="margin-left:auto;font-family:var(--font-mono);font-size:13px;color:var(--fg-1);font-weight:500">{{ d.n }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:10px">
+                <div onClick="{{ cancel }}" style="flex:1;height:42px;border-radius:8px;border:1px solid var(--border-strong);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;cursor:pointer">Import another file</div>
+                <div style="flex:1;height:42px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px;font-weight:600;cursor:pointer">View learners<i class="ph ph-arrow-right" style="font-size:15px"></i></div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1442,&quot;height&quot;:902},&quot;startStep&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;upload&quot;,&quot;review&quot;,&quot;importing&quot;,&quot;done&quot;],&quot;default&quot;:&quot;upload&quot;,&quot;tsType&quot;:&quot;'upload'|'review'|'importing'|'done'&quot;}}">
+const COHORTS = { 'RPAS-LOS': 'RPAS Basic — Lagos', 'AIR-REG': 'Airspace & Regulation', 'BVLOS-ADV': 'Advanced BVLOS Operations', 'THERM-SRV': 'Thermal Survey Methods' };
+const EXISTING = ['t.molefe@skyward.co.za','l.mahlangu@skyward.co.za','n.kwena@skyward.co.za','i.bello@skyward.ng','c.mwangi@skyward.ke','s.duarte@skyward.co.za','k.asante@skyward.gh','a.voss@skyward.eu'];
+const HEADERS = ['first_name','last_name','email','cohort_code','location','licence_held'];
+const REQUIRED = ['first_name','last_name','email','cohort_code'];
+
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  text = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i+1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(v => v.trim() !== ''));
+}
+
+function sampleCSV() {
+  const people = [
+    ['Amara','Okafor','Lagos, NG','RPL — multirotor'],['Tendai','Moyo','Harare, ZW',''],['Fatima','Diallo','Dakar, SN','RPL — fixed wing'],['Johan','Pretorius','Pretoria, ZA','RPL — multirotor'],
+    ['Wanjiru','Kamau','Nairobi, KE',''],['Yusuf','Abdi','Mombasa, KE','RPL — multirotor'],['Grace','Nkosi','Durban, ZA',''],['Emeka','Eze','Abuja, NG','RPL — multirotor'],
+    ['Zanele','Dube','Johannesburg, ZA','RPL — fixed wing'],['Kofi','Mensah','Accra, GH',''],['Aisha','Bello','Kano, NG',''],['Pieter','van Wyk','Cape Town, ZA','RPL — multirotor'],
+    ['Nomvula','Zulu','Johannesburg, ZA',''],['Samuel','Owusu','Kumasi, GH','RPL — multirotor'],['Leila','Haddad','Casablanca, MA',''],['Tunde','Adeyemi','Lagos, NG','RPL — fixed wing'],
+    ['Mercy','Achieng','Kisumu, KE',''],['Bongani','Khumalo','Pretoria, ZA','RPL — multirotor'],['Esi','Boateng','Accra, GH',''],['Daniel','Mutua','Nairobi, KE','RPL — multirotor'],
+    ['Precious','Ndlovu','Bulawayo, ZW',''],['Ibrahim','Sow','Dakar, SN',''],['Chiamaka','Obi','Enugu, NG','RPL — multirotor'],['Thandeka','Mthembu','Durban, ZA',''],
+    ['Kwesi','Appiah','Accra, GH','RPL — fixed wing'],['Ruth','Wambui','Nakuru, KE',''],['Sipho','Mahlaba','Johannesburg, ZA','RPL — multirotor'],['Halima','Yusuf','Kaduna, NG',''],
+    ['Marco','Ferreira','Maputo, MZ','RPL — multirotor'],['Nadia','Benali','Tunis, TN',''],['Oluwaseun','Bakare','Ibadan, NG','RPL — multirotor'],['Lindiwe','Sithole','Cape Town, ZA',''],
+    ['Abebe','Tesfaye','Addis Ababa, ET','RPL — fixed wing'],['Joyce','Njeri','Nairobi, KE',''],['Musa','Danjuma','Jos, NG','RPL — multirotor'],['Ayanda','Cele','Durban, ZA',''],
+    ['Kojo','Asamoah','Takoradi, GH',''],['Rania','Saleh','Cairo, EG','RPL — multirotor']
+  ];
+  const codes = Object.keys(COHORTS);
+  const dom = l => l.includes('NG') ? 'skyward.ng' : l.includes('KE') ? 'skyward.ke' : l.includes('GH') ? 'skyward.gh' : 'skyward.co.za';
+  const rows = people.map((p, i) => [p[0], p[1], (p[0][0] + '.' + p[1].replace(/ /g,'')).toLowerCase() + '@' + dom(p[2]), codes[i % 4], p[2], p[3]]);
+  rows.splice(4, 0, ['Thabo','Molefe','t.molefe@skyward.co.za','BVLOS-ADV','Johannesburg, ZA','RPL — multirotor']);
+  rows.splice(9, 0, ['Kofi','Annan-Boateng','kofi.ab@skyward','RPAS-LOS','Accra, GH','']);
+  rows.splice(15, 0, ['Ibrahim','Bello','i.bello@skyward.ng','AIR-REG','Lagos, NG','RPL — multirotor']);
+  rows.splice(19, 0, ['Lwazi','','l.ngcobo@skyward.co.za','RPAS-JHB','Durban, ZA','']);
+  rows.splice(26, 0, ['Anja','Voss','a.voss@skyward.eu','AIR-REG','Berlin, DE','']);
+  rows.splice(30, 0, ['Grace','Nkosi','g.nkosi@skyward.co.za','THERM-SRV','Durban, ZA','']);
+  rows.splice(35, 0, ['Peter','Kariuki','','BVLOS-ADV','Nairobi, KE','RPL — multirotor']);
+  rows.splice(41, 0, ['Adwoa','Sarpong','a.sarpong@skyward.gh','THERM','Kumasi, GH','']);
+  return [HEADERS, ...rows].map(r => r.map(v => /[",]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v).join(',')).join('\n');
+}
+
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function analyse(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return { fileError: 'This file is empty. Add a header row and at least one learner, then upload it again.' };
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const missing = REQUIRED.filter(h => !head.includes(h));
+  if (missing.length) return { fileError: 'The header row is missing ' + missing.join(', ') + '. Download the template to see the expected columns, then upload again.' };
+  if (rows.length - 1 > 1000) return { fileError: 'This file has ' + (rows.length - 1) + ' learners. Split it into files of 1,000 rows or fewer.' };
+  const idx = Object.fromEntries(HEADERS.map(h => [h, head.indexOf(h)]));
+  const seen = {}; const valid = []; const errors = [];
+  rows.slice(1).forEach((r, i) => {
+    const g = k => idx[k] >= 0 ? (r[idx[k]] || '').trim() : '';
+    const rec = { line: i + 2, first: g('first_name'), last: g('last_name'), email: g('email').toLowerCase(), code: g('cohort_code').toUpperCase(), location: g('location'), licence: g('licence_held') };
+    const issues = [];
+    if (!rec.first) issues.push('first_name is empty');
+    if (!rec.last) issues.push('last_name is empty');
+    if (!rec.email) issues.push('email is empty');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rec.email)) issues.push('“' + rec.email + '” isn’t a valid email address');
+    else if (seen[rec.email]) issues.push('Duplicate email — already used on row ' + seen[rec.email]);
+    if (!rec.code) issues.push('cohort_code is empty');
+    else if (!COHORTS[rec.code]) issues.push('Cohort code “' + rec.code + '” doesn’t exist');
+    if (rec.email && !seen[rec.email]) seen[rec.email] = rec.line;
+    if (issues.length) errors.push({ ...rec, issue: issues.join(' · ') });
+    else valid.push({ ...rec, existing: EXISTING.includes(rec.email) });
+  });
+  return { total: rows.length - 1, valid, errors };
+}
+
+class Component extends DCLogic {
+  state = { step: 'upload', drag: false, fileError: '', fileName: '', result: null, mode: 'update', invite: true, progress: 0, doneTime: '' };
+  fileRef = React.createRef();
+
+  componentDidMount() {
+    const s = this.props.startStep;
+    if (s && s !== 'upload') this.jump(s);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  load(name, text) {
+    const res = analyse(text);
+    if (res.fileError) return this.setState({ step: 'upload', fileError: res.fileError, fileName: name });
+    this.setState({ step: 'review', fileError: '', fileName: name, result: res });
+  }
+  readFile(file) {
+    if (!file) return;
+    if (!/\.csv$/i.test(file.name)) return this.setState({ step: 'upload', fileError: 'This file format isn’t supported. Save it as a .csv file and upload it again.' });
+    if (file.size > 5 * 1024 * 1024) return this.setState({ step: 'upload', fileError: 'This file is larger than 5 MB. Split it into smaller files and upload them one at a time.' });
+    const fr = new FileReader();
+    fr.onload = () => this.load(file.name, String(fr.result));
+    fr.readAsText(file);
+  }
+  jump(step) {
+    clearInterval(this.timer);
+    if (step === 'upload') return this.setState({ step, fileError: '' });
+    if (!this.state.result) {
+      const res = analyse(sampleCSV());
+      return this.setState({ fileName: 'skyward_intake_nov2026.csv', result: res, fileError: '', step, progress: 0.6, doneTime: this.now() });
+    }
+    if (step === 'review') return this.setState({ step: 'review' });
+    if (step === 'importing') return this.setState({ step: 'importing', progress: 0.6 });
+    if (step === 'done') return this.setState({ step: 'done', doneTime: this.now() });
+  }
+  now() { const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+  counts() {
+    const r = this.state.result || { valid: [], errors: [], total: 0 };
+    const nExisting = r.valid.filter(v => v.existing).length;
+    const nNew = r.valid.length - nExisting;
+    const nImport = nNew + (this.state.mode === 'update' ? nExisting : 0);
+    return { r, nExisting, nNew, nImport };
+  }
+  accept() {
+    const { nImport } = this.counts();
+    if (!nImport) return;
+    this.setState({ step: 'importing', progress: 0 });
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      const p = Math.min(1, this.state.progress + 0.12 + Math.random() * 0.1);
+      if (p >= 1) { clearInterval(this.timer); this.setState({ progress: 1 }); setTimeout(() => this.setState({ step: 'done', doneTime: this.now() }), 450); }
+      else this.setState({ progress: p });
+    }, 380);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const { r, nExisting, nNew, nImport } = this.counts();
+    const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const order = ['upload', 'review', 'importing', 'done'];
+    const cur = Math.min(order.indexOf(st.step), 2);
+    const stepDefs = ['Upload file', 'Review', 'Import'];
+    const steps = stepDefs.map((label, i) => {
+      const done = i < cur || st.step === 'done', active = i === cur && st.step !== 'done';
+      return { label, mark: done ? '✓' : String(i + 1), dotBg: done || active ? 'var(--color-primary)' : '#fff', dotColor: done || active ? '#fff' : 'var(--fg-3)', dotBorder: done || active ? 'var(--color-primary)' : 'var(--border-strong)', labelColor: active ? 'var(--fg-1)' : done ? 'var(--fg-2)' : 'var(--fg-3)' };
+    });
+    const jumps = [['upload','Upload'],['review','Review'],['importing','Importing'],['done','Done']].map(([k, label]) => ({ label, bg: st.step === k ? 'var(--color-primary)' : '#fff', color: st.step === k ? '#fff' : 'var(--fg-2)', go: () => this.jump(k) }));
+
+    const cohortCounts = Object.keys(COHORTS).map(code => ({ code, n: r.valid.filter(v => v.code === code && (!v.existing || st.mode === 'update')).length })).filter(c => c.n > 0);
+    const toLoad = r.valid.filter(v => !v.existing || st.mode === 'update');
+    const sampleRows = toLoad.slice(0, 6).map(v => ({
+      initials: (v.first[0] + v.last[0]).toUpperCase(), name: v.first + ' ' + v.last, email: v.email, cohortName: COHORTS[v.code],
+      location: v.location || '—', licence: v.licence || '—', action: v.existing ? 'Update' : 'New',
+      badgeBg: v.existing ? 'var(--color-info-light)' : 'var(--color-success-light)', badgeColor: v.existing ? '#215b96' : '#26714a'
+    }));
+    const nErr = r.errors.length;
+    const nSkipped = st.mode === 'skip' ? nExisting : 0;
+    const footerParts = [plural(nNew, 'new learner')];
+    if (nExisting) footerParts.push(st.mode === 'update' ? nExisting + ' updated' : nExisting + ' skipped');
+    if (nErr) footerParts.push(plural(nErr, 'error row') + ' excluded');
+    const tick = 'var(--color-primary)';
+
+    return {
+      jumps, steps, fileRef: this.fileRef,
+      isUpload: st.step === 'upload', isReview: st.step === 'review', isImporting: st.step === 'importing', isDone: st.step === 'done',
+      browse: () => { if (this.fileRef.current) { this.fileRef.current.value = ''; this.fileRef.current.click(); } },
+      onFile: e => this.readFile(e.target.files && e.target.files[0]),
+      onDragOver: e => { e.preventDefault(); if (!st.drag) this.setState({ drag: true }); },
+      onDragLeave: () => this.setState({ drag: false }),
+      onDrop: e => { e.preventDefault(); this.setState({ drag: false }); this.readFile(e.dataTransfer.files && e.dataTransfer.files[0]); },
+      dropBg: st.drag ? 'var(--grey-100)' : '#fff', dropBorder: st.drag ? 'var(--color-primary)' : 'var(--border-strong)',
+      hasFileError: !!st.fileError, fileError: st.fileError,
+      useSample: () => this.load('skyward_intake_nov2026.csv', sampleCSV()),
+      downloadTemplate: () => download('first-class-learner-import-template.csv', HEADERS.join(',') + '\nAmara,Okafor,a.okafor@example.com,RPAS-LOS,"Lagos, NG",RPL — multirotor\nJohan,Pretorius,j.pretorius@example.com,BVLOS-ADV,"Pretoria, ZA",\n'),
+      columns: [
+        { key: 'first_name', req: 'Required', reqColor: 'var(--fg-1)', note: 'Given name', example: 'Amara' },
+        { key: 'last_name', req: 'Required', reqColor: 'var(--fg-1)', note: 'Family name', example: 'Okafor' },
+        { key: 'email', req: 'Required', reqColor: 'var(--fg-1)', note: 'Unique per learner. Used to sign in and to match existing records.', example: 'a.okafor@skyward.ng' },
+        { key: 'cohort_code', req: 'Required', reqColor: 'var(--fg-1)', note: 'One of the cohort codes listed below', example: 'RPAS-LOS' },
+        { key: 'location', req: 'Optional', reqColor: 'var(--fg-3)', note: 'City and country code', example: 'Lagos, NG' },
+        { key: 'licence_held', req: 'Optional', reqColor: 'var(--fg-3)', note: 'Current remote pilot licence, if any', example: 'RPL — multirotor' }
+      ],
+      cohortList: Object.entries(COHORTS).map(([code, name]) => ({ code, name })),
+      fileName: st.fileName, totalLabel: plural(r.total, 'row') + ' found',
+      nNew, nExisting, nErrors: nErr,
+      existingNote: nExisting ? (st.mode === 'update' ? 'Details will be updated' : 'Will be skipped') : 'No matches found',
+      errCardBorder: nErr ? '#e9b4b4' : 'var(--border)', errCountColor: nErr ? 'var(--color-error)' : 'var(--fg-1)',
+      errorNote: nErr ? 'Not imported until fixed' : 'Every row passed validation',
+      cohortCounts, hasErrors: nErr > 0,
+      errorHeadline: plural(nErr, 'row') + (nErr === 1 ? ' needs' : ' need') + ' attention',
+      errorRows: r.errors.map(e => ({ line: e.line, name: (e.first + ' ' + e.last).trim() || '—', email: e.email || '—', issue: e.issue })),
+      downloadErrors: () => download('import-errors.csv', 'row,first_name,last_name,email,cohort_code,issue\n' + r.errors.map(e => [e.line, e.first, e.last, e.email, e.code, e.issue].map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n')),
+      sampleLabel: toLoad.length ? 'First ' + sampleRows.length + ' of ' + plural(toLoad.length, 'learner') + ' to be loaded' : 'No learners to load',
+      sampleRows,
+      updateRing: st.mode === 'update' ? '5px solid ' + tick : '1.5px solid var(--border-strong)',
+      skipRing: st.mode === 'skip' ? '5px solid ' + tick : '1.5px solid var(--border-strong)',
+      setUpdate: () => this.setState({ mode: 'update' }), setSkip: () => this.setState({ mode: 'skip' }),
+      inviteBg: st.invite ? tick : '#fff', inviteBorder: st.invite ? tick : 'var(--border-strong)',
+      toggleInvite: () => this.setState({ invite: !st.invite }),
+      footerSummary: footerParts.join(' · '),
+      acceptLabel: nImport ? 'Import ' + plural(nImport, 'learner') : 'Nothing to import',
+      acceptBg: nImport ? 'var(--color-primary)' : 'var(--grey-200)', acceptColor: nImport ? '#fff' : 'var(--fg-4)', acceptCursor: nImport ? 'pointer' : 'not-allowed',
+      accept: () => this.accept(),
+      cancel: () => { clearInterval(this.timer); this.setState({ step: 'upload', result: null, fileError: '', fileName: '' }); },
+      progressLabel: 'Imported ' + Math.round(st.progress * nImport) + ' of ' + plural(nImport, 'learner') + '…',
+      progressPct: Math.round(st.progress * 100) + '%',
+      doneHeadline: plural(nImport, 'learner') + ' imported',
+      doneTime: st.doneTime,
+      doneLines: [
+        { icon: 'ph-user-plus', color: 'var(--color-success)', label: 'New learners added', n: nNew },
+        { icon: 'ph-arrows-clockwise', color: 'var(--color-info)', label: st.mode === 'update' ? 'Existing learners updated' : 'Existing learners skipped', n: nExisting },
+        { icon: 'ph-envelope-simple', color: 'var(--color-primary)', label: 'Invitations sent', n: st.invite ? nNew : 0 },
+        { icon: 'ph-warning-circle', color: 'var(--color-error)', label: 'Rows excluded with errors', n: nErr }
+      ].filter(l => l.n > 0 || l.icon === 'ph-user-plus')
+    };
+  }
+}
+</script>
+</body>
+</html>
