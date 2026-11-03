@@ -14,7 +14,6 @@ from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
-from django.utils.http import url_has_allowed_host_and_scheme
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -39,13 +38,10 @@ def navigation_response(path: str) -> HttpResponse:
 def current_page_within(request: HttpRequest, root: str) -> str:
     """The path of the page the request was made from, when it lies
     under `root`; otherwise `root`. The header is client-supplied, so
-    only its path is used and only within the page the action belongs to."""
-    current = request.headers.get("HX-Current-URL", "")
-    if not url_has_allowed_host_and_scheme(
-        current, {request.get_host()}, request.is_secure()
-    ):
-        return root
-    path = urlsplit(current).path
+    only its path is used and only within the page the action belongs to.
+    Its host is not checked: a proxy that rewrites Host would fail that
+    check for every request, and the path alone names nothing off-site."""
+    path = urlsplit(request.headers.get("HX-Current-URL", "")).path
     if path == root or path.startswith(root.rstrip("/") + "/"):
         return path
     return root

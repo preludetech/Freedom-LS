@@ -22,9 +22,12 @@ from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
 def choice_error(label: str) -> dict[str, str]:
-    """The `error_messages` for a picker field. Django's own invalid-choice
-    message quotes the submitted value, which for a stale pick is a bare id."""
-    return {"invalid_choice": f"Choose a {label.lower()} from the list."}
+    """The `error_messages` for a picker field. Django's own messages quote
+    the submitted value, which for a stale pick is a bare id: invalid_choice
+    for a pick not in the queryset, invalid_pk_value for one a multiple
+    choice field cannot even cast to a key."""
+    message = f"Choose a {label.lower()} from the list."
+    return {"invalid_choice": message, "invalid_pk_value": message}
 
 
 class LearnerImportForm(forms.Form):

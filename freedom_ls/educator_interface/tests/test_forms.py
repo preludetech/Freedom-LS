@@ -64,8 +64,19 @@ def test_registration_form_accepts_a_published_course(mock_site_context):
 
 def test_choice_error_names_the_lowercased_choice() -> None:
     assert choice_error("Course") == {
-        "invalid_choice": "Choose a course from the list."
+        "invalid_choice": "Choose a course from the list.",
+        "invalid_pk_value": "Choose a course from the list.",
     }
+
+
+@pytest.mark.django_db
+def test_learner_picker_form_keeps_a_malformed_id_out_of_its_error() -> None:
+    data = QueryDict(mutable=True)
+    data.setlist("learners", ["not-a-uuid"])
+    form = LearnerPickerForm(data, queryset=Learner.objects.all())
+
+    assert form.is_valid() is False
+    assert form.errors["learners"] == ["Choose a learner from the list."]
 
 
 def _add_form(entries: str) -> AddLearnersForm:

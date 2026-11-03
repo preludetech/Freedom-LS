@@ -202,10 +202,19 @@ def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -
     }
 
 
-def test_current_page_within_returns_the_path_the_request_came_from() -> None:
-    request = RequestFactory().post(
-        "/x", HTTP_HX_CURRENT_URL="http://testserver/cohorts/1/courses?page=2"
-    )
+@pytest.mark.parametrize(
+    "current",
+    [
+        "http://testserver/cohorts/1/courses?page=2",
+        # Only the path is used, so the host the browser saw is irrelevant.
+        "http://public.example/cohorts/1/courses",
+        "//public.example/cohorts/1/courses",
+    ],
+)
+def test_current_page_within_returns_the_path_the_request_came_from(
+    current: str,
+) -> None:
+    request = RequestFactory().post("/x", HTTP_HX_CURRENT_URL=current)
 
     assert current_page_within(request, "/cohorts/1") == "/cohorts/1/courses"
 
@@ -213,8 +222,6 @@ def test_current_page_within_returns_the_path_the_request_came_from() -> None:
 @pytest.mark.parametrize(
     "current",
     [
-        "http://evil.example/cohorts/1/courses",
-        "//evil.example/cohorts/1/courses",
         "http://testserver/cohorts/10",
         "http://testserver/other",
         "",
