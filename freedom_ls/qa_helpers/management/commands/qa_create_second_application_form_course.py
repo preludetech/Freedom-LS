@@ -19,7 +19,6 @@ from typing import cast
 import djclick as click
 
 from django.contrib.sites.models import Site
-from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
@@ -140,7 +139,6 @@ def _get_or_create_application(
             FormProgressFactory(
                 user=user,
                 form=form,
-                completed_time=timezone.now(),
                 furthest_page_reached=1,
                 site=site,
             ),
@@ -156,9 +154,6 @@ def _get_or_create_application(
         raise click.ClickException(
             f"Application {application.pk} has no form sitting; reset it first."
         )
-    if sitting.completed_time is None:
-        sitting.completed_time = timezone.now()
-        sitting.save(update_fields=["completed_time"])
     for question, (_order, _text, answer_text) in zip(
         questions, QUESTIONS, strict=True
     ):
@@ -175,6 +170,7 @@ def _get_or_create_application(
         elif answer.text_answer != answer_text:
             answer.text_answer = answer_text
             answer.save(update_fields=["text_answer"])
+    sitting.complete()
     return cast(
         CourseApplication,
         CourseApplication.objects.select_related("form_progress").get(

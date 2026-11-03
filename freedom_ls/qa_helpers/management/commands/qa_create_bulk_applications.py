@@ -22,7 +22,6 @@ from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 from django.db import transaction
-from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -93,7 +92,6 @@ def _ensure_application(
             FormProgressFactory(
                 user=user,
                 form=course.application_form,
-                completed_time=timezone.now(),
                 furthest_page_reached=1,
                 site=site,
             ),
@@ -109,9 +107,6 @@ def _ensure_application(
         raise click.ClickException(
             f"Application {application.pk} has no form sitting; reset it first."
         )
-    if sitting_or_none.completed_time is None:
-        sitting_or_none.completed_time = timezone.now()
-        sitting_or_none.save(update_fields=["completed_time"])
     for question, text in answers:
         answer: QuestionAnswer | None = QuestionAnswer.objects.filter(
             form_progress=sitting_or_none, question=question
@@ -126,6 +121,7 @@ def _ensure_application(
         elif answer.text_answer != text:
             answer.text_answer = text
             answer.save(update_fields=["text_answer"])
+    sitting_or_none.complete()
     return cast(
         CourseApplication,
         CourseApplication.objects.select_related("form_progress").get(

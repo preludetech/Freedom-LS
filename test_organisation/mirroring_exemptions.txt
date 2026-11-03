@@ -24,3 +24,5 @@ freedom_ls/learner_interface/tests/components/  # tests of Cotton component temp
 freedom_ls/audit_log/tests/invariants/  # checks the audit-action and webhook-event codes against the glossary vocabulary; mirrors no module
 freedom_ls/messaging_policy/tests/test_messages_button.py  # renders the comms header button under the shipped policy, which mirrors no single module
 freedom_ls/api/tests/invariants/  # compiles the code example in docs/api.md, which mirrors no module
+freedom_ls/qa_helpers/tests/test_qa_create_bulk_applications.py  # tests a management command, which lives under management/commands/ rather than at the app root
+freedom_ls/qa_helpers/tests/test_qa_create_second_application_form_course.py  # tests a management command, which lives under management/commands/ rather than at the app root
