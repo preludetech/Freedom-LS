@@ -18,12 +18,12 @@ Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `regis
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`, `do_qa`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
-`.claude/sdd/config.md`, in order, in hook mode. Each hook is a skill that commits
+`.claude/sdd/config.md`, in order, in hook mode, then executes the documentation items in `todo.md` and opens the pull request. Each hook is a skill that commits
 its own work, or names the files it changed for `/sdd:document` to commit. The plan review in
 `/sdd:plan_from_spec` runs its built-in dimensions plus the project's own briefs, which
 `## Plan Review Hooks` lists; `sdd` names none.
 `/sdd:address_pr_review` fetches review comments through the `Fetch PR comments` script under
-`## PR Hooks`, or with `gh` directly when the key is blank. `/sdd:start` writes the `QA command`
+`## PR Hooks`, or with `gh` directly when the key is blank. `/sdd:start` creates the checklist and the worktree, enters it, registers a design when one is present and writes the spec, and writes the `QA command`
 under `## QA Hooks` into the checklist as the QA step, or a by-hand item when there is none.
 
 `/sdd:do_qa` runs a spec's QA plan in a browser. It reads `## QA Hooks`, `## QA Login` and
@@ -83,4 +83,4 @@ declare any word that really is new. The project points at its own sources via
 obeys; `commit_and_push` — the commit-and-push steps every artifact command ends with;
 `roadmap_format` — the shape, classification rules and row grammar of the spec roadmap;
 `spec_review_dimensions` — the five dimensions of the spec review wave; `plan_review_dimensions` — the
-nine built-in plan review dimensions; `idea_standard` — what an idea must contain before a spec is written from it.
+ten built-in plan review dimensions; `idea_standard` — what an idea must contain before a spec is written from it.

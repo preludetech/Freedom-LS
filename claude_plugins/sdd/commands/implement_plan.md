@@ -1,7 +1,7 @@
 ---
 name: implement_plan
 description: Execute the implementation plan in resilient batches.
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion, mcp__playwright__*, mcp__plugin_ds_playwright__*
 argument-hint: [suffix, e.g. 2b]
 ---
 
@@ -33,14 +33,14 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch <id>] <summary>`.
 
-**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only spawn batches whose marker commit is missing. A `design fix` or `review fix` commit counts as its batch's commit. On resume, when the last completed batch has no later batch committed, run its Design check (only when its slice has a `**Design states:**` line) and its Batch review again before spawning the next batch.
+**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only run batches whose marker commit is missing. A `design fix`, `review fix` or `integration fix` commit counts as its batch's commit. The sub-sections below say what runs on resume and how each batch wave runs.
 
 ```
 with suffix 2b: ^\[batch 2b\.[0-9]+\]     (only this suffix's batches)
 without suffix: ^\[batch [0-9]+\]         (never matches [batch 2b.1])
 ```
 
-For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "general-purpose"` (it needs Bash/Edit breadth that `sdd:sdd-worker` lacks), and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Each batch sub-agent does the following:
+Each batch is run by **one implementation sub-agent**, spawned via the `Agent` tool with `subagent_type: "general-purpose"` (it needs Bash/Edit breadth that `sdd:sdd-worker` lacks) with the per-spawn `model: "sonnet"` parameter, so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Each batch sub-agent does the following:
 
 1. Implement each step in the batch exactly as written in the plan
 2. Run any verifications the plan specifies after each step
@@ -60,12 +60,25 @@ The brief adds: the design is a visual reference, never a source of scope. Build
 
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 
-After a batch returns, act on its status:
-- `ok` → verify the `[batch <id>]` commit exists, then, before moving on, run the Design check when the slice has design states, then the Batch review.
-- `failed` → reset any partial uncommitted work so the retry starts clean, then retry that batch (≤2 attempts) with the prior error included in the brief.
-- `blocked` → gather the listed `needs` via `AskUserQuestion` (legal at depth 0), then re-spawn the batch with the answers.
+**Names from git.** Every worktree path, worktree name and branch this step acts on comes from a `git worktree list` line or a worker's return line, never from free text. `<name>` is the last path component of the worktree path. A path, name or branch that does not match `^[A-Za-z0-9._/-]+$`, or a name containing `..`, is skipped and named in the Step 3 summary. Each value is passed to a command as its own single-quoted argument.
 
-**The batch's tier must pass before moving to the next batch.** A fix batch (`design fix` or `review fix`) is a batch, so it runs `targeted` the same way.
+**Cap.** Read `Parallel batches` under `## Worktree Scripts` in `.claude/sdd/config.md` (`config.local.md` wins). Blank, absent or `1` is `1`.
+
+**Leftover batch worktrees.** Before spawning anything, run `git worktree list`. For each worktree under this checkout's `.claude/worktrees/` whose branch holds a commit matching the plan's anchored `[batch …]` pattern: cherry-pick, in plan order, every such commit whose id has no marker on the feature branch. A conflict is `git cherry-pick --abort`; the worktree is then still torn down and removed, and the batch has no marker commit so it re-runs in plan order. Then run the Teardown script inside it (`cd <path> && <script>`, one call; blank: nothing), then `git worktree remove --force .claude/worktrees/<name>` and `git branch -D <branch>`. Any other worktree under `.claude/worktrees/` is left alone and named in the Step 3 summary. The permission prompt the `cd` call raises is accepted: it happens only on a resumed, attended run.
+
+**Resume reviews.** On resume, the Design check and Batch review run again for every batch whose marker commit is later than the last `review fix`, `design fix` or `integration fix` commit, or for the last batch when there is none.
+
+**Batch waves.** `remaining` is the batches without a marker commit, in plan order. Repeat until it is empty: `ready` is every batch in `remaining` whose `Builds on:` slices all have a marker commit. A plan in which any slice lacks a `Builds on:` line, or that this step regrouped into batches, runs sequentially: `ready` = the first remaining batch. The batch wave is the first `min(len(ready), cap)` of `ready`.
+
+**A batch wave of one.** Runs in the feature worktree, with no isolation, as a single sequential batch: the brief above, then `ok` (verify the marker commit, Design check, Batch review), `failed` (reset partial uncommitted work, retry with the prior error in the brief), `blocked` (ask at depth 0, re-spawn with the answers). This paragraph owns the attempt count: a batch gets at most two retries across every batch wave it appears in, and one that exhausts them stops the run with `status: failed`, naming it and every batch that builds on it. The tier must pass before the next batch wave is formed. A fix batch (`design fix`, `review fix` or `integration fix`) is a batch, so it runs `targeted` the same way.
+
+**A batch wave of two or more.** Record `wave-base` = `git rev-parse HEAD`. Resolve the Setup script and Teardown script values once at depth 0 (`config.local.md` is gitignored and absent in a batch worktree). Spawn every batch of the batch wave in one message, each `subagent_type: "general-purpose"`, `model: "sonnet"`, `isolation: "worktree"`. The brief is the batch brief above plus: first run `<Setup script>` from the worktree root (blank: nothing); work only inside this worktree; whatever the outcome, run `<Teardown script>` the same way before returning (blank: nothing); return `status: ok|failed|blocked · reason: <short> · worktree: <abs path> · branch: <name>`. A worker that returns no status line counts as `failed` with reason `no return`.
+
+**Integration.** When every worker of the batch wave has returned or been counted as failed, for each `ok` batch in plan order, cherry-pick the commits on its branch whose subject matches the plan's anchored `[batch …]` pattern. A conflict is `git cherry-pick --abort` and the batch is marked `failed` with the conflicting files as its reason. Then, for every batch of the batch wave, resolve its worktree path and branch from its return line, or from `git worktree list` when the return lacks them; for a batch that is not `ok`, run the Teardown script inside the worktree first (`cd <path> && <script>`; the script is safe to run twice); then `git worktree remove --force .claude/worktrees/<name>` and `git branch -D <branch>`.
+
+**After integration.** Run the `Migrate` command under `## QA Dev Data` in `.claude/sdd/config.md` when non-blank, so the feature worktree's dev database holds the batch wave's migrations before the Design check starts a server. Then delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--range <wave-base>..HEAD`. A failure is fixed by a sub-agent as Step 3 point 3 does, committed as `[batch <id>] integration fix` with the id of the last integrated batch. Then, for each integrated batch in plan order, the Design check and the Batch review run as for a batch wave of one.
+
+**Retries.** Each batch of the batch wave that is not `ok` (returned `failed` or `blocked`, returned nothing, or conflicted) re-runs at once, in plan order, through the batch-wave-of-one rule above with its reason, before the next batch wave is formed. That rule counts the attempts.
 
 ### Design check
 
@@ -99,15 +112,15 @@ Start with `fixes = 0` and `scope = <batch-commit>^..HEAD`, then repeat:
 4. `fixes == 2`: the leftovers go into the Step 3 summary; end the review. The run continues.
 5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the findings and the two standard files' paths. It commits `[batch <id>] review fix <n>` and runs `targeted` through `run_test_tier.md` like any batch; `fixes` goes up by one and `scope` becomes `<fix-commit>^..HEAD`. Act on its status as for any batch, then go back to step 1.
 
-### DO NOT run the frontend_qa plan during implementation
-If there is a QA file, do **not** run it, and ignore any plan step that says to run it. The QA process runs separately, after the plan is complete.
+### QA never runs inside a batch
+QA runs in Step 5, never inside a batch, and a plan step that says to run it is ignored.
 
 ## Step 3: Final Verification
 
 After all batches are complete:
 
 1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`, returning the summary line and any failing test names.
-2. Write the summary: per batch, the Design check as passed, skipped or the surviving misses with their `fixes` count; the Batch review as findings, fix batches and leftovers, or "review skipped: no <key> hook"; then the full-tier result and each success criterion (is it met?).
+2. Write the summary: per batch, the Design check as passed, skipped or the surviving misses with their `fixes` count; the Batch review as findings, fix batches and leftovers, or "review skipped: no <key> hook"; per batch wave, its batches and where they ran (feature worktree or batch worktree path); the leftover worktrees removed, left or skipped; then the full-tier result and each success criterion (is it met?).
 3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth). The fix sub-agent runs `targeted`, like any batch. Then repeat from step 1, so a fix is followed by another full run
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
@@ -132,3 +145,18 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - one `add:"<section>|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"` per surviving design miss, where `<section>` is the heading text, without the `##`, of the section holding the ticked item (`3. Implementation and QA` in the current layout, `7. Implementation` in older checklists).
 
 With no surviving design misses there is nothing to add.
+
+## Step 5: Run QA
+
+Read `QA command` under `## QA Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
+
+- Blank: say "no QA command configured; the checklist's QA item is a user item" and go to Step 6.
+- The QA file does not exist: say the plan has no QA plan and go to Step 6.
+- The value names a command of this plugin (`sdd:<name>`): read `${CLAUDE_PLUGIN_ROOT}/commands/<name>.md` and follow it with `mode: hook`, `<spec-dir>`, `<todo-path>` and the QA file path.
+- Any other value: invoke it with the `Skill` tool and `args: "spec-dir=<spec-dir> todo-path=<todo-path> plan=<QA file> mode: hook"`.
+
+Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of the last three is carried to Step 6 with its reason.
+
+## Step 6: Final report
+
+Report the QA report path, the bug counts per lane, the `Decide` items filed, and the next human step from `todo.md`. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.

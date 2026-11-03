@@ -60,7 +60,7 @@ Every item has exactly one marker. A step with both a manual action and a comman
 # SDD Todo
 
 Checklist for taking this spec from idea to merged PR. Commands tick their own item; you tick
-`(user)` items and the two PR commands. See `claude_plugins/sdd/commands/README.md`.
+`(user)` items. See `claude_plugins/sdd/commands/README.md`.
 
 ## 1. Spec
 
