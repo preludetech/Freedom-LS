@@ -16,6 +16,7 @@ every other row's judgement call is a `> **Review concern:**`.
 | `clean_code` | proposed code is clean and simple | the snippet | none; all judgement |
 | `comments` | no proposed comment or docstring points at the spec, plan, a slice, a phase, the QA plan or a section number | the snippet line, checked against `${CLAUDE_PLUGIN_ROOT}/skills/planning-references-in-code/SKILL.md` | the pointer replaced by the fact it stood for |
 | `vocabulary` | every noun and identifier matches the spec's vocabulary and the codebase's | the spec or source line | a term replaced by the spec's or source's term |
+| `parallel_safety` | every slice has `Builds on:` and `Touches:`; two slices with no `Builds on:` path between them have disjoint `Touches:`; the migration, manifest and lockfile rules in `plan_from_spec.md` Step 3 | the two slices' lines | a missing line; a missing `Builds on:` entry where the overlap is literal |
 | `new_threats` | only what the plan adds or changes, one narrow check per trigger (list below) | the step | none; every hit is a judgement call |
 
 The `skills` worker's brief passes the `SKILL.md` paths of the project's skills, since a worker
