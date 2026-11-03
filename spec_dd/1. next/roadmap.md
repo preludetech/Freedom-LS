@@ -910,7 +910,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `design_educator_interface_audit_log` | Tighten the educator audit log table so it reads like a log, ideally with expandable rows. | none | in progress | |
 | `design_learner-interface-deadlines` | Redesign how deadlines and windows look to learners. | none | in progress | |
 | `downstream_bugs_oct_29` | Fix the bugs a downstream project flagged so it can drop its workarounds. | none | in progress | Nests 14 sub-ideas, one per bug. |
-| `hide-messages-icon-in-toolbar-for-some-users` | Decide when the messages icon shows in the header, so learners on free courses without messaging don't see it while organisations with messaging do. | none | in progress | |
 | `learner-facing-ux-refinements` | Compact course rows below `lg`, a single Back link on course detail, and a restyled "Your applications" panel paged three at a time. | `organisation-courses`, `applying-for-courses`, `better-learner-dashboard-course-display` | in progress | |
 | `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
 
