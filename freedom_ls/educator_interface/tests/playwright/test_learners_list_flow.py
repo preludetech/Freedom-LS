@@ -107,7 +107,12 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     ).to_be_visible()
     modal.get_by_role("button", name="Add to cohort", exact=True).click()
 
-    expect(modal.get_by_text(f"{matching} learners changed.")).to_be_visible()
+    expect(
+        modal.locator("#app-modal-body").get_by_text(f"{matching} learners changed.")
+    ).to_be_visible()
+    expect(page.locator("#app-modal-status")).to_have_text(
+        f"{matching} learners changed."
+    )
     assert CohortMembership.objects.filter(cohort=cohort).count() == matching
 
     # The table refreshes behind the summary; selecting again must wait for it.
@@ -129,7 +134,9 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     ).to_be_visible()
     modal.get_by_role("button", name="Remove from cohort", exact=True).click()
 
-    expect(modal.get_by_text(f"{matching} learners changed.")).to_be_visible()
+    expect(
+        modal.locator("#app-modal-body").get_by_text(f"{matching} learners changed.")
+    ).to_be_visible()
     assert not CohortMembership.objects.filter(cohort=cohort).exists()
 
     expect(table.locator("tbody td", has_text="Evening group")).to_have_count(0)
@@ -203,7 +210,9 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
 
     finished = True
 
-    expect(modal.get_by_text("2 learners changed.")).to_be_visible()
+    expect(
+        modal.locator("#app-modal-body").get_by_text("2 learners changed.")
+    ).to_be_visible()
     # The default Status filter hides inactive learners, so the refreshed
     # table has no rows left to select.
     expect(table.locator("input[name='keys']")).to_have_count(0)

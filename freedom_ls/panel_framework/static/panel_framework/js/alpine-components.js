@@ -177,6 +177,8 @@ document.addEventListener("alpine:init", () => {
                 this._hideDiscardPrompt();
                 this._tracker.snapshot();
                 this.dirty = false;
+                // A result announced in this open is not re-read on the next.
+                document.getElementById("app-modal-status").textContent = "";
                 focusTriggerOrMain(this._trigger);
             });
 

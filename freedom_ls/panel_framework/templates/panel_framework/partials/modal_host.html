@@ -78,5 +78,13 @@ editing" brings the form back with everything typed into it.
             <c-button variant="error" x-on:click="discard">Discard</c-button>
         </c-button-group>
     </div>
+    {% comment %}
+    A fragment that replaces the body while the dialog is open (a bulk
+    result) announces through this region. It sits inside the dialog because
+    a modal dialog makes the rest of the page inert, live regions included,
+    and outside the body so the swap updates its contents rather than
+    rebuilding it, which some screen readers never announce.
+    {% endcomment %}
+    <div id="app-modal-status" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
     <div id="app-modal-body"></div>
 </dialog>

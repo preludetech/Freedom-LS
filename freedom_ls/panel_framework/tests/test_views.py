@@ -83,6 +83,15 @@ class TestFullPage:
 
         assert content.count('id="app-modal"') == 1
 
+    def test_the_modal_host_holds_a_polite_live_region(
+        self, mock_site_context: Site
+    ) -> None:
+        document = lxml.html.fromstring(fetch("stubs").content.decode())
+
+        (status,) = document.cssselect("#app-modal #app-modal-status")
+        assert status.get("role") == "status"
+        assert status.get("aria-live") == "polite"
+
 
 class TestNavigationResponse:
     def test_htmx_navigation_returns_oob_fragments(

@@ -423,6 +423,34 @@ def test_confirmed_htmx_post_returns_result_summary(mock_site_context: Site) -> 
     assert sorted(trigger["itemChanged"]["ids"]) == sorted(keys)
 
 
+def test_the_result_is_announced_inside_the_open_dialog(
+    mock_site_context: Site,
+) -> None:
+    """The dialog is already open and modal when the result lands, which makes
+    the page's own live regions inert, so the headline goes to a live region
+    inside the dialog and is also read with the Close button it focuses."""
+    stubs = [make_stub(name=f"row-{i}") for i in range(2)]
+    keys = [str(stub.pk) for stub in stubs]
+
+    response = fetch(
+        _action_path(stubs[0].pk),
+        method="post",
+        data={"mode": "keys", "keys": keys, "confirmed": "1", "expected_count": "2"},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (carrier,) = document.cssselect('[hx-swap-oob="innerHTML:#app-modal-status"]')
+    assert carrier.text_content().strip() == "2 stub models changed."
+    (close,) = [
+        button
+        for button in document.cssselect("button")
+        if button.text_content().strip() == "Close"
+    ]
+    (headline,) = document.cssselect(f"#{close.get('aria-describedby')}")
+    assert headline.text_content().strip() == "2 stub models changed."
+
+
 def test_a_result_over_many_rows_fires_its_events_without_ids(
     mock_site_context: Site,
 ) -> None:
