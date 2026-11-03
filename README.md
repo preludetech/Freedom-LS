@@ -28,7 +28,7 @@ _Product Overview — automatically generated from live development records • 
 
 Freedom LS (FLS) is a learning management system — software for delivering online courses, tracking learner progress, and supporting the educators who run them. What sets it apart is how far it can be tailored. It is best thought of less as a single fixed product and more as a foundation, or framework, for building learning platforms. A provider can take Freedom LS and shape it into a platform that looks, behaves, and connects to other systems exactly the way they need.
 
-That said, it is not only for builders. Out of the box, with no custom development, Freedom LS works as a complete, standalone LMS: learners can browse courses, enrol, and work through lessons and quizzes, while educators monitor the groups assigned to them. The deeper customisation is there when a provider wants it, but none of it is required to get started.
+That said, it is not only for builders. Out of the box, with no custom development, Freedom LS works as a complete, standalone LMS: learners can browse courses, enrol, and work through lessons and quizzes, while educators manage and monitor the learners and cohorts their roles cover. The deeper customisation is there when a provider wants it, but none of it is required to get started.
 
 > **Note.** The screenshots throughout this document come from a live deployment branded "FirstClass." That branding is itself an example of the platform's flexibility — Freedom LS takes on each provider's own name, logo, and visual identity.
 
@@ -42,7 +42,7 @@ In short, Freedom LS today provides:
 
 - **A personalised learner experience** — a dashboard of in-progress, recommended, and completed courses; a browsable catalogue; and lessons and quizzes that unlock in sequence and resume where the learner left off.
 - **Two ways to join a course** — open courses a learner can enrol in instantly, and application-gated courses a learner applies to.
-- **An educator panel** — a dedicated area for monitoring assigned groups, with a progress grid showing each learner's completion, quiz scores, and deadlines.
+- **An educator panel** — a dedicated area for managing learners, cohorts and course registrations, acting on many at once, and following progress through a dashboard, cohort reports and a history of changes.
 - **A secure administration area** — where enrolments, group membership, deadlines, and configuration are managed.
 - **File-based, version-controlled content** — courses are authored as plain text files with a complete, auditable history of every change.
 - **Multi-provider hosting** — a single installation can serve many independent providers at once, with each provider's users and data kept fully separate.
@@ -112,16 +112,24 @@ Administrators can set deadlines, either for a whole group or for an individual 
 
 ## The educator experience
 
-Educators get their own focused panel, separate from both the learner view and the full administration area. It is designed for monitoring rather than configuration.
+Educators get their own panel, separate from both the learner view and the full administration area. It works on one organisation at a time: Dashboard, Cohorts, Learners and Courses sit under Teaching, and organisation admins also see Members and Audit log under Administration.
 
+![The educator dashboard: tiles for learners, cohorts, average progress and learners needing attention, above the list of learners who need attention.](docs/product/screenshots/educator_dashboard.png)
 
-_The course-progress grid: every learner in a group against every item in a course._
+_The educator dashboard: tiles for learners, cohorts, average progress and learners needing attention, above the list of learners who need attention._
 
-The panel has three sections — cohorts (the learner groups), users, and courses. Its centrepiece is the course-progress grid, which lays out every learner in a group against every item in a course. Each cell shows whether the item is complete, in progress, or not started; for quizzes it shows the score and pass/fail outcome; and it flags items that are overdue against their deadline.
+- **Dashboard.** Totals, the learners who need attention, and each cohort's progress.
+- **Learners.** Educators add learners by email or from a CSV file, see whether each is active, pending or inactive, manage their cohorts and course registrations, and deactivate or reactivate them. A quick view previews a learner or cohort without leaving the list, and, where direct messaging is turned on, lets the educator reply to the learner from it.
+- **Bulk actions.** Educators can act on many learners or cohorts at once, including everything that matches the current filter. Large runs continue in the background.
+- **Cohorts.** Educators create, rename, deactivate and delete cohorts, and register a cohort for courses.
+- **Courses.** Each course's visibility and the number of learners who have expressed interest in it. Visibility is read-only here.
+- **Members and roles.** Organisation admins add members, assign and deactivate their roles, and deactivate or reactivate them.
+- **History.** Site and organisation admins see who changed what and when, on learner and cohort pages and in an audit log.
+- **Reports.** A cohort's progress report shows on screen, with a PDF to download.
 
-Access is tightly controlled: an educator sees only the specific groups they have been granted permission to view. There is no way for one educator to see another's learners or any data outside their assigned groups.
+Access is granted by role: site admin, organisation admin, cohort admin or cohort viewer. An educator sees only the cohorts and learners their roles cover; anything else returns the same "not found" as a record that does not exist.
 
-> **Note.** The educator panel is currently for viewing and monitoring. Adding or removing group members, registering a group for a course, and setting deadlines are all done by an administrator, and there is no messaging feature for educators to contact learners from within the platform. Self-service for these tasks is on the roadmap.
+> **Note.** Educators cannot see or set deadlines, and moving or deleting in bulk and updating existing learners from a file are not built. Deadlines and overrides are set in the administration area. The full description is in the [educator interface product doc](docs/product/educator-interface.md).
 
 ## Administration
 
@@ -213,6 +221,6 @@ A few capabilities are planned or partly built but not yet complete:
 - A full application review and approval workflow, plus richer application forms that can collect questions and file uploads.
 - A more flexible roles-and-permissions system.
 - Richer learning-activity tracking (an industry standard known as xAPI).
-- Self-service for educators — managing group membership and deadlines, and messaging learners — without needing an administrator.
+- Deadlines for educators: seeing and setting due dates and overrides without needing an administrator.
 
 _Because this overview is regenerated from live development records, these items will move into the main sections above as they are completed._
