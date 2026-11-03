@@ -26,13 +26,10 @@ The top level is empty, so include a named partial.{% endcomment %}
     {% if course.access_ends_at %}<p class="text-sm text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
 {% endpartialdef %}
 
-{% partialdef tier-date %}
-    {% comment %}A closed deadline is dated by when it closed. The short form of a deadline
-    due today says so instead of repeating the date.{% endcomment %}
-    {% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}
-    {% elif child.deadline_tier == "TODAY" and date_format == "short" %}{% local_time child.due_at format="today" %}
-    {% else %}{% local_time child.due_at format=date_format %}{% endif %}
-{% endpartialdef %}
+{% comment %}A closed deadline is dated by when it closed. The short form of a deadline
+due today says so instead of repeating the date. The partial body is one line with no
+leading or trailing whitespace, so callers can follow it with punctuation.{% endcomment %}
+{% partialdef tier-date %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}{% elif child.deadline_tier == "TODAY" and date_format == "short" %}{% local_time child.due_at format="today" %}{% else %}{% local_time child.due_at format=date_format %}{% endif %}{% endpartialdef %}
 
 {% partialdef tier-chip-body %}
     {% partial tier-icon %}
