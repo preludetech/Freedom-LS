@@ -68,12 +68,22 @@ def _is_ip_address(value: str) -> bool:
     return True
 
 
+_SIGNUP_POLICY_ATTR = "_fls_signup_policy"
+
+
 def get_signup_policy_for_request(
     request: HttpRequest | None,
 ) -> SiteSignupPolicy | None:
-    """Return the `SiteSignupPolicy` for the request's current site, or `None`."""
+    """Return the `SiteSignupPolicy` for the request's current site, or `None`.
+
+    The answer is kept on the request, so the signup middleware and the signup context
+    processor share one read."""
     if request is None:
         return None
+
+    if hasattr(request, _SIGNUP_POLICY_ATTR):
+        cached: SiteSignupPolicy | None = getattr(request, _SIGNUP_POLICY_ATTR)
+        return cached
 
     site = get_cached_site(request)
     if not isinstance(site, Site):
@@ -83,10 +93,12 @@ def get_signup_policy_for_request(
     # this request, and the site-aware manager would AND a second site read from
     # the ambient thread-local request. A mismatch there returns None rather than
     # erroring, which drops the signup form back to the global defaults.
+    policy: SiteSignupPolicy | None
     try:
-        policy: SiteSignupPolicy = SiteSignupPolicy._base_manager.get(site=site)
+        policy = SiteSignupPolicy._base_manager.get(site=site)
     except SiteSignupPolicy.DoesNotExist:
-        return None
+        policy = None
+    setattr(request, _SIGNUP_POLICY_ATTR, policy)
     return policy
 
 

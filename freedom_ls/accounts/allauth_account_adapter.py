@@ -26,7 +26,8 @@ from freedom_ls.site_aware_models.models import (
 )
 
 from .config import config
-from .models import SiteSignupPolicy, User
+from .models import User
+from .utils import get_signup_policy_for_request
 
 
 def announce_user_registered(request: HttpRequest, user: User) -> None:
@@ -202,13 +203,5 @@ class AccountAdapter(DefaultAccountAdapter):
         if not isinstance(current_site, Site):
             return default_allow
 
-        # _base_manager, not the site-aware `objects`: current_site is already
-        # resolved from this request, and the site-aware manager would AND a
-        # second site read from the ambient thread-local request. That request
-        # is not always for the same site, and a mismatch hides the row rather
-        # than erroring, silently demoting the answer to the global default.
-        try:
-            policy = SiteSignupPolicy._base_manager.get(site=current_site)
-            return policy.allow_signups
-        except SiteSignupPolicy.DoesNotExist:
-            return default_allow
+        policy = get_signup_policy_for_request(request)
+        return default_allow if policy is None else policy.allow_signups

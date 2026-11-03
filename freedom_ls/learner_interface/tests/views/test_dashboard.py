@@ -1753,10 +1753,8 @@ def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
 
     card_count = len(rendered_section(response, "in-progress").courses)
     assert card_count > 1
-    assert (
-        _first_card_grid(response.content.decode()).count("Missed deadline")
-        == card_count
-    )
+    grid_text = re.sub(r"<[^>]+>", " ", _first_card_grid(response.content.decode()))
+    assert grid_text.count("Missed deadline") == card_count
 
 
 @pytest.mark.django_db
