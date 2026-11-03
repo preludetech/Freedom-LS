@@ -4536,3 +4536,16 @@ def test_the_outline_and_the_gate_agree_that_an_item_is_closed(closing_form_cour
 
     assert "Closed 1 Jan 2020" in toc
     assert refused.status_code == 302
+
+
+@pytest.mark.django_db
+def test_outline_missed_deadline_chip_icon_is_hidden_from_assistive_technology(
+    due_course,
+):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    html = _player_html(client, course)
+
+    assert '<span aria-hidden="true" class="inline-flex">' in html
+    assert 'aria-label="warning"' not in html

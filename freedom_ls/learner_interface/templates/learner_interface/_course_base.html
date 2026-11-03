@@ -57,7 +57,7 @@ docked outline panel carries its own progress, so the header stays uncluttered.
 {% block header_extra %}
     {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2" data-testid="player-item-deadline">
-            {% include "learner_interface/partials/deadline_labels.html" with child=current_entry %}
+            {% include "learner_interface/partials/deadline_labels.html#line" with child=current_entry %}
         </div>
     {% endif %}
     {% if course_progress %}
