@@ -1,133 +1,137 @@
-# Frontend QA report: apis-for-lead-monitoring-1-foundation-and-users
+# QA report: Lead monitoring API, foundation and users
+
+- Run date: 2026-11-03
+- Branch: apis-for-lead-monitoring-1-foundation-and-users
+- Dev server port: 8175
+- Viewports: desktop 1920x1080 / mobile 375x812 / tablet 768x1024
 
 ## Methodology
 
-- Run by hand through Playwright MCP at desktop 1920x1080, mobile 375x812 and tablet 768x1024. The API sections (§2) were run with curl.
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists there.
-- Pre-step: the branch was rebased (16 commits replayed onto origin/main, no conflicts, lost-change check pass, full tier 11368 passed, pre-commit clean, pushed). The upstream review found the direction unchanged.
-- Data reseed: the first load of `/` returned a 500 because `FORCE_SITE_NAME='DemoDev'` matched no Site. The rebase rebuild had recreated the dev DB empty. qa-data-helper seeded it with `create_demo_data --yes` and `content_save demo_content DemoDev`, plus one learner registration. That gives N = 51 users on DemoDev. The smoke gate ran after the seed.
+Browser tests were driven by hand through Playwright MCP. API tests were run with curl from a terminal. Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there.
+
+Before testing, the branch was rebased onto main (28 commits replayed, one trivial conflict in `test_organisation/mirroring_exemptions.txt` resolved by keeping both lines). The lost-change check passed, the full test tier ran 11530 passed, pre-commit was clean, and the branch was pushed.
+
+Leftover API keys and API-key audit entries from the previous QA run were deleted from the dev DB first, so §1.1 and §4 could start from empty.
+
+Accessibility snapshot files and console logs were deleted rather than collected, because the snapshots of key-issued pages held full key text. The user CSV export from 6.1 was kept out of the spec dir for the same reason (user data).
 
 ## Diff scoping
 
-- Class: **FULL**.
-- Triggering template files:
-  - `freedom_ls/api_admin/templates/admin/api_admin/key_issued.html`
-  - `freedom_ls/api_admin/templates/admin/api_admin/revoke_confirm.html`
-- The rest of the diff is about 75 `.py` and config files under `freedom_ls/api`, `freedom_ls/api_admin`, `freedom_ls/accounts`, `config/`, `pyproject.toml` and `uv.lock`.
-- Nothing was skipped: desktop, mobile and tablet all ran.
+Class: FULL. Triggered by the template and static files in the diff, including `freedom_ls/api_admin/templates/admin/api_admin/key_issued.html`, `freedom_ls/api_admin/templates/admin/api_admin/revoke_confirm.html` and `freedom_ls/site_aware_models/static/site_aware_models/css/admin.css` (135 changed files in total). Nothing was skipped: desktop, mobile and tablet all ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages checked:
+Pass. Pages checked:
 
-- `http://127.0.0.1:8625/`
-- `http://127.0.0.1:8625/admin/freedom_ls_api/apikey/`
+- http://127.0.0.1:8175/
+- http://127.0.0.1:8175/admin/freedom_ls_api/apikey/
 
 ## Results
 
-Plan sections: §0 Setup, §1 Issue a key, §2 The API from a terminal, §3 Revoke, §4 Audit log, §5 Email verification moves `updated_at`, §6 Side effects of the dependency change.
-
-| Test | Viewport | Status | Note | Screenshot |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 0.1 | desktop | pass | Branch badge correct, logged in as demodev@email.com, dashboard renders | ![](screenshots/page-2026-11-02T07-42-34-293Z.png) |
-| 1.1 | desktop | pass | Empty changelist with "Add API key"; add form has Name, 4 scope checkboxes, Expires at; no Site, key, prefix or hash field | ![](screenshots/page-2026-11-02T07-42-49-232Z.png) ![](screenshots/page-2026-11-02T07-42-42-727Z.png) |
-| 1.2 | desktop | fail | No scope: two errors under Scopes (B1). Past expiry correctly rejected | ![](screenshots/page-2026-11-02T07-42-55-567Z.png) ![](screenshots/page-2026-11-02T07-43-32-757Z.png) |
-| 1.3 | desktop | pass | "API key issued" page with full key in monospace box, "Copy it now", no flash; browser Back gives ERR_CACHE_MISS | ![](screenshots/page-2026-11-02T07-43-42-317Z.png) |
-| 1.4 | desktop | pass | List row correct, secret absent from HTML; change form only Name editable; resubmitting same name issues a different key | ![](screenshots/page-2026-11-02T07-44-00-251Z.png) ![](screenshots/page-2026-11-02T07-44-09-606Z.png) |
-| 1.5 | desktop | pass | "QA no users" with Course applications only issued; "Save and continue editing" also lands on key page | none |
-| 2.1-2.2 | desktop | pass | curl: missing key gives not_authenticated; all bad keys give identical authentication_failed 401; `?key=` ignored | none |
-| 2.3-2.5 | desktop | pass | 51 users, 10 fields, paging, page_size and cursor validation, updated_since validation all as specified | none |
-| 2.6 | desktop | pass | Missing scope 403; POST/PUT/PATCH/DELETE 405 JSON; OPTIONS 200; HEAD 200 no body | none |
-| 2.7 | desktop | fail | Schema 401/200 lack `Cache-Control: private, no-store` (B2) | none |
-| 2.8 | desktop | pass | Last used at updated, Updated at unchanged | ![](screenshots/page-2026-11-02T07-45-51-918Z.png) |
-| 2.9 | desktop | pass | Logged-in browser at `/api/v1/users/`: 401 plain JSON, no browsable API | ![](screenshots/page-2026-11-02T07-45-53-853Z.png) |
-| 3.1 | desktop | pass | Only "Revoke selected keys" action; confirmation lists 2 keys; revoke works and flash shown; keys then 401 | ![](screenshots/page-2026-11-02T07-46-06-698Z.png) ![](screenshots/page-2026-11-02T07-46-17-475Z.png) |
-| 3.2 | desktop | pass | Already-revoked key skipped (1 to revoke, 2 skipped); Cancel leaves list unchanged | ![](screenshots/page-2026-11-02T07-46-27-079Z.png) |
-| 3.3 | desktop | fail | Revoke from change page works; revoked key's page still offers Save and writes a history entry (B3) | ![](screenshots/page-2026-11-02T07-46-44-452Z.png) |
-| 3.4 | desktop | pass | `/delete/` is 403; status filter Active 0, Expired 0, Revoked 3 | ![](screenshots/page-2026-11-02T07-47-24-485Z.png) |
-| 4 | desktop | pass | 3 `api_key.revoked` and 3 `api_key.issued` entries; no secrets; none for skipped re-revoke or no-op Save | ![](screenshots/page-2026-11-02T07-47-45-976Z.png) |
-| 1.3-cache | desktop | pass | Add POST answers 200 with `Cache-Control: no-store, max-age=0, no-cache, must-revalidate, private` | none |
-| 5 | desktop | pass | Toggling Verified moves `updated_at` as expected; login changes `last_login` only | ![](screenshots/page-2026-11-02T07-48-13-528Z.png) |
-| 6 | desktop | pass | Users export has `email_verified` matching the API for all 51 rows; course and topic pages clean; `manage.py check` clean; no "ninja" references | ![](screenshots/page-2026-11-02T07-49-03-417Z.png) |
-| 1.1 | mobile | fail | Add form overflows horizontally, scrollWidth 829 in 375 (B4) | ![](screenshots/page-2026-11-02T07-49-33-748Z.png) |
-| 1.3 | mobile | pass | Key page fits (375); key wraps; Back button 137x38 | ![](screenshots/page-2026-11-02T07-49-55-857Z.png) |
-| 1.4 | mobile | pass | Changelist fits (375); rows stack | ![](screenshots/page-2026-11-02T07-50-01-057Z.png) |
-| 3.1 | mobile | pass | Revoke confirmation fits; Cancel link is a small touch target (see notes) | ![](screenshots/page-2026-11-02T07-50-06-735Z.png) |
-| 6.2 | mobile | pass | Dashboard, course detail, topic 1 fit at 375, nav and main present, no console errors | ![](screenshots/page-2026-11-02T07-50-20-400Z.png) ![](screenshots/page-2026-11-02T07-50-13-929Z.png) ![](screenshots/page-2026-11-02T07-50-15-728Z.png) |
-| 1.1 | tablet | fail | Add form overflows, scrollWidth 829 in 768 (B4) | ![](screenshots/page-2026-11-02T07-50-23-257Z.png) |
-| 1.4-3.4 | tablet | pass | Changelist, revoke confirmation and change form fit at 768 | ![](screenshots/page-2026-11-02T07-50-28-132Z.png) ![](screenshots/page-2026-11-02T07-50-30-133Z.png) |
-| 3.2-empty | tablet | fail | Confirmation with all keys already revoked shows "To revoke (0)" with enabled Revoke (B5) | ![](screenshots/page-2026-11-02T07-50-41-294Z.png) |
-| 6.2 | tablet | pass | Dashboard and topic 1 fit at 768, nav and main present | ![](screenshots/page-2026-11-02T07-50-35-459Z.png) |
+| 6.3 | desktop | pass | `manage.py check` reports no issues. The W001 line was skipped because `config/settings_dev.py` hardcodes `DEBUG = True`. | none |
+| 6.4 | desktop | pass | `grep -ri ninja freedom_ls config pyproject.toml` prints nothing. | none |
+| 1.1 | desktop | pass | Empty "API keys" changelist with an Add API key button. The add form has Name, Scopes (4 checkboxes with model names) and Expires at, with no Site, key, prefix or hash field. | ![](screenshots/page-2026-11-03T05-16-09-146Z.png) |
+| 1.2 | desktop | pass | No scope gives "Choose at least one API scope."; a past expiry gives "The expiry must be in the future." No key was issued. | ![](screenshots/page-2026-11-03T05-16-34-323Z.png) |
+| 1.3 | desktop | pass | The "API key issued" page shows the name and the full `flsk_<prefix>.<secret>` key in a monospace box with "Copy it now. It is not shown again.", and no success flash. The add POST response is `Cache-Control: no-store, max-age=0, no-cache, must-revalidate, private`. | ![](screenshots/page-2026-11-03T05-16-44-504Z.png) |
+| 1.4 | desktop | pass | The list shows one Active row and the secret is absent from the page HTML. On the change form only Name is editable, with no key hash and no Delete link, and "Revoke this key" is in the header actions. Browser back gives Chrome's "Confirm Form Resubmission", so the key is not served from cache. The prefix is 16 hex chars per the spec. | ![](screenshots/page-2026-11-03T05-17-03-495Z.png) |
+| 1.5 | desktop | pass | The third key, "QA no users", was issued with Course applications only. The list shows 3 Active rows and no secret in the page HTML. | ![](screenshots/page-2026-11-03T05-17-26-399Z.png) |
+| 2.1 | desktop | pass | With no key: 401, `WWW-Authenticate: Bearer realm="api"`, `Cache-Control: private, no-store`, body code `not_authenticated`. | none |
+| 2.2 | desktop | pass | The Basic scheme, nonsense, an unknown prefix and a wrong secret all give 401 with identical headers and one identical `authentication_failed` body. `?key=` in the query string is ignored. Matches the spec and docs/api.md (see General notes). | none |
+| 2.3 | desktop | pass | 200 with 51 results. Every user has exactly the documented fields and timestamps end in Z. Lowercase `bearer` works, detail by id gives 200, and an unknown id gives 404 with code `not_found`. | none |
+| 2.4 | desktop | pass | With `page_size=2`, `next` keeps `page_size` and adds `cursor`. 26 pages cover 51 unique ids. Bad `page_size` and `cursor` values give 400 naming the field, and `page_size=5000` returns all 51. | none |
+| 2.5 | desktop | pass | `updated_since` 2000 returns 51 and 2999 returns none. A naive time and "yesterday" both give 400 naming `updated_since`. | none |
+| 2.6 | desktop | pass | A key without the users scope gets 403 `permission_denied`. POST, PUT, PATCH and DELETE give a JSON 405. OPTIONS gives 200 with a `name`-only body, and HEAD gives 200 with GET's headers and an empty body. | none |
+| 2.7 | desktop | pass | The schema without a key gives a 401 JSON response. With a key it gives 200 `application/vnd.oai.openapi+json`, a bearer `ApiKeyAuth` scheme, and the `cursor`, `page_size` and `updated_since` parameters on the users list. | none |
+| 2.8 | desktop | pass | Last used at is filled after the first call and unchanged by a later call. Updated at stayed at issue time (checked in the DB to the second). | ![](screenshots/page-2026-11-03T05-18-42-277Z.png) |
+| 2.9 | desktop | pass | A logged-in browser at `/api/v1/users/` gets 401 `application/json` with a plain `not_authenticated` body and no browsable API or HTML. | ![](screenshots/page-2026-11-03T05-18-51-588Z.png) |
+| 3.1 | desktop | pass | The confirmation lists both keys with "Scripts using these keys stop at once.", and a second tab still showed both Active. Revoking gives "Revoked 2 API keys..." and both show Revoked. The revoked key gets 401 and the other key still gets 200. The changelist has no Revoked at column; that shows on the change page. | ![](screenshots/page-2026-11-03T05-19-14-737Z.png) |
+| 3.2 | desktop | pass | Select all plus revoke shows "To revoke (1)" and "Already revoked, skipped (2)". Cancel leaves the list unchanged with one Active key. | ![](screenshots/page-2026-11-03T05-19-30-782Z.png) |
+| 3.3 | desktop | pass | The "Revoke this key" header action opens the same confirmation, with Cancel pointing to the change page. After revoking, the change page shows Revoked, Revoked at set, no editable field and no Revoke button. The key gets 401, and a zero-UUID or invalid `ids` gives 404. | ![](screenshots/page-2026-11-03T05-19-44-875Z.png) |
+| 3.4 | desktop | pass | `.../delete/` on a revoked key gives 403. The status filter shows Active 0, Revoked 3, Expired 0. | ![](screenshots/page-2026-11-03T05-21-19-141Z.png) |
+| 4 | desktop | pass | The audit log, newest first, has 3 `api_key.revoked` entries (none for the skipped re-revoke) then 3 `api_key.issued`, actor demodev@email.com. Issued details hold only `expires_at`, `key_prefix`, `name` and `scopes`, and no secret appears in any audit field. The Action column shows raw codes. | ![](screenshots/page-2026-11-03T05-21-37-359Z.png) |
+| 5 | desktop | pass | Un-verifying then re-verifying an address on demodev_s1 returns exactly that user via `updated_since`, with the right `email_verified` value each time. A login moves `last_login` but not `updated_at`. Attempting this first on another site's address exposed B3. | ![](screenshots/page-2026-11-03T05-23-09-000Z.png) |
+| 6.1 | desktop | pass | The Users export downloaded 51 rows with the expected header, and every `email_verified` value matches the API. The CSV was moved out of the spec dir (user data). | ![](screenshots/page-2026-11-03T05-23-42-526Z.png) |
+| 6.2 | desktop | pass | The learner dashboard, course detail and first topic render normally with no traceback. The console shows only pre-existing noise. | ![](screenshots/page-2026-11-03T05-24-00-670Z.png) |
+| 1.1 | mobile | **fail** | The form fits 375 with no horizontal scroll, but each Scopes checkbox label is clipped with an ellipsis, hiding the model names (B2). | ![](screenshots/page-2026-11-03T05-24-15-336Z.png) |
+| 1.3 | mobile | **fail** | The key overflows its box (code width 293, scrollWidth 516), the middle is clipped, and it breaks only at a `-` (B1). | ![](screenshots/page-2026-11-03T05-24-39-825Z.png) |
+| 1.4 | mobile | pass | The changelist renders as cards with no clipped cell or horizontal scroll. On the change form "Revoke this key" sits in Unfold's "..." object-tools menu. | ![](screenshots/page-2026-11-03T05-24-55-426Z.png) |
+| 3.3 | mobile | pass | The revoke confirmation fits 375, and revoking leads to the change page showing Revoked. The Cancel link is 46x20. | ![](screenshots/page-2026-11-03T05-25-16-600Z.png) |
+| 4 | mobile | pass | The audit log changelist cards fit 375 with no clipped cells. | ![](screenshots/page-2026-11-03T05-25-28-091Z.png) |
+| 1.1 | tablet | **fail** | The form fits 768, but the longest scope label ("Registrations and progress: ...") is clipped with an ellipsis (B2). | ![](screenshots/page-2026-11-03T05-25-41-247Z.png) |
+| 1.3 | tablet | pass | The key fits its box on one line (code width 686, scrollWidth 684). Nothing was clipped. | ![](screenshots/page-2026-11-03T05-25-45-372Z.png) |
+| 3.1 | tablet | pass | The changelist renders as cards with the sidebar collapsed. Select all plus revoke gives "To revoke (2)", "Already revoked, skipped (4)", then "Revoked 2 API keys...", with no horizontal scroll. | ![](screenshots/page-2026-11-03T05-25-57-553Z.png) |
 
 ## Design check
 
-no design states tested
+No design states tested.
 
-## Bugs
+## B1: Issued API key overflows its box on a phone because break-all is not in Unfold's CSS
 
-### B1: No-scope add form shows two errors under Scopes
+Manifestations:
 
-- Manifestations: 1.2 (desktop).
-- Screenshot: ![](screenshots/page-2026-11-02T07-42-55-567Z.png)
-- Expected: one error under Scopes: "Choose at least one API scope."
-- Actual: "This field is required." and "Choose at least one API scope." both appear. `ApiKeyAddForm.scopes` is a required `MultipleChoiceField` and `ApiKey.clean` (`freedom_ls/api/models.py:54`) also rejects empty scopes.
+- 1.3, mobile
 
-### B2: Schema endpoint responses lack Cache-Control: private, no-store
+![](screenshots/page-2026-11-03T05-24-39-825Z.png)
 
-- Manifestations: 2.7 (desktop). No screenshot (curl).
-- Expected: every API response, `/api/v1/schema/` included, carries `Cache-Control: private, no-store` (spec testing section). Errors are JSON `{detail, code}`.
-- Actual: `/api/v1/schema/` 401 and 200 carry no Cache-Control (the 200 has `Vary: Cookie`). The 401 body is pretty-printed `{detail}` with no `code` and Content-Type `application/vnd.oai.openapi+json`.
+Expected: The full key wraps inside its monospace box at 375px so the whole key is visible and readable.
 
-### B3: Revoked key's read-only change page still saves
+Actual: The `<code>` has class `break-all`, but Unfold's prebuilt stylesheet ships no `break-all` utility, so `word-break` is `normal`. The key (scrollWidth 516 in a 293px box) runs past the box edge, its middle is clipped, and it wraps only at a `-` in the secret.
 
-- Manifestations: 3.3 (desktop).
-- Screenshot: ![](screenshots/page-2026-11-02T07-46-44-452Z.png)
-- Expected: a revoked (or expired) key is read-only throughout: no Save buttons and no write to the row.
-- Actual: Save, Save and continue editing and Save and add another stay on the page. Save shows "The API key ... was changed successfully.", re-saves the row via `ApiKeyAdmin.save_model` -> `super().save_model`, and writes a "No fields changed." admin history entry.
+## B2: API scope checkbox labels are cut off with an ellipsis at phone and tablet widths
 
-### B4: API key add form overflows horizontally on mobile and tablet
+Manifestations:
 
-- Manifestations: 1.1 (mobile), 1.1 (tablet).
-- Screenshots: ![](screenshots/page-2026-11-02T07-49-33-748Z.png) ![](screenshots/page-2026-11-02T07-50-23-257Z.png)
-- Expected: the add form fits the viewport at 375 and 768 wide, like other admin add forms (the webhook endpoint add form fits at 375).
-- Actual: document scrollWidth is 829 at both widths. The "Registrations and progress: LearnerCourseRegistration, CohortCourseRegistration, CourseInterest, CourseProgress" scope checkbox label does not wrap and stretches the fieldset.
+- 1.1, mobile
+- 1.1, tablet
 
-### B5: Revoke confirmation with nothing to revoke still offers Revoke and reports "Revoked 0 API keys"
+![](screenshots/page-2026-11-03T05-24-15-336Z.png)
+![](screenshots/page-2026-11-03T05-25-41-247Z.png)
 
-- Manifestations: 3.2-empty (tablet).
-- Screenshots: ![](screenshots/page-2026-11-02T07-50-30-133Z.png) ![](screenshots/page-2026-11-02T07-50-41-294Z.png)
-- Expected: undecided by the spec. When every selected key is already revoked, the page should not invite a revoke that does nothing and then claim scripts stop at once.
-- Actual: "To revoke (0)" with an enabled Revoke button. Submitting shows "Revoked 0 API keys. Scripts using them stop at once." No audit entry is written.
+Expected: Each scope label, including the model names it covers, wraps onto further lines inside the form (the earlier fix's stated aim: wrap instead of widening the page).
+
+Actual: Unfold renders the label text in `span.truncate` (nowrap plus ellipsis). With fieldset `min-width: 0` the page no longer widens, but labels are clipped: at 375 three of four lose their model names, and at 768 "Registrations and progress" is cut.
+
+## B3: allauth Email addresses admin lists and opens other sites' addresses
+
+Manifestations:
+
+- 5, desktop
+
+![](screenshots/page-2026-11-03T05-22-23-634Z.png)
+
+Expected: The DemoDev admin's Email addresses changelist shows only addresses of DemoDev users (51), like the site-aware Users changelist.
+
+Actual: It lists all 67 addresses across sites. Opening wrend_s1@email.com (user 70, site 127.0.0.1:8003) shows the address, and saving fails with "User: Select a valid choice" because the user FK validates through the site-filtered manager. allauth's stock EmailAddress admin is not site-aware; this predates the branch.
 
 ## Bug status
 
-- **FIXED** (commit: 747d55230) — B1: No-scope add form shows two errors under Scopes. Re-verified: only "Choose at least one API scope." appears.
-- **FIXED** (commit: 931b4b072) — B2: Schema endpoint responses lack Cache-Control: private, no-store. Decided: every schema response carries `Cache-Control: private, no-store`, and its errors are `{detail, code}` as `application/json`. The 200 keeps the OpenAPI content type.
-- **FIXED** (commit: 04c466d07) — B3: Revoked key's read-only change page still saves. Re-verified: a revoked key's change page has no save buttons; an active key keeps the editable Name and all three save buttons.
-- **FIXED** (commit: f548c742d) — B4: API key add form overflows horizontally on mobile and tablet. Re-verified: scrollWidth 375 at 375 and 768 at 768. The fix is in shared admin CSS (freedom_ls/site_aware_models/static/site_aware_models/css/admin.css); spot-checks of webhook endpoint add, email address change and API key change pages show no overflow at 375.
-- **FIXED** (commit: b211209a5) — B5: Revoke confirmation with nothing to revoke still offers Revoke and reports "Revoked 0 API keys". Decided: the page says "Every selected key is already revoked. Nothing to revoke.", lists the skipped keys, and offers only a Back link. A POST that revokes nothing flashes the warning "No API keys revoked: they were already revoked."
+- **FIXED** (commit: fd536456c) — B1: Issued API key overflows its box on a phone because break-all is not in Unfold's CSS. Re-verified at 375: `word-break: break-all`, the key and a dash-free stand-in both fit their box (291/291), page 375 wide.
+
+  ![](screenshots/page-2026-11-03T05-43-43-908Z.png)
+- **FIXED** (commit: 3dfcf9b09) — B2: API scope checkbox labels are cut off with an ellipsis at phone and tablet widths. Re-verified: all four labels wrap with nothing clipped at 375 and 768, and there's no horizontal overflow. Spot check: the user change form at 768 has no overflow.
+
+  ![](screenshots/page-2026-11-03T06-03-17-046Z.png)
+- **UNRESOLVED** — B3: allauth Email addresses admin lists and opens other sites' addresses (reason: security-adjacent cross-site data exposure in the admin; deciding how the allauth EmailAddress admin is scoped per site needs a human).
+
+Full run after the fixes: the B2 fixer ran the full tier on the final HEAD (3dfcf9b09, which contains both fixes): 11532 passed. No separate run was repeated.
 
 ## General notes
 
-Test-plan inaccuracies:
+Plan wording that differs from the spec, all judged pass:
 
-- The key prefix is 16 characters, not 12 as the plan says (the spec says 16).
-- 2.2's "same body as 2.1" is loose. The spec gives a missing key (`not_authenticated`) and a bad key (`authentication_failed`) different bodies, and that is what the API does.
-- The audit log Action column shows codes (e.g. `api_key.revoked`) for every action, not labels. That admin predates this branch.
+- 2.2 "same body as 2.1": no key gives `not_authenticated`, while every bad key gives one identical `authentication_failed` body. This is per the spec and docs/api.md.
+- 1.4 "12-character prefix": the spec says `token_hex(8)`, which is 16 characters.
+- 3.1 "a Revoked at time" on the list: the spec's changelist has no `revoked_at` column. It shows on the change page.
+- §4 "API key revoked" label: the audit admin shows raw action codes for every action, unchanged on this branch.
 
-Observations that are not bugs:
+Other notes:
 
-- The warning triangles on the Expires at inputs are Django's timezone-offset hint (browser UTC+2, server UTC), not an error.
-- The Cancel link on the mobile revoke confirmation is a 46x20 text link, a small touch target (nit).
-- Browser Back onto the no-store key page gives `net::ERR_CACHE_MISS`, so the key is not replayed from history (good).
+- §6.3 W001 line skipped: `settings_dev` hardcodes `DEBUG = True`.
+- The Expires at inputs show red warning triangles even with no error. This is Django's "You are 2 hours ahead of server time" timezone note rendered by Unfold as an icon. It is not from this branch, but it reads like an error.
+- The mobile Cancel link on the revoke confirmation is 46x20, small but well spaced.
+- Console noise on learner pages (report-only CSP for a Google frame, favicon 404, YouTube embed warnings) predates this branch.
+- The do_qa command names `.claude/fls-dev/scripts/` wrappers (`qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`, `delete_sdd_work_files.sh`) that do not exist. The `claude_plugins/sdd/scripts/` copies were used. `qa_collect_screenshots.sh` needs a second `<source-dir>` argument that the command does not pass. The collect script also sweeps `.yml` snapshots and console logs, which can hold secrets.
 
-Environment and tooling:
-
-- The W001 check line was skipped because `config/settings_dev.py` hard-codes `DEBUG = True`.
-- The do_qa command names `.claude/fls-dev/scripts/` wrappers (`qa_cleanup.sh`, `delete_sdd_work_files.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`) that do not exist. The `claude_plugins/sdd/scripts/` copies were used.
-- `.claude/fls-dev/config.md` lacks the admin credentials and QA Dev Data sections. The values were read from `.claude/sdd/config.md`.
-- The user CSV export downloaded into the screenshot directory and was moved aside.
-- The admin user change form (/admin/freedom_ls_accounts/user/<id>/change/) overflows at 375 wide (scrollWidth 427 before the B4 fix, 414 after: the user link and password field). It predates this branch and is not a regression from the fix.
-- Extra keys issued during the run: "QA sync 2" (to read the add POST's headers) and "QA mobile" (for the mobile checks).
-
-status: ok · reason: 5 bugs — 3 fixed, 2 unresolved; report rendered, screenshots verified
+status: ok · reason: 3 bugs — 2 fixed, 1 unresolved; report rendered, screenshots verified
