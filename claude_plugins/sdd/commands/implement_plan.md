@@ -1,7 +1,7 @@
 ---
 name: implement_plan
 description: Execute the implementation plan in resilient batches.
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion, mcp__playwright__*, mcp__plugin_ds_playwright__*
 argument-hint: [suffix, e.g. 2b]
 ---
 
@@ -99,8 +99,8 @@ Start with `fixes = 0` and `scope = <batch-commit>^..HEAD`, then repeat:
 4. `fixes == 2`: the leftovers go into the Step 3 summary; end the review. The run continues.
 5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the findings and the two standard files' paths. It commits `[batch <id>] review fix <n>` and runs `targeted` through `run_test_tier.md` like any batch; `fixes` goes up by one and `scope` becomes `<fix-commit>^..HEAD`. Act on its status as for any batch, then go back to step 1.
 
-### DO NOT run the frontend_qa plan during implementation
-If there is a QA file, do **not** run it, and ignore any plan step that says to run it. The QA process runs separately, after the plan is complete.
+### QA never runs inside a batch
+QA runs in Step 5, never inside a batch, and a plan step that says to run it is ignored.
 
 ## Step 3: Final Verification
 
@@ -132,3 +132,18 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - one `add:"<section>|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"` per surviving design miss, where `<section>` is the heading text, without the `##`, of the section holding the ticked item (`3. Implementation and QA` in the current layout, `7. Implementation` in older checklists).
 
 With no surviving design misses there is nothing to add.
+
+## Step 5: Run QA
+
+Read `QA command` under `## QA Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
+
+- Blank: say "no QA command configured; the checklist's QA item is a user item" and go to Step 6.
+- The QA file does not exist: say the plan has no QA plan and go to Step 6.
+- The value names a command of this plugin (`sdd:<name>`): read `${CLAUDE_PLUGIN_ROOT}/commands/<name>.md` and follow it with `mode: hook`, `<spec-dir>`, `<todo-path>` and the QA file path.
+- Any other value: invoke it with the `Skill` tool and `args: "spec-dir=<spec-dir> todo-path=<todo-path> plan=<QA file> mode: hook"`.
+
+Done when the hook has returned `ok`, `failed`, `blocked` or `paused`; any of the last three is carried to Step 6 with its reason.
+
+## Step 6: Final report
+
+Report the QA report path, the bug counts per lane, the `Decide` items filed, and the next human step from `todo.md`. A QA hook that returned `failed`, `blocked` or `paused` is reported with its reason; the implementation commits are already on the branch, and `/sdd:do_qa` is the command that continues.
