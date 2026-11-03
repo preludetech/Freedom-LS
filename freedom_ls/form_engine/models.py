@@ -450,7 +450,7 @@ class FormProgress(SiteAwareModel):
             self.answers.exclude(question_id__in=path.question_ids).delete()
             self.asked = path.as_asked()
             self.completed_time = timezone.now()
-            self.score()
+            self.score(path)
             self.save()
         # Sent once the block has committed or released its savepoint, not through
         # on_commit: the receivers that update course progress and webhooks read
@@ -459,7 +459,7 @@ class FormProgress(SiteAwareModel):
             sender=type(self), user=self.user, form=self.form, attempt=self
         )
 
-    def score_category_value_sum(self):
+    def score_category_value_sum(self, path: SittingPath) -> None:
         """
         Use the CATEGORY_VALUE_SUM scoring strategy:
 
@@ -473,15 +473,9 @@ class FormProgress(SiteAwareModel):
         # 1. Get all questions from the form and create a data structure
         answer_data = []
 
-        # Iterate through all pages and all questions
-        for page in self.form.pages.all():
-            for child in page.children():
-                # Only process FormQuestion objects (skip FormContent)
-                if child.content_type != "FORM_QUESTION":
-                    continue
-
-                question = child
-
+        # Only the questions the sitting was asked count toward its scores.
+        for page in path.pages:
+            for question in path.questions_of(page):
                 # multiple_choice and dropdown both carry QuestionOption rows
                 # with a numeric value; every other type has no value to sum.
                 if question.type not in ("multiple_choice", "dropdown"):
@@ -631,10 +625,10 @@ class FormProgress(SiteAwareModel):
         self.scores = self.compute_quiz_scores()
         self.save()
 
-    def score(self):
+    def score(self, path: SittingPath) -> None:
         """calculate the final score for the form"""
         if self.form.strategy == FormStrategy.CATEGORY_VALUE_SUM:
-            self.score_category_value_sum()
+            self.score_category_value_sum(path)
         elif self.form.strategy == FormStrategy.QUIZ:
             self.score_quiz()
         elif self.form.strategy == FormStrategy.UNSCORED:

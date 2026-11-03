@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.conditions import sitting_path
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -166,7 +167,7 @@ def test_score_category_value_sum_single_question(mock_site_context):
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
     _answer(form_progress, question, best_option)
 
-    form_progress.score_category_value_sum()
+    form_progress.score_category_value_sum(sitting_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {
@@ -202,7 +203,7 @@ def test_score_category_value_sum_scores_dropdown_like_multiple_choice(
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
     _answer(form_progress, question, best_option)
 
-    form_progress.score_category_value_sum()
+    form_progress.score_category_value_sum(sitting_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {
@@ -231,7 +232,7 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
     _answer(form_progress, question_1, top_option_1)
 
-    form_progress.score_category_value_sum()
+    form_progress.score_category_value_sum(sitting_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {
@@ -266,7 +267,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
     _answer(form_progress, uncategorised_question, uncategorised_top)
     _answer(form_progress, categorised_question, categorised_top)
 
-    form_progress.score_category_value_sum()
+    form_progress.score_category_value_sum(sitting_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {
@@ -300,7 +301,7 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     _answer(form_progress, exercise_question, exercise_top)
     _answer(form_progress, nutrition_question, nutrition_top)
 
-    form_progress.score_category_value_sum()
+    form_progress.score_category_value_sum(sitting_path(form_progress))
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {
@@ -879,7 +880,7 @@ def unscored_progress(mock_site_context) -> FormProgress:
 def test_scoring_an_unscored_form_writes_no_scores(
     mock_site_context, unscored_progress
 ):
-    unscored_progress.score()
+    unscored_progress.score(sitting_path(unscored_progress))
 
     unscored_progress.refresh_from_db()
     assert unscored_progress.scores is None
@@ -893,3 +894,80 @@ def test_completing_an_unscored_form_stamps_the_completion_time(
 
     unscored_progress.refresh_from_db()
     assert unscored_progress.completed_time is not None
+
+
+def _gated_scored_form() -> tuple[Form, FormQuestion, QuestionOption, QuestionOption]:
+    """A gate question, plus a page whose scored question shows only after "yes"."""
+    form: Form = FormFactory()
+    gate_page = FormPageFactory(form=form, order=0, category="Intro")
+    gate: FormQuestion = FormQuestionFactory(
+        form_page=gate_page, question="Gate", type="multiple_choice", order=0
+    )
+    yes: QuestionOption = QuestionOptionFactory(
+        question=gate, text="Yes", value="1", order=0
+    )
+    no: QuestionOption = QuestionOptionFactory(
+        question=gate, text="No", value="0", order=1
+    )
+    gated_page = FormPageFactory(
+        form=form, order=1, category="Gated", condition_option=yes
+    )
+    _scored_question(gated_page, category="Deep", order=0, values=("4", "2"))
+    return form, gate, yes, no
+
+
+@pytest.mark.django_db
+def test_score_category_value_sum_max_score_differs_between_sittings_by_path(
+    mock_site_context,
+):
+    form, gate, yes, no = _gated_scored_form()
+    said_yes: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(said_yes, gate, yes)
+    said_no: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(said_no, gate, no)
+
+    said_yes.complete()
+    said_no.complete()
+
+    said_yes.refresh_from_db()
+    said_no.refresh_from_db()
+    assert said_yes.scores is not None
+    assert said_no.scores is not None
+    assert said_yes.scores["Gated"]["max_score"] == 4
+    assert said_no.scores["Intro"]["max_score"] == 1
+    assert said_no.scores["Intro"]["score"] == 0
+
+
+@pytest.mark.django_db
+def test_score_category_value_sum_omits_a_category_whose_questions_are_all_off_path(
+    mock_site_context,
+):
+    form, gate, _yes, no = _gated_scored_form()
+    progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(progress, gate, no)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert progress.scores is not None
+    assert "Gated" not in progress.scores
+    assert set(progress.scores) == {"Intro"}
+
+
+@pytest.mark.django_db
+def test_score_category_value_sum_on_a_form_without_conditions_counts_every_question(
+    mock_site_context,
+):
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0, category="Wellbeing")
+    first, first_top = _scored_question(page, category="A", order=0, values=("5", "3"))
+    _scored_question(page, category="B", order=1, values=("10", "7"))
+    progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(progress, first, first_top)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert progress.scores is not None
+    assert progress.scores["Wellbeing"]["max_score"] == 15
+    assert set(progress.scores["Wellbeing"]["sub_categories"]) == {"A", "B"}
