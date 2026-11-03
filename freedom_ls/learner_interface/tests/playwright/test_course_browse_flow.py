@@ -374,6 +374,15 @@ def test_learner_browses_a_course(
             )
             assert _box(row)["height"] < 2 * date_box["height"] + 16
 
+        page.goto(_item_url(live_server, course, 5))
+        title_box = _box(page.locator("#page-title"))
+        card_box = _box(page.get_by_test_id("player-item-deadline"))
+        if viewport["width"] == 375:
+            assert card_box["y"] >= title_box["y"] + title_box["height"]
+        elif viewport["width"] == max(v["width"] for v in QA_VIEWPORTS):
+            assert card_box["x"] >= title_box["x"] + title_box["width"]
+        assert_no_horizontal_overflow(page)
+
     # Below md the stat cells stack, each spanning the strip so dividers line up.
     for width in (375, 640):
         page.set_viewport_size({"width": width, "height": 900})

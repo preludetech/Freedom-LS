@@ -5,7 +5,7 @@
 {% comment %}The title lines up with the topic's markdown and footer, not the full player column.{% endcomment %}
 {% block header_width %}max-w-reading{% endblock header_width %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}{% endblock page_title %}
+{% block item_page_title %}{% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}{% endblock item_page_title %}
 
 {% block content %}
     <c-page flush="true" class="pt-0 lg:pt-0">
