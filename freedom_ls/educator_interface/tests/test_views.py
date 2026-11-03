@@ -4519,6 +4519,43 @@ def test_a_bad_file_is_a_422_with_a_focused_alert_and_stores_nothing(
 
 
 @pytest.mark.django_db
+def test_the_file_input_only_offers_csv_files(import_world: SimpleNamespace):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    (file_input,) = page.cssselect("input[type=file]")
+    assert file_input.get("accept") == ".csv,text/csv"
+
+
+@pytest.mark.django_db
+def test_the_file_input_is_described_by_the_limits_line(
+    import_world: SimpleNamespace,
+):
+    page = _get_document(
+        import_world.client, _import_url(import_world.organisation, "learner_import")
+    )
+
+    (file_input,) = page.cssselect("input[type=file]")
+    (limits,) = page.cssselect(f"#{file_input.get('aria-describedby')}")
+    assert "rows" in limits.text_content()
+
+
+@pytest.mark.django_db
+def test_a_bad_file_page_still_wraps_the_input_in_the_drop_zone(
+    import_world: SimpleNamespace,
+):
+    response = import_world.client.post(
+        _import_url(import_world.organisation, "learner_import"),
+        {"file": SimpleUploadedFile("learners.csv", b"name\nAda\n")},
+    )
+
+    page = lxml.html.fromstring(response.content.decode())
+    (file_input,) = page.cssselect("input[type=file]")
+    assert page.cssselect(f"label[for={file_input.get('id')}][data-drop-zone]")
+
+
+@pytest.mark.django_db
 def test_a_good_file_redirects_with_a_303_to_its_preview(
     import_world: SimpleNamespace,
 ):

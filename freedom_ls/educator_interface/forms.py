@@ -31,7 +31,16 @@ def choice_error(label: str) -> dict[str, str]:
 
 
 class LearnerImportForm(forms.Form):
-    file = forms.FileField(label="CSV file")
+    file = forms.FileField(
+        label="CSV file",
+        widget=forms.ClearableFileInput(
+            attrs={
+                "accept": ".csv,text/csv",
+                "aria-describedby": "import-file-limits",
+                "class": "sr-only",
+            }
+        ),
+    )
 
 
 class BulkTargetPickerForm(forms.Form):

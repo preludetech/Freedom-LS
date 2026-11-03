@@ -749,4 +749,67 @@ document.addEventListener("alpine:init", () => {
             this.$el.textContent = new Intl.DateTimeFormat(undefined, options).format(instant);
         },
     }));
+
+    // Drop zone around a native file input. The label stays a working label
+    // for the input, so clicking it or tabbing to the input and pressing
+    // Enter opens the picker without any of this. Dragging adds the drop
+    // path: the dropped file is handed to the input through a DataTransfer,
+    // so the form submits it like a picked one.
+    Alpine.data("fileDropZone", () => ({
+        dragging: false,
+        fileName: "",
+        fileSize: "",
+        init() {
+            this.readInput();
+        },
+        input() {
+            return this.$el.querySelector('input[type="file"]');
+        },
+        enter() {
+            this.dragging = true;
+        },
+        // dragleave fires when the pointer crosses into a child of the label
+        // too; only a leave to outside the label ends the drag-over state.
+        leave(event) {
+            if (!event.currentTarget.contains(event.relatedTarget)) this.dragging = false;
+        },
+        drop(event) {
+            this.dragging = false;
+            const files = event.dataTransfer && event.dataTransfer.files;
+            if (!files || files.length === 0) return;
+            const transfer = new DataTransfer();
+            transfer.items.add(files[0]);
+            const input = this.input();
+            input.files = transfer.files;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        },
+        readInput() {
+            const file = this.input().files[0];
+            this.fileName = file ? file.name : "";
+            this.fileSize = file ? this.formatSize(file.size) : "";
+        },
+        formatSize(bytes) {
+            let size = bytes;
+            for (const unit of ["bytes", "KB", "MB"]) {
+                if (size < 1024 || unit === "MB") {
+                    return unit === "bytes" ? `${size} ${unit}` : `${size.toFixed(1)} ${unit}`;
+                }
+                size /= 1024;
+            }
+        },
+        hasFile() {
+            return this.fileName !== "";
+        },
+        showPrompt() {
+            return !this.dragging && !this.hasFile();
+        },
+        showFile() {
+            return !this.dragging && this.hasFile();
+        },
+        zoneClass() {
+            return this.dragging
+                ? "border-solid border-primary bg-surface"
+                : "border-dashed border-border bg-surface-2";
+        },
+    }));
 });
