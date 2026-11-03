@@ -1,0 +1,26 @@
+{% comment %}
+What a compact audit row leaves out: the full description, the reason, and
+for a bulk run summary its entries. Every value is user-derived text, so
+nothing here is marked safe.
+{% endcomment %}
+<dl class="grid gap-x-6 gap-y-2 py-2 text-sm md:grid-cols-[auto_minmax(0,1fr)]">
+    {% if object.description %}
+        <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Description</dt>
+        <dd class="wrap-anywhere">{{ object.description }}</dd>
+    {% endif %}
+    {% if object.reason %}
+        <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Reason</dt>
+        <dd class="wrap-anywhere">{{ object.reason }}</dd>
+    {% endif %}
+    {% if object.run_entries %}
+        <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Entries</dt>
+        <dd>
+            <ul class="space-y-1">
+                {% for entry in object.run_entries %}
+                    <li class="break-words">{{ entry.actor_label|default:"System" }}, {{ entry.label }}, {{ entry.target_label }}</li>
+                {% endfor %}
+            </ul>
+            {% if object.run_entries_more > 0 %}<p class="text-muted">and {{ object.run_entries_more }} more</p>{% endif %}
+        </dd>
+    {% endif %}
+</dl>

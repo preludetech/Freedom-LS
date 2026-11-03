@@ -1692,11 +1692,24 @@ def _history_entry(learner: Learner, **overrides: object) -> AuditLogEntry:
     )
 
 
-def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+def _entry_rows(document: lxml.html.HtmlElement, selector: str) -> list[list[str]]:
+    """Each entry row's data cells, without its toggle cell or its detail row."""
     return [
-        [cell.text_content().strip() for cell in row.cssselect("td")]
-        for row in document.cssselect("[data-tab-set] tbody tr")
+        [cell.text_content().strip() for cell in row.cssselect("td")][:-1]
+        for row in document.cssselect(f"{selector} tbody tr:not([data-row-detail])")
     ]
+
+
+def _row_details(document: lxml.html.HtmlElement, selector: str) -> list[str]:
+    """The text of each row detail, in row order."""
+    return [
+        " ".join(row.text_content().split())
+        for row in document.cssselect(f"{selector} tbody tr[data-row-detail]")
+    ]
+
+
+def _history_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
+    return _entry_rows(document, "[data-tab-set]")
 
 
 @pytest.mark.django_db
@@ -1719,9 +1732,9 @@ def test_the_history_tab_lists_the_newest_entry_first(staff_client: Client):
     _history_entry(learner, reason="older", created_at=now - timedelta(hours=1))
     _history_entry(learner, reason="newer", created_at=now)
 
-    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+    document = _learner_page(staff_client, learner, "history")
 
-    assert [row[3] for row in rows] == ["newer", "older"]
+    assert _row_details(document, "[data-tab-set]") == ["Reason newer", "Reason older"]
 
 
 @pytest.mark.django_db
@@ -1733,17 +1746,18 @@ def test_the_history_tab_pages_stably_when_entries_share_a_timestamp(
     for number in range(26):
         _history_entry(learner, reason=f"entry {number}", created_at=when)
 
-    first = _history_rows(_learner_page(staff_client, learner, "history"))
+    first_document = _learner_page(staff_client, learner, "history")
     second_page = staff_client.get(
         _interface_url(
             learner.organisation.slug, f"learners/{learner.pk}/__tabs/history"
         ),
         {"history-page": 2},
     )
-    second = _history_rows(lxml.html.fromstring(second_page.content.decode()))
+    second_document = lxml.html.fromstring(second_page.content.decode())
 
-    reasons = [row[3] for row in first + second]
-    assert (len(first), len(second), len(set(reasons))) == (25, 1, 26)
+    first = _row_details(first_document, "[data-tab-set]")
+    second = _row_details(second_document, "[data-tab-set]")
+    assert (len(first), len(second), len(set(first + second))) == (25, 1, 26)
 
 
 @pytest.mark.django_db
@@ -1771,6 +1785,71 @@ def test_the_history_tab_escapes_user_derived_text(staff_client: Client):
     assert "&lt;b&gt;actor&lt;/b&gt;" in content
     assert "&lt;b&gt;why&lt;/b&gt;" in content
     assert "<b>actor</b>" not in content
+
+
+@pytest.mark.django_db
+def test_a_history_row_has_three_cells_and_a_toggle_with_the_reason_in_its_detail(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, reason="Asked to leave")
+
+    document = _learner_page(staff_client, learner, "history")
+
+    (row,) = document.cssselect("[data-tab-set] tbody tr:not([data-row-detail])")
+    (detail,) = document.cssselect("[data-tab-set] tbody tr[data-row-detail]")
+    toggle = row.cssselect("td button[aria-expanded]")
+    cells = [cell.text_content().strip() for cell in row.cssselect("td")]
+    assert (
+        len(cells),
+        cells[2],
+        len(toggle),
+        toggle[0].get("aria-controls"),
+        detail.get("id"),
+        "Asked to leave" in detail.text_content(),
+        "Asked to leave" in row.text_content(),
+    ) == (
+        4,
+        "Learner deactivated",
+        1,
+        detail.get("id"),
+        detail.get("id"),
+        True,
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_an_entry_with_no_description_reason_or_run_entries_has_no_toggle(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, reason="")
+
+    document = _learner_page(staff_client, learner, "history")
+
+    assert (
+        document.cssselect("[data-tab-set] tbody button[aria-expanded]"),
+        document.cssselect("[data-tab-set] tbody tr[data-row-detail]"),
+    ) == ([], [])
+
+
+@pytest.mark.django_db
+def test_the_when_cell_has_an_iso_datetime_with_an_offset_and_reads_as_date_then_time(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    _history_entry(learner, created_at=datetime(2026, 3, 4, 10, 14, tzinfo=UTC))
+
+    document = _learner_page(staff_client, learner, "history")
+
+    (time_element,) = document.cssselect("[data-tab-set] tbody time")
+    stamp = datetime.fromisoformat(time_element.get("datetime"))
+    assert (
+        stamp.utcoffset() is not None,
+        stamp == datetime(2026, 3, 4, 10, 14, tzinfo=UTC),
+        " ".join(time_element.text_content().split()).startswith("4 Mar 2026, "),
+    ) == (True, True, True)
 
 
 @pytest.mark.django_db
@@ -3013,9 +3092,7 @@ def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Cl
 
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
-    assert [(row[2], row[3]) for row in rows] == [
-        ("Learner moved between cohorts", "From Alpha to Beta")
-    ]
+    assert [row[2] for row in rows] == ["Learner moved between cohorts From Alpha to Beta"]
 
 
 def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
@@ -3042,8 +3119,8 @@ def test_a_move_shows_on_both_cohorts_and_the_learner_history_tabs(
         _history_rows(_learner_page(staff_client, learner, "history")),
     ]
 
-    assert [[(row[2], row[-1]) for row in rows] for rows in shown] == [
-        [("Learner moved between cohorts", "From Alpha to Beta")]
+    assert [[row[2] for row in rows] for rows in shown] == [
+        ["Learner moved between cohorts From Alpha to Beta"]
     ] * 3
 
 
@@ -3060,8 +3137,11 @@ def test_an_add_shows_on_the_cohort_history_tab_and_not_on_another_cohort(
     rows = _history_rows(_cohort_history_tab(staff_client, cohort))
     other_page = _cohort_history_tab(staff_client, other)
 
-    assert ([row[4] for row in rows], "Alpha" in _region_text(other_page)) == (
-        ["Alpha"],
+    assert (
+        ["Alpha" in row[2] for row in rows],
+        "Alpha" in _region_text(other_page),
+    ) == (
+        [True],
         False,
     )
 
@@ -3109,9 +3189,7 @@ def test_a_cohort_registration_shows_on_the_cohort_history_tab(staff_client: Cli
     )
 
     rows = _history_rows(document)
-    assert [(row[2], row[4]) for row in rows] == [
-        ("Cohort registered for course", "Algebra")
-    ]
+    assert [row[2] for row in rows] == ["Cohort registered for course Algebra"]
 
 
 @pytest.mark.django_db
@@ -3134,7 +3212,7 @@ def test_the_cohort_history_tab_names_who_each_row_is_about(staff_client: Client
     ]
     rows = _history_rows(document)
     assert (headers, sorted(row[3] for row in rows)) == (
-        ["When", "Who", "What", "Target", "Details"],
+        ["When", "Who", "What", "Target", "More"],
         ["Ben Learner", "Pat Learner"],
     )
 
@@ -3156,15 +3234,40 @@ def test_the_cohort_history_card_names_who_the_row_is_about(staff_client: Client
 
 
 @pytest.mark.django_db
+def test_the_cohort_history_card_shows_who_and_when_then_label_and_target_with_a_detail(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    AuditLogEntryFactory(
+        target=cohort,
+        organisation=cohort.organisation,
+        action="learner.deactivated",
+        actor_label="Ada Admin",
+        target_label="Alpha",
+        reason="Asked to leave",
+    )
+
+    document = _cohort_history_tab(staff_client, cohort)
+
+    (card,) = document.cssselect("[data-tab-set] ul > li")
+    (details,) = card.cssselect("details")
+    first_line, second_line = card.cssselect("div.min-w-0 > div")[:2]
+    assert (
+        " ".join(first_line.text_content().split()).startswith("Ada Admin"),
+        " ".join(second_line.text_content().split()),
+        details.cssselect("summary")[0].text_content().strip(),
+        "Asked to leave" in details.text_content(),
+    ) == (True, "Learner deactivated · Alpha", "More", True)
+
+
+@pytest.mark.django_db
 def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: Client):
     learner = LearnerFactory(organisation=OrganisationFactory())
     register_for_course(learner, CourseFactory(title="Algebra"))
 
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
-    assert [(row[2], row[3]) for row in rows] == [
-        ("Learner registered for course", "Algebra")
-    ]
+    assert [row[2] for row in rows] == ["Learner registered for course Algebra"]
 
 
 def _audit_log_url(organisation: Organisation) -> str:
@@ -3172,10 +3275,7 @@ def _audit_log_url(organisation: Organisation) -> str:
 
 
 def _audit_log_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
-    return [
-        [cell.text_content().strip() for cell in row.cssselect("td")]
-        for row in document.cssselect("tbody tr")
-    ]
+    return _entry_rows(document, "body")
 
 
 @pytest.mark.django_db
@@ -3275,8 +3375,9 @@ def test_the_audit_log_target_column_reads_the_target_label(staff_client: Client
 
     headers = [th.text_content().strip() for th in document.cssselect("thead th")]
     (row,) = _audit_log_rows(document)
-    assert headers == ["When", "Who", "What", "Target", "Details"]
+    assert headers == ["When", "Who", "What", "Target", "More"]
     assert row[1:4] == ["Ada Admin", "Cohort created", "Spring cohort"]
+    assert _row_details(document, "body") == ["Reason because"]
 
 
 @pytest.mark.django_db
@@ -3397,17 +3498,18 @@ def test_a_bulk_run_is_one_audit_log_row_listing_fifty_entries_and_the_rest(
 
     document = lxml.html.fromstring(response.content)
     (row,) = _audit_log_rows(document)
-    (details,) = document.cssselect("tbody tr details")
+    (detail,) = document.cssselect("tbody tr[data-row-detail]")
+    (card_details,) = document.cssselect("li details")
     html = response.content.decode()
     assert (
-        row[2],
-        row[4].startswith("60 changed, 0 skipped, 0 failed"),
-        details.cssselect("summary")[0].text_content().strip(),
-        len(details.cssselect("li")),
-        "and 10 more" in details.text_content(),
+        row[2].startswith("Bulk action completed"),
+        "60 changed, 0 skipped, 0 failed" in " ".join(detail.text_content().split()),
+        card_details.cssselect("summary")[0].text_content().strip(),
+        len(detail.cssselect("li")),
+        "and 10 more" in detail.text_content(),
         "<b>bold</b>" in html,
         "&lt;b&gt;bold&lt;/b&gt;" in html,
-    ) == ("Bulk action completed", True, "Show 60 entries", 50, True, False, True)
+    ) == (True, True, "More", 50, True, False, True)
 
 
 @pytest.mark.django_db
@@ -3437,11 +3539,8 @@ def test_a_run_in_another_organisation_with_the_same_run_id_is_not_listed(
 
     document = _get_document(staff_client, _audit_log_url(organisation))
 
-    (details,) = document.cssselect("tbody tr details")
-    assert (
-        details.cssselect("summary")[0].text_content().strip(),
-        len(details.cssselect("li")),
-    ) == ("Show 1 entries", 1)
+    (detail,) = document.cssselect("tbody tr[data-row-detail]")
+    assert len(detail.cssselect("li")) == 1
 
 
 @pytest.mark.django_db

@@ -242,8 +242,13 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     page.get_by_role("link", name="History", exact=True).click()
     history_row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(history_row).to_have_count(1)
-    expect(history_row.get_by_text(reason)).to_be_visible()
-    # A long unbroken reason wraps inside the Details cell instead of
+    toggle = history_row.get_by_role("button", name="More about", exact=False)
+    toggle.focus()
+    page.keyboard.press("Enter")
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+    expect(main.locator("tr[data-row-detail]").get_by_text(reason)).to_be_visible()
+    expect(toggle).to_be_focused()
+    # A long unbroken reason wraps inside the row detail instead of
     # stretching the table past its scroll wrapper.
     table = main.get_by_role("table")
     assert table.evaluate("t => t.offsetWidth <= t.parentElement.clientWidth"), (
@@ -252,7 +257,14 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     page.goto(interface_url(live_server, organisation.slug, "audit-log"))
     row = main.get_by_role("row").filter(has_text="Learner deactivated")
     expect(row.get_by_text("Ada Lovelace").first).to_be_visible()
-    expect(row.get_by_text(reason)).to_be_visible()
+    row.get_by_role("button", name="More about", exact=False).click()
+    expect(main.locator("tr[data-row-detail]").get_by_text(reason)).to_be_visible()
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+    card = main.locator("li").filter(has_text="Learner deactivated")
+    card.locator("summary").click()
+    expect(card.locator("details")).to_have_attribute("open", "")
+    expect(card.get_by_text(reason)).to_be_visible()
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(interface_url(live_server, organisation.slug, "audit-log"))
