@@ -1,11 +1,24 @@
 {% comment %}
-The three steps of a learner import. Context: step (1, 2 or 3).
+The three steps of a learner import. Context: step (1, 2 or 3). A step before
+the current one is complete, so its marker shows a check rather than its
+number. The marker is decorative; the label carries the numbered name, with
+the number visually hidden so it is read, not drawn twice.
 {% endcomment %}
+{% partialdef step_item %}
+    <li {% if number == step %}aria-current="step"{% endif %} class="flex items-center gap-2 {% if number == step %}font-semibold text-primary{% else %}text-muted{% endif %}">
+        <span aria-hidden="true" class="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs {% if number == step %}border-primary bg-primary text-on-primary{% elif number < step %}border-success text-success{% else %}border-border{% endif %}">
+            {% if number < step %}<c-icon name="check" class="size-4" />{% else %}{{ number }}{% endif %}
+        </span>
+        <span data-step-label class="sr-only sm:not-sr-only"><span class="sr-only">{{ number }}. </span>{{ name }}</span>
+    </li>
+{% endpartialdef %}
 <nav aria-label="Import steps">
-    <p class="text-sm text-muted">Step {{ step }} of 3</p>
-    <ol class="mt-1 ml-0 flex list-none gap-4 space-y-0 text-sm">
-        <li {% if step == 1 %}aria-current="step" class="font-semibold"{% endif %}>1. Upload</li>
-        <li {% if step == 2 %}aria-current="step" class="font-semibold"{% endif %}>2. Preview</li>
-        <li {% if step == 3 %}aria-current="step" class="font-semibold"{% endif %}>3. Result</li>
+    <p class="text-sm text-muted">
+        Step {{ step }} of 3<span class="sm:hidden">: {% if step == 1 %}Upload{% elif step == 2 %}Preview{% else %}Result{% endif %}</span>
+    </p>
+    <ol class="mt-2 ml-0 flex list-none items-center gap-4 space-y-0 text-sm">
+        {% with number=1 name="Upload" %}{% partial step_item %}{% endwith %}
+        {% with number=2 name="Preview" %}{% partial step_item %}{% endwith %}
+        {% with number=3 name="Result" %}{% partial step_item %}{% endwith %}
     </ol>
 </nav>

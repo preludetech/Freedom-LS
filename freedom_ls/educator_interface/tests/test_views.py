@@ -5022,12 +5022,31 @@ def test_the_stepper_numbers_each_step_in_its_own_label(
         import_world.client, _import_url(import_world.organisation, "learner_import")
     )
 
-    steps = page.cssselect("nav[aria-label='Import steps'] li")
+    steps = page.cssselect("nav[aria-label='Import steps'] [data-step-label]")
     assert [" ".join(step.text_content().split()) for step in steps] == [
         "1. Upload",
         "2. Preview",
         "3. Result",
     ]
+
+
+@pytest.mark.django_db
+def test_the_stepper_line_names_the_current_step_for_narrow_screens(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    (stepper,) = page.cssselect("nav[aria-label='Import steps']")
+    assert "Step 2 of 3: Preview" in " ".join(stepper.text_content().split())
 
 
 @pytest.mark.django_db
