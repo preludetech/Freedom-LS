@@ -59,6 +59,7 @@ from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.learner_import import (
+    PREVIEW_LABEL_TONES,
     create_learner_import,
     run_learner_import,
 )
@@ -88,6 +89,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    ImportLabel,
     ImportStatus,
     Learner,
     LearnerImport,
@@ -4593,9 +4595,12 @@ def test_the_preview_counts_each_label_and_offers_to_add_the_rows_that_can_be_ad
     )
 
     text = " ".join(page.text_content().split())
-    assert "New account: 2" in text
-    assert "Already a member: 1" in text
-    assert "Error: 1" in text
+    tile_labels = [
+        link.get("aria-label") for link in page.cssselect("a[data-label-filter]")
+    ]
+    assert "New account: 2" in tile_labels
+    assert "Already a member: 1" in tile_labels
+    assert "Error: 1" in tile_labels
     assert "1 row with errors will not be added." in text
     assert "2 new accounts will get a setup email." in text
     assert [
@@ -4848,6 +4853,94 @@ def test_each_label_count_links_to_the_preview_filtered_by_that_label(
 
 
 @pytest.mark.django_db
+def test_each_summary_tile_names_its_label_and_count_in_its_aria_label(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    labels = sorted(
+        link.get("aria-label") for link in page.cssselect("a[data-label-filter]")
+    )
+    assert labels == ["Error: 1", "New account: 1"]
+
+
+@pytest.mark.django_db
+def test_only_the_tile_of_the_active_filter_is_marked_current(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+        + "?label=error",
+    )
+
+    current = {
+        link.get("aria-label"): link.get("aria-current")
+        for link in page.cssselect("a[data-label-filter]")
+    }
+    assert current == {"Error: 1": "true", "New account: 1": None}
+
+
+@pytest.mark.django_db
+def test_clear_filter_shows_only_under_a_filter_and_links_to_the_preview(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+    preview_url = _import_url(
+        import_world.organisation, "learner_import_preview", learner_import
+    )
+
+    unfiltered = _get_document(import_world.client, preview_url)
+    filtered = _get_document(import_world.client, preview_url + "?label=error")
+
+    clear = "//a[normalize-space()='Clear filter']"
+    assert unfiltered.xpath(clear) == []
+    assert [link.get("href") for link in filtered.xpath(clear)] == [preview_url]
+
+
+@pytest.mark.django_db
+def test_each_label_cell_carries_the_tone_of_its_label(import_world: SimpleNamespace):
+    existing = LearnerFactory(organisation=import_world.organisation)
+    learner_import = _import_for(
+        import_world.admin,
+        import_world.organisation,
+        "new@example.com,,,",
+        f"{existing.user.email},,,",
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(
+            import_world.organisation, "learner_import_preview", learner_import
+        ),
+    )
+
+    tones = {
+        row.xpath("string(td[2])").strip(): row.xpath("td[6]")[0].get("data-tone")
+        for row in page.cssselect("[data-import-rows] tbody tr")
+    }
+    assert tones == {
+        "new@example.com": PREVIEW_LABEL_TONES[ImportLabel.NEW_ACCOUNT],
+        existing.user.email: PREVIEW_LABEL_TONES[ImportLabel.ALREADY_MEMBER],
+    }
+
+
+@pytest.mark.django_db
 def test_the_preview_pages_fifty_rows_at_a_time_and_keeps_the_label_filter(
     import_world: SimpleNamespace,
 ):
@@ -5078,9 +5171,9 @@ def test_an_all_errors_preview_has_no_rows_card_and_offers_a_different_file_butt
     ]
     assert not page.cssselect("[data-import-rows]")
     assert "Nothing can be added" in page.text_content()
-    assert [b.get("href") for b in different] == [
-        _import_url(import_world.organisation, "learner_import")
-    ]
+    upload_url = _import_url(import_world.organisation, "learner_import")
+    assert [b.get("href") for b in different] == [upload_url, upload_url]
+    assert different[-1].xpath("ancestor::*[@data-error-block]") == []
 
 
 @pytest.mark.django_db

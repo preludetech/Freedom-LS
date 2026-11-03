@@ -122,6 +122,7 @@ from freedom_ls.educator_interface.learner_import import (
     HEADER_DESCRIPTIONS,
     HEADERS,
     NOT_ADDED_LABELS,
+    PREVIEW_LABEL_TONES,
     REQUIRED_HEADERS,
     TEMPLATE_EXAMPLE_ROWS,
     check_import_gate,
@@ -2370,6 +2371,8 @@ def learner_import_preview(
     page_obj = Paginator(
         shown.order_by("line_number"), IMPORT_PREVIEW_PAGE_SIZE
     ).get_page(request.GET.get("page"))
+    for row in page_obj:
+        row.tone = PREVIEW_LABEL_TONES[row.preview_label]
     return _import_page(
         request,
         scoped,

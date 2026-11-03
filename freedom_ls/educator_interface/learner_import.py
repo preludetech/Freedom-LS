@@ -100,6 +100,16 @@ LABEL_FOR: dict[tuple[AddOutcome, CohortOutcome | None], ImportLabel] = {
 #: Labels that write nothing, so they do not count towards "Add N learners".
 NOT_ADDED_LABELS = (ImportLabel.ERROR, ImportLabel.ALREADY_MEMBER)
 
+#: The status badge tone of each preview label.
+PREVIEW_LABEL_TONES: dict[str, str] = {
+    ImportLabel.NEW_ACCOUNT: "success",
+    ImportLabel.JOINED: "info",
+    ImportLabel.REACTIVATED: "info",
+    ImportLabel.ADDED_TO_COHORT: "info",
+    ImportLabel.ALREADY_MEMBER: "muted",
+    ImportLabel.ERROR: "error",
+}
+
 
 def check_import_gate(
     user: User, organisation: Organisation, cohort: Cohort | None
