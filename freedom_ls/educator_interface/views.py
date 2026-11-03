@@ -1532,7 +1532,12 @@ class CohortHistoryPanel(HistoryPanel):
     data_table = TargetedAuditLogEntryTable
     # A role assigned from the Educators panel is a cohort entry too.
     refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
+    export_scope = "cohort"
     empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
+
+    @property
+    def scope_label(self) -> str:
+        return cast(Cohort, self.instance).name
 
 
 class CohortTabSet(TabSet):
@@ -2086,6 +2091,28 @@ class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):
     view_capability = "freedom_ls_audit_log.view_auditlogentry"
     # Entries are rows in a log, never pages of their own, so there is nothing to authorise per row.
     check_access_exempt_reason = "audit log entries have no instance pages"
+
+    @classmethod
+    def get_export_queryset(cls, request: HttpRequest) -> QuerySet:
+        # Auditors get a bulk run's per-object entries, which the screen
+        # folds under the run's summary row, so this starts from the
+        # unexcluded table queryset.
+        return AuditLogEntryTable.get_queryset(request).select_related("actor")
+
+    @classmethod
+    def get_export_scope_slug(cls, request: HttpRequest) -> str:
+        return cast(OrganisationScopedRequest, request).organisation.slug
+
+    @classmethod
+    def before_export(cls, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        return _record_export(
+            request,
+            rows,
+            table=cls.list_view,
+            table_key=cls.table_key,
+            scope="organisation",
+            scope_label="",
+        )
 
 
 interface_config = [
