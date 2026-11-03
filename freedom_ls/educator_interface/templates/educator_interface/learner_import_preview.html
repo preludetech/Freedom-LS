@@ -15,11 +15,15 @@
                    {% if item.label == label %}aria-current="true"{% endif %}
                    class="block h-full rounded-lg no-underline {% if item.label == label %}ring-2 ring-primary{% endif %}">
                     {% if item.label == "error" and item.count %}
-                        <c-panel-stat-tile label="{{ item.name }}" class="h-full min-h-11 border-error text-error">
-                            <c-slot name="value_content"><span class="inline-flex items-center gap-1"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
-                        </c-panel-stat-tile>
+                        <div class="h-full min-h-11 rounded-lg border border-error bg-surface px-4 py-3 text-error">
+                            <c-panel-stat-tile label="{{ item.name }}" variant="plain">
+                                <c-slot name="value_content"><span class="inline-flex items-center gap-1"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                            </c-panel-stat-tile>
+                        </div>
                     {% else %}
-                        <c-panel-stat-tile label="{{ item.name }}" value="{{ item.count }}" class="h-full min-h-11" />
+                        <div class="h-full min-h-11 rounded-lg border border-border bg-surface px-4 py-3">
+                            <c-panel-stat-tile label="{{ item.name }}" value="{{ item.count }}" variant="plain" />
+                        </div>
                     {% endif %}
                 </a>
             {% endfor %}
