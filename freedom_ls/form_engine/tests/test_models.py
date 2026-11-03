@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import ProtectedError, RestrictedError
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.conditions import current_path
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -146,6 +147,13 @@ def _page_with_question(form: Form, order: int) -> tuple[FormPage, FormQuestion]
     return page, question
 
 
+def _current_page_number(form_progress: FormProgress) -> int:
+    answered_ids = set(form_progress.answers.values_list("question_id", flat=True))
+    return form_progress.get_current_page_number(
+        current_path(form_progress), answered_ids
+    )
+
+
 @pytest.mark.django_db
 def test_get_current_page_number_no_answers(mock_site_context):
     """An attempt with nothing answered resumes on the first page."""
@@ -155,7 +163,7 @@ def test_get_current_page_number_no_answers(mock_site_context):
 
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
 
-    assert form_progress.get_current_page_number() == 1
+    assert _current_page_number(form_progress) == 1
 
 
 @pytest.mark.django_db
@@ -171,7 +179,7 @@ def test_get_current_page_number_partially_answered(mock_site_context):
         form_progress=form_progress, question=question_1, text_answer="Answer 1"
     )
 
-    assert form_progress.get_current_page_number() == 2
+    assert _current_page_number(form_progress) == 2
 
 
 @pytest.mark.django_db
@@ -189,7 +197,7 @@ def test_get_current_page_number_all_answered(mock_site_context):
         form_progress=form_progress, question=question_2, text_answer="Answer 2"
     )
 
-    assert form_progress.get_current_page_number() == 2
+    assert _current_page_number(form_progress) == 2
 
 
 @pytest.mark.django_db
@@ -202,7 +210,30 @@ def test_get_current_page_number_page_with_text_only(mock_site_context):
 
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
 
-    assert form_progress.get_current_page_number() == 2
+    assert _current_page_number(form_progress) == 2
+
+
+@pytest.mark.django_db
+def test_get_current_page_number_skips_an_off_path_pages_unanswered_question(
+    mock_site_context,
+):
+    """A page the answers have closed is not somewhere the attempt can be stuck."""
+    form = FormFactory()
+    page_one = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1, condition_option=yes)
+    FormQuestionFactory(form_page=page_two, type="short_text", order=0)
+    page_three = FormPageFactory(form=form, order=2)
+    FormQuestionFactory(form_page=page_three, type="short_text", order=0)
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    answer = QuestionAnswerFactory(
+        form_progress=form_progress, question=choice, text_answer=""
+    )
+    answer.selected_options.set([no])
+
+    assert _current_page_number(form_progress) == 3
 
 
 @pytest.mark.django_db

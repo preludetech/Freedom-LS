@@ -711,9 +711,10 @@ def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
     A form with no pages has nothing to fill in, so the only place left to send
     the applicant is the page they submit from.
     """
-    if not form_progress.form.pages.exists():
+    path = current_path(form_progress)
+    if path.last_page_number() is None:
         return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
-    return _page_url(app, resume_page_number(form_progress))
+    return _page_url(app, resume_page_number(form_progress, path))
 
 
 # Query-string marker an Edit link from the check-your-answers page carries. A

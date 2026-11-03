@@ -31,6 +31,8 @@ from .typed_answers import RejectedAnswer, answer_error, question_bounds_error
 if TYPE_CHECKING:
     from django.http import QueryDict
 
+    from .conditions import SittingPath
+
 # Re-exported so `from freedom_ls.form_engine.models import FormStrategy` keeps
 # resolving now that the enums live in their own module.
 __all__ = [
@@ -360,28 +362,15 @@ class FormProgress(SiteAwareModel):
         self.furthest_page_reached = page_number
         self.save(update_fields=["furthest_page_reached", "last_updated_time"])
 
-    def get_current_page_number(self):
-        """
-        Determine which page number the user should be on based on their progress.
-        Returns the first page with unanswered questions, or the last page if all answered.
-        """
-        all_pages = list(self.form.pages.all())
-
-        # Find the first page with unanswered questions
-        for idx, page in enumerate(all_pages):
-            # Get all questions on this page (filter out text items)
-            questions_on_page = [
-                child
-                for child in page.children()
-                if child.content_type == "FORM_QUESTION"
-            ]
-
-            for question in questions_on_page:
-                if not self.answers.filter(question=question).exists():
-                    return idx + 1
-
-        # All questions answered, return last page (or 1 if no pages)
-        return len(all_pages) if all_pages else 1
+    def get_current_page_number(
+        self, path: SittingPath, answered_ids: set[UUID]
+    ) -> int:
+        """The first on-path page with an on-path question that has no answer,
+        else the last on-path page (1 when the form has no pages)."""
+        for number, page in path.numbered_pages():
+            if any(q.id not in answered_ids for q in path.questions_of(page)):
+                return number
+        return path.last_page_number() or 1
 
     def existing_answers_dict(self, questions):
         """

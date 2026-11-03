@@ -1788,7 +1788,9 @@ def view_form(
 
     page_number = None
     if incomplete_form_progress:
-        page_number = resume_page_number(incomplete_form_progress)
+        page_number = resume_page_number(
+            incomplete_form_progress, current_path(incomplete_form_progress)
+        )
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(
@@ -1863,7 +1865,7 @@ def form_start(request, course_slug, index):
     form_progress = get_or_create_incomplete(course_progress, collection_item)
 
     # Figure out what page of the form the user is on
-    page_number = resume_page_number(form_progress)
+    page_number = resume_page_number(form_progress, current_path(form_progress))
 
     # Redirect the user to form_fill_page
     return redirect(
@@ -1926,7 +1928,7 @@ def _render_form_fill_page(
         **_player_chrome_context(
             request, course, form, index, course_progress=course_progress
         ),
-        **answered_counts(form, form_progress, current.questions),
+        **answered_counts(form, form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
         "submit_and_exit_url": reverse(
             "learner_interface:form_submit_and_exit",

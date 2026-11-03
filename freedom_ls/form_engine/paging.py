@@ -10,13 +10,13 @@ neither owns the arithmetic.
 from __future__ import annotations
 
 from collections.abc import Callable
+from uuid import UUID
 
 from django.http import QueryDict
 
 from .conditions import SittingPath
 from .enums import QuestionType
-from .models import Form, FormPage, FormProgress, FormQuestion
-from .queries import count_form_questions
+from .models import Form, FormProgress, FormQuestion
 from .submissions import has_submitted_answer
 
 
@@ -25,34 +25,42 @@ def is_answered(question: FormQuestion, form_progress: FormProgress) -> bool:
     return form_progress.answers.filter(question=question).exists()
 
 
-def _furthest_answered_page(form_progress: FormProgress, pages: list[FormPage]) -> int:
-    """The highest-numbered page carrying a stored answer, or 0 when none does."""
-    answered_page_ids = set(
-        form_progress.answers.values_list("question__form_page_id", flat=True)
-    )
+def _answered_ids(form_progress: FormProgress) -> set[UUID]:
+    return set(form_progress.answers.values_list("question_id", flat=True))
+
+
+def _furthest_answered_page(path: SittingPath, answered_ids: set[UUID]) -> int:
+    """The highest on-path page number carrying an answer to an on-path question, or 0."""
     return max(
         (
             number
-            for number, page in enumerate(pages, start=1)
-            if page.id in answered_page_ids
+            for number, page in path.numbered_pages()
+            if any(q.id in answered_ids for q in path.questions_of(page))
         ),
         default=0,
     )
 
 
-def _resume_page_number(form_progress: FormProgress, pages: list[FormPage]) -> int:
-    if not pages:
+def _resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
+    numbered = path.numbered_pages()
+    if not numbered:
         return 1
-    current: int = form_progress.get_current_page_number()
-    furthest = max(
-        current,
-        _furthest_answered_page(form_progress, pages),
-        form_progress.furthest_page_reached,
+    answered_ids = _answered_ids(form_progress)
+    candidate = min(
+        max(
+            form_progress.get_current_page_number(path, answered_ids),
+            _furthest_answered_page(path, answered_ids),
+            form_progress.furthest_page_reached,
+        ),
+        len(path.all_pages),
     )
-    return min(furthest, len(pages))
+    # furthest_page_reached is an authored number and may name a page the
+    # answers have since closed, so the candidate is moved onto the path.
+    landed = path.first_page_number_at_or_after(candidate)
+    return landed if landed is not None else numbered[-1][0]
 
 
-def resume_page_number(form_progress: FormProgress) -> int:
+def resume_page_number(form_progress: FormProgress, path: SittingPath) -> int:
     """The page a sitting picks back up on.
 
     A skipped optional question leaves no answer row behind, so the
@@ -61,17 +69,18 @@ def resume_page_number(form_progress: FormProgress) -> int:
     both count too: that is what stops a resume dropping them back in front of
     work they have already done. The answered-page term still matters for
     sittings that predate the reached-page record. The reached-page record
-    outlives a page an author later deletes, so the result is clamped to the
-    pages the form now has.
+    outlives a page an author later deletes and may name a page the answers
+    have since taken off the path, so the result is clamped to the pages the
+    form has and moved onto the path.
     """
-    return _resume_page_number(form_progress, list(form_progress.form.pages.all()))
+    return _resume_page_number(form_progress, path)
 
 
 def page_accessibility_limit(
-    form_progress: FormProgress, current_page_number: int
+    form_progress: FormProgress, current_page_number: int, path: SittingPath
 ) -> int:
     """The highest page number the page-jump nav may reach."""
-    return max(resume_page_number(form_progress), current_page_number)
+    return max(resume_page_number(form_progress, path), current_page_number)
 
 
 def build_page_links(
@@ -86,9 +95,7 @@ def build_page_links(
     `number` is the label: the page's place on the path. `url` is built from the
     authored page number.
     """
-    limit = max(
-        _resume_page_number(form_progress, list(path.all_pages)), current_page_number
-    )
+    limit = page_accessibility_limit(form_progress, current_page_number, path)
     return [
         {
             "number": path.page_position(number),
@@ -132,7 +139,7 @@ def unanswered_required_in_form(
     Reads every page on the path, so a required question on a page the candidate
     never visited is caught -- which is what the final submission has to check.
     """
-    answered_ids = set(form_progress.answers.values_list("question_id", flat=True))
+    answered_ids = _answered_ids(form_progress)
     return [
         question
         for question in path.questions()
@@ -169,18 +176,20 @@ def answered_counts(
     form: Form,
     form_progress: FormProgress,
     current_page_questions: list[FormQuestion],
+    path: SittingPath,
 ) -> dict[str, int]:
     """The three tallies the progress indicator reads.
 
+    Only questions the sitting is asked count, so an answer left behind by a
+    question that has since dropped off the path is not tallied.
     `answered_count` is the no-JS fallback (persisted answers only);
     `answered_other_pages` is the base the client adds the live current-page
     tally to, so questions on this page are excluded from it.
     """
+    answered_ids = _answered_ids(form_progress) & path.question_ids
     current_ids = {question.id for question in current_page_questions}
     return {
-        "answered_count": form_progress.answers.count(),
-        "answered_other_pages": form_progress.answers.exclude(
-            question_id__in=current_ids
-        ).count(),
-        "total_question_count": count_form_questions(form),
+        "answered_count": len(answered_ids),
+        "answered_other_pages": len(answered_ids - current_ids),
+        "total_question_count": len(path.question_ids),
     }

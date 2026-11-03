@@ -6,6 +6,8 @@ caller owns it and the two cannot drift apart.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 
 from django.http import QueryDict
@@ -19,7 +21,12 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    QuestionOption,
+)
 from freedom_ls.form_engine.paging import (
     answered_counts,
     build_page_links,
@@ -72,7 +79,7 @@ def test_resume_page_is_the_furthest_page_answered_not_the_first_gap(
     _answer(form_progress, _question_on_page(four_page_form, 3))
     _answer(form_progress, _question_on_page(four_page_form, 4))
 
-    assert resume_page_number(form_progress) == 4
+    assert resume_page_number(form_progress, current_path(form_progress)) == 4
 
 
 @pytest.mark.django_db
@@ -81,7 +88,12 @@ def test_page_accessibility_limit_takes_the_current_page_when_it_is_further(
 ):
     form_progress = FormProgressFactory(form=four_page_form)
 
-    assert page_accessibility_limit(form_progress, current_page_number=3) == 3
+    assert (
+        page_accessibility_limit(
+            form_progress, current_page_number=3, path=current_path(form_progress)
+        )
+        == 3
+    )
 
 
 @pytest.mark.django_db
@@ -91,7 +103,12 @@ def test_page_accessibility_limit_takes_the_resume_page_when_it_is_further(
     form_progress = FormProgressFactory(form=four_page_form)
     _answer(form_progress, _question_on_page(four_page_form, 4))
 
-    assert page_accessibility_limit(form_progress, current_page_number=1) == 4
+    assert (
+        page_accessibility_limit(
+            form_progress, current_page_number=1, path=current_path(form_progress)
+        )
+        == 4
+    )
 
 
 @pytest.mark.django_db
@@ -205,7 +222,9 @@ def test_answered_counts_exclude_the_current_page_from_the_other_pages_tally(
     _answer(form_progress, _question_on_page(four_page_form, 2))
     current = [_question_on_page(four_page_form, 2)]
 
-    counts = answered_counts(four_page_form, form_progress, current)
+    counts = answered_counts(
+        four_page_form, form_progress, current, current_path(form_progress)
+    )
 
     assert counts == {
         "answered_count": 2,
@@ -296,7 +315,7 @@ def test_resume_page_is_the_furthest_page_reached_when_nothing_on_it_is_answered
     _answer(form_progress, _question_on_page(four_page_form, 1))
     form_progress.record_page_reached(2)
 
-    assert resume_page_number(form_progress) == 2
+    assert resume_page_number(form_progress, current_path(form_progress)) == 2
 
 
 @pytest.mark.django_db
@@ -306,7 +325,12 @@ def test_page_accessibility_limit_keeps_a_reached_page_after_stepping_back(
     form_progress = FormProgressFactory(form=four_page_form)
     form_progress.record_page_reached(3)
 
-    assert page_accessibility_limit(form_progress, current_page_number=1) == 3
+    assert (
+        page_accessibility_limit(
+            form_progress, current_page_number=1, path=current_path(form_progress)
+        )
+        == 3
+    )
 
 
 @pytest.mark.django_db
@@ -337,7 +361,7 @@ def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
     form_progress.record_page_reached(4)
     four_page_form.pages.filter(order__gte=2).delete()
 
-    assert resume_page_number(form_progress) == 2
+    assert resume_page_number(form_progress, current_path(form_progress)) == 2
     links = build_page_links(
         four_page_form,
         form_progress,
@@ -415,3 +439,106 @@ def test_unanswered_required_in_form_ignores_an_off_path_required_question(
     outstanding = unanswered_required_in_form(sitting, current_path(sitting))
 
     assert outstanding == [last]
+
+
+@dataclass
+class GatedTail:
+    form: Form
+    sitting: FormProgress
+    choice: FormQuestion
+    yes: QuestionOption
+    no: QuestionOption
+    first: FormQuestion
+    gated: FormQuestion
+
+
+@pytest.fixture
+def gated_tail(mock_site_context) -> GatedTail:
+    """Page 1 asks yes/no and page 2 asks a question. Pages 3 and 4 open on
+    `yes`, and each holds a question."""
+    form: Form = FormFactory()
+    page_one = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1)
+    first = FormQuestionFactory(form_page=page_two, type="short_text", order=0)
+    page_three = FormPageFactory(form=form, order=2, condition_option=yes)
+    gated = FormQuestionFactory(form_page=page_three, type="short_text", order=0)
+    page_four = FormPageFactory(form=form, order=3, condition_option=yes)
+    FormQuestionFactory(form_page=page_four, type="short_text", order=0)
+    sitting: FormProgress = FormProgressFactory(form=form)
+    return GatedTail(
+        form=form,
+        sitting=sitting,
+        choice=choice,
+        yes=yes,
+        no=no,
+        first=first,
+        gated=gated,
+    )
+
+
+def _choose(tail: GatedTail, option: QuestionOption) -> None:
+    answer = QuestionAnswerFactory(
+        form_progress=tail.sitting, question=tail.choice, text_answer=""
+    )
+    answer.selected_options.set([option])
+
+
+@pytest.mark.django_db
+def test_resume_moves_a_reached_page_that_left_the_path_onto_the_path(gated_tail):
+    _choose(gated_tail, gated_tail.no)
+    _answer(gated_tail.sitting, gated_tail.first)
+    gated_tail.sitting.record_page_reached(3)
+
+    assert resume_page_number(gated_tail.sitting, current_path(gated_tail.sitting)) == 2
+
+
+@pytest.mark.django_db
+def test_resume_lands_on_the_last_on_path_page_when_the_last_pages_are_off_path(
+    gated_tail,
+):
+    _choose(gated_tail, gated_tail.no)
+    _answer(gated_tail.sitting, gated_tail.first)
+
+    assert resume_page_number(gated_tail.sitting, current_path(gated_tail.sitting)) == 2
+
+
+@pytest.mark.django_db
+def test_resume_ignores_an_answer_to_an_off_path_question(gated_tail):
+    _choose(gated_tail, gated_tail.no)
+    _answer(gated_tail.sitting, gated_tail.gated)
+
+    assert resume_page_number(gated_tail.sitting, current_path(gated_tail.sitting)) == 2
+
+
+@pytest.mark.django_db
+def test_page_accessibility_limit_equals_the_resume_page_when_pages_are_skipped(
+    gated_tail,
+):
+    _choose(gated_tail, gated_tail.no)
+    _answer(gated_tail.sitting, gated_tail.first)
+    gated_tail.sitting.record_page_reached(4)
+    path = current_path(gated_tail.sitting)
+
+    assert page_accessibility_limit(
+        gated_tail.sitting, current_page_number=1, path=path
+    ) == resume_page_number(gated_tail.sitting, path)
+
+
+@pytest.mark.django_db
+def test_answered_counts_leave_out_an_off_path_answer_and_question(gated_tail):
+    _choose(gated_tail, gated_tail.no)
+    _answer(gated_tail.sitting, gated_tail.first)
+    _answer(gated_tail.sitting, gated_tail.gated)
+
+    counts = answered_counts(
+        gated_tail.form, gated_tail.sitting, [], current_path(gated_tail.sitting)
+    )
+
+    assert counts == {
+        "answered_count": 2,
+        "answered_other_pages": 2,
+        "total_question_count": 2,
+    }

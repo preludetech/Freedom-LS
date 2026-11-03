@@ -3412,3 +3412,82 @@ def test_the_fill_page_runs_within_a_query_budget(
 
     with django_assert_max_num_queries(FILL_PAGE_QUERY_BUDGET):
         client.get(_fill_url(course, 1))
+
+
+def _gated_tail_form():
+    """Page 1 asks yes/no, page 2 asks a question, and pages 3 and 4 open on `yes`."""
+    form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    page_one = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(form_page=page_one, type="multiple_choice", order=0)
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1)
+    middle = FormQuestionFactory(form_page=page_two, type="short_text", order=0)
+    for order in (2, 3):
+        page = FormPageFactory(form=form, order=order, condition_option=yes)
+        FormQuestionFactory(form_page=page, type="short_text", order=0)
+    return form, choice, no, middle
+
+
+@pytest.mark.django_db
+def test_start_screen_and_form_start_never_name_an_off_path_page(
+    mock_site_context, client
+):
+    form, choice, no, middle = _gated_tail_form()
+    course = course_with_form(form)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    answer = QuestionAnswerFactory(
+        form_progress=attempt, question=choice, text_answer=""
+    )
+    answer.selected_options.set([no])
+    QuestionAnswerFactory(form_progress=attempt, question=middle, text_answer="done")
+    attempt.record_page_reached(4)
+    client.force_login(user)
+    expected = reverse(
+        "learner_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 2},
+    )
+
+    start = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    screen = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert start["Location"] == expected
+    assert screen.context["page_number"] == 2
+
+
+@pytest.mark.django_db
+def test_start_screen_keeps_whole_form_counts_when_pages_are_off_path(
+    mock_site_context, client
+):
+    form, choice, no, _middle = _gated_tail_form()
+    course = course_with_form(form)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    answer = QuestionAnswerFactory(
+        form_progress=attempt, question=choice, text_answer=""
+    )
+    answer.selected_options.set([no])
+    client.force_login(user)
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.context["question_count"] == 4
+    assert response.context["page_count"] == 4
