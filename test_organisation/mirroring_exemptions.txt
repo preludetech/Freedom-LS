@@ -23,3 +23,4 @@ freedom_ls/course_applications/tests/invariants/  # proves collection skips the 
 freedom_ls/learner_interface/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/audit_log/tests/invariants/  # checks the audit-action and webhook-event codes against the glossary vocabulary; mirrors no module
 freedom_ls/messaging_policy/tests/test_messages_button.py  # renders the comms header button under the shipped policy, which mirrors no single module
+freedom_ls/api/tests/invariants/  # compiles the code example in docs/api.md, which mirrors no module
