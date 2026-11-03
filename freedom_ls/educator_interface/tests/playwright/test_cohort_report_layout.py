@@ -66,3 +66,35 @@ def test_report_tab_with_unattempted_quiz_cells_does_not_scroll_the_page_sideway
         expect(page.get_by_text("Summary of learner progress")).to_be_visible()
         expect(page.get_by_text("Not attempted").first).to_be_attached()
         assert_no_horizontal_overflow(page)
+
+
+def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Pressing Enter on "Generate PDF report" swaps the button out. Focus
+    used to drop to <body>, so a keyboard user had to start again from the
+    top of the page."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/report"
+        )
+    )
+
+    generate = page.get_by_role("button", name="Generate PDF report")
+    generate.focus()
+    page.keyboard.press("Enter")
+
+    expect(page.get_by_role("link", name="Download PDF")).to_be_visible()
+    card = page.locator(
+        "section[data-panel=downloads]",
+        has=page.get_by_role("heading", name="Downloads"),
+    )
+    assert page.evaluate("document.activeElement === document.body") is False
+    assert card.evaluate("(card) => card.contains(document.activeElement)") is True

@@ -1043,16 +1043,27 @@ document.addEventListener("htmx:afterSettle", (event) => {
 // one confirm can refresh several regions at once and a shared flag would be
 // overwritten by whichever swap ran next. The check runs in afterSwap, in the
 // same task as the swap, before any other response can move focus again. The
-// new region's table anchor, else its first heading, else the page content
+// new region's table anchor, else its first heading (or its panel card's), else the page content
 // takes focus, so it is never lost. A swap of #main-content itself is a page
 // navigation, and focus goes to #main-content as on any other navigation.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const { target, requestConfig } = event.detail;
     const active = document.activeElement;
     if (!requestConfig) return;
-    requestConfig.focusWasInTarget = Boolean(
-        target && active && active !== document.body && target.contains(active),
+    const trigger = requestConfig.triggeringEvent;
+    // A form that disables its submit button while posting (hx-disabled-elt)
+    // has already lost focus to <body> by now, so a reader's own submit from
+    // inside the target counts as focus having been there.
+    const submittedFromTarget = Boolean(
+        target &&
+            trigger &&
+            trigger.isTrusted &&
+            trigger.type === "submit" &&
+            target.contains(requestConfig.elt),
     );
+    requestConfig.focusWasInTarget =
+        submittedFromTarget ||
+        Boolean(target && active && active !== document.body && target.contains(active));
 });
 document.addEventListener("htmx:afterSwap", (event) => {
     const { target, requestConfig } = event.detail;
@@ -1067,7 +1078,12 @@ document.addEventListener("htmx:afterSwap", (event) => {
     }
     let fallback = region.querySelector("[data-table-anchor]");
     if (!fallback) {
-        fallback = region.querySelector("h1, h2, h3, h4, h5, h6");
+        const headings = "h1, h2, h3, h4, h5, h6";
+        // A region inside a panel card has no heading of its own: the
+        // card's heading names it.
+        fallback =
+            region.querySelector(headings) ||
+            (region.closest("[data-panel]") || region).querySelector(headings);
         if (fallback) fallback.setAttribute("tabindex", "-1");
     }
     (fallback || document.getElementById("main-content")).focus();
