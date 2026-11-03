@@ -34,7 +34,7 @@ from freedom_ls.course_access.backends import (
 )
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
-from freedom_ls.deadlines.models import DeadlineKind
+from freedom_ls.deadlines.models import AfterAccessEnded, DeadlineKind
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -4345,9 +4345,10 @@ def test_a_locked_row_past_its_close_instant_shows_no_closed_chip(
     course, _first, second, _user, client = closing_topic_course
     set_due_date(course, second, due_date=date(2020, 1, 1))
 
-    toc = _toc_text(_player_html(client, course))
+    html = _player_html(client, course)
+    rows_text = _toc_text(html).replace(_next_deadline_card(html) or "", "")
 
-    assert toc.count("Closed 4 Jan") == 1
+    assert rows_text.count("Closed 4 Jan") == 1
 
 
 @pytest.mark.django_db
@@ -4705,5 +4706,264 @@ def test_the_outline_text_never_says_due_or_overdue(titled_due_course):
 
     toc = _toc_text(_player_html(client, course, 1))
 
+    assert "Due" not in toc
+    assert "Overdue" not in toc
+
+
+def _next_deadline_card(html: str) -> str | None:
+    """The visible text of the outline panel's next-deadline card, None when absent."""
+    nodes = lxml.html.fromstring(html).cssselect('[data-testid="next-deadline-card"]')
+    return " ".join(nodes[0].text_content().split()) if nodes else None
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_an_upcoming_deadline(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Next deadline")
+    assert str(second.title) in card
+    assert "1 Jan 2999" in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_a_deadline_due_today(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2026, 4, 1))
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Next deadline")
+    assert str(second.title) in card
+    assert "1 Apr 2026" in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_a_missed_deadline_ahead_of_the_next_one(due_course):
+    course, first, second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2999, 1, 1))
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Missed deadline")
+    assert str(second.title) in card
+    assert "1 Jan 2020" in card
+    assert "1 Jan 2999" not in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_next_deadline_card_reads_closed_for_a_closed_item(closing_topic_course):
+    course, first, _second, _user, client = closing_topic_course
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Closed")
+    assert str(first.title) in card
+    assert "4 Jan 2020" in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(BEFORE_CLOSE, tick=False)
+def test_next_deadline_card_says_when_a_deadline_in_its_grace_window_closes(
+    closing_topic_course,
+):
+    course, _first, _second, _user, client = closing_topic_course
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Missed deadline")
+    assert re.search(r"Closes 4 Jan 2020, 23:59 UTC\s?\.", card)
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_the_time_limit_as_course(mock_site_context):
+    course = CourseFactory(time_limit_days=30)
+    course.items.create(child=TopicFactory(), order=0)
+    user = UserFactory()
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    client = Client()
+    client.force_login(user)
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Missed deadline")
+    assert "Course" in card
+    assert "31 Mar 2026" in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_eyebrow_reads_deadline_for_a_past_deadline_not_marked_overdue(
+    due_course,
+):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, mark_overdue="off")
+
+    card = _next_deadline_card(_player_html(client, course))
+
+    assert card is not None
+    assert card.startswith("Deadline")
+    assert "Next deadline" not in card
+    assert "Missed deadline" not in card
+
+
+@pytest.mark.django_db
+def test_no_next_deadline_card_for_a_course_without_deadlines(due_course):
+    course, _first, _second, _user, client = due_course
+
+    assert _next_deadline_card(_player_html(client, course)) is None
+
+
+@pytest.mark.django_db
+def test_no_next_deadline_card_for_a_completed_course(due_course):
+    course, _first, second, user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+    record = course_progress_record(course, user)
+    record.completed_time = timezone.now()
+    record.save(update_fields=["completed_time"])
+
+    assert _next_deadline_card(_player_html(client, course)) is None
+
+
+def _ended_time_limit_course(after_access_ended: str) -> tuple:
+    """A time-limited course of two topics whose access ended under its policy."""
+    course = CourseFactory(time_limit_days=30)
+    first = TopicFactory()
+    course.items.create(child=first, order=0)
+    course.items.create(child=TopicFactory(), order=1)
+    CourseDeadlineConfigFactory(
+        course=course,
+        end_course_access="on",
+        after_access_ended=after_access_ended,
+    )
+    user = UserFactory()
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    client = Client()
+    client.force_login(user)
+    return course, first, user, client
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_no_next_deadline_card_once_access_has_ended_under_outline_and_results(
+    mock_site_context,
+):
+    course, first, user, client = _ended_time_limit_course(
+        AfterAccessEnded.OUTLINE_AND_RESULTS
+    )
+    topic_completion(
+        course, user, first, complete_time=datetime(2026, 3, 2, tzinfo=UTC)
+    )
+
+    html = _player_html(client, course)
+
+    assert _toc_text(html)
+    assert _next_deadline_card(html) is None
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_results_page_draws_no_next_deadline_card_once_access_has_ended_under_nothing(
+    mock_site_context,
+):
+    course = CourseFactory(time_limit_days=30)
+    form = FormFactory()
+    course.items.create(child=form, order=0)
+    CourseDeadlineConfigFactory(
+        course=course,
+        end_course_access="on",
+        after_access_ended=AfterAccessEnded.NOTHING,
+    )
+    user = UserFactory()
+    course_progress_record(
+        course, user, created_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC)
+    )
+    form_attempt(course, user, form, completed_time=datetime(2026, 3, 2, tzinfo=UTC))
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(
+        reverse(
+            "learner_interface:course_form_complete",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.status_code == 200
+    assert _next_deadline_card(response.content.decode()) is None
+
+
+@pytest.mark.django_db
+def test_next_deadline_card_is_inside_the_outline_region_swapped_by_htmx(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    region = lxml.html.fromstring(response.content.decode()).cssselect(
+        "#course-toc-region"
+    )
+    assert region
+    assert region[0].cssselect('[data-testid="next-deadline-card"]')
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_the_same_deadline_as_the_dashboard_band(due_course):
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2999, 1, 1))
+
+    card = _next_deadline_card(_player_html(client, course))
+    dashboard = lxml.html.fromstring(
+        client.get(reverse("learner_interface:dashboard")).content.decode()
+    )
+    band = " ".join(
+        dashboard.cssselect('[data-testid="course-deadline-band"]')[0]
+        .text_content()
+        .split()
+    )
+
+    assert card is not None
+    assert str(second.title) in card
+    assert str(second.title) in band
+    assert "1 Jan 2999" in card
+    assert "1 Jan" in band
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_outline_panel_text_never_says_due_or_overdue(due_course):
+    course, first, second, _user, client = due_course
+    set_due_date(course, first, due_date=date(2999, 1, 1))
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    toc = _toc_text(_player_html(client, course))
+
+    assert "Next deadline" in toc or "Missed deadline" in toc
     assert "Due" not in toc
     assert "Overdue" not in toc

@@ -1260,6 +1260,24 @@ def _blocked_item_redirect(
     return None
 
 
+@dataclass(frozen=True)
+class PlayerCourseIndex:
+    """The outline the player gates and chrome both read, with what it was resolved from, so
+    the deadline the panel names is picked from the same rows and instants as the gates."""
+
+    rows: list[dict]
+    course_deadlines: CourseDeadlines | None
+    deadline_policy: ResolvedDeadlinePolicy | None
+    now: datetime
+
+    @classmethod
+    def empty(cls) -> PlayerCourseIndex:
+        """An outline with no rows: what the chrome draws when the policy keeps nothing."""
+        return cls(
+            rows=[], course_deadlines=None, deadline_policy=None, now=timezone.now()
+        )
+
+
 def _player_course_index(
     user: RequestUser,
     course: Course,
@@ -1267,22 +1285,27 @@ def _player_course_index(
     course_progress: CourseProgress | None,
     *,
     access_ended_outline: bool = False,
-) -> list[dict]:
+) -> PlayerCourseIndex:
     """The outline the player gates and chrome both read, with deadlines resolved from the
     record so every gate sees blocking and closing as the learner's table of contents does.
 
     ``access_ended_outline`` is for a learner whose access ended but who keeps the outline:
     only finished items stay linked."""
-    return get_course_index(
+    now = timezone.now()
+    course_deadlines = _deadlines_or_none(course_progress)
+    deadline_policy = _deadline_policy_or_none(course_progress)
+    rows = get_course_index(
         user=user,
         course=course,
         current_index=index,
         can_access_content=True,
         course_progress=course_progress,
-        course_deadlines=_deadlines_or_none(course_progress),
-        deadline_policy=_deadline_policy_or_none(course_progress),
+        course_deadlines=course_deadlines,
+        deadline_policy=deadline_policy,
+        now=now,
         access_ended_outline=access_ended_outline,
     )
+    return PlayerCourseIndex(rows, course_deadlines, deadline_policy, now)
 
 
 def _unlocked_next_url(next_url: str | None, course_index: list[dict]) -> str | None:
@@ -1394,13 +1417,14 @@ def view_course_item(request, course_slug, index):
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
-    course_index = _player_course_index(
+    player_index = _player_course_index(
         request.user,
         course,
         index,
         course_progress,
         access_ended_outline=_shows_ended_outline(decision),
     )
+    course_index = player_index.rows
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
     )
@@ -1438,8 +1462,9 @@ def view_course_item(request, course_slug, index):
         current_item,
         index,
         viewable_items=viewable_items,
-        course_index=course_index,
+        course_index=player_index,
         course_progress=course_progress,
+        access_ended_outline=_shows_ended_outline(decision),
     )
 
     entry = current_entry(course_index)
@@ -1537,7 +1562,7 @@ def _player_chrome_context(
     current_item: Topic | Form,
     index: int,
     viewable_items: list | None = None,
-    course_index: list[dict] | None = None,
+    course_index: PlayerCourseIndex | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     access_ended_outline: bool = False,
 ) -> dict:
@@ -1550,7 +1575,8 @@ def _player_chrome_context(
     means "there is no record", and is not the same as leaving it out.
 
     ``access_ended_outline`` shapes the outline it builds for a learner whose access
-    ended but who keeps the outline; it is ignored when ``course_index`` is passed in.
+    ended but who keeps the outline; it also withholds the next-deadline card. When
+    ``course_index`` is passed in, it is built by the caller with that same flag.
     """
     user = request.user
     if viewable_items is None:
@@ -1591,9 +1617,26 @@ def _player_chrome_context(
             access_ended_outline=access_ended_outline,
         )
 
+    rows = course_index.rows
+    course_complete = (
+        course_progress is not None and course_progress.completed_time is not None
+    )
+    if access_ended_outline or course_complete:
+        # Neither carries a deadline on the dashboard either.
+        next_deadline_card = None
+    else:
+        line = card_deadline_line(
+            rows,
+            course_index.course_deadlines,
+            course_index.deadline_policy,
+            course_index.now,
+        )
+        next_deadline_card = line.missed or line.next
+
     return {
-        "course_index": course_index,
-        "current_entry": current_entry(course_index),
+        "course_index": rows,
+        "current_entry": current_entry(rows),
+        "next_deadline_card": next_deadline_card,
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -1752,7 +1795,9 @@ def form_start(request, course_slug, index):
         request.user,
         course,
         index,
-        course_index=_player_course_index(request.user, course, index, course_progress),
+        course_index=_player_course_index(
+            request.user, course, index, course_progress
+        ).rows,
         refuse_closed=True,
     )
     if blocked is not None:
@@ -1877,7 +1922,9 @@ def form_fill_page(
         request.user,
         course,
         index,
-        course_index=_player_course_index(request.user, course, index, course_progress),
+        course_index=_player_course_index(
+            request.user, course, index, course_progress
+        ).rows,
         refuse_closed=True,
     )
     if blocked is not None:
@@ -2030,7 +2077,9 @@ def course_form_complete(request, course_slug, index):
         course,
         form,
         index,
-        course_index=[] if access_ended and not keeps_outline else None,
+        course_index=(
+            PlayerCourseIndex.empty() if access_ended and not keeps_outline else None
+        ),
         course_progress=course_progress,
         access_ended_outline=keeps_outline,
     )
