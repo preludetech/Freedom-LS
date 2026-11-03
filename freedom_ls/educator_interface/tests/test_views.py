@@ -6210,6 +6210,129 @@ def test_the_status_partial_of_a_failed_import_stops_polling_and_shows_the_reaso
     assert "Uploading the whole file again is safe" in text
 
 
+def _finished_result_page(
+    import_world: SimpleNamespace, *lines: str
+) -> lxml.html.HtmlElement:
+    learner_import = _import_for(import_world.admin, import_world.organisation, *lines)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    return _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+
+@pytest.mark.django_db
+def test_a_result_with_no_rows_lost_does_not_mention_rows_not_added(
+    import_world: SimpleNamespace,
+):
+    page = _finished_result_page(import_world, "a@example.com,,,", "b@example.com,,,")
+
+    text = " ".join(page.text_content().split())
+    assert "Added 2 learners." in text
+    assert "was not added" not in text
+    assert "were not added" not in text
+
+
+@pytest.mark.django_db
+def test_a_result_with_no_new_accounts_has_no_setup_email_text(
+    import_world: SimpleNamespace,
+):
+    page = _finished_result_page(import_world, "nonsense,,,")
+
+    assert "setup email" not in page.text_content()
+
+
+@pytest.mark.django_db
+def test_a_finished_result_has_no_importing_heading_and_focuses_its_heading(
+    import_world: SimpleNamespace,
+):
+    page = _finished_result_page(import_world, "a@example.com,,,")
+
+    (heading,) = page.cssselect("#run-status h2")
+    assert "Importing learners" not in page.text_content()
+    assert heading.get("autofocus") is not None
+    assert heading.get("tabindex") == "-1"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_running_result_is_headed_importing_learners_and_keeps_its_poll(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    page = _get_document(
+        import_world.client,
+        _import_url(import_world.organisation, "learner_import_result", learner_import),
+    )
+
+    (status,) = page.cssselect("#run-status")
+    headings = [h.text_content().strip() for h in page.cssselect("#main-content h2")]
+    assert "Importing learners" in headings
+    assert status.get("role") == "status"
+    assert status.get("hx-trigger") == "every 2s"
+    assert "Waiting to start." in status.text_content()
+    assert status.cssselect("progress, [role=progressbar]")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_status_fragment_has_no_refresh_header_while_queued(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+
+    assert "HX-Refresh" not in response
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_status_fragment_asks_for_a_page_refresh_once_done(
+    import_world: SimpleNamespace, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 5
+    learner_import = _ten_row_import(import_world)
+    import_world.client.post(
+        _import_url(import_world.organisation, "learner_import_preview", learner_import)
+    )
+    run_learner_import(str(learner_import.pk), import_world.organisation.site_id)
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+
+    assert response["HX-Refresh"] == "true"
+
+
+@pytest.mark.django_db
+def test_the_status_fragment_asks_for_a_page_refresh_once_failed(
+    import_world: SimpleNamespace,
+):
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "a@example.com,,,"
+    )
+    LearnerImport.objects.filter(pk=learner_import.pk).update(
+        status=RunStatus.FAILED, error_message="Something broke."
+    )
+
+    response = import_world.client.get(
+        _import_url(import_world.organisation, "learner_import_status", learner_import)
+    )
+
+    assert response["HX-Refresh"] == "true"
+
+
 @pytest.mark.django_db
 def test_the_import_status_is_a_404_for_another_user_and_another_organisation(
     import_world: SimpleNamespace,

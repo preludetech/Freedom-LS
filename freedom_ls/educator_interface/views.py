@@ -2670,8 +2670,9 @@ def _import_status_context(
         ),
         "result_template": "educator_interface/partials/learner_import_result_body.html",
         "result_on_failure": True,
+        "in_progress": learner_import.status not in (RunStatus.DONE, RunStatus.FAILED),
     }
-    if learner_import.status not in (RunStatus.DONE, RunStatus.FAILED):
+    if context["in_progress"]:
         return context
     counts = _label_counts(
         LearnerImportRow.objects.filter(learner_import=learner_import), "final_label"
@@ -2729,11 +2730,13 @@ def partial_learner_import_status(
         return _import_denied(request, scoped)
     if learner_import.status == ImportStatus.PREVIEWED:
         raise Http404("The import has not been confirmed.")
-    return render(
-        request,
-        "educator_interface/partials/run_status.html",
-        _import_status_context(scoped, learner_import),
-    )
+    context = _import_status_context(scoped, learner_import)
+    response = render(request, "educator_interface/partials/run_status.html", context)
+    if not context["in_progress"]:
+        # The finished outcome has a heading and focus handling the polled
+        # fragment cannot carry, so the whole page is rendered again.
+        response["HX-Refresh"] = "true"
+    return response
 
 
 @login_required

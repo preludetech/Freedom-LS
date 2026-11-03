@@ -69,6 +69,7 @@ flowchart TB
     audit_log --> organisations
     audit_log --> site_aware_models
     base --> learner_management
+    base --> site_aware_models
     blog --> base
     blog --> content_engine
     comms --> accounts
@@ -302,7 +303,7 @@ flowchart TB
 | api | base, site_aware_models | — |
 | api_admin | accounts, api, audit_log, site_aware_models | — |
 | audit_log | accounts, base, organisations, site_aware_models | — |
-| base | learner_management | accounts, content_engine, organisations, role_based_permissions |
+| base | learner_management, site_aware_models | accounts, content_engine, organisations, role_based_permissions |
 | blog | base, content_engine | — |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
