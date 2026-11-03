@@ -179,6 +179,46 @@ def test_learners_list_hides_an_inactive_learner_when_the_status_filter_is_empti
 
 
 @pytest.mark.django_db
+def test_learners_list_offers_to_show_all_when_the_default_filter_hides_every_learner(
+    educator_client,
+):
+    """ "Clear filters" would return to Active + Pending and show nothing again,
+    so the way out is a link that selects every status."""
+    organisation = OrganisationFactory()
+    inactive_learner = _make_learner(
+        organisation=organisation, first_name="Grace", last_name="Hopper"
+    )
+    inactive_learner.is_active = False
+    inactive_learner.save(update_fields=["is_active"])
+    client = educator_client(organisation)
+
+    response = client.get(_learners_url(organisation.slug))
+
+    content = response.content.decode()
+    assert "No learners match these filters." in content
+    assert "No learners yet" not in content
+    document = lxml.html.fromstring(content)
+    (href,) = {
+        link.get("href")
+        for link in document.xpath("//a[normalize-space()='Show all learners']")
+    }
+    assert "Grace" in client.get(href).content.decode()
+
+
+@pytest.mark.django_db
+def test_learners_list_shows_the_first_use_state_when_there_are_no_learners(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    content = response.content.decode()
+    assert "No learners yet." in content
+    assert "No learners match these filters." not in content
+
+
+@pytest.mark.django_db
 def test_learners_status_chip_has_no_remove_control_at_its_default(educator_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)

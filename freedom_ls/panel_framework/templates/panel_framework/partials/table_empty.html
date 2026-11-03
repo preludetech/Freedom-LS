@@ -1,13 +1,20 @@
 {% comment %}
 The empty cell of a data table. A search or filter in play means nothing
-matched, so the way back is offered; otherwise there is nothing yet, and
-the header actions the viewer may take are offered instead.
+matched, so the way back is offered. A page emptied by the filters' own
+defaults offers every choice instead, since clearing would return to those
+defaults. Otherwise there is nothing yet, and the header actions the viewer
+may take are offered instead.
 {% endcomment %}
 {% load panel_tags %}
 {% if any_filter_set or query.search %}
     {% querystring request.GET clear_changes clear_search_changes as qs %}
     <c-panel-empty-state message="{{ empty_no_results }}">
         <a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" class="text-primary underline">Clear filters</a>
+    </c-panel-empty-state>
+{% elif hidden_by_defaults %}
+    {% querystring request.GET show_all_changes as qs %}
+    <c-panel-empty-state message="{{ empty_no_results }}">
+        <a href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" class="text-primary underline">Show all {{ noun }}</a>
     </c-panel-empty-state>
 {% else %}
     <c-panel-empty-state message="{{ empty_message }}">

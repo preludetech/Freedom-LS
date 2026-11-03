@@ -15,6 +15,7 @@ from typing import cast
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured
+from django.core.paginator import Page
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest
 
@@ -309,6 +310,16 @@ class DataTablePanel(Panel):
             if action.has_permission(self.request)
         ]
         context["noun"] = self.noun(self.request)
+        # An empty page with every filter at its default is "nothing yet"
+        # only when the scope itself is empty; otherwise the defaults are
+        # hiding rows, and the empty state must say so and offer them.
+        context["hidden_by_defaults"] = (
+            cast(Page, context["page_obj"]).paginator.count == 0
+            and bool(context["has_defaulted_filters"])
+            and not context["any_filter_set"]
+            and not query.search
+            and self.get_queryset(self.request).exists()
+        )
         return context
 
 

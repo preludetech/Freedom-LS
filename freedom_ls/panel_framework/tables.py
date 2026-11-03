@@ -89,6 +89,21 @@ class TableQuery:
         changes[self.param("page")] = None
         return changes
 
+    def show_all_changes(self, filters: list[TableFilter]) -> dict[str, object]:
+        """The `{% querystring %}` changes that widen every defaulted filter
+        to all of its choices, for when the defaults alone hide every row.
+        Clearing would only return to the defaults. Filters without a
+        default, the search and the sort are left alone."""
+        changes: dict[str, object] = {
+            self.param(table_filter.key): [
+                value for value, _label in self.choices.get(table_filter.key, [])
+            ]
+            for table_filter in filters
+            if table_filter.default
+        }
+        changes[self.param("page")] = None
+        return changes
+
 
 def page_links(page_obj: Page, query: TableQuery) -> dict[str, object]:
     """The previous/next/numbered links a table's pagination control renders.
@@ -443,6 +458,8 @@ class DataTable:
             "toolbar": toolbar,
             "add_filter": [entry for entry in toolbar if not entry["shown"]],
             "clear_changes": query.clear_filters_changes(filter_keys),
+            "show_all_changes": query.show_all_changes(filters),
+            "has_defaulted_filters": any(f.default for f in filters),
             "any_filter_set": any(entry["changed"] for entry in toolbar),
             "exports": bool(cls.get_export_columns()),
             "export_changes": {query.param("export"): "csv"},

@@ -1215,6 +1215,43 @@ def test_clear_all_shows_once_a_defaulted_filter_leaves_its_default(
     assert "stub-kind" not in clear_link.get("href")
 
 
+def test_show_all_changes_selects_every_choice_of_each_defaulted_filter() -> None:
+    request = RequestFactory().get("/", {"stub-page": "3"})
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.show_all_changes(_DefaultedFilterTable.get_filters()) == {
+        "stub-kind": ["a", "b"],
+        "stub-page": None,
+    }
+
+
+@pytest.mark.django_db
+def test_an_empty_page_under_a_default_filter_offers_to_show_every_row(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-b", kind="b")
+
+    document = _render_defaulted_filter_table({})
+
+    (href,) = {
+        link.get("href")
+        for link in document.xpath(".//a[normalize-space()='Show all stub models']")
+    }
+    assert "stub-kind=a" in href
+    assert "stub-kind=b" in href
+    assert not document.xpath(".//*[contains(normalize-space(), 'Nothing to see')]")
+
+
+@pytest.mark.django_db
+def test_an_empty_table_under_a_default_filter_is_still_first_use(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({})
+
+    assert document.xpath(".//*[contains(normalize-space(), 'Nothing to see')]")
+    assert not document.xpath(".//a[starts-with(normalize-space(), 'Show all')]")
+
+
 def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
     request = RequestFactory().get("/", {"stub-kind": "a"})
     query = StubDataTable.parse_query(request, "stub")
