@@ -27,6 +27,11 @@ other than the current one, even when another worktree holds a spec the design a
 It does not rebase: it only adds spec files to the current branch, and the next SDD step's
 pre-step rebase picks main up.
 
+Inputs from the caller: `<spec-dir>`, the design input (a handoff prompt, a prompt file path or
+a Claude Design link), optional notes, the design-login answer, and `mode: hook`, from a command
+of this plugin that read and followed this file. Without `mode: hook` the command is standalone
+and takes everything from `$ARGUMENTS`.
+
 ## Step 1: Resolve the inputs
 
 - **`<spec-dir>`**: a directory under `spec_dd/` in the current worktree. Resolve it in this order:
@@ -52,6 +57,11 @@ pre-step rebase picks main up.
   whether the design used the project's theme or knew its implementation: the "How to treat it"
   wording already assumes it did neither.
 
+With `mode: hook`, `<spec-dir>`, the design input and the notes come from the caller instead of
+`$ARGUMENTS`. When the design input is `<spec-dir>/design_prompt.md` itself, read it first and skip
+the verbatim write: the file already holds the prompt. The file is read before anything writes to
+that path.
+
 If `<spec-dir>/design.md` already exists, this is a re-registration: rewrite it whole with the new
 link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. Delete any
 `<spec-dir>/design_scope.md` an older version of this command left behind.
@@ -73,7 +83,12 @@ none of those have it.
 5. On re-registration, empty `<spec-dir>/design_source/` first. `Write` each file whole and
    unedited to `<spec-dir>/design_source/<project path>`.
 
-If the tool reports it needs authorisation, ask the user to run `/design-login` and retry once
+In hook mode the caller has already asked. Its design-login answer decides: "Done" retries
+`get_project` once; "without reading it", or a retry that still fails, registers the design with
+the coverage table marked "not yet read", as the standalone fallback does, and the chain
+continues. Never ask here in hook mode.
+
+Standalone, if the tool reports it needs authorisation, ask the user to run `/design-login` and retry once
 they say it is done. If it still cannot read the project, register the design anyway, mark the
 coverage table "not yet read" and say so in your summary.
 
@@ -194,6 +209,8 @@ branch, in the current worktree:
   commit them the way `claude_plugins/sdd/resources/commit_and_push.md` says, subject
   `<spec-dir name>: register the Claude Design design`. Do not push. This is spec bookkeeping, the
   same exception `/sdd:roadmap` uses.
+
+The commit happens in hook mode too.
 
 Report: the `design.md` path, whether the design was read (and how many screens it covers), the
 number of synced files and screenshots, whether the file list came from a prompt or was worked out
