@@ -64,6 +64,20 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 - Make the first slice the thinnest one that runs end to end. Later slices widen it: more fields, more cases, permissions, error branches, edge cases.
 - Order slices by value and dependency. Each slice builds only on slices before it.
 - Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with the full test suite passing.
+- Number slices consecutively from 1 (`### Slice 1`, `### Slice 2`, ...). A batch id in
+  `implement_plan` is the slice number.
+- Every slice carries two lines after its behaviour line and before any `**Design states:**` line:
+  - `**Builds on:** none` or `**Builds on:** slices <n>, <m>`: the earlier slices whose work this
+    slice edits, imports, migrates on top of, or needs in the database. A slice builds on every
+    earlier slice whose `Touches:` overlaps its own; a slice that adds a schema-migration file
+    builds on every earlier slice that adds one in the same migration directory; a slice that
+    changes a dependency manifest or lockfile builds on every earlier slice.
+  - `**Touches:** <paths>`: the files and directories the slice creates or edits, one per comma. A
+    directory means everything under it. Shared groundwork placed before a slice is listed under
+    that slice.
+
+  `implement_plan` reads both lines. Two slices with no `Builds on:` path between them may run at
+  the same time, so their `Touches:` must be disjoint.
 - Don't group work by layer ("all the models", then "all the views", then "all the templates"). A slice holds only the model, view or template changes its behaviour needs.
 - Put shared groundwork in its own step only when no single slice can own it. Keep it as small as possible and put it immediately before the first slice that uses it.
 - A slice that builds a designed screen carries the line `**Design states:** <id>, <id>`, naming the design states it builds. `implement_plan` reads this line.
@@ -145,8 +159,9 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
   documentation or downstream section is in scope here. Read `## Documentation Hooks` in
   `.claude/sdd/config.md` (and `config.local.md`) and the description of each hook's skill; a spec
   item one of those hooks covers needs no todo item. Every other item becomes
-  `add_after:"Run `/sdd:document`|user|<what to change, in which file, from which spec section>"`,
-  in the spec's order, so it sits between the documentation hooks and the pull request. A plan
+  `add_after:"Run `/sdd:document`|cmd|<what to change, in which file, from which spec section>"`,
+  in the spec's order, so it sits between the documentation hooks and the pull request.
+  `/sdd:document` executes these items before it opens the pull request. A plan
   summary never tells the user that something is left for them to do by hand: the todo carries it.
 
 # Step 9: Commit and push
