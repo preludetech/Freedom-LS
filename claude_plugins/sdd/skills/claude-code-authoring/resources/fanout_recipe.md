@@ -55,7 +55,7 @@ lives in another one.
      *(Pattern A5.)*
    - `blocked` → the orchestrator supplies the listed `needs` from the source, the code or another
      unit's output where it can, and where it can't, asks in the command's question batch when the command can ask; a brief run as
-     a hook of another command is instead recorded as skipped with its need, and the run continues. Then it
+     a hook of another command is instead recorded as skipped with its need, and the run continues. A command of this plugin read and followed in hook mode runs at depth 0 and still asks its own question batches. Then it
      **re-spawns a fresh worker** with the original brief + answers (pointing at any partial file).
      *(B3/B4.)*
 6. **Synthesis is a separate step.** A later step reads the output **files** (pass paths, never dump

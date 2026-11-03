@@ -3,7 +3,8 @@
 ## No nesting
 Subagents **cannot spawn subagents**. If `Agent` is listed in a subagent's `tools`, it is ignored at
 depth 1. Depth is capped at 1: main session → subagent. Keep all fan-out in the main session (depth 0) and use skills / read-and-follow helper files inside
-the subagent instead of nested delegation.
+the subagent instead of nested delegation. The depth-1 cap is this plugin's design choice, enforced
+when `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is `1`; current Claude Code docs allow deeper nesting by default.
 Source: https://code.claude.com/docs/en/sub-agents (and issue #4182).
 
 ## No slash commands inside a subagent
@@ -37,3 +38,13 @@ all), `disallowedTools` (denylist, applied before `tools`), `model`, `skills` (p
 **Model resolution order:** `CLAUDE_CODE_SUBAGENT_MODEL` → per-spawn `model` param → frontmatter
 `model` → parent's model. Plugin subagents ignore `permissionMode`, `mcpServers`, and `hooks`.
 Source: https://code.claude.com/docs/en/sub-agents
+
+## Worktree isolation
+`isolation: "worktree"` on an `Agent` call pins the sub-agent's working directory to a fresh
+worktree under `.claude/worktrees/` of the current checkout, on a new branch from `worktree.baseRef`
+(`head` branches from the feature branch; the default branches from the remote default branch).
+Nothing is installed in it and gitignored files are absent, so a project's Setup script runs inside
+it. Writes and git commands aimed at the main checkout are blocked. A worktree with commits stays on
+disk until removed by name. `EnterWorktree` with `path` moves the whole session into an existing
+worktree that `git worktree list` shows; it is a session move, not a parallelism primitive.
+Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/worktrees
