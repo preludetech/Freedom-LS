@@ -52,8 +52,9 @@ with incorrect answers), refresh_url.
                     {% else %}
                         {% for table in section.summary_tables %}
                             {% if table.continued %}<p class="mt-4 mb-1 text-sm text-muted">{{ section.title }} (continued)</p>{% endif %}
-                            <div class="relative overflow-x-auto">
-                                <table class="w-full text-sm">
+                            <div role="region" aria-labelledby="report-summary-{{ forloop.parentloop.counter }}-{{ forloop.counter }}-caption" tabindex="0" class="relative overflow-x-auto">
+                                <table aria-labelledby="report-summary-{{ forloop.parentloop.counter }}-{{ forloop.counter }}-caption" class="w-full text-sm">
+                                    <caption id="report-summary-{{ forloop.parentloop.counter }}-{{ forloop.counter }}-caption" class="sr-only">{{ section.title }}{% if table.continued %} (continued){% endif %}</caption>
                                     <thead>
                                         <tr class="border-b border-border text-left">
                                             <th scope="col" class="sticky left-0 bg-surface py-2 pr-4 font-medium">Learner</th>
@@ -117,8 +118,9 @@ with incorrect answers), refresh_url.
             <h3 id="report-confusions-title" class="text-lg font-semibold font-display">Quiz confusions across the cohort</h3>
             {% for card in confusions %}
                 <c-panel-card :title="card.heading" heading_level="4">
-                    <div class="relative overflow-x-auto">
-                        <table class="w-full text-sm">
+                    <div role="region" aria-labelledby="report-confusion-{{ forloop.counter }}-caption" tabindex="0" class="relative overflow-x-auto">
+                        <table aria-labelledby="report-confusion-{{ forloop.counter }}-caption" class="w-full text-sm">
+                            <caption id="report-confusion-{{ forloop.counter }}-caption" class="sr-only">{{ card.heading }}</caption>
                             <thead>
                                 <tr class="border-b border-border text-left">
                                     <th scope="col" class="py-2 pr-2 font-medium">Q</th>

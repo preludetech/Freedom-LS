@@ -47,6 +47,7 @@ from freedom_ls.reports.report_data import (
     MIN_RESPONDENTS_FOR_PERCENTAGE,
     AtRiskFlag,
     ConfusionBlock,
+    LearnerRow,
     QuizColumn,
     QuizConfusion,
     SummaryTable,
@@ -61,6 +62,7 @@ from freedom_ls.reports.tests.helpers import (
 from freedom_ls.reports.tests.report_data_builders import (
     cohort_report_data,
     course_section,
+    summary_row,
 )
 from freedom_ls.reports.tests.test_views import (
     _role_config_granting_view_cohort_only,
@@ -695,6 +697,59 @@ class TestCohortReportBody:
         cache.clear()
         yield
         cache.clear()
+
+    def test_every_table_has_a_caption_and_scrolls_in_a_named_focusable_region(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        quiz = QuizColumn(
+            form_id=uuid4(), title="Orbit Quiz", abbreviation="OQ", pass_percentage=50
+        )
+        row = LearnerRow(
+            learner_id=uuid4(),
+            full_name="Ada Able",
+            completion_percentage=50,
+            completed_item_count=1,
+            total_item_count=2,
+            last_completed_title=None,
+            last_completed_at=None,
+            quiz_cells={quiz.form_id: None},
+        )
+        section = course_section(
+            title="Astronomy",
+            quizzes=[quiz],
+            learner_rows=[row],
+            summary_tables=[
+                SummaryTable(quizzes=[], rows=[summary_row(row, [])], continued=False),
+                SummaryTable(
+                    quizzes=[quiz], rows=[summary_row(row, [quiz])], continued=True
+                ),
+            ],
+            confusions_by_quiz={
+                quiz.form_id: ConfusionBlock(questions=[_confusion()], shown=1, total=1)
+            },
+        )
+        cache.set(
+            _cache_key(cohort.site_id, cohort.pk, "report"),
+            cohort_report_data(courses=[section]),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        tables = region.cssselect("table")
+        assert len(tables) == 3
+        captions = []
+        for table in tables:
+            (caption,) = table.cssselect("caption")
+            assert caption.get("id")
+            assert table.get("aria-labelledby") == caption.get("id")
+            scroll_region = table.getparent()
+            assert scroll_region.get("role") == "region"
+            assert scroll_region.get("tabindex") == "0"
+            assert scroll_region.get("aria-labelledby") == caption.get("id")
+            captions.append(caption.text_content().strip())
+        assert captions == ["Astronomy", "Astronomy (continued)", "Orbit Quiz"]
 
     def test_the_first_render_is_a_busy_skeleton_with_a_load_trigger(
         self, logged_in_client
