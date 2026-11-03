@@ -796,6 +796,17 @@ def test_confirmation_shows_changed_and_skipped_counts(
     assert "2 are already processed and will be skipped." in content
 
 
+def test_the_confirmation_title_counts_the_rows_that_will_change(
+    mock_site_context: Site,
+) -> None:
+    stubs = [make_stub(name=f"row-{i}", is_active=i >= 2) for i in range(5)]
+    path, data = _classified_post(stubs)
+
+    response = fetch(path, method="post", data=data, htmx=True)
+
+    assert "Mark 3 processed?" in response.content.decode()
+
+
 def test_confirmation_uses_singular_verb_for_one_skip(mock_site_context: Site) -> None:
     stubs = [make_stub(name="row-a", is_active=False), make_stub(name="row-b")]
     path, data = _classified_post(stubs)

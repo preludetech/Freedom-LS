@@ -218,6 +218,9 @@ class StubClassifyingBulkAction(StubBulkAction):
     label = "Mark processed (classified)"
     action_name = "stub_classifying_bulk"
 
+    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Mark {count} processed?"
+
     def classify_all(
         self,
         request: HttpRequest,

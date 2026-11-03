@@ -5716,6 +5716,35 @@ def test_bulk_deactivate_dialog_title_is_a_question_with_the_count(
 
 
 @pytest.mark.django_db
+def test_a_bulk_dialog_title_counts_the_rows_that_will_change(staff_client: Client):
+    """The sentence counts the rows the action will change; the title used to
+    count the whole selection, so the two disagreed on a mixed selection."""
+    organisation = OrganisationFactory()
+    active = _bulk_learner(organisation=organisation)
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(staff_client, organisation, "reactivate", [active, inactive])
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Reactivate 1 learner?"
+    assert "Reactivate 1 learner." in _bulk_text(response)
+
+
+@pytest.mark.django_db
+def test_a_bulk_dialog_title_says_zero_when_nothing_will_change(staff_client: Client):
+    organisation = OrganisationFactory()
+    active = _bulk_learner(organisation=organisation)
+
+    response = _bulk_post(staff_client, organisation, "reactivate", [active])
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Reactivate 0 learners?"
+    assert document.cssselect("button[type='submit'][disabled]")
+
+
+@pytest.mark.django_db
 def test_bulk_deactivate_confirm_button_is_primary_and_names_the_work_in_flight(
     staff_client: Client,
 ):

@@ -639,11 +639,16 @@ class _BulkConfirmation:
     #: Set when the action's form has no valid choice yet, so there is no
     #: cleaned data for the action to word a title from.
     title: str = ""
+    #: How many of the selected rows the action will change, once they are
+    #: classified. The title counts these, as the sentence does, so the two
+    #: never disagree on a mixed selection. None means every row changes.
+    changed_count: int | None = None
 
     def context(self) -> dict[str, object]:
+        title_count = self.count if self.changed_count is None else self.changed_count
         return {
             "title": self.title
-            or self.action.confirmation_title(self.count, self.cleaned_data),
+            or self.action.confirmation_title(title_count, self.cleaned_data),
             "action": self.action,
             "action_url": self.action_url,
             "selection": self.selection,
@@ -920,6 +925,7 @@ def _handle_bulk_action(
             confirm_disabled=changed_count == 0,
             form=picker,
             cleaned_data=cleaned_data,
+            changed_count=changed_count,
         )
 
     if not confirmed:
