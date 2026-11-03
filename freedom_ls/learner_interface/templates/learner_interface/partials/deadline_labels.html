@@ -1,28 +1,46 @@
 {% load deadline_tags %}
-{% comment %}
-The deadline labels of one index row. A closed row shows the "Closed" chip with when it
-closed. Otherwise a row that shows overdue gets the "Missed deadline" chip with its date, and
-any other row its deadline date; either one adds when the row closes, if it will. A completed
-row or a row without a due date renders nothing.
+{% comment %}The one file that writes deadline copy. Each surface (course row, outline row,
+band, next-deadline card, header card) composes these partials in its own layout.
 
-Required context: child (due_at, closes_at, is_overdue, is_closed, status) and
-show_time_zone_to_learners. A row sequential unlock withholds is never is_closed, so it
-stays locked past its close instant with no "Closed" chip.
-Optional: title, a prefix placed before the date.
-{% endcomment %}
-{% if child.due_at and child.status != "COMPLETE" %}
-    {% if child.is_closed %}
-        <c-chip variant="error" size="xs" icon="deadline" class="forced-colors:border">Closed {% local_time child.closes_at %}</c-chip>
-    {% elif child.is_overdue %}
-        <c-chip variant="error" size="xs" class="forced-colors:border">Missed deadline</c-chip>
-        <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">{% if title %}{{ title }} {% endif %}{% local_time child.due_at %}</span>
-        {% if child.closes_at %}
-            <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Closes {% local_time child.closes_at %}.</span>
-        {% endif %}
-    {% else %}
-        <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Deadline {% if title %}{{ title }} {% endif %}{% local_time child.due_at %}.</span>
-        {% if child.closes_at %}
-            <span class="text-muted{% if not title %} text-xs whitespace-nowrap{% endif %}">Closes {% local_time child.closes_at %}.</span>
-        {% endif %}
+Required context for every partial: child (an index row or a CardDeadline: due_at, closes_at,
+is_overdue, is_closed, status, deadline_tier) and show_time_zone_to_learners. Optional: title.
+The top level is empty, so include a named partial.{% endcomment %}
+
+{% partialdef tier-icon %}
+    {% comment %}Decorative: the word beside it carries the meaning, so the wrapper hides the
+    icon from assistive technology. Each icon still gets that word as its label, because
+    the icon's default label is its semantic name ("warning").{% endcomment %}
+    <span aria-hidden="true" class="inline-flex">
+        {% if child.deadline_tier == "MISSED" %}<c-icon name="warning" class="size-4" aria_label="Missed deadline" />
+        {% elif child.deadline_tier == "CLOSED" %}<c-icon name="locked" class="size-4" aria_label="Closed" />
+        {% else %}<c-icon name="deadline" class="size-4" aria_label="Deadline" />{% endif %}
+    </span>
+{% endpartialdef %}
+
+{% partialdef tier-word %}
+    {% if child.deadline_tier == "MISSED" %}Missed deadline{% elif child.deadline_tier == "CLOSED" %}Closed{% else %}Deadline{% endif %}
+{% endpartialdef %}
+
+{% partialdef access-ends-line %}
+    {% if course.access_ends_at %}<p class="text-sm text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
+{% endpartialdef %}
+
+{% partialdef line %}
+    {% comment %}A chip with the tier word for a missed or closed deadline, then the title when
+    given and the date; otherwise "Deadline", the title and the date. Then when it closes.
+    A closed deadline is dated by when it closed. Without a title the text is small and
+    does not wrap, because the caller is a row with little room.{% endcomment %}
+    {% if child.due_at and child.status != "COMPLETE" %}
+        {% with text_class=title|yesno:"text-muted,text-muted text-xs whitespace-nowrap" %}
+            {% if child.deadline_tier == "MISSED" or child.deadline_tier == "CLOSED" %}
+                <c-chip variant="error" size="xs" class="forced-colors:border">{% partial tier-icon %}{% partial tier-word %}</c-chip>
+                <span class="{{ text_class }}">{% if title %}{{ title }} {% endif %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at %}{% else %}{% local_time child.due_at %}{% endif %}</span>
+            {% else %}
+                <span class="{{ text_class }}">Deadline {% if title %}{{ title }} {% endif %}{% local_time child.due_at %}.</span>
+            {% endif %}
+            {% if child.closes_at and not child.is_closed %}
+                <span class="{{ text_class }}">Closes {% local_time child.closes_at %}.</span>
+            {% endif %}
+        {% endwith %}
     {% endif %}
-{% endif %}
+{% endpartialdef %}

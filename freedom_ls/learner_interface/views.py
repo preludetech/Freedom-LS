@@ -48,15 +48,12 @@ from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
 from freedom_ls.deadlines.consequences import (
-    access_end_instant,
     is_closed,
-    shows_overdue,
 )
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
-    NO_DEADLINE,
     CourseDeadlines,
     course_deadlines,
     course_deadlines_for,
@@ -115,12 +112,12 @@ from .dashboard_sections import (
 from .utils import (
     BLOCKED,
     CLOSED,
-    COMPLETE,
     IN_PROGRESS,
     READY,
     UNRESOLVED,
     CourseListingStatus,
     Unresolved,
+    card_deadline_line,
     current_entry,
     current_entry_status,
     derive_listing_status,
@@ -141,99 +138,6 @@ from .utils import (
     stamp_card_organisation,
     stamp_course_access_badge,
 )
-
-COURSE_DEADLINE_TITLE = "Course"
-
-
-@dataclass(frozen=True)
-class CardDeadline:
-    """One deadline the card names: the item's title and when it is due."""
-
-    title: str
-    due_at: datetime
-    is_overdue: bool
-    status: str
-    closes_at: datetime | None = None
-    is_closed: bool = False
-
-
-@dataclass(frozen=True)
-class CardDeadlineLine:
-    """The card's one deadline line: the earliest past deadline wins over the next one.
-
-    ``missed`` is the earliest past, unfinished deadline; its ``is_overdue`` says whether
-    it carries the "Missed deadline" chip, which ``mark_overdue`` off withholds.
-    """
-
-    missed: CardDeadline | None
-    next: CardDeadline | None
-    access_ends_at: datetime | None = None
-
-
-def _card_deadline_line(
-    flat: list[dict],
-    course_deadlines: CourseDeadlines | None,
-    deadline_policy: ResolvedDeadlinePolicy | None,
-    now: datetime,
-) -> CardDeadlineLine:
-    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A past
-    # leaf counts as missed whether or not it carries the overdue mark or has closed. An
-    # in-progress course is never complete, so the time limit's overdue check takes
-    # completed=False.
-    open_leaves = [
-        row
-        for row in flat
-        if row.get("due_at") is not None and row["status"] != COMPLETE
-    ]
-    missed = [
-        CardDeadline(
-            row["title"],
-            row["due_at"],
-            row["is_overdue"],
-            row["status"],
-            row["closes_at"],
-            row["is_closed"],
-        )
-        for row in open_leaves
-        if row["due_at"] <= now
-    ]
-    upcoming = [
-        CardDeadline(
-            row["title"],
-            row["due_at"],
-            False,
-            row["status"],
-            row["closes_at"],
-        )
-        for row in open_leaves
-        if row["due_at"] > now
-    ]
-    time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
-    if time_limit.due_at is not None:
-        overdue = deadline_policy is not None and shows_overdue(
-            time_limit, deadline_policy, False, now
-        )
-        (missed if time_limit.due_at <= now else upcoming).append(
-            CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at, overdue, IN_PROGRESS)
-        )
-
-    def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
-        return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
-
-    # Only an end still ahead is announced; one already past has ended the access, and the
-    # card then reads "Access ended" instead of carrying a deadline line.
-    access_ends_at = (
-        access_end_instant(time_limit, deadline_policy)
-        if deadline_policy is not None
-        else None
-    )
-    if access_ends_at is not None and access_ends_at <= now:
-        access_ends_at = None
-    return CardDeadlineLine(
-        missed=earliest(missed),
-        next=earliest(upcoming),
-        access_ends_at=access_ends_at,
-    )
 
 
 def _annotate_next_up(
@@ -282,7 +186,7 @@ def _annotate_next_up(
     )
     setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
-    line = _card_deadline_line(flat, course_deadlines, deadline_policy, now)
+    line = card_deadline_line(children, course_deadlines, deadline_policy, now)
     setattr(course, "missed_deadline", line.missed)  # noqa: B010
     setattr(course, "next_deadline", line.next)  # noqa: B010
     setattr(course, "access_ends_at", line.access_ends_at)  # noqa: B010

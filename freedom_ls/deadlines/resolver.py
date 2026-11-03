@@ -135,6 +135,9 @@ def registration_date_of(course_progress: CourseProgress, tz: ZoneInfo) -> date:
 class CourseDeadlines:
     items: dict[UUID, ResolvedDeadline]
     time_limit: ResolvedDeadline
+    # The site zone every instant above was built in, kept so a reader of these
+    # deadlines can ask "is that today?" without a second zone lookup.
+    zone: ZoneInfo
 
 
 class DeadlineOverrideRow(Protocol):
@@ -315,5 +318,5 @@ def course_deadlines_for(
             registered_on,
             tz,
         )
-        result[record.pk] = CourseDeadlines(items=items, time_limit=time_limit)
+        result[record.pk] = CourseDeadlines(items=items, time_limit=time_limit, zone=tz)
     return result
