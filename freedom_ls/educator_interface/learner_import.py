@@ -100,7 +100,7 @@ LABEL_FOR: dict[tuple[AddOutcome, CohortOutcome | None], ImportLabel] = {
 #: Labels that write nothing, so they do not count towards "Add N learners".
 NOT_ADDED_LABELS = (ImportLabel.ERROR, ImportLabel.ALREADY_MEMBER)
 
-#: The status badge tone of each preview label.
+#: `tone` names for `c-panel-status-badge`, used in the preview's Label column.
 PREVIEW_LABEL_TONES: dict[str, str] = {
     ImportLabel.NEW_ACCOUNT: "success",
     ImportLabel.JOINED: "info",
