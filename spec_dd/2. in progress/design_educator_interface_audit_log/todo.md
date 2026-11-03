@@ -16,8 +16,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: learner History mobile card uses the generic labelled card instead of the Who+When / label layout — the spec and QA plan want the custom card there, the plan limits it to tables with a Target column (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
