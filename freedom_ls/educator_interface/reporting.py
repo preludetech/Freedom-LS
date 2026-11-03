@@ -51,6 +51,7 @@ from freedom_ls.reports.report_data import (
     ConfusionBlock,
     QuizColumn,
     ReportTooLargeError,
+    over_limit_message,
 )
 from freedom_ls.reports.screen_cache import (
     cached_cohort_progress,
@@ -159,14 +160,6 @@ def _pdf_url(url_kwargs: dict[str, str], ready: GeneratedReport | None) -> str:
     return reverse(
         "educator_interface:cohort_report_download",
         kwargs={**url_kwargs, "report_pk": str(ready.pk)},
-    )
-
-
-def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
-    """Why a cohort has no report figures: it is over the report's learner limit."""
-    return (
-        f"{cohort_name} has {learner_count} learners, over the report's "
-        f"learner limit of {limit}, so it is not included."
     )
 
 

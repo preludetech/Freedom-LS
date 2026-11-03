@@ -22,19 +22,24 @@ CONFUSIONS_PER_QUIZ_MAX = 10
 MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
 
+def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
+    """Why a cohort has no report figures: it is over the report's learner limit."""
+    return (
+        f"{cohort_name} has {learner_count} learners, over the report's "
+        f"learner limit of {limit}, so it is not included."
+    )
+
+
 class ReportTooLargeError(Exception):
     """Raised when a cohort has more members than `config.REPORTS_MAX_LEARNERS`.
 
-    The figures that made it too large travel with it, so a screen can word
-    the refusal for its reader instead of echoing this message, which names
-    the setting.
+    Its message is the one every screen shows, including a failed PDF's
+    stored error, and the figures travel with it for a screen that words
+    the refusal differently.
     """
 
     def __init__(self, cohort_name: str, learner_count: int, limit: int) -> None:
-        super().__init__(
-            f"Cohort '{cohort_name}' has {learner_count} learners, exceeding "
-            f"the configured limit of {limit} (REPORTS_MAX_LEARNERS)."
-        )
+        super().__init__(over_limit_message(cohort_name, learner_count, limit))
         self.cohort_name = cohort_name
         self.learner_count = learner_count
         self.limit = limit

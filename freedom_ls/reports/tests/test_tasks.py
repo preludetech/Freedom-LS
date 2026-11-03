@@ -208,6 +208,7 @@ class TestGenerateCohortReportTooLarge:
 
         report.refresh_from_db()
         assert "1" in report.error_message
+        assert "REPORTS_MAX_LEARNERS" not in report.error_message
 
 
 class TestGenerateCohortReportUnexpectedException:

@@ -230,7 +230,9 @@ class TestLoadRoster:
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
 
-        with pytest.raises(ReportTooLargeError, match="exceeding"):
+        with pytest.raises(
+            ReportTooLargeError, match="over the report's learner limit"
+        ):
             load_roster(cohort, mock_site_context.pk)
 
     @override_settings(REPORTS_MAX_LEARNERS=2)
