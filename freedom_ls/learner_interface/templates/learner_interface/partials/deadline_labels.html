@@ -51,6 +51,16 @@ The top level is empty, so include a named partial.{% endcomment %}
     {% endif %}
 {% endpartialdef %}
 
+{% partialdef closes-line %}
+    {% if child.closes_at and not child.is_closed %}Closes {% local_time child.closes_at format=date_format %}.{% endif %}
+{% endpartialdef %}
+
+{% partialdef tier-tint %}
+    {% comment %}The tint a band or card takes from its tier. forced-colors:border keeps the
+    block's edge when the tint is removed.{% endcomment %}
+    forced-colors:border {% if child.deadline_tier == "UPCOMING" %}bg-surface-2 text-muted{% elif child.deadline_tier == "TODAY" %}bg-warning-light text-on-warning-light{% else %}bg-error-light text-on-error-light{% endif %}
+{% endpartialdef %}
+
 {% partialdef line %}
     {% comment %}A chip with the tier word for a missed or closed deadline, then the title when
     given and the date; otherwise "Deadline", the title and the date. Then when it closes.
@@ -65,7 +75,7 @@ The top level is empty, so include a named partial.{% endcomment %}
                 <span class="{{ text_class }}">Deadline {% if title %}{{ title }} {% endif %}{% partial tier-date %}.</span>
             {% endif %}
             {% if child.closes_at and not child.is_closed %}
-                <span class="{{ text_class }}">Closes {% local_time child.closes_at %}.</span>
+                <span class="{{ text_class }}">{% partial closes-line %}</span>
             {% endif %}
         {% endwith %}
     {% endif %}

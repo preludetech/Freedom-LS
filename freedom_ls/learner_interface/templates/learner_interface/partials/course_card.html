@@ -11,7 +11,8 @@ Standard fields land in standard places via the shared skeleton and partials:
                     status is ever shown; no duplicate chip/badge)
   title + link   -> stretched title link (card_title_link.html)
   details        -> course_details_link.html (own right-aligned line)
-  deadline       -> course_deadline_line.html (missed deadline, else next deadline)
+  deadline       -> band slot in the hero (course_deadline_band.html: missed deadline,
+                    else next deadline); "Access ends" stays in the body
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
 
 Title-link target by status:
@@ -45,6 +46,14 @@ current_price, card_organisation), user and show_time_zone_to_learners.
                      icon_fallback="{{ course.icon_fallback }}"
                      title="{{ course.title }}"
                      :organisation="course.card_organisation">
+    {% comment %}A course the view did not annotate lacks both attributes, which the
+    {% if %} tolerates and a filter argument would not.{% endcomment %}
+    {% if course.missed_deadline %}
+        <c-slot name="band">{% include "learner_interface/partials/course_deadline_band.html" with child=course.missed_deadline %}</c-slot>
+    {% elif course.next_deadline %}
+        <c-slot name="band">{% include "learner_interface/partials/course_deadline_band.html" with child=course.next_deadline %}</c-slot>
+    {% endif %}
+
     <c-slot name="eyebrow">
         {% if course.listing_status == "not_registered" %}
             {% if user.is_authenticated %}
@@ -71,7 +80,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
         </p>
     {% endif %}
 
-    {% include "learner_interface/partials/course_deadline_line.html" %}
+    {% include "learner_interface/partials/deadline_labels.html#access-ends-line" %}
 
     <div class="flex justify-end mt-auto">
         {% include "learner_interface/partials/course_details_link.html" %}
