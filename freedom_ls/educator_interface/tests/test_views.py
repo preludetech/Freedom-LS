@@ -3607,6 +3607,24 @@ def test_the_audit_log_target_column_reads_the_target_label(staff_client: Client
 
 
 @pytest.mark.django_db
+def test_the_audit_row_toggle_is_named_by_the_label_not_the_action_code(
+    staff_client: Client,
+):
+    """The row-detail toggle used to be named after the raw action code."""
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        target=organisation,
+        target_label="Spring cohort",
+        reason="because",
+    )
+
+    document = _get_document(staff_client, _audit_log_url(organisation))
+
+    (toggle,) = document.cssselect("tbody button[aria-label^='More about']")
+    assert toggle.get("aria-label") == "More about Cohort created: Spring cohort"
+
+
+@pytest.mark.django_db
 def test_the_audit_log_renders_its_empty_state(staff_client: Client):
     organisation = OrganisationFactory()
 
