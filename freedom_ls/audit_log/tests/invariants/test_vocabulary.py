@@ -24,6 +24,7 @@ NOUNS = frozenset(
         "import",
         "conversation",
         "api_key",
+        "audit_log",
     }
 )
 
@@ -45,6 +46,7 @@ VERBS = frozenset(
         "viewed",
         "issued",
         "revoked",
+        "exported",
     }
 )
 
