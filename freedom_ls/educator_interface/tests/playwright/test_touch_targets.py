@@ -20,10 +20,12 @@ _PHONE = QA_VIEWPORTS[0]
 
 _SMALLEST_CONTROL = """() => {
     const controls = document.querySelectorAll(
-        "header a, header button, #main-content .btn, #main-content input[type=search], #main-content nav a, dialog[open] button, dialog[open] input:not([type=hidden]), dialog[open] select"
+        "header a, header button, #main-content .btn, #main-content input[type=search], #main-content nav a, dialog[open] a, dialog[open] button, dialog[open] input:not([type=hidden]), dialog[open] select"
     );
+    // A visually hidden checkbox or radio is tapped through its label.
+    const hitTarget = (el) => (el.classList.contains("sr-only") && el.closest("label")) || el;
     return [...controls]
-        .map((el) => ({ el, box: el.getBoundingClientRect() }))
+        .map((el) => ({ el, box: hitTarget(el).getBoundingClientRect() }))
         .filter(({ box }) => box.width > 0 && box.height > 0)
         .filter(({ box }) => Math.round(box.height) < 44 || Math.round(box.width) < 44)
         .map(({ el, box }) => `${el.tagName} ${el.textContent.trim().slice(0, 20)} ${box.width}x${box.height}`);
@@ -50,4 +52,9 @@ def test_header_tabs_search_and_dialog_controls_are_44px_on_a_phone(
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
     page.get_by_role("button", name="Create Cohort", exact=True).click()
     page.get_by_role("dialog", name="Create Cohort").wait_for()
+    assert page.evaluate(_SMALLEST_CONTROL) == []
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    page.get_by_role("button", name="Filter", exact=True).click()
+    page.get_by_role("dialog", name="Filter and sort").wait_for()
     assert page.evaluate(_SMALLEST_CONTROL) == []
