@@ -33,3 +33,11 @@ fieldset.module {
 .break-all {
     word-break: break-all;
 }
+
+/* unfold renders each checkbox option's text in a span.truncate, which clips long
+   labels such as a scope's list of model names; let those wrap instead. */
+label > input[type="checkbox"] + span.truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}

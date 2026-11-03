@@ -66,3 +66,22 @@ def test_issued_key_wraps_inside_its_box_on_a_phone(
     fits = key_box.evaluate("el => el.scrollWidth <= el.clientWidth")
     assert fits
     assert_no_horizontal_overflow(page)
+
+
+def test_scope_labels_show_their_full_text_at_every_viewport(
+    live_server, page: Page, admin_user: User
+) -> None:
+    """Scope labels were cut off with an ellipsis, hiding the models they cover."""
+    _login_via_ui(page, live_server, str(admin_user.email), _LOGGED_IN_PASSWORD)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(f"{live_server.url}{reverse('admin:freedom_ls_api_apikey_add')}")
+        label_texts = page.locator("input[name=scopes] + span")
+        assert label_texts.count() > 0
+        clipped = label_texts.evaluate_all(
+            "els => els.filter(e => e.scrollWidth > e.clientWidth)"
+            ".map(e => e.textContent)"
+        )
+        assert clipped == [], f"clipped at {viewport}"
+        assert_no_horizontal_overflow(page)
