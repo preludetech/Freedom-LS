@@ -572,9 +572,24 @@ def test_learner_browses_a_grid_of_article_and_course_cards(
 def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
     mock_site_context,
 ) -> None:
     page = logged_in_page
+    banded = CourseFactory(
+        title="Banded Course",
+        slug="banded-course",
+        access_config={"access_type": "free"},
+    )
+    banded.organisations.add(OrganisationFactory(name="Plain Academy"))
+    long_topic = TopicFactory(title=LONG_TOPIC_TITLE, slug="banded-topic")
+    ContentCollectionItemFactory(
+        collection_object=banded, child_object=long_topic, order=0
+    )
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=banded, is_active=True
+    )
+    set_due_date(banded, long_topic, due_date=date(2000, 1, 1))
     for letter in "ABCD":
         CourseFactory(
             title=f"Free Course {letter}",
@@ -625,6 +640,31 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
         page.set_viewport_size(viewport)
         page.goto(dashboard_url)
         assert_no_horizontal_overflow(page)
+        # Cards replace the rows from the lg breakpoint.
+        if viewport["width"] >= 1024:
+            _assert_band_clears_the_mark(page)
+
+
+def _assert_band_clears_the_mark(page: Page) -> None:
+    """The banded card's date is whole inside the card and its word is clear of the mark."""
+    card = page.get_by_test_id("section-card-grid").locator(
+        "article", has_text="Banded Course"
+    )
+    band = card.get_by_test_id("course-deadline-band")
+    expect(band).to_be_visible()
+    card_box = _box(card)
+    date_box = _box(band.locator("time"))
+    assert date_box["x"] >= card_box["x"]
+    assert date_box["x"] + date_box["width"] <= card_box["x"] + card_box["width"]
+    word_box = _box(band.get_by_text("Missed deadline", exact=True))
+    mark_box = _box(
+        card.get_by_test_id("organisation-byline").locator(":scope > *").first
+    )
+    assert (
+        word_box["x"] >= mark_box["x"] + mark_box["width"]
+        or word_box["y"] + word_box["height"] <= mark_box["y"]
+        or mark_box["y"] + mark_box["height"] <= word_box["y"]
+    )
 
 
 def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
