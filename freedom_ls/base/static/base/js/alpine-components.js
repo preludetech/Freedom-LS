@@ -766,18 +766,35 @@ document.addEventListener("alpine:init", () => {
         init() {
             const instant = new Date(this.$el.getAttribute("datetime"));
             if (Number.isNaN(instant.getTime())) return;
-            const options = {
-                day: "numeric", month: "short", year: "numeric",
-                hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-            };
             const showZone = this.$el.dataset.showZone === "true";
-            if (showZone) options.timeZoneName = "short";
-            const parts = {};
-            for (const part of new Intl.DateTimeFormat("en-US", options).formatToParts(instant)) {
-                parts[part.type] = part.value;
+            // en-US parts in a fixed order, so every browser locale reads "3 Nov 2026, 07:37".
+            const parts = (options) => {
+                const found = {};
+                for (const part of new Intl.DateTimeFormat("en-US", options).formatToParts(instant)) {
+                    found[part.type] = part.value;
+                }
+                return found;
+            };
+            const timeOptions = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+            if (showZone) timeOptions.timeZoneName = "short";
+            const timeText = () => {
+                const time = parts(timeOptions);
+                return `${time.hour}:${time.minute}` + (showZone ? ` ${time.timeZoneName}` : "");
+            };
+            if (this.$el.dataset.format !== "short") {
+                const date = parts({ day: "numeric", month: "short", year: "numeric" });
+                this.$el.textContent = `${date.day} ${date.month} ${date.year}, ${timeText()}`;
+                return;
             }
-            let text = `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute}`;
-            if (showZone) text += ` ${parts.timeZoneName}`;
+            // A short date is "Today" on the viewer's own date, and names its year only
+            // when it is not the viewer's current year. A deadline with a set time
+            // (data-timed) adds it; one given as a date alone shows no time.
+            const now = new Date();
+            const date = parts({ day: "numeric", month: "short", year: "numeric" });
+            let text = `${date.day} ${date.month}`;
+            if (instant.getFullYear() !== now.getFullYear()) text += ` ${date.year}`;
+            if (instant.toDateString() === now.toDateString()) text = "Today";
+            if (this.$el.dataset.timed === "true") text += `, ${timeText()}`;
             this.$el.textContent = text;
         },
     }));
