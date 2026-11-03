@@ -293,6 +293,16 @@ class DataTable:
         return []
 
     @classmethod
+    def applied_filter_text(cls, request: HttpRequest, query: TableQuery) -> list[str]:
+        """The chip text of every filter the query applies, in toolbar order:
+        what a person sees narrowing the table, in the words the toolbar uses."""
+        entries = (
+            _toolbar_entry(request, query, table_filter)
+            for table_filter in cls.get_filters()
+        )
+        return [str(entry["chip_text"]) for entry in entries if entry["values"]]
+
+    @classmethod
     def parse_query(cls, request: HttpRequest, key: str) -> TableQuery:
         """This table's own state from the request, keyed by `key`.
 

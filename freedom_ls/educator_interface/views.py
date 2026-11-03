@@ -821,6 +821,19 @@ def _attach_target_users(entries: Sequence[AuditLogEntry]) -> None:
             entry.target_user_pk = found.get(entry.target_object_id)
 
 
+def _export_when(row: Model) -> str:
+    return timezone.localtime(cast(AuditLogEntry, row).created_at).isoformat()
+
+
+def _export_who(row: Model) -> str:
+    return cast(AuditLogEntry, row).actor_label or "System"
+
+
+def _export_run_id(row: Model) -> str:
+    run_id = cast(AuditLogEntry, row).run_id
+    return "" if run_id is None else str(run_id)
+
+
 class AuditLogEntryTable(DataTable):
     """A log: sortable on when, who and what, and filterable on the same
     three, wherever it appears (the organisation's Audit log and every
@@ -859,6 +872,23 @@ class AuditLogEntryTable(DataTable):
     @staticmethod
     def get_filters() -> list[TableFilter]:
         return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
+
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        # The screen names a column once; a column only the CSV carries is
+        # named for the field it holds. `actor.email` reads the actor the
+        # export queryset select_relates, and is empty once the actor is gone.
+        return [
+            ExportColumn("When", _export_when),
+            ExportColumn("Who", _export_who),
+            ExportColumn("Actor email", "actor.email"),
+            ExportColumn("What", "label"),
+            ExportColumn("Action", "action"),
+            ExportColumn("Target", "target_label"),
+            ExportColumn("Description", "description"),
+            ExportColumn("Reason", "reason"),
+            ExportColumn("Run ID", _export_run_id),
+        ]
 
     @staticmethod
     def get_columns() -> list[Column]:
@@ -906,6 +936,41 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
         return [when, who, what, target]
 
 
+def _record_export(
+    request: HttpRequest,
+    rows: QuerySet,
+    *,
+    table: type[AuditLogEntryTable],
+    table_key: str,
+    scope: str,
+    scope_label: str,
+) -> QuerySet:
+    """Write the entry for an audit log export and return the rows without it.
+
+    The count is taken now, at request time, so the entry describes what the
+    person asked for even if rows are written while the CSV streams. The
+    entry targets the organisation, so it appears on the organisation's
+    Audit log and on neither History tab. Excluding its pk keeps a CSV from
+    containing a record of its own download.
+    """
+    scoped = cast(OrganisationScopedRequest, request)
+    query = table.parse_query(request, table_key)
+    entry = record_entry(
+        action="audit_log.exported",
+        actor=cast(User, request.user),
+        target=scoped.organisation,
+        target_label=scoped.organisation.name,
+        organisation=scoped.organisation,
+        details={
+            "scope": scope,
+            "scope_label": scope_label,
+            "count": rows.count(),
+            "filters": ", ".join(table.applied_filter_text(request, query)),
+        },
+    )
+    return rows.exclude(pk=entry.pk)
+
+
 class HistoryPanel(DataTablePanel):
     """The History tab of one learner or cohort: every entry whose subjects name it."""
 
@@ -914,6 +979,13 @@ class HistoryPanel(DataTablePanel):
     table_key = "history"
     capability = "freedom_ls_audit_log.view_auditlogentry"
     empty_message: str
+    #: What the export's entry says it covered: "learner" or "cohort".
+    export_scope: str
+
+    @property
+    def scope_label(self) -> str:
+        """The learner's or cohort's name, for the entry and the filename."""
+        raise NotImplementedError
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
@@ -927,14 +999,35 @@ class HistoryPanel(DataTablePanel):
             .filter(subjects__contains=[subject_key(cast(Model, self.instance))])
         )
 
+    def get_export_queryset(self, request: HttpRequest) -> QuerySet:
+        return self.get_queryset(request).select_related("actor")
+
+    def get_export_scope_slug(self, request: HttpRequest) -> str:
+        return self.scope_label
+
+    def before_export(self, request: HttpRequest, rows: QuerySet) -> QuerySet:
+        return _record_export(
+            request,
+            rows,
+            table=self.data_table,
+            table_key=self.table_key,
+            scope=self.export_scope,
+            scope_label=self.scope_label,
+        )
+
 
 class LearnerHistoryPanel(HistoryPanel):
     model = Learner
+    export_scope = "learner"
     refresh_events = (LEARNER_CHANGED,)
     empty_message = (
         "No history for this learner yet. Actions such as moving or "
         "deactivating them are recorded here."
     )
+
+    @property
+    def scope_label(self) -> str:
+        return cast(Learner, self.instance).user.display_name
 
 
 class LearnerMessagesPanel(Panel):
