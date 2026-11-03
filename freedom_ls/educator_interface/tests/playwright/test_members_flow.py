@@ -181,3 +181,33 @@ def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
     expect(
         modal.get_by_role("button", name="Add member", exact=True)
     ).to_be_in_viewport(ratio=1)
+
+
+def test_long_email_of_a_nameless_member_does_not_scroll_a_phone_sideways(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """A nameless member is shown by their email. A long one used to run past the
+    card edge and make the page scroll sideways on a phone."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    member = UserFactory(
+        email="nameless.lower.educator.with.a.very.long.address@example.com",
+        first_name="",
+        last_name="",
+    )
+    assign_role(grantor, member, "organisation_admin", organisation)
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(interface_url(live_server, organisation.slug, "members"))
+
+    expect(
+        page.locator("#main-content")
+        .get_by_text(member.email)
+        .locator("visible=true")
+        .first
+    ).to_be_visible()
+    assert_no_horizontal_overflow(page)

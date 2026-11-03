@@ -8,7 +8,7 @@ organisation membership, "Account inactive" for an inactive user, and
 "Also a learner" for an active Learner row in the same organisation.
 {% endcomment %}
 <span class="flex flex-wrap items-center gap-2">
-    <span class="font-bold text-on-surface">
+    <span class="min-w-0 max-w-full font-bold text-on-surface">
         <c-panel-avatar-chip name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" />
     </span>
     {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}
