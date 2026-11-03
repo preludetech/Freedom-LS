@@ -1,1 +1,1 @@
-{{ object.actor_label|default:"System" }}
+{% include "educator_interface/partials/audit_person.html" with label=object.actor_label user_pk=object.actor_id %}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, cast
@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.core.paginator import Page, Paginator
@@ -781,6 +782,45 @@ class LearnerCoursesStack(PanelStack):
     children = {"courses": LearnerCoursesPanel}
 
 
+#: Target models that are a person: the user pk is the target itself, or the row's user.
+_PERSON_TARGETS: tuple[type[User] | type[Learner] | type[StaffMember], ...] = (
+    User,
+    Learner,
+    StaffMember,
+)
+
+
+def _attach_target_users(entries: Sequence[AuditLogEntry]) -> None:
+    """Set `target_is_person` and `target_user_pk` on every entry.
+
+    A person target gets the live user's pk (None once the row is gone, so
+    the template shows the neutral circle beside the stored label); any
+    other target is not a person and renders as plain text. Keyed on the
+    stored content type id against the registry's ids, so no entry's
+    `target_content_type` relation is read, and one lookup per model type
+    regardless of the page size. No `is_active` filter: an inactive user
+    keeps their avatar.
+    """
+    person_models_by_type_id = {
+        ContentType.objects.get_for_model(model).pk: model for model in _PERSON_TARGETS
+    }
+    by_model: dict[
+        type[User] | type[Learner] | type[StaffMember], list[AuditLogEntry]
+    ] = {}
+    for entry in entries:
+        model = person_models_by_type_id.get(entry.target_content_type_id)
+        entry.target_is_person = model is not None
+        entry.target_user_pk = None
+        if model is not None:
+            by_model.setdefault(model, []).append(entry)
+    for model, typed in by_model.items():
+        user_field = "pk" if model is User else "user_id"
+        rows = model.objects.filter(pk__in={entry.target_object_id for entry in typed})
+        found = {str(pk): user_pk for pk, user_pk in rows.values_list("pk", user_field)}
+        for entry in typed:
+            entry.target_user_pk = found.get(entry.target_object_id)
+
+
 class AuditLogEntryTable(DataTable):
     """A log: sortable on when, who and what, and filterable on the same
     three, wherever it appears (the organisation's Audit log and every
@@ -807,6 +847,14 @@ class AuditLogEntryTable(DataTable):
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
         return AuditLogEntry.objects.filter(organisation=organisation)
+
+    @classmethod
+    def get_rows(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> Page:
+        page_obj = super().get_rows(request, queryset, query)
+        _attach_target_users(list(page_obj.object_list))
+        return page_obj
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
@@ -851,9 +899,9 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
         when, who, what = AuditLogEntryTable.get_columns()
         target = Column(
             header="Target",
-            template="cotton/data-table-cells/text.html",
-            attr="target_label",
+            template="educator_interface/data-table-cells/audit_target.html",
             sortable=True,
+            sort_field="target_label",
         )
         return [when, who, what, target]
 
@@ -1903,9 +1951,12 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
     def get_rows(
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> Page:
-        page_obj = super().get_rows(request, queryset, query)
+        # Skips AuditLogEntryTable.get_rows: the page's entries and the run
+        # entries attached below take one target lookup together.
+        page_obj = super(AuditLogEntryTable, cls).get_rows(request, queryset, query)
         summaries = [row for row in page_obj.object_list if row.run_id is not None]
         if not summaries:
+            _attach_target_users(list(page_obj.object_list))
             return page_obj
         organisation = cast(OrganisationScopedRequest, request).organisation
         run_ids = {row.run_id for row in summaries}
@@ -1926,6 +1977,9 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
             row.run_entries = entries_by_run.get(row.run_id, [])
             row.run_entry_total = totals.get(row.run_id, 0)
             row.run_entries_more = row.run_entry_total - len(row.run_entries)
+        _attach_target_users(
+            [*page_obj.object_list, *(e for row in summaries for e in row.run_entries)]
+        )
         return page_obj
 
 

@@ -17,7 +17,11 @@ nothing here is marked safe.
         <dd>
             <ul class="space-y-1">
                 {% for entry in object.run_entries %}
-                    <li class="break-words">{{ entry.actor_label|default:"System" }}, {{ entry.label }}, {{ entry.target_label }}</li>
+                    <li class="flex flex-wrap items-center gap-2">
+                        {% include "educator_interface/partials/audit_person.html" with label=entry.actor_label user_pk=entry.actor_id %}
+                        <span class="text-muted">{{ entry.label }}</span>
+                        {% include "educator_interface/data-table-cells/audit_target.html" with object=entry %}
+                    </li>
                 {% endfor %}
             </ul>
             {% if object.run_entries_more > 0 %}<p class="text-muted">and {{ object.run_entries_more }} more</p>{% endif %}

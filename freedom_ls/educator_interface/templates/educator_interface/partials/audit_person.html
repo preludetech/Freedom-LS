@@ -1,0 +1,17 @@
+{% comment %}
+A person as the audit log names them. `label` is the name stored on the
+entry; `user_pk` is the live user's pk, which picks the avatar colour so a
+person is the same colour here as in the learner and member tables. A user
+that no longer exists (label but no pk) keeps the stored name beside a
+neutral circle; no label and no pk is the system.
+{% endcomment %}
+{% if user_pk %}
+    <c-panel-avatar-chip :name="label" :user_id="user_pk" />
+{% else %}
+    <span class="flex items-center gap-3">
+        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted" aria-hidden="true">
+            {% if label %}<c-icon name="user" class="size-4" />{% else %}<c-icon name="settings" class="size-4" />{% endif %}
+        </span>
+        <span class="min-w-0 truncate">{{ label|default:"System" }}</span>
+    </span>
+{% endif %}
