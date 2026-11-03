@@ -65,6 +65,8 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import page_questions
@@ -557,6 +559,109 @@ class TestAPageLessForm:
 
         app.refresh_from_db()
         assert app.form_progress.completed_time is not None
+
+
+def _gated_application_with_a_skippable_page(client):
+    """An application whose form has page 2 open only on `yes` to page 1's
+    question, with a third, always-asked page. Returns the application, the
+    `yes` and `no` options and the page-one question."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page_one = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(
+        form_page=page_one, type="multiple_choice", order=0, required=False
+    )
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1, condition_option=yes)
+    FormQuestionFactory(form_page=page_two, type="short_text", order=0, required=False)
+    page_three = FormPageFactory(form=form, order=2)
+    FormQuestionFactory(form_page=page_three, type="short_text", order=0)
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    app = _applied(client, course)
+    return app, yes, no, choice
+
+
+QUERY_BUDGET = 30
+
+
+@pytest.mark.django_db
+class TestApplicationFormPaging:
+    def test_an_off_path_page_redirects_to_the_next_page_asked(
+        self, client, mock_site_context
+    ):
+        app, _yes, _no, _choice = _gated_application_with_a_skippable_page(client)
+
+        response = client.get(_page_url(app, 2))
+
+        assert response["Location"] == _page_url(app, 3)
+
+    def test_a_post_to_an_off_path_page_redirects_and_stores_nothing(
+        self, client, mock_site_context
+    ):
+        app, _yes, _no, _choice = _gated_application_with_a_skippable_page(client)
+        hidden = app.form_progress.form.pages.get(order=1).questions.get()
+
+        response = client.post(_page_url(app, 2), {f"question_{hidden.id}": "x"})
+
+        assert response["Location"] == _page_url(app, 3)
+        assert not app.form_progress.answers.filter(question=hidden).exists()
+
+    def test_answering_no_skips_the_gated_page(self, client, mock_site_context):
+        app, _yes, no, choice = _gated_application_with_a_skippable_page(client)
+
+        response = client.post(_page_url(app, 1), {f"question_{choice.id}": str(no.id)})
+
+        assert response["Location"] == _page_url(app, 3)
+
+    def test_answering_yes_visits_the_gated_page(self, client, mock_site_context):
+        app, yes, _no, choice = _gated_application_with_a_skippable_page(client)
+
+        response = client.post(
+            _page_url(app, 1), {f"question_{choice.id}": str(yes.id)}
+        )
+
+        assert response["Location"] == _page_url(app, 2)
+
+    def test_the_page_jump_nav_omits_the_off_path_page(self, client, mock_site_context):
+        app, _yes, _no, _choice = _gated_application_with_a_skippable_page(client)
+
+        response = client.get(_page_url(app, 1))
+
+        urls = [link["url"] for link in response.context["page_links"]]
+        assert urls == [_page_url(app, 1), _page_url(app, 3)]
+
+    def test_a_submitted_application_pages_along_its_frozen_path(
+        self, client, mock_site_context
+    ):
+        app, yes, _no, choice = _gated_application_with_a_skippable_page(client)
+        form = app.form_progress.form
+        answer = QuestionAnswerFactory(form_progress=app.form_progress, question=choice)
+        answer.selected_options.set([yes])
+        pages = list(form.pages.all())
+        app.form_progress.completed_time = timezone.now()
+        app.form_progress.asked = {
+            "pages": [str(pages[0].id), str(pages[2].id)],
+            "questions": [
+                str(choice.id),
+                str(pages[2].questions.get().id),
+            ],
+            "content": [],
+        }
+        app.form_progress.save()
+
+        response = client.get(_page_url(app, 2))
+
+        assert response["Location"] == _page_url(app, 3)
+
+    def test_the_page_runs_within_a_query_budget(
+        self, client, mock_site_context, django_assert_max_num_queries
+    ):
+        app, _yes, _no, _choice = _gated_application_with_a_skippable_page(client)
+
+        with django_assert_max_num_queries(QUERY_BUDGET):
+            client.get(_page_url(app, 1))
 
 
 @pytest.mark.django_db

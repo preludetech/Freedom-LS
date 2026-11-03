@@ -598,6 +598,11 @@ def _render_children(form_page: FormPage) -> str:
         "form_engine/partials/page_children.html",
         {
             "form_page": form_page,
+            "page_children": form_page.children(),
+            "question_positions": {
+                question.id: position
+                for position, question in enumerate(form_page.questions.all(), 1)
+            },
             "existing_answers": {},
             "rejected_answers": {},
             "read_only": False,

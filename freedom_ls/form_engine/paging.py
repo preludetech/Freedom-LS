@@ -13,9 +13,10 @@ from collections.abc import Callable
 
 from django.http import QueryDict
 
+from .conditions import SittingPath
 from .enums import QuestionType
 from .models import Form, FormPage, FormProgress, FormQuestion
-from .queries import count_form_questions, form_questions
+from .queries import count_form_questions
 from .submissions import has_submitted_answer
 
 
@@ -78,19 +79,25 @@ def build_page_links(
     form_progress: FormProgress,
     current_page_number: int,
     url_for_page: Callable[[int], str],
+    path: SittingPath,
 ) -> list[dict[str, object]]:
-    """One entry per page for the page-jump nav, in page order."""
-    pages = list(form.pages.all())
-    limit = max(_resume_page_number(form_progress, pages), current_page_number)
+    """One entry per page the sitting is asked, for the page-jump nav, in page order.
+
+    `number` is the label: the page's place on the path. `url` is built from the
+    authored page number.
+    """
+    limit = max(
+        _resume_page_number(form_progress, list(path.all_pages)), current_page_number
+    )
     return [
         {
-            "number": number,
+            "number": path.page_position(number),
             "title": page.title,
             "url": url_for_page(number),
             "is_current": number == current_page_number,
             "is_accessible": number <= limit,
         }
-        for number, page in enumerate(pages, start=1)
+        for number, page in path.numbered_pages()
     ]
 
 
@@ -117,32 +124,41 @@ def unanswered_required_on_page(
     ]
 
 
-def unanswered_required_in_form(form_progress: FormProgress) -> list[FormQuestion]:
-    """The required questions anywhere in the form with no stored answer.
+def unanswered_required_in_form(
+    form_progress: FormProgress, path: SittingPath
+) -> list[FormQuestion]:
+    """The required questions the sitting is asked that have no stored answer.
 
-    Reads every page, so a required question on a page the candidate never
-    visited is caught -- which is what the final submission has to check.
+    Reads every page on the path, so a required question on a page the candidate
+    never visited is caught -- which is what the final submission has to check.
     """
     answered_ids = set(form_progress.answers.values_list("question_id", flat=True))
     return [
         question
-        for question in form_questions(form_progress.form)
+        for question in path.questions()
         if question.required and question.id not in answered_ids
     ]
 
 
-def unanswered_required_message(questions: list[FormQuestion]) -> str:
+def _question_numbers(questions: list[FormQuestion], path: SittingPath) -> list[str]:
+    positions = path.question_positions()
+    return [str(positions[question.id]) for question in questions]
+
+
+def unanswered_required_message(
+    questions: list[FormQuestion], path: SittingPath
+) -> str:
     """Name the required questions that still have to be answered."""
-    numbers = [str(question.question_number()) for question in questions]
+    numbers = _question_numbers(questions, path)
     if len(numbers) == 1:
         return f"Question {numbers[0]} needs an answer before you can continue."
     listed = f"{', '.join(numbers[:-1])} and {numbers[-1]}"
     return f"Questions {listed} need answers before you can continue."
 
 
-def rejected_answers_message(questions: list[FormQuestion]) -> str:
+def rejected_answers_message(questions: list[FormQuestion], path: SittingPath) -> str:
     """Name the questions whose answers were not valid for their type."""
-    numbers = [str(question.question_number()) for question in questions]
+    numbers = _question_numbers(questions, path)
     if len(numbers) == 1:
         return f"Question {numbers[0]} needs a valid answer."
     listed = f"{', '.join(numbers[:-1])} and {numbers[-1]}"

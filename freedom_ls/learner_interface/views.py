@@ -60,10 +60,12 @@ from freedom_ls.deadlines.resolver import (
     course_deadlines,
     course_deadlines_for,
 )
+from freedom_ls.form_engine.conditions import SittingPath, current_path
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.page_flow import (
     CurrentPage,
     PageSubmission,
+    off_path_landing,
     page_at,
     page_context,
     render_form_page,
@@ -1968,31 +1970,36 @@ def form_fill_page(
     if blocked is not None:
         return blocked
 
-    current = resolve_page(form, page_number)
-
     # Get the latest incomplete form progress instance
     form_progress = (
         get_latest_incomplete(course_progress, collection_item)
         if course_progress is not None
         else None
     )
+    # No incomplete attempt to render or save into (e.g. it was finalised by a
+    # submit-on-exit safety net, or the page was reached without starting).
+    # Send the learner back to the form start screen rather than 500.
+    if form_progress is None:
+        return redirect(
+            "learner_interface:view_course_item",
+            course_slug=course_slug,
+            index=index,
+        )
+
+    path = current_path(form_progress)
+    landing = off_path_landing(path, page_number)
+    if landing is not None:
+        return redirect(_form_page_url(course_slug, index, landing))
+    current = resolve_page(path, page_number)
 
     submission = PageSubmission()
     if request.method == "POST":
-        # No incomplete attempt to save into (e.g. it was finalised by a
-        # submit-on-exit safety net, or the page was reached without starting).
-        # Send the learner back to the form start screen rather than 500.
-        if form_progress is None:
-            return redirect(
-                "learner_interface:view_course_item",
-                course_slug=course_slug,
-                index=index,
-            )
-
         submission = submit_page(current, request.POST, form_progress)
         if submission.accepted:
-            if not current.is_last:
-                return redirect(_form_page_url(course_slug, index, page_number + 1))
+            # The answers just saved can change which pages come next.
+            next_number = current_path(form_progress).next_page_number(page_number)
+            if next_number is not None:
+                return redirect(_form_page_url(course_slug, index, next_number))
 
             # Mark form as completed and calculate scores
             form_progress.complete()
@@ -2245,7 +2252,7 @@ def course_finish(request, course_slug):
     return render(request, "learner_interface/course_finish.html", context)
 
 
-def _posted_page(form: Form, post_data: QueryDict) -> CurrentPage | None:
+def _posted_page(path: SittingPath, post_data: QueryDict) -> CurrentPage | None:
     """The page a submit-and-exit POST was made from.
 
     The exit dialog retargets the runner page form here, so the POST holds the
@@ -2258,7 +2265,7 @@ def _posted_page(form: Form, post_data: QueryDict) -> CurrentPage | None:
         page_number = int(post_data.get("page_number", ""))
     except ValueError:
         return None
-    return page_at(form, page_number)
+    return page_at(path, page_number)
 
 
 @login_required
@@ -2320,7 +2327,9 @@ def form_submit_and_exit(
     if form_progress is not None:
         # Nothing posted is saved once closed: the item has no later to resume in.
         # Save before completing, so score() sees the page the learner was on.
-        posted = None if closed else _posted_page(form, request.POST)
+        posted = (
+            None if closed else _posted_page(current_path(form_progress), request.POST)
+        )
         if posted is not None:
             submission = submit_page(
                 posted, request.POST, form_progress, require_answers=False

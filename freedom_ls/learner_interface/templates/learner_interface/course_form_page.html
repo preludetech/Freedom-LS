@@ -196,11 +196,11 @@ examRunnerForm scope (no intermediate x-data between them).
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-muted whitespace-nowrap"
                           data-testid="page-indicator">
-                        Page {{ current_page_num }} of {{ total_pages }}
+                        Page {{ page_position }} of {{ total_pages }}
                     </span>
                     <div class="flex-1 h-1.5 bg-border rounded-pill overflow-hidden">
                         <div class="h-full bg-secondary rounded-pill transition-all duration-300"
-                             style="width: {% widthratio current_page_num total_pages 100 %}%">
+                             style="width: {% widthratio page_position total_pages 100 %}%">
                         </div>
                     </div>
                 </div>
@@ -229,11 +229,11 @@ examRunnerForm scope (no intermediate x-data between them).
                 <div x-data="examRunner">
 
                     {% comment %}SR-only h1: orients screen readers on page load{% endcomment %}
-                    <h1 class="sr-only">{{ form.title }} — Page {{ current_page_num }} of {{ total_pages }}</h1>
+                    <h1 class="sr-only">{{ form.title }} — Page {{ page_position }} of {{ total_pages }}</h1>
 
                     {% comment %}aria-live region: announces page progress to screen readers{% endcomment %}
                     <div class="sr-only" aria-live="polite" aria-atomic="true">
-                        Page {{ current_page_num }} of {{ total_pages }}
+                        Page {{ page_position }} of {{ total_pages }}
                     </div>
 
                     {% comment %}Visible page heading — data-runner-page-heading + tabindex="-1" for focus management{% endcomment %}
@@ -252,7 +252,7 @@ examRunnerForm scope (no intermediate x-data between them).
                         <h2 class="sr-only"
                             data-runner-page-heading
                             tabindex="-1">
-                            Page {{ current_page_num }} of {{ total_pages }}
+                            Page {{ page_position }} of {{ total_pages }}
                         </h2>
                     {% endif %}
 

@@ -10,6 +10,7 @@ import pytest
 
 from django.http import QueryDict
 
+from freedom_ls.form_engine.conditions import current_path, full_path
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -101,7 +102,7 @@ def test_unanswered_required_in_form_names_questions_on_unvisited_pages(
     _answer(form_progress, _question_on_page(four_page_form, 1))
     _answer(form_progress, _question_on_page(four_page_form, 4))
 
-    outstanding = unanswered_required_in_form(form_progress)
+    outstanding = unanswered_required_in_form(form_progress, full_path(four_page_form))
 
     assert outstanding == [_question_on_page(four_page_form, 3)]
 
@@ -156,7 +157,11 @@ def test_build_page_links_marks_the_current_page_and_the_reachable_ones(
     form_progress = FormProgressFactory(form=four_page_form)
 
     links = build_page_links(
-        four_page_form, form_progress, 2, lambda number: f"/page/{number}/"
+        four_page_form,
+        form_progress,
+        2,
+        lambda number: f"/page/{number}/",
+        full_path(four_page_form),
     )
 
     assert links == [
@@ -216,7 +221,7 @@ def test_one_outstanding_question_is_named_in_the_singular(
     question = _question_on_page(four_page_form, 3)
 
     assert (
-        unanswered_required_message([question])
+        unanswered_required_message([question], full_path(four_page_form))
         == "Question 3 needs an answer before you can continue."
     )
 
@@ -231,7 +236,7 @@ def test_several_outstanding_questions_are_listed_in_the_plural(mock_site_contex
     ]
 
     assert (
-        unanswered_required_message(questions)
+        unanswered_required_message(questions, full_path(form))
         == "Questions 1, 2 and 3 need answers before you can continue."
     )
 
@@ -242,7 +247,10 @@ def test_one_rejected_answer_is_named_in_the_singular(
 ):
     question = _question_on_page(four_page_form, 3)
 
-    assert rejected_answers_message([question]) == "Question 3 needs a valid answer."
+    assert (
+        rejected_answers_message([question], full_path(four_page_form))
+        == "Question 3 needs a valid answer."
+    )
 
 
 @pytest.mark.django_db
@@ -255,7 +263,7 @@ def test_several_rejected_answers_are_listed_in_the_plural(mock_site_context):
     ]
 
     assert (
-        rejected_answers_message(questions)
+        rejected_answers_message(questions, full_path(form))
         == "Questions 1, 2 and 3 need valid answers."
     )
 
@@ -309,7 +317,11 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
     form_progress.record_page_reached(2)
 
     links = build_page_links(
-        four_page_form, form_progress, current_page_number=1, url_for_page=str
+        four_page_form,
+        form_progress,
+        current_page_number=1,
+        url_for_page=str,
+        path=full_path(four_page_form),
     )
 
     assert [link["is_accessible"] for link in links] == [True, True, False, False]
@@ -327,6 +339,79 @@ def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
 
     assert resume_page_number(form_progress) == 2
     links = build_page_links(
-        four_page_form, form_progress, current_page_number=1, url_for_page=str
+        four_page_form,
+        form_progress,
+        current_page_number=1,
+        url_for_page=str,
+        path=full_path(four_page_form),
     )
     assert [link["is_accessible"] for link in links] == [True, True]
+
+
+@pytest.fixture
+def gated_page_form(mock_site_context) -> tuple[Form, FormProgress, FormQuestion]:
+    """Page 1 asks yes/no; page 2 (required question) opens on `yes`; page 3
+    holds one required question. The sitting answered `no`.
+    """
+    form: Form = FormFactory()
+    page_one = FormPageFactory(form=form, order=0, title="One")
+    choice = FormQuestionFactory(
+        form_page=page_one, type="multiple_choice", order=0, required=False
+    )
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1, title="Two", condition_option=yes)
+    FormQuestionFactory(form_page=page_two, type="short_text", order=0, required=True)
+    page_three = FormPageFactory(form=form, order=2, title="Three")
+    last: FormQuestion = FormQuestionFactory(
+        form_page=page_three, type="short_text", order=0, required=True
+    )
+    sitting: FormProgress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=sitting, question=choice)
+    answer.selected_options.set([no])
+    return form, sitting, last
+
+
+@pytest.mark.django_db
+def test_build_page_links_omits_an_off_path_page_and_labels_by_position(
+    gated_page_form,
+):
+    form, sitting, _last = gated_page_form
+
+    links = build_page_links(
+        form, sitting, 1, lambda number: f"/page/{number}/", current_path(sitting)
+    )
+
+    assert [(link["number"], link["url"]) for link in links] == [
+        (1, "/page/1/"),
+        (2, "/page/3/"),
+    ]
+
+
+@pytest.mark.django_db
+def test_unanswered_required_message_uses_the_on_path_position(gated_page_form):
+    _form, sitting, last = gated_page_form
+
+    message = unanswered_required_message([last], current_path(sitting))
+
+    assert message == "Question 2 needs an answer before you can continue."
+
+
+@pytest.mark.django_db
+def test_rejected_answers_message_uses_the_on_path_position(gated_page_form):
+    _form, sitting, last = gated_page_form
+
+    message = rejected_answers_message([last], current_path(sitting))
+
+    assert message == "Question 2 needs a valid answer."
+
+
+@pytest.mark.django_db
+def test_unanswered_required_in_form_ignores_an_off_path_required_question(
+    gated_page_form,
+):
+    _form, sitting, last = gated_page_form
+
+    outstanding = unanswered_required_in_form(sitting, current_path(sitting))
+
+    assert outstanding == [last]

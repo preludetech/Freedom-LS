@@ -61,9 +61,11 @@ from freedom_ls.course_applications.forms import (
 )
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
+from freedom_ls.form_engine.conditions import current_path, sitting_path
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.page_flow import (
     PageSubmission,
+    off_path_landing,
     page_context,
     render_form_page,
     resolve_page,
@@ -733,7 +735,11 @@ def application_form_page(
     if isinstance(owned, HttpResponse):
         return owned
     app, form, form_progress = owned
-    current = resolve_page(form, page_number)
+    path = sitting_path(form_progress)
+    landing = off_path_landing(path, page_number)
+    if landing is not None:
+        return redirect(_page_url(app, landing))
+    current = resolve_page(path, page_number)
     read_only = form_progress.completed_time is not None
     # The page form posts to its own URL, query string included, so the marker
     # survives both the save and a 422 re-render.
@@ -748,8 +754,9 @@ def application_form_page(
             return redirect("course_applications:status", pk=app.pk)
         submission = submit_page(current, request.POST, form_progress)
         if submission.accepted:
-            if not current.is_last and not return_to_check:
-                return redirect(url_for_page(page_number + 1))
+            next_number = current_path(form_progress).next_page_number(page_number)
+            if next_number is not None and not return_to_check:
+                return redirect(url_for_page(next_number))
             return redirect("course_applications:check_answers", pk=app.pk)
 
     if not read_only:
@@ -793,7 +800,8 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     required_answers_error = ""
 
     if request.method == "POST" and not submitted:
-        unanswered = unanswered_required_in_form(form_progress)
+        path = current_path(form_progress)
+        unanswered = unanswered_required_in_form(form_progress, path)
         if not unanswered:
             form_progress.complete()
             record_application_submitted(request, app.course)
@@ -809,7 +817,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
                 "and is pending review.",
             )
             return redirect("learner_interface:dashboard")
-        required_answers_error = unanswered_required_message(unanswered)
+        required_answers_error = unanswered_required_message(unanswered, path)
     elif request.method == "POST":
         return redirect("course_applications:status", pk=app.pk)
 

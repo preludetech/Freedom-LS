@@ -21,6 +21,7 @@ from uuid import UUID
 from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import render
 
+from .conditions import SittingPath
 from .models import Form, FormPage, FormProgress, FormQuestion
 from .paging import (
     build_page_links,
@@ -28,54 +29,75 @@ from .paging import (
     unanswered_required_message,
     unanswered_required_on_page,
 )
-from .queries import page_questions
 from .typed_answers import RejectedAnswer
 
 
 @dataclass(frozen=True, slots=True)
 class CurrentPage:
-    """The page a request is standing on, alongside what it takes to place it.
+    """The page a request is standing on, alongside the path that places it.
 
-    Carries `all_pages` because every caller needs the count anyway -- for the
-    page-jump nav, the footer, and the decision about what a clean submission of
-    the last page does next -- and reading the form's pages a second time to get
-    it is a query nobody needs to pay for.
+    `number` is the authored index, the one URLs carry; `position` is the
+    page's place among the pages the sitting is asked, which is what the
+    learner reads. Carries the path because every caller needs it anyway -- for
+    the page-jump nav, the footer, and the decision about what a clean
+    submission of the last page does next -- and computing it a second time is
+    work nobody needs to pay for.
     """
 
     page: FormPage
     number: int
-    all_pages: list[FormPage]
-    questions: list[FormQuestion]
+    path: SittingPath
+
+    @property
+    def questions(self) -> list[FormQuestion]:
+        """The questions on this page the sitting is asked."""
+        return self.path.questions_of(self.page)
+
+    @property
+    def position(self) -> int:
+        return self.path.page_position(self.number)
 
     @property
     def total_pages(self) -> int:
-        return len(self.all_pages)
+        return self.path.page_count
 
     @property
     def is_last(self) -> bool:
-        return self.number == len(self.all_pages)
+        return self.path.next_page_number(self.number) is None
 
 
-def page_at(form: Form, page_number: int) -> CurrentPage | None:
-    """The page this number names, or None when the form has no such page."""
-    all_pages = list(form.pages.all())
-    if not 1 <= page_number <= len(all_pages):
+def page_at(path: SittingPath, page_number: int) -> CurrentPage | None:
+    """The page this number names, or None when the form has no such page.
+
+    A page the sitting is not asked still comes back, with no questions; sending
+    the request on to a page it is asked is the caller's job (`off_path_landing`).
+    """
+    if not 1 <= page_number <= len(path.all_pages):
         return None
-    page = all_pages[page_number - 1]
     return CurrentPage(
-        page=page,
-        number=page_number,
-        all_pages=all_pages,
-        questions=page_questions(page),
+        page=path.all_pages[page_number - 1], number=page_number, path=path
     )
 
 
-def resolve_page(form: Form, page_number: int) -> CurrentPage:
+def resolve_page(path: SittingPath, page_number: int) -> CurrentPage:
     """The page a URL names. A number the form has no page for is a 404."""
-    current = page_at(form, page_number)
+    current = page_at(path, page_number)
     if current is None:
         raise Http404("No form page at this number.")
     return current
+
+
+def off_path_landing(path: SittingPath, page_number: int) -> int | None:
+    """Where a request for a page the sitting is not asked goes, or None when
+    the number is on the path. A number the form has no page for is a 404."""
+    if not 1 <= page_number <= len(path.all_pages):
+        raise Http404("No form page at this number.")
+    if path.has_page_number(page_number):
+        return None
+    landing = path.landing_page_number(page_number)
+    if landing is None:
+        raise Http404("No form page at this number.")
+    return landing
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,11 +146,12 @@ def submit_page(
     return PageSubmission(
         rejected_answers=rejected,
         required_answers_error=(
-            unanswered_required_message(unanswered) if unanswered else ""
+            unanswered_required_message(unanswered, current.path) if unanswered else ""
         ),
         rejected_answers_error=(
             rejected_answers_message(
-                [question for question in current.questions if question.id in rejected]
+                [question for question in current.questions if question.id in rejected],
+                current.path,
             )
             if rejected
             else ""
@@ -155,22 +178,27 @@ def page_context(
     only asks whether there is more to come should not have to hold a URL to
     find out.
     """
-    next_page_url = None if current.is_last else url_for_page(current.number + 1)
+    next_number = current.path.next_page_number(current.number)
+    previous_number = current.path.previous_page_number(current.number)
+    next_page_url = None if next_number is None else url_for_page(next_number)
     return {
         "form": form,
         "form_page": current.page,
         "form_progress": form_progress,
         "current_page_num": current.number,
+        "page_position": current.position,
         "total_pages": current.total_pages,
         "previous_page_url": (
-            url_for_page(current.number - 1) if current.number > 1 else None
+            None if previous_number is None else url_for_page(previous_number)
         ),
         "next_page_url": next_page_url,
         "has_next_page": next_page_url is not None,
         "read_only": read_only,
+        "page_children": current.path.children_of(current.page),
+        "question_positions": current.path.question_positions(),
         "existing_answers": form_progress.existing_answers_dict(current.questions),
         "page_links": build_page_links(
-            form, form_progress, current.number, url_for_page
+            form, form_progress, current.number, url_for_page, current.path
         ),
         "required_answers_error": submission.required_answers_error,
         "rejected_answers": submission.rejected_answers,

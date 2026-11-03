@@ -29,6 +29,7 @@ from freedom_ls.form_engine.models import (
     FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
 )
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_interface.tests.helpers import (
@@ -3287,3 +3288,127 @@ def test_open_save_on_exit_form_is_not_finalised_by_submit_and_exit(
 
     attempt.refresh_from_db()
     assert attempt.completed_time is None
+
+
+# ---------------------------------------------------------------------------
+# runner paging along the path
+# ---------------------------------------------------------------------------
+
+FILL_PAGE_QUERY_BUDGET = 64
+
+
+def _skippable_page_form():
+    """Page 2 opens on `yes` to page 1's question; page 3 holds two questions."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page_one = FormPageFactory(form=form, order=0)
+    choice = FormQuestionFactory(
+        form_page=page_one, type="multiple_choice", order=0, required=False
+    )
+    yes = QuestionOptionFactory(question=choice, value="yes", order=0)
+    no = QuestionOptionFactory(question=choice, value="no", order=1)
+    page_two = FormPageFactory(form=form, order=1, condition_option=yes)
+    hidden = FormQuestionFactory(
+        form_page=page_two, type="short_text", order=0, required=False
+    )
+    page_three = FormPageFactory(form=form, order=2)
+    for order in range(2):
+        FormQuestionFactory(
+            form_page=page_three, type="short_text", order=order, required=False
+        )
+    return form, choice, yes, no, hidden
+
+
+def _fill_url(course: Course, page_number: int) -> str:
+    return reverse(
+        "learner_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
+    )
+
+
+def _started_skippable_form(client):
+    user = UserFactory()
+    form, choice, yes, no, hidden = _skippable_page_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    return course, choice, yes, no, hidden
+
+
+@pytest.mark.django_db
+def test_an_off_path_page_redirects_to_the_next_page_asked_on_get(
+    mock_site_context, client
+):
+    course, *_ = _started_skippable_form(client)
+
+    response = client.get(_fill_url(course, 2))
+
+    assert response["Location"] == _fill_url(course, 3)
+
+
+@pytest.mark.django_db
+def test_a_post_to_an_off_path_page_redirects_and_stores_nothing(
+    mock_site_context, client
+):
+    course, _choice, _yes, _no, hidden = _started_skippable_form(client)
+
+    response = client.post(_fill_url(course, 2), {f"question_{hidden.id}": "sneaky"})
+
+    assert response["Location"] == _fill_url(course, 3)
+    assert not QuestionAnswer.objects.filter(question=hidden).exists()
+
+
+@pytest.mark.django_db
+def test_next_from_page_one_lands_on_page_three_when_page_two_is_off_path(
+    mock_site_context, client
+):
+    course, choice, _yes, no, _hidden = _started_skippable_form(client)
+
+    response = client.post(_fill_url(course, 1), {f"question_{choice.id}": str(no.id)})
+
+    assert response["Location"] == _fill_url(course, 3)
+
+
+@pytest.mark.django_db
+def test_the_page_indicator_reads_the_position_on_the_path(mock_site_context, client):
+    course, *_ = _started_skippable_form(client)
+
+    response = client.get(_fill_url(course, 3))
+
+    assert "Page 2 of 2" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_visible_question_numbers_run_consecutively_over_the_path(
+    mock_site_context, client
+):
+    course, *_ = _started_skippable_form(client)
+
+    body = client.get(_fill_url(course, 3)).content.decode()
+
+    visible = re.findall(r'data-testid="question-number-\d+">(\d+)\.', body)
+    assert visible == ["2", "3"]
+
+
+@pytest.mark.django_db
+def test_question_test_ids_keep_the_authored_question_number(mock_site_context, client):
+    course, *_ = _started_skippable_form(client)
+
+    body = client.get(_fill_url(course, 3)).content.decode()
+
+    assert re.findall(r'data-testid="question-number-(\d+)"', body) == ["3", "4"]
+
+
+@pytest.mark.django_db
+def test_the_fill_page_runs_within_a_query_budget(
+    mock_site_context, client, django_assert_max_num_queries
+):
+    course, *_ = _started_skippable_form(client)
+
+    with django_assert_max_num_queries(FILL_PAGE_QUERY_BUDGET):
+        client.get(_fill_url(course, 1))

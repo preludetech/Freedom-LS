@@ -8,8 +8,10 @@
     would otherwise strand it on a line of its own above the question.
     {% endcomment %}
     <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p:last-of-type]:inline">
+        {% with position=question_positions|get_dict_item:question.id %}
         <span class="float-left mr-1"
-              data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
+              data-testid="question-number-{{ question.question_number }}">{{ position }}.</span>
+        {% endwith %}
         {% comment %}
         The `&nbsp;` keeps the asterisk attached to the last word of the
         question so it can never wrap onto a line of its own.

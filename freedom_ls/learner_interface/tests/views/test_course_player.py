@@ -388,6 +388,12 @@ def test_form_fill_page_out_of_range_page_returns_404(
     course_with_nested_structure, authenticated_client
 ):
     """form_fill_page with a valid index but out-of-range page_number returns 404."""
+    authenticated_client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": "test-course", "index": 1},
+        )
+    )
     url = reverse(
         "learner_interface:form_fill_page",
         kwargs={
