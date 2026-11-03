@@ -32,6 +32,7 @@ tailwind.active_theme.css
 
 # Claude
 .claude/settings.local.json
+.claude/worktrees/
 # Type declarations the engine writes beside a function-hooks plugin on each load
 claude_plugins/*/.claude-plugin/types/
 .claude/ds/config.local.md

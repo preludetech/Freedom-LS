@@ -12,7 +12,7 @@ A step-by-step workflow from a rough idea to a merged pull request. Each step pr
 
 These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
-> `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree. Run it once, then do everything else inside the worktree.
+> `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** an isolated worktree, moves the session into the worktree, registers a design when `design_prompt.md` is present and writes the spec. When it ends, the session is already inside the worktree, so everything after it runs there.
 
 > **One-time setup:** any setup a project's hooks need before the first SDD run (for example a diagram a plan review brief reads) is documented by that hook, not here.
 
@@ -49,7 +49,7 @@ Run `/sdd:plan_from_spec`. This produces:
 
 The plan review runs the built-in dimensions and the briefs listed under `## Plan Review Hooks` in `.claude/sdd/config.md`. It leaves every callout decided or recorded as an assumed default.
 
-The plan is implementation only. Anything the spec asks for that the plan does not build and no documentation hook covers (a skill row, a roadmap note, a glossary term) becomes a `(user)` item in `todo.md`, placed right after the `/sdd:document` item, so it is done before the pull request opens.
+The plan is implementation only. Anything the spec asks for that the plan does not build and no documentation hook covers (a skill row, a roadmap note, a glossary term) becomes a `(cmd)` item in `todo.md`, placed right after the `/sdd:document` item; `/sdd:document` executes it before it opens the pull request, and lists it in its report if it could not.
 
 An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
 
@@ -57,7 +57,7 @@ An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second p
 
 ### Implement
 
-Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
+Run `/implement_plan` to execute the implementation plan. It runs batch waves: up to `Parallel batches` (the key in `.claude/sdd/config.md`) independent batches at a time, each in its own batch worktree. When the batches are done it continues into the QA command. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
 The project's own pre-commit checks and Claude Code's `/security-review` cover the code diff ad hoc; no SDD step runs a security review.
 
@@ -72,11 +72,11 @@ business: read its documentation and check `qa_report.md` for the outcome.
 
 ## Step 5: Document
 
-Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and invokes each listed skill in order, committing per hook. A project that lists no hooks gets a no-op.
+Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and invokes each listed skill in order, committing per hook. A project that lists no hooks skips that part. It then executes the documentation items in `todo.md` and opens the pull request.
 
 ## Step 6: Pull request
 
-1. Run `/sdd:make_pr_quickly` to open the pull request. It uses `gh pr create --fill`, building the title and body from the commits; it reads nothing else.
+1. `/sdd:document` opens the pull request itself; run `/sdd:make_pr_quickly` to open it on its own. It runs `gh pr create --head <branch> --base main --title <branch> --body ""`, falling back to `gh pr view` when the pull request exists; it reads nothing else.
 2. Run `/sdd:address_pr_review` to work through review feedback. It fetches the comments through the `Fetch PR comments` script under `## PR Hooks` in `.claude/sdd/config.md`, or with `gh` directly when that key is blank.
 
 ## Step 7: Cleanup
@@ -103,4 +103,4 @@ Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It reba
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step; you never run it yourself. The human ticks the `(user)` items and the two PR commands with the approval item. The commit-and-push step runs straight after it.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step; you never run it yourself. Commands tick their own item, including `/sdd:make_pr_quickly` through `/sdd:document`; the human ticks the `(user)` items. The commit-and-push step runs straight after it.

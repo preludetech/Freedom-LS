@@ -4,6 +4,7 @@
 
 - Setup script: .claude/fls-dev/scripts/install_dev.sh
 - Teardown script: .claude/fls-dev/scripts/dev_db_delete.sh
+- Parallel batches: 3
 
 ## Rebase Hooks
 

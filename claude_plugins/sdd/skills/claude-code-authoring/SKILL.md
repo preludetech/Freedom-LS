@@ -26,7 +26,9 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 
 - **No nesting / no fan-out from a subagent.** The `Agent` tool is not exposed at depth 1, so a
   subagent cannot spawn subagents. All fan-out happens at depth 0 (the orchestrator / main
-  thread). Keep orchestration flat.
+  thread). Keep orchestration flat. The depth-1 rule is this plugin's design choice, enforced when
+  `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is `1`, since current Claude Code docs allow
+  deeper nesting by default.
 - **Subagents can't type slash commands.** There is no `SlashCommand` tool inside a subagent.
   **Headline rule: prefer skills (or "read-and-follow this helper file") to slash commands for any
   reusable logic a subagent must run.** A subagent *can* read a helper `.md` and follow its steps; it
@@ -51,9 +53,10 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
   (not invoked as a slash command) keeps the **caller's** model; its own `model:` frontmatter is
   **inert**. Tiering lives on **spawnable agent files**, which always run on their own `model:`.
 - **Hook mode.** A command another command reads and follows inline at depth 0 is told so by a
-  `mode: hook` input. In hook mode it skips its own pre-step rebase and todo tick and keeps its
-  commit step. Every command that can be a hook opens with an "Inputs from the caller" line
-  naming `<spec-dir>`, `<todo-path>` and `mode: hook`; without `mode: hook` it is standalone.
+  `mode: hook` input. In hook mode it skips its own pre-step rebase; it ticks a `todo.md` item only
+  when that item names it, and keeps its commit step. Every command that can be a hook opens with
+  an "Inputs from the caller" line naming `mode: hook` and the inputs the command needs
+  (`<spec-dir>`; `<todo-path>` when it ticks); without `mode: hook` it is standalone.
   Its own frontmatter is inert when inlined, so the calling command's `allowed-tools` is the
   union of its hooks' needs. A hook from **another plugin** is invoked with the `Skill` tool
   instead, never read by path: inlined, its `${CLAUDE_PLUGIN_ROOT}` would resolve to the caller's

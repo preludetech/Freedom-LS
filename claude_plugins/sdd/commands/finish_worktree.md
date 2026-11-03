@@ -76,6 +76,13 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists; it
 - A non-blank path: run that script now.
 - Blank, or the config file / section absent: skip this step; this project has no per-worktree teardown.
 
+Then remove leftover batch worktrees, taking names the way `implement_plan.md` Step 2
+"Names from git" says: for each `git worktree list` path under this checkout's
+`.claude/worktrees/` whose branch holds a `[batch …]` commit, run the Teardown script inside it
+(`cd <path> && <script>`; skip when the script is blank), then
+`git worktree remove --force .claude/worktrees/<name>` and `git branch -D <branch>`. Report
+each one in Step 8.
+
 # Step 3: Update the todo list
 
 Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
@@ -160,6 +167,7 @@ Report:
 - the landed commit and the main worktree path the script printed
 - the PR number and state from Step 7, if any
 - whether the item 3 retry rebase was needed
+- the leftover batch worktrees removed, if any
 - that the worktree directory and the branch still exist; removing them is the `(user)` item that
   follows in `todo.md`
 
