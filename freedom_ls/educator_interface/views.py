@@ -794,6 +794,15 @@ class AuditLogEntryTable(DataTable):
     empty_message = "Nothing has been recorded yet."
     empty_no_results = "No entries match these filters."
 
+    row_detail_template = "educator_interface/partials/audit_row_detail.html"
+
+    @staticmethod
+    def has_row_detail(row: Model) -> bool:
+        entry = cast(AuditLogEntry, row)
+        return bool(
+            entry.description or entry.reason or getattr(entry, "run_entries", [])
+        )
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
@@ -811,6 +820,7 @@ class AuditLogEntryTable(DataTable):
                 template="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
+                cell_class="whitespace-nowrap",
             ),
             Column(
                 header="Who",
@@ -824,10 +834,9 @@ class AuditLogEntryTable(DataTable):
                 card="primary",
                 sortable=True,
                 sort_field="action",
-            ),
-            Column(
-                header="Details",
-                template="educator_interface/data-table-cells/audit_details.html",
+                # The description is clipped inside this width rather than
+                # widening the table past its wrapper.
+                cell_class="max-w-md",
             ),
         ]
 
@@ -839,14 +848,14 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
 
     @staticmethod
     def get_columns() -> list[Column]:
-        when, who, what, details = AuditLogEntryTable.get_columns()
+        when, who, what = AuditLogEntryTable.get_columns()
         target = Column(
             header="Target",
             template="cotton/data-table-cells/text.html",
             attr="target_label",
             sortable=True,
         )
-        return [when, who, what, target, details]
+        return [when, who, what, target]
 
 
 class HistoryPanel(DataTablePanel):
