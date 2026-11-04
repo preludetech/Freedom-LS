@@ -47,7 +47,7 @@ when htmx swaps this fragment in.
                     </label>
                 {% else %}
                     <fieldset class="space-y-2 border-0 p-0">
-                        <legend class="text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
+                        <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
                         <div class="flex flex-wrap gap-2">
                             {% for choice in entry.choices %}
                                 <label class="relative inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full border border-border px-3 py-1 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-on-primary">
@@ -66,7 +66,7 @@ when htmx swaps this fragment in.
 
             {% if sortable_columns %}
                 <fieldset class="space-y-1 border-0 p-0">
-                    <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Sort</legend>
+                    <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">Sort</legend>
                     <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
                         <input type="radio"
                                name="{{ query.key }}-sort"

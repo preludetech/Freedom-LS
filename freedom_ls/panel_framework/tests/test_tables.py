@@ -812,6 +812,18 @@ def test_a_card_whose_primary_column_is_plain_text_draws_no_open_page_icon(
     assert not primary_line.xpath("./*[@aria-hidden='true']")
 
 
+def test_sheet_legends_drop_the_base_legend_padding(mock_site_context: Site) -> None:
+    stub = make_stub(name="row-00")
+
+    html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (sheet,) = document.cssselect("#a-table dialog#a-sheet")
+    legends = sheet.cssselect("fieldset legend")
+    assert legends
+    assert all("px-0" in legend.get("class").split() for legend in legends)
+
+
 def test_sheet_renders_reset_legends_and_footer_buttons(
     mock_site_context: Site,
 ) -> None:
