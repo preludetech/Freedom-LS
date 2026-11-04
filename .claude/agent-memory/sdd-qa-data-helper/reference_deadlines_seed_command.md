@@ -57,3 +57,40 @@ a fourth completion unasked. Complete topics like the player does: `TopicProgres
 course_progress=, collection_item=, defaults={site_id, topic})`, then set complete_time + save() (signal
 recalcs; 3/7 = 43%). Verify unlock with `_fetch_player_progress_maps` + `get_content_status` in
 learner_interface/utils.py. CourseProgress has `learner` (not `user`); user = cp.learner.user.
+
+## §0.3 items 3-5 of the learner-interface-deadlines frontend QA (Nov 2026)
+Today override (fresh / What to Expect, FIXED site-today 23:59) + `QA Long Deadline Titles` course
+(slug qa-long-deadline-titles, org QA Deadlines Org via course.organisations M2M -> single_organisation()
+drives the dashboard byline, fresh registered) + delete ALL Site/Org/CourseDeadlineConfig rows.
+Scripted, idempotent, run right after the seed:
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_deadline_today_and_long_title_script.py`
+It reuses the outline-scenario command's _course/_topic/_place helpers. Note: it deletes the
+CourseDeadlineConfig that qa_create_deadline_outline_scenario leaves on "Deadline Outline Course"
+(the plan demands zero config rows) -- report that. A third ask -> promote to a qa_helpers command.
+
+## Band states for §1.2.5 / §1.3.1 / §1.3.5 (Nov 2026) -- scripted
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_deadline_band_progress_script.py`
+(A restored: 3 topics + passed KC + Course Feedback; B solo: 5 topics + the seed's open KC answered
+correctly and completed; C fresh registered on the plain course). Prints every created pk. Asserts
+no prior attempt on A's forms, so re-run only after the seed. Never touches fresh's parts record.
+- **Plan error (§1.3.1)**: solo/parts' content time limit (90d from created_at now-100d = ~Oct 24) is
+  ALSO a missed deadline, earlier than Course Feedback (yesterday), so the band reads "Missed deadline
+  Course <date>", not "Course Feedback ... Closes ...". `card_deadline_line` adds the time limit even
+  with end_course_access=off. Report it; don't paper over it unasked (fix would be a course-wide
+  FIXED LearnerDeadlineOverride >= today on solo/parts).
+- Course Feedback (item 7) needs Summary (item 6) COMPLETE to be READY; the caller asked for Going
+  Deeper too. KC is QUIZ pass 80 -> answer correct options or it stays FAILED and blocks item 6.
+- Factories need `site=<Site>`, not `site_id=` (NotNull on formprogress.site_id).
+- Course `completed_time` is only set by the finish view (learner_interface/views.py ~2156).
+- Caller then asked for that fix: course-wide FIXED override site-today+30 on solo/parts via the
+  seed's `_fixed_override(cp, cp.site, _local_today()+30d)` -> band "Missed deadline Course Feedback
+  2 Nov Closes 5 Nov", next = Course. Expect this ask again with every §1.3.1 run; offer it up front.
+- §1.3.5 (fresh completes the plain course) scripted: `qa_deadline_fresh_plain_complete_script.py`
+  (6 topics + survey answered + CP.completed_time; card lands under "Learning history", no band).
+  The tester had already opened item 1 in the browser, so its TopicProgress pre-existed (no
+  complete_time) -- get_or_create, and report it as modified, not created.
+- §5.5 cleanup (done Nov 2026): the long-titles course is PROTECTed by fresh's registration + record
+  and its placements are generic-FK (no cascade from Course): delete CP -> registration -> placements
+  -> topics (slug qa-long-deadline-*) -> course, THEN re-run the seed (it strips every override,
+  completion and sitting, and wipes all of fresh's registrations incl. the plain course). Seed pks for
+  overrides/configs/attempts change on every run.
