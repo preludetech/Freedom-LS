@@ -337,6 +337,70 @@ class TestReportTab:
         assert "The cohort is too large to report on." in region.text_content()
         assert "Try again" in region.text_content()
 
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_an_over_limit_cohort_is_told_why_and_offered_no_generate(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory(name="Big")
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        text = " ".join(region.text_content().split())
+        assert (
+            "Big has 2 learners, over the report's learner limit of 1, "
+            "so it is not included." in text
+        )
+        assert not region.cssselect("form")
+        assert not region.cssselect("[role='alert']")
+        assert "Try again" not in text
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_an_over_limit_cohorts_failed_report_is_not_shown_as_an_error(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory(name="Big")
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        GeneratedReportFactory(
+            cohort=cohort,
+            status=GeneratedReport.STATUS_FAILED,
+            error_message="Big has 2 learners, over the report's learner limit of 1, so it is not included.",
+        )
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        text = " ".join(region.text_content().split())
+        assert text.count("over the report's learner limit") == 1
+        assert not region.cssselect("[role='alert']")
+        assert "Try again" not in text
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_posting_generate_for_an_over_limit_cohort_is_refused_without_a_report(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory(name="Big")
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        response = _generate(
+            client, _downloads_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        region = lxml.html.fromstring(response.content.decode())
+        assert response.status_code == 422
+        assert not GeneratedReport.objects.filter(cohort=cohort).exists()
+        assert "over the report's learner limit" in region.text_content()
+        assert not region.cssselect("form")
+
 
 @pytest.mark.django_db
 class TestCohortReportDownload:

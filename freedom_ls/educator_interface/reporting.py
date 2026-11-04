@@ -93,13 +93,28 @@ def flag_badge(flag: AtRiskFlag) -> StatusBadge:
     return StatusBadge(tone=flag.severity, label=flag.label)
 
 
-def render_region(panel: Panel) -> HttpResponse:
+def render_region(panel: Panel, status: int = 200) -> HttpResponse:
     """A panel's refresh region on its own, the fragment a targeted swap replaces."""
     return render(
         panel.request,
         panel.region_template_name or panel.template_name,
         panel.get_context_data(),
+        status=status,
     )
+
+
+def report_over_limit_message(cohort: Cohort) -> str:
+    """Why no report can be generated for `cohort`, or "" while it is within the limit.
+
+    The limit is a resource guard the task enforces when it builds the
+    roster; checking the active learner count up front keeps the Downloads
+    card from offering a report that can only fail.
+    """
+    learner_count = cohort_learner_count(cohort)
+    limit = reports_config.REPORTS_MAX_LEARNERS
+    if learner_count <= limit:
+        return ""
+    return over_limit_message(cohort.name, learner_count, limit)
 
 
 class GenerateReportAction(PanelAction):
@@ -110,7 +125,12 @@ class GenerateReportAction(PanelAction):
     renders_in_footer = False
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        request_cohort_report(cast(Cohort, ctx.instance), cast(User, ctx.request.user))
+        cohort = cast(Cohort, ctx.instance)
+        if report_over_limit_message(cohort):
+            # The region explains why; no job is written for a report that
+            # cannot be built.
+            return render_region(CohortReportDownloadsPanel(ctx), status=422)
+        request_cohort_report(cohort, cast(User, ctx.request.user))
         # A lost race returns None, and the region reads the in-flight row
         # either way, so the losing request sees the same state the winner does.
         return render_region(CohortReportDownloadsPanel(ctx))
@@ -149,6 +169,7 @@ class CohortReportDownloadsPanel(Panel):
             ready=state.ready,
             pdf_url=_pdf_url(url_kwargs, state.ready),
             failed=state.failed,
+            over_limit_message=report_over_limit_message(cohort),
             poll_seconds=REPORT_POLL_SECONDS,
         )
         return context
