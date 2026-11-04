@@ -28,19 +28,19 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide what to do about QA bug: phone filter sheet Reset control is 36px tall (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: Move dialog stale-destination error wording differs from Add to cohort (TDD: failing test first, then fix)
 - [x] (user) Decide whether a bulk action whose whole selection became inaccessible should show the 'This is no longer available' dialog instead of 'Nothing selected', then change error_response or the QA plan's Test 8.3 to match
-- [ ] (user) Decide what to do about QA bug: over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again' (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: error text colour fails 4.5:1 contrast in both themes (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: panel lists pick up the global ul indent and bullet (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: Learners and Cohorts tables start 24px lower than the other list pages (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: filter sheet group labels indented 8px by legend padding (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: phone learner card checkbox sits mid-card (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: decorative icon names leak into accessible names (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: row Remove/Move buttons don't name the learner (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: dashboard Cohorts tile link is named only by its number (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: 'Create Cohort' is Title Case (TDD: failing test first, then fix)
-- [ ] (user) Decide what to do about QA bug: two date formats in the educator interface (TDD: failing test first, then fix)
-- [ ] (user) Fix the tests the full run after the QA fixes left failing: tests/test_generate_app_map.py::test_check_from_repo_root_exits_0 (stale app map from the uncommitted qa_create_educator_polish_scenario.py edit that imports audit_log; keep it and run /ds:app_map, or drop it)
-- [ ] (cmd) Test 4.1 cannot be set up: a cohort_viewer has no access to /members or /audit-log in any organisation (404), so the plan's viewer empty states are unreachable; correct Test 4.1 in 3. frontend_qa.md
+- [x] (user) Decide what to do about QA bug: over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again' (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: error text colour fails 4.5:1 contrast in both themes (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: panel lists pick up the global ul indent and bullet (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: Learners and Cohorts tables start 24px lower than the other list pages (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: filter sheet group labels indented 8px by legend padding (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: phone learner card checkbox sits mid-card (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: decorative icon names leak into accessible names (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: row Remove/Move buttons don't name the learner (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: dashboard Cohorts tile link is named only by its number (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: 'Create Cohort' is Title Case (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: two date formats in the educator interface (TDD: failing test first, then fix)
+- [x] (user) Fix the tests the full run after the QA fixes left failing: tests/test_generate_app_map.py::test_check_from_repo_root_exits_0 (stale app map from the uncommitted qa_create_educator_polish_scenario.py edit that imports audit_log; keep it and run /ds:app_map, or drop it)
+- [x] (cmd) Test 4.1 cannot be set up: a cohort_viewer has no access to /members or /audit-log in any organisation (404), so the plan's viewer empty states are unreachable; correct Test 4.1 in 3. frontend_qa.md
 
 ## 4. Documentation and pull request
 

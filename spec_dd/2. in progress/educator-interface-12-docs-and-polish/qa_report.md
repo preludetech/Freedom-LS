@@ -262,19 +262,19 @@ No design states tested.
 |---|---|
 | B1 | **FIXED** (commit: 5283564d6) — Learner page header Deactivate/Reactivate jumps back to the Overview tab |
 | B2 | **FIXED** (commit: 873f3f794) — Report Generate drops keyboard focus to body |
-| B3 | **UNRESOLVED** — Over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again' (reason: product decision — hide Generate for over-limit cohorts, or explain without a retry, and whether a failed job should persist for later visitors) |
-| B4 | **UNRESOLVED** — Error text colour fails 4.5:1 contrast in both themes (reason: needs a darker text-error token in each theme, a brand colour decision) |
-| B5 | **UNRESOLVED** — Panel lists pick up the global ul indent and bullet (reason: fix budget exhausted this run) |
-| B6 | **UNRESOLVED** — Learners and Cohorts tables start 24px lower than the other list pages (reason: fix budget exhausted this run) |
+| B3 | **FIXED** (commit: 332ac5ec0) — Over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again' |
+| B4 | **FIXED** (commit: bafd7818b) — Error text colour fails 4.5:1 contrast in both themes |
+| B5 | **FIXED** (commit: 595ce8b27) — Panel lists pick up the global ul indent and bullet |
+| B6 | **FIXED** (commit: 2f783b9f3) — Learners and Cohorts tables start 24px lower than the other list pages |
 | B7 | **FIXED** (commit: 9914e0c49) — Members page scrolls sideways on a phone when an email is long |
-| B8 | **UNRESOLVED** — Filter sheet group labels indented 8px (legend padding) (reason: fix budget exhausted this run) |
-| B9 | **UNRESOLVED** — Phone learner card checkbox sits mid-card (reason: fix budget exhausted this run) |
-| B10 | **UNRESOLVED** — Decorative icon names leak into accessible names (reason: decision on the icon component's default — the icon-usage skill documents the semantic-name fallback; hiding decorative icons changes it everywhere) |
-| B11 | **UNRESOLVED** — Row Remove/Move buttons don't name the learner (reason: fix budget exhausted this run) |
-| B12 | **UNRESOLVED** — Dashboard Cohorts tile link is named only by its number (reason: fix budget exhausted this run) |
-| B13 | **UNRESOLVED** — 'Create Cohort' is Title Case (reason: fix budget exhausted this run) |
-| B14 | **UNRESOLVED** — Two date formats in the educator interface (reason: product decision on which date/time format the interface uses) |
-| — | **UNRESOLVED** — full run after the fixes left tests failing (reason: tests/test_generate_app_map.py::test_check_from_repo_root_exits_0 — the app map is stale because the data helper's uncommitted edit to qa_helpers/management/commands/qa_create_educator_polish_scenario.py imports audit_log, adding a qa_helpers → audit_log edge; 11543 other tests passed) |
+| B8 | **FIXED** (commit: 5e93e2c1b) — Filter sheet group labels indented 8px (legend padding) |
+| B9 | **FIXED** (commit: bd1733fc9) — Phone learner card checkbox sits mid-card |
+| B10 | **FIXED** (commit: ec02e28ee) — Decorative icon names leak into accessible names |
+| B11 | **FIXED** (commit: 3fa5d7030) — Row Remove/Move buttons don't name the learner |
+| B12 | **FIXED** (commit: ead6e81d2) — Dashboard Cohorts tile link is named only by its number |
+| B13 | **FIXED** (commit: 8153915fe) — 'Create Cohort' is Title Case |
+| B14 | **FIXED** (commit: 2f122de65) — Two date formats in the educator interface |
+| — | **FIXED** (commit: see git log) — the stale app map: the QA helper's audit_log import is committed with the regenerated `docs/app_structure.md` and import contracts |
 
 ## General notes
 
