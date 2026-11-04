@@ -841,6 +841,7 @@ class AuditLogEntryTable(DataTable):
     default_sort names so the When header reads as sorted that way."""
 
     page_size = 25
+    card_template = "educator_interface/partials/audit_log_card.html"
     default_sort = "-created_at"
     noun = "entries"
     noun_singular = "entry"
@@ -927,7 +928,7 @@ class AuditLogEntryTable(DataTable):
 class TargetedAuditLogEntryTable(AuditLogEntryTable):
     """Audit log entries that may be about different objects, so each row names its target."""
 
-    card_template = "educator_interface/partials/audit_log_card.html"
+    card_template = "educator_interface/partials/audit_log_card_targeted.html"
 
     @staticmethod
     def get_columns() -> list[Column]:

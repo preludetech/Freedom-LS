@@ -3487,6 +3487,34 @@ def test_the_cohort_history_card_shows_who_and_when_then_label_and_target_with_a
 
 
 @pytest.mark.django_db
+def test_the_learner_history_card_shows_who_and_when_then_the_label_with_a_detail(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    AuditLogEntryFactory(
+        target=learner,
+        organisation=learner.organisation,
+        action="learner.deactivated",
+        actor_label="Ada Admin",
+        target_label="Lee Learner",
+        reason="Asked to leave",
+    )
+
+    document = _learner_page(staff_client, learner, "history")
+
+    (card,) = document.cssselect("[data-tab-set] ul > li")
+    (details,) = card.cssselect("details")
+    first_line, second_line = card.cssselect("div.min-w-0 > div")[:2]
+    assert (
+        " ".join(first_line.text_content().split()).startswith("Ada Admin"),
+        " ".join(second_line.text_content().split()),
+        card.cssselect("div.min-w-0 > dl"),
+        details.cssselect("summary")[0].text_content().strip(),
+        "Asked to leave" in details.text_content(),
+    ) == (True, "Learner deactivated", [], "More", True)
+
+
+@pytest.mark.django_db
 def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: Client):
     learner = LearnerFactory(organisation=OrganisationFactory())
     register_for_course(learner, CourseFactory(title="Algebra"))

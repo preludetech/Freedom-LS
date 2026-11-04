@@ -108,7 +108,7 @@ Manifestations:
 ## Bug status
 
 - B1: **FIXED** (commit: 7049527e8) — Row-detail toggle's accessible name exposes the raw action code. Re-verified on the learner History, cohort History and Audit log: names now read e.g. "More about Learner deactivated: Ada Lovelace".
-- B2: **UNRESOLVED** — Learner History mobile card uses the generic labelled card, not the Who+When / label layout (reason: product decision — the spec's "Mobile card" bullet and QA §8.1 want the custom card on the learner History too, while the plan restricts `card_template` to `TargetedAuditLogEntryTable`; someone has to choose which is right).
+- B2: **FIXED** — Learner History mobile card uses the generic labelled card, not the Who+When / label layout. Decision: the spec wins. The learner History now uses the audit card (line one Who + When, line two the label, then More). It leaves out the `· Target` part because every row is about the learner whose page it is. The cohort History and Audit log use `audit_log_card_targeted.html`, which adds the target.
 
 ## General notes
 

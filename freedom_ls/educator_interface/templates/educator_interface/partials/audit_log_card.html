@@ -1,8 +1,9 @@
 {% comment %}
 One Audit log entry as a card below md: who and when on the first line, then
-what happened and to what. The description, reason and run entries sit in the
-disclosure the table card adds. Every value is user-derived text, so nothing
-here is marked safe.
+what happened. A table whose rows can be about different objects uses
+audit_log_card_targeted.html, which adds the target after the label. The
+description, reason and run entries sit in the disclosure the table card adds.
+Every value is user-derived text, so nothing here is marked safe.
 {% endcomment %}
 <div class="flex items-center justify-between gap-3 text-sm">
     <div class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</div>
@@ -10,5 +11,5 @@ here is marked safe.
 </div>
 <div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
     <span class="font-bold break-words">{{ object.label }}</span>
-    {% if object.target_label %}<span aria-hidden="true">·</span>{% include "educator_interface/data-table-cells/audit_target.html" %}{% endif %}
+    {% block card_target %}{% endblock %}
 </div>
