@@ -148,6 +148,17 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 assert heights
                 too_short = [(text, h) for text, h in heights if h < 44]
                 assert not too_short, f"buttons under 44px tall: {too_short}"
+            format_description = page.get_by_text("One learner per row.")
+            if viewport["width"] == 375 and format_description.count():
+                # The description used to be squeezed into a narrow column
+                # beside the Download template button.
+                card_box = format_description.locator(
+                    "xpath=ancestor::header/.."
+                ).bounding_box()
+                description_box = format_description.bounding_box()
+                assert card_box is not None
+                assert description_box is not None
+                assert description_box["width"] >= 0.8 * (card_box["width"] - 32)
             if is_preview and viewport["width"] == 375:
                 expect(page.get_by_text("Step 2 of 3: Preview")).to_be_visible()
                 # The labels are visually hidden (sr-only), so they stay
