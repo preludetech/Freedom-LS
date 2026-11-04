@@ -352,7 +352,7 @@ def _registration_columns() -> list[Column]:
         ),
         Column(
             header="Registered",
-            template="cotton/data-table-cells/text.html",
+            template="cotton/data-table-cells/datetime.html",
             attr="registered_at",
             card="md_only",
         ),
@@ -416,7 +416,7 @@ class CohortDataTable(DataTable):
             ),
             Column(
                 header="Created",
-                template="cotton/data-table-cells/text.html",
+                template="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
                 card="md_only",
@@ -466,7 +466,7 @@ class LearnerCohortDataTable(CohortDataTable):
             *CohortDataTable.get_columns(),
             Column(
                 header="Joined",
-                template="cotton/data-table-cells/text.html",
+                template="cotton/data-table-cells/datetime.html",
                 attr="joined_at",
                 sortable=True,
                 card="md_only",
@@ -795,7 +795,8 @@ class AuditLogEntryTable(DataTable):
         return [
             Column(
                 header="When",
-                template="educator_interface/data-table-cells/audit_when.html",
+                template="cotton/data-table-cells/datetime.html",
+                attr="created_at",
             ),
             Column(
                 header="Who",

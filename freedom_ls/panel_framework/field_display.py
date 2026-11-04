@@ -71,6 +71,12 @@ from django.forms.utils import pretty_name
 from django.utils import formats, timezone
 from django.utils.hashable import make_hashable
 
+# The one way the interface writes a date and a date-time: "3 Nov 2026" and
+# "3 Nov 2026, 07:37". Templates that format a value themselves use the same
+# two strings, and the shared date-time partial renders the second.
+DATE_DISPLAY_FORMAT = "j M Y"
+DATETIME_DISPLAY_FORMAT = "j M Y, H:i"
+
 # django-stubs doesn't cover `template_localtime`, though it exists at runtime;
 # this typed alias keeps the call sites below free of Any. getattr, not direct
 # attribute access, so mypy doesn't check a name its stub doesn't declare.
@@ -230,8 +236,13 @@ def display_for_field(value: object, field: Field, empty_value_display: str) -> 
     if value in field.empty_values:
         return empty_value_display
     if isinstance(field, models.DateTimeField):
-        return formats.localize(_template_localtime(cast(datetime.datetime, value)))
-    if isinstance(field, (models.DateField, models.TimeField)):
+        return formats.date_format(
+            _template_localtime(cast(datetime.datetime, value)),
+            DATETIME_DISPLAY_FORMAT,
+        )
+    if isinstance(field, models.DateField):
+        return formats.date_format(cast(datetime.date, value), DATE_DISPLAY_FORMAT)
+    if isinstance(field, models.TimeField):
         return formats.localize(value)
     if isinstance(field, models.DecimalField):
         return formats.number_format(cast(decimal.Decimal, value), field.decimal_places)
@@ -252,8 +263,10 @@ def display_for_value(value: object, empty_value_display: str) -> object:
     if isinstance(value, bool):
         return value
     if isinstance(value, datetime.datetime):
-        return formats.localize(_template_localtime(value))
-    if isinstance(value, (datetime.date, datetime.time)):
+        return formats.date_format(_template_localtime(value), DATETIME_DISPLAY_FORMAT)
+    if isinstance(value, datetime.date):
+        return formats.date_format(value, DATE_DISPLAY_FORMAT)
+    if isinstance(value, datetime.time):
         return formats.localize(value)
     if isinstance(value, (int, decimal.Decimal, float)):
         return formats.number_format(value)

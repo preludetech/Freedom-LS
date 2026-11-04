@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Callable
 
 import lxml.html
@@ -11,6 +12,7 @@ from django.contrib.admin.utils import display_for_field as django_display_for_f
 from django.contrib.admin.utils import display_for_value as django_display_for_value
 from django.contrib.admin.utils import label_for_field as django_label_for_field
 from django.contrib.admin.utils import lookup_field as django_lookup_field
+from django.db import models
 from django.db.models import Value
 from django.db.models.functions import Concat
 from django.template.loader import render_to_string
@@ -440,3 +442,32 @@ def test_the_quick_view_trigger_shows_the_quick_view_icon() -> None:
     (trigger,) = document.cssselect('[aria-controls="quick-view"]')
     (icon,) = trigger.cssselect("svg")
     assert icon.get("aria-label") == "quick_view"
+
+
+# ---------------------------------------------------------------------------
+# Dates and times render in the interface's one format
+# ---------------------------------------------------------------------------
+
+
+def test_display_for_value_formats_a_datetime_as_day_month_year_and_24_hour_time() -> (
+    None
+):
+    value = datetime.datetime(2026, 11, 3, 7, 37, tzinfo=datetime.UTC)
+
+    assert display_for_value(value, "-") == "3 Nov 2026, 07:37"
+
+
+def test_display_for_value_formats_a_date_as_day_month_year() -> None:
+    assert display_for_value(datetime.date(2026, 11, 3), "-") == "3 Nov 2026"
+
+
+def test_display_for_field_formats_a_datetime_field_like_a_bare_datetime() -> None:
+    value = datetime.datetime(2026, 11, 3, 7, 37, tzinfo=datetime.UTC)
+
+    assert display_for_field(value, models.DateTimeField(), "-") == "3 Nov 2026, 07:37"
+
+
+def test_display_for_field_formats_a_date_field_as_day_month_year() -> None:
+    assert display_for_field(datetime.date(2026, 11, 3), models.DateField(), "-") == (
+        "3 Nov 2026"
+    )

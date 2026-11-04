@@ -1364,6 +1364,22 @@ def test_the_learner_header_carries_the_status_badge_and_email_subtitle(
 
 
 @pytest.mark.django_db
+def test_the_cohorts_list_shows_created_as_day_month_year_and_24_hour_time(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    Cohort.objects.filter(pk=cohort.pk).update(
+        created_at=datetime(2026, 11, 3, 7, 37, tzinfo=UTC)
+    )
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    (region,) = document.cssselect("[data-table-region]")
+    assert "3 Nov 2026, 07:37" in " ".join(region.text_content().split())
+
+
+@pytest.mark.django_db
 def test_the_learner_overview_details_card_lists_name_email_status_and_date_added(
     staff_client: Client,
 ):
@@ -1389,7 +1405,7 @@ def test_the_learner_cohorts_card_shows_the_join_date(staff_client: Client):
     document = _learner_page(staff_client, learner, "overview")
 
     (table,) = document.cssselect("#cohorts-table")
-    assert "March 5, 2024" in table.text_content()
+    assert "5 Mar 2024, 00:00" in " ".join(table.text_content().split())
 
 
 @pytest.mark.django_db
@@ -3021,6 +3037,20 @@ def _audit_log_rows(document: lxml.html.HtmlElement) -> list[list[str]]:
         [cell.text_content().strip() for cell in row.cssselect("td")]
         for row in document.cssselect("tbody tr")
     ]
+
+
+@pytest.mark.django_db
+def test_the_audit_log_shows_when_as_day_month_year_and_24_hour_time(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    AuditLogEntryFactory(
+        target=organisation, created_at=datetime(2026, 11, 3, 7, 37, tzinfo=UTC)
+    )
+
+    rows = _audit_log_rows(_get_document(staff_client, _audit_log_url(organisation)))
+
+    assert " ".join(rows[0][0].split()) == "3 Nov 2026, 07:37"
 
 
 @pytest.mark.django_db

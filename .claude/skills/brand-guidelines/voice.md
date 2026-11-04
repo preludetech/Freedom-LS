@@ -47,6 +47,10 @@ The words FreedomLS uses about itself in UI copy, docs and marketing. For the na
 | foundation      | platform / solution       | Something you build on, not SaaS-speak |
 | plain Markdown  | CMS / content management  | Explicit about the format |
 
+## Dates and times
+
+One format everywhere a person reads a date: `3 Nov 2026` for a date and `3 Nov 2026, 07:37` for a date-time, in the viewer's time zone, 24-hour clock, no ordinal and no "a.m.". In a Django template that is `|date:"j M Y"` and `|date:"j M Y, H:i"`; a data table column uses the `datetime` cell, and `panel_framework.field_display` carries the same two strings as constants. Never leave a date to the locale default (`Nov. 3, 2026, 7:37 a.m.`).
+
 ## Error messages
 
 Name the specific problem, suggest a specific fix, in plain language. Explain any code you show. Routine actions end on a full stop.

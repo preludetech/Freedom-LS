@@ -1,0 +1,5 @@
+{% comment %}
+A date-time column: the row's `column.attr` rendered through the shared
+date-time partial, so every table shows the same format.
+{% endcomment %}
+{% load data_table_tags %}{% with value=object|getattr_str:column.attr %}{% include "panel_framework/partials/datetime.html" %}{% endwith %}

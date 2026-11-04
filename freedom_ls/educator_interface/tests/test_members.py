@@ -254,6 +254,23 @@ def test_a_member_rows_deactivate_trigger_names_the_member(
 
 
 @pytest.mark.django_db
+def test_a_members_added_date_reads_day_month_year(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    with time_machine.travel(datetime(2026, 11, 3, 7, 37, tzinfo=UTC), tick=False):
+        assign_role(
+            UserFactory(superuser=True),
+            UserFactory(),
+            "organisation_admin",
+            organisation,
+        )
+
+    document = _members_page(staff_client, organisation)
+
+    text = " ".join(document.cssselect("[data-table-region]")[0].text_content().split())
+    assert "Added 3 Nov 2026 by" in text
+
+
+@pytest.mark.django_db
 class TestMembersEmptyState:
     def test_an_organisation_with_no_members_says_so(
         self, staff_client: Client

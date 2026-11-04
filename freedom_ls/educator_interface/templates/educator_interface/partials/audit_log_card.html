@@ -7,7 +7,7 @@ text, so nothing here is marked safe.
 <dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">
     <div class="contents">
         <dt class="text-muted">When</dt>
-        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_when.html" %}</dd>
+        <dd class="min-w-0 break-words">{% include "panel_framework/partials/datetime.html" with value=object.created_at %}</dd>
     </div>
     <div class="contents">
         <dt class="text-muted">Who</dt>

@@ -1,0 +1,8 @@
+{% comment %}
+A date-time as the interface shows one everywhere: "3 Nov 2026, 07:37" in
+the viewer's time zone, with a machine-readable datetime attribute. The date
+and the time are separate spans so a narrow cell wraps between them rather
+than inside either. Renders "-" when `value` is empty.
+{% endcomment %}
+{% load tz %}{% if value %}<time datetime="{{ value|date:'c' }}" class="inline-flex flex-wrap gap-x-1.5"><span class="whitespace-nowrap">{{ value|localtime|date:"j M Y," }}</span>
+<span class="whitespace-nowrap">{{ value|localtime|date:"H:i" }}</span></time>{% else %}-{% endif %}
