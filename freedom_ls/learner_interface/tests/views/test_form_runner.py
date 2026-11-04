@@ -3541,6 +3541,32 @@ def test_the_last_page_sends_the_learner_back_to_an_unanswered_required_page(
 
 
 @pytest.mark.django_db
+def test_the_page_a_learner_is_sent_back_to_says_which_question_needs_an_answer(
+    mock_site_context, client
+):
+    form, gate, yes, _no, _gated, last = _make_form_whose_second_page_opens_on_yes()
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course, 1), {f"question_{gate.id}": str(yes.id)})
+
+    response = client.post(
+        _fill_page_url(course, 3), {f"question_{last.id}": "x"}, follow=True
+    )
+
+    assert "Question 2 needs an answer before you can continue." in (
+        response.content.decode()
+    )
+
+
+@pytest.mark.django_db
 def test_the_last_page_leaves_the_sitting_incomplete_while_a_required_page_is_unanswered(
     mock_site_context, client
 ):

@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.db.models import Q
@@ -77,6 +78,7 @@ from freedom_ls.form_engine.paging import (
     first_page_number_with_unanswered_required,
     resume_page_number,
     unanswered_required_in_form,
+    unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_management.learner_actions import self_register
@@ -2014,6 +2016,13 @@ def form_fill_page(
             if onward is not None:
                 # A page the answers reopened behind the learner holds a required
                 # question the page-jump nav would otherwise let them skip.
+                onward_questions = path.questions_of(path.all_pages[onward - 1])
+                messages.error(
+                    request,
+                    unanswered_required_message(
+                        [q for q in unanswered if q in onward_questions], path
+                    ),
+                )
                 return redirect(_form_page_url(course_slug, index, onward))
 
             form_progress.complete()

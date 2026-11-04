@@ -652,3 +652,46 @@ def test_applicant_label_for_a_user_less_sitting_with_no_application(
     progress = FormProgressFactory(user=None)
 
     assert applicant_label(progress) == "Unverified"
+
+
+@pytest.fixture
+def gated_page(mock_site_context) -> FormPage:
+    form = FormFactory(title="Employment survey")
+    gate_page = FormPageFactory(form=form, order=0)
+    gate = FormQuestionFactory(
+        form_page=gate_page, type="multiple_choice", question="Are you employed?"
+    )
+    yes = QuestionOptionFactory(question=gate, text="Yes, I am", value="yes")
+    page: FormPage = FormPageFactory(
+        form=form, order=1, title="Your employer", condition_option=yes
+    )
+    return page
+
+
+@pytest.mark.django_db
+def test_the_form_page_changelist_shows_which_answer_gates_a_page(
+    staff_client, gated_page
+) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_formpage_changelist")
+    )
+
+    assert "Are you employed? = Yes, I am" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_form_page_change_page_shows_which_answer_gates_it(
+    staff_client, gated_page
+) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_formpage_change", args=[gated_page.pk])
+    )
+
+    assert "Are you employed? = Yes, I am" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_ungated_form_page_has_no_condition(mock_site_context) -> None:
+    page = FormPageFactory()
+
+    assert FormPageAdmin(FormPage, admin.site).condition(page) is None

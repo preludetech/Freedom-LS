@@ -181,11 +181,14 @@ class FormPageInline(admin.StackedInline):
 
 @admin.register(FormPage)
 class FormPageAdmin(SiteAwareModelAdmin):
-    list_display = ["title", "subtitle", "form", "order"]
+    list_display = ["title", "subtitle", "form", "order", "condition"]
+    list_select_related = ("form", "condition_option__question")
     list_filter = ("form",)
     search_fields = ("title", "subtitle", "description", "form__title")
     ordering = ("form", "order")
-    readonly_fields = ("slug",)
+    # The gate is read-only: an editable dropdown would offer every option on
+    # the site, including ones from other forms or later pages.
+    readonly_fields = ("slug", "condition")
     inlines = [FormContentInline, FormQuestionInline]
 
     fieldsets = (
@@ -200,11 +203,19 @@ class FormPageAdmin(SiteAwareModelAdmin):
                     "form",
                     "category",
                     "order",
+                    "condition",
                 )
             },
         ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+    @admin.display(description="Shown when")
+    def condition(self, obj: FormPage) -> str | None:
+        option = obj.condition_option
+        if option is None:
+            return None
+        return f"{option.question.question[:50]} = {option.text}"
 
     def has_delete_permission(
         self, request: HttpRequest, obj: FormPage | None = None
