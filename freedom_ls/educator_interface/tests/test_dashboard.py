@@ -155,6 +155,22 @@ def test_the_page_renders_the_four_tile_labels_and_two_skeleton_tiles(
 
 
 @pytest.mark.django_db
+def test_the_cohorts_tile_link_is_named_by_what_it_counts(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    _members(_registered_cohort(organisation), ["Alpha"])
+    CohortFactory(organisation=organisation)
+
+    response = logged_in_client(user).get(_dashboard_url(organisation))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (link,) = document.xpath("//dl[dt='Cohorts']//a")
+    assert link.get("aria-label") == "2 cohorts"
+
+
+@pytest.mark.django_db
 def test_the_loaded_fetch_fills_the_two_lazy_tiles(
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],

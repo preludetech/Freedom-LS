@@ -20,7 +20,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
                 <c-panel-stat-tile label="Learners" :value="inline.learner_count" sub="Across {{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
                 <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count">
                     <c-slot name="value_content">
-                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}">{{ inline.cohort_count }}</a>
+                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}">{{ inline.cohort_count }}</a>
                     </c-slot>
                 </c-panel-stat-tile>
                 {% if is_loaded %}
