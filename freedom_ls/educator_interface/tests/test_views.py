@@ -1731,6 +1731,73 @@ def test_a_learner_rows_remove_trigger_uses_the_error_variant(staff_client: Clie
     assert all("btn-error" in b.get("class") for b in buttons)
 
 
+@pytest.mark.django_db
+def test_a_learner_rows_remove_and_move_triggers_name_the_learner(
+    staff_client: Client,
+):
+    """Ten rows of bare 'Remove' and 'Move' are indistinguishable to a screen reader."""
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort Alpha")
+    learner = _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    labels = {
+        button.get("aria-label")
+        for button in document.cssselect("button[hx-get]")
+        if f"?learner={learner.pk}" in button.get("hx-get")
+    }
+    assert labels == {
+        f"Remove {learner.user.display_name} from Cohort Alpha",
+        f"Move {learner.user.display_name} to another cohort",
+    }
+
+
+@pytest.mark.django_db
+def test_a_cohort_rows_remove_and_move_triggers_name_the_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    labels = {
+        button.get("aria-label")
+        for button in document.cssselect("button[hx-get]")
+        if f"?cohort={cohort.pk}" in button.get("hx-get")
+    }
+    assert labels == {"Remove from Evening group", "Move from Evening group"}
+
+
+@pytest.mark.django_db
+def test_a_registration_rows_deactivate_trigger_names_the_course(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    labels = {
+        button.get("aria-label")
+        for button in document.cssselect("button[hx-get]")
+        if "deactivate_cohort_registration?registration=" in button.get("hx-get")
+    }
+    assert labels == {"Deactivate the Algebra registration"}
+
+
 def _export_csv(client: Client, path_string: str, organisation: Organisation):
     """The learners table's CSV export for ``path_string``: (header, rows, filename)."""
     response = client.get(

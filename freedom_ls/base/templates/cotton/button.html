@@ -8,6 +8,7 @@
     value=""
     disabled=""
     autofocus=""
+    aria_label=""
     dropdown=""
     class=""
     size=""
@@ -27,6 +28,7 @@
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
 {% if autofocus %} autofocus{% endif %}
+{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}
 role="menuitem"
 class="{{ computed_class }}"
 {{ attrs }}
@@ -43,6 +45,7 @@ class="{{ computed_class }}"
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
 {% if autofocus %} autofocus{% endif %}
+{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}
 data-variant="{{ variant }}"
 class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class }}"
 {{ attrs }}
@@ -79,6 +82,11 @@ Usage Examples:
   <!-- Autofocus: only rendered when set, since a bare autofocus="" still
        counts as present. Inside an htmx swap, htmx focuses it on settle. -->
   <c-button autofocus="{% if focus_me %}true{% endif %}">Focus me</c-button>
+
+  <!-- Accessible name, when the visible label alone does not identify the
+       button (a per-row action). It starts with the visible label so the name
+       still matches what is on screen. Only rendered when set. -->
+  <c-button aria_label="Remove Thandi Nkosi from Cohort A">Remove</c-button>
 
   <!-- Additional classes -->
   <c-button class="w-full">Full width button</c-button>

@@ -236,6 +236,24 @@ def test_the_members_table_and_its_scroll_region_are_named_members(
 
 
 @pytest.mark.django_db
+def test_a_member_rows_deactivate_trigger_names_the_member(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    member = UserFactory(first_name="Thandi", last_name="Nkosi")
+    assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
+
+    document = _members_page(staff_client, organisation)
+
+    labels = {
+        button.get("aria-label")
+        for button in document.cssselect("button[hx-get]")
+        if f"deactivate?user={member.pk}" in button.get("hx-get")
+    }
+    assert labels == {"Deactivate Thandi Nkosi"}
+
+
+@pytest.mark.django_db
 class TestMembersEmptyState:
     def test_an_organisation_with_no_members_says_so(
         self, staff_client: Client

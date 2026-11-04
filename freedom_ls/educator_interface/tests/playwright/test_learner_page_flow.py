@@ -3,6 +3,8 @@ Courses tab, with a layout check at every QA viewport."""
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -184,7 +186,7 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
 
-    main.get_by_role("button", name="Move", exact=True).first.click()
+    main.get_by_role("button", name=re.compile(r"^Move from ")).first.click()
     modal.locator("select[name='destination']").select_option(label="Evening group")
     expect(modal.get_by_text("Algebra: continues at 40%")).to_be_visible()
     modal.get_by_role("button", name="Move", exact=True).click()

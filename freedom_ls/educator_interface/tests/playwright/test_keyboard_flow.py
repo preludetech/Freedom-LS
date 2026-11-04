@@ -7,6 +7,7 @@ browser state the Django test client never runs.
 
 from __future__ import annotations
 
+import re
 from typing import cast
 
 import pytest
@@ -185,7 +186,7 @@ def test_confirming_a_row_removal_does_not_leave_focus_on_the_body(
     main = page.locator("#main-content")
 
     main.get_by_role("row").filter(has_text="Ada").get_by_role(
-        "button", name="Remove", exact=True
+        "button", name=re.compile(r"^Remove Ada ")
     ).click()
     modal.get_by_role("button", name="Remove", exact=True).click()
 

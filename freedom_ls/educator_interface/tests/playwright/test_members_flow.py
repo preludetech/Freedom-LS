@@ -146,7 +146,7 @@ def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
 
     for control in (
         card.get_by_role("button", name="Deactivate role", exact=True),
-        card.get_by_role("button", name="Deactivate", exact=True),
+        card.get_by_role("button", name="Deactivate Vee Viewer", exact=True),
         main.get_by_role("button", name="Filter"),
         main.get_by_role("button", name="Sort"),
     ):

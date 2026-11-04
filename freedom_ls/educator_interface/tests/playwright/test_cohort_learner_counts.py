@@ -3,6 +3,8 @@ Learners tab, without a page reload."""
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -53,7 +55,7 @@ def test_removing_a_member_updates_the_tab_and_header_learner_counts(
     expect(page.get_by_role("link", name="Learners 2", exact=True)).to_be_visible()
 
     main.get_by_role("row").filter(has_text="Ada").get_by_role(
-        "button", name="Remove", exact=True
+        "button", name=re.compile(r"^Remove Ada ")
     ).click()
     modal.get_by_role("button", name="Remove", exact=True).click()
 

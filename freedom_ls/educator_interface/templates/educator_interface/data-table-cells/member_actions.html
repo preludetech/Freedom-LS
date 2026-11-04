@@ -11,8 +11,8 @@ account's, which deactivating would not change.
     </span>
 {% elif object.is_active and not object.is_site_level %}
     {% if not object.is_inactive and row_action_urls.deactivate %}
-        <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate" variant="secondary" />
+        <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate" aria_label="Deactivate {{ object.display_name }}" variant="secondary" />
     {% elif object.is_inactive and row_action_urls.reactivate %}
-        <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate" variant="secondary" />
+        <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate" aria_label="Reactivate {{ object.display_name }}" variant="secondary" />
     {% endif %}
 {% endif %}
