@@ -3,14 +3,19 @@ requires_migrations: false
 requires_template_review: true
 changed_template_paths:
   - freedom_ls/base/templates/cotton/button.html
+  - freedom_ls/base/templates/cotton/modal-trigger.html
   - freedom_ls/base/templates/partials/header_bar.html
   - freedom_ls/base/templates/partials/header_bar_user_menu.html
   - freedom_ls/comms/templates/comms/partials/messages_button.html
   - freedom_ls/comms/templates/comms/partials/notification_bell.html
   - freedom_ls/course_applications/templates/course_applications/partials/applicant_details_field.html
   - freedom_ls/course_applications/templates/course_applications/partials/claim_link_notice.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/audit_when.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/deactivate_registration.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_actions.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_roles.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_preview.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/add_member.html
@@ -31,30 +36,41 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/modal/remove_from_cohort_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/resend_setup_email_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/_lazy_region.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_course_completion.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_educators.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_needs_attention_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_body_region.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/dashboard_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/learner_courses.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/learner_registrations.html
   - freedom_ls/educator_interface/templates/educator_interface/partials/audit_history_empty.html  # deleted
+  - freedom_ls/educator_interface/templates/educator_interface/partials/audit_log_card.html
   - freedom_ls/educator_interface/templates/educator_interface/partials/audit_log_empty.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/partials/learner_import_result_body.html
   - freedom_ls/educator_interface/templates/educator_interface/partials/members_empty.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/quick_views/learner.html
   - freedom_ls/form_engine/templates/form_engine/inputs/dropdown.html
+  - freedom_ls/icons/templates/cotton/icon.html
   - freedom_ls/form_engine/templates/form_engine/inputs/long_text.html
   - freedom_ls/form_engine/templates/form_engine/inputs/text_input.html
+  - freedom_ls/panel_framework/templates/cotton/data-table-card.html
   - freedom_ls/panel_framework/templates/cotton/data-table-cells/boolean.html  # deleted
+  - freedom_ls/panel_framework/templates/cotton/data-table-cells/datetime.html  # new
   - freedom_ls/panel_framework/templates/cotton/data-table.html
+  - freedom_ls/panel_framework/templates/cotton/panel-attention-list.html
   - freedom_ls/panel_framework/templates/cotton/panel-search-field.html
   - freedom_ls/panel_framework/templates/cotton/panel-stat-tile.html
   - freedom_ls/panel_framework/templates/cotton/panel-status-badge.html
   - freedom_ls/panel_framework/templates/panel_framework/panels/_data_table_region_base.html
+  - freedom_ls/panel_framework/templates/panel_framework/panels/_details_value.html
   - freedom_ls/panel_framework/templates/panel_framework/panels/_tab_nav.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_confirmation.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_confirmation_form.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_result.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_result_body.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/datetime.html  # new
+  - freedom_ls/panel_framework/templates/panel_framework/partials/list_refresh.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/modal_host.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/quick_view_host.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_selection_bar.html
@@ -108,6 +124,28 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
   or a search hide every row, with a "Clear filters" or "Show all" link). Set both on each of your own tables.
 - **The `.modal-backdrop` class is removed** from `tailwind.components.css`.
   `.modal-backdrop-host` stays. A theme or template that used `.modal-backdrop` loses that styling.
+- **Icons are decorative by default.** `<c-icon name="x" />` with no `aria_label` now renders
+  `aria-hidden="true"` and no `role`; it used to render `role="img"` with the semantic name as its
+  label. An icon that is the only thing conveying its meaning (a yes/no mark, a status icon with no
+  text beside it) is now silent unless you give it `aria_label="…"`, which renders `role="img"` with
+  that name. The svg carries `data-icon="<semantic name>"`; a test that located an icon by its
+  `aria-label` slug should use that attribute. In `freedom_ls/icons/backend.py`, `build_svg` takes
+  an optional `data_name` and `DefaultIconBackend.render` no longer substitutes the semantic name
+  for an empty `aria_label`; a custom `IconBackend` keeps its signature.
+- **`--color-error` is darker.** The default theme's value moves from `#E8553D` to `#D23319` and
+  `first_class` from `#E53E3E` to `#D71D1D`, so error text passes 4.5:1 on white and both surfaces
+  and white text passes on an error fill. `--color-error-hover` derives from it. Two invariants in
+  `freedom_ls/base/tests/invariants/test_theme_contrast.py` pin those pairings for the shipped themes.
+- **Dates and times have one format.** `display_for_value` and `display_for_field` in
+  `freedom_ls/panel_framework/field_display.py` now return `3 Nov 2026` for a date and
+  `3 Nov 2026, 07:37` for a date-time (the module constants `DATE_DISPLAY_FORMAT` and
+  `DATETIME_DISPLAY_FORMAT`) instead of the locale's default. A table column holding a date-time
+  uses the new `cotton/data-table-cells/datetime.html` cell, and
+  `educator_interface/data-table-cells/audit_when.html` is deleted in its favour; anything that
+  included it should include `panel_framework/partials/datetime.html` with `value=`.
+- **Labels in sentence case.** `CreateCohortAction.label` and `form_title` read "Create cohort",
+  and the course page's panels are titled "Cohort registrations" and "Direct registrations". A
+  test or override that matched the Title Case strings must follow.
 
 ## Manual steps
 
@@ -115,6 +153,12 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
   use the new `border-border-input` utility, file inputs gained styling, interface buttons and
   fields are 44px tall below `md`, and `scroll-padding` keeps a focused element clear of the
   sticky header and the selection bar.
+- Review every `<c-icon>` in your own templates: give an informative icon an `aria_label`, and
+  drop any `aria-hidden="true"` wrapper you only added to silence the old fallback (it is harmless
+  to keep). For a per-row trigger, `<c-button>` and `<c-modal-trigger>` take an `aria_label` var
+  that becomes the control's `aria-label`; start it with the visible label.
+- Optional: a custom theme that sets its own `--color-error` should keep it at 4.5:1 or better
+  against white, `--color-surface` and `--color-surface-2`, and under `--color-on-error`.
 - If you override any template in `changed_template_paths`, re-apply your changes on top of the
   new version. The confirmation dialogs under `educator_interface/modal/` now share one shape:
   a question title, a body saying what stops, what is kept and how to undo it, and a Cancel
