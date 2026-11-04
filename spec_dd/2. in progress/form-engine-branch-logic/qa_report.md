@@ -147,8 +147,8 @@ Manifestations: 6.3 (desktop). No screenshots.
 | Bug | Status |
 |---|---|
 | B1 | **FIXED** (commit: faf9e4138) — Unquoted-boolean hint tells the author to quote "true" instead of the value they wrote |
-| B2 | **UNRESOLVED** — Course player silently bounces the learner back to a reopened page with no message (reason: the spec and plan specify only the redirect while the QA plan expects a message; whether to add one, and its wording, is a product/UX decision) |
-| B3 | **UNRESOLVED** — FormPage admin does not show condition_option (reason: the spec does not put condition_option in the admin; adding it widens scope and is a product decision) |
+| B2 | **FIXED** (commit: 24ce8a20b) — Course player silently bounces the learner back to a reopened page with no message. It now shows the 'Question N needs an answer before you can continue.' toast |
+| B3 | **FIXED** (commit: 24ce8a20b) — FormPage admin does not show condition_option. It now shows a read-only 'Shown when' column and field |
 
 ## General notes
 
