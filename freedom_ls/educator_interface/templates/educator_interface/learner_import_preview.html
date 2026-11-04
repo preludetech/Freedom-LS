@@ -5,7 +5,7 @@
     <c-panel-card>
         <div class="flex flex-wrap items-center justify-between gap-3">
             <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
-            <c-button variant="secondary" size="small" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
+            <c-button variant="secondary" size="small" class="min-h-11 md:min-h-0" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
         </div>
     </c-panel-card>
     <div>
@@ -117,11 +117,11 @@
             </ul>
             <form method="post" class="mt-4 flex sm:justify-end">
                 {% csrf_token %}
-                <c-button type="submit" class="w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
+                <c-button type="submit" class="min-h-11 md:min-h-0 w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
             </form>
         {% else %}
             <p class="mt-4 font-semibold">Nothing can be added: every row has an error or is already a member.</p>
-            <p class="mt-4"><c-button href="{{ upload_url }}" class="w-full sm:w-auto">Upload a different file</c-button></p>
+            <p class="mt-4"><c-button href="{{ upload_url }}" class="min-h-11 md:min-h-0 w-full sm:w-auto">Upload a different file</c-button></p>
         {% endif %}
     </c-panel-card>
 {% endblock standalone_main %}

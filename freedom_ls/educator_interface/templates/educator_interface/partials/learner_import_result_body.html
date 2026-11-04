@@ -31,6 +31,6 @@ once the page re-renders.
 {% endif %}
 <p class="mt-4 text-sm text-muted">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
 <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-    <c-button variant="secondary" href="{{ upload_url }}" class="w-full sm:w-auto">Import another file</c-button>
-    <c-button href="{{ learners_url }}" icon_right="next" class="w-full sm:w-auto">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</c-button>
+    <c-button variant="secondary" href="{{ upload_url }}" class="min-h-11 md:min-h-0 w-full sm:w-auto">Import another file</c-button>
+    <c-button href="{{ learners_url }}" icon_right="next" class="min-h-11 md:min-h-0 w-full sm:w-auto">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</c-button>
 </div>
