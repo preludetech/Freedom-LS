@@ -688,6 +688,19 @@ def test_cards_render_primary_and_secondary_columns(mock_site_context: Site) -> 
     assert any("row-y" in text and "Beta" in text for text in card_texts)
 
 
+def test_cards_align_their_selection_checkbox_with_the_top_line(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-x", kind="a")
+
+    html = fetch(_panel_path(make_stub(name="row-y", kind="b").pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#stub-table")
+    card = table.cssselect("ul li")[0]
+    assert "items-start" in card.get("class").split()
+
+
 def test_md_only_columns_are_omitted_from_cards(mock_site_context: Site) -> None:
     stub = make_stub(name="row-z", sat_score=4321)
 
