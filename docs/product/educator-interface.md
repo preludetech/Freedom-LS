@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-04_
 
 ## Summary
 
@@ -145,7 +145,7 @@ Admins can give only roles at or below their own. A change that gives someone ac
 
 ![A cohort's History tab listing when, who, what, target and details for each change](screenshots/educator_history.png)
 
-The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each row shows when, who, what and any details, and the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each entry is one line showing when, who and what, with any description, reason and, for a bulk change, the entries it made opening beneath it; the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
 
 ### Reasons
 
@@ -157,9 +157,9 @@ Confirming a removal or deactivation (removing a learner from a cohort, deactiva
 
 ![Audit log table of when, who, what, target and details, with an Add filter control](screenshots/educator_audit_log.png)
 
-The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. Only site admins and organisation admins see it and the History tabs; cohort admins and cohort viewers do not.
+The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see it and the History tabs; cohort admins and cohort viewers do not.
 
-Not recorded: anything before the feature was installed (there is no backfill), records edited directly in the Django admin, and logins. The log has no search or CSV export, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
+Not recorded: anything before the feature was installed (there is no backfill), records edited directly in the Django admin, and logins. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 
 ## Reports
 
