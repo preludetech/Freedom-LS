@@ -1,4 +1,4 @@
-"""Creating two cohorts in a row from the Create Cohort dialog."""
+"""Creating two cohorts in a row from the Create cohort dialog."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def test_save_and_add_another_keeps_the_dialog_open_and_save_opens_the_last_coho
     educator_user.save()
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
 
-    page.get_by_role("button", name="Create Cohort").first.click()
+    page.get_by_role("button", name="Create cohort").first.click()
     dialog = page.locator("#app-modal")
     dialog.get_by_label("Name").fill("First Cohort")
     dialog.get_by_role("button", name="Save and add another").click()

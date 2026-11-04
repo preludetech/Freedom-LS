@@ -1,8 +1,8 @@
 """Top a course up with individual registrations so its educator table pages.
 
 Companion to ``qa_create_course_cohort_registrations``. The educator course page
-renders two independent paginators; that command feeds "Cohort Registrations",
-this one feeds "Direct Registrations"
+renders two independent paginators; that command feeds "Cohort registrations",
+this one feeds "Direct registrations"
 (``CourseLearnerRegistrationDataTable``, ``freedom_ls/educator_interface/views.py``).
 
 Rows here are ``LearnerCourseRegistration`` -- **individual** grants, not
@@ -80,7 +80,7 @@ def _rows(course: Course, organisation: Organisation):
     "--course-slug",
     default=DEFAULT_COURSE_SLUG,
     show_default=True,
-    help="Course whose Direct Registrations table should page.",
+    help="Course whose Direct registrations table should page.",
 )
 @click.option(
     "--num-rows",

@@ -63,7 +63,7 @@ def test_create_cohort_control_is_absent_for_a_role_that_may_not_create_cohorts(
 
     html = _cohorts_list_html(client, organisation)
 
-    assert "Create Cohort" not in html
+    assert "Create cohort" not in html
 
 
 @pytest.mark.django_db
@@ -127,7 +127,7 @@ def test_denied_create_cohort_action_answers_403_naming_an_organisation_admin(
 
     assert create_response.status_code == 403
     html = create_response.content.decode()
-    assert "You can't use “Create Cohort” here any more" in html
+    assert "You can't use “Create cohort” here any more" in html
     assert f"Ask an organisation admin of {organisation.name}." in html
     assert not Cohort.objects.filter(
         organisation=organisation, name="Should not be created"

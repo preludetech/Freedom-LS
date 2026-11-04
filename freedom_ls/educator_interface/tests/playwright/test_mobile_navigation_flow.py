@@ -144,7 +144,7 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     page.goto(cohorts_url)
     expect(sheet).to_be_hidden()
     dialog = page.locator("#app-modal")
-    create_trigger = page.get_by_role("button", name="Create Cohort")
+    create_trigger = page.get_by_role("button", name="Create cohort")
     create_trigger.click()
     expect(dialog).to_be_visible()
     name_field = dialog.get_by_label("Name")

@@ -132,7 +132,7 @@ def test_educator_manages_cohorts_and_learners(
 
     # Create a cohort.
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
-    page.get_by_role("button", name="Create Cohort").click()
+    page.get_by_role("button", name="Create cohort").click()
     modal = page.locator("#app-modal")
     modal.get_by_label("Name").fill("Old Name")
     modal.get_by_role("button", name="Save", exact=True).click()
@@ -235,12 +235,12 @@ def test_educator_manages_cohorts_and_learners(
     # cohort_viewer grant keeps the organisation reachable afterwards.
     assign_object_role(educator_user, year_nine, "cohort_viewer")
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
-    page.get_by_role("button", name="Create Cohort").click()
+    page.get_by_role("button", name="Create cohort").click()
     page.locator("#app-modal").get_by_label("Name").fill("Should never exist")
     deactivate_object_role(educator_user, organisation_a, "organisation_admin")
     modal.get_by_role("button", name="Save", exact=True).click()
     heading = page.get_by_role(
-        "heading", name="You can't use “Create Cohort” here any more"
+        "heading", name="You can't use “Create cohort” here any more"
     )
     expect(heading).to_be_visible()
     expect(page.get_by_text("Your role doesn't allow it.")).to_be_visible()
@@ -349,7 +349,7 @@ def test_quick_view_and_learners_list_layout_across_viewports(
         expect(page.locator("dialog:modal")).to_have_count(0)
         drawer_box = _box(drawer)
         header_box = _box(page.locator("header.header"))
-        create_button = page.get_by_role("button", name="Create Cohort")
+        create_button = page.get_by_role("button", name="Create cohort")
         create_box = _box(create_button)
         # The select-all checkbox widens the table past the room left of the
         # drawer, so the table scrolls inside its wrapper, which is what must

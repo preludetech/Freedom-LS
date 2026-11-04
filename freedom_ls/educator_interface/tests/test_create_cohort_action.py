@@ -206,7 +206,7 @@ def test_an_organisation_admin_with_no_superuser_flag_creates_a_cohort(
             kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
         )
     )
-    assert "Create Cohort" in list_response.content.decode()
+    assert "Create cohort" in list_response.content.decode()
 
     create_response = client.post(
         reverse(

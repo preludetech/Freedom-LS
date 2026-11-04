@@ -50,8 +50,8 @@ def test_header_tabs_search_and_dialog_controls_are_44px_on_a_phone(
     assert page.evaluate(_SMALLEST_CONTROL) == []
 
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
-    page.get_by_role("button", name="Create Cohort", exact=True).click()
-    page.get_by_role("dialog", name="Create Cohort").wait_for()
+    page.get_by_role("button", name="Create cohort", exact=True).click()
+    page.get_by_role("dialog", name="Create cohort").wait_for()
     assert page.evaluate(_SMALLEST_CONTROL) == []
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))

@@ -1348,9 +1348,9 @@ class CohortInstanceView(InstanceView):
 
 
 class CreateCohortAction(CreateInstanceAction):
-    label = "Create Cohort"
+    label = "Create cohort"
     form_class = CohortForm
-    form_title = "Create Cohort"
+    form_title = "Create cohort"
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
 
@@ -1602,7 +1602,7 @@ class CourseCohortRegistrationDataTable(DataTable):
 
 
 class CourseCohortRegistrationsPanel(DataTablePanel):
-    title = "Cohort Registrations"
+    title = "Cohort registrations"
     data_table = CourseCohortRegistrationDataTable
     table_key = "cohort_registrations"
 
@@ -1634,7 +1634,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
 
 
 class CourseLearnerRegistrationsPanel(DataTablePanel):
-    title = "Direct Registrations"
+    title = "Direct registrations"
     data_table = CourseLearnerRegistrationDataTable
     table_key = "learner_registrations"
 

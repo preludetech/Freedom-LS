@@ -2,7 +2,7 @@
 
 The educator course page (``/educator/organisations/<org>/courses/<pk>``)
 renders two independent paginators, ``CourseCohortRegistrationsPanel``
-("Cohort Registrations") and ``CourseLearnerRegistrationsPanel`` ("Direct
+("Cohort registrations") and ``CourseLearnerRegistrationsPanel`` ("Direct
 Registrations"). The cohort one cannot be exercised on a stock dev database
 because no ``CohortCourseRegistration`` row exists at all, so the table is
 empty and its paginator never renders.
