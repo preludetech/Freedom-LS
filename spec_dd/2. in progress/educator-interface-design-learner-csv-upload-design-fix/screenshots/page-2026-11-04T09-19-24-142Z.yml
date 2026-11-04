@@ -1,0 +1,125 @@
+- generic [ref=f62e1]:
+  - banner [ref=f62e2]:
+    - link [ref=f62e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f62e4]
+      - heading "FirstClass" [level=1] [ref=f62e5]
+    - navigation [ref=f62e6]:
+      - generic [ref=f62e7]:
+        - generic [ref=f62e8]:
+          - button "Messages, none unread" [ref=f62e9]:
+            - img "message" [ref=f62e11]
+          - status:
+            - generic [ref=f62e13]: Messages, none unread
+        - generic [ref=f62e14]:
+          - button "Notifications, none new" [ref=f62e15]:
+            - img "notifications" [ref=f62e17]
+          - status:
+            - generic [ref=f62e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f62e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f62e22]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f62e23]:
+    - generic [ref=f62e25]:
+      - dialog "Navigation" [ref=f62e26]:
+        - generic [ref=f62e28]:
+          - generic [ref=f62e29]:
+            - paragraph [ref=f62e30]: Organisation
+            - button "Switch organisation" [ref=f62e32] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f62e33]: D
+              - generic "DemoDev" [ref=f62e34]
+              - img "dropdown" [ref=f62e35]
+          - navigation "Sections" [ref=f62e37]:
+            - heading "Teaching" [level=2] [ref=f62e38]
+            - list [ref=f62e39]:
+              - listitem [ref=f62e40]:
+                - link "home Dashboard" [ref=f62e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+                  - img "home" [ref=f62e43]
+                  - generic [ref=f62e45]: Dashboard
+              - listitem [ref=f62e46]:
+                - link "cohort Cohorts" [ref=f62e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+                  - img "cohort" [ref=f62e49]
+                  - generic [ref=f62e51]: Cohorts
+              - listitem [ref=f62e52]:
+                - link "user Learners" [ref=f62e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+                  - img "user" [ref=f62e55]
+                  - generic [ref=f62e57]: Learners
+              - listitem [ref=f62e58]:
+                - link "course Courses" [ref=f62e59] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+                  - img "course" [ref=f62e61]
+                  - generic [ref=f62e63]: Courses
+            - heading "Administration" [level=2] [ref=f62e64]
+            - list [ref=f62e65]:
+              - listitem [ref=f62e66]:
+                - link "user Members" [ref=f62e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/members
+                  - img "user" [ref=f62e69]
+                  - generic [ref=f62e71]: Members
+              - listitem [ref=f62e72]:
+                - link "notes Audit log" [ref=f62e73] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+                  - img "notes" [ref=f62e75]
+                  - generic [ref=f62e77]: Audit log
+          - generic [ref=f62e78]:
+            - generic [ref=f62e80]:
+              - generic [aria-hidden] [ref=f62e81]: DE
+              - generic [ref=f62e82]: demodev@email.com
+            - link "Account settings" [ref=f62e84] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f62e85]
+      - generic [ref=f62e89]:
+        - navigation "Back" [ref=f62e91]:
+          - link "Learners" [ref=f62e92] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/learners
+        - generic [ref=f62e96]:
+          - heading "Import learners" [level=1] [ref=f62e102]
+          - generic [ref=f62e103]:
+            - navigation "Import steps" [ref=f62e104]:
+              - paragraph [ref=f62e105]: Step 3 of 3
+              - list [ref=f62e106]:
+                - listitem [ref=f62e107]:
+                  - generic [ref=f62e111]:
+                    - generic [ref=f62e112]: "1."
+                    - text: Upload
+                - listitem [ref=f62e113]:
+                  - generic [ref=f62e117]:
+                    - generic [ref=f62e118]: "2."
+                    - text: Preview
+                - listitem [ref=f62e119]:
+                  - generic [aria-hidden] [ref=f62e120]: "3"
+                  - generic [ref=f62e121]:
+                    - generic [ref=f62e122]: "3."
+                    - text: Result
+            - status [ref=f62e126]:
+              - generic [ref=f62e127]:
+                - heading "Added 300 learners." [active] [level=2] [ref=f62e131]
+                - paragraph [ref=f62e132]:
+                  - text: qa-in-progress-300.csv · completed
+                  - time [ref=f62e133]: Nov 4, 2026, 11:18 AM
+                - list [ref=f62e134]:
+                  - listitem [ref=f62e135]:
+                    - generic [ref=f62e136]: New account
+                    - generic [ref=f62e137]: "300"
+                  - listitem [ref=f62e138]: 300 setup emails were sent.
+              - paragraph [ref=f62e139]: "Uploading the whole file again is safe: rows already added show as 'already a member'."
+              - generic [ref=f62e140]:
+                - link "Import another file" [ref=f62e141] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/import/
+                - link "Back to learners" [ref=f62e142] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+  - contentinfo [ref=f62e148]:
+    - generic [ref=f62e149]:
+      - paragraph [ref=f62e150]: © 2026 FirstClass
+      - navigation "Legal" [ref=f62e151]:
+        - link "Terms and Conditions" [ref=f62e152] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f62e153] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f62e154] [cursor=pointer]: educator-interface-design-learner-csv-upload-design-fix
+  - generic "Show toolbar" [ref=f62e156]: DJDT

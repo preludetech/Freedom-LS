@@ -1,0 +1,115 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Messages" [ref=f4e9]:
+            - img "message" [ref=f4e11]
+          - status:
+            - generic [ref=f4e13]: Messages
+        - generic [ref=f4e14]:
+          - button "Notifications, none new" [ref=f4e15]:
+            - img "notifications" [ref=f4e17]
+          - status:
+            - generic [ref=f4e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e22]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e23]:
+    - generic [ref=f4e25]:
+      - dialog "Navigation" [ref=f4e26]:
+        - generic [ref=f4e28]:
+          - generic [ref=f4e29]:
+            - paragraph [ref=f4e30]: Organisation
+            - button "Switch organisation" [ref=f4e32] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f4e33]: D
+              - generic "DemoDev" [ref=f4e34]
+              - img "dropdown" [ref=f4e35]
+          - navigation "Sections" [ref=f4e37]:
+            - heading "Teaching" [level=2] [ref=f4e38]
+            - list [ref=f4e39]:
+              - listitem [ref=f4e40]:
+                - link "home Dashboard" [ref=f4e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+                  - img "home" [ref=f4e43]
+                  - generic [ref=f4e45]: Dashboard
+              - listitem [ref=f4e46]:
+                - link "cohort Cohorts" [ref=f4e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+                  - img "cohort" [ref=f4e49]
+                  - generic [ref=f4e51]: Cohorts
+              - listitem [ref=f4e52]:
+                - link "user Learners" [ref=f4e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+                  - img "user" [ref=f4e55]
+                  - generic [ref=f4e57]: Learners
+              - listitem [ref=f4e58]:
+                - link "course Courses" [ref=f4e59] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+                  - img "course" [ref=f4e61]
+                  - generic [ref=f4e63]: Courses
+            - heading "Administration" [level=2] [ref=f4e64]
+            - list [ref=f4e65]:
+              - listitem [ref=f4e66]:
+                - link "user Members" [ref=f4e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/members
+                  - img "user" [ref=f4e69]
+                  - generic [ref=f4e71]: Members
+              - listitem [ref=f4e72]:
+                - link "notes Audit log" [ref=f4e73] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+                  - img "notes" [ref=f4e75]
+                  - generic [ref=f4e77]: Audit log
+          - generic [ref=f4e78]:
+            - generic [ref=f4e80]:
+              - generic [aria-hidden] [ref=f4e81]: DE
+              - generic [ref=f4e82]: demodev@email.com
+            - link "Account settings" [ref=f4e84] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f4e85]
+      - generic [ref=f4e89]:
+        - navigation "Back" [ref=f4e91]:
+          - link "Learners" [ref=f4e92] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/learners
+        - generic [ref=f4e96]:
+          - heading "Import learners" [level=1] [ref=f4e102]
+          - generic [ref=f4e103]:
+            - navigation "Import steps" [ref=f4e104]:
+              - paragraph [ref=f4e105]: Step 3 of 3
+              - list [ref=f4e106]:
+                - listitem [ref=f4e107]:
+                  - generic [ref=f4e111]:
+                    - generic [ref=f4e112]: "1."
+                    - text: Upload
+                - listitem [ref=f4e113]:
+                  - generic [ref=f4e117]:
+                    - generic [ref=f4e118]: "2."
+                    - text: Preview
+                - listitem [ref=f4e119]:
+                  - generic [aria-hidden] [ref=f4e120]: "3"
+                  - generic [ref=f4e121]:
+                    - generic [ref=f4e122]: "3."
+                    - text: Result
+            - generic [ref=f4e125]:
+              - heading "Importing learners" [level=2] [ref=f4e126]
+              - status [ref=f4e128]:
+                - paragraph [ref=f4e129]: 120 of 300 rows processed.
+                - generic [ref=f4e130]:
+                  - progressbar "Progress" [ref=f4e131]: 40%
+                  - generic [ref=f4e132]: 40%
+  - contentinfo [ref=f4e135]:
+    - generic [ref=f4e136]:
+      - paragraph [ref=f4e137]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e138]:
+        - link "Terms and Conditions" [ref=f4e139] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e140] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e141] [cursor=pointer]: educator-interface-design-learner-csv-upload-design-fix
+  - generic "Show toolbar" [ref=f4e143]: DJDT
