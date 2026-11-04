@@ -93,7 +93,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
 
     <c-panel-card title="Cohort progress" landmark="true">
         {% if figures.cohort_rows %}
-            <ul class="divide-y divide-border">
+            <ul class="list-none ml-0 space-y-0 divide-y divide-border">
                 {% for row in figures.cohort_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                     <li class="relative flex items-center gap-3 py-3">

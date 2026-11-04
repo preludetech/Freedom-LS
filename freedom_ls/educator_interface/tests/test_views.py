@@ -867,6 +867,20 @@ def test_course_completion_reads_one_of_two_completed(
 
 
 @pytest.mark.django_db
+def test_the_course_completion_list_shows_no_list_markers(
+    staff_client: Client,
+    completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
+):
+    """The theme bullets and indents bare lists, so the card's rows had both."""
+    cohort, _, _ = completion_scenario
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    (course_list,) = card.cssselect("ul")
+    assert "list-none" in course_list.get("class").split()
+
+
+@pytest.mark.django_db
 def test_course_completion_progress_bar_is_at_fifty(
     staff_client: Client,
     completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
@@ -1409,6 +1423,20 @@ def test_the_registrations_card_names_the_cohort_of_a_cohort_registration(
 
     (row,) = document.cssselect("[data-testid='registration-row']")
     assert "via Evening group" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_registrations_list_shows_no_list_markers(staff_client: Client):
+    """The theme bullets and indents bare lists, so the card's rows sat 24px in."""
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert "list-none" in row.getparent().get("class").split()
 
 
 @pytest.mark.django_db

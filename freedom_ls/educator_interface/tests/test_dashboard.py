@@ -312,6 +312,24 @@ def test_cohort_rows_order_by_lowest_mean_then_name_with_an_empty_cohort_last(
 
 
 @pytest.mark.django_db
+def test_the_cohort_progress_list_shows_no_list_markers(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    """The theme bullets and indents bare lists, so the rows sat 24px in."""
+    organisation, user = educator
+    _members(_registered_cohort(organisation), ["Alpha"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (progress_list,) = document.xpath(
+        "//section[.//h2[normalize-space()='Cohort progress']]//ul[not(ancestor::li)]"
+    )
+    assert "list-none" in progress_list.get("class").split()
+
+
+@pytest.mark.django_db
 @override_settings(REPORTS_MAX_LEARNERS=2)
 def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
     educator: tuple[Organisation, AbstractBaseUser],

@@ -2,7 +2,7 @@
 
 {% block panel_body %}
     {% if rows %}
-        <ul class="flex flex-col gap-3">
+        <ul class="list-none ml-0 space-y-0 flex flex-col gap-3">
             {% for row in rows %}
                 <li class="flex flex-wrap items-baseline justify-between gap-x-4" data-testid="registration-row">
                     <span class="font-medium">{{ row.course.title }}</span>

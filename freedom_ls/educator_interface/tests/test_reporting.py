@@ -522,6 +522,20 @@ class TestNeedsAttentionCard:
         assert "Has not started any course item." in text
         assert region.get("aria-busy") is None
 
+    def test_the_attention_list_shows_no_list_markers(self, logged_in_client):
+        """The theme bullets and indents bare lists, so the rows sat 24px in."""
+        cohort = CohortFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=_course_with_topic())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        (attention_list,) = region.cssselect("ul")
+        assert "list-none" in attention_list.get("class").split()
+
     def test_a_cohort_with_nobody_flagged_says_so(self, logged_in_client):
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
