@@ -16,8 +16,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: Preview confirm card has an extra gap above its first line (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Error-block row cards label Line/Reason in primary blue (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 

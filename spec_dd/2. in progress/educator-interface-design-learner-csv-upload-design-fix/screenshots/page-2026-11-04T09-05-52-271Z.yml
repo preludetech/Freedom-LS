@@ -1,0 +1,229 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - link [ref=f6e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f6e4]
+      - heading "FirstClass" [level=1] [ref=f6e5]
+    - navigation [ref=f6e6]:
+      - generic [ref=f6e7]:
+        - generic [ref=f6e8]:
+          - button "Messages" [ref=f6e9]:
+            - img "message" [ref=f6e11]
+          - status:
+            - generic [ref=f6e13]: Messages
+        - generic [ref=f6e14]:
+          - button "Notifications, none new" [ref=f6e15]:
+            - img "notifications" [ref=f6e17]
+          - status:
+            - generic [ref=f6e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f6e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f6e22]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f6e23]:
+    - generic [ref=f6e25]:
+      - dialog "Navigation" [ref=f6e26]:
+        - generic [ref=f6e28]:
+          - generic [ref=f6e29]:
+            - paragraph [ref=f6e30]: Organisation
+            - button "Switch organisation" [ref=f6e32] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f6e33]: D
+              - generic "DemoDev" [ref=f6e34]
+              - img "dropdown" [ref=f6e35]
+          - navigation "Sections" [ref=f6e37]:
+            - heading "Teaching" [level=2] [ref=f6e38]
+            - list [ref=f6e39]:
+              - listitem [ref=f6e40]:
+                - link "home Dashboard" [ref=f6e41] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+                  - img "home" [ref=f6e43]
+                  - generic [ref=f6e45]: Dashboard
+              - listitem [ref=f6e46]:
+                - link "cohort Cohorts" [ref=f6e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+                  - img "cohort" [ref=f6e49]
+                  - generic [ref=f6e51]: Cohorts
+              - listitem [ref=f6e52]:
+                - link "user Learners" [ref=f6e53] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+                  - img "user" [ref=f6e55]
+                  - generic [ref=f6e57]: Learners
+              - listitem [ref=f6e58]:
+                - link "course Courses" [ref=f6e59] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+                  - img "course" [ref=f6e61]
+                  - generic [ref=f6e63]: Courses
+            - heading "Administration" [level=2] [ref=f6e64]
+            - list [ref=f6e65]:
+              - listitem [ref=f6e66]:
+                - link "user Members" [ref=f6e67] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/members
+                  - img "user" [ref=f6e69]
+                  - generic [ref=f6e71]: Members
+              - listitem [ref=f6e72]:
+                - link "notes Audit log" [ref=f6e73] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+                  - img "notes" [ref=f6e75]
+                  - generic [ref=f6e77]: Audit log
+          - generic [ref=f6e78]:
+            - generic [ref=f6e80]:
+              - generic [aria-hidden] [ref=f6e81]: DE
+              - generic [ref=f6e82]: demodev@email.com
+            - link "Account settings" [ref=f6e84] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f6e85]
+      - generic [ref=f6e89]:
+        - navigation "Back" [ref=f6e91]:
+          - link "Learners" [ref=f6e92] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/learners
+        - generic [ref=f6e96]:
+          - heading "Import learners" [level=1] [ref=f6e102]
+          - generic [ref=f6e103]:
+            - navigation "Import steps" [ref=f6e104]:
+              - paragraph [ref=f6e105]: Step 1 of 3
+              - list [ref=f6e106]:
+                - listitem [ref=f6e107]:
+                  - generic [aria-hidden] [ref=f6e108]: "1"
+                  - generic [ref=f6e109]:
+                    - generic [ref=f6e110]: "1."
+                    - text: Upload
+                - listitem [ref=f6e111]:
+                  - generic [aria-hidden] [ref=f6e112]: "2"
+                  - generic [ref=f6e113]:
+                    - generic [ref=f6e114]: "2."
+                    - text: Preview
+                - listitem [ref=f6e115]:
+                  - generic [aria-hidden] [ref=f6e116]: "3"
+                  - generic [ref=f6e117]:
+                    - generic [ref=f6e118]: "3."
+                    - text: Result
+            - generic [ref=f6e119]:
+              - generic [ref=f6e120]:
+                - heading "Upload a CSV file" [level=2] [ref=f6e123]
+                - generic [ref=f6e124]:
+                  - paragraph [ref=f6e125]: Add up to 2,000 learners at once, 1.0 MB per file. Nothing is created until you review the preview and confirm.
+                  - generic [ref=f6e126]:
+                    - generic [ref=f6e127]:
+                      - generic [ref=f6e128] [cursor=pointer]:
+                        - generic [ref=f6e129]: CSV file
+                        - button "CSV file Drop your CSV here, or browse" [ref=f6e130]
+                        - generic [ref=f6e131]: Drop your CSV here, or browse
+                      - paragraph [ref=f6e132]: .csv · up to 2,000 rows · 1.0 MB
+                    - button "Upload and preview" [ref=f6e133] [cursor=pointer]
+              - generic [ref=f6e134]:
+                - generic [ref=f6e135]:
+                  - generic [ref=f6e136]:
+                    - heading "File format" [level=2] [ref=f6e137]
+                    - paragraph [ref=f6e138]: One learner per row. The first row must contain these column headers.
+                  - link "Download template" [ref=f6e140] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/learners/import/template.csv
+                - table [ref=f6e145]:
+                  - rowgroup [ref=f6e146]:
+                    - row [ref=f6e147]:
+                      - columnheader "Column" [ref=f6e148]
+                      - columnheader "Required" [ref=f6e149]
+                      - columnheader "Format" [ref=f6e150]
+                  - rowgroup [ref=f6e151]:
+                    - row [ref=f6e152]:
+                      - cell [ref=f6e153]:
+                        - code [ref=f6e154]: email
+                      - cell "Required" [ref=f6e155]
+                      - cell "Used to sign in, and to match learners who already have an account. grace@example.com" [ref=f6e156]:
+                        - text: Used to sign in, and to match learners who already have an account.
+                        - generic [ref=f6e157]: grace@example.com
+                    - row [ref=f6e158]:
+                      - cell [ref=f6e159]:
+                        - code [ref=f6e160]: first_name
+                      - cell "Optional" [ref=f6e161]
+                      - cell "Given name. Existing accounts keep their names. Grace" [ref=f6e162]:
+                        - text: Given name. Existing accounts keep their names.
+                        - generic [ref=f6e163]: Grace
+                    - row [ref=f6e164]:
+                      - cell [ref=f6e165]:
+                        - code [ref=f6e166]: last_name
+                      - cell "Optional" [ref=f6e167]
+                      - cell "Family name. Hopper" [ref=f6e168]:
+                        - text: Family name.
+                        - generic [ref=f6e169]: Hopper
+                    - row [ref=f6e170]:
+                      - cell [ref=f6e171]:
+                        - code [ref=f6e172]: cohort
+                      - cell "Optional" [ref=f6e173]
+                      - cell "The cohort's name, matched exactly. Cohort name" [ref=f6e174]:
+                        - text: The cohort's name, matched exactly.
+                        - generic [ref=f6e175]: Cohort name
+  - contentinfo [ref=f6e178]:
+    - generic [ref=f6e179]:
+      - paragraph [ref=f6e180]: © 2026 FirstClass
+      - navigation "Legal" [ref=f6e181]:
+        - link "Terms and Conditions" [ref=f6e182] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f6e183] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f6e184] [cursor=pointer]: educator-interface-design-learner-csv-upload-design-fix
+  - list [ref=f6e186]:
+    - listitem [ref=f6e187]:
+      - link "Hide »" [ref=f6e188] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e189]:
+      - link "Toggle Theme" [ref=f6e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e193]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e194] [cursor=pointer]
+      - link "History /educator/organisations/demodev/learners/import/" [ref=f6e195] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e196]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e197] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f6e198] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e199]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e200] [cursor=pointer]
+      - 'link "Time CPU: 135.98ms (245.24ms)" [ref=f6e201] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f6e202]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e203] [cursor=pointer]
+      - link "Settings" [ref=f6e204] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e205]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e206] [cursor=pointer]
+      - link "Headers" [ref=f6e207] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e208]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e209] [cursor=pointer]
+      - link "Request learner_import" [ref=f6e210] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e211]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e212] [cursor=pointer]
+      - link "SQL 14 queries in 81.33ms" [ref=f6e213] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e214]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e215] [cursor=pointer]
+      - link "Static files 9 files used" [ref=f6e216] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e217]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e218] [cursor=pointer]
+      - link "Templates educator_interface/learner_import_upload.html" [ref=f6e219] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e220]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e221] [cursor=pointer]
+      - link "Alerts" [ref=f6e222] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e223]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e224] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f6e225] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e226]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e227] [cursor=pointer]
+      - link "Signals 121 receivers of 15 signals" [ref=f6e228] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e229]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e230] [cursor=pointer]
+      - link "Community" [ref=f6e231] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e232]:
+      - checkbox "Enable for next and successive requests" [ref=f6e233] [cursor=pointer]
+      - generic [ref=f6e234]: Intercept redirects
+    - listitem [ref=f6e235]:
+      - checkbox "Enable for next and successive requests" [ref=f6e236] [cursor=pointer]
+      - generic [ref=f6e237]: Profiling

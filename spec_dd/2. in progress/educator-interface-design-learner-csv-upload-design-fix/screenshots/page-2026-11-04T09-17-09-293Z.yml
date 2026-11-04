@@ -1,0 +1,106 @@
+- generic [active] [ref=f56e1]:
+  - banner [ref=f56e2]:
+    - link [ref=f56e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f56e4]
+    - navigation [ref=f56e5]:
+      - generic [ref=f56e6]:
+        - generic [ref=f56e7]:
+          - button "Messages" [ref=f56e8]:
+            - img "message" [ref=f56e10]
+          - status:
+            - generic [ref=f56e12]: Messages
+        - generic [ref=f56e13]:
+          - button "Notifications, none new" [ref=f56e14]:
+            - img "notifications" [ref=f56e16]
+          - status:
+            - generic [ref=f56e18]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f56e20] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f56e21]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f56e22]:
+    - generic [ref=f56e25]:
+      - navigation "Back" [ref=f56e27]:
+        - link "Learners" [ref=f56e28] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/learners
+      - generic [ref=f56e32]:
+        - generic [ref=f56e36]:
+          - button "Open navigation panel" [ref=f56e37] [cursor=pointer]:
+            - img "menu" [ref=f56e38]
+          - heading "Import learners" [level=1] [ref=f56e41]
+        - generic [ref=f56e42]:
+          - navigation "Import steps" [ref=f56e43]:
+            - paragraph [ref=f56e44]: "Step 1 of 3: Upload"
+            - list [ref=f56e45]:
+              - listitem [ref=f56e46]:
+                - generic [aria-hidden] [ref=f56e47]: "1"
+                - generic [ref=f56e48]:
+                  - generic [ref=f56e49]: "1."
+                  - text: Upload
+              - listitem [ref=f56e50]:
+                - generic [aria-hidden] [ref=f56e51]: "2"
+                - generic [ref=f56e52]:
+                  - generic [ref=f56e53]: "2."
+                  - text: Preview
+              - listitem [ref=f56e54]:
+                - generic [aria-hidden] [ref=f56e55]: "3"
+                - generic [ref=f56e56]:
+                  - generic [ref=f56e57]: "3."
+                  - text: Result
+          - generic [ref=f56e58]:
+            - generic [ref=f56e59]:
+              - heading "Upload a CSV file" [level=2] [ref=f56e62]
+              - generic [ref=f56e63]:
+                - paragraph [ref=f56e64]: Add up to 2,000 learners at once, 1.0 MB per file. Nothing is created until you review the preview and confirm.
+                - generic [ref=f56e65]:
+                  - generic [ref=f56e66]:
+                    - generic [ref=f56e67] [cursor=pointer]:
+                      - generic [ref=f56e68]: CSV file
+                      - button "CSV file Drop your CSV here, or browse" [ref=f56e69]
+                      - generic [ref=f56e70]: Drop your CSV here, or browse
+                    - paragraph [ref=f56e71]: .csv · up to 2,000 rows · 1.0 MB
+                  - button "Upload and preview" [ref=f56e72] [cursor=pointer]
+            - generic [ref=f56e73]:
+              - generic [ref=f56e74]:
+                - generic [ref=f56e75]:
+                  - heading "File format" [level=2] [ref=f56e76]
+                  - paragraph [ref=f56e77]: One learner per row. The first row must contain these column headers.
+                - link "Download template" [ref=f56e79] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners/import/template.csv
+              - list [ref=f56e84]:
+                - listitem [ref=f56e85]:
+                  - paragraph [ref=f56e86]:
+                    - code [ref=f56e87]: email
+                    - generic [ref=f56e88]: Required
+                  - paragraph [ref=f56e89]: Used to sign in, and to match learners who already have an account.
+                  - paragraph [ref=f56e90]: grace@example.com
+                - listitem [ref=f56e91]:
+                  - paragraph [ref=f56e92]:
+                    - code [ref=f56e93]: first_name
+                    - generic [ref=f56e94]: Optional
+                  - paragraph [ref=f56e95]: Given name. Existing accounts keep their names.
+                  - paragraph [ref=f56e96]: Grace
+                - listitem [ref=f56e97]:
+                  - paragraph [ref=f56e98]:
+                    - code [ref=f56e99]: last_name
+                    - generic [ref=f56e100]: Optional
+                  - paragraph [ref=f56e101]: Family name.
+                  - paragraph [ref=f56e102]: Hopper
+                - listitem [ref=f56e103]:
+                  - paragraph [ref=f56e104]:
+                    - code [ref=f56e105]: cohort
+                    - generic [ref=f56e106]: Optional
+                  - paragraph [ref=f56e107]: The cohort's name, matched exactly.
+                  - paragraph [ref=f56e108]: Cohort name
+  - contentinfo [ref=f56e111]:
+    - generic [ref=f56e112]:
+      - paragraph [ref=f56e113]: © 2026 FirstClass
+      - navigation "Legal" [ref=f56e114]:
+        - link "Terms and Conditions" [ref=f56e115] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f56e116] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f56e117] [cursor=pointer]: educator-interface-design-learner-csv-upload-design-fix
+  - generic "Show toolbar" [ref=f56e119]: DJDT
