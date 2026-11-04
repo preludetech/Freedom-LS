@@ -16,6 +16,13 @@ this adds, so re-run this after it). On the target site it makes, idempotently:
   REPORTS_MAX_LEARNERS (set it to 5 in config/settings_local.py).
 * A nameless educator with a mixed-case email, cohort_viewer on the Checkpoint
   cohort. Password: the email as stored.
+* A second nameless educator whose stored email is all lower case, also
+  cohort_viewer on the Checkpoint cohort. Password: the email.
+* A third course whose only quiz has a unique title ("Recap Quiz"), also
+  registered to the Checkpoint cohort, with wrong answers recorded.
+* Quietside: an organisation where cohort.viewer@qa.test is cohort_viewer on an
+  empty cohort, with no learners and no audit-log entries (the grant's own
+  entry is deleted).
 
 Usage:
     uv run python manage.py qa_create_educator_polish_scenario
@@ -24,26 +31,32 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from freedom_ls.accounts.account_setup import match_or_create_user
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.models import Form, FormStrategy, QuestionAnswer
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
+    _ensure_cohort,
     _ensure_cohort_registration,
     _ensure_member,
+    _ensure_organisation,
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
     _pin_current_site,
@@ -67,6 +80,13 @@ OVER_LIMIT_COHORT = "QA Over Limit Cohort"
 OVER_LIMIT_LEARNERS = 7
 NAMELESS_LEARNER_EMAIL = "qa-nameless-learner@email.com"
 NAMELESS_EDUCATOR_EMAIL = "Nameless.Educator@Example.com"
+NAMELESS_LOWER_EDUCATOR_EMAIL = "nameless.lower.educator@example.com"
+RECAP_COURSE_KEY = "recap-c"
+RECAP_TITLE = "Recap Quiz"
+QUIET_ORG_NAME = "Quietside"
+QUIET_ORG_SLUG = "quietside"
+QUIET_COHORT = "Cohort Q"
+COHORT_VIEWER_EMAIL = "cohort.viewer@qa.test"
 
 
 def _org(site: Site, slug: str) -> Organisation:
@@ -87,7 +107,7 @@ def _ready_user(site: Site, email: str) -> User:
     return user
 
 
-def _checkpoint_course(site: Site, key: str) -> Course:
+def _quiz_course(site: Site, key: str, title: str) -> Course:
     course = build_report_course(
         site=site,
         course_key=key,
@@ -100,8 +120,27 @@ def _checkpoint_course(site: Site, key: str) -> Course:
     )
     Form.objects.filter(
         slug=f"qa-report-{key}-quiz-01", site=site, strategy=FormStrategy.QUIZ
-    ).update(title=CHECKPOINT_TITLE)
+    ).update(title=title)
     return course
+
+
+def _quiet_organisation(site: Site) -> Organisation:
+    """An org whose only member is the cohort viewer, with no audit entries."""
+    org = _ensure_organisation(site, QUIET_ORG_NAME, QUIET_ORG_SLUG)
+    cohort = _ensure_cohort(site, org, QUIET_COHORT)
+    viewer = User.objects.get(email=COHORT_VIEWER_EMAIL)
+    OrganisationMember._base_manager.update_or_create(
+        site=site, user=viewer, organisation=org, defaults={"is_active": True}
+    )
+    assign_object_role(viewer, cohort, "cohort_viewer")
+    # The grant writes its own entry; prune_before is the log's one delete path.
+    entries = AuditLogEntry.objects.filter(organisation=org)
+    for entry in entries:
+        click.secho(f"Pruning audit entry pk={entry.pk} {entry}", fg="yellow")
+    if entries.exists():
+        pruned = entries.prune_before(timezone.now() + timedelta(seconds=1))
+        click.secho(f"Pruned {pruned} audit entries on {org.slug}", fg="yellow")
+    return org
 
 
 @click.command()
@@ -121,12 +160,15 @@ def command(site_name: str) -> None:
         cohort_old = Cohort._base_manager.get(organisation=north, name="Cohort Old")
         _ensure_cohort_registration(site, cohort_old, course_pub)
 
-        courses = [_checkpoint_course(site, key) for key in CHECKPOINT_COURSE_KEYS]
+        courses = [
+            _quiz_course(site, key, CHECKPOINT_TITLE) for key in CHECKPOINT_COURSE_KEYS
+        ]
+        recap = _quiz_course(site, RECAP_COURSE_KEY, RECAP_TITLE)
         checkpoint = build_report_cohort(
             site=site,
             cohort_name=CHECKPOINT_COHORT,
             num_learners=3,
-            course_slugs=tuple(c.slug for c in courses),
+            course_slugs=tuple(c.slug for c in [*courses, recap]),
             inactive_course_slugs=(),
             num_flagged=1,
             no_progress=False,
@@ -139,6 +181,9 @@ def command(site_name: str) -> None:
 
         educator = _ready_user(site, NAMELESS_EDUCATOR_EMAIL)
         assign_object_role(educator, checkpoint, "cohort_viewer")
+        lower_educator = _ready_user(site, NAMELESS_LOWER_EDUCATOR_EMAIL)
+        assign_object_role(lower_educator, checkpoint, "cohort_viewer")
+        quiet = _quiet_organisation(site)
 
         over = build_report_cohort(
             site=site,
@@ -165,10 +210,13 @@ def command(site_name: str) -> None:
             f"COHORT {cohort.name!r} pk={cohort.pk} active={cohort.is_active} "
             f"members={members} courses={regs}"
         )
-    for course in courses:
+    for course, title in [
+        *((c, CHECKPOINT_TITLE) for c in courses),
+        (recap, RECAP_TITLE),
+    ]:
         wrong = (
             QuestionAnswer.objects.filter(
-                form_progress__form__title=CHECKPOINT_TITLE,
+                form_progress__form__title=title,
                 form_progress__course_attempt__course_progress__course=course,
                 form_progress__completed_time__isnull=False,
             )
@@ -178,3 +226,10 @@ def command(site_name: str) -> None:
         click.echo(f"COURSE {course.title!r} slug={course.slug} wrong_answers={wrong}")
     click.echo(f"NAMELESS LEARNER {nameless.email} pk={nameless.pk}")
     click.echo(f"NAMELESS EDUCATOR {educator.email!r} (password = that email)")
+    click.echo(
+        f"NAMELESS LOWER EDUCATOR {lower_educator.email!r} (password = that email)"
+    )
+    click.echo(
+        f"QUIET ORG {quiet.name!r} slug={quiet.slug} "
+        f"audit_entries={AuditLogEntry._base_manager.filter(organisation=quiet).count()}"
+    )
