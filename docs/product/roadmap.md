@@ -100,7 +100,7 @@ Role assignments decide who can use the educator interface and who can generate 
 
 - **Site admin is assigned by a developer.** Neither the educator interface nor the Django admin can grant or remove it.
 - **No notification** tells a person that a role was granted or removed.
-- **The audit log has gaps.** Role, membership, learner and cohort changes made through FLS are recorded (see [educator interface](./educator-interface.md#history)), but system administrator role changes and records edited directly in the Django admin are not. Nothing before the audit log was introduced is recorded, the log cannot be exported to CSV, and report downloads are not logged.
+- **The audit log has gaps.** Role, membership, learner and cohort changes made through FLS are recorded (see [educator interface](./educator-interface.md#history)), but system administrator role changes and records edited directly in the Django admin are not. Nothing before the audit log was introduced is recorded, and report downloads are not logged.
 
 ## Per-Request Media Access Control
 
