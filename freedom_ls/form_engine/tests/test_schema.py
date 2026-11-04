@@ -359,8 +359,19 @@ def test_an_integer_condition_literal_is_compared_as_text():
 
 
 def test_a_boolean_condition_literal_is_rejected_with_a_hint_to_quote_it():
-    with pytest.raises(ValidationError, match="Quote it"):
+    with pytest.raises(ValidationError, match="Quote the"):
         Condition.model_validate({"question": "employed", "equals": True})
+
+
+def test_the_boolean_literal_hint_does_not_suggest_quoting_true_or_false():
+    """The hint used to tell the author to write "true", not the word they wrote."""
+    with pytest.raises(ValidationError) as excinfo:
+        Condition.model_validate({"question": "employed", "equals": True})
+
+    message = str(excinfo.value)
+    assert '"true"' not in message
+    assert "yes" in message
+    assert "quote" in message.lower()
 
 
 def test_a_condition_with_an_unknown_key_is_rejected():

@@ -960,8 +960,9 @@ class Condition(BaseModel):
         # compared against are strings (QuestionOption.value), so an int is one too.
         if isinstance(value, bool):
             raise ValueError(
-                f'{value} was read as a boolean. Quote it ("{str(value).lower()}") '
-                "so it is compared as text."
+                "Unquoted yes/no/on/off/true/false are read as booleans. Quote the "
+                'value exactly as you wrote it, e.g. equals: "yes", so it is '
+                "compared as text."
             )
         if value is None:
             return None
