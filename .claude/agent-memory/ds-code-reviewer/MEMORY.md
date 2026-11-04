@@ -44,8 +44,7 @@
 - Overdue cells: error/15 for hard deadlines, warning/15 for soft overdue
 - Icons: Use `<c-icon name="semantic_name" />` cotton component (registry: `freedom_ls/icons/semantic_names.py` for allowed names + `freedom_ls/icons/mappings.py` for heroicon mapping; note: NOT `freedom_ls/base/icons.py`)
 - Icon internals: `icon_name` filter in `icon_tags.py` + `{% heroicon_* %}` tags in `cotton/icon.html`
-- All icons are informative by default (role="img", aria-label set to semantic name)
-- IMPORTANT: `aria_label=""` does NOT make an icon decorative — backend falls back to the semantic slug. See icon_aria_gotcha.md. Wrap in `aria-hidden="true"` span for decorative.
+- Icons are decorative by default: no `aria_label` renders `aria-hidden="true"`; an `aria_label` renders `role="img"` with that name. The svg carries `data-icon="<semantic name>"`. An icon that alone conveys meaning (yes/no marks) must be labelled. See icon_aria_gotcha.md.
 - Alpine.js icon toggling: `x-show` on wrapper spans or `rotate-180` for directional flips
 - Icon sizing: size-3 (badges), size-4 (compact), size-5 (standard), size-6 (emphasis), size-8 (large), size-16 (hero)
 

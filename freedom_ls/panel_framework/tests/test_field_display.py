@@ -441,7 +441,7 @@ def test_the_quick_view_trigger_shows_the_quick_view_icon() -> None:
     document = lxml.html.fromstring(f"<div>{html}</div>")
     (trigger,) = document.cssselect('[aria-controls="quick-view"]')
     (icon,) = trigger.cssselect("svg")
-    assert icon.get("aria-label") == "quick_view"
+    assert icon.get("data-icon") == "quick_view"
 
 
 # ---------------------------------------------------------------------------

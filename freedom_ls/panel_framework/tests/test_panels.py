@@ -596,7 +596,7 @@ def test_the_template_renders_one_dl_with_a_dt_dd_pair_per_field_and_no_table(
 
 
 @pytest.mark.django_db
-def test_a_boolean_field_still_renders_the_boolean_icon(
+def test_a_boolean_field_renders_the_boolean_icon_named_yes(
     mock_site_context: Site,
 ) -> None:
     stub = make_stub(name="Detailed", is_active=True)
@@ -604,7 +604,8 @@ def test_a_boolean_field_still_renders_the_boolean_icon(
 
     html = render_to_string(panel.template_name, panel.get_context_data())
 
-    assert 'aria-label="boolean_true"' in html
+    assert 'data-icon="boolean_true"' in html
+    assert 'aria-label="Yes"' in html
 
 
 # Tab dispatch: every tab has a URL that renders the full page, and a tab

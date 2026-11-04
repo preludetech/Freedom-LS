@@ -81,6 +81,19 @@ def test_sidebar_lists_the_seven_sections_each_with_an_icon(
 
 
 @pytest.mark.django_db
+def test_sidebar_link_icons_are_hidden_so_each_link_is_named_by_its_label_alone(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+
+    icons = nav.cssselect("ul > li > a svg")
+
+    assert icons
+    assert all(icon.get("aria-hidden") == "true" for icon in icons)
+    assert not any(icon.get("aria-label") for icon in icons)
+
+
+@pytest.mark.django_db
 @pytest.mark.usefixtures("_messaging_off")
 def test_sidebar_leaves_out_messages_while_messaging_is_off(
     sidebar: tuple[lxml.html.HtmlElement, str],

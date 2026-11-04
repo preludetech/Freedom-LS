@@ -134,17 +134,21 @@ class TestDefaultIconBackendRender:
         result = render_icon("success", css_class="size-6 text-red-500")
         assert 'class="inline size-6 text-red-500"' in result
 
-    def test_default_aria_label_is_semantic_name(self) -> None:
+    def test_an_unlabelled_icon_is_hidden_from_assistive_tech(self) -> None:
         result = render_icon("success")
-        assert 'aria-label="success"' in result
+        assert 'aria-hidden="true"' in result
+        assert "aria-label" not in result
+        assert "role=" not in result
 
-    def test_custom_aria_label(self) -> None:
+    def test_a_labelled_icon_is_an_image_with_that_name(self) -> None:
         result = render_icon("success", aria_label="Done")
-        assert 'aria-label="Done"' in result
-
-    def test_role_is_img(self) -> None:
-        result = render_icon("success")
         assert 'role="img"' in result
+        assert 'aria-label="Done"' in result
+        assert "aria-hidden" not in result
+
+    def test_the_svg_carries_its_semantic_name_as_data(self) -> None:
+        result = render_icon("success")
+        assert 'data-icon="success"' in result
 
     def test_contains_svg_path_data(self) -> None:
         result = render_icon("success")

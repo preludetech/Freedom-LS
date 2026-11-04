@@ -339,7 +339,7 @@ class TestPanelMarkAllReadIcon:
             if "Mark all as read" in button.text_content()
         ]
         assert len(buttons) == 1
-        assert buttons[0].cssselect('svg[aria-label="check_all"]')
+        assert buttons[0].cssselect('svg[data-icon="check_all"]')
 
 
 @pytest.mark.django_db
@@ -634,7 +634,7 @@ class TestCentreIcons:
         tree = html.fromstring(response.content.decode())
         banner = tree.cssselect("#notification-list-up-to-date")
         assert len(banner) == 1
-        assert banner[0].cssselect('svg[aria-label="success"]')
+        assert banner[0].cssselect('svg[data-icon="success"]')
 
     def test_mark_all_as_read_button_carries_the_check_all_icon(
         self, mock_site_context, logged_in_client
@@ -654,7 +654,7 @@ class TestCentreIcons:
             if "Mark all as read" in button.text_content()
         ]
         assert len(buttons) == 1
-        assert buttons[0].cssselect('svg[aria-label="check_all"]')
+        assert buttons[0].cssselect('svg[data-icon="check_all"]')
 
 
 @pytest.mark.django_db

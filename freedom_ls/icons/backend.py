@@ -36,12 +36,19 @@ def build_svg(
     lookup_name: str,
     css_class: str,
     aria_label: str,
+    data_name: str = "",
 ) -> str:
     """Build an SVG string from an iconify-JSON entry.
 
     Shared between :class:`DefaultIconBackend` (semantic-name path) and
     :func:`~freedom_ls.icons.render.render_icon` (literal-glyph path). Caller is
     responsible for having already determined the suffixed `lookup_name` to use.
+
+    An icon with an `aria_label` is an image with that name. One without is
+    decorative and hidden from assistive technology, so an icon beside a label
+    or inside a named control adds nothing to what is read out. `data_name`,
+    when given, is written as `data-icon` so markup can be checked for which
+    icon it drew without reading the path data.
     """
     data = load_iconify_data(set_name)
     icons = data["icons"]
@@ -53,7 +60,11 @@ def build_svg(
     width = int(icon_data.get("width", data.get("width", 24)))
     height = int(icon_data.get("height", data.get("height", 24)))
 
-    label = escape(aria_label)
+    if aria_label:
+        accessibility = f'role="img" aria-label="{escape(aria_label)}"'
+    else:
+        accessibility = 'aria-hidden="true"'
+    data_attribute = f' data-icon="{escape(data_name)}"' if data_name else ""
 
     # width/height are the icon's only intrinsic size. Without them a
     # viewBox-only svg falls back to width:100% and fills its container
@@ -62,7 +73,7 @@ def build_svg(
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
         f'width="{width}" height="{height}" '
-        f'class="inline {escape(css_class)}" role="img" aria-label="{label}">'
+        f'class="inline {escape(css_class)}"{data_attribute} {accessibility}>'
         f"{body}</svg>"
     )
 
@@ -103,7 +114,8 @@ class DefaultIconBackend(IconBackend):
                 set_name=icon_set_name,
                 lookup_name=lookup_name,
                 css_class=css_class,
-                aria_label=aria_label if aria_label else semantic_name,
+                aria_label=aria_label,
+                data_name=semantic_name,
             )
         except KeyError:
             # Re-raise with the semantic-name context the original exception had.

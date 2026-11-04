@@ -44,7 +44,7 @@ def test_icon_alone_renders_the_severity_icon() -> None:
     )
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="warning"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="warning"', html
     )
 
 
@@ -82,7 +82,7 @@ def test_a_stringified_none_user_id_falls_back_to_the_severity_icon() -> None:
     )
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="warning"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="warning"', html
     )
     assert ">CA</span>" not in html
 

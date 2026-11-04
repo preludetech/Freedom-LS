@@ -74,7 +74,7 @@ def test_search_field_icon_is_decorative() -> None:
     html = render_cotton('<c-panel-search-field name="q" label="Search learners" />')
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="search"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="search"', html
     )
 
 
@@ -111,14 +111,14 @@ def test_filter_toggle_pressed_check_icon_is_decorative() -> None:
     html = render_cotton('<c-panel-filter-toggle label="Inactive" pressed="true" />')
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="check"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="check"', html
     )
 
 
 def test_filter_toggle_unpressed_has_no_check_icon() -> None:
     html = render_cotton('<c-panel-filter-toggle label="Inactive" />')
 
-    assert 'aria-label="check"' not in html
+    assert 'data-icon="check"' not in html
 
 
 def test_applied_filter_remove_button_accessible_name() -> None:
@@ -137,7 +137,7 @@ def test_applied_filter_close_icon_is_decorative() -> None:
     html = render_cotton('<c-panel-applied-filter label="Status: Inactive" />')
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="close"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="close"', html
     )
 
 

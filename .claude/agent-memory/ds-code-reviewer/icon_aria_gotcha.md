@@ -1,20 +1,17 @@
-# Icon aria_label gotcha (decorative icons)
+# Icon aria_label (decorative by default)
 
-`<c-icon name="X" aria_label="" />` does NOT make an icon decorative.
+`<c-icon name="X" />` with no `aria_label` renders `aria-hidden="true"` and no
+role: it is decorative. `aria_label="Completed"` renders `role="img"
+aria-label="Completed"`. The svg also carries `data-icon="X"`.
 
-In `freedom_ls/icons/backend.py` (DefaultIconBackend.render, ~line 101):
-`aria_label=aria_label if aria_label else semantic_name`
+In `freedom_ls/icons/backend.py`, `build_svg` chooses between the two; the
+default backend passes the label through unchanged (no fallback to the slug).
 
-So an empty `aria_label` falls back to the **semantic slug** and the SVG is
-rendered with `role="img" aria-label="<slug>"` (always announced). There is no
-`aria-hidden` code path in `build_svg`.
+What to watch for in review:
 
-To make an icon decorative in this codebase, wrap it in an
-`aria-hidden="true"` span (the established pattern — see
-`course_list.html` line ~106, `cotton/pull-quote.html`). The accent icon
-boxes in `course-card-shell.html` / `course-row-shell.html` already do this on
-the wrapper `<div aria-hidden="true">`.
-
-Watch for status/eyebrow icons that pass `aria_label=""` intending "decorative"
-— they will announce the raw machine slug (e.g. "in_progress", "not_started",
-"complete") and duplicate the adjacent visible label text.
+- An icon that is the only thing conveying its meaning (a boolean mark, a
+  status icon with no text beside it) and has no `aria_label`: it is silent.
+- An icon-only button or link: the `aria-label` (or sr-only text) belongs on
+  the control, not the icon.
+- `aria-hidden="true"` wrapper spans around icons are now redundant but
+  harmless; an icon next to visible text needs neither.

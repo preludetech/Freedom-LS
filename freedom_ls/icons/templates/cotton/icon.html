@@ -8,10 +8,14 @@
 `name` must be a semantic name from SEMANTIC_ICON_NAMES in
 freedom_ls/icons/semantic_names.py.
 
+An icon is decorative unless given an `aria_label`: without one it renders
+aria-hidden, so a labelled button or a link with text is read by that text
+alone. An icon that is the only thing conveying its meaning takes a label.
+
 Usage:
 
   <c-icon name="next" />
   <c-icon name="success" class="size-6 text-success" />
   <c-icon name="close" variant="solid" />
-  <c-icon name="success" aria_label="Completed" />
+  <c-icon name="success" aria_label="Completed" />   {# informative: read as "Completed" #}
 {% endcomment %}

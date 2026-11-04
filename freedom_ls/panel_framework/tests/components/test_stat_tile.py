@@ -29,9 +29,7 @@ def test_direction_up_renders_the_decorative_trend_up_icon() -> None:
         '<c-panel-stat-tile label="Progress" value="80%" delta="Up 4 points" direction="up" />'
     )
 
-    assert re.search(
-        r'<span aria-hidden="true">\s*<svg[^>]*aria-label="trend_up"', html
-    )
+    assert re.search(r'<span aria-hidden="true">\s*<svg[^>]*data-icon="trend_up"', html)
     assert "Up 4 points" in html
 
 
@@ -41,7 +39,7 @@ def test_direction_down_renders_the_decorative_trend_down_icon() -> None:
     )
 
     assert re.search(
-        r'<span aria-hidden="true">\s*<svg[^>]*aria-label="trend_down"', html
+        r'<span aria-hidden="true">\s*<svg[^>]*data-icon="trend_down"', html
     )
     assert "Down 2 points" in html
 
@@ -64,9 +62,7 @@ def test_tone_does_not_change_which_icon_renders(tone: str) -> None:
         f'direction="up" tone="{tone}" />'
     )
 
-    assert re.search(
-        r'<span aria-hidden="true">\s*<svg[^>]*aria-label="trend_up"', html
-    )
+    assert re.search(r'<span aria-hidden="true">\s*<svg[^>]*data-icon="trend_up"', html)
 
 
 def test_no_delta_dd_when_delta_is_empty() -> None:

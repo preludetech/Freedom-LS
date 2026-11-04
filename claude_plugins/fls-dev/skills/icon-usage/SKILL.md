@@ -36,7 +36,7 @@ The full list is `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, 
 
 ## Accessibility
 
-Icons render with `role="img"` and an `aria-label` that falls back to the semantic name, which reads poorly (`"next"`). Give informative icons a real label with `aria_label="Completed"`. For an icon-only button, put `aria-label` on the button.
+An icon is decorative by default: with no `aria_label` it renders `aria-hidden="true"`, so an icon beside a label or inside a named control adds nothing to what a screen reader says. An icon that is the only thing conveying its meaning (a yes/no mark, a status with no text beside it) takes `aria_label="Completed"` and renders as `role="img"` with that name. For an icon-only button or link, put `aria-label` on the control, not the icon. The svg carries `data-icon="<semantic name>"` for tests that need to know which icon was drawn.
 
 ## Toggling with Alpine.js
 

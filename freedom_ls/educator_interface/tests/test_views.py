@@ -314,8 +314,8 @@ def test_navigation_toggle_shows_a_menu_icon_not_a_panel_chevron(
     document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
 
     (toggle,) = document.cssselect("button[aria-label='Open navigation panel']")
-    (icon,) = toggle.cssselect("[role='img']")
-    assert icon.get("aria-label") == "menu"
+    (icon,) = toggle.cssselect("svg")
+    assert icon.get("data-icon") == "menu"
 
 
 @pytest.mark.django_db
@@ -343,7 +343,7 @@ def test_organisation_root_page_still_offers_the_navigation_toggle(
     (toggle,) = document.cssselect(
         "#main-content button[aria-label='Open navigation panel']"
     )
-    assert toggle.cssselect("[role='img']")
+    assert toggle.cssselect("svg[data-icon]")
 
 
 # A cohort page holds two tables, its course registrations on the Courses

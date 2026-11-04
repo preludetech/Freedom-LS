@@ -11,7 +11,7 @@ def test_icon_is_decorative() -> None:
     html = render_cotton('<c-panel-empty-state icon="notes" message="No results" />')
 
     assert re.search(
-        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="notes"', html
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*data-icon="notes"', html
     )
 
 

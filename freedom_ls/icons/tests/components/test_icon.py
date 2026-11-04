@@ -26,13 +26,15 @@ class TestIconCottonComponent:
         assert "<svg" in result
         assert "</svg>" in result
 
-    def test_default_role_is_img(self) -> None:
+    def test_default_is_hidden_from_assistive_tech(self) -> None:
         result = self._render('<c-icon name="next" />')
-        assert 'role="img"' in result
+        assert 'aria-hidden="true"' in result
+        assert "role=" not in result
 
-    def test_default_aria_label_is_semantic_name(self) -> None:
+    def test_default_has_no_accessible_name(self) -> None:
         result = self._render('<c-icon name="next" />')
-        assert 'aria-label="next"' in result
+        assert "aria-label" not in result
+        assert 'data-icon="next"' in result
 
     def test_custom_aria_label(self) -> None:
         result = self._render('<c-icon name="success" aria_label="Done" />')
