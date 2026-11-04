@@ -41,12 +41,12 @@
                 {% if cohort %}
                     <p class="text-sm">Every learner in the file is added to <strong>{{ cohort.name }}</strong>. The <code>cohort</code> column is ignored.</p>
                 {% endif %}
-                <c-button type="submit" class="w-full sm:w-auto">Upload and preview</c-button>
+                <c-button type="submit" class="min-h-11 md:min-h-0 w-full sm:w-auto">Upload and preview</c-button>
             </form>
         </c-panel-card>
         <c-panel-card title="File format" description="One learner per row. The first row must contain these column headers.">
             <c-slot name="header_action">
-                <c-button variant="secondary" size="small" href="{{ template_url }}" icon_left="download" download>Download template</c-button>
+                <c-button variant="secondary" size="small" class="min-h-11 md:min-h-0" href="{{ template_url }}" icon_left="download" download>Download template</c-button>
             </c-slot>
             <table data-format-table class="hidden w-full text-left text-sm sm:table">
                 <thead>

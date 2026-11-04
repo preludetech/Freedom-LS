@@ -130,6 +130,14 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
             page.set_viewport_size(viewport)
             visit()
             assert_no_horizontal_overflow(page)
+            if viewport["width"] == 375:
+                # Buttons used to render 34 to 42px tall on the import pages.
+                heights = page.locator("#main-content .btn").evaluate_all(
+                    "els => els.map(el => [el.textContent.trim(), el.getBoundingClientRect().height])"
+                )
+                assert heights
+                too_short = [(text, h) for text, h in heights if h < 44]
+                assert not too_short, f"buttons under 44px tall: {too_short}"
             if is_preview and viewport["width"] == 375:
                 expect(page.get_by_text("Step 2 of 3: Preview")).to_be_visible()
                 # The labels are visually hidden (sr-only), so they stay
