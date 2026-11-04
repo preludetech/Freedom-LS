@@ -17,8 +17,8 @@ block; nothing is drawn for the site's default organisation.
 
 Named slots:
   band    — drawn along the bottom edge of the hero (e.g. the deadline band); the
-            caller decides whether it has content. When the shell draws an
-            organisation byline, the band's content starts after the raised mark.
+            caller decides whether it has content. The raised organisation mark
+            overlaps the band's bottom 24px, so a band keeps its left edge there clear.
   eyebrow — rendered above the default slot (e.g. status label)
   footer  — rendered below the default slot (e.g. progress bar)
 
@@ -26,12 +26,13 @@ Mergeable `class` prop allows callers to append extra utility classes
 to the article element without forking the shell.
 {% endcomment %}
 <article class="course-card surface border-gray-200 h-full relative p-3 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}{{ class }}">
-    <div class="course-accent-{{ accent_slot_key }} h-28 flex items-center justify-center rounded-xl relative overflow-hidden"
+    {% comment %}A band takes the hero's bottom 48px; the bottom padding centres the icon in the rest.{% endcomment %}
+    <div class="course-accent-{{ accent_slot_key }} h-28 flex items-center justify-center rounded-xl relative overflow-hidden{% if band %} pb-12{% endif %}"
          data-testid="course-card-hero">
         {% comment %}The icon is decorative; the band below it is read.{% endcomment %}
         <span aria-hidden="true" class="inline-flex">{% course_icon icon icon_fallback css_class="size-12" aria_label=title %}</span>
         {% if band %}
-            <div class="absolute inset-x-0 bottom-0{% if organisation and not organisation.is_default %} [&>*]:pl-16{% endif %}">{{ band }}</div>
+            <div class="absolute inset-x-0 bottom-0">{{ band }}</div>
         {% endif %}
     </div>
 

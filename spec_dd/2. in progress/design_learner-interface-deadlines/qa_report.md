@@ -130,6 +130,7 @@ Manifestations:
 
 - **Expected:** The band's title shortens with an ellipsis and stays visible beside the tier word and the whole date (plan 1.4 step 2, design checklist "the title truncates").
 - **Actual:** At 1024x768 (three cards a row, ~268px hero) the title span collapses to 0-2px, so the band reads "Missed deadline ... Jan 31, 2024" with no item name. The card shell pads the band 64px (`course-card-shell.html`: `[&>*]:pl-16`) to clear the raised organisation mark, which leaves no width for the title. At 1920 the same squeeze cuts "Course Feedback" to "Cour..." when a Closes date is present. Fixing it needs a layout choice (wrap the date to a second line, shorten the tier word, shrink or move the mark offset).
+- **Resolved:** the band is now two lines on every card. The tier word and title take the hero's full width above the mark; the date and Closes text sit right-aligned on the line beside the mark, and the card shell's 64px band padding is gone, and the hero centres its icon above the band. The browse-flow Playwright test checks the title, word and date clear the mark at 1024x768.
 
 ## B2: Stray space before the full stop in the course row deadline line
 

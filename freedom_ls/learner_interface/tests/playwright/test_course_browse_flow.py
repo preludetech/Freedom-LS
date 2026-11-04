@@ -16,7 +16,7 @@ from decimal import Decimal
 
 import pytest
 from PIL import Image
-from playwright.sync_api import FloatRect, Locator, Page, expect
+from playwright.sync_api import FloatRect, Locator, Page, ViewportSize, expect
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -645,7 +645,12 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     expect(section.get_by_test_id("section-card-grid")).to_be_visible()
     expect(section.get_by_test_id("section-row-list")).to_be_hidden()
 
-    for viewport in QA_VIEWPORTS:
+    # 1024 is the narrowest card grid: three cards a row.
+    viewports: tuple[ViewportSize, ...] = (
+        *QA_VIEWPORTS,
+        {"width": 1024, "height": 768},
+    )
+    for viewport in viewports:
         page.set_viewport_size(viewport)
         page.goto(dashboard_url)
         assert_no_horizontal_overflow(page)
@@ -654,8 +659,17 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
             _assert_band_clears_the_mark(page)
 
 
+def _boxes_overlap(a: FloatRect, b: FloatRect) -> bool:
+    return not (
+        a["x"] >= b["x"] + b["width"]
+        or b["x"] >= a["x"] + a["width"]
+        or a["y"] >= b["y"] + b["height"]
+        or b["y"] >= a["y"] + a["height"]
+    )
+
+
 def _assert_band_clears_the_mark(page: Page) -> None:
-    """The banded card's date is whole inside the card and its word is clear of the mark."""
+    """The banded card's date is whole; its word, title and date clear the mark and the icon."""
     card = page.get_by_test_id("section-card-grid").locator(
         "article", has_text="Banded Course"
     )
@@ -666,14 +680,18 @@ def _assert_band_clears_the_mark(page: Page) -> None:
     assert date_box["x"] >= card_box["x"]
     assert date_box["x"] + date_box["width"] <= card_box["x"] + card_box["width"]
     word_box = _box(band.get_by_text("Missed deadline", exact=True))
+    title_box = _box(band.get_by_text(LONG_TOPIC_TITLE, exact=True))
     mark_box = _box(
         card.get_by_test_id("organisation-byline").locator(":scope > *").first
     )
-    assert (
-        word_box["x"] >= mark_box["x"] + mark_box["width"]
-        or word_box["y"] + word_box["height"] <= mark_box["y"]
-        or mark_box["y"] + mark_box["height"] <= word_box["y"]
+    # A truncated title still shows the start of the item's name.
+    assert title_box["width"] >= 40
+    for box in (word_box, title_box, date_box):
+        assert not _boxes_overlap(box, mark_box)
+    icon_box = _box(
+        card.get_by_test_id("course-card-hero").locator(":scope > [aria-hidden]")
     )
+    assert not _boxes_overlap(icon_box, _box(band))
 
 
 def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(
