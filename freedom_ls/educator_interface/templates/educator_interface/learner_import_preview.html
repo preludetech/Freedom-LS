@@ -17,7 +17,7 @@
                     {% if item.label == "error" and item.count %}
                         <div class="h-full min-h-11 rounded-lg border border-error bg-surface px-4 py-3 text-error">
                             <c-panel-stat-tile label="{{ item.name }}" variant="plain">
-                                <c-slot name="value_content"><span class="inline-flex items-center gap-1"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                                <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
                             </c-panel-stat-tile>
                         </div>
                     {% else %}
