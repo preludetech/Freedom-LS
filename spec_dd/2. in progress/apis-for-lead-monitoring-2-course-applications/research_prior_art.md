@@ -1,0 +1,89 @@
+# Research: prior art for the course applications API endpoint
+
+Question: what has already been tried for this, here or elsewhere, and what happened?
+
+Limits: no shell, so no `git log`; the done specs, QA reports and code stand in for history. Web evidence on this exact problem is thin; items marked (inferred) are reasoned, not sourced.
+
+## 1. Here
+
+### 1a. No earlier attempt at this endpoint
+
+- Nothing exposed application data to scripts before. The only route is the admin CSV export, and the roadmap/idea treat it as the shape to carry over. `course-applications-admin` (done 2026-10-08) deliberately had no export; `more_lead_admin_exports` added it (done 2026-10-29).
+
+### 1b. Decisions in `more_lead_admin_exports` that this endpoint inherits (`spec_dd/3. done/2026-10-29_12:46_more_lead_admin_exports/1. spec.md`)
+
+- One row per application, drafts included, told apart by `is_submitted` (spec lines 53-54). The API keeps this.
+- Answer columns are keyed by `FormQuestion.id`, not question text, so a reworded question keeps one column and two forms with the same text get two (lines 51-52). The API's question id + question text array is the same decision in JSON; headers there needed disambiguation (` (<form title>)`, then ` (<n>)`), which the API does not need because the id is the key.
+- Answer values (`freedom_ls/form_engine/exports.py` `answer_cell`, lines 101-109): option types give selected options' `text` in option `order`, joined with `"; "`; `FILE_UPLOAD` gives `original_filename` only, never a path or URL; `DATE`/`TIME` give the stored ISO `text_answer` unchanged (not locale-formatted); everything else is `text_answer` in full with newlines; no answer row is an empty cell. For JSON the join becomes an open choice (string vs list) that the idea already fixes as "the option text"; the spec must say whether a multi-select (`CHECKBOXES`) is one string or a list. The export's `"; "` join is lossy if an option's text contains `"; "` (inferred).
+- Off-page questions: a question moved off every page but still answered keeps its column (lines 95-97, 157). The API must also return answers to questions no longer on the form, or it will drop data that the export kept.
+- Shared `submitted_time` property on `CourseApplication` used by both admin and export so they cannot disagree (lines 124-125). The idea reuses this for `is_submitted`/`submitted_time`.
+- Query shape (lines 128-133): prefetches `form_progress__form`, `form_progress__answers__question`, `form_progress__answers__selected_options`, `form_progress__answers__answer_file`; forms' pages/questions load once per form; a test pins that query count does not grow per application. Reusable almost verbatim for the viewset. Caveat: the export iterates in chunks (`get_chunk_size()`), whereas the API has page-size-bounded pages, so the pin is simpler.
+- Site isolation (lines 135-139): relied on `SiteAwareManager` scoping via the request host; no hand-written `site_id` filter. The API differs: child 1 binds the key's site, and `site_queryset()` filters explicitly. Reachable rows (forms, questions, answers) are same-site through FKs; a prior research note warns that any non-request context (`.iterator()`, background job) must filter `site_id` by hand (`simple-application-forms/research_application_pii.md:298-302`, cited in child 1's prior art).
+- Boolean cells `TRUE`/`FALSE` and CSV formula escaping/BOM are CSV concerns; the idea correctly drops them. The idea says "`is_email_verified`" is a boolean in JSON (true/false).
+
+### 1c. Problems hit in the export QA (`.../more_lead_admin_exports/qa_report.md`)
+
+- B1: moving `SpreadsheetBooleanWidget` into the shared base silently changed referral exports from `1`/`0` to `TRUE`/`FALSE`, contradicting spec, plan and QA plan until the user decided to keep it and update docs. Lesson: a shared-base change made in code review leaked into untouched resources and upgrade notes missed it. For this endpoint: keep serializer logic local to `course_applications/api.py` and `form_engine` helpers; if the spec extracts a shared answer-value function out of `exports.py`, a test must pin the CSV output unchanged, and the upgrade notes must say so.
+- Test-data limits: an anonymous application had 8 answers instead of 2 because the apply flow refuses to submit with required questions blank; a draft with one answer arises by submitting a page with browser validation disabled (server saves the partial page with a 422). So drafts with partial answers are real; the same partial draft with a sitting and no `completed_time` is a case for tests.
+- 45 applications exported in 128 ms; no performance problem seen. The export has no timing issue at that size.
+- Observation only: an uploaded `id-scan.png` (10,362 bytes) displays as "149 bytes" on the form pages. Not the API's concern, but filename-only avoids relying on file metadata.
+- Noted submitted/anonymous quirk: the "no-form" course application has `submitted_time` equal to `created_at` (QA 2.1), so `submitted_time` is not always a `completed_time`. The API inherits this because it reads the same property; the spec should say so, and that `form_progress` can be null.
+
+### 1d. Decisions and problems in child 1 (`.../apis-for-lead-monitoring-1-foundation-and-users/1. spec.md`, `qa_report.md`)
+
+- Conventions that carry over unchanged: `<app>/api.py` registers with the `freedom_ls.api` router; `ReadOnlyApiViewSet` with `required_scope` (here `ApiScope.COURSE_APPLICATIONS`); `site_queryset(...)`; `ApiKeysetPagination` (custom, not DRF `CursorPagination`) ordering `("updated_at", "id")` with the cursor encoding the last row's `(updated_at, id)`; `UpdatedSinceFilterSet` mapping `updated_since` to `updated_at__gte` (inclusive; naive or unparseable is 400); envelope `{"next", "results"}`; JSON errors `{"detail","code"}`; `Cache-Control: private, no-store`; OPTIONS returns only the view name; HEAD works.
+- Important coupling: `UpdatedSinceFilterSet` and the pagination both name the model field `updated_at`. The idea's reported `updated_at` is a computed value, not a column. A computed value cannot be filtered or paged on without being an annotation (or a stored column); child 1's pagination was written against a model attribute. The spec must check whether `ApiKeysetPagination` and `UpdatedSinceFilterSet` can take an annotation name, and what they do when the DB expression is `Greatest(...)` (see 2c).
+- Child 1 solved the same "updated_at doesn't move" hazard for users by writing the timestamp: a receiver `touch_user_updated_at` on allauth `EmailAddress` `post_save`/`post_delete` runs `User._base_manager.filter(pk=...).update(updated_at=now)`, plus a `(site, updated_at, id)` index. It documents that queryset `update()` and bulk operations send no signals and are not covered. That is a precedent for the stored-column approach (touch `CourseApplication.updated_at` from `FormProgress`/`QuestionAnswer` signals), against the computed approach the idea floats (`Greatest` of three tables).
+- QA outcomes: all API behaviours passed. Bugs were admin-only front-end issues (B1 key overflow, B2 label truncation, both fixed) and B3, an unrelated allauth admin leaking other sites' email addresses (fixed). No API-contract bug was found, so the foundation's contract is stable to build on. Lesson: the key `qa_create_*` seed commands and the keyed-test pattern worked; QA Test 5 (`updated_at` moves on email verification) was a successful dynamic check and a template for a "submitting a sitting moves `updated_at`" test.
+- Child 1's docs requirement: `docs/api.md` tells clients to checkpoint at the max `updated_at` seen minus 5 minutes, advance only after a full run, and upsert by `id`. With a computed timestamp, the margin must also cover whatever lag the rule introduces.
+- Noted by child 1's own prior art (`research_prior_art.md` §2b/§3): mitigations for missed rows are checkpoint-with-overlap, dedupe by id, test page boundaries with equal timestamps (done: 1,500 rows with identical `updated_at`), and make `updated_at` honest. Their section "rows changed without touching `updated_at` (QuerySet.update, bulk_update)" applies directly: check whether any application or answer code path writes with `update()`/`bulk_create`/`bulk_update`, which also bypass `auto_now` and signals.
+
+### 1e. Code facts that decide the changed-since rule (`research_data_sources.md` in `spec_dd/1. next/apis-for-lead-monitoring/`)
+
+- `CourseApplication` (`TimestampedModel`) `updated_at` does not move on submission: submit sets `FormProgress.completed_time`. `FormProgress.last_updated_time` is `auto_now` (`form_engine/models.py:259`) and also moves on `furthest_page_reached` saves (`:315`, a `save(update_fields=[...])`, which still updates an `auto_now` field only if it is listed; it is listed here). `QuestionAnswer` is `TimestampedModel` (own `updated_at`); `FormProgress` has no `updated_at`, only `last_updated_time`.
+- Does an answer edit move `FormProgress.last_updated_time`? Not established by anything read. The idea says answer edits move only the answers' `updated_at`. The spec has to verify whether saving an answer also saves the progress. If it does not, the rule needs at least three sources: application, `FormProgress.last_updated_time` and the max over its answers; and answers can be hard-deleted or have options swapped (selected_options is an M2M: changing options does not touch `QuestionAnswer.updated_at` at all unless the model saves too) (inferred; check). An M2M change firing `m2m_changed` without a row save is a classic missed-change source.
+- `AnonymousApplicant` has its own `updated_at`; claiming it (sets `user`, `claimed_at`) changes who the application belongs to and, per the idea, changes `applicant_email`/`is_email_verified`/`applicant_name`. A claim must move the reported `updated_at`, or the consumer sees a stale applicant. A signed-in user changing their own `email` or name also changes `applicant_email`/`applicant_name` of their applications, via `User.updated_at`; the idea's rule list does not include the `User`.
+- Roadmap decision: deletions are invisible; the idea repeats it. Prior art for erasure: a downstream copy of erased data persists (child 1 prior art §1b); consumer owns erasure, to be written into `security-and-data-handling.md` here too, since this endpoint exposes far more PII (contact details and free-text answers) than the users endpoint.
+
+## 2. Elsewhere
+
+### 2a. Child changes and a parent cursor that doesn't move (the main hazard)
+
+- Airbyte's connector docs state the requirement outright: the API has to advance the parent's cursor whenever a child is added or changed; otherwise child records added to older parents are lost. A forum thread reports the same failure in practice: modified parent records get pulled but child streams are never run for them. Their global-cursor option adds a lookback window, which covers timing gaps within a sync, not a parent that never gets its timestamp bumped. https://docs.airbyte.com/platform/connector-development/config-based/understanding-the-yaml-file/incremental-syncs, https://discuss.airbyte.io/t/issue-with-parent-child-stream-setup-in-low-code-connector-builder/9892
+- Resco's sync-filter wiki shows the consumer-side fix when the producer can't be changed: also download all child rows belonging to parents modified since last sync, at the cost of extra download. https://docs.resco.net/wiki/Sync_Filter_and_incremental_sync
+- Lessons for this endpoint: nesting answers inside the application is the right shape (one cursor, one request), but only if the application's reported timestamp covers its children. The usual options are (a) bump the parent timestamp on child writes (stored; child 1's own approach for users), (b) compute a `Greatest` over children, (c) tell clients to run periodic full pulls. Option (c) alone is what the idea wants to avoid ("see every submission and every answer change").
+- Forms vendors: Typeform's Responses API filters `since`/`until` on `submitted_at` for completed responses and uses a different timestamp for partial responses; connectors sync completed responses incrementally and treat partial ones as full refresh because there is no cursor for them. Workato re-reads from 60 minutes before the previous successful sync start because responses can take up to about 30 minutes to appear. Whether edits to a submitted response show up is not documented (inferred: a `submitted_at` cursor misses edits). Lesson: drafts (partial responses) are the hard case for incremental sync; FLS includes drafts, so the cursor must follow in-progress edits, not only submissions. And a safety margin is standard. https://docs.slingdata.io/connections/api-connections/typeform, https://posthog.com/docs/data-pipelines/sources/typeform, https://docs.workato.com/en/data-orchestration/data-pipeline-recipe/configure-typeform
+
+### 2b. Cursor pagination on non-unique, changing, or annotated ordering
+
+- DRF's own docs say cursor pagination requires "a unique, unchanging ordering" and recommends a creation timestamp; they say nothing about annotated or related fields. A modification timestamp changes, so rows can move between pages mid-run; child 1's design (custom keyset on `(updated_at, id)`; rows updated mid-run come back later in the run; upsert by id) already accepts this and documents it. https://www.django-rest-framework.org/api-guide/pagination/#cursorpagination
+- DRF's `CursorPagination` stores a position from the first ordering field plus an offset; a DRF discussion reports multi-field ordering failing when the first field is non-unique because only the first field is used. That is why child 1 wrote its own pagination. https://github.com/encode/django-rest-framework/discussions/7888, https://github.com/encode/django-rest-framework/pull/5459
+- Django developers' ticket 34251 notes PostgreSQL gives non-deterministic order for non-unique sort columns, so the `id` tiebreak is mandatory. https://groups.google.com/g/django-developers/c/fVZhDuiVfm8 ; stable ordering guidance: https://www.vincentschmalbach.com/defining-stable-ordering-rules-for-cursor-pagination/
+- I found no public write-up on cursor pagination over a `Greatest(...)` annotation in Django. Reasoned (inferred): an annotation of `Greatest(app.updated_at, anon.updated_at, form_progress.last_updated_time, max(answers.updated_at))` over joins cannot use the `(site, updated_at, id)`-style index, so every `updated_since` request scans all of the site's applications and sorts by the expression; at lead-monitoring scale (hundreds to low thousands per site, 45 rows exported in 128 ms) that is fine, but an aggregate over a to-many join (answers) also changes row multiplicity and forces `GROUP BY`, which interacts with `select_related`/`prefetch_related`. A stored denormalised `updated_at` (touched by signals) is indexable and keeps the viewset a plain queryset. The trade-off: signals miss `update()`/bulk writes and M2M changes.
+- Postgres `GREATEST` ignores NULLs, but Django's `Greatest` returns NULL if any argument is NULL on some backends (its docs: on PostgreSQL, it returns NULL only if all are NULL; on SQLite/MySQL/Oracle, NULL if any is NULL). Applications with no anonymous applicant or no form progress hit this; wrap in `Coalesce`. https://docs.djangoproject.com/en/stable/ref/models/database-functions/#greatest (not re-fetched this session; verify against the installed Django 6 docs).
+
+## 3. Lessons to carry into the spec
+
+1. Decide stored vs computed `updated_at` explicitly, in light of child 1's precedent (stored, signal-touched, indexed for users) and the pagination/filter code written against a model field. Whichever is chosen, list every writer that must move it: submission, answer create/edit/delete, option selection (M2M), file upload replacement, anonymous-applicant claim and its email verification, the user's name/email, `furthest_page_reached`.
+2. Test the rule per writer (as child 1 tested email verification), including a mutation that happens with no request, and equal-timestamp paging.
+3. Keep admin-export behaviour untouched: if answer-value formatting is shared with `exports.py`, pin the CSV output with the existing tests and mention it in upgrade notes (the referral `TRUE`/`FALSE` episode).
+4. Return answers for questions no longer on the form; decide the multi-select value shape (string vs list) and the unanswered rule (no entry vs null), and `form_progress` null for applications with no sitting.
+5. Document, as child 1 does, checkpoint-with-overlap and upsert by id; note that drafts move as people type and that deletions and consumer-side erasure are not visible.
+6. `docs/product/security-and-data-handling.md` has never covered applicant data in the API; this spec writes that, with the file-upload filename-only rule and the consent evidence exclusion.
+
+## References
+
+- https://docs.airbyte.com/platform/connector-development/config-based/understanding-the-yaml-file/incremental-syncs
+- https://discuss.airbyte.io/t/issue-with-parent-child-stream-setup-in-low-code-connector-builder/9892
+- https://docs.resco.net/wiki/Sync_Filter_and_incremental_sync
+- https://docs.slingdata.io/connections/api-connections/typeform
+- https://posthog.com/docs/data-pipelines/sources/typeform
+- https://docs.workato.com/en/data-orchestration/data-pipeline-recipe/configure-typeform
+- https://www.django-rest-framework.org/api-guide/pagination/#cursorpagination
+- https://github.com/encode/django-rest-framework/discussions/7888
+- https://github.com/encode/django-rest-framework/pull/5459
+- https://groups.google.com/g/django-developers/c/fVZhDuiVfm8
+- https://www.vincentschmalbach.com/defining-stable-ordering-rules-for-cursor-pagination/
+- https://docs.djangoproject.com/en/stable/ref/models/database-functions/#greatest
+
+status: ok
