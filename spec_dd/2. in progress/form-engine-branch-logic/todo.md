@@ -16,8 +16,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: course player silently redirects to a reopened page with no message. Decide whether it should show a 'Question N needs an answer' message like the application shell does (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: FormPage admin does not show condition_option. Decide whether admins should see which answer gates a page (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
