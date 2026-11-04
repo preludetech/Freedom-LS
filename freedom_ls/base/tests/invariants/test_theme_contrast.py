@@ -93,6 +93,44 @@ def test_input_borders_reach_3_to_1_on_every_page_surface(theme_css: Path) -> No
         )
 
 
+@pytest.mark.parametrize(
+    "theme_css",
+    [DEFAULT_THEME_CSS, FIRST_CLASS_THEME_CSS],
+    ids=["default", "first_class"],
+)
+def test_error_text_reaches_4_5_to_1_on_every_page_surface(theme_css: Path) -> None:
+    """Field errors, failed-state notices and inline alerts are set in the
+    error colour on white cards, the canvas and surface-2, so it must clear
+    WCAG AA body-text contrast on all three."""
+    css = theme_css.read_text()
+    error = _theme_colour(css, "error")
+    for background in (
+        "#FFFFFF",
+        _theme_colour(css, "surface"),
+        _theme_colour(css, "surface-2"),
+    ):
+        assert _contrast_ratio(error, background) >= 4.5, (
+            f"--color-error {error} on {background} is "
+            f"{_contrast_ratio(error, background):.2f}:1"
+        )
+
+
+@pytest.mark.parametrize(
+    "theme_css",
+    [DEFAULT_THEME_CSS, FIRST_CLASS_THEME_CSS],
+    ids=["default", "first_class"],
+)
+def test_error_button_text_reaches_4_5_to_1_on_its_fill(theme_css: Path) -> None:
+    """A destructive button sets on-error text on an error fill at body size."""
+    css = theme_css.read_text()
+    error = _theme_colour(css, "error")
+    on_error = _theme_colour(css, "on-error")
+    assert _contrast_ratio(on_error, error) >= 4.5, (
+        f"--color-on-error {on_error} on {error} is "
+        f"{_contrast_ratio(on_error, error):.2f}:1"
+    )
+
+
 def _blend(foreground: str, background: str, alpha: float) -> str:
     mixed = [
         round(

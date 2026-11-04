@@ -13,7 +13,7 @@ The brand names are vocabulary for talking about the design. The token column is
 | Midnight | `#1A2332` | `text-on-surface`             | Primary dark: headings and body text on light |
 | Ocean    | `#2B6CB0` | `bg-primary` / `text-primary` | Primary blue: logo, headings, links, primary buttons |
 | Chalk    | `#F7F8FA` | `bg-surface-2`                | Secondary surface: table headers, tinted panels |
-| Signal   | `#E8553D` | `bg-error` / `text-error`     | Warm accent: alerts, destructive actions |
+| Signal   | `#D23319` | `bg-error` / `text-error`     | Warm accent: alerts, destructive actions, error text |
 | Forest   | `#38A169` | `bg-success` / `text-success` | Success: progress, completion, positive CTAs |
 | Sand     | `#F6E05E` | `bg-warning`                  | Warning: callouts, non-critical alerts |
 | Slate    | `#4A5568` | `text-muted`                  | Secondary text, captions, icons |
@@ -25,7 +25,7 @@ The theme carries more roles than this palette names (`secondary`, `info`, the `
 
 ### Contrast
 
-Sand and Forest are background colours only: as text on a light background they fail contrast. For status text on a pale tint, use the `-light` pair.
+Sand and Forest are background colours only: as text on a light background they fail contrast. For status text on a pale tint, use the `-light` pair. Signal is dark enough to set error text directly on white and on Chalk, and to carry white text as a button fill; a theme that repoints `--color-error` keeps both pairings at 4.5:1 (the theme contrast invariants check this).
 
 The brand's tested text pairings (WCAG AA minimum), for checking a theme that repoints them:
 
@@ -37,6 +37,8 @@ The brand's tested text pairings (WCAG AA minimum), for checking a theme that re
 | White    | Midnight   | 15.7:1 | Inverted sections, footer |
 | White    | Ocean      | 5.1:1  | Primary buttons |
 | Midnight | Sand       | 10.8:1 | Warning callouts |
+| Signal   | White      | 5.0:1  | Error text, field errors |
+| White    | Signal     | 5.0:1  | Destructive buttons |
 
 Ratios are against the brand hexes. The `default` theme renders Chalk as `#F3F4F6`, which takes Midnight to ~14.3:1 and Slate to ~6.8:1.
 

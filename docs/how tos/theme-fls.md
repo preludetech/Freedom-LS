@@ -138,7 +138,7 @@ Every coloured background role has a paired `on-*` foreground. Always use the pa
 | On-success | `--color-on-success` | `#FFFFFF` |
 | Warning | `--color-warning` | `#F6E05E` |
 | On-warning | `--color-on-warning` | `#1A2332` |
-| Error | `--color-error` | `#E8553D` |
+| Error | `--color-error` | `#D23319` |
 | On-error | `--color-on-error` | `#FFFFFF` |
 | Info | `--color-info` | `#0EA5E9` |
 | On-info | `--color-on-info` | `#FFFFFF` |
