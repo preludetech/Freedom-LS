@@ -81,6 +81,16 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     )
     assert markers
     assert set(markers) == {"none"}
+    # The theme sets a text colour on <dd>, which used to override the
+    # tile's error colour so the Error count rendered in body text colour.
+    error_tile = page.get_by_role("link", name="Error: 1")
+    tile_colour, count_colour = error_tile.evaluate(
+        """el => [
+            getComputedStyle(el.querySelector('.border-error')).color,
+            getComputedStyle(el.querySelector("dd span")).color,
+        ]"""
+    )
+    assert count_colour == tile_colour
     page.get_by_role("link", name="Error: 1").click()
     expect(page).to_have_url(re.compile(r"label=error"))
     rows = page.locator("[data-import-rows] tbody tr")
