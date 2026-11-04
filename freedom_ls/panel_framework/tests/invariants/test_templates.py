@@ -278,4 +278,4 @@ def test_the_quick_view_open_full_page_link_shows_the_open_page_icon() -> None:
     document = lxml.html.fromstring(f"<div>{html}</div>")
     (link,) = document.cssselect("#quick-view-open")
     (icon,) = link.cssselect("svg")
-    assert icon.get("aria-label") == "open_page"
+    assert icon.get("data-icon") == "open_page"

@@ -378,13 +378,13 @@ def test_all_courses_status_icons_are_decorative(
     assert response.status_code == 200
 
     body = response.content.decode()
-    # Every status-icon svg (which carries aria-label="<slug>") must sit directly
+    # Every status-icon svg (which carries data-icon="<slug>") must sit directly
     # inside an aria-hidden wrapper.
     for slug in ("in_progress", "complete"):
-        assert f'aria-label="{slug}"' in body, f"expected {slug} icon to render"
-        assert re.search(
-            rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
-        ), f"status icon {slug!r} is not wrapped in aria-hidden"
+        assert f'data-icon="{slug}"' in body, f"expected {slug} icon to render"
+        assert re.search(rf'aria-hidden="true">\s*<svg[^>]*data-icon="{slug}"', body), (
+            f"status icon {slug!r} is not wrapped in aria-hidden"
+        )
 
 
 @pytest.mark.django_db

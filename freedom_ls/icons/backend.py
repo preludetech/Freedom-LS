@@ -73,7 +73,7 @@ def build_svg(
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
         f'width="{width}" height="{height}" '
-        f'class="inline {escape(css_class)}"{data_attribute} {accessibility}>'
+        f'class="inline {escape(css_class)}" {accessibility}{data_attribute}>'
         f"{body}</svg>"
     )
 

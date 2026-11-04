@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import cast
 
+import lxml.html
 import pytest
 import time_machine
 from django_cotton.compiler_regex import CottonCompiler
@@ -1420,14 +1421,20 @@ def test_course_part_toggle_hides_its_chevron_from_assistive_technology(
 
     (button,) = _outline_part_buttons(logged_in_client, user, course)
 
-    announced, chevron = button.split('aria-hidden="true"', 1)
-    assert "Chapter One" in announced
-    assert "x-bind:aria-expanded" in announced
-    announced_text = re.sub(r"<[^>]+>", " ", announced)
-    announced_labels = re.findall(r'aria-label="([^"]*)"', announced)
+    element = lxml.html.fromstring(button)
+    chevrons = element.xpath('.//svg[@data-icon="expand" or @data-icon="collapse"]')
+    assert chevrons
+    assert all(
+        svg.xpath('ancestor-or-self::*[@aria-hidden="true"]') for svg in chevrons
+    )
+    assert element.get("x-bind:aria-expanded")
+    for hidden in element.xpath('.//*[@aria-hidden="true"]'):
+        hidden.getparent().remove(hidden)
+    announced_text = element.text_content()
+    announced_labels = " ".join(element.xpath(".//@aria-label"))
+    assert "Chapter One" in announced_text
     assert not re.search(r"expand|collapse", announced_text, re.IGNORECASE)
-    assert not re.search(r"expand|collapse", " ".join(announced_labels), re.IGNORECASE)
-    assert re.search(r"expand|collapse", chevron)
+    assert not re.search(r"expand|collapse", announced_labels, re.IGNORECASE)
 
 
 @pytest.mark.django_db

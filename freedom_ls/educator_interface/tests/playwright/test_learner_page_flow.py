@@ -68,7 +68,9 @@ def test_opening_a_learner_and_their_courses_tab(
 
     expect(page.locator("#instance-title")).to_have_text("Ada Lovelace")
     expect(page.get_by_text("ada@example.com").first).to_be_visible()
-    page.get_by_role("link", name="Courses", exact=True).click()
+    page.locator("#main-content").get_by_role(
+        "link", name="Courses", exact=True
+    ).click()
     expect(page.get_by_text("Algebra")).to_be_visible()
     expect(page.get_by_text("Nothing completed yet")).to_be_visible()
     learner_url = page.url
@@ -194,7 +196,7 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     expect(modal).to_be_hidden()
     expect(main.get_by_text("Evening group").first).to_be_visible()
     expect(main.get_by_text("Morning group")).to_have_count(0)
-    page.get_by_role("link", name="Courses", exact=True).click()
+    main.get_by_role("link", name="Courses", exact=True).click()
     expect(main.get_by_text("1 of 2 items")).to_be_visible()
 
 
