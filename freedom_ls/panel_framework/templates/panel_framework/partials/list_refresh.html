@@ -5,6 +5,7 @@ survives the region's outerHTML swap. Carries no visible content of its own —
 the list view's actions render in its page header instead.
 {% endcomment %}
 <div x-data="listRefresh"
+     class="hidden"
      data-refresh-events="{{ refresh_events }}"
      data-refresh-url="{{ refresh_url }}"
      data-refresh-target="{{ refresh_target }}"></div>

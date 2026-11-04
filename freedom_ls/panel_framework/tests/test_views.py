@@ -315,6 +315,16 @@ def test_the_refresh_wiring_targets_the_list_panels_region(
     assert f'id="{LIST_REGION_ID}"' in html
 
 
+def test_the_refresh_host_takes_no_space_in_the_page_flow(
+    mock_site_context: Site,
+) -> None:
+    html = fetch("stubs").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (refresh_host,) = document.cssselect('[x-data="listRefresh"]')
+    assert "hidden" in refresh_host.get("class", "").split()
+
+
 def test_a_region_refresh_skips_the_create_action(mock_site_context: Site) -> None:
     make_stub(name="row-1")
 
