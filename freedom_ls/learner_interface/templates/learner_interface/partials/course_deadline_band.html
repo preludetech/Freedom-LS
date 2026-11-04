@@ -1,14 +1,18 @@
 {% comment %}The band along the bottom of a dashboard card's hero: the earliest missed deadline,
 else the next one. Required context: child (the CardDeadline the card names) and
-show_time_zone_to_learners.{% endcomment %}
-<p class="flex items-center justify-between gap-2 px-3 py-1 text-xs {% include "learner_interface/partials/deadline_labels.html#tier-tint" %}"
+show_time_zone_to_learners.
+
+Two lines: the tier word and title, then the date. The card's raised organisation mark overlaps
+the bottom line only, so the title keeps the hero's full width and the right-aligned date stays
+clear of the mark.{% endcomment %}
+<p class="flex flex-col gap-2 px-3 py-1 text-xs {% include "learner_interface/partials/deadline_labels.html#tier-tint" %}"
    data-testid="course-deadline-band">
     <span class="flex items-center gap-1 min-w-0">
         {% include "learner_interface/partials/deadline_labels.html#tier-icon" %}
         <span class="font-semibold shrink-0">{% include "learner_interface/partials/deadline_labels.html#tier-word" %}</span>
         <span class="truncate">{{ child.title }}</span>
     </span>
-    <span class="shrink-0 whitespace-nowrap tabular-nums">
+    <span class="self-end whitespace-nowrap tabular-nums">
         {% include "learner_interface/partials/deadline_labels.html#tier-date" with date_format="short" %}
         {% include "learner_interface/partials/deadline_labels.html#closes-line" with date_format="short" %}
     </span>
