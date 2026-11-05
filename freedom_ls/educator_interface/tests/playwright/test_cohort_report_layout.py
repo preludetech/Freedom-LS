@@ -8,6 +8,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.files.base import ContentFile
 
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -21,6 +22,8 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.factories import GeneratedReportFactory
+from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tests.helpers import quiz_form
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -100,3 +103,39 @@ def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
     )
     assert page.evaluate("document.activeElement === document.body") is False
     assert card.evaluate("(card) => card.contains(document.activeElement)") is True
+
+
+def test_report_tab_with_generated_reports_does_not_scroll_the_page_sideways(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The Downloads table used to be wider than a phone's card, cutting off
+    the Download buttons and widening the whole page."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    educator_user.email = (
+        "a.very.long.educator.address.for.the.report@example-school.org"
+    )
+    educator_user.save()
+    for _ in range(2):
+        report = GeneratedReportFactory(
+            cohort=cohort,
+            status=GeneratedReport.STATUS_READY,
+            requested_by=educator_user,
+        )
+        report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    report_url = interface_url(
+        live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/report"
+    )
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(report_url)
+        expect(
+            page.get_by_role("link", name=re.compile("^Download")).first
+        ).to_be_visible()
+        assert_no_horizontal_overflow(page)

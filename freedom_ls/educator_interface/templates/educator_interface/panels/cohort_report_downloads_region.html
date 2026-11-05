@@ -20,6 +20,7 @@ generated before the cohort grew is still offered.
         <p id="{{ region_id }}-limit" class="text-sm text-muted">{{ over_limit_message }}</p>
     {% endif %}
     {% if rows %}
+        <div class="relative overflow-x-auto">
         <table class="text-sm">
             <caption class="sr-only">Generated reports</caption>
             <thead>
@@ -52,6 +53,7 @@ generated before the cohort grew is still offered.
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     {% elif not over_limit_message %}
         <p class="text-sm text-muted">No reports yet.</p>
     {% endif %}
