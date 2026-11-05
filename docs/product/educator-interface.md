@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-06_
 
 ## Summary
 
@@ -73,11 +73,11 @@ Organisation admins and site admins add a learner by email, with an optional nam
 
 ### Importing learners
 
-![Import preview with a count for each row label, and the table of rows below](screenshots/educator_learner_import_preview.png)
+![Import preview with a count for each row label, the error rows and their reasons, and the table of rows below](screenshots/educator_learner_import_preview.png)
 
 Organisation admins and site admins import larger lists from a CSV file, from the Learners list or into one cohort from its Learners tab, in three steps: upload, preview, result. A downloadable template shows the columns: `email` (required), `first_name`, `last_name` and `cohort`. On a cohort's page everyone goes into that cohort; otherwise `cohort` is matched by name to an existing active cohort. Cohorts are never created from a file, and people are treated as in the Add learner dialog.
 
-The preview labels every row (new account, joined, reactivated, added to cohort, already a member, or error) with counts, before anything is written. Rows with errors can be downloaded as a CSV and do not stop the valid rows. A file is rejected whole if it is over 1 MB or has more rows than `LEARNER_IMPORT_MAX_ROWS` (default 2000). Imports over `BULK_BACKGROUND_THRESHOLD` rows (default 250) continue in the background with a result page that shows progress; no notification is sent when an import finishes. Background runs need the worker process described in [deployment](./deployment.md#background-tasks). Cohort admins cannot import, and an import cannot update an existing person's details.
+The preview labels every row (new account, joined, reactivated, added to cohort, already a member, or error) with counts, before anything is written. Rows with errors are listed with their line and reason on the preview and the result page, can be downloaded as a CSV, and do not stop the valid rows. A file is rejected whole if it is over 1 MB or has more rows than `LEARNER_IMPORT_MAX_ROWS` (default 2000). Imports over `BULK_BACKGROUND_THRESHOLD` rows (default 250) continue in the background with a result page that shows progress; no notification is sent when an import finishes. Background runs need the worker process described in [deployment](./deployment.md#background-tasks). Cohort admins cannot import, and an import cannot update an existing person's details.
 
 ### Bulk actions
 
