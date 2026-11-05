@@ -140,8 +140,8 @@ Manifestations: test 4 mobile, test 7 mobile.
 - B1: **FIXED** (commit: 664b2848a) — Buttons on the import pages are under 44px tall below md. Re-verified at 375: every button on upload, preview, nothing-to-add preview and result is 44px; desktop sizes unchanged.
 - B2: **FIXED** (commit: 36ec47aaa) — Error tile count is not red. Re-verified: count and icon are rgb(232, 85, 61); other tiles unchanged ([screenshot](screenshots/page-b2-reverify.png)).
 - B3: **FIXED** (commit: 4f3062a7c) — File format description squeezed beside Download template at phone width. Re-verified: at 375 the description is 309px of a 341px header with the button below it; at 768 and 1920 the button stays top-right ([375](screenshots/page-b3-reverify-375.png), [768](screenshots/page-b3-reverify-768.png)).
-- B4: **UNRESOLVED** — Preview confirm card has an extra gap above its first line (reason: fix budget exhausted this run)
-- B5: **UNRESOLVED** — Error-block row cards label Line/Reason in primary blue (reason: fix budget exhausted this run)
+- B4: **FIXED** (commit: 888f95b93) — Preview confirm card has an extra gap above its first line. Re-verified: the gap above the card's first line now equals the gap below its button at every QA viewport (was 33px vs 17px at 375, 40 vs 24 at desktop).
+- B5: **FIXED** (commit: c48fa737a) — Error-block row cards label Line/Reason in primary blue. Re-verified at 375: the error-block card labels are rgb(74, 85, 104), the same muted colour as the Rows cards' labels (was rgb(43, 108, 176)).
 
 ## General notes
 
@@ -156,4 +156,4 @@ Manifestations: test 4 mobile, test 7 mobile.
 - Full test run after the QA fixes: 11542 passed; 21 setup errors in `freedom_ls/educator_interface/tests/invariants/test_permission_matrix.py` came from a second pytest run (left over from a fixer) holding the same xdist test database. Re-run alone once that run ended, the file passed (501 passed). No test assertion failed.
 - Downloaded CSVs (template, error rows) were checked in the browser and kept out of the screenshots directory.
 
-status: ok · reason: 5 bugs — 3 fixed, 2 unresolved; report rendered, screenshots verified
+status: ok · reason: 5 bugs — 5 fixed; report rendered, screenshots verified
