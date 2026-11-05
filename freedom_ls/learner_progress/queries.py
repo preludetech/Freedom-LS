@@ -155,9 +155,10 @@ def course_progress_for(user: User, course: Course) -> CourseProgress | None:
     through here; filtering CourseProgress by hand is a defect.
 
     The educator matrix (starts from a Learner and a CohortCourseRegistration
-    already), reports (starts from a cohort roster) and
-    recalculate_progress_percentages (iterates records directly) are the
-    three read paths that legitimately do not go through this.
+    already), reports (starts from a cohort roster),
+    recalculate_progress_percentages (iterates records directly) and the
+    course progress API endpoint (lists every record of the key's site) are
+    the four read paths that legitimately do not go through this.
     """
     resolved = learner_for_course(user, course)
     if resolved is None:
