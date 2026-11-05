@@ -26,6 +26,14 @@ pytestmark = pytest.mark.django_db
 LIST_URL_NAME = "api:course_application_list"
 DETAIL_URL_NAME = "api:course_application_detail"
 
+ENDPOINT_URLS = [
+    pytest.param(lambda application: reverse(LIST_URL_NAME), id="list"),
+    pytest.param(
+        lambda application: reverse(DETAIL_URL_NAME, args=[application.pk]),
+        id="detail",
+    ),
+]
+
 EXPECTED_FIELDS = [
     "id",
     "applicant_email",
@@ -63,16 +71,15 @@ def test_no_key_is_401_with_the_bearer_challenge(client, mock_site_context):
     assert response["WWW-Authenticate"] == 'Bearer realm="api"'
 
 
-@pytest.mark.parametrize("url_name", [LIST_URL_NAME, DETAIL_URL_NAME])
+@pytest.mark.parametrize("endpoint_url", ENDPOINT_URLS)
 def test_a_key_without_the_scope_is_403_naming_the_scope(
-    client, mock_site_context, url_name
+    client, mock_site_context, endpoint_url
 ):
     application = CourseApplicationFactory()
     key = ApiKeyFactory(scopes=[ApiScope.USERS])
-    args = [application.pk] if url_name == DETAIL_URL_NAME else []
 
     response = client.get(
-        reverse(url_name, args=args),
+        endpoint_url(application),
         headers={"Authorization": f"Bearer {key.issued_key}"},
     )
 
@@ -82,12 +89,11 @@ def test_a_key_without_the_scope_is_403_naming_the_scope(
     )
 
 
-@pytest.mark.parametrize("url_name", [LIST_URL_NAME, DETAIL_URL_NAME])
-def test_a_key_with_the_scope_is_200(client, auth, url_name):
+@pytest.mark.parametrize("endpoint_url", ENDPOINT_URLS)
+def test_a_key_with_the_scope_is_200(client, auth, endpoint_url):
     application = CourseApplicationFactory()
-    args = [application.pk] if url_name == DETAIL_URL_NAME else []
 
-    response = client.get(reverse(url_name, args=args), headers=auth)
+    response = client.get(endpoint_url(application), headers=auth)
 
     assert response.status_code == 200
 
