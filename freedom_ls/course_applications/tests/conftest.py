@@ -2,9 +2,9 @@
 
 import pytest
 
-from freedom_ls.api.factories import ApiKeyFactory
-from freedom_ls.api.scopes import ApiScope
-from freedom_ls.tests.app_guards import ignore_tests_unless_installed
+from django.contrib.sites.models import Site
+
+from freedom_ls.tests.app_guards import app_not_installed, ignore_tests_unless_installed
 
 collect_ignore_glob = ignore_tests_unless_installed("freedom_ls.course_applications")
 
@@ -16,10 +16,15 @@ def _terms_not_required_by_default(settings) -> None:
 
 
 @pytest.fixture
-def api_key(mock_site_context):
-    return ApiKeyFactory(scopes=[ApiScope.COURSE_APPLICATIONS])
+def auth(mock_site_context: Site) -> dict[str, str]:
+    """Bearer headers for a key scoped to course applications.
 
+    The imports are inside the body: the API app is optional, and importing
+    its models at conftest load would take every test in this app down with it.
+    """
+    if app_not_installed("freedom_ls.api"):
+        pytest.skip("freedom_ls.api not installed")
+    from freedom_ls.api.scopes import ApiScope
+    from freedom_ls.api.tests.helpers import bearer_auth_for
 
-@pytest.fixture
-def auth(api_key) -> dict[str, str]:
-    return {"Authorization": f"Bearer {api_key.issued_key}"}
+    return bearer_auth_for(ApiScope.COURSE_APPLICATIONS)

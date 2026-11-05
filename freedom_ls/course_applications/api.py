@@ -87,7 +87,7 @@ def answers_prefetch() -> Prefetch:
     """
     options = Prefetch("selected_options", queryset=QuestionOption._base_manager.all())
     answers = (
-        QuestionAnswer._base_manager.select_related("question__form_page")
+        QuestionAnswer._base_manager.select_related("question")
         .prefetch_related(options, "answer_file")
         .order_by("question__form_page__order", "question__order", "question_id")
     )

@@ -15,9 +15,8 @@ from rest_framework.test import APIClient
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api.tests.helpers import collect_pages
+from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -41,13 +40,8 @@ EXPECTED_FIELDS = {
 
 
 @pytest.fixture
-def api_key(mock_site_context):
-    return ApiKeyFactory()
-
-
-@pytest.fixture
-def auth(api_key) -> dict[str, str]:
-    return {"Authorization": f"Bearer {api_key.issued_key}"}
+def auth(mock_site_context) -> dict[str, str]:
+    return bearer_auth_for(ApiScope.USERS)
 
 
 @pytest.fixture
@@ -55,7 +49,7 @@ def client() -> APIClient:
     return APIClient()
 
 
-def test_a_valid_key_lists_exactly_the_serialized_fields(client, auth, api_key):
+def test_a_valid_key_lists_exactly_the_serialized_fields(client, auth):
     UserFactory(email="ada@example.com")
 
     body = client.get(reverse(LIST_URL_NAME), headers=auth).json()
@@ -118,10 +112,8 @@ def test_pages_are_followed_to_the_end(client, auth, settings):
 def test_a_key_without_the_users_scope_is_403_naming_the_scope(
     client, mock_site_context
 ):
-    key = ApiKeyFactory(scopes=[ApiScope.REFERRAL_DATA])
-
     response = client.get(
-        reverse(LIST_URL_NAME), headers={"Authorization": f"Bearer {key.issued_key}"}
+        reverse(LIST_URL_NAME), headers=bearer_auth_for(ApiScope.REFERRAL_DATA)
     )
 
     assert response.status_code == 403
@@ -246,10 +238,13 @@ def test_a_page_of_twenty_users_stays_under_a_query_bound(
 
 
 def test_users_sharing_one_updated_at_come_back_once_each_across_pages(
-    client, auth, api_key
+    client, auth, mock_site_context
 ):
     User.objects.bulk_create(
-        [User(email=f"bulk{n}@example.com", site=api_key.site) for n in range(1500)]
+        [
+            User(email=f"bulk{n}@example.com", site=mock_site_context)
+            for n in range(1500)
+        ]
     )
     User._base_manager.update(updated_at=datetime(2030, 1, 1, tzinfo=UTC))
 

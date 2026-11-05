@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import pytest
 
 from django.contrib.messages import get_messages
+from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import QueryDict
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
@@ -14,6 +18,7 @@ from freedom_ls.accounts.factories import (
     EmailAddressFactory,
     UserFactory,
 )
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
@@ -49,7 +54,7 @@ from .helpers import (
 pytestmark = pytest.mark.django_db
 
 
-def _start_anonymous_draft(client, email: str) -> CourseApplication:
+def _start_anonymous_draft(client: Client, email: str) -> CourseApplication:
     course, _form = gated_course_with_form()
     client.post(
         reverse(
@@ -148,12 +153,12 @@ def test_signing_in_over_a_held_submission_says_that_application_was_kept(
     ]
 
 
-def _sign_in(client, user) -> None:
+def _sign_in(client: Client, user: User) -> None:
     """Sign in through the login form, the only path with a messages storage."""
     client.post(reverse("account_login"), {"login": user.email, "password": user.email})
 
 
-def _application_messages(client) -> list[str]:
+def _application_messages(client: Client) -> list[str]:
     """The pending messages about applications, leaving out the sign-in one."""
     return [
         str(m)
@@ -388,7 +393,7 @@ def test_signing_in_with_a_held_draft_and_a_submitted_session_application_says_s
 
 
 @pytest.fixture
-def draft(client, mock_site_context) -> CourseApplication:
+def draft(client: Client, mock_site_context: Site) -> CourseApplication:
     """An anonymous applicant's draft, started through the real apply flow."""
     return _start_anonymous_draft(client, "ada@example.com")
 
@@ -405,7 +410,9 @@ def _sitting(application: CourseApplication) -> FormProgress:
     return application.form_progress
 
 
-def _answer(application: CourseApplication, question: FormQuestion, *values: str):
+def _answer(
+    application: CourseApplication, question: FormQuestion, *values: str
+) -> None:
     """Save `values` as the answer to `question` the way a page submission does."""
     post_data = QueryDict(mutable=True)
     post_data.setlist(f"question_{question.id}", list(values))
@@ -422,16 +429,25 @@ def _file_url(name: str, application: CourseApplication) -> str:
     )
 
 
-def _upload(client, application: CourseApplication) -> None:
+def _upload(client: Client, application: CourseApplication) -> None:
     client.post(
         _file_url("question_file_upload", application),
         {"file": SimpleUploadedFile("id-scan.png", png_bytes())},
     )
 
 
-def _updated_at(application: CourseApplication):
+def _updated_at(application: CourseApplication) -> datetime:
     application.refresh_from_db()
     return application.updated_at
+
+
+def _ids_updated_after(auth: dict[str, str], before: datetime) -> list[str]:
+    """The ids an `updated_since` poll lists for changes strictly after `before`.
+
+    `updated_since` is inclusive, so polling from `before` itself would list
+    the row even when nothing moved it.
+    """
+    return application_ids_updated_since(auth, before + timedelta(microseconds=1))
 
 
 def test_completing_the_sitting_moves_updated_at(draft):
@@ -449,7 +465,7 @@ def test_completing_the_sitting_puts_the_application_in_an_updated_since_poll(
 
     draft.form_progress.complete()
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_saving_a_text_answer_moves_updated_at(draft):
@@ -467,7 +483,7 @@ def test_saving_a_text_answer_puts_the_application_in_an_updated_since_poll(
 
     _answer(draft, _question(draft, "short_text"), "Ada")
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_saving_an_option_answer_moves_updated_at(draft):
@@ -489,7 +505,7 @@ def test_saving_an_option_answer_puts_the_application_in_an_updated_since_poll(
 
     _answer(draft, question, str(option.pk))
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_clearing_an_answer_moves_updated_at(draft):
@@ -509,7 +525,7 @@ def test_clearing_an_answer_puts_the_application_in_an_updated_since_poll(draft,
 
     _answer(draft, question, "")
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_uploading_a_file_moves_updated_at(client, draft):
@@ -527,7 +543,7 @@ def test_uploading_a_file_puts_the_application_in_an_updated_since_poll(
 
     _upload(client, draft)
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_replacing_a_file_moves_updated_at(client, draft):
@@ -547,7 +563,7 @@ def test_replacing_a_file_puts_the_application_in_an_updated_since_poll(
 
     _upload(client, draft)
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_removing_a_file_moves_updated_at(client, draft):
@@ -567,7 +583,7 @@ def test_removing_a_file_puts_the_application_in_an_updated_since_poll(
 
     client.post(_file_url("question_file_remove", draft))
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_changing_the_applicants_email_moves_updated_at(draft):
@@ -585,7 +601,7 @@ def test_changing_the_applicants_email_puts_the_application_in_an_updated_since_
 
     update_applicant_email(draft.anonymous_applicant, "grace@example.com")
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_attaching_to_a_user_moves_updated_at(draft):
@@ -601,7 +617,7 @@ def test_attaching_to_a_user_puts_the_application_in_an_updated_since_poll(draft
 
     attach_to_user(draft, draft.anonymous_applicant, UserFactory())
 
-    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+    assert _ids_updated_after(auth, before) == [str(draft.pk)]
 
 
 def test_stamping_the_claim_email_as_sent_leaves_updated_at_alone(draft):
@@ -615,7 +631,7 @@ def test_stamping_the_claim_email_as_sent_leaves_updated_at_alone(draft):
 
 
 @pytest.fixture
-def user_application(mock_site_context) -> CourseApplication:
+def user_application(mock_site_context: Site) -> CourseApplication:
     application: CourseApplication = CourseApplicationFactory(
         user=UserFactory(first_name="Ada")
     )
@@ -641,7 +657,7 @@ def test_changing_the_users_name_puts_the_application_in_an_updated_since_poll(
 
     user.save()
 
-    assert application_ids_updated_since(auth, before) == [str(user_application.pk)]
+    assert _ids_updated_after(auth, before) == [str(user_application.pk)]
 
 
 def test_changing_the_users_email_moves_updated_at(user_application):
@@ -663,7 +679,7 @@ def test_changing_the_users_email_puts_the_application_in_an_updated_since_poll(
 
     user.save(update_fields=["email"])
 
-    assert application_ids_updated_since(auth, before) == [str(user_application.pk)]
+    assert _ids_updated_after(auth, before) == [str(user_application.pk)]
 
 
 def test_signing_in_leaves_updated_at_alone(user_application):
@@ -672,5 +688,15 @@ def test_signing_in_leaves_updated_at_alone(user_application):
     user.last_login = timezone.now()
 
     user.save(update_fields=["last_login"])
+
+    assert _updated_at(user_application) == before
+
+
+def test_changing_the_users_password_leaves_updated_at_alone(user_application):
+    before = user_application.updated_at
+    user = user_application.user
+    user.set_password("a-new-password")
+
+    user.save(update_fields=["password"])
 
     assert _updated_at(user_application) == before

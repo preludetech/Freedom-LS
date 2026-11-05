@@ -15,9 +15,13 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.api.factories import ApiKeyFactory
+from freedom_ls.tests.app_guards import app_not_installed
+
+if app_not_installed("freedom_ls.api"):
+    pytest.skip("freedom_ls.api not installed", allow_module_level=True)
+
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api.tests.helpers import collect_pages
+from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages
 from freedom_ls.course_applications.api import (
     CourseApplicationApiSerializer,
     CourseApplicationApiViewSet,
@@ -84,11 +88,8 @@ def test_a_key_without_the_scope_is_403_naming_the_scope(
     client, mock_site_context, endpoint_url
 ):
     application = CourseApplicationFactory()
-    key = ApiKeyFactory(scopes=[ApiScope.USERS])
-
     response = client.get(
-        endpoint_url(application),
-        headers={"Authorization": f"Bearer {key.issued_key}"},
+        endpoint_url(application), headers=bearer_auth_for(ApiScope.USERS)
     )
 
     assert response.status_code == 403

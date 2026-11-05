@@ -24,7 +24,8 @@ this lands; review which keys hold it.
 
 `CourseApplication.updated_at` now also moves when the application's form sitting, its answers,
 an answer's uploaded file, its anonymous applicant or its user changes (receivers in
-`freedom_ls/course_applications/receivers.py`). A `User` save of `last_login` alone, and an
+`freedom_ls/course_applications/receivers.py`). A `User` save that touches none of `email`,
+`first_name` or `last_name` (`last_login` on sign-in, a password change), and an
 `AnonymousApplicant` save of only `claim_email_sent_at`/`updated_at`, do not move it. Downstream
 code or reports that treated `CourseApplication.updated_at` as "the application row itself was
 edited" will see it move more often.

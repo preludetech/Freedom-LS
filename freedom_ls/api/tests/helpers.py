@@ -7,8 +7,19 @@ from rest_framework.request import Request
 from rest_framework.test import APIClient, APIRequestFactory
 
 from freedom_ls.api import urls
+from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.pagination import ApiKeysetPagination
+from freedom_ls.api.scopes import ApiScope
 from freedom_ls.site_aware_models.models import TimestampedModel
+
+
+def bearer_auth_for(*scopes: ApiScope) -> dict[str, str]:
+    """Authorization headers for a freshly issued key holding `scopes`.
+
+    Needs the ambient site that `mock_site_context` sets.
+    """
+    key = ApiKeyFactory(scopes=list(scopes))
+    return {"Authorization": f"Bearer {key.issued_key}"}
 
 
 def api_route_names() -> list[str]:
