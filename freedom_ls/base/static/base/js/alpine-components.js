@@ -790,6 +790,7 @@ document.addEventListener("alpine:init", () => {
             // when it is not the viewer's current year. A deadline with a set time
             // (data-timed) adds it; one given as a date alone shows no time.
             const now = new Date();
+<<<<<<< HEAD
             const date = parts({ day: "numeric", month: "short", year: "numeric" });
             let text = `${date.day} ${date.month}`;
             if (instant.getFullYear() !== now.getFullYear()) text += ` ${date.year}`;
@@ -859,6 +860,17 @@ document.addEventListener("alpine:init", () => {
             return this.dragging
                 ? "border-solid border-primary bg-surface"
                 : "border-dashed border-border bg-surface-2";
+=======
+            const dateOptions = { day: "numeric", month: "short" };
+            if (instant.getFullYear() !== now.getFullYear()) dateOptions.year = "numeric";
+            let text = instant.toDateString() === now.toDateString() ? "Today" : format(dateOptions);
+            if (this.$el.dataset.timed === "true") {
+                const timeOptions = { hour: "2-digit", minute: "2-digit" };
+                if (showZone) timeOptions.timeZoneName = "short";
+                text += `, ${format(timeOptions)}`;
+            }
+            this.$el.textContent = text;
+>>>>>>> 211368007 (design_learner-interface-deadlines: fix the PR 229 review findings)
         },
     }));
 });

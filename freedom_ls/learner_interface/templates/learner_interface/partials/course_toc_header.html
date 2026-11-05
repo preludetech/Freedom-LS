@@ -26,7 +26,8 @@ it is absent for a course with no deadline, a completed course or ended access.
                 <p class="text-xs font-semibold uppercase tracking-wide">{% include "learner_interface/partials/deadline_labels.html#next-deadline-eyebrow" %}</p>
                 <p class="font-semibold text-on-surface truncate">{{ child.title }}</p>
                 <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                    {% include "learner_interface/partials/deadline_labels.html#tier-chip" %}
+                    {% comment %}The eyebrow already names the tier, so the chip adds no sr-only word.{% endcomment %}
+                    {% include "learner_interface/partials/deadline_labels.html#tier-chip" with tier_named=True %}
                     <span>{% include "learner_interface/partials/deadline_labels.html#closes-line" %}</span>
                 </p>
             {% endwith %}

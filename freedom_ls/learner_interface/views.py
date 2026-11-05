@@ -132,6 +132,7 @@ from .utils import (
     get_is_registered,
     get_item_part,
     get_resume_index,
+    next_deadline_card,
     next_entry,
     outstanding_items,
     previous_entry,
@@ -1623,20 +1624,19 @@ def _player_chrome_context(
     )
     if access_ended_outline or course_complete:
         # Neither carries a deadline on the dashboard either.
-        next_deadline_card = None
+        next_deadline = None
     else:
-        line = card_deadline_line(
+        next_deadline = next_deadline_card(
             rows,
             course_index.course_deadlines,
             course_index.deadline_policy,
             course_index.now,
         )
-        next_deadline_card = line.missed or line.next
 
     return {
         "course_index": rows,
         "current_entry": current_entry(rows),
-        "next_deadline_card": next_deadline_card,
+        "next_deadline_card": next_deadline,
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -1852,6 +1852,8 @@ def _render_form_fill_page(
     course_progress: CourseProgress | None,
     form_progress: FormProgress | None,
     submission: PageSubmission,
+    *,
+    course_index: PlayerCourseIndex | None = None,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
 
@@ -1860,6 +1862,8 @@ def _render_form_fill_page(
     the attempt without it. Both callers have already resolved the page, so both
     hand it over rather than paying for it twice — and both record it as reached
     here, so leaving by the dialog moves the resume point just as paging does.
+    ``course_index`` is the outline a caller already built for its gate, so the
+    chrome does not build it again; a caller with no gate leaves it out.
     """
 
     def url_for_page(number: int) -> str:
@@ -1882,7 +1886,12 @@ def _render_form_fill_page(
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(
-            request, course, form, index, course_progress=course_progress
+            request,
+            course,
+            form,
+            index,
+            course_index=course_index,
+            course_progress=course_progress,
         ),
         **answered_counts(form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
@@ -1918,13 +1927,12 @@ def form_fill_page(
     # Gated ahead of the POST branch below, which saves answers and can complete
     # the attempt: a refused page must write nothing at all. Closed forms are
     # refused too, so an attempt cannot be continued past the close instant.
+    player_index = _player_course_index(request.user, course, index, course_progress)
     blocked = _blocked_item_redirect(
         request.user,
         course,
         index,
-        course_index=_player_course_index(
-            request.user, course, index, course_progress
-        ).rows,
+        course_index=player_index.rows,
         refuse_closed=True,
     )
     if blocked is not None:
@@ -1996,6 +2004,7 @@ def form_fill_page(
         course_progress,
         form_progress,
         submission,
+        course_index=player_index,
     )
 
 

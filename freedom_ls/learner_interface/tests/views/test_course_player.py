@@ -4,7 +4,7 @@ import copy
 import io
 import re
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from unittest.mock import patch
 
 import lxml.html
@@ -4749,6 +4749,60 @@ def test_a_row_due_later_today_reads_today_with_no_time(titled_due_course):
 
 
 @pytest.mark.django_db
+@time_machine.travel(TODAY_MOMENT, tick=False)
+def test_a_row_due_today_at_a_set_time_reads_today_and_the_time(titled_due_course):
+    course, topics, _user, client = titled_due_course
+    set_due_date(course, topics[1], due_date=date(2026, 3, 15), due_time=time(9, 0))
+
+    row = _outline_row(_player_html(client, course, 1), "Dated Topic")
+
+    assert _visible_row_text(row).endswith("Today, 09:00 UTC")
+    assert 'data-timed="true"' in lxml.html.tostring(row, encoding="unicode")
+
+
+@pytest.mark.django_db
+def test_an_upcoming_row_names_the_deadline_for_assistive_technology(
+    titled_due_course,
+):
+    course, topics, _user, client = titled_due_course
+    set_due_date(course, topics[1], due_date=date(2999, 1, 1))
+
+    row = _outline_row(_player_html(client, course, 1), "Dated Topic")
+    sr_only = [node.text_content().strip() for node in row.cssselect(".sr-only")]
+
+    assert "Deadline" in sr_only
+    assert "Deadline" not in _visible_row_text(row)
+
+
+@pytest.mark.django_db
+@time_machine.travel(TODAY_MOMENT, tick=False)
+def test_a_row_due_today_names_the_deadline_for_assistive_technology(
+    titled_due_course,
+):
+    course, topics, _user, client = titled_due_course
+    set_due_date(course, topics[1], due_date=date(2026, 3, 15))
+
+    row = _outline_row(_player_html(client, course, 1), "Dated Topic")
+    sr_only = [node.text_content().strip() for node in row.cssselect(".sr-only")]
+
+    assert "Deadline" in sr_only
+
+
+@pytest.mark.django_db
+@time_machine.travel(BEFORE_CLOSE, tick=False)
+def test_a_missed_row_in_its_grace_window_says_when_it_closes(titled_due_course):
+    course, topics, _user, client = titled_due_course
+    set_due_date(course, topics[1], due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(
+        course=course, close_items="on", grace_window=timedelta(days=3)
+    )
+
+    row = _outline_row(_player_html(client, course, 1), "Dated Topic")
+
+    assert _visible_row_text(row).endswith("1 Jan Closes 4 Jan.")
+
+
+@pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
 def test_a_closed_row_shows_a_closed_chip_and_its_close_date_in_its_own_li(
     titled_due_course,
@@ -4910,6 +4964,23 @@ def test_next_deadline_card_reads_closed_for_a_closed_item(closing_topic_course)
     assert card.startswith("Closed")
     assert str(first.title) in card
     assert "4 Jan 2020" in card
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_next_deadline_card_names_a_missed_deadline_once_for_assistive_technology(
+    due_course,
+):
+    """The eyebrow says it, so the chip adds no sr-only copy of the word."""
+    course, _first, second, _user, client = due_course
+    set_due_date(course, second, due_date=date(2020, 1, 1))
+
+    card = lxml.html.fromstring(_player_html(client, course)).cssselect(
+        '[data-testid="next-deadline-card"]'
+    )[0]
+
+    assert card.text_content().count("Missed deadline") == 1
+    assert not card.cssselect(".sr-only")
 
 
 @pytest.mark.django_db
