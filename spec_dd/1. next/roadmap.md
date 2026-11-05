@@ -653,7 +653,6 @@ with a read-only REST API that automated Python scripts call with a site-bound, 
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 3 | `apis-for-lead-monitoring-3-referral-data` | Scripts read referral codes, referral code hits, signup attributions (no IP, user agent or cookie ids) and first-touch counts under the `referral_data` scope. | `apis-for-lead-monitoring-1-foundation-and-users` | in progress |
 | 4 | `apis-for-lead-monitoring-4-registrations-and-interest` | Scripts read individual and cohort course registrations and course interest under the `registrations_and_progress` scope. | `apis-for-lead-monitoring-1-foundation-and-users` | in progress |
 | 5 | `apis-for-lead-monitoring-5-course-progress` | Scripts read course-level progress per learner per course registration under the `registrations_and_progress` scope. | `apis-for-lead-monitoring-1-foundation-and-users` | in progress |
 | 6 | `apis-for-lead-monitoring-6-conversions` | Scripts read attribution touches and conversions, once `referral-attribution-over-time` adds them, under the `referral_data` scope. | `apis-for-lead-monitoring-3-referral-data`, `referral-attribution-over-time` | next |
