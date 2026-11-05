@@ -1,15 +1,17 @@
 {% comment %}
-One Audit log entry as a card below md: who and when on the first line, then
-what happened. A table whose rows can be about different objects uses
-audit_log_card_targeted.html, which adds the target after the label. The
-description, reason and run entries sit in the disclosure the table card adds.
+One Audit log entry as a card below md: what happened on the first line, then
+each value labelled with its column header, since the table headings aren't
+on screen to say who did it, when, and to what. A table whose rows can be
+about different objects uses audit_log_card_targeted.html, which adds the
+Target. The labels share audit_row_detail.html's style and label width, so
+the description, reason and run entries the card opens line up beneath them.
 Every value is user-derived text, so nothing here is marked safe.
 {% endcomment %}
-<div class="flex items-center justify-between gap-3 text-sm">
-    <div class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</div>
-    <div class="shrink-0 text-muted">{% include "panel_framework/partials/datetime.html" with value=object.created_at %}</div>
-</div>
-<div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-    <span class="font-bold break-words">{{ object.label }}</span>
+<p class="font-bold break-words">{{ object.label }}</p>
+<dl class="mt-1 grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-sm">
+    <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">When</dt>
+    <dd class="min-w-0">{% include "panel_framework/partials/datetime.html" with value=object.created_at %}</dd>
+    <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Who</dt>
+    <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</dd>
     {% block card_target %}{% endblock %}
-</div>
+</dl>

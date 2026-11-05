@@ -96,14 +96,26 @@
         @apply px-4 py-3 text-sm text-on-surface
     }
 
-    /* A [data-row-detail] row is the expandable panel under a data row and
-       borrows that row's borders, so it takes no border or hover of its own. */
+    /* A [data-row-detail] row is the expandable panel under a data row. The
+       two are one unit: while the detail is open the rule moves from under
+       the data row to under the detail, and hovering either lights both. */
     tbody tr:not([data-row-detail]) {
         @apply border-b border-border hover:bg-surface-2
     }
 
-    tbody tr:not([data-row-detail]):last-child {
+    tbody tr:not([data-row-detail]):last-child,
+    tbody tr:has(+ tr[data-row-detail]:not([hidden])) {
         @apply border-b-0
+    }
+
+    tbody tr[data-row-detail]:not([hidden]):not(:last-child) {
+        @apply border-b border-border
+    }
+
+    tbody tr[data-row-detail]:hover,
+    tbody tr:hover + tr[data-row-detail],
+    tbody tr:has(+ tr[data-row-detail]:not([hidden]):hover) {
+        @apply bg-surface-2
     }
 
     /* Form elements */

@@ -262,8 +262,9 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     page.set_viewport_size({"width": 375, "height": 800})
     page.goto(interface_url(live_server, organisation.slug, "audit-log"))
     card = main.locator("li").filter(has_text="Learner deactivated")
-    card.locator("summary").click()
-    expect(card.locator("details")).to_have_attribute("open", "")
+    card_toggle = card.get_by_role("button", name="More about", exact=False)
+    card_toggle.click()
+    expect(card_toggle).to_have_attribute("aria-expanded", "true")
     expect(card.get_by_text(reason)).to_be_visible()
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

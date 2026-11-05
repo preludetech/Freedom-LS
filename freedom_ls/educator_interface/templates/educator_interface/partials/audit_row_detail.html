@@ -3,7 +3,7 @@ What a compact audit row leaves out: the full description, the reason, and
 for a bulk run summary its entries. Every value is user-derived text, so
 nothing here is marked safe.
 {% endcomment %}
-<dl class="grid gap-x-6 gap-y-2 py-2 text-sm md:grid-cols-[auto_minmax(0,1fr)]">
+<dl class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
     {% if object.description %}
         <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Description</dt>
         <dd class="wrap-anywhere">{{ object.description }}</dd>
@@ -15,7 +15,7 @@ nothing here is marked safe.
     {% if object.run_entries %}
         <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Entries</dt>
         <dd>
-            <ul class="space-y-1">
+            <ul class="ml-0 list-none space-y-1">
                 {% for entry in object.run_entries %}
                     <li class="flex flex-wrap items-center gap-2">
                         {% include "educator_interface/partials/audit_person.html" with label=entry.actor_label user_pk=entry.actor_id %}

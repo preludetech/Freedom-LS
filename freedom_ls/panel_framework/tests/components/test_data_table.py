@@ -1,5 +1,5 @@
 """Render tests for the data table region's row detail: the toggle column,
-the hidden detail rows, the spanning cells and the phone disclosure."""
+the hidden detail rows, the spanning cells and the card toggle."""
 
 from __future__ import annotations
 
@@ -50,13 +50,13 @@ def _render(panel_class: type[DataTablePanel]) -> lxml.html.HtmlElement:
     return lxml.html.fromstring(html)
 
 
-def test_the_header_ends_with_a_more_column(mock_site_context: Site) -> None:
+def test_the_header_opens_with_a_details_column(mock_site_context: Site) -> None:
     make_stub(name="row-a", kind="a")
 
     document = _render(StubDetailTablePanel)
 
     headers = document.cssselect("thead th")
-    assert headers[-1].text_content().strip() == "More"
+    assert headers[0].text_content().strip() == "Details"
 
 
 def test_a_row_with_a_detail_has_a_toggle_naming_its_hidden_detail_row(
@@ -67,7 +67,7 @@ def test_a_row_with_a_detail_has_a_toggle_naming_its_hidden_detail_row(
     document = _render(StubDetailTablePanel)
 
     (data_row,) = document.cssselect("tbody tr:not([data-row-detail])")
-    button = data_row.cssselect("td:last-child button")[0]
+    button = data_row.cssselect("td:first-child button")[0]
     detail_row = data_row.getnext()
     assert button.get("aria-expanded") == "false"
     assert detail_row.get("data-row-detail") is not None
@@ -89,7 +89,7 @@ def test_detail_rows_have_unique_ids(mock_site_context: Site) -> None:
     assert len(set(ids)) == 2
 
 
-def test_a_detail_row_spans_the_columns_plus_the_toggle(
+def test_a_detail_row_leaves_the_toggle_cell_empty_and_spans_the_rest(
     mock_site_context: Site,
 ) -> None:
     make_stub(name="row-a", kind="a")
@@ -97,8 +97,10 @@ def test_a_detail_row_spans_the_columns_plus_the_toggle(
     document = _render(StubDetailTablePanel)
 
     columns = len(document.cssselect("thead th"))
-    (cell,) = document.cssselect("tr[data-row-detail] td")
-    assert cell.get("colspan") == str(columns)
+    toggle_cell, content_cell = document.cssselect("tr[data-row-detail] td")
+    assert toggle_cell.text_content().strip() == ""
+    assert content_cell.get("colspan") == str(columns - 1)
+    assert content_cell.cssselect("[data-test-detail]")
 
 
 def test_a_detail_row_spans_the_selection_column_too(
@@ -109,8 +111,12 @@ def test_a_detail_row_spans_the_selection_column_too(
     document = _render(_BulkDetailTablePanel)
 
     columns = len(document.cssselect("thead th"))
-    (cell,) = document.cssselect("tr[data-row-detail] td")
-    assert cell.get("colspan") == str(columns)
+    select_cell, toggle_cell, content_cell = document.cssselect(
+        "tr[data-row-detail] td"
+    )
+    assert select_cell.text_content().strip() == ""
+    assert toggle_cell.text_content().strip() == ""
+    assert content_cell.get("colspan") == str(columns - 2)
     assert columns == 3
 
 
@@ -142,12 +148,16 @@ def test_a_row_the_predicate_rejects_has_an_empty_toggle_cell_and_no_detail_row(
     document = _render(StubDetailTablePanel)
 
     (data_row,) = document.cssselect("tbody tr")
-    assert data_row.cssselect("td:last-child")[0].text_content().strip() == ""
+    assert data_row.cssselect("td:first-child")[0].text_content().strip() == ""
     assert data_row.cssselect("button") == []
     assert document.cssselect("tr[data-row-detail]") == []
 
 
-def test_the_card_list_gives_a_row_with_a_detail_a_more_disclosure(
+def _card_toggles(document: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
+    return list(document.cssselect("ul[x-data='rowDetail'] li button[aria-controls]"))
+
+
+def test_a_card_with_a_detail_has_a_toggle_naming_its_hidden_detail(
     mock_site_context: Site,
 ) -> None:
     make_stub(name="row-a", kind="a")
@@ -155,14 +165,30 @@ def test_the_card_list_gives_a_row_with_a_detail_a_more_disclosure(
 
     document = _render(StubDetailTablePanel)
 
-    summaries = document.cssselect("ul details > summary")
-    assert [summary.text_content().strip() for summary in summaries] == ["More"]
-    assert document.cssselect("ul details [data-test-detail]")[0].text_content() == (
+    (button,) = _card_toggles(document)
+    (detail,) = document.cssselect("ul li div[data-row-detail]")
+    assert button.get("aria-expanded") == "false"
+    assert button.get("aria-controls") == detail.get("id")
+    assert detail.get("hidden") is not None
+    assert detail.cssselect("[data-test-detail]")[0].text_content() == (
         "Detail for row-a"
     )
+    assert document.cssselect("ul details") == []
 
 
-def test_a_custom_card_template_still_gets_the_more_disclosure(
+def test_card_detail_ids_differ_from_the_table_detail_ids(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubDetailTablePanel)
+
+    ids = [element.get("id") for element in document.cssselect("[data-row-detail]")]
+    assert len(ids) == 2
+    assert len(set(ids)) == 2
+
+
+def test_a_custom_card_template_still_gets_the_toggle(
     mock_site_context: Site,
 ) -> None:
     make_stub(name="row-a", kind="a")
@@ -170,10 +196,7 @@ def test_a_custom_card_template_still_gets_the_more_disclosure(
     document = _render(_CardDetailTablePanel)
 
     assert document.cssselect("ul .stub-custom-card")
-    assert [
-        summary.text_content().strip()
-        for summary in document.cssselect("ul details > summary")
-    ] == ["More"]
+    assert len(_card_toggles(document)) == 1
 
 
 def test_a_table_without_a_row_detail_renders_no_toggle_or_detail(
@@ -183,11 +206,14 @@ def test_a_table_without_a_row_detail_renders_no_toggle_or_detail(
 
     document = _render(StubBTablePanel)
 
-    assert "More" not in [th.text_content().strip() for th in document.cssselect("th")]
+    assert "Details" not in [
+        th.text_content().strip() for th in document.cssselect("th")
+    ]
     assert document.cssselect("tbody button") == []
     assert document.cssselect("tr[data-row-detail]") == []
-    assert document.cssselect("ul details") == []
+    assert document.cssselect("[data-row-detail]") == []
     assert document.cssselect("table[x-data]") == []
+    assert document.cssselect("ul[x-data]") == []
 
 
 class _PlainExportDataTable(StubPlainDataTable):
