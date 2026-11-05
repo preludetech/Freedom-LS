@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -20,6 +21,7 @@ from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.services import (
     has_inflight_report,
     latest_cohort_reports,
+    recent_cohort_reports,
     report_file_response,
     request_cohort_report,
 )
@@ -201,6 +203,52 @@ class TestLatestCohortReports:
         assert ready.requested_by is not None
         with django_assert_max_num_queries(0):
             assert ready.requested_by.display_name == "Reta Quester"
+
+
+class TestRecentCohortReports:
+    def test_returns_at_most_five_ready_reports_newest_first(self) -> None:
+        cohort = CohortFactory()
+        reports = [
+            GeneratedReportFactory(
+                cohort=cohort,
+                status=GeneratedReport.STATUS_READY,
+                finished_at=datetime(2026, 3, day, 9, 0, tzinfo=UTC),
+            )
+            for day in range(1, 8)
+        ]
+        GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_FAILED)
+        GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_RUNNING)
+        GeneratedReportFactory(status=GeneratedReport.STATUS_READY)
+
+        recent = recent_cohort_reports(cohort)
+
+        assert recent == list(reversed(reports))[:5]
+
+    def test_the_limit_is_a_parameter(self) -> None:
+        cohort = CohortFactory()
+        for day in range(1, 4):
+            GeneratedReportFactory(
+                cohort=cohort,
+                status=GeneratedReport.STATUS_READY,
+                finished_at=datetime(2026, 3, day, 9, 0, tzinfo=UTC),
+            )
+
+        assert len(recent_cohort_reports(cohort, limit=2)) == 2
+
+    def test_one_query_and_the_requester_is_already_loaded(
+        self, django_assert_max_num_queries
+    ) -> None:
+        cohort = CohortFactory()
+        requester = UserFactory(first_name="Reta", last_name="Quester")
+        GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY, requested_by=requester
+        )
+
+        with django_assert_max_num_queries(1):
+            (report,) = recent_cohort_reports(cohort)
+        with django_assert_max_num_queries(0):
+            assert report.requested_by is not None
+            assert report.requested_by.display_name == "Reta Quester"
 
 
 class TestReportFileResponse:

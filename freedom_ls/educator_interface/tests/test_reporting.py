@@ -104,6 +104,25 @@ def _region_id(client: Client, url: str) -> str:
     )
 
 
+def _downloads_panel(
+    client: Client, organisation_slug: str, cohort_pk: object
+) -> lxml.html.HtmlElement:
+    """The whole Downloads card, header included, as the Report tab renders it."""
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation_slug,
+                "path_string": f"cohorts/{cohort_pk}/__tabs/report",
+            },
+        )
+    )
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
+    (panel,) = document.cssselect("section[data-panel='downloads']")
+    return panel
+
+
 def _refresh(client: Client, url: str) -> lxml.html.HtmlElement:
     """The downloads region as an htmx refresh of it returns it."""
     response = client.get(
@@ -208,21 +227,25 @@ class TestReportTab:
         assert not document.cssselect("[data-panel='downloads']")
         assert downloads.status_code == 404
 
-    def test_the_generate_button_disables_itself_and_shows_a_loading_label_while_posting(
+    def test_the_generate_button_sits_in_the_card_header_and_shows_a_loading_label_while_posting(
         self, logged_in_client
     ):
         cohort = CohortFactory()
         client = logged_in_client(_org_admin(cohort.organisation))
 
-        region = _refresh(client, _downloads_url(cohort.organisation.slug, cohort.pk))
+        panel = _downloads_panel(client, cohort.organisation.slug, cohort.pk)
 
-        (form,) = region.cssselect("form[hx-post]")
+        (header,) = panel.cssselect("header")
+        (form,) = header.cssselect("form[hx-post]")
         (button,) = form.cssselect("button[type='submit']")
         assert form.get("hx-disabled-elt") == "find button[type='submit']"
+        assert "btn-sm" in button.get("class").split()
+        assert button.get("disabled") is None
         labels = [" ".join(span.text_content().split()) for span in button]
-        assert labels == ["Generate PDF report", "Generating…"]
+        assert labels == ["Generate report", "Generating…"]
         assert "[.htmx-request_&]:hidden" in button[0].get("class")
         assert "hidden" in button[1].get("class").split()
+        assert "No reports yet." in panel.text_content()
 
     def test_posting_the_action_creates_a_report_and_returns_the_in_flight_region(
         self, logged_in_client
@@ -236,7 +259,7 @@ class TestReportTab:
         region = lxml.html.fromstring(response.content.decode())
         assert response.status_code == 200
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
-        assert "A report is being generated" in region.text_content()
+        assert "Generating…" in region.text_content()
 
     def test_posting_again_while_one_is_in_flight_returns_the_same_region_without_a_second_report(
         self, logged_in_client
@@ -249,7 +272,7 @@ class TestReportTab:
         response = _generate(client, url)
 
         assert response.status_code == 200
-        assert "A report is being generated" in response.content.decode()
+        assert "Generating…" in response.content.decode()
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
 
     def test_an_in_flight_region_polls_every_three_seconds(self, logged_in_client):
@@ -277,10 +300,10 @@ class TestReportTab:
             region = _refresh(client, url)
 
         assert not region.cssselect("[hx-trigger]")
-        assert "This is taking longer than expected." in region.text_content()
-        assert region.cssselect("a[hx-get]")
-        assert "Try again" in region.text_content()
-        assert region.cssselect("form[hx-post]")
+        assert "Taking longer than expected." in region.text_content()
+        (recheck,) = region.cssselect("a[hx-get]")
+        assert recheck.text_content().strip() == "Check again"
+        assert "Try again" not in region.text_content()
 
     def test_generating_after_a_stall_fails_the_stuck_report_and_starts_another(
         self, logged_in_client
@@ -299,7 +322,7 @@ class TestReportTab:
         region = lxml.html.fromstring(response.content.decode())
         assert stalled.status == GeneratedReport.STATUS_FAILED
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 2
-        assert "A report is being generated" in region.text_content()
+        assert "Generating…" in region.text_content()
         assert region.cssselect("[hx-trigger]")
 
     def test_a_ready_region_links_to_the_download_and_does_not_poll(
@@ -313,12 +336,15 @@ class TestReportTab:
             _downloads_url(cohort.organisation.slug, cohort.pk),
         )
 
-        assert region.cssselect(
+        (link,) = region.cssselect(
             f"a[href='{_pdf_url(cohort.organisation.slug, cohort.pk, report.pk)}']"
         )
+        assert "btn-sm" in link.get("class").split()
+        assert link.cssselect("svg[data-icon='download']")
+        assert link.get("hx-boost") == "false"
         assert not region.cssselect("[hx-trigger]")
 
-    def test_a_failed_region_shows_the_reason_and_offers_to_try_again(
+    def test_a_failed_region_shows_the_reason_as_a_row_and_the_header_keeps_generate(
         self, logged_in_client
     ):
         cohort = CohortFactory()
@@ -327,15 +353,56 @@ class TestReportTab:
             status=GeneratedReport.STATUS_FAILED,
             error_message="The cohort is too large to report on.",
         )
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _refresh(client, _downloads_url(cohort.organisation.slug, cohort.pk))
+        panel = _downloads_panel(client, cohort.organisation.slug, cohort.pk)
+
+        assert not region.cssselect("[hx-trigger]")
+        (alert,) = region.cssselect("[role='alert']")
+        assert alert.text_content().strip() == "The cohort is too large to report on."
+        assert "Try again" not in region.text_content()
+        (button,) = panel.cssselect("header button[type='submit']")
+        assert button.get("disabled") is None
+
+    def test_the_downloads_table_lists_the_last_five_ready_reports_newest_first(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        reports = [
+            _ready_report(cohort, finished_at=datetime(2026, 3, day, 9, 0, tzinfo=UTC))
+            for day in range(1, 8)
+        ]
 
         region = _refresh(
             logged_in_client(_org_admin(cohort.organisation)),
             _downloads_url(cohort.organisation.slug, cohort.pk),
         )
 
-        assert not region.cssselect("[hx-trigger]")
-        assert "The cohort is too large to report on." in region.text_content()
-        assert "Try again" in region.text_content()
+        (table,) = region.cssselect("table")
+        assert table.cssselect("caption")[0].text_content() == "Generated reports"
+        dates = [
+            row.cssselect("td")[0].text_content().strip()
+            for row in table.cssselect("tbody tr")
+        ]
+        assert dates == [f"{day} Mar 2026, 09:00" for day in (7, 6, 5, 4, 3)]
+        hrefs = [a.get("href") for a in table.cssselect("tbody a")]
+        assert f"/{reports[-1].pk}/" in hrefs[0]
+
+    def test_an_in_flight_row_sits_above_the_ready_rows(self, logged_in_client):
+        cohort = CohortFactory()
+        _ready_report(cohort)
+        GeneratedReportFactory(cohort=cohort, status=GeneratedReport.STATUS_RUNNING)
+
+        region = _refresh(
+            logged_in_client(_org_admin(cohort.organisation)),
+            _downloads_url(cohort.organisation.slug, cohort.pk),
+        )
+
+        rows = region.cssselect("tbody tr")
+        assert len(rows) == 2
+        assert "Generating…" in rows[0].text_content()
+        assert rows[1].cssselect("a[href]")
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_an_over_limit_cohort_is_told_why_and_offered_no_generate(
@@ -358,6 +425,25 @@ class TestReportTab:
         assert not region.cssselect("form")
         assert not region.cssselect("[role='alert']")
         assert "Try again" not in text
+
+    @override_settings(REPORTS_MAX_LEARNERS=1)
+    def test_an_over_limit_cohorts_generate_button_is_disabled_and_described_by_the_reason(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory(name="Big")
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+
+        panel = _downloads_panel(
+            logged_in_client(_org_admin(cohort.organisation)),
+            cohort.organisation.slug,
+            cohort.pk,
+        )
+
+        (button,) = panel.cssselect("header button[type='submit']")
+        assert button.get("disabled") is not None
+        (reason,) = panel.cssselect(f"#{button.get('aria-describedby')}")
+        assert "over the report's learner limit of 1" in reason.text_content()
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_an_over_limit_cohorts_failed_report_is_not_shown_as_an_error(

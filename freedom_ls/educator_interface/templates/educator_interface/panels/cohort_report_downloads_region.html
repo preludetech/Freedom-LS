@@ -1,40 +1,58 @@
 {% comment %}
-The downloads panel's refresh region. The polling attributes sit on the
-region itself and only while a report is in flight and not stalled, so a
-response for a ready, failed or stalled report carries no hx-trigger and
-polling stops. A stalled report keeps its notice and offers the generate form
-as well: posting it fails the stalled row and starts a fresh report. The
-generate form targets the same region; while its POST is in flight the submit
-button is disabled and shows its loading label, so a click is seen to have
-done something before the in-flight state arrives. A cohort over the learner
-limit gets the reason in place of the form and of any failed row, since a
-retry could only fail the same way; a report generated before it grew is
-still offered.
+The downloads panel's refresh region: the reports as a table, newest first.
+The polling attributes sit on the region itself and only while a report is
+in flight and not stalled, so a response for a ready, failed or stalled
+report carries no hx-trigger and polling stops. Rows: an in-flight report
+("Generating…", or "Check again" once stalled), a failure newer than the
+newest ready report (its reason), then the ready reports, each with a
+Download button. A cohort over the learner limit gets the reason as the
+first line, which the header's disabled Generate button is described by, and
+a failed row for the same reason is not repeated as an error. A report
+generated before the cohort grew is still offered.
 {% endcomment %}
-<div id="{{ region_id }}" class="space-y-4"
+<div id="{{ region_id }}" class="space-y-3"
      {% if in_flight and not is_stalled %}
      hx-get="{{ base_url }}" hx-trigger="every {{ poll_seconds }}s"
      hx-target="#{{ region_id }}" hx-swap="outerHTML"
      role="status" aria-live="polite"
      {% endif %}>
-    {% if in_flight %}
-        <p>A report is being generated, requested by {{ in_flight.requested_by.display_name|default:"the system" }} at {{ in_flight.requested_at|date:"j M Y, H:i" }}.</p>
-        {% if is_stalled %}
-            <p>This is taking longer than expected.</p>
-            <c-button variant="link" size="small" hx-get="{{ base_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" href="{{ page_url }}">Check again</c-button>
-        {% endif %}
+    {% if over_limit_message %}
+        <p id="{{ region_id }}-limit" class="text-sm text-muted">{{ over_limit_message }}</p>
     {% endif %}
-    {% if not in_flight or is_stalled %}
-        {% if ready %}<c-button href="{{ pdf_url }}" hx-boost="false" class="w-full md:w-auto">Download PDF (generated {{ ready.finished_at|date:"j M Y, H:i" }} by {{ ready.requested_by.display_name|default:"the system" }})</c-button>{% endif %}
-        {% if over_limit_message %}
-            <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ over_limit_message }}</p>
-        {% else %}
-            {% if failed %}<p role="alert" class="text-error">{{ failed.error_message }}</p>{% endif %}
-            <form hx-post="{{ row_action_urls.generate_report }}" hx-target="#{{ region_id }}" hx-swap="outerHTML"
-                  hx-disabled-elt="find button[type='submit']">
-                <c-button type="submit" variant="{% if ready %}secondary{% else %}primary{% endif %}" class="w-full md:w-auto"
-                          loading="true" loading_text="Generating…">{% if failed or is_stalled %}Try again{% elif ready %}Generate a new report{% else %}Generate PDF report{% endif %}</c-button>
-            </form>
-        {% endif %}
+    {% if rows %}
+        <table class="text-sm">
+            <caption class="sr-only">Generated reports</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Generated</th>
+                    <th scope="col">By</th>
+                    <th scope="col"><span class="sr-only">Download</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td class="whitespace-nowrap">{% if row.kind == "ready" %}{{ row.report.finished_at|date:"j M Y, H:i" }}{% else %}{{ row.report.requested_at|date:"j M Y, H:i" }}{% endif %}</td>
+                        <td>{{ row.report.requested_by.display_name|default:"the system" }}</td>
+                        <td class="text-right">
+                            {% if row.kind == "ready" %}
+                                <c-button variant="secondary" size="small" icon_left="download" href="{{ row.pdf_url }}" hx-boost="false" aria_label="Download the report generated {{ row.report.finished_at|date:"j M Y, H:i" }}">Download</c-button>
+                            {% elif row.kind == "in_flight" %}
+                                <span class="inline-flex items-center gap-2 text-muted"><c-icon name="loading" class="size-4 animate-spin" /> Generating…</span>
+                            {% elif row.kind == "stalled" %}
+                                <span class="text-muted">Taking longer than expected.</span>
+                                <c-button variant="link" size="small" hx-get="{{ base_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" href="{{ page_url }}">Check again</c-button>
+                            {% elif over_limit_message %}
+                                <span class="text-muted">Not generated</span>
+                            {% else %}
+                                <span role="alert" class="text-error">{{ row.report.error_message }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif not over_limit_message %}
+        <p class="text-sm text-muted">No reports yet.</p>
     {% endif %}
 </div>

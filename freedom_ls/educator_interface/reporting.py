@@ -7,7 +7,7 @@ import statistics
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, QuerySet
@@ -61,6 +61,7 @@ from freedom_ls.reports.screen_cache import (
 from freedom_ls.reports.services import (
     is_stalled,
     latest_cohort_reports,
+    recent_cohort_reports,
     request_cohort_report,
 )
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
@@ -117,11 +118,25 @@ def report_over_limit_message(cohort: Cohort) -> str:
     return over_limit_message(cohort.name, learner_count, limit)
 
 
+#: How many finished reports the Downloads table lists.
+DOWNLOADS_LISTED = 5
+
+
+@dataclasses.dataclass(frozen=True)
+class DownloadRow:
+    """One row of the Downloads table: a report and how it is shown."""
+
+    report: GeneratedReport
+    kind: Literal["ready", "in_flight", "stalled", "failed"]
+    pdf_url: str = ""
+
+
 class GenerateReportAction(PanelAction):
-    label = "Generate PDF report"
+    label = "Generate report"
     action_name = "generate_report"
     capability = DOWNLOAD_COHORT_REPORT
-    # The downloads region draws its own button from row_action_urls.
+    # The downloads panel draws its own button, in the card header, from
+    # row_action_urls.
     renders_in_footer = False
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
@@ -137,9 +152,13 @@ class GenerateReportAction(PanelAction):
 
 
 class CohortReportDownloadsPanel(Panel):
-    """Generate the cohort's PDF report and download the latest one.
+    """Generate the cohort's PDF report and download the recent ones.
 
-    Only for a role holding the download capability: without it the panel has
+    The Generate button sits in the card header, outside the polled region,
+    and is disabled with its reason while the cohort is over the learner
+    limit. The region lists the in-flight report, a failure newer than the
+    newest ready report, and the last few ready reports as a table. Only for
+    a role holding the download capability: without it the panel has
     nothing to offer, so the framework leaves it off the tab.
     """
 
@@ -160,15 +179,25 @@ class CohortReportDownloadsPanel(Panel):
         request = cast("OrganisationScopedRequest", self.request)
         url_kwargs = {**request.panel_url_kwargs, "cohort_pk": str(cohort.pk)}
         state = latest_cohort_reports(cohort)
+        stalled = is_stalled(state.in_flight, timezone.now())
+        rows: list[DownloadRow] = []
+        if state.in_flight is not None:
+            rows.append(
+                DownloadRow(state.in_flight, "stalled" if stalled else "in_flight")
+            )
+        if state.failed is not None:
+            rows.append(DownloadRow(state.failed, "failed"))
+        rows.extend(
+            DownloadRow(report, "ready", _pdf_url(url_kwargs, report))
+            for report in recent_cohort_reports(cohort, DOWNLOADS_LISTED)
+        )
         context = super().get_context_data()
         context.update(
             cohort=cohort,
             page_url=self.ctx.page_url,
             in_flight=state.in_flight,
-            is_stalled=is_stalled(state.in_flight, timezone.now()),
-            ready=state.ready,
-            pdf_url=_pdf_url(url_kwargs, state.ready),
-            failed=state.failed,
+            is_stalled=stalled,
+            rows=rows,
             over_limit_message=report_over_limit_message(cohort),
             poll_seconds=REPORT_POLL_SECONDS,
         )

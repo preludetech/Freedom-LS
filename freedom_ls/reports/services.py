@@ -122,6 +122,18 @@ def report_file_response(report: GeneratedReport) -> FileResponse:
     return response
 
 
+def recent_cohort_reports(cohort: Cohort, limit: int = 5) -> list[GeneratedReport]:
+    """The newest `limit` ready reports for `cohort`, newest first, with the
+    requester loaded. Older files stay on disk; the page lists only these."""
+    return list(
+        GeneratedReport.objects.filter(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        .select_related("requested_by")
+        .order_by("-finished_at", "-requested_at")[:limit]
+    )
+
+
 def latest_cohort_reports(cohort: Cohort) -> CohortReportState:
     """The in-flight report, the newest ready one, and a failure newer than that.
 

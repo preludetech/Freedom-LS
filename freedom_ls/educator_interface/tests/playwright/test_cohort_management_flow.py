@@ -400,8 +400,8 @@ def test_educator_generates_and_downloads_the_cohort_pdf_report(
 
     page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
     page.get_by_role("link", name="Report", exact=True).click()
-    page.get_by_role("button", name="Generate PDF report").click()
+    page.get_by_role("button", name="Generate report").click()
 
     # The immediate task backend renders the PDF inside the POST, so the
     # region that comes back already holds the finished report.
-    expect(page.get_by_role("link", name=re.compile("^Download PDF"))).to_be_visible()
+    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()

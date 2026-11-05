@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -73,7 +75,7 @@ def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """Pressing Enter on "Generate PDF report" swaps the button out. Focus
+    """Pressing Enter on "Generate report" swaps the region under it. Focus
     used to drop to <body>, so a keyboard user had to start again from the
     top of the page."""
     page = educator_logged_in_page
@@ -87,11 +89,11 @@ def test_generating_a_report_by_keyboard_keeps_focus_inside_the_downloads_card(
         )
     )
 
-    generate = page.get_by_role("button", name="Generate PDF report")
+    generate = page.get_by_role("button", name="Generate report")
     generate.focus()
     page.keyboard.press("Enter")
 
-    expect(page.get_by_role("link", name="Download PDF")).to_be_visible()
+    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()
     card = page.locator(
         "section[data-panel=downloads]",
         has=page.get_by_role("heading", name="Downloads"),
