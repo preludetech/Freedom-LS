@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
+from base64 import urlsafe_b64encode
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
@@ -14,11 +16,13 @@ from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import collect_pages
 from freedom_ls.referral_tracking.factories import (
+    FirstTouchCountFactory,
     ReferralCodeFactory,
     ReferralCodeHitFactory,
     SignupAttributionFactory,
 )
 from freedom_ls.referral_tracking.models import (
+    FirstTouchCount,
     ReferralCode,
     ReferralCodeHit,
     SignupAttribution,
@@ -90,6 +94,27 @@ RESOURCES = [
             "signed_up_at",
         },
         id="signup_attributions",
+    ),
+    pytest.param(
+        "api:first_touch_count_list",
+        "api:first_touch_count_detail",
+        FirstTouchCountFactory,
+        "FirstTouchCount",
+        {
+            "id",
+            "day",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "is_overflow",
+            "key_hash",
+            "count",
+        },
+        id="first_touch_counts",
     ),
 ]
 
@@ -542,4 +567,128 @@ def test_the_attributions_next_link_keeps_updated_since_and_page_size(
     ).json()
 
     assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
+    assert "page_size=2" in body["next"]
+
+
+COUNTS_URL_NAME = "api:first_touch_count_list"
+COUNT_DAY = date(2030, 1, 1)
+
+
+def _cursor(payload: object) -> str:
+    return urlsafe_b64encode(json.dumps(payload).encode()).decode()
+
+
+def test_a_count_row_renders_its_day_as_an_iso_date(client, auth):
+    FirstTouchCountFactory(day=COUNT_DAY)
+
+    row = client.get(reverse(COUNTS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["day"] == "2030-01-01"
+
+
+def test_a_count_row_renders_is_overflow_as_a_json_boolean(client, auth):
+    FirstTouchCountFactory(is_overflow=False)
+
+    row = client.get(reverse(COUNTS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["is_overflow"] is False
+
+
+def test_a_count_row_renders_count_as_an_integer(client, auth):
+    FirstTouchCountFactory(count=7)
+
+    row = client.get(reverse(COUNTS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["count"] == 7
+
+
+def test_a_count_row_returns_a_blank_field_as_an_empty_string(client, auth):
+    FirstTouchCountFactory(utm_source="")
+
+    row = client.get(reverse(COUNTS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["utm_source"] == ""
+
+
+def test_1500_counts_on_one_day_page_without_loss_or_repeat(
+    client, auth, settings, mock_site_context
+):
+    settings.API_MAX_PAGE_SIZE = 500
+    rows = FirstTouchCountFactory.build_batch(1500, day=COUNT_DAY)
+    FirstTouchCount._base_manager.bulk_create(rows)
+
+    pages = collect_pages(client, reverse(COUNTS_URL_NAME) + "?page_size=500", auth)
+
+    ids = [row["id"] for page in pages for row in page["results"]]
+    assert len(ids) == 1500
+    assert len(set(ids)) == 1500
+
+
+def test_counts_come_back_in_day_order_across_pages(client, auth, settings):
+    settings.API_PAGE_SIZE = 2
+    latest = FirstTouchCountFactory(day=date(2030, 1, 3))
+    middle = FirstTouchCountFactory(day=date(2030, 1, 2))
+    earliest = FirstTouchCountFactory(day=date(2030, 1, 1))
+
+    pages = collect_pages(client, reverse(COUNTS_URL_NAME), auth)
+
+    assert [[row["id"] for row in page["results"]] for page in pages] == [
+        [str(earliest.pk), str(middle.pk)],
+        [str(latest.pk)],
+    ]
+
+
+@pytest.mark.parametrize(
+    "cursor",
+    [
+        pytest.param(
+            _cursor(
+                ["2030-01-01T00:00:00+00:00", "00000000-0000-0000-0000-000000000000"]
+            ),
+            id="datetime_on_a_date_column",
+        ),
+        pytest.param("a" * 513, id="too_long"),
+    ],
+)
+def test_a_cursor_the_api_did_not_issue_is_400_on_counts(client, auth, cursor):
+    response = client.get(reverse(COUNTS_URL_NAME), {"cursor": cursor}, headers=auth)
+
+    assert response.status_code == 400
+    assert response.json() == {"cursor": ["The cursor is not one this API issued."]}
+
+
+def test_day_since_includes_a_count_on_that_day_and_excludes_an_earlier_one(
+    client, auth
+):
+    on_the_day = FirstTouchCountFactory(day=date(2030, 1, 2))
+    FirstTouchCountFactory(day=COUNT_DAY)
+
+    body = client.get(
+        reverse(COUNTS_URL_NAME), {"day_since": "2030-01-02"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [str(on_the_day.pk)]
+
+
+@pytest.mark.parametrize("value", ["2030-01-02T00:00:00", "not-a-date"])
+def test_a_day_since_that_is_not_a_date_is_400_naming_the_parameter(
+    client, auth, value
+):
+    response = client.get(reverse(COUNTS_URL_NAME), {"day_since": value}, headers=auth)
+
+    assert response.status_code == 400
+    assert "day_since" in response.json()
+
+
+def test_the_counts_next_link_keeps_day_since_and_page_size(client, auth, settings):
+    settings.API_PAGE_SIZE = 2
+    FirstTouchCountFactory.create_batch(3, day=COUNT_DAY)
+
+    body = client.get(
+        reverse(COUNTS_URL_NAME),
+        {"day_since": "2030-01-01", "page_size": 2},
+        headers=auth,
+    ).json()
+
+    assert "day_since=2030-01-01" in body["next"]
     assert "page_size=2" in body["next"]

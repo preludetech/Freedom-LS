@@ -5,15 +5,21 @@ the thread-local request site, and the base viewset's filter_queryset binds
 every lookup to the key's site instead, so no lookup depends on thread state.
 """
 
+import django_filters
+
 from django.db.models import QuerySet
 from rest_framework import serializers
 
-from freedom_ls.api.filters import AwareIsoDateTimeFilter, UpdatedSinceFilterSet
+from freedom_ls.api.filters import (
+    AwareIsoDateTimeFilter,
+    IsoDateFilter,
+    UpdatedSinceFilterSet,
+)
 from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 
-from .models import ReferralCode, ReferralCodeHit, SignupAttribution
+from .models import FirstTouchCount, ReferralCode, ReferralCodeHit, SignupAttribution
 
 
 class ReferralCodeApiSerializer(serializers.ModelSerializer):
@@ -151,4 +157,54 @@ class SignupAttributionApiViewSet(ReadOnlyApiViewSet):
 
 router.register(
     "signup-attributions", SignupAttributionApiViewSet, basename="signup_attribution"
+)
+
+
+class FirstTouchCountApiSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FirstTouchCount
+        fields = (
+            "id",
+            "day",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "is_overflow",
+            "key_hash",
+            "count",
+        )
+        read_only_fields = fields
+
+
+class FirstTouchCountFilterSet(django_filters.FilterSet):
+    # A count changes in place with no timestamp, so the filter is named for
+    # the day it compares against rather than claiming a change signal.
+    day_since = IsoDateFilter(
+        field_name="day",
+        lookup_expr="gte",
+        help_text="Counts whose day is on or after this date, as YYYY-MM-DD.",
+    )
+
+    class Meta:
+        model = FirstTouchCount
+        fields: list[str] = []
+
+
+class FirstTouchCountApiViewSet(ReadOnlyApiViewSet):
+    cursor_field = "day"
+    filterset_class = FirstTouchCountFilterSet
+    required_scope = ApiScope.REFERRAL_DATA
+    serializer_class = FirstTouchCountApiSerializer
+
+    def get_queryset(self) -> QuerySet[FirstTouchCount]:
+        # Base manager: the base viewset binds the site (see the module docstring).
+        return FirstTouchCount._base_manager.all()
+
+
+router.register(
+    "first-touch-counts", FirstTouchCountApiViewSet, basename="first_touch_count"
 )

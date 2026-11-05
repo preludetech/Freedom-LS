@@ -41,6 +41,9 @@ def _parse_aware_datetime(raw: str) -> datetime:
 # subclasses DateField, so an isinstance chain would have to be ordered by hand.
 _CURSOR_PARSERS: dict[str, Callable[[str], date]] = {
     "DateTimeField": _parse_aware_datetime,
+    # date.fromisoformat rejects a value with a time part, so a datetime
+    # cursor on a date column fails here rather than being truncated to a day.
+    "DateField": date.fromisoformat,
 }
 
 

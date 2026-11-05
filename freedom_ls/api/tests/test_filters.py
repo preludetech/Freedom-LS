@@ -1,9 +1,12 @@
+from datetime import date
+
 import pytest
 
+from django import forms
 from django.http import QueryDict
 
 from freedom_ls.api.factories import ApiKeyFactory
-from freedom_ls.api.filters import UpdatedSinceFilterSet
+from freedom_ls.api.filters import IsoDateFilter, UpdatedSinceFilterSet
 from freedom_ls.api.models import ApiKey
 
 pytestmark = pytest.mark.django_db
@@ -53,3 +56,22 @@ def test_a_naive_or_unparseable_updated_since_is_an_error_on_that_parameter(
 
     assert not filterset.is_valid()
     assert list(filterset.errors) == ["updated_since"]
+
+
+def test_an_iso_date_is_parsed_to_a_date():
+    assert IsoDateFilter().field.clean("2030-01-01") == date(2030, 1, 1)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("2030-01-01T00:00:00", id="datetime"),
+        pytest.param("01/01/2030", id="localised"),
+        pytest.param("not-a-date", id="unparseable"),
+    ],
+)
+def test_anything_but_an_iso_date_is_rejected_with_the_format_message(value):
+    with pytest.raises(forms.ValidationError) as excinfo:
+        IsoDateFilter().field.clean(value)
+
+    assert excinfo.value.messages == ["Give a date as YYYY-MM-DD."]

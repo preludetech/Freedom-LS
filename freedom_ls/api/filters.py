@@ -34,5 +34,15 @@ class AwareIsoDateTimeFilter(IsoDateTimeFilter):
     field_class = AwareIsoDateTimeField
 
 
+class IsoDateField(forms.DateField):
+    # One format, so a datetime or a localised date is rejected rather than parsed.
+    input_formats = ["%Y-%m-%d"]
+    default_error_messages = {"invalid": "Give a date as YYYY-MM-DD."}
+
+
+class IsoDateFilter(django_filters.DateFilter):
+    field_class = IsoDateField
+
+
 class UpdatedSinceFilterSet(django_filters.FilterSet):
     updated_since = AwareIsoDateTimeFilter(field_name="updated_at", lookup_expr="gte")
