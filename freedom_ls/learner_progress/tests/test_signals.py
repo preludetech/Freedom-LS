@@ -49,6 +49,7 @@ from freedom_ls.learner_progress.factories import (
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.signals import _ensure_and_announce
 from freedom_ls.learner_progress.tests.helpers import (
+    age_updated_at,
     cohort_record,
     cohort_registration,
     make_move_world,
@@ -215,6 +216,72 @@ def test_recalculate_progress_percentage_catches_up_a_bulk_written_record(
 
     record.refresh_from_db()
     assert record.progress_percentage == 100
+
+
+@pytest.mark.django_db
+class TestRecalculationMovesUpdatedAt:
+    def _complete_topic(self, record, collection_item) -> None:
+        TopicProgressFactory(
+            course_progress=record,
+            collection_item=collection_item,
+            topic=collection_item.child,
+            complete_time=timezone.now(),
+        )
+
+    def test_a_changed_percentage_advances_updated_at_and_not_last_accessed_time(
+        self, topic_placement
+    ):
+        from freedom_ls.learner_progress.signals import (
+            recalculate_progress_percentage,
+        )
+
+        record, collection_item = topic_placement
+        visited_at = timezone.now()
+        CourseProgress._base_manager.filter(pk=record.pk).update(
+            last_accessed_time=visited_at
+        )
+        self._complete_topic(record, collection_item)
+        past = age_updated_at(record)
+        record = CourseProgress.objects.get(pk=record.pk)
+
+        recalculate_progress_percentage(record)
+
+        record.refresh_from_db()
+        assert (
+            record.progress_percentage,
+            record.updated_at > past,
+            record.last_accessed_time,
+        ) == (100, True, visited_at)
+
+    def test_an_unchanged_percentage_leaves_updated_at(self, topic_placement):
+        from freedom_ls.learner_progress.signals import (
+            recalculate_progress_percentage,
+        )
+
+        record, _ = topic_placement
+        past = age_updated_at(record)
+        record = CourseProgress.objects.get(pk=record.pk)
+
+        recalculate_progress_percentage(record)
+
+        record.refresh_from_db()
+        assert record.updated_at == past
+
+    def test_a_stale_instance_still_writes_the_recalculated_percentage(
+        self, topic_placement
+    ):
+        from freedom_ls.learner_progress.signals import (
+            recalculate_progress_percentage,
+        )
+
+        record, _ = topic_placement
+        CourseProgress._base_manager.filter(pk=record.pk).update(progress_percentage=55)
+        assert record.progress_percentage == 0
+
+        recalculate_progress_percentage(record)
+
+        record.refresh_from_db()
+        assert record.progress_percentage == 0
 
 
 # Records are minted from registrations, by the receivers in signals.py.
@@ -1013,6 +1080,35 @@ class TestCarryingCourseProgressOnMove:
 
         record.refresh_from_db()
         assert record.cohort_registration_id == destination_registration.pk
+
+    def test_repointing_a_record_advances_its_updated_at(self, mock_site_context):
+        world = make_move_world()
+        course = CourseFactory()
+        _, record = cohort_record(world, world.source, course, 40)
+        cohort_registration(world.destination, course)
+        past = age_updated_at(record)
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        record.refresh_from_db()
+        assert record.updated_at > past
+
+    def test_swapping_two_records_advances_both_updated_at(self, mock_site_context):
+        world = make_move_world()
+        course = CourseFactory()
+        _, ahead = cohort_record(world, world.source, course, 80)
+        _, behind = cohort_record(world, world.destination, course, 20)
+        ahead_past = age_updated_at(ahead)
+        behind_past = age_updated_at(behind)
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        ahead.refresh_from_db()
+        behind.refresh_from_db()
+        assert (ahead.updated_at > ahead_past, behind.updated_at > behind_past) == (
+            True,
+            True,
+        )
 
     def test_a_clash_where_the_source_is_further_along_swaps_the_registrations(
         self, mock_site_context

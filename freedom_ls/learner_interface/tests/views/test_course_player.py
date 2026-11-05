@@ -87,7 +87,10 @@ from freedom_ls.learner_progress.models import (
     TopicProgress,
 )
 from freedom_ls.learner_progress.queries import course_progress_for
-from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.learner_progress.tests.helpers import (
+    age_updated_at,
+    course_progress_record,
+)
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -2600,6 +2603,26 @@ def test_finish_page_completes_a_course_once_the_quiz_is_passed(
 
 
 @pytest.mark.django_db
+def test_finish_page_completing_a_course_advances_updated_at(
+    mock_site_context, client, course_with_scored_quiz, sit_quiz
+):
+    user = UserFactory()
+    course, form, question, right, _wrong = course_with_scored_quiz(
+        slug="finish-updated"
+    )
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+    sit_quiz(progress, form, question, right)
+    past = age_updated_at(progress)
+
+    _finish(client, user, course)
+
+    progress.refresh_from_db()
+    assert progress.updated_at > past
+
+
+@pytest.mark.django_db
 def test_finish_page_still_renders_for_a_course_with_a_failed_quiz(
     mock_site_context, client, course_with_scored_quiz, sit_quiz
 ):
@@ -2990,6 +3013,20 @@ def test_started_at_is_stamped_on_first_content_access(mock_site_context, client
 
     record.refresh_from_db()
     assert record.started_at is not None
+
+
+@pytest.mark.django_db
+def test_a_visit_advances_updated_at(mock_site_context, client):
+    course = _course_with_titled_topics("Only Topic")
+    user = UserFactory()
+    record = course_progress_record(course, user)
+    past = age_updated_at(record)
+    client.force_login(user)
+
+    client.get(_item_url(course, 1))
+
+    record.refresh_from_db()
+    assert record.updated_at > past
 
 
 @pytest.mark.django_db

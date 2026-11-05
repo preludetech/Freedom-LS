@@ -18,6 +18,7 @@ from django.db import transaction
 from django.db.models import Case, Value, When
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
@@ -59,9 +60,16 @@ def recalculate_progress_percentage(record: CourseProgress) -> None:
     `update_fields`, because `last_accessed_time` is written by the player: a
     background recalculation must not look like a visit.
     """
-    record.progress_percentage = calculate_course_progress_percentage(
+    new_percentage = calculate_course_progress_percentage(
         record.course, completed_collection_item_ids(record)
     )
+    # Compared against the database, not the instance: a caller holding a stale
+    # instance must still write, and a recalculation that changes nothing must
+    # not move updated_at and re-emit the row to changed-since readers.
+    record.refresh_from_db(fields=["progress_percentage"])
+    if record.progress_percentage == new_percentage:
+        return
+    record.progress_percentage = new_percentage
     record.save(update_fields=["progress_percentage"])
 
 
@@ -315,5 +323,7 @@ def carry_course_progress_on_move(
                 cohort_registration=Case(
                     When(pk=record.pk, then=Value(target.pk)),
                     When(pk=existing.pk, then=Value(record.cohort_registration_id)),
-                )
+                ),
+                # update() skips auto_now and the save() override alike.
+                updated_at=timezone.now(),
             )
