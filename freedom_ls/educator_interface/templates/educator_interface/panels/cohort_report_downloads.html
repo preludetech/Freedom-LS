@@ -9,15 +9,15 @@ region as its description, since a report could only fail.
 
 {% block panel_header_action %}
     {% comment %}
-    Disabling the button for the request drops keyboard focus to <body>, so
-    once the request ends focus returns to the button, beside the table that
-    now shows the result.
+    Disabling the button for the request drops keyboard focus to <body>, and
+    the cohort-changed event the POST fires re-fetches this whole panel, so
+    once the request ends focus goes to the button now in the document,
+    found by id, beside the table that shows the result.
     {% endcomment %}
     <form hx-post="{{ row_action_urls.generate_report }}" hx-target="#{{ region_id }}" hx-swap="outerHTML"
           hx-disabled-elt="find button[type='submit']"
-          x-data
-          x-on:htmx:after-request.camel="$nextTick(() => $el.querySelector('button').focus())">
-        <c-button type="submit" variant="secondary" size="small"
+          hx-on::after-request="setTimeout(() => document.getElementById('{{ region_id }}-generate')?.focus())">
+        <c-button type="submit" variant="secondary" size="small" id="{{ region_id }}-generate"
                   loading="true" loading_text="Generating…"
                   disabled="{% if over_limit_message %}true{% endif %}"
                   aria-describedby="{% if over_limit_message %}{{ region_id }}-limit{% endif %}">Generate report</c-button>
