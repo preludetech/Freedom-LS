@@ -7,6 +7,10 @@ a site's admin issues in the Django admin.
 This page covers what every API endpoint shares, then each API endpoint in turn:
 
 - [users](#users);
+- [learner course registrations](#learner-course-registrations),
+  [cohort course registrations](#cohort-course-registrations) and
+  [course interest](#course-interest), who is registered for or interested in each course.
+  Course progress is still to come, under the same `registrations_and_progress` API scope;
 - [course applications](#course-applications);
 - [referral codes](#referral-codes), [referral code hits](#referral-code-hits),
   [signup attributions](#signup-attributions) and [first-touch counts](#first-touch-counts),
@@ -50,8 +54,9 @@ expiry, rotate it.
 | `referral_data` | `ReferralCode`, `ReferralCodeHit`, `SignupAttribution`, `FirstTouchCount` |
 | `registrations_and_progress` | `LearnerCourseRegistration`, `CohortCourseRegistration`, `CourseInterest`, `CourseProgress` |
 
-`registrations_and_progress` has no API endpoint yet. It is reserved for API endpoints still
-to come, so a key can be issued with it now.
+`registrations_and_progress` reads learner course registrations, cohort course registrations and
+course interest. Course progress (`CourseProgress`) has no API endpoint yet; it is still to come
+under the same API scope.
 
 ### Rotating a key
 
@@ -162,6 +167,9 @@ its rows change after they are written, and whether anything records the change.
 | API endpoint | Ordering field | Filter | Recipe |
 | --- | --- | --- | --- |
 | `users` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
+| `learner-course-registrations` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
+| `cohort-course-registrations` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
+| `course-interests` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `course-applications` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `referral-codes` | `created_at` | none | [Full pull](#full-pull) |
 | `referral-code-hits` | `hit_at` | `updated_since` on `hit_at` | [Checkpoint](#checkpoint) |
@@ -176,8 +184,8 @@ Every filter is inclusive: it returns rows at or after the value you give.
 ISO 8601 with a timezone offset or `Z`, such as `2026-11-03T02:00:00Z`. A time with no timezone,
 or one that does not parse, is a 400.
 
-On users and course applications the filter field is `updated_at`. Referral code hits and signup attributions are never
-changed once written, so they have no `updated_at`: there `updated_since` compares against
+On users, course registrations, course interest and course applications the filter field is
+`updated_at`. Referral code hits and signup attributions are never changed once written, so they have no `updated_at`: there `updated_since` compares against
 `hit_at` or `signed_up_at`, the time the row was written. Both are stamped before the write
 commits, so the same 5-minute margin applies.
 
@@ -219,31 +227,36 @@ first touches for that attribution key on that day.
 ### Deletions
 
 A deleted row stops appearing; no API endpoint reports deletions, and no filter shows them.
-Deactivation is visible: a deactivated user shows up again with `is_active` set to `false`.
+Deactivation is visible: a deactivated row shows up again with `is_active` set to `false`.
 
-Rows that disappear:
+| API endpoint | Visible: comes back changed | Invisible: stops appearing |
+| --- | --- | --- |
+| `users` | Deactivated: `is_active: false`. | An admin deletes the user. |
+| `learner-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its user is deleted and the registration goes with them. |
+| `cohort-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its cohort is deleted and the registration goes with it. |
+| `course-interests` | Nothing. | The user removes their interest, or the user or the course is deleted. |
+| `course-applications` | Nothing. | An admin deletes the application. |
+| `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
+| `referral-code-hits` | Nothing. | Older than the cutoff of the operator's `prune_referral_code_hits --older-than-days` command. How often it runs, and with what cutoff, is the operator's choice. |
+| `signup-attributions` | Nothing. | Its user is deleted. The attribution goes with the user. |
+| `first-touch-counts` | Nothing. | Never deleted. |
 
-- **Users** an admin deletes.
-- **Course applications** an admin deletes.
-- **Referral code hits** older than the cutoff of the operator's
-  `prune_referral_code_hits --older-than-days` command. How often it runs, and with what cutoff,
-  is the operator's choice. Pruned hits stay in your copy until you remove them.
-- **Signup attributions** whose user is deleted. The attribution goes with the user.
-
-Referral codes and first-touch counts are never deleted.
-
-To catch deletions, run a periodic full pull (no filter) and remove the rows it no longer
-returns. Whether to keep pruned hits is yours to decide; deleted users' data, including their
-signup attribution, is yours to delete.
+To catch the invisible ones, run a periodic full pull (no filter) and remove the rows whose `id`
+it no longer returns. Remove them only once the pull has finished, when `next` is `null`: a pull
+that fails halfway has not returned the rows it never reached. Whether to keep pruned hits is
+yours to decide; deleted users' data, including their registrations, course interest and signup
+attribution, is yours to delete.
 
 ### Example: checkpoint sync
 
 A complete sync with [httpx](https://www.python-httpx.org/). One loop, parametrised by the API
-endpoint's path, syncs both users and course applications, each with its own checkpoint. It reads
-the key from the `FLS_API_KEY` environment variable, follows `next`, waits out each 429, and
-returns the checkpoint for the next run. The key needs both the `users` and the
-`course_applications` API scopes. Add `referral-code-hits` or `signup-attributions` to `PATHS`
-in the same way, reading `hit_at` or `signed_up_at` in place of `updated_at`.
+endpoint's path and its filter field, syncs every API endpoint whose recipe is
+[Checkpoint](#checkpoint), each with its own checkpoint. It reads the key from the `FLS_API_KEY`
+environment variable, follows `next`, waits out each 429, and returns the checkpoint for the next
+run. The key needs the `users`, `registrations_and_progress`, `course_applications` and
+`referral_data` API scopes; drop the paths whose API scope your key lacks. Referral codes need a
+[full pull](#full-pull) and first-touch counts a [lookback](#lookback), so they are not in the
+loop; the next example covers first-touch counts.
 
 ```python
 import os
@@ -255,8 +268,17 @@ import httpx
 BASE_URL = os.environ["FLS_BASE_URL"]  # e.g. "https://learn.example.org"
 API_KEY = os.environ["FLS_API_KEY"]
 
-# Each path keeps its own checkpoint, e.g. in FLS_CHECKPOINT_COURSE_APPLICATIONS.
-PATHS = ["users", "course-applications"]
+# Each path, and the field its updated_since filters on. Each path keeps its
+# own checkpoint, e.g. in FLS_CHECKPOINT_COURSE_APPLICATIONS.
+PATHS = {
+    "users": "updated_at",
+    "learner-course-registrations": "updated_at",
+    "cohort-course-registrations": "updated_at",
+    "course-interests": "updated_at",
+    "course-applications": "updated_at",
+    "referral-code-hits": "hit_at",
+    "signup-attributions": "signed_up_at",
+}
 
 
 def get_page(client: httpx.Client, url: str) -> dict:
@@ -272,10 +294,10 @@ def get_page(client: httpx.Client, url: str) -> dict:
 def upsert(path: str, row: dict) -> None:
     if path == "course-applications" and not row["is_submitted"]:
         return  # a draft: skip it, or store it apart from submitted applications
-    print(path, row["id"], row["updated_at"])  # write to your own store here
+    print(path, row["id"])  # write to your own store here, keyed on id
 
 
-def sync(path: str, updated_since: str | None) -> str | None:
+def sync(path: str, field: str, updated_since: str | None) -> str | None:
     """Pull every row of `path` changed since the checkpoint. Return the next checkpoint."""
     params = {"updated_since": updated_since} if updated_since else {}
     url = str(httpx.URL(f"{BASE_URL}/api/v1/{path}/", params=params))
@@ -286,7 +308,7 @@ def sync(path: str, updated_since: str | None) -> str | None:
             page = get_page(client, url)
             for row in page["results"]:
                 upsert(path, row)
-                seen = datetime.fromisoformat(row["updated_at"])
+                seen = datetime.fromisoformat(row[field])
                 latest = seen if latest is None or seen > latest else latest
             url = page["next"]  # follow verbatim
     if latest is None:
@@ -299,8 +321,8 @@ def checkpoint_variable(path: str) -> str:
 
 
 if __name__ == "__main__":
-    for path in PATHS:
-        checkpoint = sync(path, os.environ.get(checkpoint_variable(path)))
+    for path, field in PATHS.items():
+        checkpoint = sync(path, field, os.environ.get(checkpoint_variable(path)))
         # Save each path's checkpoint only once its own run is complete.
         print(checkpoint_variable(path), "=", checkpoint)
 ```
@@ -382,6 +404,244 @@ user's email addresses, so `email_verified` changes reach an incremental sync.
 Signing in does **not** move it. `last_login` changes on every sign-in, and counting those would
 send most of your users on every run. An incremental sync therefore sees a fresh `last_login`
 only when something else about the user changes; a full pull always has the current value.
+
+## Learner course registrations
+
+`/api/v1/learner-course-registrations/` lists the course registrations of individual learners on
+the key's site: one row per learner registered for a course.
+
+| | |
+| --- | --- |
+| API scope | `registrations_and_progress` |
+| List | `GET /api/v1/learner-course-registrations/` |
+| Detail | `GET /api/v1/learner-course-registrations/<id>/` |
+| Ordering field | `updated_at` |
+| Filters | `updated_since`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) |
+
+Inactive registrations are returned. There is no filter for `is_active`.
+
+```json
+{
+  "next": null,
+  "results": [
+    {
+      "id": "0b7e…",
+      "course_id": "a83e…",
+      "course_title": "Data Analysis Bootcamp",
+      "user_id": 412,
+      "user_email": "thandi@example.com",
+      "user_first_name": "Thandi",
+      "user_last_name": "Nkosi",
+      "organisation_id": "5c21…",
+      "organisation_name": "Ubuntu Skills Trust",
+      "self_registered": true,
+      "is_active": true,
+      "registered_at": "2026-10-04T07:30:12.448101+00:00",
+      "updated_at": "2026-10-04T07:30:12.448101+00:00"
+    },
+    {
+      "id": "9d40…",
+      "course_id": "a83e…",
+      "course_title": "Data Analysis Bootcamp",
+      "user_id": 397,
+      "user_email": "sipho@example.com",
+      "user_first_name": "Sipho",
+      "user_last_name": "Dlamini",
+      "organisation_id": "5c21…",
+      "organisation_name": "Ubuntu Skills Trust",
+      "self_registered": false,
+      "is_active": false,
+      "registered_at": "2026-09-12T13:02:55.901377+00:00",
+      "updated_at": "2026-10-21T10:45:03.215560+00:00"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Stable for the life of the registration. Upsert on this. |
+| `course_id` | string (UUID) | The course registered for. |
+| `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
+| `user_id` | integer | The learner's user: the `id` the [users](#users) API endpoint returns. |
+| `user_email` | string | That user's sign-in address. |
+| `user_first_name` | string | May be empty. |
+| `user_last_name` | string | May be empty. |
+| `organisation_id` | string (UUID) | The organisation the learner belongs to. |
+| `organisation_name` | string | That organisation's name. |
+| `self_registered` | boolean | See "Who registered" below. |
+| `is_active` | boolean | `false` for a deactivated registration. See "Who registered" below. |
+| `registered_at` | string (ISO 8601) | When the registration was made. |
+| `updated_at` | string (ISO 8601) | When the registration last changed. Drives paging and `updated_since`. |
+
+### Who registered
+
+- **`self_registered`** is `true` when the learner registered themselves. It is `false` for
+  registrations made by staff, by an import or by a registration rule, and for registrations made
+  before FreedomLS recorded who registered.
+- **`is_active`** is the registration's own flag. A learner can also be deactivated in an
+  organisation, and that is not returned: their registrations still show `is_active: true` but
+  give them no access to the course. `is_active: true` alone does not mean the user can open the
+  course.
+- **Rows are registrations, not people.** One user can appear in several rows: one per course,
+  and one per organisation they are a learner in. A user can also reach a course through their
+  cohort's registration, which is on [cohort course registrations](#cohort-course-registrations),
+  not here. To count people, count distinct `user_id`.
+
+### What moves `updated_at`
+
+Any change to the registration moves it, including deactivating and reactivating it.
+
+The copied fields do **not** move it: a change to the user's email or name, the organisation's
+name or the course's title leaves the row as it was. An incremental sync keeps the old values in
+your store until the registration itself changes. For current identity, join `user_id` to `id` on
+the [users](#users) API endpoint; for current names and titles, run a periodic full pull (no
+`updated_since`).
+
+On registrations that existed before this API endpoint shipped, `updated_at` starts as
+`registered_at`.
+
+A deleted registration is not reported; it stops appearing. See [Deletions](#deletions).
+
+## Cohort course registrations
+
+`/api/v1/cohort-course-registrations/` lists the course registrations of cohorts on the key's
+site: one row per cohort registered for a course.
+
+| | |
+| --- | --- |
+| API scope | `registrations_and_progress` |
+| List | `GET /api/v1/cohort-course-registrations/` |
+| Detail | `GET /api/v1/cohort-course-registrations/<id>/` |
+| Ordering field | `updated_at` |
+| Filters | `updated_since`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) |
+
+Inactive registrations are returned. There is no filter for `is_active`.
+
+```json
+{
+  "next": null,
+  "results": [
+    {
+      "id": "3fa1…",
+      "course_id": "a83e…",
+      "course_title": "Data Analysis Bootcamp",
+      "cohort_id": "e7d9…",
+      "cohort_name": "October 2026 evening intake",
+      "is_active": true,
+      "registered_at": "2026-09-30T08:00:41.120934+00:00",
+      "updated_at": "2026-09-30T08:00:41.120934+00:00"
+    },
+    {
+      "id": "c802…",
+      "course_id": "f19b…",
+      "course_title": "Spreadsheets for Small Business",
+      "cohort_id": "e7d9…",
+      "cohort_name": "October 2026 evening intake",
+      "is_active": false,
+      "registered_at": "2026-09-30T08:01:17.602215+00:00",
+      "updated_at": "2026-10-15T16:22:09.774018+00:00"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Stable for the life of the registration. Upsert on this. |
+| `course_id` | string (UUID) | The course registered for. |
+| `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
+| `cohort_id` | string (UUID) | The cohort registered. |
+| `cohort_name` | string | That cohort's name. Can be stale in the same way. |
+| `is_active` | boolean | `false` for a deactivated registration. |
+| `registered_at` | string (ISO 8601) | When the registration was made. |
+| `updated_at` | string (ISO 8601) | When the registration last changed. Drives paging and `updated_since`. |
+
+A row says that a cohort is registered for a course. It does not say who is in the cohort: the
+API does not list cohort members.
+
+### What moves `updated_at`
+
+Any change to the registration moves it, including deactivating and reactivating it.
+
+The copied fields do **not** move it: a change to the cohort's name or the course's title leaves
+the row as it was. Run a periodic full pull (no `updated_since`) for current names and titles.
+
+On registrations that existed before this API endpoint shipped, `updated_at` starts as
+`registered_at`.
+
+A deleted registration is not reported; it stops appearing. See [Deletions](#deletions).
+
+## Course interest
+
+`/api/v1/course-interests/` lists the course interest on the key's site: one row for each user who
+has shown interest in a course.
+
+| | |
+| --- | --- |
+| API scope | `registrations_and_progress` |
+| List | `GET /api/v1/course-interests/` |
+| Detail | `GET /api/v1/course-interests/<id>/` |
+| Ordering field | `updated_at` |
+| Filters | `updated_since`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) |
+
+```json
+{
+  "next": null,
+  "results": [
+    {
+      "id": "71ce…",
+      "course_id": "f19b…",
+      "course_title": "Spreadsheets for Small Business",
+      "user_id": 412,
+      "user_email": "thandi@example.com",
+      "user_first_name": "Thandi",
+      "user_last_name": "Nkosi",
+      "created_at": "2026-10-11T18:40:26.330475+00:00",
+      "updated_at": "2026-10-11T18:40:26.330475+00:00"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Upsert on this. A new `id` each time a user shows interest; see below. |
+| `course_id` | string (UUID) | The course the user is interested in. |
+| `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
+| `user_id` | integer | The user: the `id` the [users](#users) API endpoint returns. |
+| `user_email` | string | That user's sign-in address. |
+| `user_first_name` | string | May be empty. |
+| `user_last_name` | string | May be empty. |
+| `created_at` | string (ISO 8601) | When the user showed interest. |
+| `updated_at` | string (ISO 8601) | When the row last changed. Drives paging and `updated_since`. |
+
+A user has at most one row per course.
+
+### Removing interest
+
+Removing interest deletes the row. Nothing reports it, and no filter shows it: the only signal is
+that a full pull no longer returns the row. See [Deletions](#deletions).
+
+Showing interest again creates a new row with a new `id`. Your store then holds the old row until
+a full pull removes it, and the new row from the next incremental sync.
+
+### What moves `updated_at`
+
+The copied fields do **not** move it: a change to the user's email or name or the course's title
+leaves the row as it was. For current identity, join `user_id` to `id` on the [users](#users) API
+endpoint; for current titles, run a periodic full pull (no `updated_since`).
+
+On interest shown before this API endpoint shipped, `updated_at` starts as `created_at`.
 
 ## Course applications
 
