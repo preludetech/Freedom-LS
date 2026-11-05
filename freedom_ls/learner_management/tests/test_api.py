@@ -21,11 +21,17 @@ from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.learner_actions import deactivate_registration
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    LearnerCourseRegistration,
+)
+from freedom_ls.learner_management.utils import deactivate_cohort_registration
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
@@ -51,6 +57,20 @@ LEARNER_EXPECTED_FIELDS = {
     "updated_at",
 }
 
+COHORT_LIST_URL_NAME = "api:cohort_course_registration_list"
+COHORT_DETAIL_URL_NAME = "api:cohort_course_registration_detail"
+
+COHORT_EXPECTED_FIELDS = {
+    "id",
+    "course_id",
+    "course_title",
+    "cohort_id",
+    "cohort_name",
+    "is_active",
+    "registered_at",
+    "updated_at",
+}
+
 # One param per registration endpoint: list URL name, detail URL name, the
 # factory and the exact field set a row carries.
 ENDPOINTS = [
@@ -60,6 +80,13 @@ ENDPOINTS = [
         LearnerCourseRegistrationFactory,
         LEARNER_EXPECTED_FIELDS,
         id="learner",
+    ),
+    pytest.param(
+        COHORT_LIST_URL_NAME,
+        COHORT_DETAIL_URL_NAME,
+        CohortCourseRegistrationFactory,
+        COHORT_EXPECTED_FIELDS,
+        id="cohort",
     ),
 ]
 ENDPOINT_PARAMS = ("list_name", "detail_name", "factory", "expected_fields")
@@ -76,10 +103,13 @@ def client() -> APIClient:
 
 
 def _detail(
-    client: APIClient, auth: dict[str, str], registration: LearnerCourseRegistration
+    client: APIClient,
+    auth: dict[str, str],
+    registration: LearnerCourseRegistration,
+    detail_name: str = LEARNER_DETAIL_URL_NAME,
 ) -> dict[str, object]:
     row: dict[str, object] = client.get(
-        reverse(LEARNER_DETAIL_URL_NAME, args=[registration.pk]), headers=auth
+        reverse(detail_name, args=[registration.pk]), headers=auth
     ).json()
     return row
 
@@ -328,6 +358,60 @@ def test_deactivating_a_registration_shows_up_in_the_next_updated_since_pull(
     deactivate_registration(registration.learner, registration.course)
     body = client.get(
         reverse(LEARNER_LIST_URL_NAME), {"updated_since": pulled_at}, headers=auth
+    ).json()
+
+    assert [(row["id"], row["is_active"]) for row in body["results"]] == [
+        (str(registration.pk), False)
+    ]
+
+
+def test_the_cohort_is_flattened_to_its_id_and_name(client, auth):
+    cohort = CohortFactory(name="Grade 9")
+    registration = CohortCourseRegistrationFactory(cohort=cohort)
+
+    row = _detail(client, auth, registration, COHORT_DETAIL_URL_NAME)
+
+    assert row["cohort_id"] == str(cohort.pk)
+    assert row["cohort_name"] == "Grade 9"
+
+
+def _change_cohort_name(registration: CohortCourseRegistration) -> None:
+    registration.cohort.name = "Changed"
+    registration.cohort.save()
+
+
+@pytest.mark.parametrize(
+    ("change", "field"),
+    [
+        pytest.param(_change_cohort_name, "cohort_name", id="cohort-name"),
+        pytest.param(_change_course_title, "course_title", id="course-title"),
+    ],
+)
+def test_a_change_to_a_flattened_cohort_row_shows_without_moving_updated_at(
+    client, auth, change, field
+):
+    registration = CohortCourseRegistrationFactory()
+    before = _detail(client, auth, registration, COHORT_DETAIL_URL_NAME)["updated_at"]
+
+    change(registration)
+    after = _detail(client, auth, registration, COHORT_DETAIL_URL_NAME)
+
+    assert after[field] == "Changed"
+    assert after["updated_at"] == before
+
+
+def test_deactivating_a_cohort_registration_shows_up_in_the_next_updated_since_pull(
+    client, auth
+):
+    registration = CohortCourseRegistrationFactory()
+    CohortCourseRegistration._base_manager.filter(pk=registration.pk).update(
+        updated_at=datetime(2020, 1, 1, tzinfo=UTC)
+    )
+    pulled_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+    deactivate_cohort_registration(registration)
+    body = client.get(
+        reverse(COHORT_LIST_URL_NAME), {"updated_since": pulled_at}, headers=auth
     ).json()
 
     assert [(row["id"], row["is_active"]) for row in body["results"]] == [

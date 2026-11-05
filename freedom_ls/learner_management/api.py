@@ -7,7 +7,7 @@ from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 
-from .models import LearnerCourseRegistration
+from .models import CohortCourseRegistration, LearnerCourseRegistration
 
 
 def organisation_fields(
@@ -73,4 +73,49 @@ router.register(
     "learner-course-registrations",
     LearnerCourseRegistrationApiViewSet,
     basename="learner_course_registration",
+)
+
+
+class CohortCourseRegistrationApiSerializer(serializers.ModelSerializer):
+    course_id = serializers.UUIDField(read_only=True)
+    course_title = serializers.CharField(source="course.title", read_only=True)
+    cohort_id = serializers.UUIDField(read_only=True)
+    cohort_name = serializers.CharField(source="cohort.name", read_only=True)
+
+    class Meta:
+        model = CohortCourseRegistration
+        fields = (
+            "id",
+            "course_id",
+            "course_title",
+            "cohort_id",
+            "cohort_name",
+            "is_active",
+            "registered_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+
+class CohortCourseRegistrationFilterSet(UpdatedSinceFilterSet):
+    class Meta:
+        model = CohortCourseRegistration
+        fields: list[str] = []
+
+
+class CohortCourseRegistrationApiViewSet(ReadOnlyApiViewSet):
+    filterset_class = CohortCourseRegistrationFilterSet
+    required_scope = ApiScope.REGISTRATIONS_AND_PROGRESS
+    serializer_class = CohortCourseRegistrationApiSerializer
+
+    def get_queryset(self) -> QuerySet[CohortCourseRegistration]:
+        # The base manager crosses sites; the base viewset's filter_queryset
+        # narrows every lookup to the key's site.
+        return CohortCourseRegistration._base_manager.select_related("course", "cohort")
+
+
+router.register(
+    "cohort-course-registrations",
+    CohortCourseRegistrationApiViewSet,
+    basename="cohort_course_registration",
 )
