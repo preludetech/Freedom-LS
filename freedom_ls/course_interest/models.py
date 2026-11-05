@@ -35,6 +35,10 @@ class CourseInterest(SiteAwareModel, UpdatedAtModel):
         related_name="interests",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # Redeclared after the creation timestamp: fields stamp in declaration
+    # order, and the inherited updated_at would otherwise be stamped first and
+    # land before it.
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [

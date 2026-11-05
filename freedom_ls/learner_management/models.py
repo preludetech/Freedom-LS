@@ -285,6 +285,10 @@ class LearnerCourseRegistration(
         help_text="The learner registered themselves rather than being registered by staff.",
     )
     registered_at = models.DateTimeField(auto_now_add=True)
+    # Redeclared after the creation timestamp: fields stamp in declaration
+    # order, and the inherited updated_at would otherwise be stamped first and
+    # land before it.
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
@@ -327,6 +331,10 @@ class CohortCourseRegistration(
     )
     is_active = models.BooleanField(default=True)
     registered_at = models.DateTimeField(auto_now_add=True)
+    # Redeclared after the creation timestamp: fields stamp in declaration
+    # order, and the inherited updated_at would otherwise be stamped first and
+    # land before it.
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [

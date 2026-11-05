@@ -45,3 +45,11 @@ class TestCourseInterestUniqueConstraint:
         interest_a = CourseInterestFactory(user=user, course=course_a)
         interest_b = CourseInterestFactory(user=user, course=course_b)
         assert interest_a.pk != interest_b.pk
+
+
+@pytest.mark.django_db
+def test_new_interest_updated_at_is_not_before_created_at(mock_site_context):
+    """A new interest's updated_at used to be stamped microseconds before created_at."""
+    interest = CourseInterestFactory()
+
+    assert interest.updated_at >= interest.created_at

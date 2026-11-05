@@ -605,3 +605,16 @@ def test_receivers_see_updated_at_alongside_is_active_in_update_fields(
     registration.save(update_fields=["is_active"])
 
     assert captured_update_fields == [None, frozenset({"is_active", "updated_at"})]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "factory", [LearnerCourseRegistrationFactory, CohortCourseRegistrationFactory]
+)
+def test_new_registration_updated_at_is_not_before_registered_at(
+    mock_site_context, factory
+):
+    """A new registration's updated_at used to be stamped microseconds before registered_at."""
+    registration = factory()
+
+    assert registration.updated_at >= registration.registered_at
