@@ -48,6 +48,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Decide what to do about QA bug: staff copy reads 'Added … by Not recorded' and 'Organisation admin on Whole organisation' (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: bulk confirmation bodies repeat the title and omit what changes, what is kept and how to undo (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: learners table squeezes the Cohorts and Courses columns at 768 and with the quick view docked (TDD: failing test first, then fix)
+- [x] (user) Capture the 5 Nov walk feedback into the rule files (`sdd:capture-feedback`): cohesion, one small button size, the table footer count, disclosure markers, the control-anchor invariant, record rows, people in rows, stat grids, sheet chrome, the non-blocking quick view, button nouns, the one-record add form
+- [x] (user) Fix the 5 Nov walk items: no hover on an empty table, every framework trigger small, the footer entry count, the Add filter dropdown (chevron, no inner box, row-link choices), the filter sheet's close control and rounded top, the quick view never modal, the at-a-glance grid, the smaller attention-row person, Add to cohort and Register for a course moved beside what they change, the quick view registration rows, "Deactivate staff member" at the bottom of the Roles cell, the Educators panel folded into the cohort Settings tab with the name as an inline field, Add learner as a one-record form, sort and filters on every History tab
+- [x] (user) File `educator-interface-13-staff-roles` (mixed per-cohort roles, role editing on the cohort Settings tab, the staff email typeahead) and add it to the roadmap after spec 12
+- [ ] (cmd) Re-run `/sdd:do_qa` over `3. frontend_qa.md`: the 5 Nov walk fixes landed after the last QA run
 
 ## 4. Documentation and pull request
 

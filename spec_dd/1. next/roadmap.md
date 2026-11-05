@@ -50,8 +50,8 @@ Each bullet says what.
 ### Educator interface rebuild
 
 Parent: `educator-interface-full-polish` (source idea, the design mockups, two shared research
-files). Cut 2026-09-24 into twelve specs. Read this section before starting any of them; each
-idea assumes you have.
+files). Cut 2026-09-24 into twelve specs; a thirteenth was added on 2026-11-05. Read this section
+before starting any of them; each idea assumes you have.
 
 The source idea asks for three things. A panel framework that is complete and self-contained. An
 educator interface where organisation admins administer learners, cohorts, course registrations
@@ -62,11 +62,12 @@ run, so it is twelve.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 12 | `educator-interface-12-docs-and-polish` | The educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | in progress |
+| 13 | `educator-interface-13-staff-roles` | A person holds different roles on different cohorts and gains them through Add role; the cohort Settings tab changes and removes roles per person; the Add-staff email field searches the organisation's people as you type. | `educator-interface-12-docs-and-polish` | next |
 
 ```
 1 core ──┬── 2 tables ──────┬── 6 cohort admin ──┬── 8 bulk ──────────┐
          ├── 3 dialogs ─────┤                    │                    │
-         ├── 4 components ──┼── 7 learner admin ─┼── 9 member admin ──┼── 11 audit ── 12 docs and polish
+         ├── 4 components ──┼── 7 learner admin ─┼── 9 member admin ──┼── 11 audit ── 12 docs and polish ── 13 staff roles
          └── 5 permissions ─┘                    │                    │
                             └── 10 reporting ────┘────────────────────┘
 ```
@@ -78,7 +79,11 @@ run, so it is twelve.
 - **Specs 6 and 10 run in parallel** after their dependencies, and **7 follows 6**: it fills spec 6's cohort registration webhook seam and builds on `Cohort.is_active`. 6 and 7 both add panels to the cohort detail view. 6 owns the view, its overview, courses and settings tabs. 7 owns the learners tab and every membership action, from either side. 10 needs only 2 and 4, so it can start before 5 is done; it links to learner and cohort pages but does not change them.
 - **Specs 6 and 7 run in parallel, and whichever lands second does the joining work.** If 7 lands first, 6 wires `announce_cohort_registration_change` to the events 7 named and excludes inactive cohorts from 7's membership add and move destinations. If 6 lands first, 7 does both.
 - **Specs 8 and 9 run in parallel.** Both reuse the account-creation path that 7 builds (match an existing user by email, or create one and send the setup email). Neither should write its own.
-- **Spec 11 after 6, 7 and 9**, because it records their actions. **Spec 12 last.**
+- **Spec 11 after 6, 7 and 9**, because it records their actions. **Spec 12 after 11.**
+- **Spec 13 after 12**, added 2026-11-05 from the product owner's walk of spec 12. It is the first
+  thing to start once 12 lands: the educator interface is not finished until staff roles can be
+  mixed per cohort. It edits `educator_interface` only, so it does not collide with the
+  `extract_panels_framework-*` specs, which can run beside it.
 
 Together, 1 and the four after it are the "foundation". If you want an earlier vertical slice to show someone, 1 plus 2 plus 6 is the shortest path to a usable cohorts section.
 
