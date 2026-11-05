@@ -100,10 +100,19 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `staff_member.reactivated` | Staff member reactivated | Staff and roles | staff member | its user | |
 | `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
 | `import.committed` | Import committed | Other | organisation | | `counts`, `rows`, `truncated` |
+| `audit_log.exported` | Audit log exported | Other | organisation | | `scope` (`organisation`, `learner`, `cohort`), `scope_label`, `count`, `filters` |
 
-The last two are the summary actions; `record_run_summary` accepts nothing else. `role.deactivated`
+`bulk_action.completed` and `import.committed` are the summary actions; `record_run_summary`
+accepts nothing else. `role.deactivated`
 is the `is_active` flip done from Members; `role.removed` is a role row deleted along with its
 cohort.
+
+`audit_log.exported` is written on every CSV export of the organisation's Audit log or a learner's
+or cohort's History. It always targets the organisation, so it shows on the organisation's Audit
+log and on neither History tab. `scope_label` is the learner's or cohort's name, empty for the
+organisation's log. `count` is the number of rows when the request was made, so rows written while
+the CSV streams do not change it; the export leaves out its own entry. `filters` is the applied
+filters' chip text, joined, and empty when none were applied.
 
 The codes follow the vocabulary in the domain glossary (`claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`,
 "Changes"): a glossary noun, then one of its verbs. `tests/invariants/test_vocabulary.py` fails a code that
