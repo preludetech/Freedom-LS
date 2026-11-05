@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import cast
 
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -107,3 +109,59 @@ def age_updated_at(record: CourseProgress) -> datetime:
     past = timezone.now() - timedelta(days=30)
     CourseProgress._base_manager.filter(pk=record.pk).update(updated_at=past)
     return past
+
+
+def learner_registration_record() -> CourseProgress:
+    """A record under an individual registration."""
+    record: CourseProgress = CourseProgressFactory()
+    return record
+
+
+def cohort_registration_record() -> CourseProgress:
+    """A record under a cohort registration."""
+    world = make_move_world()
+    _, record = cohort_record(world, world.source, CourseFactory(), percentage=0)
+    return record
+
+
+def inactive_learner_registration_record() -> CourseProgress:
+    record: CourseProgress = CourseProgressFactory(
+        learner_registration__is_active=False
+    )
+    return record
+
+
+def inactive_cohort_registration_record() -> CourseProgress:
+    world = make_move_world()
+    _, record = cohort_record(
+        world, world.source, CourseFactory(), percentage=0, registration_active=False
+    )
+    return record
+
+
+def inactive_learner_record() -> CourseProgress:
+    record: CourseProgress = CourseProgressFactory(learner__is_active=False)
+    return record
+
+
+def set_updated_at(record: CourseProgress, updated_at: datetime) -> None:
+    """Write `updated_at` onto the record past `auto_now`."""
+    CourseProgress._base_manager.filter(pk=record.pk).update(updated_at=updated_at)
+
+
+def resolve_ref(
+    document: dict[str, object], schema: dict[str, object]
+) -> dict[str, object]:
+    """The schema a `$ref` points at in an OpenAPI document, or `schema` itself.
+
+    A `$ref` that drf_spectacular wraps in a one-element `allOf` (to attach
+    `readOnly`) is followed too.
+    """
+    wrapped = cast(list[dict[str, object]], schema.get("allOf", [schema]))
+    ref = wrapped[0].get("$ref")
+    if ref is None:
+        return schema
+    target = document
+    for part in str(ref).removeprefix("#/").split("/"):
+        target = cast(dict[str, object], target[part])
+    return target
