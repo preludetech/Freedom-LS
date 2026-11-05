@@ -13,7 +13,7 @@ from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 
-from .models import ReferralCode, ReferralCodeHit
+from .models import ReferralCode, ReferralCodeHit, SignupAttribution
 
 
 class ReferralCodeApiSerializer(serializers.ModelSerializer):
@@ -91,4 +91,64 @@ class ReferralCodeHitApiViewSet(ReadOnlyApiViewSet):
 
 router.register(
     "referral-code-hits", ReferralCodeHitApiViewSet, basename="referral_code_hit"
+)
+
+
+class SignupAttributionApiSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = SignupAttribution
+        # client_ip, user_agent, ga_cookie, fbp_cookie and fbc_cookie are
+        # withheld: they stay behind the admin's view permission and export.
+        fields = (
+            "id",
+            "user",
+            "user_email",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "gclid",
+            "gbraid",
+            "wbraid",
+            "fbclid",
+            "landing_path",
+            "referer",
+            "raw_query",
+            "first_seen",
+            "signed_up_at",
+        )
+        read_only_fields = fields
+
+
+class SignupAttributionFilterSet(UpdatedSinceFilterSet):
+    # Attributions are append-only; signed_up_at is the instant a row can be filtered on.
+    updated_since = AwareIsoDateTimeFilter(
+        field_name="signed_up_at",
+        lookup_expr="gte",
+        help_text="Signup attributions whose signed_up_at is at or after this instant.",
+    )
+
+    class Meta:
+        model = SignupAttribution
+        fields: list[str] = []
+
+
+class SignupAttributionApiViewSet(ReadOnlyApiViewSet):
+    cursor_field = "signed_up_at"
+    filterset_class = SignupAttributionFilterSet
+    required_scope = ApiScope.REFERRAL_DATA
+    serializer_class = SignupAttributionApiSerializer
+
+    def get_queryset(self) -> QuerySet[SignupAttribution]:
+        # Base manager: the base viewset binds the site (see the module docstring).
+        return SignupAttribution._base_manager.select_related("user")
+
+
+router.register(
+    "signup-attributions", SignupAttributionApiViewSet, basename="signup_attribution"
 )

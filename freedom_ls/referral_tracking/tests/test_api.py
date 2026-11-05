@@ -16,8 +16,13 @@ from freedom_ls.api.tests.helpers import collect_pages
 from freedom_ls.referral_tracking.factories import (
     ReferralCodeFactory,
     ReferralCodeHitFactory,
+    SignupAttributionFactory,
 )
-from freedom_ls.referral_tracking.models import ReferralCode, ReferralCodeHit
+from freedom_ls.referral_tracking.models import (
+    ReferralCode,
+    ReferralCodeHit,
+    SignupAttribution,
+)
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -57,6 +62,34 @@ RESOURCES = [
             "hit_at",
         },
         id="referral_code_hits",
+    ),
+    pytest.param(
+        "api:signup_attribution_list",
+        "api:signup_attribution_detail",
+        SignupAttributionFactory,
+        "SignupAttribution",
+        {
+            "id",
+            "user",
+            "user_email",
+            "advert_code",
+            "referral_code",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_content",
+            "utm_term",
+            "gclid",
+            "gbraid",
+            "wbraid",
+            "fbclid",
+            "landing_path",
+            "referer",
+            "raw_query",
+            "first_seen",
+            "signed_up_at",
+        },
+        id="signup_attributions",
     ),
 ]
 
@@ -363,6 +396,147 @@ def test_the_next_link_keeps_updated_since_and_page_size(client, auth, settings)
 
     body = client.get(
         reverse(HITS_URL_NAME),
+        {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2},
+        headers=auth,
+    ).json()
+
+    assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
+    assert "page_size=2" in body["next"]
+
+
+ATTRIBUTIONS_URL_NAME = "api:signup_attribution_list"
+WITHHELD_FIELDS = {"client_ip", "user_agent", "ga_cookie", "fbp_cookie", "fbc_cookie"}
+
+
+def test_an_attribution_row_never_carries_a_withheld_field_on_the_list(client, auth):
+    SignupAttributionFactory(
+        client_ip="203.0.113.7",
+        user_agent="Mozilla",
+        ga_cookie="GA1.2",
+        fbp_cookie="fb.1.1",
+        fbc_cookie="fb.1.2",
+    )
+
+    row = client.get(reverse(ATTRIBUTIONS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert WITHHELD_FIELDS.isdisjoint(row)
+
+
+def test_an_attribution_row_never_carries_a_withheld_field_on_the_detail(client, auth):
+    attribution = SignupAttributionFactory(
+        client_ip="203.0.113.7",
+        user_agent="Mozilla",
+        ga_cookie="GA1.2",
+        fbp_cookie="fb.1.1",
+        fbc_cookie="fb.1.2",
+    )
+
+    row = client.get(
+        reverse("api:signup_attribution_detail", args=[attribution.pk]), headers=auth
+    ).json()
+
+    assert WITHHELD_FIELDS.isdisjoint(row)
+
+
+def test_an_attribution_row_carries_the_users_id_and_email(client, auth):
+    attribution = SignupAttributionFactory()
+
+    row = client.get(reverse(ATTRIBUTIONS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["user"] == attribution.user.pk
+    assert row["user_email"] == attribution.user.email
+
+
+def test_an_attribution_row_returns_a_blank_field_as_an_empty_string(client, auth):
+    SignupAttributionFactory(utm_source="")
+
+    row = client.get(reverse(ATTRIBUTIONS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["utm_source"] == ""
+
+
+def test_an_attribution_row_returns_the_captured_referral_code_text_without_a_code(
+    client, auth
+):
+    SignupAttributionFactory(referral_code="PARTNER")
+
+    row = client.get(reverse(ATTRIBUTIONS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["referral_code"] == "PARTNER"
+
+
+def test_a_page_of_attributions_does_not_query_per_row(
+    client, auth, django_assert_max_num_queries
+):
+    SignupAttributionFactory.create_batch(20)
+
+    with django_assert_max_num_queries(8):
+        response = client.get(reverse(ATTRIBUTIONS_URL_NAME), headers=auth)
+
+    assert len(response.json()["results"]) == 20
+
+
+def test_attributions_come_back_in_signed_up_at_order_across_pages(
+    client, auth, settings
+):
+    settings.API_PAGE_SIZE = 2
+    first, second, third = (SignupAttributionFactory() for _ in range(3))
+    for attribution, day in ((first, 3), (second, 2), (third, 1)):
+        SignupAttribution._base_manager.filter(pk=attribution.pk).update(
+            signed_up_at=datetime(2030, 1, day, tzinfo=UTC)
+        )
+
+    pages = collect_pages(client, reverse(ATTRIBUTIONS_URL_NAME), auth)
+
+    assert [[row["id"] for row in page["results"]] for page in pages] == [
+        [str(third.pk), str(second.pk)],
+        [str(first.pk)],
+    ]
+
+
+def test_updated_since_includes_an_attribution_at_that_instant_and_excludes_one_before(
+    client, auth
+):
+    at = SignupAttributionFactory()
+    before = SignupAttributionFactory()
+    SignupAttribution._base_manager.filter(pk=at.pk).update(signed_up_at=HIT_INSTANT)
+    SignupAttribution._base_manager.filter(pk=before.pk).update(
+        signed_up_at=datetime(2029, 12, 31, 23, 59, 59, tzinfo=UTC)
+    )
+
+    body = client.get(
+        reverse(ATTRIBUTIONS_URL_NAME),
+        {"updated_since": "2030-01-01T00:00:00Z"},
+        headers=auth,
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [str(at.pk)]
+
+
+def test_a_naive_updated_since_on_attributions_is_400_naming_the_parameter(
+    client, auth
+):
+    response = client.get(
+        reverse(ATTRIBUTIONS_URL_NAME),
+        {"updated_since": "2030-01-01T00:00:00"},
+        headers=auth,
+    )
+
+    assert response.status_code == 400
+    assert "updated_since" in response.json()
+
+
+def test_the_attributions_next_link_keeps_updated_since_and_page_size(
+    client, auth, settings
+):
+    settings.API_PAGE_SIZE = 2
+    for attribution in SignupAttributionFactory.create_batch(3):
+        SignupAttribution._base_manager.filter(pk=attribution.pk).update(
+            signed_up_at=HIT_INSTANT
+        )
+
+    body = client.get(
+        reverse(ATTRIBUTIONS_URL_NAME),
         {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2},
         headers=auth,
     ).json()
