@@ -495,7 +495,18 @@ def _toolbar_entry(
         if joined_labels == table_filter.label
         else f"{table_filter.label}: {joined_labels}"
     )
-    return {
+
+    def _choice(value: str, label: str) -> dict[str, object]:
+        return {
+            "value": value,
+            "label": label,
+            "selected": value in values,
+            "changes": query.filter_changes(
+                table_filter.key, table_filter.toggled(values, value)
+            ),
+        }
+
+    entry: dict[str, object] = {
         "filter": table_filter,
         "values": values,
         "labels": labels,
@@ -503,16 +514,20 @@ def _toolbar_entry(
         "shown": table_filter.always_shown or bool(values),
         # Whether "Clear all" would change this filter's selection.
         "changed": set(values) != set(table_filter.default),
-        "choices": [
-            {
-                "value": value,
-                "label": label,
-                "selected": value in values,
-                "changes": query.filter_changes(
-                    table_filter.key, table_filter.toggled(values, value)
-                ),
-            }
-            for value, label in choices
-        ],
+        "choices": [_choice(value, label) for value, label in choices],
         "remove_changes": query.filter_changes(table_filter.key, []),
     }
+    if table_filter.widget == "grouped_checklist":
+        # The checklist is a form of its own, so it carries the rest of the
+        # table's state and leaves out this filter's own values.
+        entry["groups"] = [
+            {
+                "label": group,
+                "choices": [_choice(value, label) for value, label in members],
+            }
+            for group, members in table_filter.get_groups(request)
+        ]
+        entry["form_hidden_inputs"] = hidden_inputs(
+            request, query, exclude=("page", table_filter.key)
+        )
+    return entry

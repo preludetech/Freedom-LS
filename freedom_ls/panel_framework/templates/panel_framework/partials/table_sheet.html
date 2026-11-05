@@ -43,6 +43,23 @@ when htmx swaps this fragment in.
                             {% endfor %}
                         </select>
                     </label>
+                {% elif entry.filter.widget == "grouped_checklist" %}
+                    <fieldset class="space-y-2 border-0 p-0">
+                        <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
+                        {% for group in entry.groups %}
+                            <details class="rounded-md border border-border">
+                                <summary class="flex min-h-11 cursor-pointer items-center px-3 py-2 text-sm font-semibold">{{ group.label|default:entry.filter.label }}</summary>
+                                <div class="space-y-1 px-3 pb-2">
+                                    {% for choice in group.choices %}
+                                        <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-normal text-on-surface">
+                                            <input type="checkbox" name="{{ query.key }}-{{ entry.filter.key }}" value="{{ choice.value }}" {% if choice.selected %}checked{% endif %}>
+                                            {{ choice.label }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        {% endfor %}
+                    </fieldset>
                 {% else %}
                     <fieldset class="space-y-2 border-0 p-0">
                         <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>

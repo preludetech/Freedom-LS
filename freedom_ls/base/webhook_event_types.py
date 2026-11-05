@@ -4,17 +4,17 @@
 FLS_WEBHOOK_EVENT_TYPES = [
     ("user.signed_up", "User signed up"),
     ("course.completed", "Course completed"),
-    ("registration.added", "Registered for course"),
-    ("registration.reactivated", "Registration reactivated"),
-    ("registration.deactivated", "Registration deactivated"),
+    ("registration.added", "Learner registered for course"),
+    ("registration.reactivated", "Learner course registration reactivated"),
+    ("registration.deactivated", "Learner course registration deactivated"),
     ("cohort_registration.added", "Cohort registered for course"),
-    ("cohort_registration.reactivated", "Cohort registration reactivated"),
-    ("cohort_registration.deactivated", "Cohort registration deactivated"),
+    ("cohort_registration.reactivated", "Cohort course registration reactivated"),
+    ("cohort_registration.deactivated", "Cohort course registration deactivated"),
     ("learner.added", "Learner added"),
     ("learner.deactivated", "Learner deactivated"),
     ("learner.reactivated", "Learner reactivated"),
-    ("cohort_membership.added", "Added to cohort"),
-    ("cohort_membership.removed", "Removed from cohort"),
+    ("cohort_membership.added", "Learner added to cohort"),
+    ("cohort_membership.removed", "Learner removed from cohort"),
 ]
 
 _REGISTRATION_SAMPLE: dict[str, str | bool | None] = {

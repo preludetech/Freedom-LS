@@ -200,8 +200,10 @@ The words a person reads follow the same verbs:
 - **Buttons and dialogs** use the verb: Deactivate, Reactivate, Remove, Delete, Register, Assign.
 - **The state** of a row whose `is_active` is False is **Inactive** — in a badge, a filter, a status
   column. Not "Removed", "Suspended" or "Deactivated".
-- **A registration that exists** is "Registered" (`registration.added` reads "Registered for
-  course"); one switched off has its "Registration deactivated".
+- **A registration that exists** is "Registered" (`registration.added` reads "Learner registered
+  for course"); one switched off has its "Learner course registration deactivated". An audit
+  label names the noun first (Learner, Cohort, Staff member), since the "What" filter lists it
+  under that group.
 - A webhook event that is also an audit action carries the audit action's label. A webhook-only
   event (`user.signed_up`, `course.completed`) follows the same `noun.verb` shape.
 

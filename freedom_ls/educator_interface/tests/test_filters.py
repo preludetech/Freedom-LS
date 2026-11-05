@@ -629,3 +629,25 @@ def test_the_period_midnight_is_midnight_in_the_project_time_zone(
         result = _entry_pks(request, AuditPeriodFilter(), ["today"])
 
     assert (before.pk in result, after.pk in result) == (False, True)
+
+
+@pytest.mark.django_db
+def test_the_action_choices_are_grouped_under_the_fixed_headings_in_order(
+    audit_request,
+):
+    request, _ = audit_request
+
+    groups = AuditActionFilter().get_groups(request)
+
+    assert [group for group, _ in groups] == [
+        "Learners",
+        "Cohort membership",
+        "Course registrations",
+        "Cohorts",
+        "Staff and roles",
+        "Other",
+    ]
+    assert dict(dict(groups)["Cohort membership"])["cohort_membership.moved"] == (
+        "Learner moved between cohorts"
+    )
+    assert AuditActionFilter.widget == "grouped_checklist"

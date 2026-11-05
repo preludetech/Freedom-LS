@@ -26,10 +26,12 @@ class TableFilter:
     """
 
     always_shown: bool = False
-    #: How the mobile sheet renders this filter's choices: "chips" for a
-    #: toggle group, "select" for a <select>. Only the control; `multiple`
-    #: decides how many values the filter holds.
-    widget: Literal["chips", "select"] = "chips"
+    #: How the toolbar and the mobile sheet render this filter's choices:
+    #: "chips" for a toggle group, "select" for a <select>,
+    #: "grouped_checklist" for a checkbox per choice under the headings
+    #: `get_groups` returns, for a filter with many values. Only the
+    #: control; `multiple` decides how many values the filter holds.
+    widget: Literal["chips", "select", "grouped_checklist"] = "chips"
     #: Whether several values may be selected at once. A single-select filter
     #: replaces its selection on toggle and keeps only the first valid value
     #: from the query string.
@@ -53,6 +55,13 @@ class TableFilter:
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         """Every value this filter accepts, as `(value, label)` pairs."""
         raise NotImplementedError
+
+    def get_groups(
+        self, request: HttpRequest
+    ) -> list[tuple[str, list[tuple[str, str]]]]:
+        """The choices under headings, for the grouped checklist widget: one
+        unnamed group holding every choice unless a filter says otherwise."""
+        return [("", self.get_choices(request))]
 
     def validate(
         self,
@@ -123,7 +132,7 @@ class RelatedChoiceFilter(TableFilter):
     `validate` drops it.
     """
 
-    widget: Literal["chips", "select"] = "select"
+    widget: Literal["chips", "select", "grouped_checklist"] = "select"
 
     def __init__(
         self,

@@ -2975,7 +2975,7 @@ def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Cl
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
     assert [(row[2], row[3]) for row in rows] == [
-        ("Moved between cohorts", "From Alpha to Beta")
+        ("Learner moved between cohorts", "From Alpha to Beta")
     ]
 
 
@@ -3004,7 +3004,7 @@ def test_a_move_shows_on_both_cohorts_and_the_learner_history_tabs(
     ]
 
     assert [[(row[2], row[-1]) for row in rows] for rows in shown] == [
-        [("Moved between cohorts", "From Alpha to Beta")]
+        [("Learner moved between cohorts", "From Alpha to Beta")]
     ] * 3
 
 
@@ -3123,7 +3123,9 @@ def test_a_learner_registration_shows_on_the_learner_history_tab(staff_client: C
 
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
-    assert [(row[2], row[3]) for row in rows] == [("Registered for course", "Algebra")]
+    assert [(row[2], row[3]) for row in rows] == [
+        ("Learner registered for course", "Algebra")
+    ]
 
 
 def _audit_log_url(organisation: Organisation) -> str:
@@ -5621,3 +5623,40 @@ def test_a_plain_request_for_an_unknown_learner_gets_the_page_404(
 
     assert response.status_code == 404
     assert "data-htmx-swap-error" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_audit_log_what_filter_is_a_grouped_checklist_with_one_apply(
+    staff_client: Client,
+):
+    """Many actions as a chip cloud were unreadable; the filter is a checkbox
+    per action under its group, applied once, in the toolbar and the sheet."""
+    organisation = OrganisationFactory()
+
+    document = _get_document(staff_client, _audit_log_url(organisation))
+
+    # The popover form in the toolbar; the sheet holds its own copy.
+    (toolbar_form,) = [
+        form
+        for form in document.cssselect("form.surface")
+        if form.cssselect("input[type='checkbox'][name='audit_log-what']")
+    ]
+    legends = [
+        legend.text_content().strip() for legend in toolbar_form.cssselect("legend")
+    ]
+    assert legends == [
+        "Learners",
+        "Cohort membership",
+        "Course registrations",
+        "Cohorts",
+        "Staff and roles",
+        "Other",
+    ]
+    assert toolbar_form.xpath(".//button[@type='submit'][normalize-space()='Apply']")
+    assert "Learner added to cohort" in toolbar_form.text_content()
+    (sheet,) = document.cssselect("dialog#audit_log-sheet")
+    summaries = [
+        summary.text_content().strip() for summary in sheet.cssselect("details summary")
+    ]
+    assert summaries == legends
+    assert not sheet.cssselect("label.rounded-full")

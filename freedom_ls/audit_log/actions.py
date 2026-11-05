@@ -14,17 +14,30 @@ if TYPE_CHECKING:
     from freedom_ls.audit_log.models import AuditLogEntry
 
 
+#: The headings the audit log's "What" filter groups actions under, in order.
+AUDIT_ACTION_GROUPS: tuple[str, ...] = (
+    "Learners",
+    "Cohort membership",
+    "Course registrations",
+    "Cohorts",
+    "Staff and roles",
+    "Other",
+)
+
+
 @dataclass(frozen=True)
 class AuditAction:
     """One kind of audited change.
 
     `code` is a `noun.verb` string. `describe`, when set, renders the entry's
-    details line from the entry itself.
+    details line from the entry itself. `group` is the heading the "What"
+    filter lists the action under, one of `AUDIT_ACTION_GROUPS`.
     """
 
     code: str
     label: str
     describe: Callable[[AuditLogEntry], str] | None = None
+    group: str = "Other"
 
 
 _ADDED_OUTCOMES = {
@@ -90,44 +103,94 @@ def _describe_run_summary(entry: AuditLogEntry) -> str:
 SUMMARY_ACTIONS = frozenset({"bulk_action.completed", "import.committed"})
 
 FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
-    AuditAction("learner.added", "Learner added", _describe_learner_added),
-    AuditAction("learner.renamed", "Learner renamed", _describe_rename),
-    AuditAction("learner.deactivated", "Learner deactivated"),
-    AuditAction("learner.reactivated", "Learner reactivated", _describe_joined_cohort),
-    AuditAction("learner.setup_email_resent", "Setup email resent"),
-    AuditAction("cohort_membership.added", "Added to cohort", _describe_cohort),
-    AuditAction("cohort_membership.removed", "Removed from cohort", _describe_cohort),
-    AuditAction("cohort_membership.moved", "Moved between cohorts", _describe_move),
-    AuditAction("registration.added", "Registered for course", _describe_course),
     AuditAction(
-        "registration.reactivated", "Registration reactivated", _describe_course
+        "learner.added", "Learner added", _describe_learner_added, group="Learners"
     ),
     AuditAction(
-        "registration.deactivated", "Registration deactivated", _describe_course
+        "learner.renamed", "Learner renamed", _describe_rename, group="Learners"
     ),
-    AuditAction("cohort.created", "Cohort created"),
-    AuditAction("cohort.renamed", "Cohort renamed", _describe_rename),
-    AuditAction("cohort.deactivated", "Cohort deactivated"),
-    AuditAction("cohort.reactivated", "Cohort reactivated"),
-    AuditAction("cohort.deleted", "Cohort deleted"),
+    AuditAction("learner.deactivated", "Learner deactivated", group="Learners"),
     AuditAction(
-        "cohort_registration.added", "Cohort registered for course", _describe_course
+        "learner.reactivated",
+        "Learner reactivated",
+        _describe_joined_cohort,
+        group="Learners",
+    ),
+    AuditAction("learner.setup_email_resent", "Setup email resent", group="Learners"),
+    AuditAction(
+        "cohort_membership.added",
+        "Learner added to cohort",
+        _describe_cohort,
+        group="Cohort membership",
+    ),
+    AuditAction(
+        "cohort_membership.removed",
+        "Learner removed from cohort",
+        _describe_cohort,
+        group="Cohort membership",
+    ),
+    AuditAction(
+        "cohort_membership.moved",
+        "Learner moved between cohorts",
+        _describe_move,
+        group="Cohort membership",
+    ),
+    AuditAction(
+        "registration.added",
+        "Learner registered for course",
+        _describe_course,
+        group="Course registrations",
+    ),
+    AuditAction(
+        "registration.reactivated",
+        "Learner course registration reactivated",
+        _describe_course,
+        group="Course registrations",
+    ),
+    AuditAction(
+        "registration.deactivated",
+        "Learner course registration deactivated",
+        _describe_course,
+        group="Course registrations",
+    ),
+    AuditAction("cohort.created", "Cohort created", group="Cohorts"),
+    AuditAction("cohort.renamed", "Cohort renamed", _describe_rename, group="Cohorts"),
+    AuditAction("cohort.deactivated", "Cohort deactivated", group="Cohorts"),
+    AuditAction("cohort.reactivated", "Cohort reactivated", group="Cohorts"),
+    AuditAction("cohort.deleted", "Cohort deleted", group="Cohorts"),
+    AuditAction(
+        "cohort_registration.added",
+        "Cohort registered for course",
+        _describe_course,
+        group="Cohorts",
     ),
     AuditAction(
         "cohort_registration.reactivated",
-        "Cohort registration reactivated",
+        "Cohort course registration reactivated",
         _describe_course,
+        group="Cohorts",
     ),
     AuditAction(
         "cohort_registration.deactivated",
-        "Cohort registration deactivated",
+        "Cohort course registration deactivated",
         _describe_course,
+        group="Cohorts",
     ),
-    AuditAction("role.assigned", "Role assigned", _describe_role),
-    AuditAction("role.deactivated", "Role deactivated", _describe_role),
-    AuditAction("role.removed", "Role removed", _describe_role),
-    AuditAction("member.deactivated", "Member deactivated"),
-    AuditAction("member.reactivated", "Member reactivated"),
+    AuditAction(
+        "role.assigned", "Role assigned", _describe_role, group="Staff and roles"
+    ),
+    AuditAction(
+        "role.deactivated", "Role deactivated", _describe_role, group="Staff and roles"
+    ),
+    AuditAction(
+        "role.removed", "Role removed", _describe_role, group="Staff and roles"
+    ),
+    AuditAction(
+        "member.deactivated", "Staff member deactivated", group="Staff and roles"
+    ),
+    AuditAction(
+        "member.reactivated", "Staff member reactivated", group="Staff and roles"
+    ),
     AuditAction(
         "bulk_action.completed", "Bulk action completed", _describe_run_summary
     ),
@@ -151,6 +214,17 @@ def audit_actions() -> dict[str, AuditAction]:
     """Every registered audit action, FLS's own first. Built once per value
     of the extra-actions setting and shared, so callers must not change it."""
     return _registry(tuple(config.AUDIT_LOG_EXTRA_ACTIONS.items()))
+
+
+def audit_actions_by_group() -> list[tuple[str, list[AuditAction]]]:
+    """Every registered action under its group heading, in
+    `AUDIT_ACTION_GROUPS` order; a group with no action is left out."""
+    actions = list(audit_actions().values())
+    return [
+        (group, members)
+        for group in AUDIT_ACTION_GROUPS
+        if (members := [action for action in actions if action.group == group])
+    ]
 
 
 def validate_action(code: str) -> None:

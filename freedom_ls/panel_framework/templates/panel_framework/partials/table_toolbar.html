@@ -8,6 +8,37 @@ chips, a "Filter" button that opens the sheet in table_sheet.html and a
 column header carries. Every control is a real link or form, so both layouts
 work with JavaScript off.
 {% endcomment %}
+{% partialdef grouped-checklist %}
+    {% comment %}
+    A filter with many values: a checkbox per choice under its group heading,
+    applied with one submit. A GET form of its own, carrying the table's
+    other state as hidden inputs, so it works with JavaScript off too.
+    {% endcomment %}
+    <form method="get"
+          action="{{ page_url }}"
+          hx-get="{{ base_url }}"
+          hx-target="#{{ region_id }}"
+          hx-swap="outerHTML"
+          class="surface absolute z-10 mt-1 max-h-96 w-72 space-y-3 overflow-y-auto p-3">
+        {% for name, value in entry.form_hidden_inputs %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        {% for group in entry.groups %}
+            <fieldset class="space-y-1 border-0 p-0">
+                {% if group.label %}<legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.label }}</legend>{% endif %}
+                {% for choice in group.choices %}
+                    <label class="flex min-h-8 cursor-pointer items-center gap-2 text-sm font-normal normal-case text-on-surface">
+                        <input type="checkbox" name="{{ query.key }}-{{ entry.filter.key }}" value="{{ choice.value }}" {% if choice.selected %}checked{% endif %}>
+                        {{ choice.label }}
+                    </label>
+                {% endfor %}
+            </fieldset>
+        {% endfor %}
+        <div class="flex justify-end border-t border-border pt-2">
+            <c-button type="submit" variant="primary" size="small">Apply</c-button>
+        </div>
+    </form>
+{% endpartialdef %}
 {% partialdef filter-choices %}
     <div class="surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
         {% for choice in choices %}
@@ -77,9 +108,13 @@ work with JavaScript off.
                             </c-chip>
                         {% endif %}
                     </summary>
-                    {% with choices=entry.choices %}
-                        {% partial filter-choices %}
-                    {% endwith %}
+                    {% if entry.filter.widget == "grouped_checklist" %}
+                        {% partial grouped-checklist %}
+                    {% else %}
+                        {% with choices=entry.choices %}
+                            {% partial filter-choices %}
+                        {% endwith %}
+                    {% endif %}
                 </details>
             {% endif %}
         {% endfor %}
@@ -96,9 +131,13 @@ work with JavaScript off.
                     {% for entry in add_filter %}
                         <details>
                             <summary class="cursor-pointer">{{ entry.filter.label }}</summary>
-                            {% with choices=entry.choices %}
-                                {% partial filter-choices %}
-                            {% endwith %}
+                            {% if entry.filter.widget == "grouped_checklist" %}
+                                {% partial grouped-checklist %}
+                            {% else %}
+                                {% with choices=entry.choices %}
+                                    {% partial filter-choices %}
+                                {% endwith %}
+                            {% endif %}
                         </details>
                     {% endfor %}
                 </div>

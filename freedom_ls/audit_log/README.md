@@ -67,37 +67,39 @@ on the learner and cohort pages.
 
 ## Audit actions
 
-An audit action is a `noun.verb` code with a label and an optional `describe` renderer that turns an
-entry's `details` into one line. The noun is what the entry is about, the verb what happened to it.
+An audit action is a `noun.verb` code with a label, a group and an optional `describe` renderer
+that turns an entry's `details` into one line. The noun is what the entry is about, the verb what
+happened to it. The group is the heading the audit log's "What" filter lists the action under; an
+action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 
-| Code | Label | Target | Other subjects | `details` |
-| --- | --- | --- | --- | --- |
-| `learner.added` | Learner added | learner | cohort, if one was given | `outcome` (`created`, `joined`), `cohort` |
-| `learner.renamed` | Learner renamed | learner | | `old`, `new` |
-| `learner.deactivated` | Learner deactivated | learner | | |
-| `learner.reactivated` | Learner reactivated | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one; `course`, `self_service`, when a self-registration did |
-| `learner.setup_email_resent` | Setup email resent | learner | | |
-| `cohort_membership.added` | Added to cohort | learner | cohort | `cohort` |
-| `cohort_membership.removed` | Removed from cohort | learner | cohort | `cohort` |
-| `cohort_membership.moved` | Moved between cohorts | learner | both cohorts | `source`, `destination`, `move_id` |
-| `registration.added` | Registered for course | learner | | `course` |
-| `registration.reactivated` | Registration reactivated | learner | | `course`; `self_service`, when a self-registration did it |
-| `registration.deactivated` | Registration deactivated | learner | | `course` |
-| `cohort.created` | Cohort created | cohort | | |
-| `cohort.renamed` | Cohort renamed | cohort | | `old`, `new` |
-| `cohort.deactivated` | Cohort deactivated | cohort | | |
-| `cohort.reactivated` | Cohort reactivated | cohort | | |
-| `cohort.deleted` | Cohort deleted | cohort | | |
-| `cohort_registration.added` | Cohort registered for course | cohort | | `course` |
-| `cohort_registration.reactivated` | Cohort registration reactivated | cohort | | `course` |
-| `cohort_registration.deactivated` | Cohort registration deactivated | cohort | | `course` |
-| `role.assigned` | Role assigned | user | the object the role is on | `role`, `role_label`, `scope` |
-| `role.deactivated` | Role deactivated | user | the object the role is on | `role`, `role_label`, `scope` |
-| `role.removed` | Role removed | user | the cohort being deleted | `role`, `role_label`, `scope` |
-| `member.deactivated` | Member deactivated | organisation member | its user | |
-| `member.reactivated` | Member reactivated | organisation member | its user | |
-| `bulk_action.completed` | Bulk action completed | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
-| `import.committed` | Import committed | organisation | | `counts`, `rows`, `truncated` |
+| Code | Label | Group | Target | Other subjects | `details` |
+| --- | --- | --- | --- | --- | --- |
+| `learner.added` | Learner added | Learners | learner | cohort, if one was given | `outcome` (`created`, `joined`), `cohort` |
+| `learner.renamed` | Learner renamed | Learners | learner | | `old`, `new` |
+| `learner.deactivated` | Learner deactivated | Learners | learner | | |
+| `learner.reactivated` | Learner reactivated | Learners | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one; `course`, `self_service`, when a self-registration did |
+| `learner.setup_email_resent` | Setup email resent | Learners | learner | | |
+| `cohort_membership.added` | Learner added to cohort | Cohort membership | learner | cohort | `cohort` |
+| `cohort_membership.removed` | Learner removed from cohort | Cohort membership | learner | cohort | `cohort` |
+| `cohort_membership.moved` | Learner moved between cohorts | Cohort membership | learner | both cohorts | `source`, `destination`, `move_id` |
+| `registration.added` | Learner registered for course | Course registrations | learner | | `course` |
+| `registration.reactivated` | Learner course registration reactivated | Course registrations | learner | | `course`; `self_service`, when a self-registration did it |
+| `registration.deactivated` | Learner course registration deactivated | Course registrations | learner | | `course` |
+| `cohort.created` | Cohort created | Cohorts | cohort | | |
+| `cohort.renamed` | Cohort renamed | Cohorts | cohort | | `old`, `new` |
+| `cohort.deactivated` | Cohort deactivated | Cohorts | cohort | | |
+| `cohort.reactivated` | Cohort reactivated | Cohorts | cohort | | |
+| `cohort.deleted` | Cohort deleted | Cohorts | cohort | | |
+| `cohort_registration.added` | Cohort registered for course | Cohorts | cohort | | `course` |
+| `cohort_registration.reactivated` | Cohort course registration reactivated | Cohorts | cohort | | `course` |
+| `cohort_registration.deactivated` | Cohort course registration deactivated | Cohorts | cohort | | `course` |
+| `role.assigned` | Role assigned | Staff and roles | user | the object the role is on | `role`, `role_label`, `scope` |
+| `role.deactivated` | Role deactivated | Staff and roles | user | the object the role is on | `role`, `role_label`, `scope` |
+| `role.removed` | Role removed | Staff and roles | user | the cohort being deleted | `role`, `role_label`, `scope` |
+| `member.deactivated` | Staff member deactivated | Staff and roles | organisation member | its user | |
+| `member.reactivated` | Staff member reactivated | Staff and roles | organisation member | its user | |
+| `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
+| `import.committed` | Import committed | Other | organisation | | `counts`, `rows`, `truncated` |
 
 The last two are the summary actions; `record_run_summary` accepts nothing else. `role.deactivated`
 is the `is_active` flip done from Members; `role.removed` is a role row deleted along with its

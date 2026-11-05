@@ -12,7 +12,7 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
-from freedom_ls.audit_log.actions import audit_actions
+from freedom_ls.audit_log.actions import audit_actions, audit_actions_by_group
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
@@ -219,13 +219,23 @@ class AuditActorFilter(TableFilter):
 
 class AuditActionFilter(ChoiceFilter):
     """Narrows audit entries to the chosen actions, offering every registered
-    action."""
+    action as a checklist under its group heading."""
+
+    widget = "grouped_checklist"
 
     def __init__(self) -> None:
         super().__init__("what", "What", lookup="action")
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         return [(code, action.label) for code, action in audit_actions().items()]
+
+    def get_groups(
+        self, request: HttpRequest
+    ) -> list[tuple[str, list[tuple[str, str]]]]:
+        return [
+            (group, [(action.code, action.label) for action in actions])
+            for group, actions in audit_actions_by_group()
+        ]
 
 
 class AuditPeriodFilter(ChoiceFilter):

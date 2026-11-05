@@ -3,7 +3,7 @@ and webhook event types, as the domain glossary's "Changes" section lays it
 out. A code outside these sets is a new word, and the glossary is where a new
 word is agreed first."""
 
-from freedom_ls.audit_log.actions import FLS_AUDIT_ACTIONS
+from freedom_ls.audit_log.actions import AUDIT_ACTION_GROUPS, FLS_AUDIT_ACTIONS
 from freedom_ls.base.webhook_event_types import (
     FLS_WEBHOOK_EVENT_TYPES,
     WEBHOOK_EVENT_TYPE_SAMPLES,
@@ -55,6 +55,18 @@ QUALIFIED_VERBS = frozenset({"setup_email_resent"})
 WEBHOOK_ONLY = frozenset({"user.signed_up", "course.completed"})
 
 
+#: The "What" filter's heading for each noun, so a new action lands with its kind.
+NOUN_GROUPS = {
+    "learner": "Learners",
+    "cohort_membership": "Cohort membership",
+    "registration": "Course registrations",
+    "cohort": "Cohorts",
+    "cohort_registration": "Cohorts",
+    "role": "Staff and roles",
+    "member": "Staff and roles",
+}
+
+
 def _split(code: str) -> tuple[str, str]:
     noun, verb = code.split(".")
     return noun, verb
@@ -65,6 +77,17 @@ def test_every_audit_action_uses_a_glossary_noun_and_verb():
         noun, verb = _split(action.code)
         assert noun in NOUNS, action.code
         assert verb in VERBS or verb in QUALIFIED_VERBS, action.code
+
+
+def test_every_audit_action_belongs_to_a_named_group():
+    for action in FLS_AUDIT_ACTIONS:
+        assert action.group in AUDIT_ACTION_GROUPS, action.code
+
+
+def test_an_actions_group_follows_its_noun():
+    for action in FLS_AUDIT_ACTIONS:
+        noun, _verb = _split(action.code)
+        assert action.group == NOUN_GROUPS.get(noun, "Other"), action.code
 
 
 def test_every_webhook_event_type_uses_a_glossary_noun_and_verb():
