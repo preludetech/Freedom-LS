@@ -21,7 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (user) Update `docs/api.md` from the spec's "Documentation and downstream" section: change the intro ("Today there is one") and the API-scope note ("Only `users` has an API endpoint so far"); add a `## Course applications` section after `## Users` in the same layout (API endpoint table, Fields table, Answers table with the value-by-type rules, `### What moves `updated_at`` listing the seven events, the saves that do not move it, and that course and form-definition edits never do); add the drafts warning (filter on `is_submitted`), the "Who applied" note, that a file upload gives the filename only, and that deleted applications are not reported; extend the existing Python example so one loop parametrised by path syncs both `users` and `course-applications` with a separate checkpoint per path (no second copy of the loop). `freedom_ls/api/tests/invariants/test_api_docs.py` must still pass.
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
