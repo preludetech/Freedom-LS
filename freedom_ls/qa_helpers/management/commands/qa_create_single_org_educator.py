@@ -11,7 +11,8 @@ Idempotent. Only the named user's own rows are touched.
 Usage:
     uv run python manage.py qa_create_single_org_educator
     uv run python manage.py qa_create_single_org_educator --site DemoDev \
-        --organisation-slug demodev --email qa.single.org.educator@example.com
+        --organisation-slug demodev --email qa.single.org.educator@example.com \
+        --password testpass123
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ ROLE = "organisation_admin"
 PASSWORD = "testpass123"  # noqa: S105  # pragma: allowlist secret  # dev-only QA credential
 
 
-def _ensure_user(site: Site, email: str, first: str, last: str) -> User:
+def _ensure_user(site: Site, email: str, first: str, last: str, password: str) -> User:
     user: User | None = User.objects.filter(email=email).first()
     if user is None:
         user = cast(
@@ -56,7 +57,7 @@ def _ensure_user(site: Site, email: str, first: str, last: str) -> User:
                 email=email,
                 first_name=first,
                 last_name=last,
-                password=PASSWORD,
+                password=password,
                 site=site,
             ),
         )
@@ -65,7 +66,7 @@ def _ensure_user(site: Site, email: str, first: str, last: str) -> User:
         user.is_active = True
         user.is_staff = False
         user.is_superuser = False
-        user.set_password(PASSWORD)
+        user.set_password(password)
         user.save()
         user.user_permissions.clear()
     EmailAddress.objects.update_or_create(
@@ -136,23 +137,25 @@ def _drop_other_grants(user: User, organisation: Organisation) -> list[str]:
 )
 @click.option("--first-name", default="Quinn", show_default=True)
 @click.option("--last-name", default="Okafor", show_default=True)
+@click.option("--password", default=PASSWORD, show_default=True)
 def command(
     site_name: str,
     organisation_slug: str,
     email: str,
     first_name: str,
     last_name: str,
+    password: str,
 ) -> None:
     site = Site.objects.get(name=site_name)
     organisation = Organisation._base_manager.get(site=site, slug=organisation_slug)
     _pin_current_site(site)
     with _site_context(site), transaction.atomic():
-        user = _ensure_user(site, email, first_name, last_name)
+        user = _ensure_user(site, email, first_name, last_name, password)
         consents = _ensure_consents(site, user)
         dropped = _drop_other_grants(user, organisation)
         assign_object_role(user, organisation, ROLE)
 
-    click.echo(f"User: {email} / {PASSWORD} ({first_name} {last_name}) on {site}")
+    click.echo(f"User: {email} / {password} ({first_name} {last_name}) on {site}")
     click.echo(f"Consents added: {consents or 'none (already present)'}")
     click.echo(f"Other grants deactivated: {dropped or 'none'}")
     click.echo(
