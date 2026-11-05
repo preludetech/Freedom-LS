@@ -15,11 +15,14 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `corporate-job-course-recommendations-5-attribute-csv-import`
+- `csv-formula-extra-triggers`
 - `deadlines-3-extensions-and-pause`
 - `deadlines-7-educator-at-risk`
 - `failed-login-follow-up`
 - `file-scanning`
 - `forced-site-name-for-host-based-site-lookup`
+- `housekeeping-sentry-cron-checkin`
+- `learner-import-management-command`
 - `phone-number-form-field`
 - `referral-attribution-over-time`
 - `referral-tracking-referer-host-normalisation`
@@ -885,12 +888,15 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
 | `cookie-banner` | A cookie banner telling visitors how they are tracked, dismissed once and remembered so it stops showing. | none | next | |
+| `csv-formula-extra-triggers` | Extend the CSV formula-escaping helper to neutralise line-feed and full-width =, +, -, @ so every FLS CSV export is safe for spreadsheet users. | none | next | Pull-in from First-Class-LMS. |
 | `design_educator-interface-bulk-action` | Restyle the educator bulk-action bar to the Claude Design mock: appears on selection with a count, select and clear all, text buttons, a More menu, modal confirmation. | none | in progress | Design in `design_prompt.md`. Edits framework templates and `tableSelection`, so it lands before `extract_panels_framework-1-gather-generic-code`. |
 | `educator-interface-design-learner-csv-upload-design-fix` | Restyle the educator learner CSV upload to match its Claude Design design. | none | in progress | Design in `prompt.md`. |
 | `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
 | `forced-site-name-for-host-based-site-lookup` | Make `FORCE_SITE_NAME` reach Django's host-based site lookup in development, so login, signup and admin work on any dev port. | none | next | Pull-in from First-Class-LMS (`ForcedSiteHostMiddleware`). |
 | `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | in progress | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
+| `housekeeping-sentry-cron-checkin` | `fls_run_housekeeping` checks in with Sentry Crons (in progress, then OK or ERROR) when a monitor slug is configured, for deployed projects' operators. | none | next | Pull-in from First-Class-LMS. |
+| `learner-import-management-command` | A management command that previews and commits the learner CSV import for one named site, reusing `educator_interface.learner_import`, for operators without a browser session. | none | next | Pull-in from First-Class-LMS. |
 | `mega-qa` | Whole-system QA: a locked staging reset endpoint, a durable journey-and-area QA suite with a new report format, and downstream projects inheriting the plans. | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation). Idea 2 tests the educator interface, so it is best written after the rebuild. |
 | `multi-step-course-applications` | Applicants work through a course's application requirements in any order, through a pluggable requirement resolver, with reviewer verdicts, uploads, help requests and recommendations. | `form-engine-branch-logic`, `file-scanning`, `phone-number-form-field`, `corporate-job-course-recommendations-3-recommend-outcome` | next | Its idea says it is too big for one spec and lists six parts; cut it before starting. Builds on the `educator-interface-full-polish/application-review-ui/` draft. |
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
@@ -910,6 +916,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `downstream_bugs_oct_29` | Fix the bugs a downstream project flagged so it can drop its workarounds. | none | in progress | Nests 14 sub-ideas, one per bug. |
 | `learner-facing-ux-refinements` | Compact course rows below `lg`, a single Back link on course detail, and a restyled "Your applications" panel paged three at a time. | `organisation-courses`, `applying-for-courses`, `better-learner-dashboard-course-display` | in progress | |
 | `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
+| `sdd-improvements-combine-steps` | SDD start runs register_design and spec_from_idea automatically with up-front input, and implement-plan runs QA straight after, for SDD users. | none | in progress | |
 
 ```
 phone-number-form-field ──┐
@@ -924,4 +931,4 @@ user-communication-ux-improve ──── user-communication-help-desk
 
 `multi-step-course-applications` also depends on the done `corporate-job-course-recommendations-3-recommend-outcome`.
 
-No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `design_educator-interface-bulk-action` (`extract_panels_framework-1-gather-generic-code` depends on it), `educator-interface-design-learner-csv-upload-design-fix`, `forced-site-name-for-host-based-site-lookup`, `mega-qa`, `referral-attribution-over-time` (`apis-for-lead-monitoring-6-conversions` depends on it), `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
+No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `cookie-banner`, `csv-formula-extra-triggers`, `design_educator-interface-bulk-action` (`extract_panels_framework-1-gather-generic-code` depends on it), `educator-interface-design-learner-csv-upload-design-fix`, `forced-site-name-for-host-based-site-lookup`, `housekeeping-sentry-cron-checkin`, `learner-import-management-command`, `mega-qa`, `referral-attribution-over-time` (`apis-for-lead-monitoring-6-conversions` depends on it), `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
