@@ -8,6 +8,7 @@ from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import QueryDict
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import (
     EmailAddressFactory,
@@ -23,6 +24,10 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.anonymous_session import (
     ANONYMOUS_APPLICANTS_SESSION_KEY,
+)
+from freedom_ls.course_applications.claims import (
+    attach_to_user,
+    update_applicant_email,
 )
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
@@ -563,3 +568,47 @@ def test_removing_a_file_puts_the_application_in_an_updated_since_poll(
     client.post(_file_url("question_file_remove", draft))
 
     assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_changing_the_applicants_email_moves_updated_at(draft):
+    before = draft.updated_at
+
+    update_applicant_email(draft.anonymous_applicant, "grace@example.com")
+
+    assert _updated_at(draft) > before
+
+
+def test_changing_the_applicants_email_puts_the_application_in_an_updated_since_poll(
+    draft, auth
+):
+    before = draft.updated_at
+
+    update_applicant_email(draft.anonymous_applicant, "grace@example.com")
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_attaching_to_a_user_moves_updated_at(draft):
+    before = draft.updated_at
+
+    attach_to_user(draft, draft.anonymous_applicant, UserFactory())
+
+    assert _updated_at(draft) > before
+
+
+def test_attaching_to_a_user_puts_the_application_in_an_updated_since_poll(draft, auth):
+    before = draft.updated_at
+
+    attach_to_user(draft, draft.anonymous_applicant, UserFactory())
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_stamping_the_claim_email_as_sent_leaves_updated_at_alone(draft):
+    before = draft.updated_at
+    applicant = draft.anonymous_applicant
+    applicant.claim_email_sent_at = timezone.now()
+
+    applicant.save(update_fields=["claim_email_sent_at", "updated_at"])
+
+    assert _updated_at(draft) == before

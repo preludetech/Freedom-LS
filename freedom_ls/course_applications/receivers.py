@@ -31,6 +31,10 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.session_access import forget_all_anonymous_form_progress
 
+# Saves of only these fields change nothing the API shows, so they move nothing.
+# The claim email's sent stamp is written on every send.
+CLAIM_EMAIL_FIELDS = frozenset({"claim_email_sent_at", "updated_at"})
+
 
 def touch_application_updated_at(**match: object) -> None:
     """Move updated_at on the applications `match` names.
@@ -69,6 +73,18 @@ def touch_application_on_answer_file_change(
     # file's post_delete runs while the answer row still exists, and the answer's
     # own post_delete bumps the application too, so no extra SELECT is needed.
     touch_application_updated_at(form_progress__answers__id=instance.answer_id)
+
+
+@receiver(post_save, sender=AnonymousApplicant)
+def touch_application_on_applicant_save(
+    sender: type[AnonymousApplicant],
+    instance: AnonymousApplicant,
+    update_fields: frozenset[str] | None = None,
+    **kwargs: object,
+) -> None:
+    if update_fields is not None and update_fields <= CLAIM_EMAIL_FIELDS:
+        return
+    touch_application_updated_at(anonymous_applicant_id=instance.pk)
 
 
 @receiver(post_delete, sender=CourseApplication)
