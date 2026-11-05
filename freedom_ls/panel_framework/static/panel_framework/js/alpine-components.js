@@ -978,6 +978,19 @@ document.addEventListener("alpine:init", () => {
             });
         },
     }));
+
+    // A form whose submit button is disabled for its request loses keyboard
+    // focus to <body>, and the event the request fires may replace the
+    // panel the form sits in. After the request, focus moves to the element
+    // whose id data-refocus-id names, found in the document as it is then.
+    // The CSP build of Alpine runs no inline expression, so the handler is a
+    // method: x-on:htmx:after-request="refocus".
+    Alpine.data("refocusAfterRequest", () => ({
+        refocus() {
+            const id = this.$el.dataset.refocusId;
+            setTimeout(() => document.getElementById(id)?.focus());
+        },
+    }));
 });
 
 // A tab link lives outside the region it swaps, so the server-rendered

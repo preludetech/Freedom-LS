@@ -36,16 +36,17 @@ Each learner is **Active**, **Pending** (staff created their account and they ha
 
 ### The learner page
 
-![A learner's page with Edit name, Add to cohort, Register for a course and Deactivate above Overview, Courses, Messages and History tabs](screenshots/educator_learner_page.png)
+![A learner's page with the name and email above Overview, Courses, Messages, Settings and History tabs](screenshots/educator_learner_page.png)
 
-The header shows name, email, status and the actions the educator may take. The tabs are:
+The header shows the name and email, and a badge only while the learner is Pending or Inactive. The tabs are:
 
 - **Overview**: details, cohorts and course registrations.
 - **Courses**: for each registered course, completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark.
 - **Messages**: when direct messaging is turned on. See [Messaging from a learner](#messaging-from-a-learner).
+- **Settings**: every action that changes the learner, listed below. Shown to anyone who may take at least one of them.
 - **History**: see [History](#history).
 
-From the page an educator can:
+From the Settings tab an educator can:
 
 - **Add to a cohort, remove, or move** a learner to another active cohort in the organisation. Each confirmation names the courses the learner loses access to. A move carries course progress across, keeping whichever record is further along for a course both cohorts give access to. Nothing is deleted.
 - **Register for a course**, and deactivate or reactivate a registration. Any course that is not coming soon can be registered, but not one that is closed to the learner's organisation, which is refused with a message. Deactivating a registration keeps progress and says whether a cohort still gives access to the course.
@@ -98,7 +99,7 @@ Runs over `BULK_BACKGROUND_THRESHOLD` rows (default 250) continue in the backgro
 The Cohorts list shows each cohort in the current organisation the educator has access to, with its status, learner count and registered courses. Inactive cohorts are hidden until **Show inactive** is switched on, and the list can be filtered by course. Creating, editing, deactivating and deleting a cohort, and registering it for a course or deactivating that registration, happen in a dialog over the current page. The list takes [bulk actions](#bulk-actions).
 
 - **Creating and renaming.** A name is all a cohort needs, and names are unique within an organisation. **Save and add another** keeps the dialog open to create several in a row.
-- **Cohort page.** Tabs are *Overview* (details, completion for each registered course, the educators assigned with their roles, and a needs-attention list), *Learners*, *Courses*, *Report* (see [Reports](#reports)), *Settings* (deactivation and deletion) and *History* (see [History](#history)). The Learners tab adds learners, and removes or moves one from their row.
+- **Cohort page.** Tabs are *Overview* (details, completion for each registered course, the educators assigned with their roles, and a needs-attention list), *Learners*, *Courses*, *Report* (see [Reports](#reports)), *Settings* (renaming, deactivation and deletion) and *History* (see [History](#history)). The Learners tab adds learners, and removes or moves one from their row.
 - **Registering for courses.** The Courses tab registers the cohort for any course that is not coming soon and not closed to the organisation, and deactivates a registration from its row. Deactivating is reversible and everyone keeps their progress. The confirmation says how many learners lose access and names those who keep it through another registration.
 - **Deactivating.** An inactive cohort's registrations give no access to their courses and the cohort becomes read-only, so it takes no membership action. Learners keep their place and progress, and reactivating restores access. See [learner tracking](./learner-tracking.md#what-is-recorded).
 - **Deleting.** Only while the cohort has no learners and no course registrations, inactive ones included; otherwise the Settings tab says what still depends on it. Deleting a cohort also deletes the cohort roles held on it.
@@ -162,9 +163,9 @@ Not recorded: anything before the feature was installed (there is no backfill), 
 
 ## Reports
 
-![A cohort's Report tab with a Generate PDF report button above the on-screen cohort report](screenshots/educator_cohort_report.png)
+![A cohort's Report tab with a Downloads table and a Generate report button beside its title, above the on-screen cohort report](screenshots/educator_cohort_report.png)
 
-A cohort's **Report** tab shows the [cohort report](./reports.md) on screen: the cohort at a glance, the learners needing attention, a progress summary per course with quiz scores, and the quiz confusions. Per-learner detail stays in the PDF. An educator with the report download capability can generate the PDF from the same tab and download the latest one. A report that has not finished after ten minutes can be started again.
+A cohort's **Report** tab shows the [cohort report](./reports.md) on screen: the cohort at a glance, the learners needing attention, a progress summary per course with quiz scores, and the quiz confusions. Per-learner detail stays in the PDF. An educator with the report download capability generates the PDF from the same tab, with a button beside the Downloads title, and the table under it lists the last five finished reports with who generated each one and when. A report that has not finished after ten minutes can be started again. While the cohort is over the report's learner limit the button is disabled and the reason sits beside it.
 
 On-screen figures, here and on the dashboard, are recalculated every few minutes (see `REPORTS_SCREEN_CACHE_SECONDS` in [configuration and extension](./configuration-and-extension.md#settings-reference)) and each page says when its figures are from. Adding or removing a learner, or registering a course or deactivating a registration, shows at once; new progress shows at the next recalculation, or when the Report tab's Refresh is pressed.
 
@@ -190,7 +191,7 @@ All queries stay scoped to the current site, so nothing here crosses a tenant bo
 
 ![Learners list at phone width, with each learner as a card showing status, cohorts, courses and last active](screenshots/educator_learners_mobile.png)
 
-The interface is designed for phones as well as desktop. On a phone, tables become cards, filters and sorting open in a sheet, and the quick view is a sheet; controls are at least 44px high on phones. Both themes, default and first class, are light only: there is no dark mode.
+The interface is designed for phones as well as desktop. On a phone, tables become cards, filters open in a sheet, sorting is a menu of columns, and the quick view is a sheet; controls are at least 44px high on phones. Both themes, default and first class, are light only: there is no dark mode.
 
 Every action works by keyboard. Dialogs and the quick view take their names from their headings, move focus in when opened, close on Escape and return focus afterwards; tables are labelled and mark the sorted column; and results and notices are announced to screen readers. Text and borders are designed to meet WCAG contrast targets in both themes.
 

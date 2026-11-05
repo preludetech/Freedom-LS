@@ -141,8 +141,13 @@ def test_educator_manages_cohorts_and_learners(
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, created)
     assign_perm("freedom_ls_learner_management.delete_cohort", educator_user, created)
 
-    # Edit its name: the modal closes and the heading and tab title update.
-    page.goto(interface_url(live_server, organisation_a.slug, f"cohorts/{created.pk}"))
+    # Edit its name from the Settings tab: the modal closes and the heading
+    # and tab title update.
+    page.goto(
+        interface_url(
+            live_server, organisation_a.slug, f"cohorts/{created.pk}/__tabs/settings"
+        )
+    )
     page.get_by_role("button", name="Edit").click()
     # Scoped: the dialog's own aria-labelledby also matches get_by_label.
     modal.locator("#app-modal-body").get_by_label("Name").fill("New Name")

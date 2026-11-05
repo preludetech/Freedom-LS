@@ -16,7 +16,9 @@ region as its description, since a report could only fail.
     {% endcomment %}
     <form hx-post="{{ row_action_urls.generate_report }}" hx-target="#{{ region_id }}" hx-swap="outerHTML"
           hx-disabled-elt="find button[type='submit']"
-          hx-on::after-request="setTimeout(() => document.getElementById('{{ region_id }}-generate')?.focus())">
+          x-data="refocusAfterRequest"
+          data-refocus-id="{{ region_id }}-generate"
+          x-on:htmx:after-request="refocus">
         <c-button type="submit" variant="secondary" size="small" id="{{ region_id }}-generate"
                   loading="true" loading_text="Generating…"
                   disabled="{% if over_limit_message %}true{% endif %}"

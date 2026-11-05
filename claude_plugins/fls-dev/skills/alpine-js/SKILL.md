@@ -45,6 +45,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `tableSelection` | `panel_framework` | `cotton/data-table.html` | Row and header checkbox state for the bulk-action bar, "Select all N matching", the table's background run from the `bulkRuns` store |
 | `listRefresh` | `panel_framework` | `panel_framework/partials/list_refresh.html` | Re-fetches a list's table region, keeping page, sort, search and filters, when a create action's `HX-Trigger` event fires |
 | `headerRefresh` | `panel_framework` | `panel_framework/views/_instance_header.html` | Re-fetches `#instance-header` so an instance page's stats and tab counts follow a panel's change |
+| `refocusAfterRequest` | `panel_framework` | `educator_interface/panels/cohort_report_downloads.html` | After a form's htmx request, focuses the element `data-refocus-id` names, so a submit button disabled for the request (and possibly re-rendered) gets keyboard focus back |
 | `equation` | `content_engine` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |
 | `flashcard` | `content_engine` | `cotton/flashcard.html` | Flip state and 3-D face styles for the two-sided card; the animation honours reduced motion |
 | `contentLightbox` | `content_engine` | `cotton/picture.html` | Focus-managing image lightbox (open/close, escape, focus restore) |

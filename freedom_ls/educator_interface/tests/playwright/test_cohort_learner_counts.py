@@ -26,7 +26,7 @@ from .helpers import interface_url
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
-def test_removing_a_member_updates_the_tab_and_header_learner_counts(
+def test_removing_a_member_updates_the_tab_learner_count(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
@@ -51,7 +51,7 @@ def test_removing_a_member_updates_the_tab_and_header_learner_counts(
     )
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
-    header_stat = main.locator("dl").filter(has_text="Learners")
+    # The header carries no stats: the Learners tab's count is the figure.
     expect(page.get_by_role("link", name="Learners 2", exact=True)).to_be_visible()
 
     main.get_by_role("row").filter(has_text="Ada").get_by_role(
@@ -61,4 +61,3 @@ def test_removing_a_member_updates_the_tab_and_header_learner_counts(
 
     expect(modal).to_be_hidden()
     expect(page.get_by_role("link", name="Learners 1", exact=True)).to_be_visible()
-    expect(header_stat).to_contain_text("1")
