@@ -910,22 +910,20 @@ def _named_learner(organisation: Organisation) -> Learner:
 
 
 @pytest.mark.django_db
-def test_a_site_admins_learner_header_offers_edit_name(
+def test_a_site_admins_learner_settings_tab_offers_edit_name(
     mock_site_context: Site, logged_in_client
 ):
     organisation = OrganisationFactory()
     learner = _named_learner(organisation)
     client = _site_admin_client(mock_site_context, logged_in_client)
 
-    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+    triggers = _settings_triggers(client, organisation, learner)
 
-    document = lxml.html.fromstring(response.content.decode())
-    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
     assert _edit_name_url(organisation, learner) in triggers
 
 
 @pytest.mark.django_db
-def test_an_organisation_admins_learner_header_offers_no_edit_name(
+def test_an_organisation_admins_learner_settings_tab_offers_no_edit_name(
     mock_site_context: Site, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -934,10 +932,8 @@ def test_an_organisation_admins_learner_header_offers_no_edit_name(
     assign_role(UserFactory(superuser=True), user, "organisation_admin", organisation)
     client = logged_in_client(user)
 
-    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+    triggers = _settings_triggers(client, organisation, learner)
 
-    document = lxml.html.fromstring(response.content.decode())
-    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
     assert _edit_name_url(organisation, learner) not in triggers
 
 
@@ -1009,22 +1005,31 @@ def _learner_state_url(
     )
 
 
-def _header_triggers(
+def _settings_triggers(
     client: Client, organisation: Organisation, learner: Learner
 ) -> set[str | None]:
-    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+    """The action URLs the learner's Settings tab offers, read as the
+    instance-level URLs the actions also answer at."""
+    response = client.get(
+        _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/settings")
+    )
     document = lxml.html.fromstring(response.content.decode())
-    return {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+    return {
+        button.get("hx-get").replace("/__tabs/settings", "")
+        for button in document.cssselect(
+            "section[data-panel='settings'] button[hx-get]"
+        )
+    }
 
 
 @pytest.mark.django_db
-def test_an_active_learners_header_offers_deactivate_not_reactivate(
+def test_an_active_learners_settings_tab_offers_deactivate_not_reactivate(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation, is_active=True)
 
-    triggers = _header_triggers(staff_client, organisation, learner)
+    triggers = _settings_triggers(staff_client, organisation, learner)
 
     assert (
         _learner_state_url(organisation, learner, "deactivate") in triggers,
@@ -1033,13 +1038,13 @@ def test_an_active_learners_header_offers_deactivate_not_reactivate(
 
 
 @pytest.mark.django_db
-def test_a_removed_learners_header_offers_reactivate_not_deactivate(
+def test_a_removed_learners_settings_tab_offers_reactivate_not_deactivate(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation, is_active=False)
 
-    triggers = _header_triggers(staff_client, organisation, learner)
+    triggers = _settings_triggers(staff_client, organisation, learner)
 
     assert (
         _learner_state_url(organisation, learner, "deactivate") in triggers,
@@ -1908,11 +1913,13 @@ def _pending_learner(organisation: Organisation) -> Learner:
 
 
 @pytest.mark.django_db
-def test_a_pending_learners_header_offers_resend_setup_email(staff_client: Client):
+def test_a_pending_learners_settings_tab_offers_resend_setup_email(
+    staff_client: Client,
+):
     organisation = OrganisationFactory()
     learner = _pending_learner(organisation)
 
-    triggers = _header_triggers(staff_client, organisation, learner)
+    triggers = _settings_triggers(staff_client, organisation, learner)
 
     assert _resend_url(organisation, learner) in triggers
 
@@ -1924,7 +1931,7 @@ def test_a_learner_who_has_set_up_their_account_is_offered_no_resend(
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)
 
-    triggers = _header_triggers(staff_client, organisation, learner)
+    triggers = _settings_triggers(staff_client, organisation, learner)
 
     assert _resend_url(organisation, learner) not in triggers
 

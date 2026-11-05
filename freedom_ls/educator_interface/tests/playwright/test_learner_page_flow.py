@@ -118,7 +118,7 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
         assert_no_horizontal_overflow(page)
 
 
-def test_deactivating_then_reactivating_a_learner_from_the_page_header(
+def test_deactivating_then_reactivating_a_learner_from_its_settings_tab(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
@@ -132,19 +132,29 @@ def test_deactivating_then_reactivating_a_learner_from_the_page_header(
     )
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
+        )
+    )
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
+    header = page.locator("#instance-header")
 
+    expect(header.get_by_text("Active", exact=True)).to_have_count(0)
     main.get_by_role("button", name="Deactivate", exact=True).first.click()
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
+    # The header refreshes on the learner-changed event and shows the badge.
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Inactive", exact=True).first).to_be_visible()
+    expect(header.get_by_text("Inactive", exact=True)).to_be_visible()
     main.get_by_role("button", name="Reactivate", exact=True).first.click()
     modal.get_by_role("button", name="Reactivate", exact=True).click()
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Active", exact=True).first).to_be_visible()
+    expect(header.get_by_text("Inactive", exact=True)).to_have_count(0)
+    expect(
+        main.get_by_role("button", name="Deactivate", exact=True).first
+    ).to_be_visible()
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
@@ -215,7 +225,11 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     reason = "abcdefghij" * 50
-    page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"learners/{learner.pk}/__tabs/settings"
+        )
+    )
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
 

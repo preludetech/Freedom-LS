@@ -229,14 +229,18 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
 
     (heading,) = document.cssselect("#instance-title")
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-    triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
-    assert triggers == {
-        f"{page_url}/__actions/edit",
-        f"{page_url}/__actions/deactivate",
-    }
+    assert not header.cssselect("button[hx-get]")
     (details_panel,) = document.cssselect("section[data-panel='details']")
     assert not details_panel.cssselect("footer")
     assert not details_panel.cssselect("button[hx-get]")
+
+    settings = _get_document(staff_client, f"{page_url}/__tabs/settings")
+
+    triggers = {button.get("hx-get") for button in settings.cssselect("button[hx-get]")}
+    assert {
+        f"{page_url}/__tabs/settings/__actions/edit",
+        f"{page_url}/__tabs/settings/__actions/deactivate",
+    } <= triggers
 
 
 @pytest.mark.django_db
@@ -438,33 +442,157 @@ def test_settings_tab_answers_404_for_a_role_without_change_cohort(
 
 
 @pytest.mark.django_db
-def test_header_offers_deactivate_on_an_active_cohort(staff_client: Client):
+def test_settings_offers_deactivate_on_an_active_cohort(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
 
-    document = _get_document(staff_client, page_url)
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
-    (heading,) = document.cssselect("#instance-title")
-    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-    triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
-    assert f"{page_url}/__actions/deactivate" in triggers
-    assert f"{page_url}/__actions/reactivate" not in triggers
+    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+    assert f"{page_url}/__tabs/settings/__actions/deactivate" in triggers
+    assert f"{page_url}/__tabs/settings/__actions/reactivate" not in triggers
 
 
 @pytest.mark.django_db
-def test_header_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
+def test_settings_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, is_active=False)
     page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
 
-    document = _get_document(staff_client, page_url)
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
+    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+    assert f"{page_url}/__tabs/settings/__actions/reactivate" in triggers
+    assert f"{page_url}/__tabs/settings/__actions/deactivate" not in triggers
+
+
+def _header_of(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
     (heading,) = document.cssselect("#instance-title")
-    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-    triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
-    assert f"{page_url}/__actions/reactivate" in triggers
-    assert f"{page_url}/__actions/deactivate" not in triggers
+    return heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+
+
+@pytest.mark.django_db
+def test_an_active_cohort_header_has_no_badge_no_stats_and_no_buttons(
+    staff_client: Client,
+):
+    """Active is the default, the tabs already count learners and courses, and
+    the actions live in Settings, so the header is the name and the tabs."""
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _add_member(cohort)
+
+    header = _header_of(_cohort_page(staff_client, cohort))
+
+    assert "Active" not in header.text_content()
+    assert "Learners" not in header.text_content()
+    assert not header.cssselect(".btn")
+
+
+@pytest.mark.django_db
+def test_an_active_learner_header_has_no_badge_and_no_buttons(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, user__first_name="Ada")
+
+    header = _header_of(
+        _get_document(
+            staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
+        )
+    )
+
+    assert not header.cssselect(".chip")
+    assert not header.cssselect(".btn")
+
+
+@pytest.mark.django_db
+def test_an_inactive_learner_header_shows_the_inactive_badge(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=False)
+
+    header = _header_of(
+        _get_document(
+            staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
+        )
+    )
+
+    (badge,) = header.cssselect(".chip")
+    assert badge.text_content().strip() == "Inactive"
+
+
+@pytest.mark.django_db
+def test_the_learner_settings_tab_offers_every_learner_action_to_an_org_admin(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
+
+    (panel,) = document.cssselect("section[data-panel='settings']")
+    labels = [
+        button.text_content().strip() for button in panel.cssselect("footer .btn")
+    ]
+    # Resend setup email is offered only while the learner is pending.
+    assert labels == [
+        "Edit name",
+        "Add to cohort",
+        "Register for a course",
+        "Deactivate",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_learner_settings_tab_shows_a_cohort_admin_only_the_cohort_actions(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _add_member(cohort)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(logged_in_client(educator), f"{page_url}/__tabs/settings")
+
+    (panel,) = document.cssselect("section[data-panel='settings']")
+    labels = {
+        button.text_content().strip() for button in panel.cssselect("footer .btn")
+    }
+    assert labels == {"Add to cohort", "Register for a course"}
+
+
+@pytest.mark.django_db
+def test_the_learner_settings_tab_is_hidden_from_a_cohort_viewer(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    learner = _add_member(cohort)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_viewer", cohort)
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+    client = logged_in_client(educator)
+
+    document = _get_document(client, page_url)
+
+    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
+    assert "Settings" not in [a.text_content().split()[0] for a in nav.cssselect("a")]
+    assert client.get(f"{page_url}/__tabs/settings").status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_learner_header_refreshes_on_learner_changed(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
+    assert refresher.get("data-header-refresh-events") == LEARNER_CHANGED
 
 
 @pytest.mark.django_db
@@ -752,17 +880,6 @@ def completion_scenario() -> tuple[Cohort, CohortCourseRegistration, Learner]:
 
 
 @pytest.mark.django_db
-def test_cohort_header_shows_the_active_badge(staff_client: Client):
-    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=True)
-
-    document = _cohort_page(staff_client, cohort)
-
-    (heading,) = document.cssselect("#instance-title")
-    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-    assert "Active" in header.text_content().split()
-
-
-@pytest.mark.django_db
 def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client):
     cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
 
@@ -771,27 +888,6 @@ def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client):
     (heading,) = document.cssselect("#instance-title")
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     assert "Inactive" in header.text_content().split()
-
-
-@pytest.mark.django_db
-def test_cohort_header_shows_learner_and_course_counts(staff_client: Client):
-    cohort = CohortFactory(organisation=OrganisationFactory())
-    _add_member(cohort)
-    _add_member(cohort)
-    _add_member(cohort)
-    CohortCourseRegistrationFactory(cohort=cohort)
-
-    document = _cohort_page(staff_client, cohort)
-
-    (heading,) = document.cssselect("#instance-title")
-    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
-    stats = {
-        dl.cssselect("dt")[0].text_content().strip(): dl.cssselect("dd")[0]
-        .text_content()
-        .strip()
-        for dl in header.cssselect("dl")
-    }
-    assert stats == {"Learners": "3", "Courses": "1"}
 
 
 @pytest.mark.django_db
@@ -1314,6 +1410,7 @@ def test_the_learner_page_has_overview_courses_messages_and_history_tabs(
         "overview",
         "courses",
         "messages",
+        "settings",
         "history",
     ]
 
@@ -1332,6 +1429,7 @@ def test_the_learner_page_has_no_messages_tab_when_messaging_is_off(
     assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
         "overview",
         "courses",
+        "settings",
         "history",
     ]
 
@@ -1348,7 +1446,7 @@ def test_the_learner_page_opens_on_the_overview_tab(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_the_learner_header_carries_the_status_badge_and_email_subtitle(
+def test_the_learner_header_carries_the_email_subtitle_and_no_active_badge(
     staff_client: Client,
 ):
     learner = LearnerFactory(
@@ -1359,7 +1457,7 @@ def test_the_learner_header_carries_the_status_badge_and_email_subtitle(
 
     (title,) = document.cssselect("#instance-title")
     header = title.xpath("ancestor::div[contains(@class, 'justify-between')][1]")[0]
-    assert "Active" in header.text_content()
+    assert "Active" not in header.text_content()
     assert "ada@example.com" in header.text_content()
 
 

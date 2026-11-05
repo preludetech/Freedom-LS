@@ -6,6 +6,7 @@ horizontal scroll, which only a real browser proves.
 
 from __future__ import annotations
 
+import re
 from typing import cast
 
 import pytest
@@ -77,10 +78,12 @@ def test_cohort_page_header_and_tabs_fit_a_phone(
     header = mobile_educator_page.locator("#instance-title").locator(
         "xpath=ancestor::div[contains(@class, 'justify-between')][1]"
     )
-    expect(header.get_by_text("Active", exact=True)).to_be_visible()
-    expect(header.get_by_text("Learners", exact=True)).to_be_visible()
-    expect(header.get_by_text("Courses", exact=True)).to_be_visible()
+    # Active is the default state and the tabs count learners and courses,
+    # so the header carries neither a badge nor stats.
+    expect(header.get_by_text("Active", exact=True)).to_have_count(0)
+    expect(header.get_by_text("Learners", exact=True)).to_have_count(0)
     tabs = mobile_educator_page.get_by_role("navigation", name="Cohort sections")
+    expect(tabs.get_by_role("link", name=re.compile("^Learners"))).to_be_visible()
     expect(tabs.get_by_role("link", name="Overview")).to_be_visible()
     assert (
         mobile_educator_page.evaluate("document.documentElement.scrollWidth")

@@ -82,7 +82,10 @@ class InstanceView:
 
     `panel` is the root panel, usually a `PanelStack` or `TabSet`, bound to
     the instance on every request. `get_actions()` holds the actions that
-    belong to the instance as a whole rather than to one panel.
+    belong to the instance as a whole rather than to one panel, and owns
+    their URLs; `get_header_actions()` picks which of them the page header
+    draws, so a view can keep an action reachable while a Settings panel
+    offers it instead.
     """
 
     panel: type[Panel]
@@ -95,6 +98,10 @@ class InstanceView:
 
     def get_actions(self) -> list[PanelAction]:
         return []
+
+    def get_header_actions(self) -> list[PanelAction]:
+        """The actions the header renders, in order; every action by default."""
+        return self.get_actions()
 
     def get_status_badge(self) -> StatusBadge | None:
         """A badge beside the heading, or None for none."""
@@ -1112,7 +1119,7 @@ def _main_for(
     if resolved.instance_view is not None:
         actions = [
             action
-            for action in resolved.instance_view.get_actions()
+            for action in resolved.instance_view.get_header_actions()
             if action.is_available(root.ctx)
         ]
         if resolved.instance is None:

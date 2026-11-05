@@ -198,7 +198,6 @@ from freedom_ls.panel_framework.tables import (
 )
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
-    HeaderStat,
     InstanceView,
     ListViewConfig,
     NavGroup,
@@ -1043,33 +1042,73 @@ def _oversight_role_label(viewer: User, learner: Learner) -> str:
     return "an organisation admin"
 
 
+class LearnerSettingsPanel(Panel):
+    """The learner's Settings tab: every action that changes the learner,
+    kept out of the page header. Shown to anyone who may take at least one
+    of them, so a cohort admin still reaches Add to cohort and Register."""
+
+    model = Learner
+    title = "Settings"
+    template_name = "educator_interface/panels/learner_settings.html"
+    refresh_events = (LEARNER_CHANGED,)
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return super().has_permission(request) and bool(self.available_actions)
+
+    def get_actions(self) -> list[PanelAction]:
+        return learner_actions(cast(Learner, self.instance))
+
+    def get_context_data(self) -> dict[str, object]:
+        learner = cast(Learner, self.instance)
+        context = super().get_context_data()
+        context["learner"] = learner
+        context["status"] = learner_status(learner)
+        return context
+
+
+def learner_actions(learner: Learner) -> list[PanelAction]:
+    """Every action on one learner, in the order the Settings tab offers them."""
+    return [
+        EditLearnerNameAction(learner),
+        AddToCohortAction(),
+        RegisterLearnerForCourseAction(),
+        ResendSetupEmailAction(),
+        *learner_state_actions(),
+    ]
+
+
 class LearnerTabSet(TabSet):
     title = "Learner sections"
     children = {
         "overview": LearnerOverviewStack,
         "courses": LearnerCoursesStack,
         "messages": LearnerMessagesPanel,
+        "settings": LearnerSettingsPanel,
         "history": LearnerHistoryPanel,
     }
 
 
 class LearnerInstanceView(InstanceView):
     panel = LearnerTabSet
+    header_refresh_events = (LEARNER_CHANGED,)
 
-    def get_status_badge(self) -> StatusBadge:
-        return learner_status_badge(cast(Learner, self.instance))
+    def get_status_badge(self) -> StatusBadge | None:
+        """Active is the default state, so only Pending and Inactive show."""
+        learner = cast(Learner, self.instance)
+        if learner_status(learner) is LearnerStatus.ACTIVE:
+            return None
+        return learner_status_badge(learner)
 
     def get_subtitle(self) -> str:
         return cast(Learner, self.instance).user.email
 
     def get_actions(self) -> list[PanelAction]:
-        return [
-            EditLearnerNameAction(cast(Learner, self.instance)),
-            AddToCohortAction(),
-            RegisterLearnerForCourseAction(),
-            ResendSetupEmailAction(),
-            *learner_state_actions(),
-        ]
+        # The actions keep their instance-level URLs; the Settings tab
+        # draws their triggers, so the header draws none.
+        return learner_actions(cast(Learner, self.instance))
+
+    def get_header_actions(self) -> list[PanelAction]:
+        return []
 
 
 _LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
@@ -1089,6 +1128,14 @@ def active_status_badge(is_active: bool) -> StatusBadge:
     """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
     if is_active:
         return StatusBadge("success", "Active")
+    return StatusBadge("muted", "Inactive")
+
+
+def inactive_badge(is_active: bool) -> StatusBadge | None:
+    """A page header's badge for an `is_active` flag: Active is the default
+    state and shows nothing, so only Inactive is drawn."""
+    if is_active:
+        return None
     return StatusBadge("muted", "Inactive")
 
 
@@ -1273,6 +1320,12 @@ class CohortSettingsPanel(Panel):
     def get_actions(self) -> list[PanelAction]:
         cohort = cast(Cohort, self.instance)
         return [
+            EditCohortAction(
+                form_class=CohortForm,
+                form_title=f"Edit {cohort}",
+                instance=cohort,
+                success_events=(COHORT_CHANGED,),
+            ),
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
                 success_url=interface_path(cohort.organisation, "cohorts"),
@@ -1323,19 +1376,14 @@ class CohortInstanceView(InstanceView):
     panel = CohortTabSet
     header_refresh_events = (COHORT_CHANGED,)
 
-    def get_status_badge(self) -> StatusBadge:
-        return active_status_badge(cast(Cohort, self.instance).is_active)
-
-    def get_stats(self) -> list[HeaderStat]:
-        counts = cohort_counts(cast(Cohort, self.instance))
-        return [
-            HeaderStat("Learners", str(counts.learners)),
-            HeaderStat("Courses", str(counts.courses)),
-        ]
+    def get_status_badge(self) -> StatusBadge | None:
+        return inactive_badge(cast(Cohort, self.instance).is_active)
 
     def get_actions(self) -> list[PanelAction]:
-        # The instance already carries its own organisation, so the success
-        # URL needs nothing from the request.
+        # The actions keep their instance-level URLs; the Settings tab draws
+        # their triggers, so the header draws none. The instance already
+        # carries its own organisation, so the success URL needs nothing
+        # from the request.
         cohort = cast(Cohort, self.instance)
         return [
             EditCohortAction(
@@ -1346,6 +1394,9 @@ class CohortInstanceView(InstanceView):
             ),
             *cohort_state_actions(),
         ]
+
+    def get_header_actions(self) -> list[PanelAction]:
+        return []
 
 
 class CreateCohortAction(CreateInstanceAction):

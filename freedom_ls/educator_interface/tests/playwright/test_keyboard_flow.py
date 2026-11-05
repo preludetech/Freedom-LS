@@ -236,7 +236,11 @@ def test_saving_a_cohort_edit_keeps_focus_on_the_page(
     cohort = CohortFactory(organisation=organisation, name="Old Name")
     _admin_of(educator_user, organisation)
     assign_object_role(educator_user, cohort, "cohort_admin")
-    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings"
+        )
+    )
     modal = page.locator("#app-modal")
 
     page.get_by_role("button", name="Edit", exact=True).click()

@@ -53,7 +53,10 @@ def test_deactivating_then_reactivating_a_cohort_from_its_settings_tab(
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Inactive", exact=True).first).to_be_visible()
+    # The header refreshes on the cohort-changed event and shows the badge.
+    expect(
+        page.locator("#instance-header").get_by_text("Inactive", exact=True)
+    ).to_be_visible()
     expect(
         main.get_by_role("button", name="Reactivate", exact=True).first
     ).to_be_visible()
@@ -62,7 +65,9 @@ def test_deactivating_then_reactivating_a_cohort_from_its_settings_tab(
     modal.get_by_role("button", name="Reactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Active", exact=True).first).to_be_visible()
+    expect(
+        page.locator("#instance-header").get_by_text("Inactive", exact=True)
+    ).to_have_count(0)
     expect(
         main.get_by_role("button", name="Deactivate", exact=True).first
     ).to_be_visible()
