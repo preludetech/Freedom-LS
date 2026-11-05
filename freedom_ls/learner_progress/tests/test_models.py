@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from django.core.exceptions import ValidationError
@@ -683,3 +685,49 @@ class TestCleanGuardsThePairing:
 
         with pytest.raises(ValidationError, match="same organisation"):
             record.full_clean()
+
+
+PAST = timezone.now() - timedelta(days=30)
+
+
+def _record_with_updated_at_in_the_past() -> CourseProgress:
+    """A record whose stored updated_at is PAST, written past auto_now."""
+    record: CourseProgress = CourseProgressFactory()
+    CourseProgress._base_manager.filter(pk=record.pk).update(updated_at=PAST)
+    record.refresh_from_db()
+    return record
+
+
+@pytest.mark.django_db
+class TestUpdatedAt:
+    def test_a_new_record_has_an_updated_at(self, mock_site_context):
+        record = CourseProgressFactory()
+
+        record.refresh_from_db()
+
+        assert record.updated_at is not None
+
+    def test_a_full_save_moves_it(self, mock_site_context):
+        record = _record_with_updated_at_in_the_past()
+
+        record.save()
+        record.refresh_from_db()
+
+        assert record.updated_at > PAST
+
+    def test_a_save_with_update_fields_moves_it(self, mock_site_context):
+        record = _record_with_updated_at_in_the_past()
+
+        record.progress_percentage = 40
+        record.save(update_fields=["progress_percentage"])
+        record.refresh_from_db()
+
+        assert record.updated_at > PAST
+
+    def test_a_save_with_empty_update_fields_leaves_it(self, mock_site_context):
+        record = _record_with_updated_at_in_the_past()
+
+        record.save(update_fields=[])
+        record.refresh_from_db()
+
+        assert record.updated_at == PAST
