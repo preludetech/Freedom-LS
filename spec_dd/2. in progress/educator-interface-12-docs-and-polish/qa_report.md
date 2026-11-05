@@ -1,304 +1,240 @@
 # Frontend QA report: educator-interface-12-docs-and-polish
 
-The run recorded 66 test records: 50 pass, 14 fail, 2 skip. 14 bugs (B1 to B14) are documented below, all unresolved. The two skips are 4.1 (could not run as written) and 9.5 (running bar not observable). Every failed test maps to a bug.
+## Summary
+
+54 test records: 43 pass, 10 fail, 1 skip (9.5, partial). 9 bugs documented (B1 to B9), all UNRESOLVED. Smoke gate passed. Layout probe: 19 records, 18 clean or false-positive, 1 flagged failure (13.4-phone).
 
 ## Methodology
 
-- Playwright MCP, driven by hand.
-- Viewports: desktop 1440x900, phone 390x844 (375x812 for 9.5 and 9.9), tablet 768x1024.
-- Main pass in the default theme. Second pass in first_class: CSS rebuilt, server restarted with `FLS_THEME` and `DJANGO_SETTINGS_MODULE=config.settings_local`, so `REPORTS_MAX_LEARNERS=5` and `BULK_BACKGROUND_THRESHOLD=50` applied.
-- Main org: northside.
-- Screenshots were collected into `screenshots/` beside this report. Every referenced image exists there.
-- URLs are `/educator/organisations/<org>/…`, not `/educator/<org>/` as the plan says.
-- Product-doc screenshots for Test 13 were saved under the names the plan asks for: educator_dashboard.png, educator_learners_list.png, educator_learner_page.png, educator_learner_quick_view.png, educator_cohort_overview.png, educator_courses.png, educator_members.png, educator_history.png, educator_audit_log.png, educator_cohort_report.png, educator_confirm_with_reason.png, educator_learners_mobile.png.
-- educator_cohort_overview.png shows the demodev org's 'Educator QA Cohort Alpha'.
+- Driven with Playwright MCP against the dev server.
+- Viewports: 1920 and 1440 desktop, 390 and 375 phone, 768 tablet.
+- Default theme got the full pass. The first_class theme got a reduced pass (server restarted with FLS_THEME=first_class, CSS rebuilt): all seven sections at 1440 and 390, badges, 9.7 and 9.10.
+- Screenshots were collected into `screenshots/` beside this report. Every image referenced here was confirmed to exist there.
+- The Test 14 doc screenshots (`educator_*.png`) are also in `screenshots/`.
 
 ## Diff scoping
 
-Class: FULL. Templates, static, CSS and JS changed (356 files in total), which triggers Rule 1. Nothing was skipped.
+Class: FULL (front-end templates and static files changed; 505 changed files, including base templates, cotton components, comms partials, course_applications partials and educator_interface templates). Skipped: nothing.
 
 ## Smoke gate
 
-Pass. Pages checked: `/` and `/educator/organisations/demodev/learners`. No failure URL.
+Pass. Pages checked: `/`, `/educator/organisations/demodev/dashboard`, `/educator/organisations/demodev/learners`.
 
 ## Results by test
 
-| Test | Viewport | Status | Notes | Screenshot |
+| Test | Viewport | Status | Screenshot | Note |
 |---|---|---|---|---|
-| 1 (mobile pages) | phone | pass | Dashboard, learners, cohorts, courses, audit log and report show heading and rows, no sideways scroll. Members fails (1.members-mobile). | ![](screenshots/page-dashboard-mobile.png) |
-| 1.members-mobile | phone | fail | Members scrolls sideways (scrollWidth 398). Long email in an unconstrained truncate span. See B7. | ![](screenshots/page-members-mobile.png) |
-| 1.learner-cards-mobile | phone | fail | Card checkbox centred on the tall card; ~50px empty band above the first card. See B9. | ![](screenshots/page-learners-mobile.png) |
-| 1.dashboard | desktop | pass | Tiles 17/9/10%/7, Needs attention matches, no console errors. Overflow flag was sr-only text (false positive). | ![](screenshots/page-2026-11-03T07-20-02-809Z.png) |
-| 1.learners | desktop | pass | Heading and rows render, no console errors, no sideways scroll. | ![](screenshots/page-2026-11-03T07-37-38-614Z.png) |
-| 1.list-gap | desktop | fail | Learners/Cohorts table starts at y≈203, Courses/Audit log at y≈177. See B6. | ![](screenshots/page-2026-11-03T07-37-38-614Z.png) |
-| 1.card-lists | desktop | fail | Panel lists inherit global ul indent and bullet. See B5. | ![](screenshots/page-2026-11-03T07-18-17-363Z.png) |
-| 1.date-format | desktop | fail | Two date formats in one interface. See B14. | ![](screenshots/page-courses-desktop.png) |
-| 2.1 | desktop | pass | Bulk deactivate course registration for 2 learners: dialog, in-flight state, result and refresh all correct. | ![](screenshots/page-2026-11-03T07-24-21-314Z.png) |
-| 2.2 | desktop | pass | Cohort bulk Register and Deactivate registration: correct titles, in-flight, result, refresh. | none |
-| 2.3 | desktop | pass | GET and HX POST to the unregister action URLs both 404. | none |
-| 3.reactivate-learner | desktop | pass | Body explains access returns and progress is kept; Cancel focused; 'Reactivating…' disabled in flight. | none |
-| 3.learner-header-tab | desktop | fail | Header Deactivate/Reactivate on the learner History tab jumps to Overview and drops the URL tab. See B1. | none |
-| 3.move | desktop | pass | Destination focused, Move disabled until a destination is chosen. | none |
-| 3.remove | desktop | pass | Body lists consequences; Remove is btn-error; 'Removing…'; table refreshes (20 to 19). | none |
-| 3.bulk-register | desktop | pass | 'Register 2 learners for Course Other?'; confirm disabled until a course is chosen; result dialog, live region. | ![](screenshots/page-2026-11-03T07-24-21-314Z.png) |
-| 3.cohort-delete | desktop | pass | 'Delete Cohort Empty?', btn-error, 'Deleting…', lands on the Cohorts list. | none |
-| 3.resend | desktop | pass | Dialog and 'Sending…' correct; History shows 'Setup email resent'. | none |
-| 3.registration | desktop | pass | Learner Overview Registrations card: Deactivate and Reactivate dialogs correct; focus on the Registrations H2. | none |
-| 3.members | desktop | pass | Deactivate role, Deactivate member and Reactivate member dialogs correct, Cancel focused. | ![](screenshots/page-2026-11-03T07-34-14-862Z.png) |
-| 3.bulk-deactivate | phone | pass | 'Deactivate 78 learners?', confirm primary, Cancel focused. | none |
-| 4.1 | desktop | skip | Cannot run as written: cohort_viewer has no Members/Audit log access (404). Admin quietside audit log shows its empty state. | none |
-| 4.2 | desktop | pass | No-match states centred with 'Clear filters' on learners, cohorts, members, cohort Learners tab, audit log. | none |
-| 4.3 | desktop | pass | Empty cohort Overview and dashboard empty states centred with full stops. | none |
-| 5 | desktop | pass | Badges: Active chip-success 8.45:1, Inactive chip-muted 6.84:1, Pending chip-info; all have text. | none |
-| 6 | desktop | pass | Nameless learner shows email everywhere (list, quick view, page, report). | ![](screenshots/page-2026-11-03T07-20-53-700Z.png) |
-| 7 | phone | pass | Filter sheet Reset returns to Active + Pending; desktop Clear all works. | ![](screenshots/page-learners-sheet-mobile.png) |
-| 8.1 | desktop | pass | Exercised as tick deleted learner + Add to cohort: unavailable dialog. | none |
-| 8.2 | desktop | pass | Deleted learner's Quick view shows 'This is no longer available'; Escape returns focus. | none |
-| 8.3 | desktop | pass | Deleted cohort ticked in cohorts list: unavailable dialog, focus returns. | none |
-| 8.4 | desktop | pass | Stale tab sort header shows the unavailable dialog, no reload. | ![](screenshots/page-2026-11-03T07-31-35-876Z.png) |
-| 8.5 | desktop | pass | Other-org and zero uuid quick-view both 404 with identical bodies (1202 bytes). | none |
-| 9.1 | desktop | pass | Cohort header Reactivate/Deactivate on Courses tab keeps the tab and URL. | none |
-| 9.2 | desktop | pass | Inactive cohort stale-tab submits give the 422 'Cohort B is inactive…' notices. | none |
-| 9.3 | desktop | pass | Educators card shows 'nameless.lower.educator@example.com' and 'Nameless.Educator@example.com' as stored. | none |
-| 9.4 | tablet | pass | Learners table scrolls inside a focusable region; ArrowRight scrolls 120px; no page sideways scroll. | ![](screenshots/page-learners-tablet.png) |
-| 9.5 | phone (375) | skip | Bulk deactivate of 78 finished before a running state could be sampled; running bar not observed. | ![](screenshots/page-2026-11-03T07-43-46-845Z.png) |
-| 9.6 | desktop | pass | Two existing members: 'Already a member: 2', no '0 new accounts…' line. Result step unreachable. | none |
-| 9.7 | desktop | pass | first_class import file input is bordered like other inputs. | ![](screenshots/page-2026-11-03T07-35-27-220Z.png) |
-| 9.8 | desktop | pass | Deleted target cohort gives 'Choose a cohort from the list.', no UUID. Move variant not repeated. | none |
-| 9.9 | phone (375) | pass | Add member, Change cohorts and Move dialogs show Cancel and confirm without scrolling. | ![](screenshots/page-addmember-375.png) |
-| 9.10-dashboard | desktop | pass | Over-limit sentence in a tinted box, ≈8.6:1; setting name not in the HTML. | ![](screenshots/page-2026-11-03T07-20-02-809Z.png) |
-| 9.10-report | desktop | pass | Same sentence and box on the Report tab. | ![](screenshots/page-2026-11-03T07-21-17-786Z.png) |
-| 9.10-generate | desktop | fail | Over-limit cohort offers Generate; result is a red alert with 'Try again'; focus drops to body; red 3.62:1. See B2, B3. | ![](screenshots/page-2026-11-03T07-21-17-786Z.png) |
-| 9.11 | desktop | pass | Quiz titles disambiguated with course name; unique quiz headed alone. | ![](screenshots/page-2026-11-03T07-20-53-700Z.png) |
-| 9.12 | phone | pass | Audit sheet titled 'Filter', learners sheet 'Filter and sort'; no group box borders. | ![](screenshots/page-audit-sheet-mobile.png) |
-| 9.12-legend | phone | fail | Legend keeps 8px padding so group labels sit at x=24 vs 16. See B8. | ![](screenshots/page-learners-sheet-mobile.png) |
-| 9.13a | desktop | pass | Org switcher opens under trigger; Eastside selection navigates and relabels. | ![](screenshots/page-2026-11-03T07-16-04-967Z.png) |
-| 10.1 | desktop | pass | Quick view opens by Enter, focus on heading; Escape returns focus. | none |
-| 10.1 | phone | pass | Quick view is a modal dialog, scrim 50%, focus stays inside, Escape returns focus. | ![](screenshots/page-quickview-mobile.png) |
-| 10.2 | desktop | pass | Deactivate dialog: Cancel focused, Tab cycle, Escape returns focus. | none |
-| 10.3 | desktop | pass | Keyboard confirm with Reason: badge flips, focus on page header region, History entry present. | ![](screenshots/page-2026-11-03T07-17-10-198Z.png) |
-| 10.4 | desktop | pass | Sort, pagination, Add filter, org switcher and tile link work by keyboard; focus rings visible. | none |
-| 10.4-report | desktop | fail | After Generate PDF report by keyboard, focus drops to body. See B2. | ![](screenshots/page-2026-11-03T07-22-09-012Z.png) |
-| 11 | desktop | pass | Table caption, scope, aria-sort, region name, checkbox names, dialog names, live region all good. | none |
-| 11.row-buttons | desktop | fail | Row buttons named just 'Remove' and 'Move'. See B11. | none |
-| 11.tile-link | desktop | fail | Cohorts tile link name is only '7'. See B12. | ![](screenshots/page-2026-11-03T07-20-02-809Z.png) |
-| 11.icon-names | desktop | fail | Icon semantic names leak into accessible names. See B10. | none |
-| 12 | desktop | pass | Contrast sweep in both themes: nothing below 4.5:1 except text-error. Touch targets fine at 390. | none |
-| 12.error-text | desktop | fail | text-error 3.62:1 (default), 4.13:1 (first_class). See B3, B4. | ![](screenshots/page-overlimit-firstclass-desktop.png) |
-| 13.quick-view | desktop | pass | Quick view for Ada Lovelace renders fully. | ![](screenshots/page-2026-11-03T07-39-24-096Z.png) |
-| 13.courses | desktop | pass | 10 rows, pagination, no console errors. | ![](screenshots/page-courses-desktop.png) |
-| 13.history | desktop | pass | Cohort A History tab, 25 rows. | ![](screenshots/page-history-desktop.png) |
-| 13.audit-log | desktop | pass | 25 rows, Add filter (Who/What/When). | ![](screenshots/page-audit-desktop.png) |
-| copy.create-cohort | desktop | fail | 'Create Cohort' is Title Case. See B13. | none |
-| theme.first_class | desktop | pass | Second theme pass: learners, dashboard, members, import, over-limit report all render, contrast ok. | ![](screenshots/page-learners-firstclass-desktop.png) |
+| 2.3 | desktop | pass | none | unregister_from_course and cohorts unregister actions return 404 for GET, HX GET and HX POST. |
+| 1.0-members-404 | desktop | pass | none | `/members` is 404 and `/staff` is 200; plan URLs lack the `organisations/` segment. |
+| 13.2 | desktop | fail | ![](screenshots/page-2026-11-05T08-24-19-329Z.png) | Dashboard needs-attention avatar sits about 25px below the name (B2). |
+| 2.1 | desktop | pass | ![](screenshots/page-2026-11-05T08-26-56-754Z.png) | Learners bulk Deactivate a course registration works; title, Cancel focus, disabled at 0 and result dialog correct. |
+| 2.2 | desktop | pass | none | Cohorts bulk Deactivate a course registration is a bar button with the correct title; cancelled. |
+| 2.4 | desktop | pass | none | "Register for a course" wording correct; the learners list has no row menu, so those plan parts do not apply. |
+| 3-learner-settings | desktop | pass | ![](screenshots/page-2026-11-05T08-31-05-489Z.png) | Reactivate, Deactivate and Resend setup email dialogs correct; History shows the typed reason. |
+| 3-learner-overview | desktop | pass | ![](screenshots/page-2026-11-05T08-33-48-522Z.png) | Remove from cohort and Move dialogs correct; Move disabled until a destination is chosen. |
+| 3-repeat-submission | desktop | pass | ![](screenshots/page-2026-11-05T08-31-43-802Z.png) | Stale-tab repeat Deactivate shows the "already changed" dialog (422), no error page. |
+| 13.5 | desktop | fail | ![](screenshots/page-2026-11-05T08-31-04-478Z.png) | Settings intro offers "deactivate" on an inactive learner (B6). |
+| 3-cohort-settings | desktop | pass | ![](screenshots/page-2026-11-05T08-34-15-628Z.png) | Edit, Deactivate/Reactivate and Delete (empty cohort only) dialogs correct; delete lands on the cohorts list. |
+| 9.1 | desktop | pass | ![](screenshots/page-2026-11-05T08-34-15-628Z.png) | Reactivate from Settings stays on the tab, badge gone, focus on header. |
+| 3-staff | desktop | pass | ![](screenshots/page-2026-11-05T08-34-45-479Z.png) | Staff Deactivate role, Deactivate and Reactivate dialogs correct; no intro paragraph. |
+| 3-staff-copy | desktop | fail | ![](screenshots/page-2026-11-05T08-34-45-479Z.png) | Staff copy leaks "Not recorded" and "Whole organisation" placeholders into sentences (B7). |
+| 5 | desktop | pass | none | Status chips use the right styles and all carry text. |
+| 9.3 | desktop | pass | ![](screenshots/page-2026-11-05T08-35-45-175Z.png) | Educator emails shown exactly as stored. |
+| 9.11 | desktop | pass | ![](screenshots/page-2026-11-05T08-36-19-617Z.png) | Quiz names disambiguated with course name only where they collide. |
+| 13.4 | desktop | pass | ![](screenshots/educator_cohort_report.png) | Downloads card Generate report works by keyboard and focus returns to the button. |
+| 9.10 | desktop | pass | ![](screenshots/page-2026-11-05T08-36-43-437Z.png) | Over-limit cohort shows the notice, disabled Generate, no red alert or setting name. |
+| 4.1 | desktop | pass | ![](screenshots/page-2026-11-05T08-37-13-876Z.png) | Role-based nav and 404s correct; empty-state copy for audit log and staff correct. |
+| 4.2 | desktop | pass | none | No-match states show "No ... match these filters." with a Clear filters link; not applicable to tabs without search. |
+| 6 | desktop | pass | ![](screenshots/page-2026-11-05T08-40-29-920Z.png) | Nameless learner is identified by email across list, quick view, page, report and history. |
+| 3-focus-after-confirm | desktop | fail | ![](screenshots/page-2026-11-05T08-41-09-834Z.png) | Focus lands on an unnamed empty table anchor after a row is replaced (B3). |
+| 9.12-desktop | desktop | pass | ![](screenshots/page-2026-11-05T08-39-03-460Z.png) | Audit log What is a grouped checklist with one Apply; Who is a single-choice list. |
+| 13.8 | desktop | pass | ![](screenshots/page-2026-11-05T08-39-03-460Z.png) | Audit log labels are noun-first. |
+| 7-desktop | desktop | pass | ![](screenshots/page-2026-11-05T08-41-54-398Z.png) | Status chip and Clear all return to the default Active+Pending. |
+| 8 | desktop | pass | ![](screenshots/page-2026-11-05T08-42-27-534Z.png) | Stale deleted-item actions show "no longer available" dialog; 8.5 404 bodies byte-identical; 8.1 not applicable. |
+| 9.2 | desktop | pass | none | Stale inactive-cohort actions show the specific "Cohort B is inactive" messages. |
+| 9.8 | desktop | pass | ![](screenshots/page-2026-11-05T08-43-56-332Z.png) | Deleted destination cohort gives "Choose a cohort from the list." with no UUID. |
+| 3-bulk-body | desktop | fail | ![](screenshots/page-2026-11-05T08-43-51-095Z.png) | Bulk confirmation bodies repeat the title and omit what is kept and how to undo (B8). |
+| 9.13 | desktop | pass | ![](screenshots/page-2026-11-05T08-45-38-704Z.png) | Org switcher opens under its trigger; cohort rename updates h1 and title immediately. |
+| 9.6 | desktop | pass | ![](screenshots/page-2026-11-05T08-47-40-061Z.png) | Import preview and result copy correct (no "0 new accounts" or "0 rows" lines). |
+| 9.7 | desktop | pass | ![](screenshots/page-2026-11-05T08-47-10-326Z.png) | File input is bordered with a bordered Choose File button (default theme). |
+| 10.1-desktop | desktop | pass | ![](screenshots/page-2026-11-05T08-47-56-224Z.png) | Quick view opens by keyboard, focus on heading, Escape returns to trigger. |
+| 10.2 | desktop | pass | none | Staff "Deactivate role" dialog by keyboard: focus trapped, Escape returns focus to trigger. |
+| 10.4-desktop | desktop | pass | none | Focus rings visible on first 40 tab stops; sort and pagination by keyboard work (anchor focus noted in B3). |
+| 11-desktop | desktop | pass | none | Table semantics, region names, aria-sort and live region correct. |
+| 13.7 | desktop | pass | ![](screenshots/page-2026-11-05T08-48-44-691Z.png) | Quick view Messages heading, icon-only Send and removed disclosure sentence correct. |
+| 13.1 | desktop | fail | ![](screenshots/page-2026-11-05T08-48-44-691Z.png) | Cohort links in learners table and quick view are font-medium, not bold (B5). |
+| 1.3-mockups | desktop | pass | ![](screenshots/mockup-dashboard.png) | Mockup comparison at 1440: ours is less dense; see General notes. |
+| 1.1 | mobile | pass | ![](screenshots/page-2026-11-05T08-51-27-317Z.png) | All seven sections at 390: no console errors, no sideways scroll, Filter and Sort side by side. |
+| 13.2 | mobile | fail | ![](screenshots/page-2026-11-05T08-51-25-511Z.png) | Avatar sits about 75px below the learner name on a phone (B2). |
+| 13.6 | mobile | fail | ![](screenshots/page-2026-11-05T08-52-00-834Z.png) | Selection bar has full-size stacked buttons and a text pager (B4). |
+| 9.5 | mobile | skip | ![](screenshots/page-2026-11-05T08-53-13-829Z.png) | PARTIAL: immediate task backend runs the 583-learner bulk in-request, so the background bar cannot appear. |
+| 9.9 | mobile | pass | ![](screenshots/page-2026-11-05T08-53-38-878Z.png) | Dialog footers visible without scrolling at 375; long email dialog has no sideways scroll. |
+| 9.12 | mobile | pass | ![](screenshots/page-2026-11-05T08-53-55-509Z.png) | Filter sheet, separate Sort menu and audit log What groups correct. |
+| 7-phone | mobile | pass | ![](screenshots/page-2026-11-05T08-53-55-509Z.png) | Sheet Reset returns to an empty querystring; chip reads "Status: Active, Pending". |
+| 10.1-phone | mobile | pass | ![](screenshots/page-2026-11-05T08-54-29-623Z.png) | Quick view is a modal with scrim; focus stays inside; Escape returns focus. |
+| 13.3 | mobile | pass | ![](screenshots/page-2026-11-05T08-54-46-794Z.png) | Card action buttons are btn-sm, 44px tall on phones, 8px apart. |
+| 9.4 | tablet | pass | ![](screenshots/page-2026-11-05T08-55-21-952Z.png) | Learners and cohorts tables show every column; region scrolls inside itself. |
+| tablet-squeeze | tablet | fail | ![](screenshots/page-2026-11-05T08-55-21-952Z.png) | Cohorts and Courses columns squeezed to a few words wide (B9). |
+| tablet-nav | tablet | pass | ![](screenshots/page-2026-11-05T08-55-50-763Z.png) | 768 gets the hamburger drawer listing all sections; Escape closes it. |
+| 1.1-first_class | desktop | pass | ![](screenshots/page-2026-11-05T08-57-54-536Z.png) | Reduced first_class pass: sections load, contrast ratios pass; Report tab sideways scroll at 390 (see B1). |
+| 13.4-phone | mobile | fail | ![](screenshots/page-2026-11-05T08-58-43-845Z.png) | Downloads table spills past the card and the page scrolls sideways (B1). |
 
 ## Design check
 
-No design states tested.
+No design states tested. The plan has no `-design` tests; a mockup comparison is in General notes.
 
-### B1: Learner page header Deactivate/Reactivate jumps back to the Overview tab
+## Bugs
 
-- Manifestations: 3.learner-header-tab (desktop).
-- Screenshots: none.
-- Expected: Confirming the header Deactivate or Reactivate on a learner's History (or Courses/Messages) tab keeps that tab and its `/__tabs/<tab>` URL, as the cohort page now does (9.1).
-- Actual: The page is replaced with the Overview tab and the URL loses `/__tabs/history`.
+### B1: Report tab Downloads table overflows the page on phones
 
-### B2: Report Generate drops keyboard focus to body
+Manifestations: 13.4-phone (mobile).
 
-- Manifestations: 10.4-report (desktop), 9.10-generate (desktop).
-- Screenshots:
+![](screenshots/page-2026-11-05T08-58-43-845Z.png)
 
-![](screenshots/page-2026-11-03T07-22-09-012Z.png)
+Expected: At 390 the Downloads table (Generated / By / Download) fits the card or scrolls inside its own region; the page never scrolls sideways (Test 1: scrollWidth <= innerWidth).
 
-- Expected: After pressing Generate PDF report by keyboard, focus lands inside the swapped Downloads card (heading, new Download link or the error), never on body.
-- Actual: When the Downloads card swaps (success or error), `document.activeElement` is body.
+Actual: With generated reports listed, the 473px table sits in a wrapper with overflow visible; Download buttons are cut off at the card edge and documentElement.scrollWidth is 506 at 390 (both themes).
 
-### B3: Over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again'
+### B2: Dashboard needs-attention avatar is centred on the whole row, not beside the name
 
-- Manifestations: 9.10-generate (desktop), 12.error-text (desktop).
-- Screenshots:
+Manifestations: 13.2 (desktop), 13.2 (mobile).
 
-![](screenshots/page-2026-11-03T07-21-17-786Z.png)
-![](screenshots/page-overlimit-firstclass-desktop.png)
+![](screenshots/page-2026-11-05T08-24-19-329Z.png)
+![](screenshots/page-2026-11-05T08-51-25-511Z.png)
 
-- Expected: A cohort over the learner limit either does not offer Generate, or explains it can't be generated without a retry that can never work.
-- Actual: Generate is offered. Pressing it shows the over-limit sentence in red with a 'Try again' button, and that failed state persists for every later visitor of the Report tab.
+Expected: Each row shows the learner as a person link: avatar chip beside the bold name (Test 13.1/13.2), with the cohort blocks under/after it.
 
-### B4: Error text colour fails 4.5:1 contrast in both themes
+Actual: The row `<li>` uses items-center, so the avatar is vertically centred on the multi-line row: about 25px below the name at desktop and about 75px below it on a phone.
 
-- Manifestations: 12.error-text (desktop).
-- Screenshots:
+### B3: Focus after a row is replaced, a sort or a page change lands on an unnamed empty table anchor
 
-![](screenshots/page-overlimit-firstclass-desktop.png)
+Manifestations: 3-focus-after-confirm (desktop), 10.4-desktop (desktop).
 
-- Expected: text-error on white reaches 4.5:1 (WCAG 1.4.3).
-- Actual: default rgb(232,85,61) = 3.62:1; first_class rgb(229,62,62) = 4.13:1.
+![](screenshots/page-2026-11-05T08-41-09-834Z.png)
 
-### B5: Panel lists pick up the global ul indent and bullet
+Expected: After confirming an action whose row is replaced, focus goes to the table heading (or the row's trigger); focus is visible and announced.
 
-- Manifestations: 1.card-lists (desktop).
-- Screenshots:
+Actual: Focus moves to `<div tabindex=-1 data-table-anchor>` at the top of the table: zero height, no accessible name, no visible focus ring. Seen after Remove from cohort on the learner page and after sorting or paginating the learners table.
 
-![](screenshots/page-2026-11-03T07-18-17-363Z.png)
-![](screenshots/page-2026-11-03T07-38-34-813Z.png)
+### B4: Phone selection bar uses full-size stacked buttons and a text pager
 
-- Expected: Lists in panels (Registrations, Course completion, Needs attention, Cohort progress) line up with their card heading and show no bullet, like the other panel lists that use list-none ml-0.
-- Actual: They inherit `ul { list-disc list-outside ml-6 }` from tailwind.components.css: 24px indent, and Course completion shows a disc bullet.
+Manifestations: 13.6 (mobile).
 
-### B6: Learners and Cohorts tables start 24px lower than the other list pages
+![](screenshots/page-2026-11-05T08-52-00-834Z.png)
 
-- Manifestations: 1.list-gap (desktop).
-- Screenshots:
+Expected: At 375 the bulk action buttons are small, and the pager is two small icon-only buttons (Previous, Next) around "Page X of Y".
 
-![](screenshots/page-2026-11-03T07-37-38-614Z.png)
-![](screenshots/page-courses-desktop.png)
+Actual: Bulk buttons are full-size btn (16px), one per row, making the bar about 250px tall; the pager shows text "Previous"/"Next" buttons with arrows rather than icon-only buttons.
 
-- Expected: The table card sits the same distance under the page header on Learners, Cohorts, Courses and Audit log.
-- Actual: An empty zero-height `<div x-data="listRefresh">` is the first child of the space-y-6 canvas, so Learners/Cohorts' section starts at y≈203 vs 177.
+### B5: Cohort names in the learners table and quick view are medium weight, not the person-link bold
 
-### B7: Members page scrolls sideways on a phone when an email is long
+Manifestations: 13.1 (desktop).
 
-- Manifestations: 1.members-mobile (phone).
-- Screenshots:
+![](screenshots/page-2026-11-05T08-48-44-691Z.png)
 
-![](screenshots/page-members-mobile.png)
+Expected: Cohort names inside rows (learners table, dashboard rows, quick view) use the person-link style: bold, text colour, no underline, blue on hover.
 
-- Expected: No sideways scroll at 390 (scrollWidth <= innerWidth); long emails truncate inside the card.
-- Actual: scrollWidth 398. The name line's span.truncate has no width constraint (parent span lacks min-w-0/block width), so nameless.lower.educator@example.com runs past the viewport.
+Actual: Learners table and quick view cohort links are font-medium (500); dashboard rows use bold (700).
 
-### B8: Filter sheet group labels indented 8px (legend padding)
+### B6: Learner Settings intro offers 'deactivate' for an inactive learner
 
-- Manifestations: 9.12-legend (phone).
-- Screenshots:
+Manifestations: 13.5 (desktop).
 
-![](screenshots/page-learners-sheet-mobile.png)
-![](screenshots/page-audit-sheet-mobile.png)
+![](screenshots/page-2026-11-05T08-31-04-478Z.png)
 
-- Expected: STATUS/SORT/WHAT labels align with COHORT/COURSE/WHO and the chips at x=16.
-- Actual: The legend keeps 8px inline padding, so legend labels start at x=24.
+Expected: The Settings tab intro names only actions the tab offers for this learner's state.
 
-### B9: Phone learner card checkbox sits mid-card
+Actual: For inactive Rae Removed the intro reads "Change Rae Removed's name, add them to a cohort, register them for a course or deactivate them." while the button is Reactivate.
 
-- Manifestations: 1.learner-cards-mobile (phone).
-- Screenshots:
+### B7: Staff copy shows table placeholder labels inside sentences
 
-![](screenshots/page-learners-mobile.png)
+Manifestations: 3-staff-copy (desktop).
 
-- Expected: The selection checkbox sits beside the learner's name at the top of the card.
-- Actual: It is vertically centred on the whole card, beside 'Courses', plus a ~50px empty band above the first card's content.
+![](screenshots/page-2026-11-05T08-34-45-479Z.png)
 
-### B10: Decorative icon names leak into accessible names
+Expected: Role lines and dialog bodies read as sentences: e.g. "Added 5 Nov 2026" when no actor is recorded, and "Organisation admin for the whole organisation".
 
-- Manifestations: 11.icon-names (desktop).
-- Screenshots: none.
-- Expected: Icons inside labelled links/buttons are hidden from assistive tech, so names read 'Dashboard', 'Pending'.
-- Actual: Icons render role=img with aria-label set to the semantic name: sidebar links read 'home Dashboard', 'user Learners'; filter options 'check Pending'; quick-view links contain img 'quick_view'.
+Actual: Staff rows read "Added 5 Nov 2026 by Not recorded"; the Reactivate dialog reads "These roles take effect again: Organisation admin on Whole organisation."
 
-### B11: Row Remove/Move buttons don't name the learner
+### B8: Bulk confirmation bodies repeat the title and omit what changes, what is kept and how to undo
 
-- Manifestations: 11.row-buttons (desktop).
-- Screenshots: none.
-- Expected: Each row action's accessible name identifies its row (e.g. 'Remove Anthony Myers from Cohort Alpha').
-- Actual: Ten buttons all named 'Remove' and ten 'Move' on a cohort's Learners tab (and 'Deactivate' on cohort Courses rows beside the header Deactivate).
+Manifestations: 3-bulk-body (desktop).
 
-### B12: Dashboard Cohorts tile link is named only by its number
+![](screenshots/page-2026-11-05T08-43-51-095Z.png)
+![](screenshots/page-2026-11-05T08-26-56-754Z.png)
 
-- Manifestations: 11.tile-link (desktop).
-- Screenshots:
+Expected: Test 3: every confirmation body says what stops, what is kept and how to undo it; a header states each fact once.
 
-![](screenshots/page-2026-11-03T07-20-02-809Z.png)
+Actual: Bulk Add to cohort: title "Add 1 learner to QA Temp A?" body "Add 1 learner to QA Temp A." and nothing else. Bulk "Deactivate a course registration" and Register for a course also open by restating the title.
 
-- Expected: The tile link's name includes what it counts ('7 cohorts').
-- Actual: Link name is '7'; the word 'Cohorts' is outside the link.
+### B9: Learners table squeezes the Cohorts and Courses columns at tablet width and with the quick view docked
 
-### B13: 'Create Cohort' is Title Case
+Manifestations: tablet-squeeze (tablet).
 
-- Manifestations: copy.create-cohort (desktop).
-- Screenshots: none.
-- Expected: Sentence case like every other action: 'Create cohort'.
-- Actual: Cohorts header button and dialog title read 'Create Cohort'.
+![](screenshots/page-2026-11-05T08-55-21-952Z.png)
+![](screenshots/page-2026-11-05T08-48-44-691Z.png)
 
-### B14: Two date formats in the educator interface
+Expected: Columns keep a readable width; the table scrolls inside its region rather than crushing columns ("Space: no region is squeezed").
 
-- Manifestations: 1.date-format (desktop).
-- Screenshots:
-
-![](screenshots/page-courses-desktop.png)
-![](screenshots/page-audit-desktop.png)
-
-- Expected: One date/time format across tables and cards.
-- Actual: Cohorts list and learner Cohorts table use 'Nov. 2, 2026, 3:22 p.m.'; History, Audit log, Details and 'Figures as of' use '3 Nov 2026 07:37'.
+Actual: At 768 (and at 1440 with the quick view docked) course titles wrap every one or two words and rows grow to about 250px, although the region already scrolls sideways.
 
 ## Layout probe
 
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.cohort-overview | desktop | /educator/organisations/demodev/cohorts/<alpha> | ![](screenshots/page-2026-11-03T07-18-17-363Z.png) | clean |
-| 1.dashboard | desktop | /educator/organisations/northside/dashboard | ![](screenshots/page-2026-11-03T07-20-02-809Z.png) | clean |
-| 1.report | desktop | /educator/organisations/northside/cohorts/<checkpoint>/__tabs/report | ![](screenshots/page-2026-11-03T07-20-53-700Z.png) | clean |
-| 1.members | desktop | /educator/organisations/northside/members | ![](screenshots/page-2026-11-03T07-34-14-862Z.png) | clean |
-| 1.learners | desktop | /educator/organisations/northside/learners | ![](screenshots/page-2026-11-03T07-37-38-614Z.png) | clean |
-| 13.learner-page | desktop | /educator/organisations/northside/learners/<ada> | ![](screenshots/page-2026-11-03T07-38-34-813Z.png) | clean |
-| 13.courses | desktop | /educator/organisations/northside/courses | ![](screenshots/page-courses-desktop.png) | clean |
-| 13.history | desktop | /educator/organisations/northside/cohorts/<A>/__tabs/history | ![](screenshots/page-history-desktop.png) | clean |
-| 13.audit-log | desktop | /educator/organisations/northside/audit-log | ![](screenshots/page-audit-desktop.png) | clean |
-| 1.dashboard | phone | /educator/organisations/northside/dashboard | ![](screenshots/page-dashboard-mobile.png) | clean |
-| 1.members | phone | /educator/organisations/northside/members | ![](screenshots/page-members-mobile.png) | overflow: document is 398px wide in a 390px viewport |
-| 9.4-learners | tablet | /educator/organisations/northside/learners | ![](screenshots/page-learners-tablet.png) | clean |
-| 9.4-cohorts | tablet | /educator/organisations/northside/cohorts | ![](screenshots/page-cohorts-tablet.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/dashboard | ![](screenshots/page-2026-11-05T08-24-19-329Z.png) | clean (probe false positive: overflow from clipped sr-only "No progress to show"; scrollWidth == innerWidth) |
+| 1.1 | desktop | /educator/organisations/northside/learners | ![](screenshots/page-2026-11-05T08-24-21-358Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/cohorts | ![](screenshots/page-2026-11-05T08-24-23-020Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/courses | ![](screenshots/page-2026-11-05T08-24-24-406Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/staff | ![](screenshots/page-2026-11-05T08-24-26-071Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/audit-log | ![](screenshots/page-2026-11-05T08-24-27-752Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/northside/cohorts/<CohortA>/__tabs/report | ![](screenshots/page-2026-11-05T08-24-29-153Z.png) | clean |
+| 9.3 | desktop | /educator/organisations/northside/cohorts/<QA Checkpoint> | ![](screenshots/page-2026-11-05T08-35-45-175Z.png) | clean |
+| 1.1 | mobile | /educator/organisations/northside/dashboard | ![](screenshots/page-2026-11-05T08-51-25-511Z.png) | clean (probe flag 'overflow x=0..480' from clipped sr-only text; no sideways scroll) |
+| 1.1 | mobile | /educator/organisations/northside/learners | ![](screenshots/page-2026-11-05T08-51-27-317Z.png) | clean (probe flag 'overflow x=0..447' from text clipped by truncate/sr-only inside cards; no sideways scroll) |
+| 1.1 | mobile | /educator/organisations/northside/cohorts | ![](screenshots/page-2026-11-05T08-51-29-035Z.png) | clean |
+| 1.1 | mobile | /educator/organisations/northside/courses | ![](screenshots/page-2026-11-05T08-51-30-572Z.png) | clean |
+| 1.1 | mobile | /educator/organisations/northside/staff | ![](screenshots/page-2026-11-05T08-51-32-561Z.png) | clean (probe flag 'overflow x=0..821' from the 87-character email, truncated with an ellipsis; no sideways scroll) |
+| 1.1 | mobile | /educator/organisations/northside/audit-log | ![](screenshots/page-2026-11-05T08-51-34-331Z.png) | clean |
+| 1.1 | mobile | /educator/organisations/northside/cohorts/<CohortA>/__tabs/report | ![](screenshots/page-2026-11-05T08-51-35-850Z.png) | clean (probe flag 'overflow x=0..608' from the summary table inside its own scrolling region; no sideways page scroll) |
+| 9.4 | tablet | /educator/organisations/northside/learners | ![](screenshots/page-2026-11-05T08-55-21-952Z.png) | clean (probe flag 'overflow x=0..971' is the table inside its own scrolling region; no page sideways scroll) |
+| 9.4 | tablet | /educator/organisations/northside/cohorts | ![](screenshots/page-2026-11-05T08-55-23-866Z.png) | clean (probe flag 'overflow x=0..771' (3px, region edge); no page sideways scroll) |
+| 1.1 | tablet | /educator/organisations/northside/dashboard | ![](screenshots/page-2026-11-05T08-55-25-293Z.png) | clean (probe flag 'overflow x=0..874' from clipped sr-only text; no page sideways scroll) |
+| 13.4-phone | mobile | /educator/organisations/northside/cohorts/<QA Checkpoint>/__tabs/report | ![](screenshots/page-2026-11-05T08-58-43-845Z.png) | FLAG: documentElement.scrollWidth 506 > innerWidth 390: Downloads table TH 'Download' right edge 506 with no clipping ancestor (B1) |
 
 ## Data changes
 
-| Via | What |
+| What | Via |
 |---|---|
-| sdd:qa-data-helper | Ran the five plan seed commands plus qa_create_educator_polish_scenario (which the helper extended, uncommitted, with a nameless lower-case educator, a uniquely titled quiz and a third org 'quietside'). Main org: northside; second: southside. |
-| dev server restart | Restarted runserver on the same port with DJANGO_SETTINGS_MODULE=config.settings_local (untracked) so REPORTS_MAX_LEARNERS=5 and BULK_BACKGROUND_THRESHOLD=50 apply. |
-| sdd:qa-data-helper | Deleted Learner a6816e30-961c-4b56-8d12-82d156b290bd (Bulk 05 Alpha, northside); its user account (pk 96) left in place. |
-| browser (bulk actions in the app under test) | Bulk deactivated then reactivated all northside learners; Rae Removed deactivated again to restore the inactive learner. Cohorts Cohort Empty, Cohort Removed and a created 'QA Doomed' deleted through the UI as part of Tests 3, 8 and 9.8. |
+| Ran the six seed commands (educator_interface_seed, cohort_administration, learner_administration, bulk_operations, member_administration, educator_polish) on site DemoDev. Main org northside; second org southside; empty-staff org eastside; quietside with no audit entries. | sdd:qa-data-helper |
+| Created QA Over 500 Cohort (13fb3b65...) in org demodev with 501 learners via qa_create_report_cohort, because the running server (config.settings_dev) ignores settings_local's REPORTS_MAX_LEARNERS=5. | sdd:qa-data-helper |
+| Created a nameless staff user with an 87-char email, cohort_viewer on Cohort B (northside). | sdd:qa-data-helper |
+| Bulk-registered Ada Lovelace and Bea Blue (northside) for Course Other, then deactivated that registration (Test 2.1). | QA run through the UI |
+| Reactivated then deactivated Rae Removed (with reason); deactivated then reactivated qa-nameless-learner@email.com. Net state unchanged. | QA run through the UI |
+| Removed qa-nameless-learner from Cohort C Renamed twice and re-added each time; reactivated then re-deactivated Cohort Old; deleted the empty Cohort Removed; generated two PDF reports for QA Checkpoint Cohort. | QA run through the UI |
+| Deleted Cohort Empty (Test 8); created and deleted QA Temp A and QA Temp B (Test 9.8); deactivated/reactivated Cohort B several times (net active); renamed Cohort C and back. | QA run through the UI |
+| Bulk-registered all 583 demodev learners for Course Other (Test 9.5); imported qa.import.new1@qa.test (Imogen Import) into northside (Test 9.6). | QA run through the UI |
 
 ## Bug status
 
 | Bug | Status |
 |---|---|
-| B1 | **FIXED** (commit: 5283564d6) — Learner page header Deactivate/Reactivate jumps back to the Overview tab |
-| B2 | **FIXED** (commit: 873f3f794) — Report Generate drops keyboard focus to body |
-| B3 | **FIXED** (commit: 332ac5ec0) — Over-limit cohort offers Generate PDF, then shows a permanent red error with 'Try again' |
-| B4 | **FIXED** (commit: bafd7818b) — Error text colour fails 4.5:1 contrast in both themes |
-| B5 | **FIXED** (commit: 595ce8b27) — Panel lists pick up the global ul indent and bullet |
-| B6 | **FIXED** (commit: 2f783b9f3) — Learners and Cohorts tables start 24px lower than the other list pages |
-| B7 | **FIXED** (commit: 9914e0c49) — Members page scrolls sideways on a phone when an email is long |
-| B8 | **FIXED** (commit: 5e93e2c1b) — Filter sheet group labels indented 8px (legend padding) |
-| B9 | **FIXED** (commit: bd1733fc9) — Phone learner card checkbox sits mid-card |
-| B10 | **FIXED** (commit: ec02e28ee) — Decorative icon names leak into accessible names |
-| B11 | **FIXED** (commit: 3fa5d7030) — Row Remove/Move buttons don't name the learner |
-| B12 | **FIXED** (commit: ead6e81d2) — Dashboard Cohorts tile link is named only by its number |
-| B13 | **FIXED** (commit: 8153915fe) — 'Create Cohort' is Title Case |
-| B14 | **FIXED** (commit: 2f122de65) — Two date formats in the educator interface |
-| — | **FIXED** (commit: see git log) — the stale app map: the QA helper's audit_log import is committed with the regenerated `docs/app_structure.md` and import contracts |
+| B1 | **FIXED** (commit: 5465e96a6) — Report tab Downloads table overflows the page on phones. Re-verified at 390: scrollWidth 390, table scrolls in its own region ([after](screenshots/page-2026-11-05T09-16-32-184Z.png)). |
+| B2 | **FIXED** (commit: d993d2277) — Dashboard needs-attention avatar is centred on the whole row, not beside the name. Re-verified: avatar/name centre gap 0–2px on dashboard, cohort Overview and Report at 1440 and 390 ([after](screenshots/page-2026-11-05T09-31-06-203Z.png)). |
+| B3 | **UNRESOLVED** — Focus after a row is replaced, a sort or a page change lands on an unnamed empty table anchor (reason: the code deliberately focuses a data-table anchor while the plan says the table heading; which target is right is a product/a11y decision) |
+| B4 | **UNRESOLVED** — Phone selection bar uses full-size stacked buttons and a text pager (reason: icon-only pager vs labelled buttons and button size vs 44px touch rule need a design decision) |
+| B5 | **FIXED** (commit: ffe4b7a7b) — Cohort names in the learners table and quick view are medium weight, not the person-link bold. Re-verified: weight 700, no underline in table and quick view. |
+| B6 | **UNRESOLVED** — Learner Settings intro offers 'deactivate' for an inactive learner (reason: copy wording decision) |
+| B7 | **UNRESOLVED** — Staff copy shows table placeholder labels inside sentences (reason: copy wording decision) |
+| B8 | **UNRESOLVED** — Bulk confirmation bodies repeat the title and omit what changes, what is kept and how to undo (reason: needs per-action copy decisions) |
+| B9 | **UNRESOLVED** — Learners table squeezes the Cohorts and Courses columns at tablet width and with the quick view docked (reason: column-width/layout design decision; fix budget also exhausted) |
 
 ## General notes
 
-Observations (UX or product items with no defect attached):
+- Rebase: pre-step rebase onto origin/main replayed 95 commits with 0 conflicts and the lost-change check passed. Upstream changes were tests and spec ideas only (no shared front-end), so the rebase front-end check is subsumed by this full QA run. Verification: targeted tier 3939 passed; pre-commit clean; branch force-pushed (b2ace529f).
+- Not run / partial: the Test 12 contrast sweep sampled badges, muted text, links, the over-limit notice and filter chips in both themes (all pass; the "Not started" muted chip is 4.79:1 in first_class, a narrow pass); focus-ring and border (3:1) sampling was not exhaustive. The first_class theme got a reduced pass (all sections at 1440 and 390, badges, 9.7, 9.10), not the full matrix. 9.5 is PARTIAL (immediate task backend). Test 8.1 and the row-menu parts of 2.4/10.2 do not apply: no table defines row menus. Test 4.2 does not apply to courses, cohort Courses/History, or learner Courses/History tabs (no search or filter).
+- Plan corrections: URLs are `/educator/organisations/<org>/...` not `/educator/<org>/...`; the import page is `/learners/import/` (the slash-less URL in Test 9.7 is a 404). The over-limit case used a 501-learner cohort because the dev server (config.settings_dev) does not read settings_local's REPORTS_MAX_LEARNERS=5.
+- Observations with no action: every person link carries its own inline `<style>@layer components{.panel-avatar-*}</style>` block (repeated per row, harmless visually); the Cohort report card's Refresh is a full-size ghost button beside 14px text while Generate report is btn-sm; the dashboard tile "7 Cohorts" places its label lower than the sibling tile with a subtitle; the import page helper line "email is required; cohort is matched by name" has no full stop; the Playwright aria snapshot reports the native `<summary>` "Add filter" as generic; the first More actions click after a scroll-into-view closes immediately because the menu closes on window scroll (Playwright artefact, not reproducible by mouse).
+- Mockup comparison (Educator Dashboard.dc.html at 1440, not a pixel reference): the mockup puts each needs-attention learner on one compact row (avatar, name with the cohort under it, status badge, action); ours uses rows about 99px tall over three lines with the cohort block beside the name, so it is noticeably less dense. Tiles: the mockup puts an uppercase label above the figure; ours puts the label under the figure. The learners and cohorts mockups were not opened.
 
-- 2.1: The course select's empty choice reads '---------' (Move uses 'Choose a cohort'). Choosing a course they only hold through a cohort gives 'for 0 learners?' with the confirm disabled and no sentence saying why.
-- 9.2: The single-cohort register dialog is titled 'Register Cohort B for a course' with no question mark, while bulk dialogs are questions. The notice points at the Settings tab although Reactivate also sits in the page header.
-- 3.resend: After the dialog closes, nothing on screen or in a live region confirms the email went; focus returns to the trigger.
-- 3.members: Rows read 'Added Nov. 3, 2026 by Not recorded'. The intro runs all three role definitions into one sentence-run paragraph.
-- 5: On a hovered or focused members row, the muted chip's grey background matches the row hover colour, so the chip loses its outline.
-- 9.6: 'Counts can change if someone else adds these learners before you confirm.' still shows when there is nothing to confirm.
-- 9.5: With 78 selected and idle, the selection bar is about 330px tall at 375 (three full-width stacked buttons plus pager), about 40% of the screen.
-- 3.bulk-deactivate: The bulk body only says it affects N learners and runs in the background. It does not say what stops, what is kept or how to undo, unlike the single-learner dialog.
-- 9.4: The Learner column is wide (unwrapped email), so Cohorts and Courses wrap a word per line.
-- 13.quick-view: With the panel open the table narrows so the Cohorts column wraps a word per line (rows about 250px tall), and Courses and Last active move into the table's horizontal scroll.
-
-Run limits and scope:
-
-- 4.1 could not run as written: cohort_viewer has no members or audit-log access.
-- 9.5: the running bar was not observable because the dev setup finishes bulk jobs immediately.
-- 9.8: the Move variant was not repeated.
-- 9.6: the result step is unreachable with all-existing rows.
-- The courses list, cohort Courses tab, learner Courses tab and History tabs have no search or filter, so 4.2's no-match state does not apply there.
-- The mockup comparison (Test 1) was not done in detail.
-- The data helper extended `freedom_ls/qa_helpers/management/commands/qa_create_educator_polish_scenario.py` (uncommitted).
-
-status: ok · reason: 14 bugs — 3 fixed (B1, B2, B7, each re-verified in the browser), 11 unresolved; full run 11543 passed, 1 failed (stale app map from an uncommitted QA-helper edit); report rendered, screenshots verified
+status: ok · reason: 9 bugs — 3 fixed, 6 unresolved; report rendered, screenshots verified

@@ -40,8 +40,14 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Decide what to do about QA bug: 'Create Cohort' is Title Case (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: two date formats in the educator interface (TDD: failing test first, then fix)
 - [x] (user) Fix the tests the full run after the QA fixes left failing: tests/test_generate_app_map.py::test_check_from_repo_root_exits_0 (stale app map from the uncommitted qa_create_educator_polish_scenario.py edit that imports audit_log; keep it and run /ds:app_map, or drop it)
-- [ ] (cmd) Re-run `/sdd:do_qa` over `3. frontend_qa.md`: the polish pass of 5 Nov (person links, modal footers, Settings tabs, the Staff rename, the Downloads table, the grouped audit filter, the phone Sort menu) landed after the last QA run
+- [x] (cmd) Re-run `/sdd:do_qa` over `3. frontend_qa.md`: the polish pass of 5 Nov (person links, modal footers, Settings tabs, the Staff rename, the Downloads table, the grouped audit filter, the phone Sort menu) landed after the last QA run
 - [x] (cmd) Test 4.1 cannot be set up: a cohort_viewer has no access to /members or /audit-log in any organisation (404), so the plan's viewer empty states are unreachable; correct Test 4.1 in 3. frontend_qa.md
+- [ ] (user) Decide what to do about QA bug: focus after a replaced row, sort or page change lands on an unnamed empty table anchor instead of the table heading (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: phone selection bar uses full-size stacked buttons and a text Previous/Next pager instead of small and icon-only (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: learner Settings intro offers 'deactivate them' for an inactive learner (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: staff copy reads 'Added … by Not recorded' and 'Organisation admin on Whole organisation' (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: bulk confirmation bodies repeat the title and omit what changes, what is kept and how to undo (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: learners table squeezes the Cohorts and Courses columns at 768 and with the quick view docked (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
