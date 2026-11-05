@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from rest_framework.request import Request
 from rest_framework.test import APIClient, APIRequestFactory
+from rest_framework.views import APIView
 
 from freedom_ls.api import urls
 from freedom_ls.api.factories import ApiKeyFactory
-from freedom_ls.api.pagination import ApiKeysetPagination
+from freedom_ls.api.pagination import DEFAULT_CURSOR_FIELD, ApiKeysetPagination
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.site_aware_models.models import TimestampedModel
 
 
 def bearer_auth_for(*scopes: ApiScope) -> dict[str, str]:
@@ -40,16 +40,27 @@ def collect_pages(
     return pages
 
 
-def paginate_all[M: TimestampedModel](
-    queryset: QuerySet[M], path: str = "/pages/"
+class CursorFieldView(APIView):
+    """The one attribute the paginator reads from a view."""
+
+    def __init__(self, cursor_field: str) -> None:
+        super().__init__()
+        self.cursor_field = cursor_field
+
+
+def paginate_all[M: Model](
+    queryset: QuerySet[M],
+    path: str = "/pages/",
+    cursor_field: str = DEFAULT_CURSOR_FIELD,
 ) -> list[list[M]]:
     """Every page of `queryset` through `ApiKeysetPagination`, following `next`."""
     factory = APIRequestFactory()
+    view = CursorFieldView(cursor_field)
     pages: list[list[M]] = []
     next_url: str | None = path
     while next_url is not None:
         request = Request(factory.get(next_url))
         paginator = ApiKeysetPagination()
-        pages.append(paginator.paginate_queryset(queryset, request))
+        pages.append(paginator.paginate_queryset(queryset, request, view))
         next_url = paginator.get_paginated_response([]).data["next"]
     return pages

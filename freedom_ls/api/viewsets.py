@@ -18,7 +18,7 @@ from .authentication import ApiKeyAuthentication
 from .exceptions import api_exception_handler
 from .metadata import ApiMetadata
 from .models import ApiKey
-from .pagination import ApiKeysetPagination
+from .pagination import DEFAULT_CURSOR_FIELD, ApiKeysetPagination
 from .permissions import HasApiScope
 from .scopes import ApiScope
 from .throttling import ApiKeyRateThrottle
@@ -45,6 +45,9 @@ class ApiResponseMixin(APIView):
 
 class ReadOnlyApiViewSet(ApiResponseMixin, ReadOnlyModelViewSet):
     required_scope: ApiScope
+    # The model field the list is ordered and paged on, with id breaking ties.
+    # Set on the class by the endpoint's author; nothing in a request can change it.
+    cursor_field: str = DEFAULT_CURSOR_FIELD
 
     authentication_classes = [ApiKeyAuthentication]
     permission_classes = [HasApiScope]

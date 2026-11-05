@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
@@ -16,7 +17,7 @@ from freedom_ls.api.pagination import (
     CURSOR_MAX_LENGTH,
     ApiKeysetPagination,
 )
-from freedom_ls.api.tests.helpers import paginate_all
+from freedom_ls.api.tests.helpers import CursorFieldView, paginate_all
 
 pytestmark = pytest.mark.django_db
 
@@ -186,3 +187,31 @@ def test_paginated_response_schema_has_next_and_results():
         "next": {"type": "string", "nullable": True, "format": "uri"},
         "results": items,
     }
+
+
+def test_a_list_pages_on_the_cursor_field_when_it_is_not_updated_at(
+    mock_site_context, small_pages
+):
+    keys = [ApiKeyFactory() for _ in range(3)]
+    for key, day in zip(keys, (3, 2, 1), strict=True):
+        ApiKey._base_manager.filter(pk=key.pk).update(
+            created_at=datetime(2030, 1, day, tzinfo=UTC)
+        )
+
+    pages = paginate_all(ApiKey._base_manager.all(), cursor_field="created_at")
+
+    assert [[k.pk for k in page] for page in pages] == [
+        [keys[2].pk, keys[1].pk],
+        [keys[0].pk],
+    ]
+
+
+def test_a_field_that_is_not_a_date_or_datetime_is_a_configuration_error(
+    mock_site_context,
+):
+    request = Request(factory.get("/pages/"))
+
+    with pytest.raises(ImproperlyConfigured):
+        ApiKeysetPagination().paginate_queryset(
+            ApiKey._base_manager.all(), request, CursorFieldView("name")
+        )
