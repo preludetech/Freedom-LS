@@ -612,3 +612,65 @@ def test_stamping_the_claim_email_as_sent_leaves_updated_at_alone(draft):
     applicant.save(update_fields=["claim_email_sent_at", "updated_at"])
 
     assert _updated_at(draft) == before
+
+
+@pytest.fixture
+def user_application(mock_site_context) -> CourseApplication:
+    application: CourseApplication = CourseApplicationFactory(
+        user=UserFactory(first_name="Ada")
+    )
+    return application
+
+
+def test_changing_the_users_name_moves_updated_at(user_application):
+    before = user_application.updated_at
+    user = user_application.user
+    user.first_name = "Grace"
+
+    user.save()
+
+    assert _updated_at(user_application) > before
+
+
+def test_changing_the_users_name_puts_the_application_in_an_updated_since_poll(
+    user_application, auth
+):
+    before = user_application.updated_at
+    user = user_application.user
+    user.first_name = "Grace"
+
+    user.save()
+
+    assert application_ids_updated_since(auth, before) == [str(user_application.pk)]
+
+
+def test_changing_the_users_email_moves_updated_at(user_application):
+    before = user_application.updated_at
+    user = user_application.user
+    user.email = "grace@example.com"
+
+    user.save(update_fields=["email"])
+
+    assert _updated_at(user_application) > before
+
+
+def test_changing_the_users_email_puts_the_application_in_an_updated_since_poll(
+    user_application, auth
+):
+    before = user_application.updated_at
+    user = user_application.user
+    user.email = "grace@example.com"
+
+    user.save(update_fields=["email"])
+
+    assert application_ids_updated_since(auth, before) == [str(user_application.pk)]
+
+
+def test_signing_in_leaves_updated_at_alone(user_application):
+    before = user_application.updated_at
+    user = user_application.user
+    user.last_login = timezone.now()
+
+    user.save(update_fields=["last_login"])
+
+    assert _updated_at(user_application) == before

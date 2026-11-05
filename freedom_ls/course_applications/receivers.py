@@ -34,6 +34,9 @@ from freedom_ls.form_engine.session_access import forget_all_anonymous_form_prog
 # Saves of only these fields change nothing the API shows, so they move nothing.
 # The claim email's sent stamp is written on every send.
 CLAIM_EMAIL_FIELDS = frozenset({"claim_email_sent_at", "updated_at"})
+# Every sign-in saves last_login alone; counting those would send most
+# applications on every run.
+SIGN_IN_FIELDS = frozenset({"last_login"})
 
 
 def touch_application_updated_at(**match: object) -> None:
@@ -85,6 +88,19 @@ def touch_application_on_applicant_save(
     if update_fields is not None and update_fields <= CLAIM_EMAIL_FIELDS:
         return
     touch_application_updated_at(anonymous_applicant_id=instance.pk)
+
+
+@receiver(post_save, sender=User)
+def touch_applications_on_user_save(
+    sender: type[User],
+    instance: User,
+    update_fields: frozenset[str] | None = None,
+    **kwargs: object,
+) -> None:
+    # Any other save may change the email or name the API shows.
+    if update_fields is not None and update_fields <= SIGN_IN_FIELDS:
+        return
+    touch_application_updated_at(user_id=instance.pk)
 
 
 @receiver(post_delete, sender=CourseApplication)
