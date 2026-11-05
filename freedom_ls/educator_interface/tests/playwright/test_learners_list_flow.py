@@ -54,12 +54,13 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
     main.get_by_role("button", name="Add learner", exact=True).first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
     modal.get_by_role("button", name="Add and add another", exact=True).click()
-    expect(modal.get_by_role("status")).to_contain_text("Joined the organisation")
+    status = modal.locator("[data-status-message]")
+    expect(status).to_contain_text("Joined the organisation")
     expect(modal.get_by_label("Email address")).to_have_value("")
 
     modal.get_by_label("Email address").fill(inactive_learner.user.email)
     modal.get_by_role("button", name="Add and add another", exact=True).click()
-    expect(modal.get_by_role("status")).to_contain_text("Reactivated")
+    expect(status).to_contain_text("Reactivated")
 
     modal.get_by_label("Email address").fill("brand.new@example.com")
     modal.get_by_label("First name").fill("Bea")

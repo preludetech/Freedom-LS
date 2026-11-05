@@ -87,11 +87,13 @@ def test_quick_view_opens_with_the_keyboard_and_escape_returns_focus_to_the_trig
     expect(trigger).to_be_focused()
 
 
-def test_quick_view_is_modal_on_a_phone(
+def test_quick_view_leaves_the_page_usable_on_a_phone(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
+    """A quick view is a look, not a decision: it never blocks the page, so
+    the next row can be tapped behind the sheet."""
     page = educator_logged_in_page
     page.set_viewport_size(_PHONE)
     organisation = _organisation_with_learner(educator_user)
@@ -104,7 +106,13 @@ def test_quick_view_is_modal_on_a_phone(
 
     quick_view = page.locator("#quick-view")
     expect(quick_view).to_be_visible()
-    assert quick_view.evaluate("dialog => dialog.matches(':modal')") is True
+    assert quick_view.evaluate("dialog => dialog.matches(':modal')") is False
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    # The list's search box, above the sheet, still takes a tap.
+    search = page.locator("#main-content input[type='search']").first
+    search.click()
+    expect(search).to_be_focused()
+    expect(quick_view).to_be_visible()
 
 
 def test_confirmation_dialog_opens_with_the_keyboard_and_escape_returns_focus_to_the_trigger(
@@ -241,12 +249,13 @@ def test_saving_a_cohort_edit_keeps_focus_on_the_page(
             live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings"
         )
     )
-    modal = page.locator("#app-modal")
+    settings = page.locator("section[data-panel='settings']")
 
-    page.get_by_role("button", name="Edit", exact=True).click()
-    modal.locator("#app-modal-body").get_by_label("Name").fill("New Name")
-    modal.get_by_role("button", name="Save", exact=True).click()
+    settings.get_by_label("Name").fill("New Name")
+    settings.get_by_role("button", name="Save", exact=True).click()
 
-    expect(modal).to_be_hidden()
     expect(page.locator("#instance-title")).to_have_text("New Name")
+    expect(page.locator("#app-modal")).to_be_hidden()
+    expect(settings.get_by_label("Name")).to_have_value("New Name")
+    expect(settings.get_by_label("Name")).to_be_focused()
     assert _focus_is_on_the_page(page)

@@ -194,8 +194,8 @@ def test_quick_view_drawer(
         # ends would race the animation.
         expect(quick_view).to_have_css("transform", "none")
 
-        # Only the phone sheet is modal; beside it the page stays usable.
-        expect(page.locator("dialog:modal")).to_have_count(1 if is_phone else 0)
+        # Never modal: the page behind the drawer stays usable at every width.
+        expect(page.locator("dialog:modal")).to_have_count(0)
         assert page.evaluate("getComputedStyle(document.documentElement).overflow") != (
             "hidden"
         )
