@@ -660,14 +660,13 @@ with a read-only REST API that automated Python scripts call with a site-bound, 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 4 | `apis-for-lead-monitoring-4-registrations-and-interest` | Scripts read individual and cohort course registrations and course interest under the `registrations_and_progress` scope. | `apis-for-lead-monitoring-1-foundation-and-users` | in progress |
-| 5 | `apis-for-lead-monitoring-5-course-progress` | Scripts read course-level progress per learner per course registration under the `registrations_and_progress` scope. | `apis-for-lead-monitoring-1-foundation-and-users` | in progress |
+| 5 | `apis-for-lead-monitoring-5-course-progress` | Scripts read course-level progress per learner per course registration under the `registrations_and_progress` scope. | `apis-for-lead-monitoring-1-foundation-and-users`, `apis-for-lead-monitoring-4-registrations-and-interest` | in progress |
 | 6 | `apis-for-lead-monitoring-6-conversions` | Scripts read attribution touches and conversions, once `referral-attribution-over-time` adds them, under the `referral_data` scope. | `apis-for-lead-monitoring-3-referral-data`, `referral-attribution-over-time` | next |
 
 ```
 1 foundation and users ──┬── 2 course applications
                          ├── 3 referral data ──── 6 conversions
-                         ├── 4 registrations and interest
-                         └── 5 course progress
+                         └── 4 registrations and interest ──── 5 course progress
 ```
 
 External edge: 6 needs the standalone `referral-attribution-over-time`.
@@ -677,15 +676,14 @@ External edge: 6 needs the standalone `referral-attribution-over-time`.
 - 1 runs alone and first. It is the biggest (roughly three to five times one resource endpoint),
   and every other spec builds on its key model, authentication, the four scopes, pagination, the
   `updated_since` convention and the schema.
-- After 1, specs 2, 3, 4 and 5 can run in parallel. 6 waits for 3 and for
-  `referral-attribution-over-time`.
+- After 1, specs 2, 3 and 4 can run in parallel. 5 waits for 4, whose user and organisation
+  flattening it imports. 6 waits for 3 and for `referral-attribution-over-time`.
 - Shortest path to something usable: 1, then 2 or 3. Applications and referrals are what lead
   monitoring reads most.
 - Caution: 2 to 6 each register routes with the API router and add a section to the API docs page.
   When two run at once, expect small merge conflicts in those files.
-- Caution: 4 and 5 both add an `updated_at` to a `learner_management` or `learner_progress` model,
-  and both flatten learner to user and organisation. Whichever lands second reuses the first one's
-  flattening.
+- 4 and 5 both add an `updated_at` to a `learner_management` or `learner_progress` model, and
+  both flatten learner to user and organisation. 4 defines the flattening; 5 reuses it.
 
 #### Decisions already taken
 
