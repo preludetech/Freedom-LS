@@ -471,6 +471,22 @@ def test_retracts_an_unstarted_learner_who_stopped_matching(
 
 
 @pytest.mark.django_db
+def test_retraction_advances_the_registration_updated_at(title_rule, unmatched_learner):
+    # Arrange
+    with time_machine.travel(datetime(2020, 1, 1, tzinfo=UTC)):
+        registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    before = registration.updated_at
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.updated_at > before
+
+
+@pytest.mark.django_db
 def test_a_retracted_registration_is_marked_retracted(title_rule, unmatched_learner):
     # Arrange
     _, link = _rule_made_registration(title_rule, unmatched_learner)

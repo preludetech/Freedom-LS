@@ -11,9 +11,11 @@ other does not get their own test."""
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
+import time_machine
 
 from django.contrib.auth.models import AnonymousUser
 from django.db import connection, transaction
@@ -480,6 +482,26 @@ class TestRegisterCohortForCourse:
         registration = CohortCourseRegistrationFactory(is_active=False)
 
         assert deactivate_cohort_registration(registration) is False
+
+    def test_unregistering_advances_updated_at(self, mock_site_context):
+        with time_machine.travel(datetime(2020, 1, 1, tzinfo=UTC)):
+            registration = CohortCourseRegistrationFactory()
+        before = registration.updated_at
+
+        deactivate_cohort_registration(registration)
+
+        registration.refresh_from_db()
+        assert registration.updated_at > before
+
+    def test_reactivating_advances_updated_at(self, mock_site_context):
+        with time_machine.travel(datetime(2020, 1, 1, tzinfo=UTC)):
+            registration = CohortCourseRegistrationFactory(is_active=False)
+        before = registration.updated_at
+
+        register_cohort_for_course(registration.cohort, registration.course)
+
+        registration.refresh_from_db()
+        assert registration.updated_at > before
 
     def test_unregistering_deactivates_the_registration(self, mock_site_context):
         registration = CohortCourseRegistrationFactory()

@@ -5,6 +5,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
+from django.db.models.signals import post_save
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -545,3 +546,57 @@ class TestRegistrationOrganisationCheck:
         registration = LearnerCourseRegistration(course=CourseFactory())
 
         registration.clean()
+
+
+REGISTRATION_FACTORIES = [
+    LearnerCourseRegistrationFactory,
+    CohortCourseRegistrationFactory,
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory", REGISTRATION_FACTORIES)
+def test_partial_save_of_is_active_moves_updated_at(mock_site_context, factory):
+    registration = factory()
+    before = registration.updated_at
+    registration.is_active = False
+
+    registration.save(update_fields=["is_active"])
+
+    registration.refresh_from_db()
+    assert registration.updated_at > before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory", REGISTRATION_FACTORIES)
+def test_save_with_empty_update_fields_leaves_updated_at_unchanged(
+    mock_site_context, factory
+):
+    registration = factory()
+    before = registration.updated_at
+    registration.is_active = False
+
+    registration.save(update_fields=[])
+
+    registration.refresh_from_db()
+    assert registration.updated_at == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory", REGISTRATION_FACTORIES)
+def test_receivers_see_updated_at_alongside_is_active_in_update_fields(
+    mock_site_context, factory
+):
+    registration = factory()
+    seen: list[frozenset[str] | None] = []
+
+    def receiver(sender, update_fields, **kwargs):
+        seen.append(update_fields)
+
+    post_save.connect(receiver, sender=type(registration), weak=False)
+    try:
+        registration.save(update_fields=["is_active"])
+    finally:
+        post_save.disconnect(receiver, sender=type(registration))
+
+    assert seen == [frozenset({"is_active", "updated_at"})]

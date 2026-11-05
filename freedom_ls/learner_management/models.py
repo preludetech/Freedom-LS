@@ -10,7 +10,11 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.panel_framework.models import RunStatus
-from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+from freedom_ls.site_aware_models.models import (
+    SiteAwareModel,
+    TimestampedModel,
+    UpdatedAtModel,
+)
 
 User = get_user_model()
 
@@ -127,6 +131,32 @@ class LoadedIsActiveMixin(_MixinBase):
         )
 
 
+class UpdatedAtInUpdateFieldsMixin(_MixinBase):
+    """Keep updated_at moving on partial saves."""
+
+    def save(
+        self,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        # Every is_active writer saves with update_fields=["is_active"], which
+        # skips auto_now; the stamp rides along so a deactivation is visible
+        # to anyone syncing on updated_at. An empty update_fields means "write
+        # nothing" and is left alone.
+        fields = None if update_fields is None else frozenset(update_fields)
+        if fields:
+            fields = fields | {"updated_at"}
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=fields,
+        )
+
+
 class Cohort(LoadedIsActiveMixin, SiteAwareModel, TimestampedModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
@@ -237,7 +267,9 @@ class CohortMembership(SiteAwareModel, TimestampedModel):
         return f"{self.learner} - {self.cohort}"
 
 
-class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
+class LearnerCourseRegistration(
+    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel, UpdatedAtModel
+):
     """Individual learner registration for a course."""
 
     course = models.ForeignKey(
@@ -255,6 +287,11 @@ class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=["site", "updated_at", "id"], name="lm_learner_reg_site_upd_idx"
+            )
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "learner", "course"],
@@ -275,7 +312,9 @@ class LearnerCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
         return f"{self.learner} - {self.course}"
 
 
-class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
+class CohortCourseRegistration(
+    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel, UpdatedAtModel
+):
     """Cohort-wide registration for a course."""
 
     course = models.ForeignKey(
@@ -290,6 +329,11 @@ class CohortCourseRegistration(LoadedIsActiveMixin, SiteAwareModel):
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=["site", "updated_at", "id"], name="lm_cohort_reg_site_upd_idx"
+            )
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "course", "cohort"],

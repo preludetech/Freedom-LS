@@ -1,6 +1,7 @@
 """Tests for the migration that deletes role rows left behind by deleted cohorts."""
 
 import importlib
+from datetime import UTC, datetime
 
 import pytest
 from guardian.models import UserObjectPermission
@@ -11,15 +12,25 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
+    LearnerCourseRegistrationFactory,
     delete_cohort_leaving_role_rows,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    LearnerCourseRegistration,
+)
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 migration = importlib.import_module(
     "freedom_ls.learner_management.migrations.0006_delete_orphan_cohort_role_rows"
+)
+
+updated_at_migration = importlib.import_module(
+    "freedom_ls.learner_management.migrations.0010_registration_updated_at"
 )
 
 
@@ -63,3 +74,32 @@ class TestDeleteOrphans:
 
         assert ObjectRoleAssignment._base_manager.count() == 1
         assert UserObjectPermission.objects.count() == guardian_rows
+
+
+@pytest.mark.django_db
+class TestBackfillUpdatedAt:
+    def test_stamps_a_learner_registration_with_its_registered_at(
+        self, mock_site_context: Site
+    ) -> None:
+        registration = LearnerCourseRegistrationFactory()
+        LearnerCourseRegistration._base_manager.filter(pk=registration.pk).update(
+            registered_at=datetime(2020, 1, 1, tzinfo=UTC)
+        )
+
+        updated_at_migration.backfill_updated_at(django_apps, None)
+
+        registration.refresh_from_db()
+        assert registration.updated_at == datetime(2020, 1, 1, tzinfo=UTC)
+
+    def test_stamps_a_cohort_registration_with_its_registered_at(
+        self, mock_site_context: Site
+    ) -> None:
+        registration = CohortCourseRegistrationFactory()
+        CohortCourseRegistration._base_manager.filter(pk=registration.pk).update(
+            registered_at=datetime(2020, 1, 1, tzinfo=UTC)
+        )
+
+        updated_at_migration.backfill_updated_at(django_apps, None)
+
+        registration.refresh_from_db()
+        assert registration.updated_at == datetime(2020, 1, 1, tzinfo=UTC)

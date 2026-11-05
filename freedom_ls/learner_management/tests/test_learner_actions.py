@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
+import time_machine
 
 from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext
@@ -1473,3 +1475,29 @@ class TestClassifyLearnerEntry:
         )
 
         assert result.outcome == AddOutcome.ALREADY_LEARNER
+
+
+@pytest.mark.django_db
+class TestRegistrationUpdatedAt:
+    def test_deactivating_advances_updated_at(self, mock_site_context):
+        with time_machine.travel(datetime(2020, 1, 1, tzinfo=UTC)):
+            registration = LearnerCourseRegistrationFactory()
+        before = registration.updated_at
+
+        deactivate_registration(registration.learner, registration.course)
+
+        registration.refresh_from_db()
+        assert registration.updated_at > before
+
+    def test_self_registering_onto_a_deactivated_registration_advances_updated_at(
+        self, mock_site_context
+    ):
+        with time_machine.travel(datetime(2020, 1, 1, tzinfo=UTC)):
+            registration = LearnerCourseRegistrationFactory(is_active=False)
+        before = registration.updated_at
+        learner = registration.learner
+
+        self_register(learner.user, learner.organisation, registration.course)
+
+        registration.refresh_from_db()
+        assert registration.updated_at > before
