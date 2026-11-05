@@ -1,12 +1,13 @@
 # Referral Codes
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-11-05_
 
 ## Summary
 
 - **A referral code is a short URL an operator hands out, which redirects to a page on the site and counts how many times it was followed.** The code is created in the admin, either typed as a vanity code or left blank to have one generated. Built.
 - **Each code has two URLs: `/go/<code>` for a link someone clicks, and `/d/<CODE>` for the one to put behind a printed QR symbol.** Both resolve in either case, so an uppercase URL on a poster still works. Built.
 - **A code's hit count is a usage signal, not a headcount.** It leaves out visits identified as automated, which makes it an upper bound on human use rather than a number of people or a basis for a conversion rate. Built.
+- **Codes, their hit log and first-touch counts can be read by scripts through the read-only [API](../api.md)**, so an integrator can pull them into their own reporting instead of exporting from the admin. Built.
 - **A code reaches signup attribution only as a first touch**, the same rule every other tracked link follows. See [signup attribution](./signup-attribution.md). Built.
 - **A retired code still redirects and still logs**, so printed material never dead-ends. Only a code that never existed is treated as a dead link. Built.
 - **A saved code can be deactivated but never deleted or renamed**, so its text is never handed to someone else later. Built.
@@ -28,7 +29,7 @@ Each visit is ordinarily written to a separate hit log, recording which code it 
 
 These URLs are public and need no login, so repeated hits on one code from one address stop being logged past a cap — 30 an hour by default, tunable through `REFERRAL_TRACKING_HIT_LOG_LIMIT`. The visitor is still redirected every time: the cap bounds what one client can write to the log, never the link itself. Heavy use from a single connection, a conference or a school sharing one address, is therefore undercounted in both the log and the hit count.
 
-Both the code list and the hit log export to CSV.
+Both the code list and the hit log export to CSV. Scripts can also read them through the read-only [API](../api.md) with a key holding the referral data scope (see [API client authentication](./authentication.md#api-client-authentication)), together with first-touch counts and signup attributions. [Security and data handling](./security-and-data-handling.md#api-access-built) covers the personal data that reaches it.
 
 ## Not Built
 

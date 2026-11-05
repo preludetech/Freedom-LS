@@ -1,12 +1,12 @@
 # Signup Attribution
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-11-05_
 
 ## Summary
 
 - **Every signup made through the signup form, and every account created by claiming an anonymous course application, has a record of where it came from.** Landing on a tracked link and later signing up writes a permanent record against the new account: the advert or campaign, a referral code if one brought the visitor, UTM parameters, ad-platform click identifiers, the landing page and the referrer. Built.
 - **A daily tally of first-time tracked arrivals per campaign** supplies the denominator: signups over arrivals, both grouped by campaign, is a conversion rate. Built.
-- **Two read-only admin lists and a CSV export are the whole interface.** A dashboard or conversion-rate view is not built.
+- **Two read-only admin lists and a CSV export, plus a read-only API for scripts.** An integrator can pull signup attributions and the daily tally of first-time arrivals into their own reporting instead of exporting from the admin. A dashboard or conversion-rate view is not built.
 - **A signup with no tracked landing records as "direct" / "none"** rather than a blank, so an untracked signup still counts as a channel.
 - **This page is the operator's privacy-assessment starting point, not a finished one.** Four questions need answering before running this in the EU or UK; see [privacy obligations](#privacy-obligations). FLS ships no consent gate for the tracking cookie. Not built.
 
@@ -27,6 +27,8 @@ Where no tracked landing preceded the signup, the record reads "direct" / "none"
 ## Reviewing and Exporting
 
 Two read-only admin lists: one row per account showing where it came from, and one row per campaign per day showing how many first-time tracked arrivals it had. Neither can be added to, changed or deleted through the admin. A CSV export on both, of the ticked rows or of the whole filtered list, covers every recorded field, including ones the list view omits, and is safe to open directly in a spreadsheet: a value that would otherwise be read as a formula is escaped. Comparing the two lists for a date range, grouped by campaign, gives signups over arrivals without writing a query. Viewing either list requires the admin view permission for that record; staff status alone does not grant it.
+
+Scripts can read the same signup attributions and daily tallies through the read-only [API](../api.md), with an API key that has the referral data scope (see [API client authentication](./authentication.md#api-client-authentication)), so reporting does not depend on someone exporting a CSV. The IP address, user agent and Google Analytics and Meta cookie identifiers are not returned to any key; [security and data handling](./security-and-data-handling.md#api-access-built) says what the API exposes and withholds. Because of that, API data cannot feed a Google or Meta conversion upload.
 
 ## Privacy Obligations
 
@@ -49,6 +51,6 @@ Three settings govern capture. `REFERRAL_TRACKING_COOKIE_NAME` names the trackin
 
 - A per-site switch to turn capture on or off.
 - Bot filtering. The daily tally counts every landing, including automated ones.
-- A dashboard or conversion-rate view. The two lists and their export are the whole interface.
+- A dashboard or conversion-rate view. The two lists, their export and the read-only API are the whole interface.
 - Retention tooling or scheduled deletion.
 - A consent gate for the tracking cookie.
