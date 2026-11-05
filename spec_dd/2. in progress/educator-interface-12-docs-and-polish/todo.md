@@ -51,7 +51,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Capture the 5 Nov walk feedback into the rule files (`sdd:capture-feedback`): cohesion, one small button size, the table footer count, disclosure markers, the control-anchor invariant, record rows, people in rows, stat grids, sheet chrome, the non-blocking quick view, button nouns, the one-record add form
 - [x] (user) Fix the 5 Nov walk items: no hover on an empty table, every framework trigger small, the footer entry count, the Add filter dropdown (chevron, no inner box, row-link choices), the filter sheet's close control and rounded top, the quick view never modal, the at-a-glance grid, the smaller attention-row person, Add to cohort and Register for a course moved beside what they change, the quick view registration rows, "Deactivate staff member" at the bottom of the Roles cell, the Educators panel folded into the cohort Settings tab with the name as an inline field, Add learner as a one-record form, sort and filters on every History tab
 - [x] (user) File `educator-interface-13-staff-roles` (mixed per-cohort roles, role editing on the cohort Settings tab, the staff email typeahead) and add it to the roadmap after spec 12
-- [ ] (cmd) Re-run `/sdd:do_qa` over `3. frontend_qa.md`: the 5 Nov walk fixes landed after the last QA run
+- [x] (cmd) Re-run `/sdd:do_qa` over `3. frontend_qa.md`: the 5 Nov walk fixes landed after the last QA run
+- [ ] (user) Decide what to do about QA bug: learner Courses tab has no Deactivate/Reactivate on an individual registration; the plan puts them there, the code keeps them in the Overview Registrations panel (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: single-learner Register and Add to cohort dialog titles are not questions and never name the chosen course or cohort (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: report Quiz confusions say '1 of 1 learners' (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: quick view Messages section draws two stacked rules (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: empty 160px band under the learners and cohorts tables at tablet width when nothing is selected (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: the layout probe flags sr-only, truncated and scroll-region text as overflow (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
