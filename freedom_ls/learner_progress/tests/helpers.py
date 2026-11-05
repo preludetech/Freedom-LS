@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
@@ -97,3 +100,10 @@ def cohort_record(
         progress_percentage=percentage,
     )
     return registration, record
+
+
+def age_updated_at(record: CourseProgress) -> datetime:
+    """Write an old `updated_at` onto the record past `auto_now`, and return it."""
+    past = timezone.now() - timedelta(days=30)
+    CourseProgress._base_manager.filter(pk=record.pk).update(updated_at=past)
+    return past
