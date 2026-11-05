@@ -29,6 +29,9 @@ COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
 MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
 SIDE_PANEL_HOST = FREEDOM_LS_PACKAGE_DIR / "base" / "templates" / "_base_interface.html"
+EDUCATOR_TEMPLATES_DIR = (
+    FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates" / "educator_interface"
+)
 EDUCATOR_MODAL_DIR = (
     FREEDOM_LS_PACKAGE_DIR
     / "educator_interface"
@@ -330,5 +333,56 @@ def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     offenders = [
         path.name for path in DIALOG_TEMPLATES if "<c-button-group" in path.read_text()
     ]
+
+    assert offenders == []
+
+
+CONTROL_TAG = re.compile(r"<(a|button)\b([^>]*)>", re.DOTALL)
+CLASS_ATTR = re.compile(r'class="([^"]*)"', re.DOTALL)
+# Templates whose anchors are allowed the prose style, each with its reason.
+PROSE_LINK_TEMPLATES: dict[str, str] = {
+    "panel_framework/partials/sidebar_nav.html": "nav links colour the current item with aria-[current]:text-primary",
+}
+
+
+def _control_tags(path: Path) -> list[str]:
+    return [match.group(0) for match in CONTROL_TAG.finditer(path.read_text())]
+
+
+def test_no_control_link_is_hand_styled() -> None:
+    """A link or button that works as a control takes a component or the
+    row-link style; the prose underline and a hand-typed text-primary are
+    how a control used to be styled by hand, page by page."""
+    offenders: list[str] = []
+    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
+        for path in sorted(root.rglob("*.html")):
+            relative = str(path.relative_to(root))
+            if relative in PROSE_LINK_TEMPLATES:
+                continue
+            for tag in _control_tags(path):
+                classes = CLASS_ATTR.search(tag)
+                tokens = set(classes.group(1).split()) if classes else set()
+                if "underline" in tokens or "text-primary" in tokens:
+                    offenders.append(f"{relative}: {tag[:80]}")
+
+    assert offenders == []
+
+
+def test_every_anchor_with_visible_text_carries_its_own_classes() -> None:
+    """A bare <a> falls back to the prose style; a control names its look."""
+    offenders: list[str] = []
+    for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
+        for path in sorted(root.rglob("*.html")):
+            relative = str(path.relative_to(root))
+            if relative in PROSE_LINK_TEMPLATES:
+                continue
+            text = path.read_text()
+            for match in re.finditer(r"<a\b([^>]*)>(.*?)</a>", text, re.DOTALL):
+                attributes, content = match.group(1), match.group(2)
+                if "class=" in attributes or "{{ attrs }}" in attributes:
+                    continue
+                if "<c-icon" in content and not re.sub(r"<[^>]+>|\s", "", content):
+                    continue
+                offenders.append(f"{relative}: {match.group(0)[:80]}")
 
     assert offenders == []

@@ -31,7 +31,7 @@ with incorrect answers), refresh_url.
                 <c-panel-attention-list>
                     {% for learner in data.attention_list.learners %}
                         {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                        <c-panel-attention-row :subject="learner.full_name" :href="learner_url">
+                        <c-panel-attention-row :subject="learner.full_name" :href="learner_url" :user_id="learner.learner_id">
                             {% include "educator_interface/partials/learner_badges.html" with completion_percentage=learner.completion_percentage flags=learner.flags %}
                         </c-panel-attention-row>
                     {% endfor %}
@@ -73,7 +73,7 @@ with incorrect answers), refresh_url.
                                         {% for row in table.rows %}
                                             {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
                                             <tr>
-                                                <th scope="row" class="sticky left-0 bg-surface py-2 pr-4 text-left font-medium whitespace-nowrap"><a href="{{ learner_url }}">{{ row.full_name }}</a></th>
+                                                <th scope="row" class="sticky left-0 bg-surface py-2 pr-4 text-left font-medium whitespace-nowrap"><c-panel-person-link :name="row.full_name" :user_id="row.learner_id" :href="learner_url" /></th>
                                                 {% if not table.continued %}
                                                     <td class="px-2 py-2">
                                                         {% progress_status_badge row.completion_percentage as status_badge %}

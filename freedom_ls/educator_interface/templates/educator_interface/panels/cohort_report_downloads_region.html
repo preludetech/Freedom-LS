@@ -21,7 +21,7 @@ still offered.
         <p>A report is being generated, requested by {{ in_flight.requested_by.display_name|default:"the system" }} at {{ in_flight.requested_at|date:"j M Y, H:i" }}.</p>
         {% if is_stalled %}
             <p>This is taking longer than expected.</p>
-            <a hx-get="{{ base_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" href="{{ page_url }}" class="link">Check again</a>
+            <c-button variant="link" size="small" hx-get="{{ base_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML" href="{{ page_url }}">Check again</c-button>
         {% endif %}
     {% endif %}
     {% if not in_flight or is_stalled %}

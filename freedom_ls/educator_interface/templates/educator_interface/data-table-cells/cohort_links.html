@@ -13,7 +13,7 @@ none, so a cell naming three cohorts does not carry three icons.
            hx-target="#main-content"
            hx-push-url="true"
            hx-swap="outerHTML"
-           class="no-underline hover:underline">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
+           class="font-medium text-on-surface no-underline hover:text-primary">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
     {% endwith %}
 {% empty %}
     -

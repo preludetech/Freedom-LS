@@ -18,7 +18,7 @@ replace the whole state switch.
                 {% block skeleton_body %}
                     <c-panel-skeleton :shape="skeleton_shape" :lines="skeleton_lines" />
                 {% endblock skeleton_body %}
-                <noscript><a href="{{ loaded_url }}">Load the figures</a></noscript>
+                <noscript><c-button variant="link" size="small" href="{{ loaded_url }}">Load the figures</c-button></noscript>
             </div>
         {% endif %}
     {% endblock region_content %}

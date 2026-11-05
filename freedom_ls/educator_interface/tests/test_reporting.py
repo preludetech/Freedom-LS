@@ -878,7 +878,10 @@ class TestCohortReportBody:
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
         (link,) = region.cssselect("tbody a")[:1]
-        assert link.text_content() == "Ada Able"
+        # The person link's visible text is the initials then the name.
+        (name,) = link.xpath(".//span[not(@aria-hidden)]/span[1]")
+        assert name.text_content().strip() == "Ada Able"
+        assert "no-underline" in link.get("class").split()
         assert link.get("href").endswith(f"/learners/{membership.learner_id}")
 
     def test_the_summary_rows_carry_status_completion_and_the_items_count(

@@ -14,7 +14,10 @@ Attributes:
   reason        Why it needs attention, e.g. "4 days idle" (default none).
   user_id       Given: the leading element is panel-avatar-chip, with its
                 name hidden so the row shows one visible subject, not two
-                (default none). A stringified None counts as not given.
+                (default none). A stringified None counts as not given. The
+                chip and the subject link together are the person-link
+                look every data-table name cell has, so a person reads the
+                same here as in a table.
   icon          Given, with no user_id: a severity icon leads instead
                 (default none).
   icon_tone     Tone of the severity icon (default muted).
@@ -47,7 +50,7 @@ icon trails, so the DOM still holds only the one link to href.
     {% endif %}
     <div class="min-w-0 grow lg:flex lg:items-start lg:gap-6">
         <div class="min-w-0 lg:w-56 lg:shrink-0">
-            <a href="{{ href }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
+            <a href="{{ href }}" class="font-bold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
             {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
         </div>
         {% if slot.strip %}<div class="min-w-0 lg:grow">{{ slot }}</div>{% endif %}

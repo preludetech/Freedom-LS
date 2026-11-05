@@ -33,7 +33,7 @@ Usage:
     {% if applied.strip or clear_all_href %}
         <div class="flex flex-wrap items-center gap-2">
             {{ applied }}
-            {% if clear_all_href %}<a href="{{ clear_all_href }}" class="text-sm underline">Clear all</a>{% endif %}
+            {% if clear_all_href %}<c-button variant="link" size="small" href="{{ clear_all_href }}">Clear all</c-button>{% endif %}
         </div>
     {% endif %}
 </div>

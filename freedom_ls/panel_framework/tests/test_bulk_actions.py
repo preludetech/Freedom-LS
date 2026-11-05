@@ -748,7 +748,9 @@ def test_confirm_form_carries_table_state(mock_site_context: Site, htmx: bool) -
     assert form.get("action") == expected_action
     assert form.get("hx-post") == expected_action
     if not htmx:
-        (cancel,) = [a for a in document.cssselect("a") if a.text_content() == "Cancel"]
+        (cancel,) = [
+            a for a in document.cssselect("a") if a.text_content().strip() == "Cancel"
+        ]
         expected_cancel = f"/test-panel/framework/{_panel_path(stub.pk)}{query}"
         assert cancel.get("href") == expected_cancel
 

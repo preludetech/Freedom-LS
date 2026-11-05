@@ -20,7 +20,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
                 <c-panel-stat-tile label="Learners" :value="inline.learner_count" sub="Across {{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" />
                 <c-panel-stat-tile label="Cohorts" :value="inline.cohort_count">
                     <c-slot name="value_content">
-                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}">{{ inline.cohort_count }}</a>
+                        <a href="{% url 'educator_interface:interface' organisation_slug=request.organisation.slug path_string='cohorts' %}" aria-label="{{ inline.cohort_count }} cohort{{ inline.cohort_count|pluralize }}" class="text-on-surface no-underline hover:text-primary">{{ inline.cohort_count }}</a>
                     </c-slot>
                 </c-panel-stat-tile>
                 {% if is_loaded %}
@@ -58,7 +58,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
             <c-panel-attention-list>
                 {% for row in figures.attention_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'learners/{learner_id}' as learner_url %}
-                    <c-panel-attention-row :subject="row.full_name" :href="learner_url">
+                    <c-panel-attention-row :subject="row.full_name" :href="learner_url" :user_id="row.learner_id">
                         <c-slot name="trigger">
                             <button type="button"
                                     hx-get="{{ learner_url }}/__quick-view" hx-target="#quick-view-body" hx-swap="innerHTML"
@@ -68,17 +68,18 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
                                 <c-icon name="quick_view" class="size-4" />
                             </button>
                         </c-slot>
-                        <ul class="list-none ml-0 mt-1 space-y-1 lg:mt-0">
+                        <ul class="list-none ml-0 mt-1 space-y-2 lg:mt-0">
                             {% for entry in row.cohorts %}
                                 {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                                 <li class="text-sm">
-                                    <p class="flex flex-wrap items-baseline gap-x-2">
-                                        <a href="{{ cohort_url }}" class="relative z-10 text-muted underline">{{ entry.cohort.name }}</a>
-                                        {% for registration in entry.cohort.course_registrations.all %}
-                                            <span class="text-muted"><span aria-hidden="true">·</span> {{ registration.course.title }}</span>
-                                        {% endfor %}
-                                    </p>
-                                    {% include "educator_interface/partials/learner_badges.html" with completion_percentage=entry.completion_percentage flags=entry.flags %}
+                                    <a href="{{ cohort_url }}" class="relative z-10 font-bold text-on-surface no-underline hover:text-primary">{{ entry.cohort.name }}</a>
+                                    <dl class="mt-0.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0 text-sm">
+                                        <dt class="font-sans font-normal text-muted">Courses</dt>
+                                        <dd class="min-w-0 text-muted">{% for registration in entry.cohort.course_registrations.all %}{{ registration.course.title }}{% if not forloop.last %}, {% endif %}{% empty %}<span aria-hidden="true">—</span><span class="sr-only">None</span>{% endfor %}</dd>
+                                    </dl>
+                                    <div class="mt-1">
+                                        {% include "educator_interface/partials/learner_badges.html" with completion_percentage=entry.completion_percentage flags=entry.flags %}
+                                    </div>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -98,7 +99,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
                     {% resolve_url_path_template row 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                     <li class="relative flex items-center gap-3 py-3">
                         <div class="min-w-0 grow">
-                            <a href="{{ cohort_url }}" class="font-medium max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ row.cohort.name }}</a>
+                            <a href="{{ cohort_url }}" class="font-bold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ row.cohort.name }}</a>
                             <p class="text-sm text-muted">{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged</p>
                         </div>
                         <div class="w-32 shrink-0 text-right">

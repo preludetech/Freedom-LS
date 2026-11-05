@@ -25,7 +25,7 @@
             {% else %}
                 <p class="text-sm"><code>email</code> is required; <code>cohort</code> is matched by name</p>
             {% endif %}
-            <p class="text-sm"><a href="{{ template_url }}" download>Download the template</a></p>
+            <p><c-button variant="link" size="small" icon_left="download" href="{{ template_url }}" download="">Download the template</c-button></p>
             <c-button type="submit">Upload and preview</c-button>
         </form>
     </c-panel-card>

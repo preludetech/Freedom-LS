@@ -481,7 +481,8 @@ def test_an_attention_row_names_each_flagged_cohorts_active_courses_without_an_i
     educator: tuple[Organisation, AbstractBaseUser],
     logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
-    """The row says what the learner was meant to be doing, and every row looked
+    """The row says what the learner was meant to be doing: the cohort as a
+    row link, then its courses on their own labelled line. Every row looked
     the same with the decorative icon, so it carries none."""
     organisation, user = educator
     cohort = CohortFactory(organisation=organisation, name="Night class")
@@ -497,8 +498,14 @@ def test_an_attention_row_names_each_flagged_cohorts_active_courses_without_an_i
 
     document = lxml.html.fromstring(response.content.decode())
     (row,) = document.xpath("//li[.//button[@aria-controls='quick-view']]")
-    (cohort_line,) = row.xpath(".//p[a[contains(., 'Night class')]]")
-    assert " ".join(cohort_line.text_content().split()) == "Night class · Hydrology"
+    (cohort_item,) = row.xpath(".//li[a[contains(., 'Night class')]]")
+    (cohort_link,) = cohort_item.xpath("./a")
+    assert cohort_link.text_content().strip() == "Night class"
+    assert "no-underline" in cohort_link.get("class").split()
+    (courses_label,) = cohort_item.xpath(".//dt")
+    (courses,) = cohort_item.xpath(".//dd")
+    assert courses_label.text_content().strip() == "Courses"
+    assert courses.text_content().strip() == "Hydrology"
     assert (
         row.xpath("./span[@aria-hidden='true'][not(contains(@class, 'md:hidden'))]")
         == []
