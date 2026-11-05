@@ -257,3 +257,38 @@ def test_a_deactivation_reason_shows_on_the_learner_history_and_the_audit_log(
         page.set_viewport_size(viewport)
         page.goto(interface_url(live_server, organisation.slug, "audit-log"))
         assert_no_horizontal_overflow(page)
+
+
+def test_registration_rows_share_the_left_edge_of_the_registrations_heading(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The registration rows used to sit indented past the card heading
+    because the list kept the default list margin."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(organisation=organisation)
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(
+            interface_url(live_server, organisation.slug, f"learners/{learner.pk}")
+        )
+        heading = page.get_by_role("heading", name="Registrations", exact=True)
+        row = page.get_by_test_id("registration-row")
+        expect(row).to_be_visible()
+        heading_box = heading.bounding_box()
+        row_box = row.bounding_box()
+        assert heading_box is not None
+        assert row_box is not None
+        heading_left = heading_box["x"]
+        row_left = row_box["x"]
+        assert row_left == heading_left, (
+            f"registration row at x={row_left}, heading at x={heading_left}"
+        )
