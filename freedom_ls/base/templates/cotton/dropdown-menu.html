@@ -35,7 +35,7 @@
     <div x-show="open"
          x-cloak
          x-on:click.away="close"
-         x-on:scroll.window="close"
+         x-on:scroll.window="closeOnScroll"
          x-on:keydown.escape.window.capture="onEscape"
          x-on:keydown.arrow-down.prevent="focusNextItem"
          x-on:keydown.arrow-up.prevent="focusPreviousItem"

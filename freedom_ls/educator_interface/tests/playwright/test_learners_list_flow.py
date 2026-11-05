@@ -338,3 +338,33 @@ def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
         }"""
     )
     assert topmost_is_checkbox
+
+
+def test_more_actions_menu_stays_open_after_one_click(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """One click on "More actions" opened the menu and closed it again a few
+    milliseconds later, because opening scrolled the page and any scroll
+    closes a dropdown."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    for _ in range(30):
+        LearnerFactory(organisation=organisation)
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    main = page.locator("#main-content")
+
+    main.locator("#learners-table input[name='keys']").first.check()
+    trigger = main.get_by_role("button", name="More actions")
+    trigger.click()
+    page.wait_for_timeout(500)
+
+    expect(trigger).to_have_attribute("aria-expanded", "true")
+    expect(main.get_by_role("menuitem").last).to_be_visible()
+
+    page.mouse.wheel(0, -300)
+    expect(trigger).to_have_attribute("aria-expanded", "false")

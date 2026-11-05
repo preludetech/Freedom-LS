@@ -80,6 +80,7 @@ document.addEventListener("alpine:init", () => {
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
         open: false,
+        scrollYAtOpen: 0,
         toggle(event) {
             if (this.open) {
                 this.close();
@@ -99,6 +100,14 @@ document.addEventListener("alpine:init", () => {
         },
         close() {
             this.open = false;
+        },
+        // A scroll event is delivered a frame after the scroll itself, so a
+        // trigger the browser scrolled into view for the click would close
+        // the menu it had just opened. Only a scroll that moves the page
+        // away from where it was at open closes the menu.
+        closeOnScroll() {
+            if (window.scrollY === this.scrollYAtOpen) return;
+            this.close();
         },
         // Menu items keep their natural tab stop, so Tab still walks the menu
         // in DOM order; the arrow keys are an addition to that, not a
@@ -189,7 +198,10 @@ document.addEventListener("alpine:init", () => {
         init() {
             // The panel is still display:none when the watcher fires, so it has no
             // height to flip against until the next tick.
-            this.$watch("open", () => this.$nextTick(() => this.positionMenu()));
+            this.$watch("open", (isOpen) => {
+                if (isOpen) this.scrollYAtOpen = window.scrollY;
+                this.$nextTick(() => this.positionMenu());
+            });
             // Options that hx-get into a target outside this dropdown (e.g.
             // the organisation switcher, whose options swap #main-content
             // while the dropdown itself lives in the sidebar) leave the
