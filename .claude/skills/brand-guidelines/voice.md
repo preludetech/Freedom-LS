@@ -79,7 +79,19 @@ The rule is "Copy a template carries" in `Skill(ds:template)`. This is how it so
 
 ✅ A Staff page that opens with its heading, search and filters
 ❌ A Staff page that opens with a paragraph explaining what staff are
+
+✅ "Deactivate role" and, at the bottom of the cell, "Deactivate staff member"
+❌ "Deactivate role" and "Deactivate" in the same row
+
+✅ "Course Pub" over "via Cohort A", with "40%" at the end, in the quick view and the Registrations list alike
+❌ "Course Pub — through Cohort A — 40%"
+
+✅ An "Add learner" form with Email, First name, Last name, Cohort and the buttons "Add" and "Add and add another"
+❌ A textarea with "One per line: email, first name, last name"
 ```
+
+The glossary's "staff member" is the noun on every button and dialog about an `OrganisationMember`:
+"Deactivate staff member", "Reactivate staff member", "Add staff member".
 
 ## Naming
 

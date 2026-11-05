@@ -70,14 +70,25 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 | You need | Use |
 |---|---|
-| A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
+| A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly. The panel framework's triggers (`{% render_action %}`, `<c-modal-trigger>`, the selection bar, empty states) are small wherever they render; only a `<c-modal-footer>`'s Cancel and confirm are full size |
 | A link to a person | `<c-panel-person-link name="…" user_id="…" href="…">`: avatar and name, the one way a learner or staff member is linked from a row, a card, an attention list or a dialog |
 | A back link above a heading | `<c-back-link href="…">Back to messages</c-back-link>`, the one style for a back link |
 | A text action ("Change", "Edit", "Clear all", "Export CSV") | `<c-button variant="link">`, or `variant="secondary" size="small"` with an icon when it sits among buttons |
 | A clickable row | the row-link style, `text-on-surface no-underline`, as the `link` data-table cell and the conversation rows |
-| Buttons in a table cell or card | `<c-data-table-actions>` around `<c-modal-trigger size="small">` or `<c-button size="small">`; the wrapper owns the gap |
+| Buttons in a table cell or card | `<c-data-table-actions>` around `<c-modal-trigger size="small">` or `<c-button size="small">`; the wrapper owns the gap. Per-item buttons first, the row's own action (Deactivate staff member) last, at the bottom of the cell |
 | A dialog's buttons | `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the default slot at the right, the primary last. `<c-button-group>` is for buttons outside a dialog |
-| A page header | `<c-panel-page-header>`: the `badge` slot carries a state only when it differs from the default (Inactive, Pending), stats stay out when the tabs already count them, and actions that change the record live in the page's Settings tab |
+| A page header | `<c-panel-page-header>`: the `badge` slot carries a state only when it differs from the default (Inactive, Pending), stats stay out when the tabs already count them, and no action sits in the header: each lives with the thing it changes (see Placement) |
+| A record's own name | A field with a Save button in the Settings panel, posted inline to the `edit` action (`renders_in_footer = False`), as the cohort Settings tab does; not a dialog |
+| A count of a table's entries | The data table's footer renders it from `entry_count` at the left of the pager, so a table never needs its own |
+| An empty table | `<c-panel-empty-state>` inside the data table's empty row, which carries `hover:bg-transparent` so the empty state takes no row hover |
+| A log or history table | Sortable `created_at`, `actor_label`, `action` and `target_label` columns and the Who, What and When filters (`AuditActorFilter`, `AuditActionFilter`, `AuditPeriodFilter`), on the organisation Audit log and on every History tab alike |
+| A row of figures | `<c-panel-stat-row>`: a two-column grid on a phone, so "Completed everything" lines up under "Median completion" |
+| A person in a list row | `<c-panel-attention-row>`: the name `text-sm font-semibold`, the chip `size="sm"` with its centre on the name's first line. `<c-panel-avatar-chip size="lg">` is for a page header only |
+| A list of records in a panel | Rows that share one shape: the name in `font-medium`, the detail under it in `text-sm text-muted` ("via Cohort A", "Individual"), the figure at the end in `tabular-nums`. The learner quick view and the learner Registrations list read the same |
+| A disclosure or menu | `<details>` whose `<summary>` carries `list-none marker:hidden [&::-webkit-details-marker]:hidden` and ends in `<c-icon name="dropdown">`; a group nested inside a popover carries no `surface`, so the popover is the one box |
+| A sheet on a phone | Rounded top corners (`bottom-sheet` / `bottom-sheet-bare`) and a header with the title and a close button carrying `aria-label="Close"` and `<c-icon name="close">`, as `#quick-view` and `<c-modal-header>` have. The filter sheet included |
+| A quick view | `#quick-view`, opened with `show()` at every width, never `showModal()`: no scrim, no inert page, the list behind it stays tappable |
+| Adding a record by hand | A one-record form with "Add" and "Add and add another" (`CreateInstanceAction.submit_buttons` is the shape); a pasted list goes to Import learners |
 | Filter and sort on a phone | the data table's toolbar: Filter opens the filter sheet (selects and grouped checklists, never a chip cloud) and Sort opens a menu of columns |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
@@ -91,9 +102,25 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
 
-The base layer underlines every `<a>`, and the underline means "a link inside prose". A link that works as a control takes the component for its job: a person gets `<c-panel-person-link>`, a back link `<c-back-link>`, a text action `<c-button variant="link">`, a clickable row the row-link style. Text links and text buttons then look the same, and `test_no_control_link_is_hand_styled` in `freedom_ls/panel_framework/tests/invariants/test_templates.py` fails on a control link that still carries the prose underline or a hand-typed `text-primary`.
+**Every anchor under `freedom_ls/panel_framework/templates/` and `freedom_ls/educator_interface/templates/` is a control.** The base layer underlines every `<a>`, and that underline means "a link inside prose", which these templates never hold. A control takes the component for its job: a person gets `<c-panel-person-link>`, a back link `<c-back-link>`, a text action `<c-button variant="link">`, a clickable row, a sort header or a filter choice the row-link style (`no-underline text-on-surface`, or `text-muted` for a secondary one). An anchor with a class list that names neither `no-underline` nor `btn` has been forgotten, and `test_no_control_link_is_hand_styled` in `freedom_ls/panel_framework/tests/invariants/test_templates.py` fails on it, as it fails on a hand-typed `underline` or `text-primary`. Run that test before QA looks.
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing follow "Controls, spacing and small screens" in `Skill(ds:frontend-styling)`; the components above already obey it.
+
+## Placement
+
+A control that changes a thing sits where the thing is shown, so the person changes what they are
+looking at without going somewhere else:
+
+| Thing shown | Control beside it |
+|---|---|
+| A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
+| A learner's Courses tab | Register for a course, Deactivate / Reactivate a registration |
+| A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
+| A cohort's Learners tab | Add learners, Remove, Move |
+| A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
+
+A new panel or action goes next to what it changes. The Settings tab is the last resort, not the
+default.
 
 ## Example page
 

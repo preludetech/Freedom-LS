@@ -382,12 +382,28 @@ concern as a failing `test` record, never only in its notes:
 - **Space**: no region is squeezed, clipped or cut off, and no large gap opens that the
   rest of the shell does not have.
 - **Cover**: nothing is hidden under dev tooling, a sticky bar or another region.
-- **Controls**: a link that acts as a control (a name, a back link, a row, "Edit") has the look of
-  that control, with the prose underline absent; buttons that sit together have a gap between
-  them; every control has padding on all sides and a select's chevron sits clear of its edge; at
-  the phone viewport a button is 44px tall and as wide as its label; a dialog's Cancel sits at the
-  left and its actions at the right.
-- **Fit**: a dialog, sheet or table stays inside the viewport at every width, title included.
+- **Controls**: a link that acts as a control (a name, a back link, a row, "Edit", a choice in a
+  filter menu) has the look of that control, with the prose underline absent; every action
+  trigger outside a dialog footer is the small size, and the triggers on one page are one size;
+  buttons that sit together have a gap between them; every control has padding on all sides and a
+  select's chevron sits clear of its edge; at the phone viewport a button is 44px tall and as wide
+  as its label, with small text and padding; a dialog's Cancel sits at the left and its actions at
+  the right; two buttons in one row never share a bare verb.
+- **Tables and lists**: the footer states the entry count at the left, in line with the pager,
+  on a single-page table too; hovering an empty table's message tints nothing; a log or History
+  table has sort headers and the Who, What and When filters; a list of records in a panel has the
+  same fields in the same places on every row, never dash-joined sentences; a row of figures lines
+  its labels up in columns at every width; a person in a list row has a small name and a small
+  avatar centred on the name's first line.
+- **Chrome**: a disclosure shows the icon chevron, never the browser's triangle; a group opened
+  inside a popover draws no second box; a sheet on a phone has rounded top corners and a header
+  with a close control; a quick view leaves the page behind it undimmed and tappable, a modal
+  dims it.
+- **Placement**: a control that changes a thing sits where the thing is shown (add-to-group with
+  the groups list, register with the courses, the name field and staff list on Settings); a
+  Settings tab holding an action that has a home elsewhere is a bug.
+- **Fit**: a dialog, sheet, table or fixed bar stays inside the viewport at every width, title
+  and every button included.
 - **Once**: a page header states each fact once and shows a state badge only for a state that
   differs from the default; a list page starts at its heading and toolbar, with help in a dialog
   or the docs rather than a paragraph above the list.

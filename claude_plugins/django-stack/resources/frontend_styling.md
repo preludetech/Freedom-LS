@@ -131,22 +131,68 @@ which component does each job; this section says what the job is.
 
 An element a person clicks to do something is a control, and a control is built from the
 project's component for that job: a button, a text action ("Edit", "Change"), a link to a person
-or a record, a "back" link, a clickable row. The base `<a>` style, the one the `@layer base` block
-gives every anchor, is for a link inside prose. A control that happens to be an anchor carries its
-component's classes, so it looks like the control it is and reads the same as the buttons beside
-it.
+or a record, a "back" link, a clickable row, a choice in a filter menu. The base `<a>` style, the
+one the `@layer base` block gives every anchor, is for a link inside prose and nowhere else. Every
+anchor in a panel, table, toolbar, menu or dialog template is a control: it carries the control
+style (`no-underline` and its own colour) or a component. A template invariant test fails on an
+anchor that carries neither, so a hand-typed anchor is caught before QA sees it.
 
-### Buttons in a table row or card
+### Button size
 
-A button inside a table cell or a card takes the small size and sits inside the project's actions
-wrapper. The wrapper owns the gap between the buttons; the buttons carry no margins of their own.
+Every action trigger the framework renders takes the small size: the page header, a panel footer,
+an empty state, the selection bar, a table row, a card. A dialog's footer (Cancel and the confirm)
+is the one full-size pair, because it is the decision the dialog asks for. A button inside a table
+cell or a card sits inside the project's actions wrapper. The wrapper owns the gap between the
+buttons; the buttons carry no margins of their own.
 
-### Dialogs and sheets
+### Cohesion
+
+A control that changes a thing sits where the thing is shown. The list of a record's groups holds
+the add-to-group action; the tab that lists its courses holds the register action; the panel that
+lists a group's staff holds the add-staff action. A Settings tab holds only what has no home of its
+own: deactivate, delete, resend. The person changes what they are looking at without going
+somewhere else.
+
+A single field of the record, such as its name, is a field with a Save button on the Settings tab,
+not a dialog. Dialogs are for confirmations and multi-field forms.
+
+### Tables and lists
+
+- A table's footer states how many entries match, at the left, in line with the pager, on a
+  single-page table too ("12 learners", "Showing 1–10 of 80 learners").
+- An empty state inside a table shows no row hover: the empty row carries `hover:bg-transparent`.
+- A log table (audit, history) sorts on its columns and filters on who, what and when wherever it
+  appears, on a detail page's History tab as much as on the log page.
+- A list of records in a panel is rows with the same fields in the same places: the name first,
+  the detail (its group, its kind) under it in muted text, the figure at the end. Values are never
+  joined into a sentence with dashes.
+- A row of figures is a grid at every width (two columns on a phone), so the labels line up; a
+  wrapping flex row puts the labels wherever the figures end.
+- A person in a list row is `text-sm font-semibold` with a small avatar whose centre sits on the
+  name's first line. The large avatar and heading-size name are for a page header.
+- A disclosure (`<details>`) hides the browser marker (`list-none marker:hidden
+  [&::-webkit-details-marker]:hidden`) and shows the project's chevron icon. A menu nested inside
+  a popover draws no second bordered box: the popover is the one surface.
+
+### Adding records
+
+Adding a record by hand is a form for one record with an "add another" choice, so a person adds
+one, reads the outcome and adds the next. A list of records is an import with a preview. Entering
+an email for a person who may already exist searches as you type and offers the matches, so the
+person picks rather than remembers.
+
+### Dialogs, sheets and quick views
 
 A dialog or bottom sheet ends in the project's footer component. Cancel sits at the left and the
 actions at the right; three or more buttons group at the right. The dialog host clips
 horizontally and the title wraps, so the content stays inside the viewport at every width,
 375px included.
+
+Every sheet and dialog shares one chrome: on a phone it rises from the bottom with rounded top
+corners, and it opens with a header holding the title and a close control at the end, so how to
+dismiss it is never in doubt. A quick view (a drawer that shows a record beside the list) never
+dims or blocks the page behind it at any width: the person changes their selection by tapping the
+list behind it. A modal blocks the page; a quick view does not.
 
 ### Padding and gaps
 
@@ -160,7 +206,10 @@ horizontally and the title wraps, so the content stays inside the viewport at ev
 
 ### Phones
 
-- A button is tall enough for a finger (44px) and as wide as its label.
+- A button is tall enough for a finger (44px) and as wide as its label, with the small size's
+  text and padding; the height is the only thing that grows.
+- A fixed bar (a selection bar at the bottom of the screen) keeps every control inside the
+  viewport.
 - Filtering and sorting are two controls. Sort opens a menu of fields; choosing the active field
   again flips its direction.
 - A filter with many values is a grouped checklist: one group per facet, a checkbox per value.
