@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
+from django.db.models.base import ModelBase
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.models import Form, FormProgress
@@ -141,6 +143,11 @@ class CourseProgress(SiteAwareModel):
     completed_time = models.DateTimeField(blank=True, null=True)
     progress_percentage = models.IntegerField(default=0, db_index=True)
 
+    # The changed-since signal for readers that sync this table: auto_now and
+    # the save() override below move it on every write to the row.
+    # last_accessed_time is the learner's last visit and is not it.
+    updated_at = models.DateTimeField(auto_now=True)
+
     #: The resume pointer: the collection item the learner last visited, not
     #: the child it resolves to, so resume still names a position once a topic
     #: can be placed twice in one course.
@@ -183,7 +190,12 @@ class CourseProgress(SiteAwareModel):
                 name="course_progress_has_exactly_one_grant",
             ),
         ]
-        indexes = [models.Index(fields=["learner", "course"])]
+        indexes = [
+            models.Index(fields=["learner", "course"]),
+            models.Index(
+                fields=["site", "updated_at", "id"], name="lp_progress_site_upd_idx"
+            ),
+        ]
 
     def clean(self) -> None:
         super().clean()
@@ -235,6 +247,26 @@ class CourseProgress(SiteAwareModel):
                 raise ValidationError(
                     "The learner is not a member of the registered cohort."
                 )
+
+    def save(
+        self,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        # Every production writer passes update_fields, which makes Django skip
+        # auto_now. An empty update_fields writes nothing and stays empty.
+        fields = None if update_fields is None else frozenset(update_fields)
+        if fields:
+            fields = fields | {"updated_at"}
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=fields,
+        )
 
     def __str__(self):
         return f"{self.learner} - {self.course.title}"
