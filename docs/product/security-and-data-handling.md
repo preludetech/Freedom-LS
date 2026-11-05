@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-05_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -19,7 +19,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Built:** every section of the educator interface — Cohorts, Learners, Courses and Members — is permission-checked and denies by default. Members, where roles are assigned and deactivated, opens only for organisation admins and site admins. The Courses list shows published courses plus those registered to a cohort or learner the viewer can see in the current organisation; any other course page is refused as though it did not exist. See [educator interface authorisation](#educator-interface-authorisation-built).
 - **Built:** administrative changes are recorded in an audit log: role and membership changes, learner state, cohort lifecycle, course registrations, renames and setup emails, and an organisation or site admin opening a learner's conversation with an educator. Entries are append-only against application code and kept until an operator chooses to prune them. See [audit log](#audit-log-built).
-- **Built:** a read-only API serves a site's user data to scripts holding a per-site API key. A key is shown once and stored only as a hash, is limited to the data its scopes name, and can be revoked at once. See [API access](#api-access-built).
+- **Built:** a read-only API serves a site's user and course-application data to scripts holding a per-site API key. A key is shown once and stored only as a hash, is limited to the data its scopes name, and can be revoked at once. See [API access](#api-access-built).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, applicant-uploaded documents, anonymous applicant data or direct messages, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -114,6 +114,8 @@ The [API](./authentication.md#api-client-authentication) is read-only and is use
 **How keys are held.** A key's full text is shown once, when it is issued, and FLS stores only a hash of it, so neither the admin nor anyone with database access can recover it. A key reads only the data its scopes name, may carry an expiry date, and can be revoked, which ends it for good. A revoked, expired, unknown or wrong-site key all get the same refusal. A key is accepted only in a request header, never in the URL.
 
 **What it exposes.** The users endpoint returns, for every user on the key's site, active or not: email address, first and last name, whether the account is active, staff and email-verified, and when it was created, last logged in and last updated. It returns no password hashes, consent records or signup attribution, and deleted users do not appear. A key with access to users should be guarded like the admin's user export.
+
+The course applications endpoint returns every application on the key's site, drafts included: the applicant's name and email address and whether that email is verified, the course, whether and when the application was submitted, and the applicant's answers. An uploaded file appears as its filename only, never the file or a link to it. It returns no consent evidence or claim state, and deleted applications do not appear. A key with access to course applications reads applicants' personal data and should be guarded like the admin's application export.
 
 **Last use.** FLS records when each key was last used, so an unused key can be found and revoked. That time is kept for as long as the key exists, and keys are never deleted.
 

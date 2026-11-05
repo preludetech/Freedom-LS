@@ -1,6 +1,6 @@
 # Authentication
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-05_
 
 ## Summary
 
@@ -65,7 +65,7 @@ A successful new registration, including an account created by claiming an appli
 
 ## API Client Authentication
 
-Scripts and other systems authenticate to the read-only API under `/api/v1/` with an API key sent as a bearer token, rather than an email and password session. Staff issue and revoke keys in the [admin](./admin-interface.md#api-keys). A key works only on its own [site](./multi-tenancy-and-isolation.md#what-is-isolated), its API scopes limit which data it can read, and revoking it stops it working at once. So far the API has one endpoint, which lists a site's users. How keys are stored and how their use is recorded is in [security and data handling](./security-and-data-handling.md).
+Scripts and other systems authenticate to the read-only API under `/api/v1/` with an API key sent as a bearer token, rather than an email and password session. Staff issue and revoke keys in the [admin](./admin-interface.md#api-keys). A key works only on its own [site](./multi-tenancy-and-isolation.md#what-is-isolated), its API scopes limit which data it can read, and revoking it stops it working at once. The API has two endpoints: one lists a site's users, the other its course applications with the applicants' answers. How keys are stored and how their use is recorded is in [security and data handling](./security-and-data-handling.md).
 
 ## Multi-Factor Authentication
 
