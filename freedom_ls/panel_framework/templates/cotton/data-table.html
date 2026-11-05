@@ -65,6 +65,11 @@
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
+
+        A table with a row detail opens each row with its toggle, so the
+        chevron sits beside the row's first value. The detail row leaves that
+        leading cell empty, which indents the detail in line with the first
+        column and reads it as part of the row above.
         {% endcomment %}
         <table{% if row_detail_template %} x-data="rowDetail"{% endif %} aria-labelledby="{{ region_id }}-caption">
                 <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
@@ -79,6 +84,7 @@
                        x-bind:disabled="running">
                             </th>
                         {% endif %}
+                        {% if row_detail_template %}<th scope="col" class="w-0 pr-0"><span class="sr-only">Details</span></th>{% endif %}
                         {% for header in header_columns %}
                             <th scope="col"{% if header.column.sortable %} aria-sort="{% if header.state == 'asc' %}ascending{% elif header.state == 'desc' %}descending{% else %}none{% endif %}"{% endif %} class="font-mono text-xs font-bold uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
                                 {% if header.column.sortable %}
@@ -102,7 +108,6 @@
                                 {% endif %}
                             </th>
                         {% endfor %}
-                        {% if row_detail_template %}<th scope="col" class="relative"><span class="sr-only">More</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -119,32 +124,34 @@
                                                x-bind:disabled="running">
                                     </td>
                                 {% endif %}
-                                {% for column in columns %}
-                                    <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
-                                        {% include column.template with object=row.object column=column %}
-
-                                    </td>
-                                {% endfor %}
                                 {% if row_detail_template %}
-                                    <td class="w-0 text-right">
+                                    <td class="w-0 py-2 pr-0">
                                         {% if row.has_row_detail %}
                                             <button type="button"
-                                                    class="group inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-on-surface"
+                                                    class="group inline-flex size-8 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
                                                     aria-expanded="false"
                                                     aria-controls="{{ region_id }}-detail-{{ forloop.counter }}"
                                                     aria-label="More about {{ row.label }}"
                                                     x-on:click="toggle">
-                                                <span aria-hidden="true" class="motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                                                <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
                                                     <c-icon name="dropdown" class="size-4" />
                                                 </span>
                                             </button>
                                         {% endif %}
                                     </td>
                                 {% endif %}
+                                {% for column in columns %}
+                                    <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
+                                        {% include column.template with object=row.object column=column %}
+
+                                    </td>
+                                {% endfor %}
                             </tr>
                             {% if row.has_row_detail %}
                                 <tr hidden data-row-detail id="{{ region_id }}-detail-{{ forloop.counter }}">
-                                    <td colspan="{{ table_colspan }}" class="bg-surface-2">
+                                    {% if bulk_actions %}<td></td>{% endif %}
+                                    <td></td>
+                                    <td colspan="{% if bulk_actions %}{{ table_colspan|add:-2 }}{% else %}{{ table_colspan|add:-1 }}{% endif %}" class="pt-0">
                                         {% include row_detail_template with object=row.object %}
                                     </td>
                                 </tr>
@@ -162,7 +169,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}"{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}"{% if row_detail_template %} x-data="rowDetail"{% endif %}{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
@@ -170,7 +177,8 @@
                                     :secondary_columns="secondary_columns"
                                     :selectable="bulk_actions"
                                     :card_template="card_template"
-                                    :row_detail_template="row_detail_template" />
+                                    :row_detail_template="row_detail_template"
+                                    detail_id="{{ region_id }}-card-detail-{{ forloop.counter }}" />
             {% endfor %}
         {% else %}
             <li class="py-8 text-center text-muted">{% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}</li>

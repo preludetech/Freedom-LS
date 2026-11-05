@@ -645,10 +645,15 @@ def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
     )
     expect(table.get_by_text("Detail for row-01")).to_be_hidden()
 
-    # On a phone the card's summary opens its details.
+    # On a phone the card's chevron opens and closes its detail too.
     page.set_viewport_size(_PHONE_VIEWPORT)
-    card_detail = page.locator("#detail-table ul details").first
-    expect(card_detail).not_to_have_attribute("open", "")
-    card_detail.get_by_text("More", exact=True).click()
-    expect(card_detail).to_have_attribute("open", "")
-    expect(card_detail.locator("[data-test-detail]")).to_be_visible()
+    cards = page.locator("#detail-table ul")
+    card_toggle = cards.get_by_role("button", name="More about row-00")
+    card_detail = cards.get_by_text("Detail for row-00")
+    expect(card_detail).to_be_hidden()
+    card_toggle.click()
+    expect(card_detail).to_be_visible()
+    expect(card_toggle).to_have_attribute("aria-expanded", "true")
+    card_toggle.click()
+    expect(card_detail).to_be_hidden()
+    expect(card_toggle).to_have_attribute("aria-expanded", "false")

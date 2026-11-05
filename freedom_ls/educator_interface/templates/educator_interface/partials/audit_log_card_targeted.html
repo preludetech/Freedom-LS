@@ -1,8 +1,11 @@
 {% extends "educator_interface/partials/audit_log_card.html" %}
 {% comment %}
-The Audit log entry card for a table with a Target column: the label is
-followed by a separator and the object the entry is about.
+The Audit log entry card for a table with a Target column: a Target value
+follows Who, naming the object the entry is about.
 {% endcomment %}
 {% block card_target %}
-    {% if object.target_label %}<span aria-hidden="true">·</span>{% include "educator_interface/data-table-cells/audit_target.html" %}{% endif %}
+    {% if object.target_label %}
+        <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Target</dt>
+        <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_target.html" %}</dd>
+    {% endif %}
 {% endblock %}

@@ -1,4 +1,4 @@
-<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" row_detail_template="" />
+<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" row_detail_template="" detail_id="" />
 
 {% comment %}
 One row of a table rendered as a card below md. `card_template`, when set on
@@ -9,6 +9,12 @@ open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it.
 Cards only exist below md, so every button in one is a 44px touch target.
+
+A table with a row detail gives each card the same leading chevron toggle as
+the desktop row, beside the card's first line; negative margins keep its
+touch target from adding height. The detail opens inside the card body, so it
+is indented under the first line rather than set apart. A card with no detail
+keeps an empty slot the toggle's width so every card's first line aligns.
 {% endcomment %}
 <li class="panel-data-table-card flex items-start gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11">
     {% if selectable %}
@@ -20,6 +26,22 @@ Cards only exist below md, so every button in one is a 44px touch target.
                    x-on:change="update"
                    x-bind:disabled="running">
         </label>
+    {% endif %}
+    {% if row_detail_template %}
+        <div class="w-6 shrink-0 self-start pt-1">
+            {% if row.has_row_detail %}
+                <button type="button"
+                        class="group -m-2.5 inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
+                        aria-expanded="false"
+                        aria-controls="{{ detail_id }}"
+                        aria-label="More about {{ row.label }}"
+                        x-on:click="toggle">
+                    <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                        <c-icon name="dropdown" class="size-4" />
+                    </span>
+                </button>
+            {% endif %}
+        </div>
     {% endif %}
     <div class="min-w-0 flex-1 py-1">
         {% if card_template %}
@@ -45,10 +67,7 @@ Cards only exist below md, so every button in one is a 44px touch target.
             {% endif %}
         {% endif %}
         {% if row_detail_template and row.has_row_detail %}
-            <details class="mt-2">
-                <summary class="min-h-11 cursor-pointer text-sm text-muted">More</summary>
-                <div class="mt-1">{% include row_detail_template with object=row.object %}</div>
-            </details>
+            <div hidden data-row-detail id="{{ detail_id }}" class="mt-1">{% include row_detail_template with object=row.object %}</div>
         {% endif %}
     </div>
 </li>

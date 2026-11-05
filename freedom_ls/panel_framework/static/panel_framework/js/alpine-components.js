@@ -985,10 +985,11 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Row detail toggle (cotton/data-table.html). x-data sits on the <table>;
-    // each toggle button names its detail row through aria-controls, so rows
-    // open independently and the server renders every row closed. The detail is
-    // a <tr> switched through `hidden`, which cannot animate, so there is no
+    // Row detail toggle (cotton/data-table.html). x-data sits on the <table>
+    // and on the card list below md; each toggle button names its detail (a
+    // <tr> in the table, a <div> in a card) through aria-controls, so rows
+    // open independently and the server renders every row closed. The detail
+    // is switched through `hidden`, which cannot animate, so there is no
     // x-transition: only the chevron moves, through CSS keyed on aria-expanded.
     // Focus stays on the button. An htmx swap of the region replaces the
     // <table>, so a fresh instance starts with every row closed.

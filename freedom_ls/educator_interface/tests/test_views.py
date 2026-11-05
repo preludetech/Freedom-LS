@@ -1707,7 +1707,7 @@ def _visible_text(element: lxml.html.HtmlElement) -> str:
 def _entry_rows(document: lxml.html.HtmlElement, selector: str) -> list[list[str]]:
     """Each entry row's data cells, without its toggle cell or its detail row."""
     return [
-        [_visible_text(cell) for cell in row.cssselect("td")][:-1]
+        [_visible_text(cell) for cell in row.cssselect("td")][1:]
         for row in document.cssselect(f"{selector} tbody tr:not([data-row-detail])")
     ]
 
@@ -1814,7 +1814,7 @@ def test_a_history_row_has_three_cells_and_a_toggle_with_the_reason_in_its_detai
     cells = [cell.text_content().strip() for cell in row.cssselect("td")]
     assert (
         len(cells),
-        cells[2],
+        cells[3],
         len(toggle),
         toggle[0].get("aria-controls"),
         detail.get("id"),
@@ -1847,7 +1847,7 @@ def test_an_entry_with_no_description_reason_or_run_entries_has_no_toggle(
 
 
 @pytest.mark.django_db
-def test_the_when_cell_has_an_iso_datetime_with_an_offset_and_reads_as_date_then_time(
+def test_the_when_cell_has_an_iso_datetime_and_reads_as_one_run_of_date_then_time(
     staff_client: Client,
 ):
     learner = LearnerFactory(organisation=OrganisationFactory())
@@ -1861,7 +1861,9 @@ def test_the_when_cell_has_an_iso_datetime_with_an_offset_and_reads_as_date_then
         stamp.utcoffset() is not None,
         stamp == datetime(2026, 3, 4, 10, 14, tzinfo=UTC),
         " ".join(time_element.text_content().split()).startswith("4 Mar 2026, "),
-    ) == (True, True, True)
+        # The date and the time share a colour.
+        time_element.cssselect(".text-muted"),
+    ) == (True, True, True, [])
 
 
 @pytest.mark.django_db
@@ -3438,7 +3440,7 @@ def test_the_cohort_history_tab_names_who_each_row_is_about(staff_client: Client
     ]
     rows = _history_rows(document)
     assert (headers, sorted(row[3].split(maxsplit=1)[1] for row in rows)) == (
-        ["When", "Who", "What", "Target", "More"],
+        ["Details", "When", "Who", "What", "Target"],
         ["Ben Learner", "Pat Learner"],
     )
 
@@ -3459,8 +3461,29 @@ def test_the_cohort_history_card_names_who_the_row_is_about(staff_client: Client
     assert html.count("&lt;b&gt;bold&lt;/b&gt;") >= 2
 
 
+def _card_summary(
+    card: lxml.html.HtmlElement,
+) -> tuple[str, list[str], list[str], bool]:
+    """An audit card's title, its field labels, its Who and Target values, and
+    whether its toggle names a hidden detail holding the reason."""
+    (title,) = card.cssselect("p.font-bold")
+    fields = card.cssselect("dl")[0]
+    labels = [dt.text_content().strip() for dt in fields.cssselect("dt")]
+    values = [" ".join(dd.text_content().split()) for dd in fields.cssselect("dd")]
+    (toggle,) = card.cssselect("button[aria-controls]")
+    (detail,) = card.cssselect("[data-row-detail]")
+    return (
+        title.text_content().strip(),
+        labels,
+        values[1:],
+        toggle.get("aria-controls") == detail.get("id")
+        and detail.get("hidden") is not None
+        and "Asked to leave" in detail.text_content(),
+    )
+
+
 @pytest.mark.django_db
-def test_the_cohort_history_card_shows_who_and_when_then_label_and_target_with_a_detail(
+def test_the_cohort_history_card_shows_the_label_then_labelled_when_who_and_target(
     staff_client: Client,
 ):
     cohort = CohortFactory(organisation=OrganisationFactory())
@@ -3476,18 +3499,16 @@ def test_the_cohort_history_card_shows_who_and_when_then_label_and_target_with_a
     document = _cohort_history_tab(staff_client, cohort)
 
     (card,) = document.cssselect("[data-tab-set] ul > li")
-    (details,) = card.cssselect("details")
-    first_line, second_line = card.cssselect("div.min-w-0 > div")[:2]
-    assert (
-        " ".join(first_line.text_content().split()).startswith("Ada Admin"),
-        " ".join(second_line.text_content().split()),
-        details.cssselect("summary")[0].text_content().strip(),
-        "Asked to leave" in details.text_content(),
-    ) == (True, "Learner deactivated · Alpha", "More", True)
+    assert _card_summary(card) == (
+        "Learner deactivated",
+        ["When", "Who", "Target"],
+        ["Ada Admin", "Alpha"],
+        True,
+    )
 
 
 @pytest.mark.django_db
-def test_the_learner_history_card_shows_who_and_when_then_the_label_with_a_detail(
+def test_the_learner_history_card_shows_the_label_then_labelled_when_and_who(
     staff_client: Client,
 ):
     learner = LearnerFactory(organisation=OrganisationFactory())
@@ -3503,15 +3524,12 @@ def test_the_learner_history_card_shows_who_and_when_then_the_label_with_a_detai
     document = _learner_page(staff_client, learner, "history")
 
     (card,) = document.cssselect("[data-tab-set] ul > li")
-    (details,) = card.cssselect("details")
-    first_line, second_line = card.cssselect("div.min-w-0 > div")[:2]
-    assert (
-        " ".join(first_line.text_content().split()).startswith("Ada Admin"),
-        " ".join(second_line.text_content().split()),
-        card.cssselect("div.min-w-0 > dl"),
-        details.cssselect("summary")[0].text_content().strip(),
-        "Asked to leave" in details.text_content(),
-    ) == (True, "Learner deactivated", [], "More", True)
+    assert _card_summary(card) == (
+        "Learner deactivated",
+        ["When", "Who"],
+        ["Ada Admin"],
+        True,
+    )
 
 
 @pytest.mark.django_db
@@ -3629,7 +3647,7 @@ def test_the_audit_log_target_column_reads_the_target_label(staff_client: Client
 
     headers = [th.text_content().strip() for th in document.cssselect("thead th")]
     (row,) = _audit_log_rows(document)
-    assert headers == ["When", "Who", "What", "Target", "More"]
+    assert headers == ["Details", "When", "Who", "What", "Target"]
     assert row[1:4] == ["Ada Admin", "Cohort created", "Spring cohort"]
     assert _row_details(document, "body") == ["Reason because"]
 
@@ -3771,17 +3789,18 @@ def test_a_bulk_run_is_one_audit_log_row_listing_fifty_entries_and_the_rest(
     document = lxml.html.fromstring(response.content)
     (row,) = _audit_log_rows(document)
     (detail,) = document.cssselect("tbody tr[data-row-detail]")
-    (card_details,) = document.cssselect("li details")
+    (card_detail,) = document.cssselect("li [data-row-detail]")
     html = response.content.decode()
     assert (
         row[2].startswith("Bulk action completed"),
         "60 changed, 0 skipped, 0 failed" in " ".join(detail.text_content().split()),
-        card_details.cssselect("summary")[0].text_content().strip(),
+        "60 changed, 0 skipped, 0 failed"
+        in " ".join(card_detail.text_content().split()),
         len(detail.cssselect("li")),
         "and 10 more" in detail.text_content(),
         "<b>bold</b>" in html,
         "&lt;b&gt;bold&lt;/b&gt;" in html,
-    ) == (True, True, "More", 50, True, False, True)
+    ) == (True, True, True, 50, True, False, True)
 
 
 @pytest.mark.django_db
@@ -3836,8 +3855,8 @@ def _audit_row_cells(
     """The Who and Target cells of the Audit log row whose Target reads `target_label`."""
     for row in document.cssselect("tbody tr:not([data-row-detail])"):
         cells = row.cssselect("td")
-        if _visible_text(cells[3]).endswith(target_label):
-            return {"who": cells[1], "target": cells[3]}
+        if _visible_text(cells[4]).endswith(target_label):
+            return {"who": cells[2], "target": cells[4]}
     raise AssertionError(f"no Audit log row targets {target_label!r}")
 
 

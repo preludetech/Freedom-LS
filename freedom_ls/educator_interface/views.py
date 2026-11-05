@@ -904,13 +904,14 @@ class AuditLogEntryTable(DataTable):
                 template="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
-                cell_class="whitespace-nowrap",
+                cell_class="whitespace-nowrap py-2",
             ),
             Column(
                 header="Who",
                 template="educator_interface/data-table-cells/audit_who.html",
                 sortable=True,
                 sort_field="actor_label",
+                cell_class="py-2",
             ),
             Column(
                 header="What",
@@ -920,7 +921,7 @@ class AuditLogEntryTable(DataTable):
                 sort_field="action",
                 # The description is clipped inside this width rather than
                 # widening the table past its wrapper.
-                cell_class="max-w-md",
+                cell_class="max-w-md py-2",
             ),
         ]
 
@@ -938,6 +939,7 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
             template="educator_interface/data-table-cells/audit_target.html",
             sortable=True,
             sort_field="target_label",
+            cell_class="py-2",
         )
         return [when, who, what, target]
 

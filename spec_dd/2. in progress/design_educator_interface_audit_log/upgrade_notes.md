@@ -37,8 +37,8 @@ itself recorded as a new `audit_log.exported` audit action.
   is removed. Its content (description, reason, bulk-run entries) now renders in
   `educator_interface/partials/audit_row_detail.html`. A downstream override of the old file is no
   longer used; move any customisation to the new partial.
-- The data-table templates in `panel_framework` gained a row-detail toggle column and a full-width
-  detail row, and the toolbar moved **Export CSV** (now also shown on mobile). A downstream
+- The data-table templates in `panel_framework` gained a leading row-detail toggle column (a
+  chevron in the table and on each mobile card) and an indented detail row, and the toolbar moved **Export CSV** (now also shown on mobile). A downstream
   override of `cotton/data-table.html`, `cotton/data-table-card.html`,
   `panel_framework/panels/_data_table_region_base.html` or
   `panel_framework/partials/table_toolbar.html` must be re-based on the new versions, or the
@@ -52,7 +52,7 @@ The new Python hooks are additive and need no change in downstream code:
 
 ## Manual steps
 
-- Rebuild Tailwind (`npm run tailwind_build`): `tailwind.components.css` changed (data rows with
-  `data-row-detail` take no border or hover) and the new templates use new utility classes.
+- Rebuild Tailwind (`npm run tailwind_build`): `tailwind.components.css` changed (an open
+  `data-row-detail` row carries its data row's bottom border and shares its hover) and the new templates use new utility classes.
 - Review and re-apply any customisations to the templates listed above.
 - No migrations, settings or package changes.
