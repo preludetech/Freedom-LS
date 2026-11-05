@@ -1,6 +1,7 @@
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
+import pytest
 import time_machine
 
 from django.template import Context, Template
@@ -17,6 +18,11 @@ def _render(**context: object) -> str:
 def _render_with_format(format: str, due: datetime = DUE) -> str:
     template = Template("{% load deadline_tags %}{% local_time due format=format %}")
     return template.render(Context({"due": due, "format": format}))
+
+
+def _end_of_day(day: date) -> datetime:
+    """A deadline given as a date alone, as the resolver builds it."""
+    return datetime.combine(day, time.max, tzinfo=JOHANNESBURG)
 
 
 def test_the_datetime_attribute_is_the_utc_instant():
@@ -60,31 +66,54 @@ def test_the_utc_instant_is_independent_of_the_zone_the_value_arrives_in():
 
 @time_machine.travel(datetime(2026, 6, 1, tzinfo=UTC), tick=False)
 def test_the_short_format_marks_the_element_and_keeps_the_instant():
-    rendered = _render_with_format(
-        "short", datetime(2026, 1, 1, 8, tzinfo=JOHANNESBURG)
-    )
+    rendered = _render_with_format("short", _end_of_day(date(2026, 1, 1)))
 
     assert 'data-format="short"' in rendered
-    assert 'datetime="2026-01-01T06:00:00+00:00"' in rendered
+    assert "data-timed" not in rendered
+    assert 'datetime="2026-01-01T21:59:59+00:00"' in rendered
     assert 'x-data="localTime"' in rendered
     assert ">1 Jan</time>" in rendered
 
 
 @time_machine.travel(datetime(2026, 6, 1, tzinfo=UTC), tick=False)
 def test_the_short_format_names_the_year_when_it_is_not_this_year():
-    rendered = _render_with_format(
-        "short", datetime(2020, 1, 1, 8, tzinfo=JOHANNESBURG)
-    )
+    rendered = _render_with_format("short", _end_of_day(date(2020, 1, 1)))
 
     assert ">1 Jan 2020</time>" in rendered
 
 
-def test_the_today_format_is_a_fixed_word_the_browser_leaves_alone():
-    rendered = _render_with_format("today")
+@time_machine.travel(datetime(2026, 3, 15, 8, tzinfo=UTC), tick=False)
+def test_a_short_instant_on_todays_date_reads_today_and_is_still_rewritten():
+    """The browser re-judges "Today" in the viewer's zone, so the component stays on."""
+    rendered = _render_with_format("short", _end_of_day(date(2026, 3, 15)))
 
     assert ">Today</time>" in rendered
-    assert "x-data" not in rendered
-    assert 'datetime="2026-03-15T21:59:00+00:00"' in rendered
+    assert 'x-data="localTime"' in rendered
+    assert 'datetime="2026-03-15T21:59:59+00:00"' in rendered
+
+
+@time_machine.travel(datetime(2026, 6, 1, tzinfo=UTC), tick=False)
+def test_a_short_instant_with_a_set_time_names_it_and_is_marked_timed():
+    rendered = _render_with_format(
+        "short", datetime(2026, 1, 1, 9, 0, tzinfo=JOHANNESBURG)
+    )
+
+    assert 'data-timed="true"' in rendered
+    assert ">1 Jan, 09:00 SAST</time>" in rendered
+
+
+@time_machine.travel(datetime(2026, 3, 15, 5, tzinfo=UTC), tick=False)
+def test_a_short_instant_due_today_at_a_set_time_reads_today_and_the_time():
+    rendered = _render_with_format(
+        "short", datetime(2026, 3, 15, 9, 0, tzinfo=JOHANNESBURG)
+    )
+
+    assert ">Today, 09:00 SAST</time>" in rendered
+
+
+def test_an_unknown_format_is_refused():
+    with pytest.raises(ValueError, match="format"):
+        _render_with_format("Short")
 
 
 def test_the_default_format_has_no_format_attribute():

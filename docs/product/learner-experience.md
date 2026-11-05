@@ -295,7 +295,7 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
 
-- **Course player** — the outline opens with a **Next deadline** card for the earliest missed deadline, else the next one, and each incomplete item with a deadline shows its date on its own row. The item the learner is on shows its deadline in a card beside its title. A completed item shows none.
+- **Course player** — the outline opens with a **Next deadline** card for the earliest missed deadline, else the next one, and each incomplete item with a deadline shows its date on its own row, with "Closes <date>." beside it while the item can still close. The item the learner is on shows its deadline in a card beside its title. A completed item shows none.
 - **Dashboard course card** — a band along the bottom of the card's coloured hero names the earliest missed deadline, else the next one, with its title and date. A time limit shows under the title "Course", and a closed item's band says **Closed** and names the item.
 
 A deadline shows in one of four states, each with its own colour, icon and word: **Deadline**, **Deadline today**, **Missed deadline** and **Closed**.
@@ -306,7 +306,7 @@ The **course detail page** shows no deadline dates. Where the course has a time 
 
 ![Dashboard course card with a missed-deadline band along the bottom of its hero](screenshots/learner_dashboard_card_overdue.png)
 
-Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
+Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. On the dashboard band and the outline rows a deadline falling on the learner's own date reads "Today", and a deadline set to a time of day shows that time ("Today, 09:00"); a deadline given as a date alone shows no time. The **Deadline today** colour itself follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 
 **Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
 

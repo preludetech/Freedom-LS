@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -42,15 +42,28 @@ def shows_time_zone_to_learners(site: Site) -> bool:
     return row.show_time_zone_to_learners if row is not None else False
 
 
+def has_set_time(instant: datetime) -> bool:
+    """Whether a deadline instant carries a time of its own. A deadline given as a date alone
+    falls due at the last microsecond of its day, judged in the instant's own zone."""
+    return instant.time() != time.max
+
+
 def site_zone_text(instant: datetime, *, short: bool = False) -> str:
     """An instant written in the site zone with the zone named, as the admin shows it and as
     the learner pages show it before the browser rewrites it.
 
     The short form is the day and abbreviated month, plus the year only when it is not this
-    year, judged in the instant's own zone."""
-    if short:
+    year, judged in the instant's own zone. An instant on today's date reads "Today" instead.
+    An instant with a set time adds it, with the zone named, as the long form does."""
+    if not short:
+        return f"{instant.day} {instant:%b %Y, %H:%M} {instant.tzname()}"
+    now = timezone.now().astimezone(instant.tzinfo)
+    if instant.date() == now.date():
+        text = "Today"
+    else:
         text = f"{instant.day} {instant:%b}"
-        if instant.year != timezone.now().astimezone(instant.tzinfo).year:
+        if instant.year != now.year:
             text += f" {instant:%Y}"
-        return text
-    return f"{instant.day} {instant:%b %Y, %H:%M} {instant.tzname()}"
+    if has_set_time(instant):
+        text += f", {instant:%H:%M} {instant.tzname()}"
+    return text

@@ -194,14 +194,6 @@ class AccountAdapter(DefaultAccountAdapter):
         If no policy exists for the current site, fall back to config.ALLOW_SIGN_UPS.
         """
         default_allow = config.ALLOW_SIGN_UPS
-
-        # If there's no request (rare, but possible), use the global default.
-        if request is None:
-            return default_allow
-
-        current_site = get_cached_site(request)
-        if not isinstance(current_site, Site):
-            return default_allow
-
+        # No request, or no real Site for it, gives no policy and so the global default.
         policy = get_signup_policy_for_request(request)
         return default_allow if policy is None else policy.allow_signups

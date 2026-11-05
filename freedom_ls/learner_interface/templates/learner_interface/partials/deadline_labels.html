@@ -7,9 +7,9 @@ is_overdue, is_closed, status, deadline_tier) and show_time_zone_to_learners. Op
 The top level is empty, so include a named partial.{% endcomment %}
 
 {% partialdef tier-icon %}
-    {% comment %}Decorative: the word beside it carries the meaning, so the wrapper hides the
-    icon from assistive technology. Each icon still gets that word as its label, because
-    the icon's default label is its semantic name ("warning").{% endcomment %}
+    {% comment %}Decorative: the word beside it, visible or sr-only, carries the meaning, so the
+    wrapper hides the icon from assistive technology. Each icon still gets that word as its
+    label, because the icon's default label is its semantic name ("warning").{% endcomment %}
     <span aria-hidden="true" class="inline-flex">
         {% if child.deadline_tier == "MISSED" %}<c-icon name="warning" class="size-4" aria_label="Missed deadline" />
         {% elif child.deadline_tier == "CLOSED" %}<c-icon name="locked" class="size-4" aria_label="Closed" />
@@ -26,14 +26,16 @@ The top level is empty, so include a named partial.{% endcomment %}
     {% if course.access_ends_at %}<p class="text-sm text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
 {% endpartialdef %}
 
-{% comment %}A closed deadline is dated by when it closed. The short form of a deadline
-due today says so instead of repeating the date. The partial body is one line with no
-leading or trailing whitespace, so callers can follow it with punctuation.{% endcomment %}
-{% partialdef tier-date %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}{% elif child.deadline_tier == "TODAY" and date_format == "short" %}{% local_time child.due_at format="today" %}{% else %}{% local_time child.due_at format=date_format %}{% endif %}{% endpartialdef %}
+{% comment %}A closed deadline is dated by when it closed. The partial body is one line with
+no leading or trailing whitespace, so callers can follow it with punctuation.{% endcomment %}
+{% partialdef tier-date %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}{% else %}{% local_time child.due_at format=date_format %}{% endif %}{% endpartialdef %}
 
 {% partialdef tier-chip-body %}
+    {% comment %}"Closed" is read; the other tier words are for screen readers only, so a
+    short form still says it is a deadline. tier_named skips that word for a surface whose own
+    eyebrow or heading already names the tier.{% endcomment %}
     {% partial tier-icon %}
-    {% if child.deadline_tier == "MISSED" %}<span class="sr-only">{% partial tier-word %}</span>{% elif child.deadline_tier == "CLOSED" %}{% partial tier-word %}{% endif %}
+    {% if child.deadline_tier == "CLOSED" %}{% partial tier-word %}{% elif not tier_named %}<span class="sr-only">{% partial tier-word %}</span>{% endif %}
     {% partial tier-date %}
 {% endpartialdef %}
 
@@ -41,7 +43,7 @@ leading or trailing whitespace, so callers can follow it with punctuation.{% end
     {% comment %}An upcoming deadline is a muted icon and a date; the other tiers are a chip. The
     variant is picked by branching because a cotton attribute cannot hold a template tag.{% endcomment %}
     {% if child.deadline_tier == "UPCOMING" %}
-        <span class="inline-flex items-center gap-1 text-muted whitespace-nowrap">{% partial tier-icon %}{% partial tier-date %}</span>
+        <span class="inline-flex items-center gap-1 text-muted whitespace-nowrap">{% partial tier-chip-body %}</span>
     {% elif child.deadline_tier == "TODAY" %}
         <c-chip variant="warning" size="xs" class="forced-colors:border whitespace-nowrap">{% partial tier-chip-body %}</c-chip>
     {% else %}

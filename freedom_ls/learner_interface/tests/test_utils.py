@@ -48,6 +48,7 @@ from freedom_ls.learner_interface.utils import (
     get_completed_courses,
     get_course_index,
     get_current_courses,
+    next_deadline_card,
     next_entry,
     previous_entry,
 )
@@ -931,6 +932,23 @@ def test_card_deadline_line_gives_a_time_limit_due_later_today_the_today_tier():
     assert line.next is not None
     assert line.next.title == COURSE_DEADLINE_TITLE
     assert line.next.deadline_tier == DeadlineTier.TODAY
+
+
+def test_next_deadline_card_prefers_the_missed_deadline_to_the_next_one():
+    missed = _row(TIER_NOW - timedelta(days=2), deadline_tier=DeadlineTier.MISSED)
+    coming = _row(TIER_NOW + timedelta(days=5), deadline_tier=DeadlineTier.UPCOMING)
+
+    picked = next_deadline_card(
+        [coming, missed], _line_deadlines(), _policy(), TIER_NOW
+    )
+
+    assert picked is not None
+    assert picked.is_past is True
+    assert picked.due_at == missed["due_at"]
+
+
+def test_next_deadline_card_is_none_without_an_open_deadline():
+    assert next_deadline_card([], _line_deadlines(), _policy(), TIER_NOW) is None
 
 
 def test_card_deadline_line_marks_a_past_time_limit_as_past_and_missed():

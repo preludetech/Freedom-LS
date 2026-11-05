@@ -741,17 +741,30 @@ document.addEventListener("alpine:init", () => {
         init() {
             const instant = new Date(this.$el.getAttribute("datetime"));
             if (Number.isNaN(instant.getTime())) return;
-            const short = this.$el.dataset.format === "short";
-            const options = short
-                ? { day: "numeric", month: "short" }
-                : {
+            const showZone = this.$el.dataset.showZone === "true";
+            const format = (options) => new Intl.DateTimeFormat(undefined, options).format(instant);
+            if (this.$el.dataset.format !== "short") {
+                const options = {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
                 };
-            // A short date names its year only when it is not the viewer's current year.
-            if (short && instant.getFullYear() !== new Date().getFullYear()) options.year = "numeric";
-            if (!short && this.$el.dataset.showZone === "true") options.timeZoneName = "short";
-            this.$el.textContent = new Intl.DateTimeFormat(undefined, options).format(instant);
+                if (showZone) options.timeZoneName = "short";
+                this.$el.textContent = format(options);
+                return;
+            }
+            // A short date is "Today" on the viewer's own date, and names its year only
+            // when it is not the viewer's current year. A deadline with a set time
+            // (data-timed) adds it; one given as a date alone shows no time.
+            const now = new Date();
+            const dateOptions = { day: "numeric", month: "short" };
+            if (instant.getFullYear() !== now.getFullYear()) dateOptions.year = "numeric";
+            let text = instant.toDateString() === now.toDateString() ? "Today" : format(dateOptions);
+            if (this.$el.dataset.timed === "true") {
+                const timeOptions = { hour: "2-digit", minute: "2-digit" };
+                if (showZone) timeOptions.timeZoneName = "short";
+                text += `, ${format(timeOptions)}`;
+            }
+            this.$el.textContent = text;
         },
     }));
 });
