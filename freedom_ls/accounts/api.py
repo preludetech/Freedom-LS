@@ -9,6 +9,28 @@ from .models import User
 from .resources import USER_EXPORT_FIELDS, annotate_email_verified
 
 
+def user_fields(
+    source: str,
+) -> tuple[
+    serializers.IntegerField,
+    serializers.EmailField,
+    serializers.CharField,
+    serializers.CharField,
+]:
+    """The read-only user_id, user_email, user_first_name and user_last_name
+    fields, in that order, read from the user at `source` ("user",
+    "learner.user"). Unpacked under those names in a serializer body, so every
+    endpoint that flattens a user names the columns the same way and user_id
+    joins to id on the users endpoint.
+    """
+    return (
+        serializers.IntegerField(source=f"{source}.id", read_only=True),
+        serializers.EmailField(source=f"{source}.email", read_only=True),
+        serializers.CharField(source=f"{source}.first_name", read_only=True),
+        serializers.CharField(source=f"{source}.last_name", read_only=True),
+    )
+
+
 class UserApiSerializer(serializers.ModelSerializer):
     # An annotation, not a column.
     email_verified = serializers.BooleanField(read_only=True)

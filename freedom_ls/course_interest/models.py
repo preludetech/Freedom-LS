@@ -10,10 +10,10 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, UpdatedAtModel
 
 
-class CourseInterest(SiteAwareModel):
+class CourseInterest(SiteAwareModel, UpdatedAtModel):
     """A learner's expressed interest in a coming-soon course.
 
     Extends SiteAwareModel (UUID pk + site FK). Site isolation is automatic
@@ -40,6 +40,11 @@ class CourseInterest(SiteAwareModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "user", "course"], name="unique_course_interest"
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["site", "updated_at", "id"], name="course_interest_site_upd_idx"
             )
         ]
 
