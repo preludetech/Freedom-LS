@@ -159,6 +159,24 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 assert card_box is not None
                 assert description_box is not None
                 assert description_box["width"] >= 0.8 * (card_box["width"] - 32)
+            if is_preview:
+                # The confirm card's first line used to carry a top margin on
+                # top of the card's own padding, opening a wider gap above it
+                # than below the button.
+                card = page.locator("#main-content .panel-surface.rounded-lg").last
+                card_box = card.bounding_box()
+                first_line_box = card.locator("p, li").first.bounding_box()
+                button_box = card.locator(".btn").last.bounding_box()
+                assert card_box is not None
+                assert first_line_box is not None
+                assert button_box is not None
+                gap_above = first_line_box["y"] - card_box["y"]
+                gap_below = (card_box["y"] + card_box["height"]) - (
+                    button_box["y"] + button_box["height"]
+                )
+                assert abs(gap_above - gap_below) <= 1, (
+                    f"confirm card gap above {gap_above}px, below {gap_below}px"
+                )
             if is_preview and viewport["width"] == 375:
                 expect(page.get_by_text("Step 2 of 3: Preview")).to_be_visible()
                 # The labels are visually hidden (sr-only), so they stay
