@@ -17,7 +17,9 @@ Attributes:
                 (default none). A stringified None counts as not given. The
                 chip and the subject link together are the person-link
                 look every data-table name cell has, so a person reads the
-                same here as in a table.
+                same here as in a table. The chip aligns to the subject's first line, not
+                the middle of the row, so it stays beside the name when the row
+                holds several lines of detail.
   icon          Given, with no user_id: a severity icon leads instead
                 (default none).
   icon_tone     Tone of the severity icon (default muted).
@@ -44,7 +46,7 @@ icon trails, so the DOM still holds only the one link to href.
 
 <li class="relative flex items-center gap-3 py-3" {{ attrs }}>
     {% if user_id|flag %}
-        <c-panel-avatar-chip :name="subject" :user_id="user_id" name_hidden="true" />
+        <span class="shrink-0 self-start -mt-1"><c-panel-avatar-chip :name="subject" :user_id="user_id" name_hidden="true" /></span>
     {% elif icon %}
         <span aria-hidden="true" class="shrink-0 {% include "panel_framework/partials/tone_text_class.html" with tone=icon_tone only %}"><c-icon :name="icon" class="size-5" /></span>
     {% endif %}
