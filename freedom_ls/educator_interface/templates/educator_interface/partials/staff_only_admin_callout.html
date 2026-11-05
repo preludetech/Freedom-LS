@@ -1,0 +1,9 @@
+{% comment %}
+The note above the Staff list when the viewer is the only staff member:
+an organisation that depends on one account. Renders with intro
+(only_member_is_viewer). The roles themselves are explained in the Add
+staff member dialog, not here.
+{% endcomment %}
+{% if intro.only_member_is_viewer %}
+    <c-callout level="info">You're the only staff member here. Add another organisation admin so the organisation doesn't depend on one account.</c-callout>
+{% endif %}

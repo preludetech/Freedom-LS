@@ -2902,7 +2902,7 @@ def test_grantable_roles_are_cached_on_the_request(
 
 
 def _add_member_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "members/__actions/add_member")
+    return _interface_url(organisation.slug, "staff/__actions/add_member")
 
 
 def _holder_client(
@@ -3525,24 +3525,22 @@ def test_the_empty_members_page_offers_add_member_in_the_header_and_the_empty_st
 
     html = (
         logged_in_client(site_admin)
-        .get(_interface_url(organisation.slug, "members"))
+        .get(_interface_url(organisation.slug, "staff"))
         .content.decode()
     )
 
-    header, _, empty_state = html.partition("No members yet.")
-    assert "/members/__actions/add_member" in header
-    assert "/members/__actions/add_member" in empty_state
+    header, _, empty_state = html.partition("No staff yet.")
+    assert "/staff/__actions/add_member" in header
+    assert "/staff/__actions/add_member" in empty_state
 
 
 @pytest.mark.django_db
 def test_the_members_page_header_holds_the_add_member_trigger(
     admin_client, organisation
 ):
-    html = admin_client.get(
-        _interface_url(organisation.slug, "members")
-    ).content.decode()
+    html = admin_client.get(_interface_url(organisation.slug, "staff")).content.decode()
 
-    assert "/members/__actions/add_member" in html
+    assert "/staff/__actions/add_member" in html
 
 
 @pytest.mark.django_db
@@ -3559,11 +3557,11 @@ def test_a_site_admin_with_nothing_to_grant_sees_no_add_member_trigger(
 
     html = (
         logged_in_client(site_admin)
-        .get(_interface_url(organisation.slug, "members"))
+        .get(_interface_url(organisation.slug, "staff"))
         .content.decode()
     )
 
-    assert "/members/__actions/add_member" not in html
+    assert "/staff/__actions/add_member" not in html
 
 
 def _cohort(organisation: Organisation, **kwargs: str) -> Cohort:
@@ -3779,7 +3777,7 @@ def test_a_cohort_of_another_organisation_is_a_form_error_and_writes_nothing(
 
 
 def _remove_role_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "members/__actions/deactivate_role")
+    return _interface_url(organisation.slug, "staff/__actions/deactivate_role")
 
 
 def _member_holding(
@@ -4127,7 +4125,7 @@ def test_the_remove_confirmation_escapes_the_persons_name(admin_client, organisa
 
 
 def _change_cohorts_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "members/__actions/change_cohorts")
+    return _interface_url(organisation.slug, "staff/__actions/change_cohorts")
 
 
 def _change_dialog(
@@ -4505,7 +4503,7 @@ def test_a_refusal_partway_through_a_change_keeps_every_assignment(
 
 
 def _state_url(organisation: Organisation, action: str) -> str:
-    return _interface_url(organisation.slug, f"members/__actions/{action}")
+    return _interface_url(organisation.slug, f"staff/__actions/{action}")
 
 
 def _state_dialog(client: Client, organisation: Organisation, user: User, action: str):
@@ -4908,7 +4906,7 @@ def test_the_members_dialog_is_titled_add_a_member(admin_client, organisation):
 
     document = lxml.html.fromstring(response.content.decode())
     (title,) = document.cssselect("#app-modal-title")
-    assert title.text_content().strip() == "Add a member"
+    assert title.text_content().strip() == "Add a staff member"
 
 
 @pytest.mark.django_db
@@ -4923,7 +4921,7 @@ def test_the_cohort_dialog_email_step_is_titled_with_the_cohort(
 
     document = lxml.html.fromstring(response.content.decode())
     (title,) = document.cssselect("#app-modal-title")
-    assert title.text_content().strip() == "Add a member to Spring"
+    assert title.text_content().strip() == "Add a staff member to Spring"
 
 
 @pytest.mark.django_db
@@ -4937,7 +4935,7 @@ def test_the_cohort_dialog_role_step_is_titled_with_the_cohort(
 
     document = lxml.html.fromstring(response.content.decode())
     (title,) = document.cssselect("#app-modal-title")
-    assert title.text_content().strip() == "Add a member to Spring"
+    assert title.text_content().strip() == "Add a staff member to Spring"
 
 
 @pytest.mark.django_db

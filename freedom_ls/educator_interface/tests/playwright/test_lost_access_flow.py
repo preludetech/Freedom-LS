@@ -58,7 +58,7 @@ def test_a_navigation_click_after_losing_access_lands_on_the_not_found_page(
     organisation = _organisation_run_by(educator_user)
     # Wide enough that the sidebar docks as a column instead of a sheet.
     page.set_viewport_size(QA_VIEWPORTS[2])
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     # The link's name also carries the section's count, so no exact match.
     cohorts_link = page.locator("#sidebar-nav").get_by_role("link", name="Cohorts")
     expect(cohorts_link).to_be_visible()
@@ -81,7 +81,7 @@ def test_a_confirm_in_an_open_dialog_after_losing_access_lands_on_the_not_found_
         email="viewer@example.com", first_name="Vee", last_name="Viewer"
     )
     assign_role(UserFactory(superuser=True), viewer, "cohort_viewer", cohort)
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     row = page.locator("#main-content").get_by_role("row").filter(has_text="Vee Viewer")
     row.get_by_role("button", name="Deactivate role", exact=True).click()
     modal = page.locator("#app-modal")

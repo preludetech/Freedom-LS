@@ -347,7 +347,7 @@ def test_a_member_who_lost_every_role_gets_404_on_members_and_the_unavailable_fr
     assign_object_role(user, cohort, "cohort_viewer")
     assign_object_role(target, cohort, "cohort_viewer")
     client = logged_in_client(user)
-    members_url = _interface_url(organisation.slug, "members")
+    members_url = _interface_url(organisation.slug, "staff")
     action_url = _interface_url(organisation.slug, "members/__actions/deactivate_role")
     assert client.get(members_url).status_code == 200
 

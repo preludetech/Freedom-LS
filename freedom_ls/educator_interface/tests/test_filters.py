@@ -333,7 +333,7 @@ def test_learner_course_filter_drops_a_member_of_an_inactive_cohort_registered()
 
 def _member_pks(request, roles: list[str] | None = None) -> list:
     filters = {} if roles is None else {"role": roles}
-    query = TableQuery(key="members", filters=filters)
+    query = TableQuery(key="staff", filters=filters)
     return [
         user.pk
         for user in MemberDataTable.filter_queryset(

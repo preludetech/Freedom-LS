@@ -91,7 +91,7 @@ site_level.
     </div>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Add member</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Add staff member</c-button>
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
@@ -137,12 +137,12 @@ site_level.
         <p>{{ member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
         {% if site_level %}
-        <p>{{ member_name }} already has access to every organisation. This role lists them among this organisation's members.</p>
+        <p>{{ member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
         {% endif %}
     </div>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Adding...">Add member</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Adding...">Add staff member</c-button>
     </c-modal-footer>
 </form>
 {% endif %}

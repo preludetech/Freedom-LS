@@ -16,7 +16,7 @@ target_is_site_level, confirm_url.
 
     <div class="space-y-3 px-6 py-4 text-sm">
         {% if target_is_site_level %}
-            <p>Their site-level access is unaffected; this only takes them off this organisation's member list.</p>
+            <p>Their site-level access is unaffected; this only takes them off this organisation's staff list.</p>
         {% else %}
             <p>They lose {{ entry.display_name }} on {{ full_scope }}: {{ description }}.</p>
         {% endif %}

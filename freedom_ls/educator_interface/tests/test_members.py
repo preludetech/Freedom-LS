@@ -185,7 +185,7 @@ def test_the_organisation_log_shows_a_role_removed_through_the_action(
             "educator_interface:interface",
             kwargs={
                 "organisation_slug": organisation.slug,
-                "path_string": "members/__actions/deactivate_role",
+                "path_string": "staff/__actions/deactivate_role",
             },
         ),
         {"user": str(user.pk), "role": "cohort_admin"},
@@ -210,7 +210,7 @@ def _members_page(
     response = client.get(
         reverse(
             "educator_interface:interface",
-            kwargs={"organisation_slug": organisation.slug, "path_string": "members"},
+            kwargs={"organisation_slug": organisation.slug, "path_string": "staff"},
         )
         + query
     )
@@ -231,8 +231,8 @@ def test_the_members_table_and_its_scroll_region_are_named_members(
 
     (caption,) = document.cssselect("[data-table-region] table caption")
     (region,) = document.cssselect("[data-table-region] [role='region']")
-    assert caption.text_content().strip() == "Members"
-    assert region.get("aria-label") == "Members"
+    assert caption.text_content().strip() == "Staff members"
+    assert region.get("aria-label") == "Staff members"
 
 
 @pytest.mark.django_db
@@ -279,7 +279,7 @@ class TestMembersEmptyState:
 
         message = document.cssselect("[data-table-region] table tbody td p")[0]
         assert message.text_content().strip() == (
-            "No members yet. Add the first member to give someone access to this "
+            "No staff yet. Add the first staff member to give someone access to this "
             "organisation."
         )
 
@@ -289,7 +289,7 @@ class TestMembersEmptyState:
         document = _members_page(staff_client, OrganisationFactory())
 
         assert (
-            "Add member"
+            "Add staff member"
             in document.cssselect("[data-table-region] table tbody td")[
                 0
             ].text_content()
@@ -312,20 +312,20 @@ class TestMembersEmptyState:
                 "educator_interface:interface",
                 kwargs={
                     "organisation_slug": organisation.slug,
-                    "path_string": "members",
+                    "path_string": "staff",
                 },
             )
         )
 
-        assert "Add member" not in response.content.decode()
+        assert "Add staff member" not in response.content.decode()
 
     def test_a_search_with_no_match_says_nothing_matched(
         self, staff_client: Client
     ) -> None:
-        document = _members_page(staff_client, OrganisationFactory(), "?members-q=zzz")
+        document = _members_page(staff_client, OrganisationFactory(), "?staff-q=zzz")
 
         message = document.cssselect("[data-table-region] table tbody td p")[0]
-        assert message.text_content().strip() == "No members match these filters."
+        assert message.text_content().strip() == "No staff members match these filters."
 
     def test_clear_filters_drops_the_search_and_filters(
         self, staff_client: Client
@@ -333,7 +333,7 @@ class TestMembersEmptyState:
         document = _members_page(
             staff_client,
             OrganisationFactory(),
-            "?members-q=zzz&members-role=organisation_admin",
+            "?staff-q=zzz&staff-role=organisation_admin",
         )
 
         (link,) = [
@@ -342,7 +342,7 @@ class TestMembersEmptyState:
             if a.text_content().strip() == "Clear filters"
         ]
         href = link.get("href")
-        assert "members-q" not in href
+        assert "staff-q" not in href
         assert "members-role" not in href
 
 

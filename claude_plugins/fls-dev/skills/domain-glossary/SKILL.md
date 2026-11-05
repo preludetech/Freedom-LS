@@ -215,6 +215,7 @@ Do not give these a second meaning.
 
 | Word | What it already means | Use instead |
 | --- | --- | --- |
+| **staff member** | What the educator interface calls a user who holds an organisation or cohort role in an organisation: the Staff section at `/<org>/staff`, "Add staff member", "Staff member deactivated". In code the row is an `OrganisationMember` and the audit noun stays `member`; the word changes only where a person reads it. | In UI copy and docs: staff, staff member. In code and audit codes: member. |
 | **grant** | A *role or object permission* — `learner_management/queries.py` ("per-cohort guardian grant", `granted_cohorts`, `assign_object_role`), `context_processors.py`, `docs/product/learner-tracking.md` ("their access grants"). | For course access: **registration**. (The verb is fine: "the registration that granted access".) |
 | **item** | Ambiguous already — `Course.items` are `ContentCollectionItem` rows, `viewable_items()` are children, `content_item` is the resolved `Topic`/`Form`. | **collection item** for the row, **child** for the object. |
 | **link** | An `<a href>` in ~280 template and view usages. | Fine as a verb ("links a collection to a child"); not as a noun for a model or field. |

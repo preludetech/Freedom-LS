@@ -96,7 +96,7 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 **Status: Organisation and cohort roles are managed in the educator interface, and role changes are logged; site admin is not managed there.**
 
-Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#members-and-roles). An organisation admin adds, deactivates and reactivates the organisation's members, and assigns and deactivates their roles, from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
+Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#staff-and-roles). An organisation admin adds, deactivates and reactivates the organisation's staff, and assigns and deactivates their roles, from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
 
 - **Site admin is assigned by a developer.** Neither the educator interface nor the Django admin can grant or remove it.
 - **No notification** tells a person that a role was granted or removed.

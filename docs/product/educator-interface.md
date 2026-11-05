@@ -4,13 +4,13 @@ _Last updated: 2026-11-03_
 
 ## Summary
 
-- Educators work in one panel scoped to one organisation at a time, with Dashboard, Cohorts, Learners and Courses under Teaching, and Members and Audit log under Administration for admins. See [Organisation scope](#organisation-scope).
+- Educators work in one panel scoped to one organisation at a time, with Dashboard, Cohorts, Learners and Courses under Teaching, and Staff and Audit log under Administration for admins. See [Organisation scope](#organisation-scope).
 - The dashboard shows totals, the learners who need attention and each cohort's progress. See [Dashboard](#dashboard).
 - Educators add learners by email or CSV file, see whether each is active, pending or inactive, manage their cohorts and course registrations, and deactivate or reactivate them. A quick view previews a learner or cohort without leaving the list. See [Learners](#learners).
 - Educators can act on many learners or cohorts at once, including everything matching the current filter. See [Bulk actions](#bulk-actions).
 - Educators create, rename, deactivate and delete cohorts, and register a cohort for courses. See [Cohorts](#cohorts).
 - The Courses list shows each course's visibility and interest count. Visibility is read-only here. See [Courses](#courses).
-- Organisation admins add members, assign and deactivate their roles, and deactivate or reactivate them. See [Members and roles](#members-and-roles).
+- Organisation admins add staff, assign and deactivate their roles, and deactivate or reactivate them. See [Staff and roles](#staff-and-roles).
 - Site and organisation admins see who changed what and when, on learner and cohort pages and in an Audit log. See [History](#history).
 - A cohort's progress report shows on screen, with a PDF to download. See [Reports](#reports).
 - Access is granted by role: site admin, organisation admin, cohort admin or cohort viewer. See [Access control](#access-control).
@@ -103,7 +103,7 @@ The Cohorts list shows each cohort in the current organisation the educator has 
 - **Deactivating.** An inactive cohort's registrations give no access to their courses and the cohort becomes read-only, so it takes no membership action. Learners keep their place and progress, and reactivating restores access. See [learner tracking](./learner-tracking.md#what-is-recorded).
 - **Deleting.** Only while the cohort has no learners and no course registrations, inactive ones included; otherwise the Settings tab says what still depends on it. Deleting a cohort also deletes the cohort roles held on it.
 
-Renaming, deactivating, reactivating and deleting need an organisation admin or site admin. A cohort admin can register their own cohort for courses and deactivate those registrations. An organisation admin can add a member to the cohort from the Overview's educators panel; roles are changed from [Members](#members-and-roles).
+Renaming, deactivating, reactivating and deleting need an organisation admin or site admin. A cohort admin can register their own cohort for courses and deactivate those registrations. An organisation admin can add a staff member to the cohort from the Overview's educators panel; roles are changed from [Staff](#staff-and-roles).
 
 ## Courses
 
@@ -117,26 +117,26 @@ Each course also shows an **interest count**: the learners who have expressed in
 
 Visibility is set only in the course's content frontmatter and takes effect on import; see [content editing workflow](./content-editing-workflow.md). Learners' experience of coming-soon and hidden courses is in [learner experience](./learner-experience.md).
 
-## Members and roles
+## Staff and roles
 
-![Members list with each member's roles, the cohorts a role covers and who added it, and an Add member button](screenshots/educator_members.png)
+![Staff list with each staff member's roles, the cohorts a role covers and who added it, and an Add staff member button](screenshots/educator_members.png)
 
-Members are the people who help run an organisation, whether or not they teach. A member holds one or more roles in the organisation:
+Staff are the people who help run an organisation, whether or not they teach. A staff member holds one or more roles in the organisation:
 
-- **Organisation admin**: manages learners, cohorts and members in this organisation.
+- **Organisation admin**: manages learners, cohorts and staff in this organisation.
 - **Cohort admin**: manages the learners and course registrations in their cohorts.
 - **Cohort viewer**: sees the learners and progress in their cohorts, and changes nothing.
 
-A fourth role, **site admin**, gives full access to every organisation on the site. It is not given from this interface (see [Limits](#limits)), and a site admin is listed as a member of an organisation only through a role they hold in it. A learner is a member only if they also hold one of these roles.
+A fourth role, **site admin**, gives full access to every organisation on the site. It is not given from this interface (see [Limits](#limits)), and a site admin is listed as staff of an organisation only through a role they hold in it. A learner is a staff member only if they also hold one of these roles.
 
-The Members section is visible only to organisation admins and site admins. It lists each member with their roles, the cohorts a cohort role covers, and who added each role and when, and can be searched and filtered by role. From it an organisation admin can:
+The Staff section is visible only to organisation admins and site admins. It lists each staff member with their roles, the cohorts a cohort role covers, and who added each role and when, and can be searched and filtered by role. From it an organisation admin can:
 
-- **Add a member** by email. An existing account shows that person's name and email before anything is saved; a new address gets an account and an [account setup email](#adding-learners). The admin picks one role and, for a cohort role, the cohorts it covers, which does not extend to cohorts added later.
+- **Add a staff member** by email. An existing account shows that person's name and email before anything is saved; a new address gets an account and an [account setup email](#adding-learners). The admin picks one role and, for a cohort role, the cohorts it covers, which does not extend to cohorts added later.
 - **Change the cohorts** on a cohort role.
 - **Deactivate a role.** The person keeps their account, their other roles and any place as a learner.
-- **Deactivate a member**, which stops everything they can do in this organisation while keeping their roles, and **reactivate** them.
+- **Deactivate a staff member**, which stops everything they can do in this organisation while keeping their roles, and **reactivate** them.
 
-Admins can give only roles at or below their own. A change that gives someone access they did not have, or takes access away, is confirmed first and says what changes. Roles add up: to change someone's role, assign the new one and deactivate the old. The person is not notified when a role is assigned or deactivated, a setup email cannot be resent from this section, and members have no page of their own. Role changes and member deactivations are recorded in the [Audit log](#audit-log).
+Admins can give only roles at or below their own. A change that gives someone access they did not have, or takes access away, is confirmed first and says what changes. Roles add up: to change someone's role, assign the new one and deactivate the old. The person is not notified when a role is assigned or deactivated, a setup email cannot be resent from this section, and staff members have no page of their own. Role changes and staff deactivations are recorded in the [Audit log](#audit-log).
 
 ## History
 
@@ -178,7 +178,7 @@ The current organisation is part of every page's address, so two browser tabs ca
 
 ## Access control
 
-Access comes from **role assignments**; permissions granted on a cohort or organisation in the Django admin have no effect here. The roles are described in [Members and roles](#members-and-roles).
+Access comes from **role assignments**; permissions granted on a cohort or organisation in the Django admin have no effect here. The roles are described in [Staff and roles](#staff-and-roles).
 
 A person holding several roles gets all of them. A role on an organisation covers every cohort in it, including ones created later; a role on a cohort covers that cohort and its learners. Organisation and cohort roles count only while the person is an active member of that organisation: deactivating a member switches off their access without deleting their roles, and reactivating restores it. Organisation admins can assign roles only within their own organisation, nobody can change their own roles, and an organisation's last admin can have the role deactivated, or be deactivated as a member, only by a site admin.
 
@@ -200,7 +200,7 @@ Not done: no screen reader (NVDA, VoiceOver or TalkBack) has been run through th
 
 These are not available in the educator interface:
 
-- **Bulk operations**: moving several learners between cohorts, deleting in bulk, and bulk actions on a cohort's Learners tab or on Members. Imports cannot import anything but learners.
+- **Bulk operations**: moving several learners between cohorts, deleting in bulk, and bulk actions on a cohort's Learners tab or on Staff. Imports cannot import anything but learners.
 - **Email changes**: a learner's email is changed in the [Django admin](./admin-interface.md#learner-rosters).
 - **Deleting a learner**: learners are deactivated, never deleted, here.
 - **Site admin**: the role is not assigned or deactivated from the educator interface, nor from the Django admin.

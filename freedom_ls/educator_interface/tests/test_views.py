@@ -111,7 +111,6 @@ from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
-from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
@@ -2147,7 +2146,7 @@ def test_an_organisation_admin_sees_each_members_name_and_email(members_client):
     )
     client = members_client(organisation, "organisation_admin")
 
-    text = _get_document(client, _interface_url(organisation.slug, "members"))
+    text = _get_document(client, _interface_url(organisation.slug, "staff"))
 
     assert "Ada Lovelace" in text.text_content()
     assert "ada@example.com" in text.text_content()
@@ -2173,7 +2172,7 @@ def test_members_is_a_404_for_a_cohort_role_holder(members_client, role):
     cohort = CohortFactory(organisation=organisation)
     client = members_client(cohort, role)
 
-    response = client.get(_interface_url(organisation.slug, "members"))
+    response = client.get(_interface_url(organisation.slug, "staff"))
 
     assert response.status_code == 404
 
@@ -2189,7 +2188,7 @@ def test_a_site_admin_with_no_role_in_the_organisation_can_open_members(
     )
 
     response = logged_in_client(site_admin).get(
-        _interface_url(organisation.slug, "members")
+        _interface_url(organisation.slug, "staff")
     )
 
     assert response.status_code == 200
@@ -2201,7 +2200,7 @@ def test_a_nameless_member_shows_the_email_alone(members_client):
     _grant_member(organisation, first_name="", last_name="", email="bare@example.com")
     client = members_client(organisation, "organisation_admin")
 
-    document = _get_document(client, _interface_url(organisation.slug, "members"))
+    document = _get_document(client, _interface_url(organisation.slug, "staff"))
 
     names = [
         e.text_content() for e in document.cssselect("#main-content span.truncate")
@@ -2215,7 +2214,7 @@ def test_a_member_path_with_an_id_under_it_is_a_404(members_client):
     organisation = OrganisationFactory()
     client = members_client(organisation, "organisation_admin")
 
-    response = client.get(_interface_url(organisation.slug, f"members/{uuid.uuid4()}"))
+    response = client.get(_interface_url(organisation.slug, f"staff/{uuid.uuid4()}"))
 
     assert response.status_code == 404
 
@@ -2226,14 +2225,14 @@ def test_a_member_name_is_escaped(members_client):
     _grant_member(organisation, first_name="<b>x</b>")
     client = members_client(organisation, "organisation_admin")
 
-    response = client.get(_interface_url(organisation.slug, "members"))
+    response = client.get(_interface_url(organisation.slug, "staff"))
 
     assert "&lt;b&gt;x&lt;/b&gt;" in response.content.decode()
     assert "<b>x</b>" not in response.content.decode()
 
 
 def _members_document(client: Client, organisation: Organisation):
-    return _get_document(client, _interface_url(organisation.slug, "members"))
+    return _get_document(client, _interface_url(organisation.slug, "staff"))
 
 
 def _member_row(document, email: str):
@@ -2450,7 +2449,7 @@ def test_a_cohort_name_is_escaped_in_the_scope(members_client):
     _hold(UserFactory(), "cohort_viewer", cohort)
     client = members_client(organisation, "organisation_admin")
 
-    content = client.get(_interface_url(organisation.slug, "members")).content.decode()
+    content = client.get(_interface_url(organisation.slug, "staff")).content.decode()
 
     assert "&lt;i&gt;x&lt;/i&gt;" in content
     assert "<i>x</i>" not in content
@@ -2468,7 +2467,7 @@ def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
         _hold(user, "cohort_viewer", CohortFactory(organisation=organisation), grantor)
         LearnerFactory(user=user, organisation=organisation)
     client = members_client(organisation, "organisation_admin")
-    url = _interface_url(organisation.slug, "members")
+    url = _interface_url(organisation.slug, "staff")
 
     with django_assert_max_num_queries(QUERY_BOUND):
         response = client.get(url)
@@ -2493,7 +2492,7 @@ def _member_emails(document) -> list[str]:
 
 def _members_search(client: Client, organisation: Organisation, term: str):
     return _get_document(
-        client, _interface_url(organisation.slug, "members") + f"?members-q={term}"
+        client, _interface_url(organisation.slug, "staff") + f"?staff-q={term}"
     )
 
 
@@ -2526,7 +2525,7 @@ def test_the_role_filter_narrows_the_members_page(members_client):
 
     document = _get_document(
         client,
-        _interface_url(organisation.slug, "members") + "?members-role=cohort_viewer",
+        _interface_url(organisation.slug, "staff") + "?staff-role=cohort_viewer",
     )
 
     (row,) = document.cssselect("#main-content tbody tr")
@@ -2547,7 +2546,7 @@ def test_picking_a_role_from_the_default_drops_all_roles_from_its_link(members_c
         for a in document.cssselect("details a")
         if a.text_content().strip() == "Cohort admin"
     ]
-    assert link.get("href").endswith("?members-role=cohort_admin")
+    assert link.get("href").endswith("?staff-role=cohort_admin")
 
 
 @pytest.mark.django_db
@@ -2558,31 +2557,12 @@ def test_the_mobile_role_select_has_a_single_all_roles_option(members_client):
 
     document = _members_document(client, organisation)
 
-    (select,) = document.cssselect("select[name=members-role]")
+    (select,) = document.cssselect("select[name=staff-role]")
     labels = [o.text_content().strip() for o in select.cssselect("option")]
     assert labels[:2] == ["All roles", "Organisation admin"]
 
 
-@pytest.mark.django_db
-def test_the_help_paragraph_carries_each_role_description(members_client):
-    organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
-    config = get_role_config(organisation.site.name)
-
-    text = (
-        _members_document(client, organisation)
-        .cssselect("#main-content")[0]
-        .text_content()
-    )
-
-    assert "Members are the people who help run this organisation" in text
-    assert all(
-        f"{config[role].display_name}: {config[role].description}" in text
-        for role in ("organisation_admin", "cohort_admin", "cohort_viewer")
-    )
-
-
-ONLY_MEMBER_LINE = "You're the only member here."
+ONLY_MEMBER_LINE = "You're the only staff member here."
 
 
 @pytest.mark.django_db
@@ -2612,10 +2592,10 @@ def test_the_member_header_first_links_to_descending_first_name(members_client):
     organisation = OrganisationFactory()
     client = members_client(organisation, "organisation_admin")
 
-    document = _get_document(client, _interface_url(organisation.slug, "members"))
+    document = _get_document(client, _interface_url(organisation.slug, "staff"))
 
-    (link,) = document.xpath("//thead//a[normalize-space()='Member']")
-    assert "members-sort=-first_name" in link.get("href")
+    (link,) = document.xpath("//thead//a[normalize-space()='Staff member']")
+    assert "staff-sort=-first_name" in link.get("href")
 
 
 @pytest.mark.django_db
@@ -2629,9 +2609,9 @@ def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_clie
     (link,) = cell.cssselect("a")
     assert (
         cell.text_content().split("Clear filters")[0].strip()
-        == "No members match these filters."
+        == "No staff members match these filters."
     )
-    assert "members-q" not in link.get("href")
+    assert "staff-q" not in link.get("href")
 
 
 @pytest.mark.django_db
@@ -2641,11 +2621,11 @@ def test_a_filter_with_no_match_says_so(members_client):
 
     document = _get_document(
         client,
-        _interface_url(organisation.slug, "members") + "?members-role=cohort_viewer",
+        _interface_url(organisation.slug, "staff") + "?staff-role=cohort_viewer",
     )
 
     (cell,) = document.cssselect("#main-content tbody td")
-    assert "No members match these filters." in cell.text_content()
+    assert "No staff members match these filters." in cell.text_content()
 
 
 @pytest.mark.django_db
@@ -2659,8 +2639,8 @@ def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_cl
     document = _members_document(logged_in_client(site_admin), organisation)
 
     (cell,) = document.cssselect("#main-content tbody td")
-    assert "No members yet." in cell.text_content()
-    assert "Add member" in cell.text_content()
+    assert "No staff yet." in cell.text_content()
+    assert "Add staff member" in cell.text_content()
 
 
 @pytest.mark.django_db

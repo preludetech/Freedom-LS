@@ -35,7 +35,7 @@ Site-scoped admin pages are automatically filtered to the current site, consiste
 
 ## Cohort Permissions
 
-Each cohort's and organisation's admin page carries a permissions tab. It governs what a staff user can do with that object in the admin, and nothing else: it does not grant access in the educator interface or to cohort reports. Those come from [role assignments](./educator-interface.md#access-control), which have no admin page. Organisation admins manage organisation and cohort roles from the educator interface's [Members section](./educator-interface.md#members-and-roles); site admin is assigned by a developer.
+Each cohort's and organisation's admin page carries a permissions tab. It governs what a staff user can do with that object in the admin, and nothing else: it does not grant access in the educator interface or to cohort reports. Those come from [role assignments](./educator-interface.md#access-control), which have no admin page. Organisation admins manage organisation and cohort roles from the educator interface's [Staff section](./educator-interface.md#staff-and-roles); site admin is assigned by a developer.
 
 ## Organisation Management
 

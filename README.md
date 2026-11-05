@@ -112,7 +112,7 @@ Administrators can set deadlines, either for a whole group or for an individual 
 
 ## The educator experience
 
-Educators get their own panel, separate from both the learner view and the full administration area. It works on one organisation at a time: Dashboard, Cohorts, Learners and Courses sit under Teaching, and organisation admins also see Members and Audit log under Administration.
+Educators get their own panel, separate from both the learner view and the full administration area. It works on one organisation at a time: Dashboard, Cohorts, Learners and Courses sit under Teaching, and organisation admins also see Staff and Audit log under Administration.
 
 ![The educator dashboard: tiles for learners, cohorts, average progress and learners needing attention, above the list of learners who need attention.](docs/product/screenshots/educator_dashboard.png)
 
@@ -123,7 +123,7 @@ _The educator dashboard: tiles for learners, cohorts, average progress and learn
 - **Bulk actions.** Educators can act on many learners or cohorts at once, including everything that matches the current filter. Large runs continue in the background.
 - **Cohorts.** Educators create, rename, deactivate and delete cohorts, and register a cohort for courses.
 - **Courses.** Each course's visibility and the number of learners who have expressed interest in it. Visibility is read-only here.
-- **Members and roles.** Organisation admins add members, assign and deactivate their roles, and deactivate or reactivate them.
+- **Staff and roles.** Organisation admins add staff, assign and deactivate their roles, and deactivate or reactivate them.
 - **History.** Site and organisation admins see who changed what and when, on learner and cohort pages and in an audit log.
 - **Reports.** A cohort's progress report shows on screen, with a PDF to download.
 

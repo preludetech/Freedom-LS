@@ -1,4 +1,4 @@
-"""What the Members section shows about the roles a member holds."""
+"""What the Staff section shows about the roles a member holds."""
 
 from __future__ import annotations
 

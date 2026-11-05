@@ -1568,7 +1568,7 @@ class AddMemberAction(PanelAction):
     the address, choose the role, confirm. Nothing is written until the
     confirmation is submitted."""
 
-    label = "Add member"
+    label = "Add staff member"
     action_name = "add_member"
     capability = "freedom_ls_learner_management.add_organisationmember"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
@@ -1591,7 +1591,7 @@ class AddMemberAction(PanelAction):
 
     def _dialog_title(self, ctx: PanelContext) -> str:
         preset = self._preset(ctx)
-        return f"Add a member to {preset}" if preset else "Add a member"
+        return f"Add a staff member to {preset}" if preset else "Add a staff member"
 
     def _email_step(
         self, ctx: PanelContext, form: MemberEmailForm, status: int = 200

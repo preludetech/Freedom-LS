@@ -1734,11 +1734,11 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 
 class MemberDataTable(DataTable):
-    noun = "members"
+    noun = "staff members"
     search_fields = ["first_name", "last_name", "email"]
     default_sort = "first_name"
-    empty_message = "No members yet. Add the first member to give someone access to this organisation."
-    empty_no_results = "No members match these filters."
+    empty_message = "No staff yet. Add the first staff member to give someone access to this organisation."
+    empty_no_results = "No staff members match these filters."
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -1790,7 +1790,7 @@ class MemberDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             Column(
-                header="Member",
+                header="Staff member",
                 template="educator_interface/data-table-cells/member.html",
                 sortable=True,
                 sort_field="first_name",
@@ -1814,17 +1814,17 @@ class MemberDataTable(DataTable):
 
 
 class MemberConfig(OrganisationSectionConfig, ListViewConfig):
-    url_name = "members"
-    menu_label = "Members"
+    url_name = "staff"
+    menu_label = "Staff"
     icon = "user"
     model = User
     list_view = MemberDataTable
-    table_key = "members"
+    table_key = "staff"
     view_capability = "freedom_ls_learner_management.view_organisationmember"
     # Rows have no page of their own, so there is nothing to authorise.
-    check_access_exempt_reason = "members have no instance pages"
+    check_access_exempt_reason = "staff members have no instance pages"
 
-    intro_template_name = "educator_interface/partials/members_intro.html"
+    intro_template_name = "educator_interface/partials/staff_only_admin_callout.html"
     refresh_events = (MEMBER_CHANGED,)
 
     @classmethod

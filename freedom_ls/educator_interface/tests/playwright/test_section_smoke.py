@@ -69,7 +69,7 @@ def seed_sections(user: AbstractBaseUser) -> tuple[Organisation, str]:
         ("learners", "Learners", "Ada Lovelace"),
         ("cohorts", "Cohorts", "Evening group"),
         ("courses", "Courses", "Algebra"),
-        ("members", "Members", "{email}"),
+        ("staff", "Staff", "{email}"),
         ("audit-log", "Audit log", "Grace Hopper"),
         ("cohorts/{cohort}/__tabs/report", "Cohort report", "Cohort at a glance"),
     ],

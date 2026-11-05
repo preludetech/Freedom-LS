@@ -1,4 +1,4 @@
-"""E2E Playwright flow for the Members list: add a user as a cohort admin on
+"""E2E Playwright flow for the Staff list: add a user as a cohort admin on
 two cohorts, change their cohorts and remove the role, all through the native
 #app-modal. The refusals, headers and outcomes are covered by test_actions.py;
 what only a browser shows is the Alpine cohort checklist and role chooser, the
@@ -47,12 +47,12 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
         if response.status >= 400:
             failed.append(f"{response.status} {response.url}")
 
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     page.on("response", record_failure)
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
 
-    main.get_by_role("button", name="Add member", exact=True).first.click()
+    main.get_by_role("button", name="Add staff member", exact=True).first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
     modal.get_by_role("button", name="Look up", exact=True).click()
     expect(modal.get_by_text("Existing account")).to_be_visible()
@@ -61,10 +61,10 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     modal.get_by_label("Alpha Cohort").check()
     modal.get_by_label("Beta Cohort").check()
     expect(modal.get_by_text("2 selected")).to_be_visible()
-    modal.get_by_role("button", name="Add member", exact=True).click()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
 
     expect(modal.get_by_text("Scope: Alpha Cohort and Beta Cohort")).to_be_visible()
-    modal.get_by_role("button", name="Add member", exact=True).click()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
 
     expect(modal).to_be_hidden()
     row = main.get_by_role("row").filter(has_text="Erin Existing")
@@ -96,7 +96,7 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
         assert_no_horizontal_overflow(page)
 
     page.set_viewport_size(QA_VIEWPORTS[0])
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     expect(main.locator("[data-card-primary-line]").first).to_be_visible()
 
 
@@ -111,16 +111,18 @@ def test_clear_filters_after_a_no_match_search_empties_the_search_box(
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     main = page.locator("#main-content")
-    search = main.locator("#members-q")
+    search = main.locator("#staff-q")
     search.fill("zzz")
     # The empty state renders once for the table and once for the card list.
-    expect(main.get_by_text("No members match these filters.").first).to_be_visible()
+    expect(
+        main.get_by_text("No staff members match these filters.").first
+    ).to_be_visible()
 
     main.get_by_role("link", name="Clear filters", exact=True).first.click()
 
-    expect(main.get_by_text("No members match these filters.")).to_have_count(0)
+    expect(main.get_by_text("No staff members match these filters.")).to_have_count(0)
     expect(search).to_have_value("")
 
 
@@ -139,7 +141,7 @@ def test_phone_row_actions_and_toolbar_controls_meet_the_touch_target(
     )
     assign_role(grantor, viewer, "cohort_viewer", cohort)
     page.set_viewport_size(QA_VIEWPORTS[0])
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     main = page.locator("#main-content")
     card = main.locator("li").filter(has_text="Vee Viewer")
     expect(card).to_be_visible()
@@ -168,18 +170,18 @@ def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
         CohortFactory(organisation=organisation, name=f"Cohort {number:02d}")
     UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
     page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     modal = page.locator("#app-modal")
 
     page.locator("#main-content").get_by_role(
-        "button", name="Add member", exact=True
+        "button", name="Add staff member", exact=True
     ).first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
     modal.get_by_role("button", name="Look up", exact=True).click()
     modal.get_by_text("Cohort admin", exact=True).click()
 
     expect(
-        modal.get_by_role("button", name="Add member", exact=True)
+        modal.get_by_role("button", name="Add staff member", exact=True)
     ).to_be_in_viewport(ratio=1)
 
 
@@ -202,7 +204,7 @@ def test_long_email_of_a_nameless_member_does_not_scroll_a_phone_sideways(
     assign_role(grantor, member, "organisation_admin", organisation)
 
     page.set_viewport_size({"width": 390, "height": 844})
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
 
     expect(
         page.locator("#main-content")
@@ -236,7 +238,7 @@ def test_the_change_cohorts_dialog_for_a_long_email_fits_a_phone(
     assign_role(grantor, member, "cohort_viewer", cohort)
 
     page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
     page.locator("#main-content").get_by_role(
         "button", name="Change cohorts", exact=True
     ).first.click()
