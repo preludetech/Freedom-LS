@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from base64 import urlsafe_b64encode
 from datetime import UTC, date, datetime
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -642,16 +643,28 @@ def test_counts_come_back_in_day_order_across_pages(client, auth, settings):
     "cursor",
     [
         pytest.param(
-            _cursor(
-                ["2030-01-01T00:00:00+00:00", "00000000-0000-0000-0000-000000000000"]
-            ),
+            _cursor(["day", "2030-01-01T00:00:00+00:00", str(uuid4())]),
             id="datetime_on_a_date_column",
         ),
+        pytest.param(_cursor(["day", "20300101", str(uuid4())]), id="compact_date"),
         pytest.param("a" * 513, id="too_long"),
     ],
 )
 def test_a_cursor_the_api_did_not_issue_is_400_on_counts(client, auth, cursor):
     response = client.get(reverse(COUNTS_URL_NAME), {"cursor": cursor}, headers=auth)
+
+    assert response.status_code == 400
+    assert response.json() == {"cursor": ["The cursor is not one this API issued."]}
+
+
+def test_a_cursor_issued_by_another_endpoint_is_400(client, auth):
+    ReferralCodeFactory.create_batch(2)
+    next_link = client.get(
+        reverse("api:referral_code_list"), {"page_size": 1}, headers=auth
+    ).json()["next"]
+    cursor = parse_qs(urlsplit(next_link).query)["cursor"][0]
+
+    response = client.get(reverse(HITS_URL_NAME), {"cursor": cursor}, headers=auth)
 
     assert response.status_code == 400
     assert response.json() == {"cursor": ["The cursor is not one this API issued."]}
@@ -670,7 +683,7 @@ def test_day_since_includes_a_count_on_that_day_and_excludes_an_earlier_one(
     assert [row["id"] for row in body["results"]] == [str(on_the_day.pk)]
 
 
-@pytest.mark.parametrize("value", ["2030-01-02T00:00:00", "not-a-date"])
+@pytest.mark.parametrize("value", ["2030-01-02T00:00:00", "2030-1-2", "not-a-date"])
 def test_a_day_since_that_is_not_a_date_is_400_naming_the_parameter(
     client, auth, value
 ):

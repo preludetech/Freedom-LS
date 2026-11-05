@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import TypeVar
 from uuid import UUID
 
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Model, Q, QuerySet
 from django.utils import timezone
@@ -37,25 +37,59 @@ def _parse_aware_datetime(raw: str) -> datetime:
     return parsed
 
 
+def _parse_date(raw: str) -> date:
+    # date.fromisoformat rejects a value with a time part, so a datetime
+    # cursor on a date column fails here rather than being truncated to a day.
+    return date.fromisoformat(raw)
+
+
+def _exactly[V: date](parse: Callable[[str], V]) -> Callable[[str], V]:
+    """`parse`, accepting only the one spelling `_encode_cursor` writes.
+
+    fromisoformat also reads forms this class never issues (`20300101`,
+    `2030-W01-1`, a `Z` suffix); a value that does not round-trip is not a
+    cursor this class wrote.
+    """
+
+    def parse_exactly(raw: str) -> V:
+        parsed = parse(raw)
+        if parsed.isoformat() != raw:
+            raise ValueError(BAD_CURSOR)
+        return parsed
+
+    return parse_exactly
+
+
 # Keyed by get_internal_type, not matched with isinstance: DateTimeField
 # subclasses DateField, so an isinstance chain would have to be ordered by hand.
 _CURSOR_PARSERS: dict[str, Callable[[str], date]] = {
-    "DateTimeField": _parse_aware_datetime,
-    # date.fromisoformat rejects a value with a time part, so a datetime
-    # cursor on a date column fails here rather than being truncated to a day.
-    "DateField": date.fromisoformat,
+    "DateTimeField": _exactly(_parse_aware_datetime),
+    "DateField": _exactly(_parse_date),
 }
+
+
+def cursor_field_problem(model: type[Model], cursor_field: str) -> str | None:
+    """Why `cursor_field` cannot be paged on, or None when it can."""
+    try:
+        field = model._meta.get_field(cursor_field)
+    except FieldDoesNotExist:
+        return f"{model.__name__} has no field {cursor_field!r}."
+    if field.get_internal_type() not in _CURSOR_PARSERS:
+        return f"{model.__name__}.{cursor_field} is not a DateTimeField or DateField."
+    if field.null:
+        return (
+            f"{model.__name__}.{cursor_field} is nullable, and a NULL has no "
+            "position in the page order."
+        )
+    return None
 
 
 def _cursor_parser(model: type[Model], cursor_field: str) -> Callable[[str], date]:
     """The parser for the cursor field's type."""
-    field = model._meta.get_field(cursor_field)
-    parse = _CURSOR_PARSERS.get(field.get_internal_type())
-    if parse is None:
-        raise ImproperlyConfigured(
-            f"{model.__name__}.{cursor_field} is not a field this pagination can page on."
-        )
-    return parse
+    problem = cursor_field_problem(model, cursor_field)
+    if problem is not None:
+        raise ImproperlyConfigured(problem)
+    return _CURSOR_PARSERS[model._meta.get_field(cursor_field).get_internal_type()]
 
 
 class ApiKeysetPagination(BasePagination):
@@ -78,9 +112,15 @@ class ApiKeysetPagination(BasePagination):
         queryset = queryset.order_by(cursor_field, "id")
         if position is not None:
             value, last_pk = position
+            # The leading __gte repeats what the OR says, but an OR alone is
+            # no range condition: with it, the (site, field) index starts at
+            # the cursor instead of scanning every row before it on each page.
             queryset = queryset.filter(
-                Q(**{f"{cursor_field}__gt": value})
-                | Q(**{cursor_field: value, "pk__gt": last_pk})
+                Q(**{f"{cursor_field}__gte": value})
+                & (
+                    Q(**{f"{cursor_field}__gt": value})
+                    | Q(**{cursor_field: value, "pk__gt": last_pk})
+                )
             )
         # One row past the page says whether a next page exists without a count.
         rows = list(queryset[: self.page_size + 1])
@@ -153,8 +193,9 @@ class ApiKeysetPagination(BasePagination):
         )
 
     def _encode_cursor(self, value: date, pk: int | UUID) -> str:
+        # The field name ties the cursor to the endpoint that issued it.
         # datetime is a date, so one signature covers both cursor field types.
-        payload = json.dumps([value.isoformat(), str(pk)])
+        payload = json.dumps([self.cursor_field, value.isoformat(), str(pk)])
         return urlsafe_b64encode(payload.encode()).decode()
 
     def _decode_cursor(
@@ -167,15 +208,17 @@ class ApiKeysetPagination(BasePagination):
             raise ValidationError({self.cursor_query_param: [BAD_CURSOR]})
         try:
             decoded = json.loads(urlsafe_b64decode(raw.encode()))
-            # Exactly two strings: anything else is not a cursor this class wrote.
+            # Exactly three strings, the first naming this view's cursor
+            # field: anything else is not a cursor this class wrote for it.
             if not (
                 isinstance(decoded, list)
-                and len(decoded) == 2
+                and len(decoded) == 3
                 and all(isinstance(part, str) for part in decoded)
+                and decoded[0] == self.cursor_field
             ):
                 raise ValueError(BAD_CURSOR)
-            value = parse(decoded[0])
-            pk = model._meta.pk.to_python(decoded[1])
+            value = parse(decoded[1])
+            pk = model._meta.pk.to_python(decoded[2])
         except (
             ValueError,
             TypeError,

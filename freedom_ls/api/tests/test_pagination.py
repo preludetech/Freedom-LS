@@ -74,26 +74,31 @@ def test_a_tie_group_larger_than_a_page_has_no_duplicates_or_skips(
     assert len(seen) == 5
 
 
+NIL_UUID = "00000000-0000-0000-0000-000000000000"
+INSTANT = "2030-01-01T00:00:00+00:00"
+
+
 @pytest.mark.parametrize(
     "cursor",
     [
         pytest.param(
-            _cursor(["2030-01-01T00:00:00+00:00", "not-a-uuid"]), id="pk_not_a_uuid"
+            _cursor(["updated_at", INSTANT, "not-a-uuid"]), id="pk_not_a_uuid"
         ),
+        pytest.param(_cursor([INSTANT, NIL_UUID]), id="two_elements"),
         pytest.param(
-            _cursor(
-                [
-                    "2030-01-01T00:00:00+00:00",
-                    "00000000-0000-0000-0000-000000000000",
-                    "x",
-                ]
-            ),
-            id="three_elements",
+            _cursor(["updated_at", INSTANT, NIL_UUID, "x"]), id="four_elements"
         ),
         pytest.param(_cursor({"a": "b"}), id="object"),
         pytest.param(
-            _cursor(["2030-01-01T00:00:00", "00000000-0000-0000-0000-000000000000"]),
+            _cursor(["updated_at", "2030-01-01T00:00:00", NIL_UUID]),
             id="naive_timestamp",
+        ),
+        pytest.param(
+            _cursor(["updated_at", "2030-01-01T00:00:00Z", NIL_UUID]),
+            id="spelling_the_api_never_writes",
+        ),
+        pytest.param(
+            _cursor(["created_at", INSTANT, NIL_UUID]), id="issued_for_another_field"
         ),
         pytest.param("x" * (CURSOR_MAX_LENGTH + 1), id="too_long"),
         pytest.param("!!!not base64!!!", id="not_base64"),
@@ -206,12 +211,20 @@ def test_a_list_pages_on_the_cursor_field_when_it_is_not_updated_at(
     ]
 
 
-def test_a_field_that_is_not_a_date_or_datetime_is_a_configuration_error(
-    mock_site_context,
+@pytest.mark.parametrize(
+    "cursor_field",
+    [
+        pytest.param("name", id="not_a_date_or_datetime"),
+        pytest.param("updated", id="not_a_field"),
+        pytest.param("expires_at", id="nullable"),
+    ],
+)
+def test_a_field_that_cannot_be_paged_on_is_a_configuration_error(
+    mock_site_context, cursor_field
 ):
     request = Request(factory.get("/pages/"))
 
     with pytest.raises(ImproperlyConfigured):
         ApiKeysetPagination().paginate_queryset(
-            ApiKey._base_manager.all(), request, CursorFieldView("name")
+            ApiKey._base_manager.all(), request, CursorFieldView(cursor_field)
         )

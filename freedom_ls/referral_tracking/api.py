@@ -7,14 +7,9 @@ every lookup to the key's site instead, so no lookup depends on thread state.
 
 import django_filters
 
-from django.db.models import QuerySet
 from rest_framework import serializers
 
-from freedom_ls.api.filters import (
-    AwareIsoDateTimeFilter,
-    IsoDateFilter,
-    UpdatedSinceFilterSet,
-)
+from freedom_ls.api.filters import AwareIsoDateTimeFilter, IsoDateFilter
 from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
@@ -41,13 +36,10 @@ class ReferralCodeApiSerializer(serializers.ModelSerializer):
 
 
 class ReferralCodeApiViewSet(ReadOnlyApiViewSet):
+    queryset = ReferralCode._base_manager.all()
     cursor_field = "created_at"
     required_scope = ApiScope.REFERRAL_DATA
     serializer_class = ReferralCodeApiSerializer
-
-    def get_queryset(self) -> QuerySet[ReferralCode]:
-        # Base manager: the base viewset binds the site (see the module docstring).
-        return ReferralCode._base_manager.all()
 
 
 router.register("referral-codes", ReferralCodeApiViewSet, basename="referral_code")
@@ -71,7 +63,7 @@ class ReferralCodeHitApiSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ReferralCodeHitFilterSet(UpdatedSinceFilterSet):
+class ReferralCodeHitFilterSet(django_filters.FilterSet):
     # Hits have no updated_at; hit_at is the instant a hit row can be filtered on.
     updated_since = AwareIsoDateTimeFilter(
         field_name="hit_at",
@@ -85,14 +77,11 @@ class ReferralCodeHitFilterSet(UpdatedSinceFilterSet):
 
 
 class ReferralCodeHitApiViewSet(ReadOnlyApiViewSet):
+    queryset = ReferralCodeHit._base_manager.select_related("referral_code")
     cursor_field = "hit_at"
     filterset_class = ReferralCodeHitFilterSet
     required_scope = ApiScope.REFERRAL_DATA
     serializer_class = ReferralCodeHitApiSerializer
-
-    def get_queryset(self) -> QuerySet[ReferralCodeHit]:
-        # Base manager: the base viewset binds the site (see the module docstring).
-        return ReferralCodeHit._base_manager.select_related("referral_code")
 
 
 router.register(
@@ -131,7 +120,7 @@ class SignupAttributionApiSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class SignupAttributionFilterSet(UpdatedSinceFilterSet):
+class SignupAttributionFilterSet(django_filters.FilterSet):
     # Attributions are append-only; signed_up_at is the instant a row can be filtered on.
     updated_since = AwareIsoDateTimeFilter(
         field_name="signed_up_at",
@@ -145,14 +134,11 @@ class SignupAttributionFilterSet(UpdatedSinceFilterSet):
 
 
 class SignupAttributionApiViewSet(ReadOnlyApiViewSet):
+    queryset = SignupAttribution._base_manager.select_related("user")
     cursor_field = "signed_up_at"
     filterset_class = SignupAttributionFilterSet
     required_scope = ApiScope.REFERRAL_DATA
     serializer_class = SignupAttributionApiSerializer
-
-    def get_queryset(self) -> QuerySet[SignupAttribution]:
-        # Base manager: the base viewset binds the site (see the module docstring).
-        return SignupAttribution._base_manager.select_related("user")
 
 
 router.register(
@@ -195,14 +181,11 @@ class FirstTouchCountFilterSet(django_filters.FilterSet):
 
 
 class FirstTouchCountApiViewSet(ReadOnlyApiViewSet):
+    queryset = FirstTouchCount._base_manager.all()
     cursor_field = "day"
     filterset_class = FirstTouchCountFilterSet
     required_scope = ApiScope.REFERRAL_DATA
     serializer_class = FirstTouchCountApiSerializer
-
-    def get_queryset(self) -> QuerySet[FirstTouchCount]:
-        # Base manager: the base viewset binds the site (see the module docstring).
-        return FirstTouchCount._base_manager.all()
 
 
 router.register(

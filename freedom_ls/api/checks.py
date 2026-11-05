@@ -10,8 +10,10 @@ from django.core.checks import Error, Tags, Warning, register
 from django.utils.module_loading import autodiscover_modules
 from rest_framework.views import APIView
 
+from .pagination import cursor_field_problem
 from .routers import router
 from .scopes import ApiScope
+from .viewsets import ReadOnlyApiViewSet
 
 _PER_PROCESS_BACKENDS = (
     "django.core.cache.backends.locmem.LocMemCache",
@@ -54,6 +56,30 @@ def viewsets_without_scope(
     ]
 
 
+def viewsets_with_a_bad_cursor_field(
+    registry: Iterable[tuple[str, type[APIView], str]],
+) -> list[Error]:
+    """One error for each registered API viewset whose ``cursor_field`` cannot be paged on.
+
+    A viewset with no ``queryset`` attribute names no model, so it is skipped.
+    """
+    errors: list[Error] = []
+    for _prefix, viewset, _basename in registry:
+        if not issubclass(viewset, ReadOnlyApiViewSet) or viewset.queryset is None:
+            continue
+        problem = cursor_field_problem(viewset.queryset.model, viewset.cursor_field)
+        if problem is not None:
+            errors.append(
+                Error(
+                    f"{viewset.__module__}.{viewset.__name__}: {problem}",
+                    hint="Set cursor_field to a DateTimeField or DateField of the model "
+                    "that is not nullable.",
+                    id="freedom_ls_api.E002",
+                )
+            )
+    return errors
+
+
 @register(Tags.urls)
 def check_viewsets_declare_a_scope(
     app_configs: Sequence[AppConfig] | None, **kwargs: object
@@ -62,3 +88,11 @@ def check_viewsets_declare_a_scope(
     # them again is a no-op once urls.py has done it.
     autodiscover_modules("api")
     return viewsets_without_scope(router.registry)
+
+
+@register(Tags.urls)
+def check_viewsets_page_on_a_valid_field(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[Error]:
+    autodiscover_modules("api")
+    return viewsets_with_a_bad_cursor_field(router.registry)

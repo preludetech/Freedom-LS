@@ -21,7 +21,13 @@ A project that subclasses `freedom_ls.api.pagination.ApiKeysetPagination` and se
 attribute must move to the viewset instead: `ordering` is gone. The paginator now orders and pages
 on the viewset's `cursor_field` (default `"updated_at"`) and then `id`. Set `cursor_field` on a
 `freedom_ls.api.viewsets.ReadOnlyApiViewSet` subclass to a `DateTimeField` or `DateField` of the
-model. Any other field type raises `ImproperlyConfigured` on the first list request.
+model that does not allow NULL. `manage.py check` reports any other value as `freedom_ls_api.E002`,
+reading the model from the viewset's `queryset` attribute; a list request on such a viewset raises
+`ImproperlyConfigured`.
+
+Cursors now carry the field they page on, so a `next` link issued before this release is a 400
+after it. A sync client that kept a `next` link across the deploy restarts that run from its
+checkpoint; a client that finishes each run before stopping is unaffected.
 
 ## Manual steps
 

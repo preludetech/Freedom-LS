@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import date, datetime
 
 import django_filters
 from django_filters.fields import IsoDateTimeField
@@ -34,10 +35,25 @@ class AwareIsoDateTimeFilter(IsoDateTimeFilter):
     field_class = AwareIsoDateTimeField
 
 
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
 class IsoDateField(forms.DateField):
     # One format, so a datetime or a localised date is rejected rather than parsed.
     input_formats = ["%Y-%m-%d"]
     default_error_messages = {"invalid": "Give a date as YYYY-MM-DD."}
+
+    def to_python(self, value: str | datetime | date | None) -> date | None:
+        # strptime's %m and %d also take a single digit, so the padding is
+        # checked here before the format is consulted.
+        if (
+            isinstance(value, str)
+            and value.strip()
+            and not _ISO_DATE.match(value.strip())
+        ):
+            raise forms.ValidationError(self.error_messages["invalid"], code="invalid")
+        result: date | None = super().to_python(value)
+        return result
 
 
 class IsoDateFilter(django_filters.DateFilter):

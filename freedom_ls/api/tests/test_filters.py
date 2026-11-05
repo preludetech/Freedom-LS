@@ -67,6 +67,7 @@ def test_an_iso_date_is_parsed_to_a_date():
     [
         pytest.param("2030-01-01T00:00:00", id="datetime"),
         pytest.param("01/01/2030", id="localised"),
+        pytest.param("2030-1-2", id="unpadded"),
         pytest.param("not-a-date", id="unparseable"),
     ],
 )
