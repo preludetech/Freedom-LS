@@ -6,6 +6,7 @@ import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.sites.models import Site
+from django.core.cache import cache
 
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -31,3 +32,16 @@ def without_request() -> Iterator[None]:
     yield
     if request is not None:
         _thread_locals.request = request
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache() -> Iterator[None]:
+    """Empty the cache around every test in this app.
+
+    The API key throttle counts in the cache, and the default LocMemCache
+    lives for the whole test process, so counts would otherwise carry from one
+    test into the next.
+    """
+    cache.clear()
+    yield
+    cache.clear()
