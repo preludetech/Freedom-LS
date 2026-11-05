@@ -112,20 +112,40 @@ def _qualified(
     ]
 
 
-def answer_cell(answer: QuestionAnswer | None) -> str:
-    """One answer as spreadsheet text; an empty cell for a question never answered."""
-    if answer is None:
-        return ""
+def answer_value(answer: QuestionAnswer) -> str | list[str] | None:
+    """An answer's value by question type; None when the row holds nothing.
+
+    Checkboxes give a list, because several options can be selected; a single
+    choice gives one string. Dates and times stay as their stored ISO text: a
+    sheet parses that where it would not parse the locale-formatted display text.
+    """
     question_type = answer.question.type
     if question_type in OPTION_QUESTION_TYPES:
         options = sorted(answer.selected_options.all(), key=lambda option: option.order)
-        return "; ".join(option.text for option in options)
+        texts = [option.text for option in options]
+        if not texts:
+            return None
+        if question_type == QuestionType.CHECKBOXES:
+            return texts
+        # Multiple choice and dropdown hold one option by design, but a row
+        # that somehow holds several must not lose any.
+        return "; ".join(texts)
     if question_type == QuestionType.FILE_UPLOAD:
         # The name the applicant gave the file, never its storage key or a URL.
         # hasattr, because a missing reverse one-to-one raises rather than returning None.
         if not hasattr(answer, "answer_file"):
-            return ""
-        return answer.answer_file.original_filename
-    # Dates and times stay as their stored ISO text: a sheet parses that where
-    # it would not parse the locale-formatted display text.
-    return answer.text_answer
+            return None
+        return answer.answer_file.original_filename or None
+    return answer.text_answer or None
+
+
+def answer_cell(answer: QuestionAnswer | None) -> str:
+    """One answer as spreadsheet text; an empty cell for a question never answered."""
+    if answer is None:
+        return ""
+    value = answer_value(answer)
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return "; ".join(value)
+    return value

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from freedom_ls.form_engine.exports import answer_cell, answer_columns
+from freedom_ls.form_engine.exports import answer_cell, answer_columns, answer_value
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -232,3 +232,62 @@ def test_a_question_text_used_by_one_form_only_keeps_its_bare_header(
         "Twice (3)",
         "Other",
     ]
+
+
+@pytest.mark.parametrize(
+    ("question_type", "options", "expected"),
+    [
+        ("checkboxes", [("B", 1), ("A", 0)], ["A", "B"]),
+        ("checkboxes", [], None),
+        ("multiple_choice", [("Search", 0)], "Search"),
+        ("multiple_choice", [("B", 1), ("A", 0)], "A; B"),
+        ("multiple_choice", [], None),
+        ("dropdown", [("Cape Town", 0)], "Cape Town"),
+        ("dropdown", [], None),
+    ],
+)
+def test_answer_value_of_an_option_question_follows_option_order(
+    mock_site_context, question_type, options, expected
+):
+    answer = _answer(question_type)
+    for text, order in options:
+        option = QuestionOptionFactory(question=answer.question, text=text, order=order)
+        answer.selected_options.add(option)
+
+    assert answer_value(answer) == expected
+
+
+def test_answer_value_of_a_file_upload_is_the_original_filename(mock_site_context):
+    answer = _answer("file_upload")
+    QuestionAnswerFileFactory(answer=answer, original_filename="id-scan.png")
+
+    assert answer_value(answer) == "id-scan.png"
+
+
+def test_answer_value_of_a_file_upload_without_a_file_is_none(mock_site_context):
+    answer = _answer("file_upload")
+
+    assert answer_value(answer) is None
+
+
+def test_answer_value_of_a_file_upload_with_an_empty_name_is_none(mock_site_context):
+    answer = _answer("file_upload")
+    QuestionAnswerFileFactory(answer=answer, original_filename="")
+
+    assert answer_value(answer) is None
+
+
+@pytest.mark.parametrize(
+    ("question_type", "stored", "expected"),
+    [
+        ("date", "1990-02-03", "1990-02-03"),
+        ("short_text", "Thandi", "Thandi"),
+        ("short_text", "", None),
+    ],
+)
+def test_answer_value_of_a_text_question_is_the_stored_text(
+    mock_site_context, question_type, stored, expected
+):
+    answer = _answer(question_type, text_answer=stored)
+
+    assert answer_value(answer) == expected
