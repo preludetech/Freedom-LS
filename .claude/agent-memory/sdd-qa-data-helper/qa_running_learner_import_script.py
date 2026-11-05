@@ -1,7 +1,5 @@
 # ruff: noqa: T201 -- a manage.py shell script whose output is printed for the QA operator
 
-from datetime import timedelta
-
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
@@ -28,7 +26,7 @@ li = LearnerImport.objects.create(
     status=ImportStatus.RUNNING,
     row_count=ROWS,
     processed_count=DONE,
-    started_at=now - timedelta(minutes=1),
+    started_at=now,
 )
 LearnerImportRow.objects.bulk_create(
     [
