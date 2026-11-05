@@ -13,8 +13,11 @@ from rest_framework.test import APIClient
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import collect_pages
-from freedom_ls.referral_tracking.factories import ReferralCodeFactory
-from freedom_ls.referral_tracking.models import ReferralCode
+from freedom_ls.referral_tracking.factories import (
+    ReferralCodeFactory,
+    ReferralCodeHitFactory,
+)
+from freedom_ls.referral_tracking.models import ReferralCode, ReferralCodeHit
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -39,6 +42,21 @@ RESOURCES = [
             "created_at",
         },
         id="referral_codes",
+    ),
+    pytest.param(
+        "api:referral_code_hit_list",
+        "api:referral_code_hit_detail",
+        ReferralCodeHitFactory,
+        "ReferralCodeHit",
+        {
+            "id",
+            "referral_code",
+            "referral_code_text",
+            "door",
+            "is_machine_fetch",
+            "hit_at",
+        },
+        id="referral_code_hits",
     ),
 ]
 
@@ -236,3 +254,118 @@ def test_a_code_never_hit_has_a_null_last_hit_at(client, auth):
     ]
 
     assert row["last_hit_at"] is None
+
+
+HITS_URL_NAME = "api:referral_code_hit_list"
+HIT_INSTANT = datetime(2030, 1, 1, tzinfo=UTC)
+
+
+def test_a_hit_row_carries_its_codes_id_and_text(client, auth):
+    code = ReferralCodeFactory()
+    ReferralCodeHitFactory(referral_code=code)
+
+    row = client.get(reverse(HITS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["referral_code"] == str(code.pk)
+    assert row["referral_code_text"] == code.code
+
+
+def test_a_hit_row_renders_the_door_as_stored(client, auth):
+    ReferralCodeHitFactory()
+
+    row = client.get(reverse(HITS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["door"] == "go"
+
+
+def test_a_hit_row_renders_is_machine_fetch_as_a_json_boolean(client, auth):
+    ReferralCodeHitFactory(is_machine_fetch=False)
+
+    row = client.get(reverse(HITS_URL_NAME), headers=auth).json()["results"][0]
+
+    assert row["is_machine_fetch"] is False
+
+
+def test_a_page_of_hits_does_not_query_per_row(
+    client, auth, django_assert_max_num_queries
+):
+    code = ReferralCodeFactory()
+    ReferralCodeHitFactory.create_batch(20, referral_code=code)
+
+    with django_assert_max_num_queries(8):
+        response = client.get(reverse(HITS_URL_NAME), headers=auth)
+
+    assert len(response.json()["results"]) == 20
+
+
+def test_1500_hits_with_one_hit_at_page_without_loss_or_repeat(
+    client, auth, settings, mock_site_context
+):
+    settings.API_MAX_PAGE_SIZE = 500
+    code = ReferralCodeFactory()
+    rows = ReferralCodeHitFactory.build_batch(1500, referral_code=code)
+    ReferralCodeHit._base_manager.bulk_create(rows)
+    ReferralCodeHit._base_manager.update(hit_at=HIT_INSTANT)
+
+    pages = collect_pages(client, reverse(HITS_URL_NAME) + "?page_size=500", auth)
+
+    ids = [row["id"] for page in pages for row in page["results"]]
+    assert len(ids) == 1500
+    assert len(set(ids)) == 1500
+
+
+def test_hits_come_back_in_hit_at_order_across_pages(client, auth, settings):
+    settings.API_PAGE_SIZE = 2
+    first, second, third = (ReferralCodeHitFactory() for _ in range(3))
+    for hit, day in ((first, 3), (second, 2), (third, 1)):
+        ReferralCodeHit._base_manager.filter(pk=hit.pk).update(
+            hit_at=datetime(2030, 1, day, tzinfo=UTC)
+        )
+
+    pages = collect_pages(client, reverse(HITS_URL_NAME), auth)
+
+    assert [[row["id"] for row in page["results"]] for page in pages] == [
+        [str(third.pk), str(second.pk)],
+        [str(first.pk)],
+    ]
+
+
+def test_updated_since_includes_a_hit_at_that_instant_and_excludes_one_before(
+    client, auth
+):
+    at = ReferralCodeHitFactory()
+    before = ReferralCodeHitFactory()
+    ReferralCodeHit._base_manager.filter(pk=at.pk).update(hit_at=HIT_INSTANT)
+    ReferralCodeHit._base_manager.filter(pk=before.pk).update(
+        hit_at=datetime(2029, 12, 31, 23, 59, 59, tzinfo=UTC)
+    )
+
+    body = client.get(
+        reverse(HITS_URL_NAME), {"updated_since": "2030-01-01T00:00:00Z"}, headers=auth
+    ).json()
+
+    assert [row["id"] for row in body["results"]] == [str(at.pk)]
+
+
+def test_a_naive_updated_since_on_hits_is_400_naming_the_parameter(client, auth):
+    response = client.get(
+        reverse(HITS_URL_NAME), {"updated_since": "2030-01-01T00:00:00"}, headers=auth
+    )
+
+    assert response.status_code == 400
+    assert "updated_since" in response.json()
+
+
+def test_the_next_link_keeps_updated_since_and_page_size(client, auth, settings):
+    settings.API_PAGE_SIZE = 2
+    for hit in ReferralCodeHitFactory.create_batch(3):
+        ReferralCodeHit._base_manager.filter(pk=hit.pk).update(hit_at=HIT_INSTANT)
+
+    body = client.get(
+        reverse(HITS_URL_NAME),
+        {"updated_since": "2030-01-01T00:00:00Z", "page_size": 2},
+        headers=auth,
+    ).json()
+
+    assert "updated_since=2030-01-01T00%3A00%3A00Z" in body["next"]
+    assert "page_size=2" in body["next"]
