@@ -42,9 +42,11 @@ def test_ticking_an_action_in_the_toolbar_checklist_narrows_the_log(
 
     main.get_by_text("Add filter", exact=True).click()
     main.locator("summary", has_text="What").click()
-    popover = main.locator("form.surface")
-    popover.get_by_label("Cohort created", exact=True).check()
-    popover.get_by_role("button", name="Apply", exact=True).click()
+    checklist = main.locator("form").filter(
+        has=page.get_by_role("button", name="Apply", exact=True)
+    )
+    checklist.get_by_label("Cohort created", exact=True).check()
+    checklist.get_by_role("button", name="Apply", exact=True).click()
 
     expect(page).to_have_url(re.compile(r"audit_log-what=cohort\.created"))
     expect(main.get_by_role("row")).to_have_count(2)

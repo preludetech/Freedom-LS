@@ -11,6 +11,7 @@ import pytest
 import time_machine
 
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.contenttypes.models import ContentType
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -2038,7 +2039,10 @@ def test_card_shell_article_has_no_zero_padding(mock_site_context):
     assert "p-0" not in article.split()
 
 
-BYLINE_DASHBOARD_MAX_QUERIES = 60
+# Measured with ContentType's per-process cache empty: the page looks up four
+# content types once each, and whether an earlier test already cached them
+# would otherwise decide whether this test passes.
+BYLINE_DASHBOARD_MAX_QUERIES = 64
 
 
 @pytest.mark.django_db
@@ -2062,6 +2066,7 @@ def test_dashboard_query_count_does_not_grow_with_organisation_cards(
     LearnerCourseRegistrationFactory(learner__user=user, course=in_progress)
     course_progress_record(in_progress, user)
     client = logged_in_client(user)
+    ContentType.objects.clear_cache()
 
     with django_assert_max_num_queries(BYLINE_DASHBOARD_MAX_QUERIES):
         client.get(reverse("learner_interface:dashboard"))
