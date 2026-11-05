@@ -109,7 +109,7 @@
     {% endif %}
     <c-panel-card>
         {% if add_count %}
-            <ul class="mt-4 ml-0 list-none space-y-1 text-sm text-muted">
+            <ul class="ml-0 list-none space-y-1 text-sm text-muted">
                 {% if new_account_count %}<li>{{ new_account_count }} new account{{ new_account_count|pluralize }} will get a setup email.</li>{% endif %}
                 <li>Existing accounts keep their names.</li>
                 <li>Counts can change if someone else adds these learners before you confirm.</li>
@@ -120,7 +120,7 @@
                 <c-button type="submit" class="min-h-11 md:min-h-0 w-full sm:w-auto">Add {{ add_count }} learner{{ add_count|pluralize }}</c-button>
             </form>
         {% else %}
-            <p class="mt-4 font-semibold">Nothing can be added: every row has an error or is already a member.</p>
+            <p class="font-semibold">Nothing can be added: every row has an error or is already a member.</p>
             <p class="mt-4"><c-button href="{{ upload_url }}" class="min-h-11 md:min-h-0 w-full sm:w-auto">Upload a different file</c-button></p>
         {% endif %}
     </c-panel-card>
