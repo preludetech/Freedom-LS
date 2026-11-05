@@ -1,10 +1,12 @@
 {% comment %}
 Desktop table toolbar: search, a pill or chip per declared filter, "Add
-filter", "Clear all" and the current sort, all in one row from md up. Below
-md that row collapses to the search box, the applied-filter chips, and
-"Filter"/"Sort" buttons that open the shared sheet in table_sheet.html.
-Every control is a real link or form, so both layouts work with JavaScript
-off.
+filter", "Clear all" and an Export button, all in one row from md up. The
+sorted column shows itself in the table header, so the toolbar does not
+repeat it. Below md that row collapses to the search box, the applied-filter
+chips, a "Filter" button that opens the sheet in table_sheet.html and a
+"Sort" menu with one entry per sortable column, each the same link the
+column header carries. Every control is a real link or form, so both layouts
+work with JavaScript off.
 {% endcomment %}
 {% partialdef filter-choices %}
     <div class="surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
@@ -23,7 +25,7 @@ off.
         {% endfor %}
     </div>
 {% endpartialdef %}
-<div class="{% if searchable or toolbar or sorted_by or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3{% endif %}">
+<div class="{% if searchable or toolbar or sortable_columns or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3{% endif %}">
     {% if searchable %}
         <form id="{{ query.key }}-search"
               method="get"
@@ -105,21 +107,17 @@ off.
 
         {% if any_filter_set %}
             {% querystring request.GET clear_changes as clear_qs %}
-            <a href="{{ page_url }}{{ clear_qs }}"
-               hx-get="{{ base_url }}{{ clear_qs }}"
-               hx-target="#{{ region_id }}"
-               hx-swap="outerHTML"
-               class="text-sm">
-                Clear all
-            </a>
+            <c-button variant="link" size="small"
+                      href="{{ page_url }}{{ clear_qs }}"
+                      hx-get="{{ base_url }}{{ clear_qs }}"
+                      hx-target="#{{ region_id }}"
+                      hx-swap="outerHTML">Clear all</c-button>
         {% endif %}
 
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
-            <a href="{{ base_url }}{{ export_qs }}" class="text-sm">Export CSV</a>
+            <c-button variant="secondary" size="small" icon_left="download" class="ml-auto" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
         {% endif %}
-
-        {% if sorted_by %}<span class="ml-auto text-sm text-muted">Sorted by {{ sorted_by }}</span>{% endif %}
     </div>
 
     {% if toolbar or sortable_columns %}
@@ -149,10 +147,30 @@ off.
                 <c-button type="button" variant="secondary" size="small" icon_left="filter" class="min-h-11" x-on:click="toggle">Filter</c-button>
             {% endif %}
             {% if sortable_columns %}
-                <c-button type="button" variant="secondary" size="small" icon_left="sort_neutral" class="ml-auto min-h-11" x-on:click="toggle">Sort</c-button>
+                <c-dropdown-menu aria_label="Sort" menu_label="Sort by" trigger_class="btn btn-secondary btn-sm min-h-11" panel_class="fixed w-56">
+                    <c-slot name="trigger">
+                        <span aria-hidden="true" class="inline-flex"><c-icon name="sort_neutral" class="size-5" /></span>
+                        Sort
+                    </c-slot>
+                    {% for header in header_columns %}
+                        {% if header.column.sortable %}
+                            {% querystring request.GET header.changes as sort_qs %}
+                            <c-button dropdown="true"
+                                      href="{{ page_url }}{{ sort_qs }}"
+                                      hx-get="{{ base_url }}{{ sort_qs }}"
+                                      hx-target="#{{ region_id }}"
+                                      hx-swap="outerHTML"
+                                      class="flex min-h-11 items-center justify-between {% if header.state %}text-on-surface font-semibold{% endif %}"
+                                      aria-current="{% if header.state %}true{% else %}false{% endif %}"
+                                      icon_right="{% if header.state == 'asc' %}sort_asc{% elif header.state == 'desc' %}sort_desc{% endif %}">{{ header.column.header }}</c-button>
+                        {% endif %}
+                    {% endfor %}
+                </c-dropdown-menu>
             {% endif %}
 
-            {% include "panel_framework/partials/table_sheet.html" %}
+            {% if toolbar %}
+                {% include "panel_framework/partials/table_sheet.html" %}
+            {% endif %}
         </div>
     {% endif %}
 </div>

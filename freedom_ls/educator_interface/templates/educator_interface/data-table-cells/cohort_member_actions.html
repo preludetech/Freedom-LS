@@ -3,9 +3,11 @@ The Remove and Move triggers on a learner row of the cohort page. row_action_url
 from the learners panel, which lists the action only while the user may use
 it; cohort_is_active hides it for an inactive cohort.
 {% endcomment %}
-{% if row_action_urls.remove_from_cohort and cohort_is_active %}
-    <c-modal-trigger url="{{ row_action_urls.remove_from_cohort }}?learner={{ object.pk }}" label="Remove" aria_label="Remove {{ object.user.display_name }} from {{ panel.instance.name }}" variant="error" />
-{% endif %}
-{% if row_action_urls.move and cohort_is_active %}
-    <c-modal-trigger url="{{ row_action_urls.move }}?learner={{ object.pk }}" label="Move" aria_label="Move {{ object.user.display_name }} to another cohort" variant="secondary" />
-{% endif %}
+<c-data-table-actions>
+    {% if row_action_urls.remove_from_cohort and cohort_is_active %}
+        <c-modal-trigger url="{{ row_action_urls.remove_from_cohort }}?learner={{ object.pk }}" label="Remove" aria_label="Remove {{ object.user.display_name }} from {{ panel.instance.name }}" variant="error" size="small" />
+    {% endif %}
+    {% if row_action_urls.move and cohort_is_active %}
+        <c-modal-trigger url="{{ row_action_urls.move }}?learner={{ object.pk }}" label="Move" aria_label="Move {{ object.user.display_name }} to another cohort" variant="secondary" size="small" />
+    {% endif %}
+</c-data-table-actions>

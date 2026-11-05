@@ -1,5 +1,5 @@
 {% comment %}
-The mobile filter & sort sheet: a plain GET form inside base's shared
+The mobile filter sheet: a plain GET form inside base's shared
 bottom-sheet dialog, reachable and submittable below md with JavaScript off
 via the scripting-none override below. A <noscript> would leak into the page
 when htmx swaps this fragment in.
@@ -8,7 +8,7 @@ when htmx swaps this fragment in.
         x-ref="panelDialog"
         data-variant="bottom-sheet"
         class="side-panel-dialog modal-backdrop-host md:hidden"
-        aria-label="{% if toolbar and sortable_columns %}Filter and sort{% elif toolbar %}Filter{% else %}Sort{% endif %}">
+        aria-label="Filter">
     <div class="side-panel-body bg-surface max-lg:in-data-[variant=bottom-sheet]:bottom-sheet overflow-y-auto overscroll-contain">
         <form method="get"
               action="{{ page_url }}"
@@ -21,21 +21,19 @@ when htmx swaps this fragment in.
             {% endfor %}
 
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">{% if toolbar and sortable_columns %}Filter and sort{% elif toolbar %}Filter{% else %}Sort{% endif %}</h2>
+                <h2 class="text-lg font-semibold">Filter</h2>
                 {% querystring request.GET reset_changes as reset_qs %}
-                <a href="{{ page_url }}{{ reset_qs }}"
-                   hx-get="{{ base_url }}{{ reset_qs }}"
-                   hx-target="#{{ region_id }}"
-                   hx-swap="outerHTML"
-                   class="inline-flex min-h-11 min-w-11 items-center justify-center py-2 text-sm font-semibold text-primary no-underline">
-                    Reset
-                </a>
+                <c-button variant="link" size="small" class="min-h-11 min-w-11"
+                          href="{{ page_url }}{{ reset_qs }}"
+                          hx-get="{{ base_url }}{{ reset_qs }}"
+                          hx-target="#{{ region_id }}"
+                          hx-swap="outerHTML">Reset</c-button>
             </div>
 
             {% for entry in toolbar %}
                 {% if entry.filter.widget == "select" %}
-                    <label class="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-muted">
-                        {{ entry.filter.label }}
+                    <label class="flex flex-col gap-1">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</span>
                         <select name="{{ query.key }}-{{ entry.filter.key }}">
                             {% if not entry.filter.default %}<option value="">All</option>{% endif %}
                             {% for choice in entry.choices %}
@@ -64,40 +62,6 @@ when htmx swaps this fragment in.
                 {% endif %}
             {% endfor %}
 
-            {% if sortable_columns %}
-                <fieldset class="space-y-1 border-0 p-0">
-                    <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">Sort</legend>
-                    <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
-                        <input type="radio"
-                               name="{{ query.key }}-sort"
-                               value=""
-                               {% if not query.sort %}checked{% endif %}
-                               class="peer sr-only">
-                        <span class="flex-1">Default order</span>
-                        <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
-                    </label>
-                    {% for column in sortable_columns %}
-                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
-                            <input type="radio"
-                                   name="{{ query.key }}-sort"
-                                   value="{{ column.sort_field }}"
-                                   {% if query.sort == column.sort_field %}checked{% endif %}
-                                   class="peer sr-only">
-                            <span class="flex-1">{{ column.header }} (ascending)</span>
-                            <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
-                        </label>
-                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
-                            <input type="radio"
-                                   name="{{ query.key }}-sort"
-                                   value="-{{ column.sort_field }}"
-                                   {% if query.sort == "-"|add:column.sort_field %}checked{% endif %}
-                                   class="peer sr-only">
-                            <span class="flex-1">{{ column.header }} (descending)</span>
-                            <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
-                        </label>
-                    {% endfor %}
-                </fieldset>
-            {% endif %}
 
             <c-modal-footer class="mt-auto -mx-4 -mb-4">
                 <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button></c-slot>

@@ -344,3 +344,23 @@ class TestMembersEmptyState:
         href = link.get("href")
         assert "members-q" not in href
         assert "members-role" not in href
+
+
+@pytest.mark.django_db
+def test_row_action_buttons_are_small_and_sit_in_an_actions_wrapper(
+    staff_client: Client,
+) -> None:
+    """A button in a table cell takes the small size inside the actions
+    wrapper, so two of them never touch."""
+    organisation = OrganisationFactory()
+    other = UserFactory(email="other@example.com")
+    assign_role(UserFactory(superuser=True), other, "organisation_admin", organisation)
+
+    document = _members_page(staff_client, organisation)
+
+    buttons = document.cssselect("td .btn")
+    assert buttons
+    assert all("btn-sm" in button.get("class").split() for button in buttons)
+    assert all(
+        "gap-2" in button.getparent().get("class", "").split() for button in buttons
+    )

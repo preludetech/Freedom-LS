@@ -1,8 +1,8 @@
 {% comment %}
 The roles a member holds, one item each: the role name, where it applies, and
-who added it and when, then a Deactivate role trigger when the viewer may deactivate that
-role on someone else, and a Change cohorts trigger on a cohort role of an
-active account. The full list of cohorts is in the scope line's title,
+who added it and when, then the row's small buttons: Deactivate role when
+the viewer may deactivate that role on someone else, and Change cohorts on a
+cohort role of an active account. The full list of cohorts is in the scope line's title,
 because the visible text names only the first two.
 {% endcomment %}
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -11,12 +11,14 @@ because the visible text names only the first two.
             <span class="block font-bold text-on-surface">{{ entry.display_name }}</span>
             <span class="block text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
             <span class="block text-xs text-muted">Added {{ entry.assigned_at|date:"j M Y" }} by {{ entry.assigned_by.display_name|default:"Not recorded" }}</span>
-            {% if object.pk != viewer.pk and entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
-                <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" />
-            {% endif %}
-            {% if object.pk != viewer.pk and object.is_active and entry.role != "organisation_admin" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
-                <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" />
-            {% endif %}
+            <c-data-table-actions class="mt-2 empty:hidden">
+                {% if object.pk != viewer.pk and entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
+                    <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />
+                {% endif %}
+                {% if object.pk != viewer.pk and object.is_active and entry.role != "organisation_admin" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
+                    <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" size="small" />
+                {% endif %}
+            </c-data-table-actions>
         </li>
     {% endfor %}
 </ul>

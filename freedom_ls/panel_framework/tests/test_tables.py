@@ -396,7 +396,7 @@ def test_search_text_is_url_encoded(mock_site_context: Site) -> None:
     assert search_input.get("value") == "a & b + c #"
     (sort_link,) = [
         link
-        for link in document.cssselect("a[href]")
+        for link in document.cssselect("thead a[href]")
         if "stub-sort=-name" in link.get("href", "")
     ]
     href = sort_link.get("href")
@@ -836,17 +836,55 @@ def test_sheet_renders_reset_legends_and_footer_buttons(
     assert sheet.xpath(".//a[normalize-space()='Reset']")
     legends = sheet.cssselect("fieldset legend")
     assert legends
-    assert "Sort" in [legend.text_content().strip() for legend in legends]
+    assert "Sort" not in [legend.text_content().strip() for legend in legends]
+    assert not sheet.cssselect("input[type='radio']")
     assert sheet.xpath(".//button[@type='button'][normalize-space()='Cancel']")
     assert sheet.xpath(".//button[@type='submit'][normalize-space()='Show results']")
+
+
+def test_the_phone_sort_menu_lists_each_sortable_column_with_the_headers_link(
+    mock_site_context: Site,
+) -> None:
+    """Sorting on a phone is a menu of columns, not a list of ascending and
+    descending pairs; each entry carries the same URL as the column header,
+    so choosing the active column flips its direction."""
+    stub = make_stub(name="row-00")
+
+    html = fetch(
+        f"stubs/{stub.pk}/__tabs/pair", data={"a-sort": "name"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#a-table")
+    items = table.cssselect("[role='menu'][aria-label='Sort by'] a[role='menuitem']")
+    header_links = {
+        a.text_content().strip(): a.get("href") for a in table.cssselect("thead th a")
+    }
+    assert [item.text_content().strip() for item in items] == list(header_links)
+    assert [item.get("href") for item in items] == list(header_links.values())
+    (active,) = [item for item in items if item.get("aria-current") == "true"]
+    assert active.text_content().strip() == "Name"
+    assert active.cssselect("svg[data-icon='sort_asc']")
+
+
+def test_reset_in_the_sheet_keeps_the_sort(mock_site_context: Site) -> None:
+    stub = make_stub(name="row-00")
+
+    html = fetch(
+        f"stubs/{stub.pk}/__tabs/pair", data={"a-sort": "-name", "a-kind": "a"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (reset,) = document.cssselect("#a-table dialog#a-sheet a[href]")
+    assert "a-sort=-name" in reset.get("href")
+    assert "a-kind" not in reset.get("href")
 
 
 @pytest.mark.parametrize(
     ("path", "sheet_id", "title"),
     [
-        ("__tabs/pair", "a-sheet", "Filter and sort"),
+        ("__tabs/pair", "a-sheet", "Filter"),
         ("__tabs/children", "children-sheet", "Filter"),
-        ("__tabs/sortonly", "sortonly-sheet", "Sort"),
     ],
 )
 def test_sheet_title_follows_the_controls_it_holds(
@@ -862,7 +900,7 @@ def test_sheet_title_follows_the_controls_it_holds(
     assert sheet.cssselect("h2")[0].text_content().strip() == title
 
 
-def test_sheet_without_declared_filters_renders_no_filter_fieldset(
+def test_a_table_with_sort_but_no_filters_renders_a_sort_menu_and_no_sheet(
     mock_site_context: Site,
 ) -> None:
     stub = make_stub(name="row-00")
@@ -870,10 +908,9 @@ def test_sheet_without_declared_filters_renders_no_filter_fieldset(
     html = fetch(f"stubs/{stub.pk}/__tabs/sortonly").content.decode()
 
     document = lxml.html.fromstring(html)
-    (sheet,) = document.cssselect("dialog#sortonly-sheet")
-    legends = [legend.text_content().strip() for legend in sheet.cssselect("legend")]
-    assert legends == ["Sort"]
-    assert not sheet.cssselect("select")
+    assert not document.cssselect("dialog#sortonly-sheet")
+    assert document.cssselect("#sortonly-table [role='menu'][aria-label='Sort by']")
+    assert not document.xpath("//button[normalize-space()='Filter']")
 
 
 # A table that declares export columns serves a streamed, formula-safe CSV
@@ -974,8 +1011,12 @@ def test_export_link_of_a_stacked_table_serves_its_csv(
     html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
     document = lxml.html.fromstring(html)
     (link,) = [
-        a for a in document.cssselect("#a-table a") if a.text_content() == "Export CSV"
+        a
+        for a in document.cssselect("#a-table a")
+        if a.text_content().strip() == "Export CSV"
     ]
+    assert "btn-sm" in link.get("class").split()
+    assert link.cssselect("svg[data-icon='download']")
     href = link.get("href").removeprefix("/test-panel/framework/")
     path_string, _, query = href.partition("?")
 
@@ -1109,7 +1150,10 @@ def test_with_no_sort_the_default_column_reads_as_sorted(
         panel.region_template_name, panel.get_context_data(), request=panel.request
     )
 
-    assert "Sorted by Name" in html
+    document = lxml.html.fromstring(html)
+    (sorted_header,) = document.cssselect("th[aria-sort='ascending']")
+    assert "Name" in sorted_header.text_content()
+    assert "Sorted by" not in html
 
 
 def test_an_explicit_descending_sort_on_the_default_column_links_back_to_ascending(

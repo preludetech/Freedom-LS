@@ -57,7 +57,7 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     cohorts_url = interface_url(live_server, organisation_a.slug, "cohorts")
     page.set_viewport_size(_PHONE)
     sheet = page.locator("dialog[aria-label='Navigation']")
-    filter_sheet = page.locator("dialog[aria-label='Filter and sort']")
+    filter_sheet = page.locator("dialog[aria-label='Filter']")
     toggle = page.get_by_role("button", name="Open navigation panel")
     alpha_link = page.get_by_role("link", name="Alpha Cohort", exact=True)
 

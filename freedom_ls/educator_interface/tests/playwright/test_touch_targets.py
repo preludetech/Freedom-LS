@@ -56,5 +56,5 @@ def test_header_tabs_search_and_dialog_controls_are_44px_on_a_phone(
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     page.get_by_role("button", name="Filter", exact=True).click()
-    page.get_by_role("dialog", name="Filter and sort").wait_for()
+    page.get_by_role("dialog", name="Filter").wait_for()
     assert page.evaluate(_SMALLEST_CONTROL) == []

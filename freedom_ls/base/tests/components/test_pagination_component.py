@@ -102,7 +102,7 @@ class TestPaginationComponent:
 
     def test_links_do_not_push_the_url_by_default(self) -> None:
         result = _render(_BASE.format(extras=""), page_obj=_page(2, 3))
-        assert "hx-push-url" not in result
+        assert 'hx-push-url="true"' not in result
 
     def test_every_link_pushes_the_url_when_push_url_is_set(self) -> None:
         result = _render(_BASE.format(extras='push_url="true"'), page_obj=_page(2, 3))
@@ -129,3 +129,26 @@ class TestPaginationComponent:
         assert 'hx-get="/panel/?' in result
         assert "t-page=3" in result
         assert "other=1" in result
+
+
+def test_phone_previous_and_next_are_small_icon_buttons_sized_to_their_labels() -> None:
+    """On a phone the pager is two small buttons around the page count, never
+    a full-width row."""
+    result = _render(_BASE.format(extras=""), page_obj=_page(2, 3))
+
+    phone_block = result.split("sm:hidden", 1)[1].split("hidden sm:flex", 1)[0]
+
+    assert "w-full" not in phone_block
+    assert "justify-between" not in phone_block
+    assert phone_block.count("btn-sm") == 2
+    assert 'data-icon="previous"' in phone_block
+    assert 'data-icon="next"' in phone_block
+
+
+def test_phone_pager_on_the_last_page_shows_next_disabled_not_missing() -> None:
+    result = _render(_BASE.format(extras=""), page_obj=_page(3, 3))
+
+    phone_block = result.split("sm:hidden", 1)[1].split("hidden sm:flex", 1)[0]
+
+    assert "Next" in phone_block
+    assert "disabled" in phone_block

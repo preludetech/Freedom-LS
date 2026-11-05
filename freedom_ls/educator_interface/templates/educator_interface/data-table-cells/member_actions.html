@@ -10,9 +10,11 @@ account's, which deactivating would not change.
         You can't change your own roles. Ask another organisation admin.
     </span>
 {% elif object.is_active and not object.is_site_level %}
-    {% if not object.is_inactive and row_action_urls.deactivate %}
-        <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate" aria_label="Deactivate {{ object.display_name }}" variant="secondary" />
-    {% elif object.is_inactive and row_action_urls.reactivate %}
-        <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate" aria_label="Reactivate {{ object.display_name }}" variant="secondary" />
-    {% endif %}
+    <c-data-table-actions>
+        {% if not object.is_inactive and row_action_urls.deactivate %}
+            <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate" aria_label="Deactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% elif object.is_inactive and row_action_urls.reactivate %}
+            <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate" aria_label="Reactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% endif %}
+    </c-data-table-actions>
 {% endif %}

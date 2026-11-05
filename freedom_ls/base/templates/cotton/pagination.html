@@ -16,34 +16,30 @@
 {% if links %}
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
         {# Mobile pagination: Previous / Page X of Y / Next #}
-        <div class="flex sm:hidden items-center justify-between {{ class }}">
-            <div>
-                {% if links.previous %}
-                    {% querystring request.GET links.previous.changes as qs %}
-                    <a href="{{ page_url }}{{ qs }}"
-                       hx-get="{{ base_url }}{{ qs }}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
-                        Previous
-                    </a>
-                {% endif %}
-            </div>
-            <span class="text-sm text-muted">
+        <div class="flex sm:hidden items-center gap-2 {{ class }}">
+            {% if links.previous %}
+                {% querystring request.GET links.previous.changes as qs %}
+                <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0"
+                          href="{{ page_url }}{{ qs }}"
+                          hx-get="{{ base_url }}{{ qs }}"
+                          hx-target="#{{ table_id }}"
+                          hx-swap="outerHTML">Previous</c-button>
+            {% else %}
+                <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0" disabled="true">Previous</c-button>
+            {% endif %}
+            <span class="text-sm text-muted whitespace-nowrap">
                 Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
             </span>
-            <div>
-                {% if links.next %}
-                    {% querystring request.GET links.next.changes as qs %}
-                    <a href="{{ page_url }}{{ qs }}"
-                       hx-get="{{ base_url }}{{ qs }}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
-                        Next
-                    </a>
-                {% endif %}
-            </div>
+            {% if links.next %}
+                {% querystring request.GET links.next.changes as qs %}
+                <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0"
+                          href="{{ page_url }}{{ qs }}"
+                          hx-get="{{ base_url }}{{ qs }}"
+                          hx-target="#{{ table_id }}"
+                          hx-swap="outerHTML">Next</c-button>
+            {% else %}
+                <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0" disabled="true">Next</c-button>
+            {% endif %}
         </div>
 
         {# Desktop pagination: numbered buttons with ellipsis #}
@@ -97,34 +93,30 @@
     {% pagination_suffix sort_by=sort_by sort_order=sort_order search_query=search_query extra_params=extra_params as suffix %}
 
     {# Mobile pagination: Previous / Page X of Y / Next #}
-    <div class="flex sm:hidden items-center justify-between {{ class }}">
-        <div>
-            {% if page_obj.has_previous %}
-                <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
-                   hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
-                   hx-target="#{{ table_id }}"
-                   hx-swap="outerHTML"
-                   {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
-                    Previous
-                </a>
-            {% endif %}
-        </div>
-        <span class="text-sm text-muted">
+    <div class="flex sm:hidden items-center gap-2 {{ class }}">
+        {% if page_obj.has_previous %}
+            <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0"
+                      href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
+                      hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
+                      hx-target="#{{ table_id }}"
+                      hx-swap="outerHTML"
+                      hx-push-url="{% if push_url %}true{% else %}false{% endif %}">Previous</c-button>
+        {% else %}
+            <c-button variant="secondary" size="small" icon_left="previous" class="min-h-11 md:min-h-0" disabled="true">Previous</c-button>
+        {% endif %}
+        <span class="text-sm text-muted whitespace-nowrap">
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
         </span>
-        <div>
-            {% if page_obj.has_next %}
-                <a href="?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
-                   hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
-                   hx-target="#{{ table_id }}"
-                   hx-swap="outerHTML"
-                   {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
-                    Next
-                </a>
-            {% endif %}
-        </div>
+        {% if page_obj.has_next %}
+            <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0"
+                      href="?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
+                      hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
+                      hx-target="#{{ table_id }}"
+                      hx-swap="outerHTML"
+                      hx-push-url="{% if push_url %}true{% else %}false{% endif %}">Next</c-button>
+        {% else %}
+            <c-button variant="secondary" size="small" icon_right="next" class="min-h-11 md:min-h-0" disabled="true">Next</c-button>
+        {% endif %}
     </div>
 
     {# Desktop pagination: numbered buttons with First/Last and ellipsis #}

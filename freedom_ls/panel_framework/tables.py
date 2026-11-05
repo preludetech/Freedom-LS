@@ -427,11 +427,10 @@ class DataTable:
         ]
         sortable_columns = [column for column in columns if column.sortable]
 
-        # "Reset" clears every filter and the sort, but not the search text —
-        # the sheet has no search field of its own, so a search made from the
-        # desktop toolbar or the search form stays in place.
+        # "Reset" clears every filter, but not the search text or the sort:
+        # the sheet holds neither (search has its own form, sort is a menu),
+        # so both stay in place.
         reset_changes = query.clear_filters_changes(filter_keys)
-        reset_changes[query.param("sort")] = None
 
         # The label is lazy: a table with no bulk action never renders it (the
         # checkbox is the only place it's read), and get_row_label defaults to

@@ -294,10 +294,13 @@ def test_data_table_interaction(
                 assert box is not None
                 assert box["height"] >= 44, f"{control} is {box['height']}px high"
 
-            # "Sort" opens the one combined sheet; the inputs sit behind their
-            # chip labels, so a tap lands on the label.
+            # "Sort" opens a menu of columns; choosing the sorted column again
+            # flips its direction. "Filter" opens the sheet, whose inputs sit
+            # behind their chip labels, so a tap lands on the label.
             page.get_by_role("button", name="Sort").click()
-            page.locator("label", has_text="Name (descending)").click()
+            page.get_by_role("menuitem", name="Name").click()
+            expect(page).to_have_url(re.compile(r"stubs-sort=-name"))
+            page.get_by_role("button", name="Filter").click()
             page.locator("label", has_text="Alpha").click()
             page.get_by_role("button", name="Show results").click()
             expect(page).to_have_url(re.compile(r"stubs-sort=-name"))
