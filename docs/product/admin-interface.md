@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-05_
 
 ## Summary
 
@@ -61,7 +61,7 @@ A learner's own admin page gathers their cohorts, their individual course regist
 
 The progress changelists ask the same questions across many learners at once, filtering by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress additionally filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
 
-Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, with drafts shown alongside submitted applications. An administrator finds one by searching or filtering on applicant, course, submitted or draft, and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application.
+Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, with drafts shown alongside submitted applications. An administrator finds one by searching or filtering on applicant, course, submitted or draft, and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", questions their answers never led them to are marked "Not asked", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application.
 
 Anonymous visitors can apply before they have an account, so their applications show up as soon as they are submitted and can be found by the applicant's email. Until the applicant follows the emailed claim link, the application is flagged "Unverified email" on the list, the application page, and the form-answer and uploaded-file screens. Anonymous applicants also have their own read-only list, searchable by email, whose only action is delete: deleting one erases that applicant's application, answers and files, which is how an erasure request is handled before an account exists. An applicant who has already claimed their application is protected from that delete; deleting their user removes the application instead, together with any unclaimed applications under the same address. Nothing is purged automatically; see [security and data handling](./security-and-data-handling.md). An applicant can correct their own email address, both while the application is a draft and after submitting it while the address is still unverified, so match an erasure request against the application's current address. "Verified email" does not mean the application is submitted: an applicant who follows their claim link on an unfinished draft is verified and has an account while the application is still a draft, and an unverified application may be either a draft or submitted. The applicant's side is described under [applying to a course](./learner-experience.md#applying-to-a-course).
 
@@ -72,7 +72,7 @@ Access follows the standard view permissions, so a staff user granted them can r
 The Users list and the Course applications list each export to CSV: the ticked rows, or everything the current search and filters leave showing. Anyone who can view a list can export it; there is no separate export permission. The files are safe to open directly in a spreadsheet.
 
 - **Users.** One row per user: name, email, whether the email is verified, active and staff flags, when the account was created, and last login. Passwords, the superuser flag, groups and permissions are never included.
-- **Applications.** One row per application, anonymous applicants' and drafts included, with the applicant, course, verified-email and submitted flags, and when it was submitted. Every question on every form in the export gets its own column, so one file can mix several courses' applications. A file-upload answer exports the file's name only, never the file.
+- **Applications.** One row per application, anonymous applicants' and drafts included, with the applicant, course, verified-email and submitted flags, and when it was submitted. Every question on every form in the export gets its own column, so one file can mix several courses' applications. A question the applicant's path never reached reads "Not asked" in its column, while one they reached and skipped is left empty. A file-upload answer exports the file's name only, never the file.
 
 Exports are CSV only. Registration-form answers, consent records and signup attribution are not in the Users export; attribution has [its own export](./signup-attribution.md).
 

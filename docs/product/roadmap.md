@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-05_
 
 ## Summary
 
@@ -36,7 +36,7 @@ What remains missing:
 - **Review and approval** — nobody can review, approve, reject, request changes on, or withdraw an application. There are no reviewer roles or permissions, no audit trail, and no admin or educator review screen. The applicant's status page is static and never reflects a decision.
 - **Malware scanning of uploaded files** — an upload's real type and size are checked and images are re-encoded, but nothing inspects the contents for a malicious payload; a reviewer downloads what was submitted, unmodified in the case of a PDF. This is a deliberate, tracked deferral; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
 - **A retention or expiry policy for uploaded files** — see [data retention](#data-retention-deletion-and-subject-rights).
-- **Some question-authoring options** — no conditional questions, no dropdown or boolean question type, no per-question upload limit, and no numeric range validation.
+- **Some question-authoring options** — a page, question or content block can be shown only when an earlier choice answer matches, but only on a single condition: several conditions cannot be combined, and conditions on a non-choice answer or on a numeric or text comparison are not supported. There is no boolean question type and no per-question upload limit.
 
 The review workflow attaches to seams already in place; it will not require rearchitecting the access backend, the apply flow, or the form.
 
