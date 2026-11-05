@@ -66,12 +66,19 @@ Icons are single-colour outline icons, placed through `<c-icon>`: see `Skill(fls
 
 ## Components
 
-FLS already builds each of these, and the brand decisions above are encoded in them. Reach for the component or class; `Skill(fls-dev:frontend-styling)` has the full inventory.
+FLS already builds each of these, and the brand decisions above are encoded in them. Reach for the component or class. `ls freedom_ls/*/templates/cotton/` lists every component; this table holds the ones a brand or layout decision rides on.
 
 | You need | Use |
 |---|---|
 | A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
-| A back link above a heading | `<c-back-link href="…">Back to messages</c-back-link>`. Never a hand-styled or underlined `<a>` |
+| A link to a person | `<c-panel-person-link name="…" user_id="…" href="…">`: avatar and name, the one way a learner or staff member is linked from a row, a card, an attention list or a dialog |
+| A back link above a heading | `<c-back-link href="…">Back to messages</c-back-link>`, the one style for a back link |
+| A text action ("Change", "Edit", "Clear all", "Export CSV") | `<c-button variant="link">`, or `variant="secondary" size="small"` with an icon when it sits among buttons |
+| A clickable row | the row-link style, `text-on-surface no-underline`, as the `link` data-table cell and the conversation rows |
+| Buttons in a table cell or card | `<c-data-table-actions>` around `<c-modal-trigger size="small">` or `<c-button size="small">`; the wrapper owns the gap |
+| A dialog's buttons | `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the default slot at the right, the primary last. `<c-button-group>` is for buttons outside a dialog |
+| A page header | `<c-panel-page-header>`: the `badge` slot carries a state only when it differs from the default (Inactive, Pending), stats stay out when the tabs already count them, and actions that change the record live in the page's Settings tab |
+| Filter and sort on a phone | the data table's toolbar: Filter opens the filter sheet (selects and grouped checklists, never a chip cloud) and Sort opens a menu of columns |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
 | A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Missed deadline, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
@@ -84,9 +91,9 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
 
-The base layer underlines every `<a>`, and an underline means "a link inside prose". A link that works as a control takes no underline: a back link uses `<c-back-link>`, a text action ("Change", "Edit") uses `<c-button variant="link">`, and a clickable list row takes `text-on-surface no-underline` like the conversation rows. Text links and text buttons then look the same.
+The base layer underlines every `<a>`, and the underline means "a link inside prose". A link that works as a control takes the component for its job: a person gets `<c-panel-person-link>`, a back link `<c-back-link>`, a text action `<c-button variant="link">`, a clickable row the row-link style. Text links and text buttons then look the same, and `test_no_control_link_is_hand_styled` in `freedom_ls/panel_framework/tests/invariants/test_templates.py` fails on a control link that still carries the prose underline or a hand-typed `text-primary`.
 
-Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise.
+Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing follow "Controls, spacing and small screens" in `Skill(ds:frontend-styling)`; the components above already obey it.
 
 ## Example page
 

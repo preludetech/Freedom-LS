@@ -382,6 +382,15 @@ concern as a failing `test` record, never only in its notes:
 - **Space**: no region is squeezed, clipped or cut off, and no large gap opens that the
   rest of the shell does not have.
 - **Cover**: nothing is hidden under dev tooling, a sticky bar or another region.
+- **Controls**: a link that acts as a control (a name, a back link, a row, "Edit") has the look of
+  that control, with the prose underline absent; buttons that sit together have a gap between
+  them; every control has padding on all sides and a select's chevron sits clear of its edge; at
+  the phone viewport a button is 44px tall and as wide as its label; a dialog's Cancel sits at the
+  left and its actions at the right.
+- **Fit**: a dialog, sheet or table stays inside the viewport at every width, title included.
+- **Once**: a page header states each fact once and shows a state badge only for a state that
+  differs from the default; a list page starts at its heading and toolbar, with help in a dialog
+  or the docs rather than a paragraph above the list.
 
 When a page looks wrong and you cannot tell whether it is intended, compare it with the most recent
 screenshot of the same page under `spec_dd/3. done/*/screenshots/`. Unchanged since then means

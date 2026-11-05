@@ -163,6 +163,15 @@ reaches for classes that don't exist.
 **Follow the `ds:frontend-styling` skill for anything that touches how a template looks.** It owns
 which stylesheets to read, how to reuse what's already there, and how to build CSS.
 
+## Copy a template carries
+
+- A list page opens with its heading and its toolbar, so the list starts at the top. Help for the
+  page lives in a dialog the page opens, or in the docs.
+- A confirm dialog states what is true now and what the action changes: "Current group: A. Sam
+  will be removed from A." The person confirming reads the before and the after.
+- A disabled action shows its reason beside the control, and the control names it with
+  `aria-describedby`.
+
 ## Workflow
 
 ### Creating Templates

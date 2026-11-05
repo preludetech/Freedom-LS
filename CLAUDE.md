@@ -31,6 +31,8 @@ Whenever you are asked to do anything, check what skills are available. Rely on 
 
 If the code is structured in a way that contradicts what is documented in skills or documentation, then the documentation is the source of truth for future development.
 
+Feedback on how a page looks, behaves or reads, on a QA result or a screenshot, goes through `sdd:capture-feedback` before the fix. "I've told you before" is the same trigger.
+
 ## IMPORTANT
 
 Do not EVER delete TODO or @claude comments in the code unless those TODOS have been completed.

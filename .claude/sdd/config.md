@@ -73,6 +73,15 @@
 
 - Fetch PR comments: .claude/ds/scripts/fetch_pr_comments.sh
 
+## Feedback Hooks
+
+- Visual rules: .claude/skills/brand-guidelines/visual.md
+- Generic visual rules: claude_plugins/django-stack/resources/frontend_styling.md
+- Copy rules: .claude/skills/brand-guidelines/voice.md
+- Generic copy rules: claude_plugins/django-stack/resources/templates_and_cotton.md
+- QA checklist: claude_plugins/sdd/commands/do_qa.md
+- Feedback log: docs/feedback_log.md
+
 ## Vocabulary Sources
 
 - claude_plugins/fls-dev/skills/domain-glossary/SKILL.md

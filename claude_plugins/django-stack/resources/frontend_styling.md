@@ -122,6 +122,52 @@ values to `@theme` gives the project a public contract to keep in sync for no be
 as custom properties on the component's own root element instead, where whoever overrides the
 template can retune them in place.
 
+## Controls, spacing and small screens
+
+These hold whatever the project names its components. The project's own component table says
+which component does each job; this section says what the job is.
+
+### Controls use a component
+
+An element a person clicks to do something is a control, and a control is built from the
+project's component for that job: a button, a text action ("Edit", "Change"), a link to a person
+or a record, a "back" link, a clickable row. The base `<a>` style, the one the `@layer base` block
+gives every anchor, is for a link inside prose. A control that happens to be an anchor carries its
+component's classes, so it looks like the control it is and reads the same as the buttons beside
+it.
+
+### Buttons in a table row or card
+
+A button inside a table cell or a card takes the small size and sits inside the project's actions
+wrapper. The wrapper owns the gap between the buttons; the buttons carry no margins of their own.
+
+### Dialogs and sheets
+
+A dialog or bottom sheet ends in the project's footer component. Cancel sits at the left and the
+actions at the right; three or more buttons group at the right. The dialog host clips
+horizontally and the title wraps, so the content stays inside the viewport at every width,
+375px included.
+
+### Padding and gaps
+
+- Every control has padding on all four sides. A `<select>` keeps its chevron clear of its end
+  edge.
+- Siblings sit apart. The gap lives on the container (`gap-*` or `space-*`), and the children
+  carry no margins.
+- Controls that belong together sit together: Filter next to Sort, a search field next to its
+  filters, each sized to its content. A page header's actions are the one place the page decides
+  its own grouping.
+
+### Phones
+
+- A button is tall enough for a finger (44px) and as wide as its label.
+- Filtering and sorting are two controls. Sort opens a menu of fields; choosing the active field
+  again flips its direction.
+- A filter with many values is a grouped checklist: one group per facet, a checkbox per value.
+  Chips show the values already applied.
+- A page header shows a state only when it differs from the default, and states each fact once.
+  Actions that change the record live in a Settings tab, not in the header.
+
 ## Example
 
 **BAD** — re-states base styles and hard-codes a palette colour the theme doesn't own:

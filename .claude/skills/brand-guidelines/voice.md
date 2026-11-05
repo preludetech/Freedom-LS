@@ -66,6 +66,21 @@ Name the specific problem, suggest a specific fix, in plain language. Explain an
 ❌ "Success! Your learning journey progress has been updated."
 ```
 
+## Dialogs and list pages
+
+The rule is "Copy a template carries" in `Skill(ds:template)`. This is how it sounds in FLS.
+
+```
+✅ "Current cohort: Cohort A. Sam Dlamini will be removed from Cohort A and added to the cohort you choose."
+❌ "Are you sure you want to move this learner?"
+
+✅ Generate a new report, disabled, with "Cohort A has 7 learners, over the report's learner limit of 5." beside it
+❌ Generate a new report, enabled, then a red "Try again"
+
+✅ A Staff page that opens with its heading, search and filters
+❌ A Staff page that opens with a paragraph explaining what staff are
+```
+
 ## Naming
 
 - **Features and apps**: plain, descriptive Django app names like `learner_progress` or `content_engine`. The "freedom" metaphor stays with the product name; features get ordinary names.

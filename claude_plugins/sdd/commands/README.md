@@ -70,6 +70,10 @@ by hand.
 How the QA command handles skipped tests, missing test data or the bugs it finds is its own
 business: read its documentation and check `qa_report.md` for the outcome.
 
+Feedback you give on the QA report, a screenshot or a page goes through `sdd:capture-feedback`
+(`/sdd:capture_feedback` by hand) before the fix, so the rule lands in the files `## Feedback
+Hooks` in `.claude/sdd/config.md` names, and the log there shows what was captured.
+
 ## Step 5: Document
 
 Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and invokes each listed skill in order, committing per hook. A project that lists no hooks gets a no-op.

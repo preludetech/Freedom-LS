@@ -118,7 +118,7 @@ files exist, catches this.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads thirteen sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads fourteen sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
@@ -134,6 +134,8 @@ They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` look
 command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
 reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills. **PR Hooks**:
 `/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
+**Feedback Hooks**: `sdd:capture-feedback` looks here for the file each kind of rule is written to
+and the log it appends to.
 Everything else in this dir exists for
 parity and future settings.
 
@@ -213,6 +215,15 @@ parity and future settings.
 
    - Fetch PR comments:
 
+   ## Feedback Hooks
+
+   - Visual rules:
+   - Generic visual rules:
+   - Copy rules:
+   - Generic copy rules:
+   - QA checklist:
+   - Feedback log:
+
    ## Vocabulary Sources
 
    -
@@ -282,6 +293,12 @@ parity and future settings.
    `is_outdated` field). Blank means "this project has no such script", and
    `/sdd:address_pr_review` fetches them with `gh` directly.
 
+   **Feedback Hooks** is keyed. **Visual rules** and **Copy rules** point at the project's own
+   files for how its pages look and read; **Generic visual rules** and **Generic copy rules**
+   point at files that take no project name, path or value; **QA checklist** points at the file
+   whose visual review checklist QA walks; **Feedback log** is where each captured rule is
+   dated. A blank key means that kind of feedback is not captured, and the skill says so.
+
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list; each source later becomes one bullet holding a path, most
@@ -290,7 +307,7 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## PR Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## PR Hooks`, `## Feedback Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -332,14 +349,17 @@ in-place edits.
    and `Migrate`, and a `## Testing Skills` section (blank values and an empty list are valid).
 11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
    value is valid).
-12. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-13. `.claude/sdd/config.local.md` is listed in `.gitignore`.
-14. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
-15. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
+12. `.claude/sdd/config.md` has a `## Feedback Hooks` section with the keys `Visual rules`,
+   `Generic visual rules`, `Copy rules`, `Generic copy rules`, `QA checklist` and `Feedback log`
+   (blank values are valid).
+13. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
+14. `.claude/sdd/config.local.md` is listed in `.gitignore`.
+15. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
+16. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
-16. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
-17. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-18. Report every issue found.
+17. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
+18. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
+19. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 

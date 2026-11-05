@@ -14,7 +14,7 @@ Read `Skill(ds:template)` first for the cotton/HTMX/Alpine template conventions.
 - **Cotton components:** `freedom_ls/<app>/templates/cotton/<name>.html` - use `<c-vars>` with defaults.
 - **Partials:** `freedom_ls/<app>/templates/<app>/partials/<name>.html`.
 
-Check available components with `ls freedom_ls/*/templates/cotton/`.
+Check available components with `ls freedom_ls/*/templates/cotton/`. Which component a job takes (a person link, a dialog footer, buttons in a table cell) is the table in `.claude/skills/brand-guidelines/visual.md`: invoke `Skill(brand-guidelines)` before choosing one.
 
 ## Theme shadowing by path
 
