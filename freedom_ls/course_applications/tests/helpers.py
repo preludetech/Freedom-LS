@@ -1,11 +1,14 @@
 """Builders shared by the course_applications tests."""
 
+from datetime import datetime
 from typing import NamedTuple, cast
 
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
 from django.http import HttpRequest
 from django.test import RequestFactory
+from django.urls import reverse
+from rest_framework.test import APIClient
 
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_applications.anonymous_session import (
@@ -118,3 +121,13 @@ def anonymous_request_holding(*applicants: AnonymousApplicant) -> HttpRequest:
     for applicant in applicants:
         remember_anonymous_applicant(request, applicant)
     return request
+
+
+def application_ids_updated_since(auth: dict[str, str], since: datetime) -> list[str]:
+    """The ids the applications API lists for an `updated_since` poll at `since`."""
+    response = APIClient().get(
+        reverse("api:course_application_list"),
+        {"updated_since": since.isoformat()},
+        headers=auth,
+    )
+    return [row["id"] for row in response.json()["results"]]

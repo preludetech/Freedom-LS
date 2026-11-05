@@ -68,16 +68,6 @@ EXPECTED_FIELDS = [
 
 
 @pytest.fixture
-def api_key(mock_site_context):
-    return ApiKeyFactory(scopes=[ApiScope.COURSE_APPLICATIONS])
-
-
-@pytest.fixture
-def auth(api_key) -> dict[str, str]:
-    return {"Authorization": f"Bearer {api_key.issued_key}"}
-
-
-@pytest.fixture
 def client() -> APIClient:
     return APIClient()
 

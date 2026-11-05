@@ -10,9 +10,10 @@ from allauth.account.models import EmailAddress
 
 from django.contrib import messages
 from django.contrib.auth.signals import user_logged_in
-from django.db.models.signals import post_delete, pre_delete
+from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 from django.http import HttpRequest
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.course_applications.anonymous_session import (
@@ -23,8 +24,51 @@ from freedom_ls.course_applications.anonymous_session import (
 from freedom_ls.course_applications.claims import attach_to_user
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
-from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    QuestionAnswer,
+    QuestionAnswerFile,
+)
 from freedom_ls.form_engine.session_access import forget_all_anonymous_form_progress
+
+
+def touch_application_updated_at(**match: object) -> None:
+    """Move updated_at on the applications `match` names.
+
+    A changed-since sync reads updated_at alone, so a change to anything the
+    API shows for an application has to land there. The base manager works
+    with no request and with a request for another host; update() moves only
+    updated_at.
+    """
+    CourseApplication._base_manager.filter(**match).update(updated_at=timezone.now())
+
+
+@receiver(post_save, sender=FormProgress)
+def touch_application_on_sitting_save(
+    sender: type[FormProgress], instance: FormProgress, **kwargs: object
+) -> None:
+    touch_application_updated_at(form_progress_id=instance.pk)
+
+
+@receiver(post_save, sender=QuestionAnswer)
+@receiver(post_delete, sender=QuestionAnswer)
+def touch_application_on_answer_change(
+    sender: type[QuestionAnswer], instance: QuestionAnswer, **kwargs: object
+) -> None:
+    # Selected options change through selected_options.set(), which sends no
+    # signal; save_answers saves the answer afterwards, and that save lands here.
+    touch_application_updated_at(form_progress_id=instance.form_progress_id)
+
+
+@receiver(post_save, sender=QuestionAnswerFile)
+@receiver(post_delete, sender=QuestionAnswerFile)
+def touch_application_on_answer_file_change(
+    sender: type[QuestionAnswerFile], instance: QuestionAnswerFile, **kwargs: object
+) -> None:
+    # The join, not instance.answer: on a cascade from the answer's deletion the
+    # file's post_delete runs while the answer row still exists, and the answer's
+    # own post_delete bumps the application too, so no extra SELECT is needed.
+    touch_application_updated_at(form_progress__answers__id=instance.answer_id)
 
 
 @receiver(post_delete, sender=CourseApplication)

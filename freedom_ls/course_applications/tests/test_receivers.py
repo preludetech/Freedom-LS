@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 from django.contrib.messages import get_messages
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import QueryDict
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import (
@@ -14,6 +16,7 @@ from freedom_ls.accounts.factories import (
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.images import png_bytes
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -24,10 +27,19 @@ from freedom_ls.course_applications.anonymous_session import (
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.factories import FormProgressFactory
-from freedom_ls.form_engine.models import FormProgress, QuestionAnswerFile
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormQuestion,
+    QuestionAnswerFile,
+    QuestionOption,
+)
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 
-from .helpers import gated_course_with_form, unverified_application_with_file
+from .helpers import (
+    application_ids_updated_since,
+    gated_course_with_form,
+    unverified_application_with_file,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -368,3 +380,186 @@ def test_signing_in_with_a_held_draft_and_a_submitted_session_application_says_s
         f"Your unfinished application for {course.title} "
         "was replaced by the one you just submitted."
     ]
+
+
+@pytest.fixture
+def draft(client, mock_site_context) -> CourseApplication:
+    """An anonymous applicant's draft, started through the real apply flow."""
+    return _start_anonymous_draft(client, "ada@example.com")
+
+
+def _question(application: CourseApplication, question_type: str) -> FormQuestion:
+    question: FormQuestion = FormQuestion.objects.get(
+        form_page__form=application.course.application_form, type=question_type
+    )
+    return question
+
+
+def _sitting(application: CourseApplication) -> FormProgress:
+    assert application.form_progress is not None
+    return application.form_progress
+
+
+def _answer(application: CourseApplication, question: FormQuestion, *values: str):
+    """Save `values` as the answer to `question` the way a page submission does."""
+    post_data = QueryDict(mutable=True)
+    post_data.setlist(f"question_{question.id}", list(values))
+    _sitting(application).save_answers([question], post_data)
+
+
+def _file_url(name: str, application: CourseApplication) -> str:
+    return reverse(
+        f"form_engine:{name}",
+        kwargs={
+            "progress_pk": _sitting(application).pk,
+            "question_pk": _question(application, "file_upload").pk,
+        },
+    )
+
+
+def _upload(client, application: CourseApplication) -> None:
+    client.post(
+        _file_url("question_file_upload", application),
+        {"file": SimpleUploadedFile("id-scan.png", png_bytes())},
+    )
+
+
+def _updated_at(application: CourseApplication):
+    application.refresh_from_db()
+    return application.updated_at
+
+
+def test_completing_the_sitting_moves_updated_at(draft):
+    before = draft.updated_at
+
+    draft.form_progress.complete()
+
+    assert _updated_at(draft) > before
+
+
+def test_completing_the_sitting_puts_the_application_in_an_updated_since_poll(
+    draft, auth
+):
+    before = draft.updated_at
+
+    draft.form_progress.complete()
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_saving_a_text_answer_moves_updated_at(draft):
+    before = draft.updated_at
+
+    _answer(draft, _question(draft, "short_text"), "Ada")
+
+    assert _updated_at(draft) > before
+
+
+def test_saving_a_text_answer_puts_the_application_in_an_updated_since_poll(
+    draft, auth
+):
+    before = draft.updated_at
+
+    _answer(draft, _question(draft, "short_text"), "Ada")
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_saving_an_option_answer_moves_updated_at(draft):
+    question = _question(draft, "multiple_choice")
+    option = QuestionOption.objects.get(question=question, order=0)
+    before = draft.updated_at
+
+    _answer(draft, question, str(option.pk))
+
+    assert _updated_at(draft) > before
+
+
+def test_saving_an_option_answer_puts_the_application_in_an_updated_since_poll(
+    draft, auth
+):
+    question = _question(draft, "multiple_choice")
+    option = QuestionOption.objects.get(question=question, order=0)
+    before = draft.updated_at
+
+    _answer(draft, question, str(option.pk))
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_clearing_an_answer_moves_updated_at(draft):
+    question = _question(draft, "short_text")
+    _answer(draft, question, "Ada")
+    before = _updated_at(draft)
+
+    _answer(draft, question, "")
+
+    assert _updated_at(draft) > before
+
+
+def test_clearing_an_answer_puts_the_application_in_an_updated_since_poll(draft, auth):
+    question = _question(draft, "short_text")
+    _answer(draft, question, "Ada")
+    before = _updated_at(draft)
+
+    _answer(draft, question, "")
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_uploading_a_file_moves_updated_at(client, draft):
+    before = draft.updated_at
+
+    _upload(client, draft)
+
+    assert _updated_at(draft) > before
+
+
+def test_uploading_a_file_puts_the_application_in_an_updated_since_poll(
+    client, draft, auth
+):
+    before = draft.updated_at
+
+    _upload(client, draft)
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_replacing_a_file_moves_updated_at(client, draft):
+    _upload(client, draft)
+    before = _updated_at(draft)
+
+    _upload(client, draft)
+
+    assert _updated_at(draft) > before
+
+
+def test_replacing_a_file_puts_the_application_in_an_updated_since_poll(
+    client, draft, auth
+):
+    _upload(client, draft)
+    before = _updated_at(draft)
+
+    _upload(client, draft)
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
+
+
+def test_removing_a_file_moves_updated_at(client, draft):
+    _upload(client, draft)
+    before = _updated_at(draft)
+
+    client.post(_file_url("question_file_remove", draft))
+
+    assert _updated_at(draft) > before
+
+
+def test_removing_a_file_puts_the_application_in_an_updated_since_poll(
+    client, draft, auth
+):
+    _upload(client, draft)
+    before = _updated_at(draft)
+
+    client.post(_file_url("question_file_remove", draft))
+
+    assert application_ids_updated_since(auth, before) == [str(draft.pk)]
