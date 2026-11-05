@@ -148,6 +148,18 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 assert heights
                 too_short = [(text, h) for text, h in heights if h < 44]
                 assert not too_short, f"buttons under 44px tall: {too_short}"
+            error_labels = page.locator("[data-error-block] dt")
+            if viewport["width"] == 375 and error_labels.count():
+                # The theme paints a bare <dt> in primary blue; the error
+                # block's card labels used to stay bare while the Rows cards
+                # beside them are muted.
+                label_colour = error_labels.first.evaluate(
+                    "el => getComputedStyle(el).color"
+                )
+                muted_colour = page.locator("#main-content .text-muted").first.evaluate(
+                    "el => getComputedStyle(el).color"
+                )
+                assert label_colour == muted_colour
             format_description = page.get_by_text("One learner per row.")
             if viewport["width"] == 375 and format_description.count():
                 # The description used to be squeezed into a narrow column
