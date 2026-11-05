@@ -12,8 +12,8 @@ learner, registration, course, confirm_url, and refusal on a 422 re-render.
     <p>You can deactivate the registration again at any time.</p>
 </div>
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+<c-modal-footer>
+    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
     <form hx-post="{{ confirm_url }}"
           hx-target="#app-modal-body"
           hx-swap="innerHTML"
@@ -23,4 +23,4 @@ learner, registration, course, confirm_url, and refusal on a 422 re-render.
             Reactivate
         </c-button>
     </form>
-</c-button-group>
+</c-modal-footer>

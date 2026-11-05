@@ -78,10 +78,10 @@ editing" brings the form back with everything typed into it.
             <h2 id="app-modal-discard-title" class="text-lg font-semibold">Discard changes?</h2>
         </header>
         <p class="px-6 py-5">The changes you made haven't been saved.</p>
-        <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-            <c-button variant="secondary" x-on:click="keepEditing" autofocus>Keep editing</c-button>
+        <c-modal-footer>
+            <c-slot name="cancel"><c-button variant="secondary" x-on:click="keepEditing" autofocus>Keep editing</c-button></c-slot>
             <c-button variant="error" x-on:click="discard">Discard</c-button>
-        </c-button-group>
+        </c-modal-footer>
     </div>
     {% comment %}
     A fragment that replaces the body while the dialog is open (a bulk

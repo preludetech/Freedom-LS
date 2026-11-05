@@ -9,8 +9,8 @@ roles (a prose list of the roles that take effect again), confirm_url.
     <p>You can deactivate them again at any time.</p>
 </div>
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+<c-modal-footer>
+    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
     <form hx-post="{{ confirm_url }}"
           hx-target="#app-modal-body"
           hx-swap="innerHTML"
@@ -20,4 +20,4 @@ roles (a prose list of the roles that take effect again), confirm_url.
             Reactivate
         </c-button>
     </form>
-</c-button-group>
+</c-modal-footer>

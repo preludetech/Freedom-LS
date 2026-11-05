@@ -29,6 +29,24 @@ COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
 MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
 SIDE_PANEL_HOST = FREEDOM_LS_PACKAGE_DIR / "base" / "templates" / "_base_interface.html"
+EDUCATOR_MODAL_DIR = (
+    FREEDOM_LS_PACKAGE_DIR
+    / "educator_interface"
+    / "templates"
+    / "educator_interface"
+    / "modal"
+)
+# Every template that renders inside #app-modal or a bottom sheet.
+DIALOG_TEMPLATES = (
+    *sorted((TEMPLATES_DIR / "panel_framework" / "modal").glob("*.html")),
+    *sorted(EDUCATOR_MODAL_DIR.glob("*.html")),
+    MODAL_HOST,
+    TEMPLATES_DIR / "panel_framework" / "partials" / "table_sheet.html",
+    TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_confirmation.html",
+    TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_result.html",
+    TEMPLATES_DIR / "panel_framework" / "partials" / "action_unavailable.html",
+    TEMPLATES_DIR / "panel_framework" / "partials" / "action_denied.html",
+)
 
 RAW_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RAW_TAILWIND_PALETTE_CLASS = re.compile(
@@ -303,3 +321,14 @@ def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:
         assert "overflow-x: hidden" in text, host.name
         assert "max-width: 100vw" in text, host.name
         assert "max-width: none" not in text, host.name
+
+
+def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
+    """A dialog's buttons sit in <c-modal-footer>, Cancel at the left and the
+    actions at the right; <c-button-group> is for buttons outside a dialog."""
+    assert len(DIALOG_TEMPLATES) > 20
+    offenders = [
+        path.name for path in DIALOG_TEMPLATES if "<c-button-group" in path.read_text()
+    ]
+
+    assert offenders == []

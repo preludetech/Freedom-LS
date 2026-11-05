@@ -9,7 +9,7 @@ result_lines.
 {% include "panel_framework/partials/bulk_result_body.html" %}
 </div>
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" aria-describedby="bulk-result-headline" autofocus>Close</c-button>
-</c-button-group>
+<c-modal-footer>
+    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" aria-describedby="bulk-result-headline" autofocus>Close</c-button></c-slot>
+</c-modal-footer>
 <div hx-swap-oob="innerHTML:#app-modal-status">{{ headline }}</div>

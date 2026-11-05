@@ -22,10 +22,10 @@ other_side (name and value of the hidden input), confirm_url.
     </div>
     {% include "educator_interface/partials/reason_field.html" %}
 
-    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-        <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <c-modal-footer>
+        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
         <c-button type="submit" variant="error" loading="true" loading_text="Removing…">
             Remove
         </c-button>
-    </c-button-group>
+    </c-modal-footer>
 </form>

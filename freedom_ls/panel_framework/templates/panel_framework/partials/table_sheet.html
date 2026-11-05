@@ -99,10 +99,10 @@ when htmx swaps this fragment in.
                 </fieldset>
             {% endif %}
 
-            <div class="mt-auto grid grid-cols-2 gap-2 border-t border-border pt-4">
-                <c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button>
+            <c-modal-footer class="mt-auto -mx-4 -mb-4">
+                <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button></c-slot>
                 <c-button type="submit" variant="primary">Show results</c-button>
-            </div>
+            </c-modal-footer>
         </form>
     </div>
 </dialog>

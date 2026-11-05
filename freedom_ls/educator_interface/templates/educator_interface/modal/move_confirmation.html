@@ -1,5 +1,6 @@
 {% comment %}
-The modal fragment a MoveToCohortAction returns. Context: learner, cohort (the
+The modal fragment a MoveToCohortAction returns. The body names the current
+cohort and what the move does before the picker. Context: learner, cohort (the
 source), form (the destination picker), other_side (name and value of the
 hidden input), action_url. Once a destination is chosen: destination,
 losing_courses and gaining_courses (prose lists, empty when none) and
@@ -16,7 +17,7 @@ form_title) replaces the form when there is no cohort to move them to.
 {% elif empty_message %}
 {% include "panel_framework/modal/form.html" %}
 {% else %}
-<c-modal-header>Move {{ learner.user.display_name }} from {{ cohort }}?</c-modal-header>
+<c-modal-header>Move {{ learner.user.display_name }}</c-modal-header>
 
 <form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
@@ -27,17 +28,19 @@ form_title) replaces the form when there is no cohort to move them to.
             <p role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">{{ refusal }}</p>
         {% endif %}
         <input type="hidden" name="{{ other_side.name }}" value="{{ other_side.value }}">
-        <label for="move-destination" class="block font-medium">Move to</label>
+        <p>Current cohort: {{ cohort }}</p>
+        <p>{{ learner.user.display_name }} will be removed from {{ cohort }} and added to the cohort you choose.</p>
+        <label for="move-destination" class="sr-only">Move to cohort</label>
         <select id="move-destination"
                 name="destination"
-                class="w-full rounded-md border border-border-input bg-surface px-3 py-2"
+                class="w-full"
                 hx-get="{{ action_url }}"
                 hx-include="closest form"
                 hx-trigger="change"
                 hx-target="#app-modal-body"
                 hx-swap="innerHTML"
                 autofocus>
-            <option value="">Choose a cohort</option>
+            <option value="">Move to cohort</option>
             {% for option in form.destination.field.queryset %}
                 <option value="{{ option.pk }}" {% if option.pk == destination.pk %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
@@ -58,13 +61,13 @@ form_title) replaces the form when there is no cohort to move them to.
         {% endif %}
     </div>
 
-    <c-button-group variant="right" class="panel-surface sticky bottom-0 flex-wrap border-t border-border px-6 py-4">
-        <c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button>
+    <c-modal-footer>
+        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button></c-slot>
         {% if destination %}
             <c-button type="submit" variant="primary" loading="true" loading_text="Moving…">Move</c-button>
         {% else %}
             <c-button type="submit" variant="primary" disabled="true">Move</c-button>
         {% endif %}
-    </c-button-group>
+    </c-modal-footer>
 </form>
 {% endif %}

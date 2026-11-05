@@ -10,7 +10,7 @@ wording, expected_count, confirm_disabled, form (the action's own form, if any).
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
 </div>
 
-<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
-    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+<c-modal-footer>
+    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
     {% include "panel_framework/partials/bulk_confirmation_form.html" %}
-</c-button-group>
+</c-modal-footer>

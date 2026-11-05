@@ -211,3 +211,43 @@ def test_long_email_of_a_nameless_member_does_not_scroll_a_phone_sideways(
         .first
     ).to_be_visible()
     assert_no_horizontal_overflow(page)
+
+
+def test_the_change_cohorts_dialog_for_a_long_email_fits_a_phone(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """A dialog titled with a long email stays inside a 375px viewport: the
+    title wraps and the host clips, so nothing pushes the dialog off the left
+    edge or scrolls the page sideways."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    cohort = CohortFactory(
+        organisation=organisation, name="A Cohort With A Rather Long Name Indeed"
+    )
+    member = UserFactory(
+        email="nameless.lower.educator.with.a.very.long.address@example.com",
+        first_name="",
+        last_name="",
+    )
+    assign_role(grantor, member, "cohort_viewer", cohort)
+
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(interface_url(live_server, organisation.slug, "members"))
+    page.locator("#main-content").get_by_role(
+        "button", name="Change cohorts", exact=True
+    ).first.click()
+    modal = page.locator("#app-modal")
+    expect(
+        modal.get_by_role("heading", name=f"Change cohorts for {member.email}")
+    ).to_be_visible()
+
+    assert_no_horizontal_overflow(page)
+    box = modal.bounding_box()
+    assert box is not None
+    assert box["x"] >= 0
+    assert box["x"] + box["width"] <= 375
+    assert modal.evaluate("el => el.scrollWidth <= el.clientWidth")

@@ -7681,10 +7681,18 @@ def _single_row_dialog(
 def test_single_row_dialog_title_is_a_question(
     name: str, staff_client: Client, organisation: Organisation
 ):
+    """A confirmation asks; the move dialog, which is a form, names the
+    action and the learner and states the current cohort in its body."""
     document = _single_row_dialog(staff_client, name, organisation)
 
     (title,) = document.cssselect("#app-modal-title")
-    assert title.text_content().strip().endswith("?")
+    text = title.text_content().strip()
+    if name == "move":
+        assert text.startswith("Move ")
+        assert "?" not in text
+        assert "Current cohort:" in document.text_content()
+    else:
+        assert text.endswith("?")
 
 
 @pytest.mark.django_db
