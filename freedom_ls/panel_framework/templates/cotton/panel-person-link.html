@@ -1,0 +1,47 @@
+<c-vars name="" user_id="" secondary="" href="" quick_view_url="" hx_nav="" class="" />
+
+{% load panel_tags %}
+
+{% comment %}
+A person shown as a link: the avatar chip and the name, in the row-link
+style every data-table name cell uses, so a learner or a staff member looks
+the same wherever they appear (a table row, a phone card, an attention list,
+a dialog).
+
+Attributes:
+  name            Display name (required).
+  user_id         Picks the avatar colour slot (required).
+  secondary       Email or role on a second line (default none).
+  href            The person's page. Without it the chip and name render as
+                  plain text, for a person with no page of their own.
+  quick_view_url  When set, a small trigger at the end edge opens that URL in
+                  the #quick-view drawer; at least 44px square below md.
+  hx_nav          On: the link navigates with HTMX into #main-content, as the
+                  data-table link cell does. Read through the `flag` filter.
+
+The `trigger` slot replaces the quick-view trigger with the caller's own
+control, for a row whose trigger has to be a <button>.
+{% endcomment %}
+<span class="flex items-center justify-between gap-2 {{ class }}" {{ attrs }}>
+    {% if href %}
+        <a href="{{ href }}"
+           class="min-w-0 font-bold text-on-surface no-underline hover:text-primary"
+           {% if hx_nav|flag %}
+               hx-get="{{ href }}"
+               hx-target="#main-content"
+               hx-push-url="true"
+               hx-swap="outerHTML"
+           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></a>
+    {% else %}
+        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></span>
+    {% endif %}
+    {% if trigger %}
+        {{ trigger }}
+    {% elif quick_view_url %}
+        <c-quick-view-trigger href="{{ href }}" url="{{ quick_view_url }}"
+                              aria-label="Quick view: {{ name }}"
+                              class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
+            <c-icon name="quick_view" class="size-4" />
+        </c-quick-view-trigger>
+    {% endif %}
+</span>

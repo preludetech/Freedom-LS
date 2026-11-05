@@ -1,13 +1,17 @@
-<c-vars url label variant="primary" aria_label="" />
+<c-vars url label variant="primary" aria_label="" size="" class="" />
 
 {% comment %}
 Opens the shared #app-modal with the fragment this url's GET returns. Nothing
 opens until the fragment arrives — the disabled button is the only loading
 state, and no URL is pushed. `aria_label` names the trigger when the visible
 label alone does not identify it, such as a per-row Remove; it starts with
-the visible label so the name still matches what is on screen.
+the visible label so the name still matches what is on screen. `size` and
+`class` reach the button unchanged, so a trigger inside a table cell or card
+takes size="small" like any other button there.
 {% endcomment %}
 <c-button variant="{{ variant }}"
+          size="{{ size }}"
+          class="{{ class }}"
           hx-get="{{ url }}"
           hx-target="#app-modal-body"
           hx-swap="innerHTML"

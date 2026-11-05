@@ -1,0 +1,10 @@
+<c-vars class="" />
+
+{% comment %}
+The wrapper around the buttons in a data-table cell or phone card. It owns
+the gap between them, so the buttons carry no margins, and it wraps when the
+cell is narrow. Every button inside takes size="small"; the
+`.panel-data-table` rule in tailwind.components.css makes the size hold even
+for a button that forgot to say so.
+{% endcomment %}
+<div class="flex flex-wrap items-center gap-2 {{ class }}" {{ attrs }}>{{ slot }}</div>

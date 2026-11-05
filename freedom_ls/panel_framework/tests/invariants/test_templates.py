@@ -27,6 +27,8 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 OVERRIDES_DIR = Path(__file__).resolve().parent.parent / "template_overrides"
 COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
+MODAL_HOST = TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
+SIDE_PANEL_HOST = FREEDOM_LS_PACKAGE_DIR / "base" / "templates" / "_base_interface.html"
 
 RAW_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RAW_TAILWIND_PALETTE_CLASS = re.compile(
@@ -279,3 +281,25 @@ def test_the_quick_view_open_full_page_link_shows_the_open_page_icon() -> None:
     (link,) = document.cssselect("#quick-view-open")
     (icon,) = link.cssselect("svg")
     assert icon.get("data-icon") == "open_page"
+
+
+def test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding() -> None:
+    """A select keeps its arrow clear of the edge: the base rule hides the
+    browser's own, draws one in currentColor, and pads the end for it."""
+    css = TAILWIND_COMPONENTS_CSS.read_text()
+    select_rules = re.findall(r"\n    select \{(.*?)\n    \}", css, re.DOTALL)
+    chevron_rules = [body for body in select_rules if "appearance-none" in body]
+
+    assert len(chevron_rules) == 1
+    assert "currentColor" in chevron_rules[0]
+    assert "pr-10" in chevron_rules[0]
+
+
+def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:
+    """Nothing inside a dialog or sheet can push it past the viewport edge."""
+    for host in (MODAL_HOST, SIDE_PANEL_HOST):
+        text = host.read_text()
+
+        assert "overflow-x: hidden" in text, host.name
+        assert "max-width: 100vw" in text, host.name
+        assert "max-width: none" not in text, host.name

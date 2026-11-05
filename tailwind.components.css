@@ -138,8 +138,25 @@
         @apply resize-y min-h-[100px]
     }
 
+    /* The select draws its own chevron, inside the end padding, so it sits
+     * clear of the edge whatever the browser would have drawn. Two
+     * currentColor gradients make the arrow follow the text colour. A list
+     * box (multiple or sized) has no arrow. */
     select {
-        @apply bg-surface cursor-pointer
+        @apply bg-surface cursor-pointer appearance-none bg-no-repeat pr-10;
+        background-image:
+            linear-gradient(45deg, transparent 50%, currentColor 50%),
+            linear-gradient(135deg, currentColor 50%, transparent 50%);
+        background-position:
+            calc(100% - 1.25rem) 50%,
+            calc(100% - 0.9375rem) 50%;
+        background-size: 0.3125rem 0.3125rem, 0.3125rem 0.3125rem;
+    }
+
+    select[multiple],
+    select[size] {
+        @apply pr-3;
+        background-image: none;
     }
 
     input[type="checkbox"],
@@ -218,6 +235,14 @@
 
     /* Small button size — overrides .btn padding (must come after .btn) */
     .btn.btn-sm {
+        @apply px-2 py-1.5 text-sm
+    }
+
+    /* A button inside a data-table cell or phone card is the small size
+     * whatever it asked for, so row actions never crowd the row. The pair of
+     * classes outranks a theme's own `.btn` padding. */
+    .panel-data-table td .btn,
+    .panel-data-table-card .btn {
         @apply px-2 py-1.5 text-sm
     }
 

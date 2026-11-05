@@ -1,0 +1,15 @@
+<c-vars class="" />
+
+{% comment %}
+The footer every dialog and bottom sheet ends with. The `cancel` slot holds
+the one button that leaves without changing anything (Cancel, Close, Keep
+editing) and sits at the left; the default slot holds the actions, right
+aligned with the primary last, and wraps onto its own row below sm when it
+does not fit. Sticky so it stays in view while the dialog, which is the
+scroll container, scrolls. A dialog with only a Close button puts it in the
+`cancel` slot and leaves the default slot empty.
+{% endcomment %}
+<footer class="panel-surface sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap {{ class }}" {{ attrs }}>
+    <div class="shrink-0">{{ cancel }}</div>
+    <div class="flex min-w-0 flex-wrap items-center justify-end gap-3">{{ slot }}</div>
+</footer>
