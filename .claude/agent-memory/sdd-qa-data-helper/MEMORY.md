@@ -65,6 +65,7 @@
 
 - [reference_deadlines_seed_command.md](reference_deadlines_seed_command.md) — qa_create_deadlines_seed: deadlines-1 QA §0.3 seed (tz config, QA Deadlines Cohort, 4 qa_deadline_* learners, back-dated created_at); plain course is "show end with Topic"; on_commit minting never fires in pytest; plus the hand-built qa_deadline_timelimit learner (script in memory dir)
 - [reference_educator_polish_scenario_command.md](reference_educator_polish_scenario_command.md) — qa_create_educator_polish_scenario: run after the 5 educator seeds (bulk reset strips data); Checkpoint quizzes, over-limit cohort, nameless learner/educator, demodev org_admin; untracked config/settings_local.py via DJANGO_SETTINGS_MODULE; cohort_viewer gets 404 on Members/Audit log
+- [reference_branching_survey_command.md](reference_branching_survey_command.md) — qa_create_branching_survey: 3-page CATEGORY_VALUE_SUM form, page 2 gated on want_extra=yes (condition_option), learner qa.branch@email.com
 
 ## Recurring requests
 
