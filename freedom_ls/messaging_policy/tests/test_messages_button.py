@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import cast
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.sites.models import Site
 from django.db.models import Model
@@ -40,6 +41,13 @@ def learner_with_a_cohort_admin(user: User, organisation: Model) -> Learner:
     CohortMembershipFactory(cohort=cohort, learner=learner)
     assign_object_role(UserFactory(), cohort, "cohort_admin")
     return learner
+
+
+@pytest.fixture(autouse=True)
+def messaging_enabled(settings: SettingsWrapper) -> None:
+    """The button only renders with messaging on. ``MESSAGING_ENABLED`` defaults
+    to off, and a downstream project runs these tests under its own settings."""
+    settings.MESSAGING_ENABLED = True
 
 
 @pytest.mark.django_db
