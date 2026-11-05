@@ -78,24 +78,18 @@ class TestDeleteOrphans:
 
 @pytest.mark.django_db
 class TestBackfillUpdatedAt:
-    def test_stamps_a_learner_registration_with_its_registered_at(
-        self, mock_site_context: Site
+    @pytest.mark.parametrize(
+        ("factory", "model"),
+        [
+            (LearnerCourseRegistrationFactory, LearnerCourseRegistration),
+            (CohortCourseRegistrationFactory, CohortCourseRegistration),
+        ],
+    )
+    def test_stamps_a_registration_with_its_registered_at(
+        self, mock_site_context: Site, factory, model
     ) -> None:
-        registration = LearnerCourseRegistrationFactory()
-        LearnerCourseRegistration._base_manager.filter(pk=registration.pk).update(
-            registered_at=datetime(2020, 1, 1, tzinfo=UTC)
-        )
-
-        updated_at_migration.backfill_updated_at(django_apps, None)
-
-        registration.refresh_from_db()
-        assert registration.updated_at == datetime(2020, 1, 1, tzinfo=UTC)
-
-    def test_stamps_a_cohort_registration_with_its_registered_at(
-        self, mock_site_context: Site
-    ) -> None:
-        registration = CohortCourseRegistrationFactory()
-        CohortCourseRegistration._base_manager.filter(pk=registration.pk).update(
+        registration = factory()
+        model._base_manager.filter(pk=registration.pk).update(
             registered_at=datetime(2020, 1, 1, tzinfo=UTC)
         )
 

@@ -582,21 +582,26 @@ def test_save_with_empty_update_fields_leaves_updated_at_unchanged(
     assert registration.updated_at == before
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize("factory", REGISTRATION_FACTORIES)
-def test_receivers_see_updated_at_alongside_is_active_in_update_fields(
-    mock_site_context, factory
-):
-    registration = factory()
+@pytest.fixture
+def captured_update_fields(factory):
+    model = factory._meta.model
     seen: list[frozenset[str] | None] = []
 
     def receiver(sender, update_fields, **kwargs):
         seen.append(update_fields)
 
-    post_save.connect(receiver, sender=type(registration), weak=False)
-    try:
-        registration.save(update_fields=["is_active"])
-    finally:
-        post_save.disconnect(receiver, sender=type(registration))
+    post_save.connect(receiver, sender=model, weak=False)
+    yield seen
+    post_save.disconnect(receiver, sender=model)
 
-    assert seen == [frozenset({"is_active", "updated_at"})]
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory", REGISTRATION_FACTORIES)
+def test_receivers_see_updated_at_alongside_is_active_in_update_fields(
+    mock_site_context, factory, captured_update_fields
+):
+    registration = factory()
+
+    registration.save(update_fields=["is_active"])
+
+    assert captured_update_fields == [None, frozenset({"is_active", "updated_at"})]
