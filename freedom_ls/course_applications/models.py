@@ -144,6 +144,13 @@ class CourseApplication(SiteAwareModel):
                 # unverified applications and never collide.
             )
         ]
+        indexes = [
+            # The API pages a site's applications by (updated_at, id) and
+            # filters updated_since on the same columns.
+            models.Index(
+                fields=["site", "updated_at", "id"], name="courseapp_site_updated_idx"
+            ),
+        ]
 
     def __str__(self) -> str:
         # Ids only, never the applicant's email or name: the admin logs this
