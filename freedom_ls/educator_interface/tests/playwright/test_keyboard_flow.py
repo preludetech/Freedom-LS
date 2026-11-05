@@ -8,10 +8,11 @@ browser state the Django test client never runs.
 from __future__ import annotations
 
 import re
+import time
 from typing import cast
 
 import pytest
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Locator, Page, Route, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -259,3 +260,53 @@ def test_saving_a_cohort_edit_keeps_focus_on_the_page(
     expect(settings.get_by_label("Name")).to_have_value("New Name")
     expect(settings.get_by_label("Name")).to_be_focused()
     assert _focus_is_on_the_page(page)
+
+
+@pytest.mark.weasyprint
+def test_generating_a_report_by_keyboard_never_leaves_focus_on_the_body(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Disabling the Generate button for the length of its request dropped
+    focus to <body> until the report finished; focus now stays on the button
+    while the "Generating…" state shows and ends on it."""
+    page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    _admin_of(educator_user, organisation)
+    page.goto(
+        interface_url(
+            live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/report"
+        )
+    )
+
+    def hold_generate_request(route: Route) -> None:
+        # Keeps the request in flight long enough to sample focus.
+        time.sleep(1.5)
+        route.continue_()
+
+    page.route(re.compile(r"/generate"), hold_generate_request)
+    generate = page.get_by_role("button", name=re.compile("Generate"))
+    generate.focus()
+    expect(generate).to_be_focused()
+    page.evaluate(
+        """() => {
+            window.__bodySamples = 0;
+            window.__inFlightSamples = 0;
+            setInterval(() => {
+                if (!document.querySelector("form.htmx-request")) return;
+                window.__inFlightSamples += 1;
+                if (document.activeElement === document.body) window.__bodySamples += 1;
+            }, 20);
+        }"""
+    )
+
+    page.keyboard.press("Enter")
+
+    page.wait_for_function("window.__inFlightSamples > 10")
+    expect(page.get_by_role("link", name=re.compile("^Download"))).to_be_visible()
+    expect(page.locator("form.htmx-request")).to_have_count(0)
+    assert page.evaluate("window.__bodySamples") == 0
+    expect(page.get_by_role("button", name=re.compile("Generate"))).to_be_focused()

@@ -238,7 +238,8 @@ class TestReportTab:
         (header,) = panel.cssselect("header")
         (form,) = header.cssselect("form[hx-post]")
         (button,) = form.cssselect("button[type='submit']")
-        assert form.get("hx-disabled-elt") == "find button[type='submit']"
+        assert form.get("hx-disabled-elt") is None
+        assert form.get("hx-sync") == "this:drop"
         assert "btn-sm" in button.get("class").split()
         assert button.get("disabled") is None
         labels = [" ".join(span.text_content().split()) for span in button]

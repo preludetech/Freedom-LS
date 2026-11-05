@@ -2,20 +2,21 @@
 {% comment %}
 The Downloads card. The generate form sits beside the card title, outside
 the polled region, so it stays put while a report runs; while its POST is in
-flight the submit button is disabled and shows its loading label. A cohort
+flight the submit button shows its loading label. A cohort
 over the learner limit gets the button disabled, with the reason in the
 region as its description, since a report could only fail.
 {% endcomment %}
 
 {% block panel_header_action %}
     {% comment %}
-    Disabling the button for the request drops keyboard focus to <body>, and
-    the cohort-changed event the POST fires re-fetches this whole panel, so
-    once the request ends focus goes to the button now in the document,
-    found by id, beside the table that shows the result.
+    The button is not disabled for the request, since that would drop keyboard
+    focus to <body>; hx-sync drops a second submit while one is in flight
+    instead. The cohort-changed event the POST fires re-fetches this whole
+    panel, so once the request ends focus goes to the button now in the
+    document, found by id, beside the table that shows the result.
     {% endcomment %}
     <form hx-post="{{ row_action_urls.generate_report }}" hx-target="#{{ region_id }}" hx-swap="outerHTML"
-          hx-disabled-elt="find button[type='submit']"
+          hx-sync="this:drop"
           x-data="refocusAfterRequest"
           data-refocus-id="{{ region_id }}-generate"
           x-on:htmx:after-request="refocus">
