@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -13,11 +18,24 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.api.factories import ApiKeyFactory
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.tests.helpers import collect_pages
+from freedom_ls.course_applications.api import (
+    CourseApplicationApiSerializer,
+    CourseApplicationApiViewSet,
+)
 from freedom_ls.course_applications.factories import (
     AnonymousApplicantFactory,
     CourseApplicationFactory,
 )
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.factories import (
+    FormPageFactory,
+    FormProgressFactory,
+    FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionAnswerFileFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.form_engine.models import QuestionAnswer
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -244,3 +262,234 @@ def test_updated_since_returns_only_rows_changed_at_or_after_it(client, auth):
     ).json()
 
     assert [row["id"] for row in body["results"]] == [str(new.pk)]
+
+
+QUERY_BOUND = 6
+
+EXPECTED_ANSWER_FIELDS = ["question_id", "question_text", "question_type", "value"]
+
+
+def _typing(text: str) -> Callable[[QuestionAnswer], None]:
+    def fill(answer: QuestionAnswer) -> None:
+        answer.text_answer = text
+        answer.save()
+
+    return fill
+
+
+def _selecting(*option_texts: str) -> Callable[[QuestionAnswer], None]:
+    def fill(answer: QuestionAnswer) -> None:
+        options = [
+            QuestionOptionFactory(question=answer.question, text=text, order=order)
+            for order, text in enumerate(option_texts)
+        ]
+        answer.selected_options.add(*options)
+
+    return fill
+
+
+def _attaching(original_filename: str) -> Callable[[QuestionAnswer], None]:
+    def fill(answer: QuestionAnswer) -> None:
+        QuestionAnswerFileFactory(answer=answer, original_filename=original_filename)
+
+    return fill
+
+
+def _answer_nothing(answer: QuestionAnswer) -> None:
+    """Leave the answer row empty."""
+
+
+def _application_answering(
+    question_type: str,
+    fill: Callable[[QuestionAnswer], None],
+    **question_fields: object,
+) -> tuple[CourseApplication, QuestionAnswer]:
+    """An anonymous application whose sitting holds one answer to a question of the type."""
+    sitting = FormProgressFactory(user=None)
+    question = FormQuestionFactory(
+        form_page=FormPageFactory(form=sitting.form),
+        type=question_type,
+        **question_fields,
+    )
+    answer = cast(
+        QuestionAnswer,
+        QuestionAnswerFactory(form_progress=sitting, question=question),
+    )
+    fill(answer)
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(anonymous=True, form_progress=sitting),
+    )
+    return application, answer
+
+
+def _application_with_every_kind_of_answer() -> CourseApplication:
+    """An anonymous application with a text, a checkbox, a choice and a file answer."""
+    sitting = FormProgressFactory(user=None)
+    page = FormPageFactory(form=sitting.form)
+    answers_by_type = {
+        "short_text": _typing("Ada"),
+        "checkboxes": _selecting("Red", "Blue"),
+        "multiple_choice": _selecting("Yes"),
+        "file_upload": _attaching("id.png"),
+    }
+    for order, (question_type, fill) in enumerate(answers_by_type.items()):
+        question = FormQuestionFactory(form_page=page, type=question_type, order=order)
+        fill(QuestionAnswerFactory(form_progress=sitting, question=question))
+    return cast(
+        CourseApplication,
+        CourseApplicationFactory(anonymous=True, form_progress=sitting),
+    )
+
+
+def _answers_of(client: APIClient, auth: dict[str, str], application) -> list[dict]:
+    body = client.get(
+        reverse(DETAIL_URL_NAME, args=[application.pk]), headers=auth
+    ).json()
+    answers: list[dict] = body["answers"]
+    return answers
+
+
+def test_an_answer_entry_carries_exactly_the_contract_fields_in_order(client, auth):
+    application, _ = _application_answering("short_text", _typing("Ada"))
+
+    entry = _answers_of(client, auth, application)[0]
+
+    assert list(entry) == EXPECTED_ANSWER_FIELDS
+
+
+def test_an_answer_entry_names_its_question(client, auth):
+    application, answer = _application_answering(
+        "short_text", _typing("Ada"), question="Your name"
+    )
+
+    entry = _answers_of(client, auth, application)[0]
+
+    assert entry["question_id"] == str(answer.question_id)
+    assert entry["question_text"] == "Your name"
+    assert entry["question_type"] == "short_text"
+
+
+@pytest.mark.parametrize(
+    ("question_type", "fill", "expected"),
+    [
+        pytest.param("short_text", _typing("Ada"), "Ada", id="short_text"),
+        pytest.param("short_text", _answer_nothing, None, id="empty_text"),
+        pytest.param("date", _typing("2026-01-02"), "2026-01-02", id="date"),
+        pytest.param(
+            "checkboxes", _selecting("Red", "Blue"), ["Red", "Blue"], id="checkboxes"
+        ),
+        pytest.param("checkboxes", _answer_nothing, None, id="checkboxes_none"),
+        pytest.param("multiple_choice", _selecting("Yes"), "Yes", id="choice"),
+        pytest.param(
+            "multiple_choice", _selecting("A", "B"), "A; B", id="choice_two_options"
+        ),
+        pytest.param("dropdown", _selecting("North"), "North", id="dropdown"),
+        pytest.param("file_upload", _attaching("id.png"), "id.png", id="file"),
+        pytest.param("file_upload", _answer_nothing, None, id="file_none"),
+        pytest.param("file_upload", _attaching(""), None, id="file_empty_name"),
+    ],
+)
+def test_an_answers_value_by_question_type(client, auth, question_type, fill, expected):
+    application, _ = _application_answering(question_type, fill)
+
+    entry = _answers_of(client, auth, application)[0]
+
+    assert entry["value"] == expected
+
+
+def test_a_file_answer_exposes_no_storage_key_path_or_url(client, auth):
+    application, answer = _application_answering("file_upload", _attaching("id.png"))
+
+    entry = _answers_of(client, auth, application)[0]
+
+    serialised = json.dumps(entry)
+    stored_file = answer.answer_file.file
+    assert str(stored_file.name) not in serialised
+    assert stored_file.url not in serialised
+
+
+def test_answers_come_back_by_page_then_question_order(client, auth):
+    sitting = FormProgressFactory(user=None)
+    first_page = FormPageFactory(form=sitting.form, order=0)
+    second_page = FormPageFactory(form=sitting.form, order=1)
+    questions = [
+        FormQuestionFactory(form_page=second_page, order=0, question="Third"),
+        FormQuestionFactory(form_page=first_page, order=1, question="Second"),
+        FormQuestionFactory(form_page=first_page, order=0, question="First"),
+    ]
+    for question in questions:
+        QuestionAnswerFactory(form_progress=sitting, question=question)
+    application = CourseApplicationFactory(anonymous=True, form_progress=sitting)
+
+    entries = _answers_of(client, auth, application)
+
+    assert [entry["question_text"] for entry in entries] == [
+        "First",
+        "Second",
+        "Third",
+    ]
+
+
+def test_an_unanswered_question_has_no_entry(client, auth):
+    sitting = FormProgressFactory(user=None)
+    FormQuestionFactory(form_page=FormPageFactory(form=sitting.form))
+    application = CourseApplicationFactory(anonymous=True, form_progress=sitting)
+
+    assert _answers_of(client, auth, application) == []
+
+
+def test_answers_are_complete_when_the_ambient_site_is_not_the_applications_site(
+    mock_site_context,
+):
+    _application_with_every_kind_of_answer()
+    other = SiteFactory(name="Other", domain="other.example.com")
+
+    with site_context(other):
+        rows = CourseApplicationApiSerializer(
+            CourseApplicationApiViewSet().get_queryset(), many=True
+        ).data
+
+    assert [entry["value"] for entry in rows[0]["answers"]] == [
+        "Ada",
+        ["Red", "Blue"],
+        "Yes",
+        "id.png",
+    ]
+
+
+def _query_count_of_list(client: APIClient, auth: dict[str, str]) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        client.get(reverse(LIST_URL_NAME), headers=auth)
+    return len(queries)
+
+
+def test_the_number_of_queries_does_not_grow_with_the_number_of_applications(
+    client, auth, django_assert_max_num_queries
+):
+    _application_with_every_kind_of_answer()
+    # The first request fills process-level caches; later ones are the steady state.
+    client.get(reverse(LIST_URL_NAME), headers=auth)
+    one_application = _query_count_of_list(client, auth)
+    _application_with_every_kind_of_answer()
+    _application_with_every_kind_of_answer()
+
+    with django_assert_max_num_queries(QUERY_BOUND):
+        three_applications = _query_count_of_list(client, auth)
+
+    assert three_applications == one_application
+
+
+def test_the_schema_describes_the_answer_entries(auth):
+    document = APIClient().get(reverse("api:schema"), headers=auth).json()
+    schemas = document["components"]["schemas"]
+
+    answers = schemas["CourseApplicationApi"]["properties"]["answers"]
+    answer = schemas["QuestionAnswerApi"]
+
+    assert answers["items"] == {"$ref": "#/components/schemas/QuestionAnswerApi"}
+    assert list(answer["properties"]) == EXPECTED_ANSWER_FIELDS
+    assert answer["properties"]["value"]["oneOf"] == [
+        {"type": "string", "nullable": True},
+        {"type": "array", "items": {"type": "string"}, "nullable": True},
+    ]
