@@ -47,7 +47,7 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
 )
 from freedom_ls.educator_interface.forms import (
-    AddLearnersForm,
+    AddLearnerForm,
     AddMemberForm,
     BulkTargetPickerForm,
     CohortCourseRegistrationForm,
@@ -68,7 +68,10 @@ from freedom_ls.educator_interface.members import (
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.learner_actions import (
-    add_learners,
+    AddLearnerResult,
+    AddOutcome,
+    CohortUnavailableError,
+    add_learner,
     add_to_cohort,
     deactivate_cohort,
     deactivate_learner,
@@ -321,9 +324,24 @@ class ReasonMixin(PanelAction):
 
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
-    """Edit, offered only while the cohort is active."""
+    """The cohort's name, a field on the Settings panel rather than a
+    dialog, offered only while the cohort is active. The panel includes the
+    form on first render; a 422 re-renders the form in place, and a save
+    answers 204 so the panel's own cohortChanged refresh shows the new name.
+    """
 
     blocked_phrase = "change its name"
+    renders_in_footer = False
+    template_name = "educator_interface/partials/cohort_name_form.html"
+    autofocus_first_field = False
+
+    def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
+        # The form targets itself, so the inactive-cohort notice is
+        # retargeted at the dialog, where every other refusal shows.
+        response = super().refuse_inactive(ctx)
+        response["HX-Retarget"] = "#app-modal-body"
+        response["HX-Reswap"] = "innerHTML"
+        return response
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         old_name = str(form.initial["name"])
@@ -1292,21 +1310,30 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
         )
 
 
-class AddLearnersAction(PanelAction):
-    """Adds pasted email addresses as learners of the organisation, making a
-    pending account for each unknown address, and optionally puts them in a
-    cohort. The results come back in the modal, which stays open."""
+class AddLearnerAction(PanelAction):
+    """Adds one email address as a learner of the organisation, making a
+    pending account for an unknown address, and optionally puts them in a
+    cohort. Add reports the outcome in the modal with Add another beside
+    Close; Add and add another reports it above an empty form with the
+    cohort kept, so a handful of people are added one at a time. A list of
+    people is the file import."""
 
-    label = "Add learners"
-    action_name = "add_learners"
+    label = "Add learner"
+    action_name = "add_learner"
     capability = ADD_LEARNER
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/form.html"
-    _BUTTON = {
-        "label": "Add learners",
-        "variant": "primary",
-        "loading_text": "Adding...",
-    }
+    _BUTTONS = [
+        {
+            "label": "Add and add another",
+            "variant": "secondary",
+            "name": "action",
+            "value": "add_another",
+            "loading_text": "Adding...",
+        },
+        {"label": "Add", "variant": "primary", "loading_text": "Adding..."},
+    ]
+    _ADDED = (AddOutcome.CREATED, AddOutcome.JOINED, AddOutcome.REACTIVATED)
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return cast("OrganisationScopedRequest", ctx.request).organisation
@@ -1329,9 +1356,11 @@ class AddLearnersAction(PanelAction):
             self._cohorts(ctx), pk=_uuid_from(ctx.request.GET, "cohort")
         )
 
-    def _form(self, ctx: PanelContext, preset: Cohort | None) -> AddLearnersForm:
-        return AddLearnersForm(
-            ctx.request.POST if ctx.request.method == "POST" else None,
+    def _form(
+        self, ctx: PanelContext, preset: Cohort | None, *, bound: bool = True
+    ) -> AddLearnerForm:
+        return AddLearnerForm(
+            ctx.request.POST if bound and ctx.request.method == "POST" else None,
             cohorts=self._cohorts(ctx),
             preset=preset,
         )
@@ -1343,27 +1372,28 @@ class AddLearnersAction(PanelAction):
         return url
 
     def _fragment_context(
-        self, ctx: PanelContext, form: AddLearnersForm, preset: Cohort | None
+        self,
+        ctx: PanelContext,
+        form: AddLearnerForm,
+        preset: Cohort | None,
+        status_message: str = "",
     ) -> dict[str, object]:
         return {
             **form_fragment_context(
                 form,
-                form_title=f"Add learners to {preset}" if preset else "Add learners",
+                form_title=f"Add a learner to {preset}" if preset else "Add a learner",
                 form_url=self._form_url(ctx, preset),
-                submit_buttons=[self._BUTTON],
+                submit_buttons=self._BUTTONS,
             ),
-            "import_url": self._import_url(ctx) if form.over_limit else None,
+            "status_message": status_message,
         }
 
-    def _import_url(self, ctx: PanelContext) -> str:
-        return reverse(
-            "educator_interface:learner_import",
-            kwargs={
-                "organisation_slug": cast(
-                    "OrganisationScopedRequest", ctx.request
-                ).organisation.slug
-            },
-        )
+    @staticmethod
+    def _outcome_sentence(result: AddLearnerResult) -> str:
+        sentence = f"{result.email}: {result.outcome.label}."
+        if result.cohort_outcome:
+            sentence += f" {result.cohort_outcome.label}."
+        return sentence
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         preset = self._preset_cohort(ctx)
@@ -1382,25 +1412,40 @@ class AddLearnersAction(PanelAction):
         cohort = cast(Cohort | None, form.cleaned_data["cohort"]) or preset
         organisation = cast("OrganisationScopedRequest", ctx.request).organisation
         try:
-            results = add_learners(
+            result = add_learner(
                 organisation,
-                form.cleaned_data["entries"],
+                form.entry(),
                 cohort,
                 actor=cast("User", ctx.request.user),
             )
-        except ValueError:
+        except CohortUnavailableError:
             return inactive_cohort_response(
                 ctx.request, cast(Cohort, cohort), "add learners to it"
             )
-        html = render_to_string(
-            "educator_interface/modal/add_learners_results.html",
-            {"results": results, "cohort": cohort},
-            request=ctx.request,
-        )
-        events = {
-            LEARNER_CHANGED: [
-                str(result.learner.pk) for result in results if result.learner
-            ]
+        if ctx.request.POST.get("action") == "add_another":
+            html = render_to_string(
+                self.template_name,
+                self._fragment_context(
+                    ctx,
+                    self._form(ctx, preset, bound=False),
+                    preset,
+                    status_message=self._outcome_sentence(result),
+                ),
+                request=ctx.request,
+            )
+        else:
+            html = render_to_string(
+                "educator_interface/modal/add_learner_result.html",
+                {
+                    "result": result,
+                    "added": result.outcome in self._ADDED,
+                    "cohort": cohort,
+                    "form_url": self._form_url(ctx, preset),
+                },
+                request=ctx.request,
+            )
+        events: dict[str, list[str]] = {
+            LEARNER_CHANGED: [str(result.learner.pk)] if result.learner else []
         }
         if cohort is not None:
             events[COHORT_CHANGED] = [str(cohort.pk)]
@@ -1445,8 +1490,8 @@ class ImportLearnersAction(PanelAction):
         return HttpResponseNotAllowed(["GET"])
 
 
-class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):
-    """Add learners on a cohort's page, with the cohort preset. Offered only
+class AddLearnerToCohortAction(RequiresActiveCohortMixin, AddLearnerAction):
+    """Add a learner on a cohort's page, with the cohort preset. Offered only
     to a user who may create learners; others get the existing-learner picker."""
 
     blocked_phrase = "add learners to it"
@@ -1898,9 +1943,11 @@ class AddMemberAction(PanelAction):
 
 
 class AddMemberToCohortAction(AddMemberAction):
-    """Add a member on a cohort's page, with the cohort fixed."""
+    """Add a member on a cohort's page, with the cohort fixed. Rendered by
+    the Settings panel beside its Staff heading, not in the footer."""
 
     capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
+    renders_in_footer = False
     offerable_roles = ("cohort_admin", "cohort_viewer")
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
@@ -2219,7 +2266,7 @@ class MemberStateAction(PanelAction):
 
 
 class DeactivateMemberAction(ReasonMixin, MemberStateAction):
-    label = "Deactivate"
+    label = "Deactivate staff member"
     action_name = "deactivate"
     template_name = "educator_interface/modal/deactivate_member_confirmation.html"
 
@@ -2261,7 +2308,7 @@ class DeactivateMemberAction(ReasonMixin, MemberStateAction):
 
 
 class ReactivateMemberAction(MemberStateAction):
-    label = "Reactivate"
+    label = "Reactivate staff member"
     action_name = "reactivate"
     template_name = "educator_interface/modal/reactivate_member_confirmation.html"
 

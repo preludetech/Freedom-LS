@@ -1,18 +1,11 @@
 {% comment %}
-The selection bar: the result count and the first two permitted bulk actions as buttons
-and any others under a "More actions" menu, hidden until a row is checked, sharing its footer row with the
-pagination — which stays visible regardless of selection. Fixed to the
+The selection bar: the entry count, then, once a row is checked, the
+selection count and the first two permitted bulk actions as buttons with any
+others under a "More actions" menu, sharing its footer row with the
+pagination, which stays visible regardless of selection. Fixed to the
 bottom of the viewport below lg, where the sidebar is not docked and the bar
 would otherwise scroll out of reach below a long card list or table.
 {% endcomment %}
-<style>@layer components {
-    /* Below lg the bar is fixed to a small screen, so its buttons take the
-     * small size (and stay 44px tall below md); on a docked desktop they
-     * are full size like the rest of the page. */
-    .panel-table-selection-bar .btn {
-        @apply max-lg:px-2 max-lg:py-1.5 max-lg:text-sm max-md:min-h-11
-    }
-}</style>
 <div class="panel-table-selection-bar fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border bg-surface px-4 py-3 md:px-6 lg:static lg:border-0 lg:bg-transparent"
      data-page-count="{{ page_obj|length }}"
      data-total-count="{{ page_obj.paginator.count }}">
@@ -21,6 +14,7 @@ would otherwise scroll out of reach below a long card list or table.
         The status element is always rendered; only its text is toggled, so
         assistive technology has a live region to watch before the count changes.
         {% endcomment %}
+        <span x-show="showEntryCount" class="text-sm text-muted" data-entry-count>{{ entry_count }}</span>
         <span role="status" class="text-sm">
             <span x-show="running" x-cloak class="inline-flex items-center gap-2"><c-icon name="loading" class="size-5 animate-spin" /><span><span x-text="runLabel"></span> is running…</span></span>
             <span x-show="showSelectionCount">
@@ -44,6 +38,7 @@ would otherwise scroll out of reach below a long card list or table.
             {% for entry in bulk_actions|slice:":2" %}
                 <c-button type="submit"
                           variant="{{ entry.action.variant }}"
+                          size="small"
                           formaction="{{ entry.url }}{{ qs }}"
                           hx-post="{{ entry.url }}{{ qs }}"
                           hx-target="#app-modal-body"
@@ -53,7 +48,7 @@ would otherwise scroll out of reach below a long card list or table.
             {% endfor %}
             {% with more=bulk_actions|slice:"2:" %}
                 {% if more %}
-                    <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary" panel_class="fixed w-48">
+                    <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary btn-sm" panel_class="fixed w-48">
                         <c-slot name="trigger">
                             More actions
                         </c-slot>
@@ -73,6 +68,7 @@ would otherwise scroll out of reach below a long card list or table.
                         {% for entry in more %}
                             <c-button type="submit"
                                       variant="{{ entry.action.variant }}"
+                                      size="small"
                                       formaction="{{ entry.url }}{{ qs }}">
                                 {{ entry.action.label }}
                             </c-button>

@@ -26,7 +26,6 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html             # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_courses.html                   # changed
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member.html                            # new
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_actions.html                    # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_roles.html                      # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html                # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/progress_check.html                    # deleted
@@ -47,10 +46,11 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_learner_confirmation.html              # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_member_confirmation.html               # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_registration_confirmation.html         # new
+  - freedom_ls/educator_interface/templates/educator_interface/modal/add_learner_result.html                          # new
+  - freedom_ls/educator_interface/templates/educator_interface/partials/cohort_name_form.html                         # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/remove_from_cohort_confirmation.html              # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/resend_setup_email_confirmation.html              # new
   - freedom_ls/educator_interface/templates/educator_interface/panels/_lazy_region.html                                # new
-  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_educators.html                            # new
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_needs_attention_region.html               # new
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_body_region.html                   # new
   - freedom_ls/educator_interface/templates/educator_interface/panels/dashboard.html                                   # new
@@ -117,6 +117,7 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_selection_bar.html                             # new
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_sheet.html                                     # new
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_toolbar.html                                   # new
+  - freedom_ls/panel_framework/templates/panel_framework/partials/table_footer.html                                    # new
   - freedom_ls/panel_framework/templates/panel_framework/quick_view/frame.html                                         # new
   - freedom_ls/panel_framework/templates/panel_framework/views/_base_view_base.html                                    # new
   - freedom_ls/panel_framework/templates/panel_framework/views/_bulk_confirmation_base.html                            # new

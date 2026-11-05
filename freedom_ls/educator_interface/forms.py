@@ -162,20 +162,13 @@ class LearnerPickerForm(forms.Form):
         cast(LearnerMultipleChoiceField, self.fields["learners"]).queryset = queryset
 
 
-MAX_ADD_LEARNERS = 50
+class AddLearnerForm(forms.Form):
+    """One learner: an email address, an optional name and an optional
+    cohort. A list of people is the file import, not this form."""
 
-
-class AddLearnersForm(forms.Form):
-    """Pasted lines of `email, first name, last name`, and an optional cohort.
-
-    An invalid address is not a form error: add_learners reports it on its
-    own row, so one typo does not block the rest of the list.
-    """
-
-    entries = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 8}),
-        help_text="One per line: email, first name, last name",
-    )
+    email = forms.EmailField(label="Email address")
+    first_name = forms.CharField(required=False, max_length=200)
+    last_name = forms.CharField(required=False, max_length=200)
     cohort = forms.ModelChoiceField(queryset=Cohort.objects.none(), required=False)
 
     def __init__(
@@ -186,36 +179,19 @@ class AddLearnersForm(forms.Form):
         preset: Cohort | None = None,
     ) -> None:
         super().__init__(data)
-        #: Set when the list was refused for being too long, so the dialog can
-        #: point at the file import that has no such limit.
-        self.over_limit = False
         cohort_field = cast(forms.ModelChoiceField, self.fields["cohort"])
         cohort_field.queryset = cohorts
         if preset is not None:
             cohort_field.widget = forms.HiddenInput()
             cohort_field.initial = preset.pk
 
-    def clean_entries(self) -> list[LearnerEntry]:
-        lines = [
-            line.strip()
-            for line in self.cleaned_data["entries"].splitlines()
-            if line.strip()
-        ]
-        if not lines:
-            raise forms.ValidationError("Enter at least one email address.")
-        if len(lines) > MAX_ADD_LEARNERS:
-            self.over_limit = True
-            raise forms.ValidationError(
-                f"Add up to {MAX_ADD_LEARNERS} at a time; larger lists are "
-                "imported from a file."
-            )
-        entries = []
-        for line in lines:
-            email, first_name, last_name, *_ = [
-                part.strip() for part in line.split(",")
-            ] + ["", ""]
-            entries.append(LearnerEntry(email, first_name, last_name))
-        return entries
+    def entry(self) -> LearnerEntry:
+        """The validated person, for add_learner."""
+        return LearnerEntry(
+            self.cleaned_data["email"].strip(),
+            self.cleaned_data["first_name"].strip(),
+            self.cleaned_data["last_name"].strip(),
+        )
 
 
 class MemberEmailForm(forms.Form):

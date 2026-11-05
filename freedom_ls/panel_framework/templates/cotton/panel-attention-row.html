@@ -46,13 +46,13 @@ icon trails, so the DOM still holds only the one link to href.
 
 <li class="relative flex items-center gap-3 py-3" {{ attrs }}>
     {% if user_id|flag %}
-        <span class="shrink-0 self-start -mt-1"><c-panel-avatar-chip :name="subject" :user_id="user_id" name_hidden="true" /></span>
+        <span class="shrink-0 self-start"><c-panel-avatar-chip :name="subject" :user_id="user_id" size="sm" name_hidden="true" /></span>
     {% elif icon %}
         <span aria-hidden="true" class="shrink-0 {% include "panel_framework/partials/tone_text_class.html" with tone=icon_tone only %}"><c-icon :name="icon" class="size-5" /></span>
     {% endif %}
     <div class="min-w-0 grow lg:flex lg:items-start lg:gap-6">
         <div class="min-w-0 lg:w-56 lg:shrink-0">
-            <a href="{{ href }}" class="font-bold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
+            <a href="{{ href }}" class="text-sm font-semibold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ subject }}</a>
             {% if reason %}<p class="text-sm text-muted">{{ reason }}</p>{% endif %}
         </div>
         {% if slot.strip %}<div class="min-w-0 lg:grow">{{ slot }}</div>{% endif %}
@@ -60,7 +60,7 @@ icon trails, so the DOM still holds only the one link to href.
     {% if trigger.strip %}{{ trigger }}{% endif %}
     {% if badge_label %}<c-panel-status-badge :tone="badge_tone" :label="badge_label" />{% endif %}
     {% if action_label and action_href %}
-        <c-button href="{{ action_href }}" variant="ghost" class="hidden md:inline-flex">{{ action_label }}<span class="sr-only"> {{ subject }}</span></c-button>
+        <c-button href="{{ action_href }}" variant="ghost" size="small" class="hidden md:inline-flex">{{ action_label }}<span class="sr-only"> {{ subject }}</span></c-button>
     {% endif %}
     <span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>
 </li>

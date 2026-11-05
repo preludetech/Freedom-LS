@@ -430,13 +430,13 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
-    def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
+    def test_cohort_settings_tab_fetch_404s_for_a_cohort_outside_organisation_a(
         self, isolation
     ):
         response = isolation.client.get(
             _interface_url(
                 isolation.organisation_a.slug,
-                f"cohorts/{isolation.cohort_b.pk}/__tabs/overview/__panels/educators",
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/settings",
             ),
             HTTP_HX_REQUEST="true",
         )
@@ -953,7 +953,7 @@ class TestAddLearnersIsolation:
     """The add-learners dialog only accepts cohorts from the organisation in the URL."""
 
     def _url(self, organisation) -> str:
-        return _interface_url(organisation.slug, "learners/__actions/add_learners")
+        return _interface_url(organisation.slug, "learners/__actions/add_learner")
 
     def _client(self, logged_in_client, organisation):
         educator = UserFactory(staff=True)
@@ -982,7 +982,7 @@ class TestAddLearnersIsolation:
 
         response = self._client(logged_in_client, organisation).post(
             self._url(organisation),
-            {"entries": "new@example.com", "cohort": str(foreign_cohort.pk)},
+            {"email": "new@example.com", "cohort": str(foreign_cohort.pk)},
             HTTP_HX_REQUEST="true",
         )
 

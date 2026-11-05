@@ -141,20 +141,20 @@ def test_educator_manages_cohorts_and_learners(
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, created)
     assign_perm("freedom_ls_learner_management.delete_cohort", educator_user, created)
 
-    # Edit its name from the Settings tab: the modal closes and the heading
-    # and tab title update.
+    # Rename it in the Settings tab's name field: no dialog opens, the
+    # heading and tab title update, and the refreshed field holds the name.
     page.goto(
         interface_url(
             live_server, organisation_a.slug, f"cohorts/{created.pk}/__tabs/settings"
         )
     )
-    page.get_by_role("button", name="Edit").click()
-    # Scoped: the dialog's own aria-labelledby also matches get_by_label.
-    modal.locator("#app-modal-body").get_by_label("Name").fill("New Name")
-    page.get_by_role("button", name="Save", exact=True).click()
-    expect(modal).to_be_hidden()
+    settings = page.locator("section[data-panel='settings']")
+    settings.get_by_label("Name").fill("New Name")
+    settings.get_by_role("button", name="Save", exact=True).click()
     expect(page.locator("#instance-title")).to_have_text("New Name")
     expect(page).to_have_title(re.compile(r"^New Name — "))
+    expect(modal).to_be_hidden()
+    expect(settings.get_by_label("Name")).to_have_value("New Name")
 
     # Learner quick view.
     page.goto(interface_url(live_server, organisation_a.slug, "learners"))

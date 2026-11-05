@@ -83,8 +83,6 @@ function trackListener(handlers, target, type, handler, options) {
     handlers.push([target, type, handler, options]);
 }
 
-const SHEET_QUERY = "(max-width: 767.98px)";
-
 // Returns focus to whichever element opened a dialog, or to #main-content
 // when that element is no longer in the DOM (an htmx navigation that
 // followed the same close can remove it). Shared by appModal and quickView.
@@ -481,28 +479,6 @@ document.addEventListener("alpine:init", () => {
                 this._requestClose();
             });
 
-            // A drawer open across the md breakpoint changes mode: the sheet
-            // is modal, the docked drawer is not. Closing and reopening
-            // keeps the content and focus where they are.
-            const sheetQuery = window.matchMedia(SHEET_QUERY);
-            trackListener(this._qvHandlers, sheetQuery, "change", () => {
-                const isModal = this._qvDialog.matches(":modal");
-                if (!this._qvDialog.open || isModal === sheetQuery.matches) return;
-                const focused = document.activeElement;
-                this._qvDialog.close();
-                this._showDialog();
-                if (focused && this._qvDialog.contains(focused)) focused.focus();
-            });
-
-            // A click on the scrim of the modal sheet lands on the dialog
-            // element itself; its content fills the dialog, so no click
-            // inside the drawer has the dialog as its target.
-            trackListener(this._qvHandlers, this._qvDialog, "click", (event) => {
-                if (event.target === this._qvDialog && this._qvDialog.matches(":modal")) {
-                    this._requestClose();
-                }
-            });
-
             // show() gives a dialog no Esc-to-close of its own, so this adds
             // it, and steps aside when some other dialog (e.g. #app-modal)
             // is the one currently in the top layer, or when some other
@@ -556,15 +532,11 @@ document.addEventListener("alpine:init", () => {
         retry() {
             this._fetchBody(this._lastUrl);
         },
-        // Below md the drawer is a sheet over the page: modal, so the page
-        // behind it is inert. From md up it docks beside the page, which
-        // stays usable.
+        // Never modal, at any width: the page behind the drawer stays
+        // usable, so the next row can be previewed with a tap on it. A
+        // modal is for a decision; a quick view is a look.
         _showDialog() {
-            if (window.matchMedia(SHEET_QUERY).matches) {
-                this._qvDialog.showModal();
-            } else {
-                this._qvDialog.show();
-            }
+            this._qvDialog.show();
         },
         _open(trigger) {
             if (!this._qvDialog.open) this._showDialog();
@@ -753,6 +725,11 @@ document.addEventListener("alpine:init", () => {
 
         get showSelectionCount() {
             return this.hasSelection && !this.running;
+        },
+
+        // The plain entry count gives way to the selection count.
+        get showEntryCount() {
+            return !this.hasSelection && !this.running;
         },
 
         // The action buttons give way to the status line while a run is going,
@@ -1077,6 +1054,10 @@ document.addEventListener("htmx:beforeSwap", (event) => {
     requestConfig.focusWasInTarget =
         submittedFromTarget ||
         Boolean(target && active && active !== document.body && target.contains(active));
+    // The focused element's id, so the same field in the re-rendered
+    // region (a name field saved in place) gets focus back.
+    requestConfig.focusedId =
+        active && active !== document.body && target && target.contains(active) ? active.id : "";
 });
 document.addEventListener("htmx:afterSwap", (event) => {
     const { target, requestConfig } = event.detail;
@@ -1087,6 +1068,13 @@ document.addEventListener("htmx:afterSwap", (event) => {
     if (!region) return;
     if (region.id === "main-content") {
         region.focus();
+        return;
+    }
+    const sameField = requestConfig.focusedId
+        ? region.querySelector("#" + CSS.escape(requestConfig.focusedId))
+        : null;
+    if (sameField) {
+        sameField.focus();
         return;
     }
     let fallback = region.querySelector("[data-table-anchor]");

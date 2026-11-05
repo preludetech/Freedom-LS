@@ -14,7 +14,8 @@ Attributes:
                derive from the first and last words, uppercased; one word
                gives one letter, an empty name gives none).
   secondary    Email or role, second line, text-muted (default none).
-  size         "md" (default, list rows) or "lg" (profile header).
+  size         "md" (default, table rows), "sm" (a person in a list row
+               beside other text) or "lg" (profile header).
   name_hidden  Off (default). On: the name and second line are not
                rendered, for a caller that shows the name itself (the
                attention row's subject link, so the row keeps one visible
@@ -43,7 +44,7 @@ this component.
 }</style>
 
 <div class="flex items-center gap-3" {{ attrs }}>
-    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
+    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
     {% if not name_hidden|flag %}
         <span class="min-w-0">
             <span class="block truncate">{{ name }}</span>

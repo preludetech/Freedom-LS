@@ -9,7 +9,7 @@ from django.http import QueryDict
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.forms import (
-    AddLearnersForm,
+    AddLearnerForm,
     AddMemberForm,
     CohortCourseRegistrationForm,
     CohortSetForm,
@@ -79,50 +79,42 @@ def test_learner_picker_form_keeps_a_malformed_id_out_of_its_error() -> None:
     assert form.errors["learners"] == ["Choose a learner from the list."]
 
 
-def _add_form(entries: str) -> AddLearnersForm:
-    return AddLearnersForm({"entries": entries}, cohorts=Cohort.objects.none())
+def _add_form(data: dict[str, str]) -> AddLearnerForm:
+    return AddLearnerForm(data, cohorts=Cohort.objects.none())
 
 
 @pytest.mark.django_db
-def test_add_learners_form_parses_email_first_and_last_name():
-    form = _add_form("ada@example.com, Ada, Lovelace\n\nbob@example.com")
+def test_add_learner_form_builds_the_entry_from_email_and_names():
+    form = _add_form(
+        {"email": " ada@example.com ", "first_name": "Ada", "last_name": "Lovelace"}
+    )
 
     assert form.is_valid()
-    assert form.cleaned_data["entries"] == [
-        LearnerEntry("ada@example.com", "Ada", "Lovelace"),
-        LearnerEntry("bob@example.com"),
-    ]
+    assert form.entry() == LearnerEntry("ada@example.com", "Ada", "Lovelace")
 
 
 @pytest.mark.django_db
-def test_add_learners_form_refuses_fifty_one_lines():
-    form = _add_form("\n".join(f"u{n}@example.com" for n in range(51)))
+def test_add_learner_form_needs_only_the_email():
+    form = _add_form({"email": "bob@example.com"})
+
+    assert form.is_valid()
+    assert form.entry() == LearnerEntry("bob@example.com")
+
+
+@pytest.mark.django_db
+def test_add_learner_form_refuses_an_empty_email():
+    form = _add_form({"email": " "})
 
     assert form.is_valid() is False
-    assert "Add up to 50 at a time" in form.errors["entries"][0]
+    assert "email" in form.errors
 
 
 @pytest.mark.django_db
-def test_add_learners_form_accepts_fifty_lines():
-    form = _add_form("\n".join(f"u{n}@example.com" for n in range(50)))
-
-    assert form.is_valid()
-
-
-@pytest.mark.django_db
-def test_add_learners_form_refuses_an_empty_textarea():
-    form = _add_form(" \n\n")
+def test_add_learner_form_refuses_an_invalid_address():
+    form = _add_form({"email": "not-an-email"})
 
     assert form.is_valid() is False
-    assert "entries" in form.errors
-
-
-@pytest.mark.django_db
-def test_add_learners_form_keeps_an_invalid_address_for_the_results():
-    form = _add_form("not-an-email")
-
-    assert form.is_valid()
-    assert form.cleaned_data["entries"] == [LearnerEntry("not-an-email")]
+    assert "email" in form.errors
 
 
 @pytest.mark.django_db

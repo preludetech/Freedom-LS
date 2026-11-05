@@ -170,7 +170,6 @@ def test_cohort_detail_page_has_overview_learners_courses_report_settings_and_hi
         "Details",
         "Course completion",
         "Needs attention",
-        "Educators",
     ]
 
 
@@ -236,10 +235,17 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     settings = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
     triggers = {button.get("hx-get") for button in settings.cssselect("button[hx-get]")}
-    assert {
-        f"{page_url}/__tabs/settings/__actions/edit",
-        f"{page_url}/__tabs/settings/__actions/deactivate",
-    } <= triggers
+    assert f"{page_url}/__tabs/settings/__actions/deactivate" in triggers
+    assert f"{page_url}/__tabs/settings/__actions/edit" not in triggers
+    (form,) = settings.cssselect("form#cohort-name-form")
+    assert form.get("hx-post") == f"{page_url}/__tabs/settings/__actions/edit"
+    (name,) = form.cssselect("input[name=name]")
+    assert name.get("value") == "Evening group"
+    assert name.get("autofocus") is None
+    assert all(
+        "btn-sm" in button.get("class").split()
+        for button in settings.cssselect("section[data-panel='settings'] footer .btn")
+    )
 
 
 @pytest.mark.django_db
@@ -531,17 +537,43 @@ def test_the_learner_settings_tab_offers_every_learner_action_to_an_org_admin(
     labels = [
         button.text_content().strip() for button in panel.cssselect("footer .btn")
     ]
-    # Resend setup email is offered only while the learner is pending.
-    assert labels == [
-        "Edit name",
-        "Add to cohort",
-        "Register for a course",
-        "Deactivate",
-    ]
+    # Resend setup email is offered only while the learner is pending. Add to
+    # cohort and Register for a course sit with the cohorts and the courses.
+    assert labels == ["Edit name", "Deactivate"]
 
 
 @pytest.mark.django_db
-def test_the_learner_settings_tab_shows_a_cohort_admin_only_the_cohort_actions(
+def test_add_to_cohort_sits_under_the_learners_cohorts_panel(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, page_url)
+
+    (panel,) = document.cssselect("section[data-panel='cohorts']")
+    labels = [
+        button.text_content().strip() for button in panel.cssselect("footer .btn")
+    ]
+    assert labels == ["Add to cohort"]
+
+
+@pytest.mark.django_db
+def test_register_for_a_course_sits_on_the_learners_courses_tab(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, f"{page_url}/__tabs/courses")
+
+    (panel,) = document.cssselect("section[data-panel='courses']")
+    labels = [
+        button.text_content().strip() for button in panel.cssselect("footer .btn")
+    ]
+    assert labels == ["Register for a course"]
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_the_cohort_and_course_actions_but_no_settings_tab(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -550,15 +582,21 @@ def test_the_learner_settings_tab_shows_a_cohort_admin_only_the_cohort_actions(
     grantor = LearnerFactory(user__superuser=True).user
     educator = LearnerFactory(user__staff=True, organisation=organisation).user
     assign_role(grantor, educator, "cohort_admin", cohort)
+    client = logged_in_client(educator)
     page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
 
-    document = _get_document(logged_in_client(educator), f"{page_url}/__tabs/settings")
+    overview = _get_document(client, page_url)
+    courses = _get_document(client, f"{page_url}/__tabs/courses")
 
-    (panel,) = document.cssselect("section[data-panel='settings']")
-    labels = {
-        button.text_content().strip() for button in panel.cssselect("footer .btn")
-    }
-    assert labels == {"Add to cohort", "Register for a course"}
+    (cohorts_panel,) = overview.cssselect("section[data-panel='cohorts']")
+    assert [
+        b.text_content().strip() for b in cohorts_panel.cssselect("footer .btn")
+    ] == ["Add to cohort"]
+    (courses_panel,) = courses.cssselect("section[data-panel='courses']")
+    assert [
+        b.text_content().strip() for b in courses_panel.cssselect("footer .btn")
+    ] == ["Register for a course"]
+    assert not overview.cssselect("a[href$='/__tabs/settings']")
 
 
 @pytest.mark.django_db
@@ -1083,14 +1121,17 @@ def test_every_panel_under_the_cohort_page_refreshes_on_cohort_changed(
     assert missing == []
 
 
-def _educators_url(organisation: Organisation, cohort: Cohort) -> str:
-    return _interface_url(
-        organisation.slug, f"cohorts/{cohort.pk}/__tabs/overview/__panels/educators"
-    )
+def _settings_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings")
+
+
+def _staff_section(document):
+    (section,) = document.cssselect("section[aria-labelledby='cohort-staff-title']")
+    return section
 
 
 @pytest.mark.django_db
-def test_educators_block_names_each_educator_and_their_role(
+def test_the_settings_tab_names_each_staff_member_and_their_role(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1104,18 +1145,17 @@ def test_educators_block_names_each_educator_and_their_role(
     assign_role(grantor, admin, "organisation_admin", organisation)
 
     document = _get_document(
-        logged_in_client(admin),
-        _interface_url(organisation.slug, f"cohorts/{cohort.pk}"),
+        logged_in_client(admin), _settings_url(organisation, cohort)
     )
 
-    (card,) = document.cssselect("section[data-panel='educators']")
-    text = " ".join(card.text_content().split())
+    text = " ".join(_staff_section(document).text_content().split())
     assert "Ada Lovelace" in text
     assert "Cohort Admin" in text or "Cohort admin" in text
+    assert not document.cssselect("section[data-panel='educators']")
 
 
 @pytest.mark.django_db
-def test_educators_block_shows_a_nameless_educators_email_as_stored(
+def test_the_settings_tab_shows_a_nameless_staff_members_email_as_stored(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1132,16 +1172,14 @@ def test_educators_block_shows_a_nameless_educators_email_as_stored(
     assign_role(grantor, admin, "organisation_admin", organisation)
 
     document = _get_document(
-        logged_in_client(admin),
-        _interface_url(organisation.slug, f"cohorts/{cohort.pk}"),
+        logged_in_client(admin), _settings_url(organisation, cohort)
     )
 
-    (card,) = document.cssselect("section[data-panel='educators']")
-    assert "Mixed.Case@Example.com" in card.text_content()
+    assert "Mixed.Case@Example.com" in _staff_section(document).text_content()
 
 
 @pytest.mark.django_db
-def test_educators_panel_lists_a_person_added_from_the_cohort_page(
+def test_the_settings_tab_lists_a_person_added_from_the_cohort_page(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1157,7 +1195,7 @@ def test_educators_panel_lists_a_person_added_from_the_cohort_page(
     client = logged_in_client(admin)
 
     client.post(
-        _educators_url(organisation, cohort) + "/__actions/add_member",
+        _settings_url(organisation, cohort) + "/__actions/add_member",
         {
             "step": "submit",
             "email": "ada@example.com",
@@ -1168,28 +1206,35 @@ def test_educators_panel_lists_a_person_added_from_the_cohort_page(
         HTTP_HX_REQUEST="true",
     )
 
-    document = _get_document(
-        client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
-    )
-    (card,) = document.cssselect("section[data-panel='educators']")
-    assert ada.display_name in card.text_content()
+    document = _get_document(client, _settings_url(organisation, cohort))
+    assert ada.display_name in _staff_section(document).text_content()
 
 
 @pytest.mark.django_db
-def test_educators_block_shows_an_empty_state_without_educators(staff_client: Client):
+def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
+    staff_client: Client,
+):
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
-    document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
-    )
+    document = _get_document(staff_client, _settings_url(organisation, cohort))
 
-    (card,) = document.cssselect("section[data-panel='educators']")
-    assert "No educators assigned to this cohort." in card.text_content()
+    section = _staff_section(document)
+    assert "No staff assigned to this cohort." in section.text_content()
+    (trigger,) = section.cssselect("button[hx-get]")
+    assert trigger.get("hx-get") == (
+        _settings_url(organisation, cohort) + "/__actions/add_member"
+    )
+    assert "btn-sm" in trigger.get("class").split()
+    footer_urls = {
+        b.get("hx-get")
+        for b in document.cssselect("section[data-panel='settings'] footer button")
+    }
+    assert not any(url.endswith("/__actions/add_member") for url in footer_urls)
 
 
 @pytest.mark.django_db
-def test_educators_block_is_absent_for_a_cohort_admin(
+def test_the_settings_tab_is_absent_for_a_cohort_admin(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1202,9 +1247,9 @@ def test_educators_block_is_absent_for_a_cohort_admin(
     page = _get_document(
         client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
     )
-    fragment = client.get(_educators_url(organisation, cohort), HTTP_HX_REQUEST="true")
+    fragment = client.get(_settings_url(organisation, cohort), HTTP_HX_REQUEST="true")
 
-    assert not page.cssselect("section[data-panel='educators']")
+    assert not page.cssselect("a[href$='/__tabs/settings']")
     assert fragment.status_code == 404
 
 
@@ -2644,21 +2689,19 @@ def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_cl
 
 
 @pytest.mark.django_db
-def test_the_educators_panel_refreshes_on_member_changes(staff_client: Client):
+def test_the_cohort_settings_panel_refreshes_on_member_changes(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
-    document = _get_document(
-        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
-    )
+    document = _get_document(staff_client, _settings_url(organisation, cohort))
 
-    (card,) = document.cssselect("section[data-panel='educators']")
-    assert "memberChanged" in lxml.html.tostring(card).decode()
+    (card,) = document.cssselect("section[data-panel='settings']")
+    assert "memberChanged from:body" in card.get("hx-trigger")
 
 
 @pytest.mark.django_db
 def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Client):
-    """Adding an educator from the Educators panel writes a role.assigned
+    """Adding a staff member from the Settings tab writes a role.assigned
     entry with the cohort as subject and answers with memberChanged alone."""
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
@@ -5605,7 +5648,7 @@ def test_the_audit_log_what_filter_is_a_grouped_checklist_with_one_apply(
     # The popover form in the toolbar; the sheet holds its own copy.
     (toolbar_form,) = [
         form
-        for form in document.cssselect("form.surface")
+        for form in document.cssselect("details form[hx-get]")
         if form.cssselect("input[type='checkbox'][name='audit_log-what']")
     ]
     legends = [

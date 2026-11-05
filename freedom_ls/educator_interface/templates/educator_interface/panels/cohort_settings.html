@@ -1,15 +1,47 @@
 {% extends "panel_framework/panels/panel.html" %}
+{% load panel_tags %}
+{% comment %}
+The cohort's Settings tab: the name field (absent on an inactive cohort),
+the Staff list with its Add button, and the state and delete actions in the
+footer. Context: cohort, rename (the edit action's form context, or None),
+educators (user, role display name pairs), add_staff (the action, or None),
+not_empty_sentence, is_empty.
+{% endcomment %}
 
 {% block panel_body %}
-    <div class="space-y-3 text-sm">
-        <p>Rename, deactivate or delete this cohort.</p>
-        {% if cohort.is_active %}
-            <p>Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.</p>
-        {% else %}
-            <p>This cohort is inactive. Reactivating gives its registrations access to its courses again.</p>
+    <div class="space-y-6">
+        {% if rename %}
+            {% include "educator_interface/partials/cohort_name_form.html" with form=rename.form form_url=rename.form_url %}
         {% endif %}
-        {% if not is_empty %}
-            <p>{{ not_empty_sentence }}</p>
-        {% endif %}
+
+        <section aria-labelledby="cohort-staff-title" class="space-y-2">
+            <div class="flex items-center justify-between gap-4">
+                <h3 id="cohort-staff-title" class="text-base font-semibold font-display">Staff</h3>
+                {% if add_staff %}{% render_action add_staff panel.ctx %}{% endif %}
+            </div>
+            {% if educators %}
+                <ul class="m-0 list-none divide-y divide-border p-0">
+                    {% for user, role in educators %}
+                        <li class="flex items-center justify-between gap-3 py-2">
+                            <c-panel-avatar-chip name="{{ user.display_name }}" user_id="{{ user.pk }}" secondary="{% if user.first_name or user.last_name %}{{ user.email }}{% endif %}" class="min-w-0" />
+                            <span class="shrink-0 text-sm text-muted">{{ role }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-sm text-muted">No staff assigned to this cohort.</p>
+            {% endif %}
+        </section>
+
+        <div class="space-y-3 text-sm">
+            {% if cohort.is_active %}
+                <p>Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.</p>
+            {% else %}
+                <p>This cohort is inactive. Reactivating gives its registrations access to its courses again.</p>
+            {% endif %}
+            {% if not is_empty %}
+                <p>{{ not_empty_sentence }}</p>
+            {% endif %}
+        </div>
     </div>
 {% endblock panel_body %}

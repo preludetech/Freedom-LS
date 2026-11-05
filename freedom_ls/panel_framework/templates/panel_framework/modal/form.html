@@ -1,8 +1,9 @@
 {% comment %}
 The modal fragment a FormPanelAction's GET returns. Context: form,
 field_error_count, form_title, form_url, submit_buttons, and optionally
-import_url, a link offered beside the errors. empty_message, when
-set, replaces the form with that sentence and a Close button.
+status_message, a sentence above the fields saying what the previous
+submit did (an "add another" re-render). empty_message, when set,
+replaces the form with that sentence and a Close button.
 {% endcomment %}
 {% if empty_message %}
 <c-modal-header focus_title="true">{{ form_title }}</c-modal-header>
@@ -20,6 +21,9 @@ set, replaces the form with that sentence and a Close button.
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <div class="px-6 py-4">
+{% if status_message %}
+    <p role="status" class="mb-4 rounded-md border border-success/20 bg-success/10 p-3 text-sm text-on-surface" data-status-message>{{ status_message }}</p>
+{% endif %}
 {% if form.errors %}
     <div data-error-summary
          tabindex="-1"
@@ -29,7 +33,6 @@ set, replaces the form with that sentence and a Close button.
             <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
         {% endif %}
         {{ form.non_field_errors }}
-        {% if import_url %}<p class="mt-2"><c-button variant="link" size="small" href="{{ import_url }}">Import a file instead</c-button></p>{% endif %}
     </div>
 {% endif %}
 

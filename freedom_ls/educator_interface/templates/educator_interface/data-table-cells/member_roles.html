@@ -1,9 +1,14 @@
 {% comment %}
 The roles a member holds, one item each: the role name, where it applies, and
-who added it and when, then the row's small buttons: Deactivate role when
+who added it and when, then the item's small buttons: Deactivate role when
 the viewer may deactivate that role on someone else, and Change cohorts on a
 cohort role of an active account. The full list of cohorts is in the scope line's title,
-because the visible text names only the first two.
+because the visible text names only the first two. Last, at the bottom of
+the cell, the staff member's own action: Deactivate or Reactivate staff
+member, named so it reads apart from Deactivate role. The viewer's own row
+has only a note that their roles are changed by someone else, and a
+site-level admin's or a turned-off account's row has nothing, since
+deactivating would not change what they can do.
 {% endcomment %}
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
     {% for entry in object.role_entries %}
@@ -22,3 +27,17 @@ because the visible text names only the first two.
         </li>
     {% endfor %}
 </ul>
+{% if object.pk == viewer.pk %}
+    <span class="mt-3 flex items-center gap-2 text-sm text-muted">
+        <c-icon name="locked" class="size-4" aria_label="Locked" />
+        You can't change your own roles. Ask another organisation admin.
+    </span>
+{% elif object.is_active and not object.is_site_level %}
+    <c-data-table-actions class="mt-3 empty:hidden">
+        {% if not object.is_inactive and row_action_urls.deactivate %}
+            <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate staff member" aria_label="Deactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% elif object.is_inactive and row_action_urls.reactivate %}
+            <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate staff member" aria_label="Reactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% endif %}
+    </c-data-table-actions>
+{% endif %}

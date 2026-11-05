@@ -157,6 +157,7 @@ def form_fragment_context(
     form_url: str,
     submit_buttons: list[dict[str, str]],
     empty_message: str | None = None,
+    autofocus: bool = True,
 ) -> dict[str, object]:
     """Mark the form's first visible field for autofocus and build the
     context `modal/form.html` renders.
@@ -164,12 +165,14 @@ def form_fragment_context(
     Skipped when the form carries errors: a browser moves focus to a
     freshly-inserted `autofocus` field as soon as it renders, which would
     override the error-summary focus appModal sets for a 422 re-render.
+    Skipped too with `autofocus` off, for a form rendered as part of a page
+    rather than a dialog, which must not take focus on load.
 
     `empty_message`, when set, replaces the form with that sentence and a
     Close button, for a picker with nothing to offer.
     """
     fields = form.visible_fields()
-    if fields and not form.errors:
+    if autofocus and fields and not form.errors:
         fields[0].field.widget.attrs["autofocus"] = True
     return {
         "form": form,
@@ -202,6 +205,9 @@ class FormPanelAction(PanelAction):
     submit_buttons: list[dict[str, str]] = [
         {"label": "Save", "variant": "primary"},
     ]
+    #: Off for a form rendered inside a panel rather than a dialog: a page
+    #: must not move focus to a field as it loads.
+    autofocus_first_field: bool = True
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -238,6 +244,7 @@ class FormPanelAction(PanelAction):
             form_title=self.form_title,
             form_url=form_url,
             submit_buttons=self.submit_buttons,
+            autofocus=self.autofocus_first_field,
         )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:

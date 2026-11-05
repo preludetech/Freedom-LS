@@ -14,7 +14,7 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/deactivate_registration.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member.html
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_actions.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_actions.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_roles.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_preview.html
@@ -37,7 +37,7 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/modal/resend_setup_email_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/_lazy_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_course_completion.html
-  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_educators.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_educators.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_needs_attention_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_body_region.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads_region.html
@@ -76,6 +76,11 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_selection_bar.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_sheet.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_empty.html  # new
+  - freedom_ls/panel_framework/templates/panel_framework/partials/table_footer.html  # new
+  - freedom_ls/panel_framework/templates/panel_framework/partials/modal_trigger.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/action_button.html
+  - freedom_ls/panel_framework/templates/cotton/panel-avatar-chip.html
+  - freedom_ls/panel_framework/templates/cotton/panel-stat-row.html
   - freedom_ls/base/templates/_base_interface.html
   - freedom_ls/base/templates/cotton/pagination.html
   - freedom_ls/comms/templates/comms/partials/closed_note.html
@@ -86,7 +91,10 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner.html
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_denied.html
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_upload.html
-  - freedom_ls/educator_interface/templates/educator_interface/modal/add_learners_results.html
+  - freedom_ls/educator_interface/templates/educator_interface/modal/add_learners_results.html  # deleted
+  - freedom_ls/educator_interface/templates/educator_interface/modal/add_learner_result.html  # new
+  - freedom_ls/educator_interface/templates/educator_interface/partials/cohort_name_form.html  # new
+  - freedom_ls/educator_interface/templates/educator_interface/partials/import_learners_link.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/member_change_refused.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_settings.html
@@ -122,6 +130,49 @@ These notes cover this spec's own changes only. The notes for the whole educator
 rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
 
 ## Breaking changes
+
+- **Add learners is now Add learner.** The action `add_learners` on the learners list and a
+  cohort's Learners tab is `add_learner` (`AddLearnerAction`, `AddLearnerToCohortAction`), and
+  its form takes `email`, `first_name`, `last_name` and `cohort` for one person instead of an
+  `entries` textarea. "Add" answers with `modal/add_learner_result.html` (one outcome, Close
+  and Add another); "Add and add another" (`action=add_another`) answers with the empty form and
+  the outcome in a `status_message` line that `panel_framework/modal/form.html` now renders. A
+  list of people is the file import; `AddLearnersForm`, `MAX_ADD_LEARNERS` and the `import_url`
+  context key are gone. The `add_learners` helper in `learner_management` is unchanged.
+- **The cohort Educators panel is gone; its list and Add staff member sit on the Settings tab.**
+  `CohortEducatorsPanel` and `panels/cohort_educators.html` are deleted and the Overview stack no
+  longer has an `educators` child, so `…/__tabs/overview/__panels/educators` answers 404.
+  `AddMemberToCohortAction` resolves at `…/__tabs/settings/__actions/add_member` and renders
+  beside the Staff heading (`renders_in_footer = False`); `CohortSettingsPanel` refreshes on
+  `memberChanged` too.
+- **The cohort name is a field on the Settings tab.** `EditCohortAction` keeps its URL
+  (`…/__tabs/settings/__actions/edit`) but renders `partials/cohort_name_form.html` inline
+  instead of the dialog form (`renders_in_footer = False`, `autofocus_first_field = False`); a
+  stale submit on an inactive cohort answers 422 with `HX-Retarget: #app-modal-body`. The panel
+  includes the form through a `rename` context key. `FormPanelAction` gains
+  `autofocus_first_field` and `form_fragment_context` an `autofocus` keyword.
+- **Learner actions moved beside what they change.** `LearnerSettingsPanel` offers only Edit
+  name, Resend setup email and Deactivate/Reactivate (`settings_actions`); `AddToCohortAction`
+  sits in the footer of the Overview tab's Cohorts panel and `RegisterLearnerForCourseAction` in
+  the footer of the Courses tab. Both keep their instance-level URLs through `learner_actions`.
+- **The staff Actions column is gone.** `member_actions.html` is folded into the bottom of
+  `member_roles.html`; the buttons read "Deactivate staff member" and "Reactivate staff member"
+  (`DeactivateMemberAction.label`, `ReactivateMemberAction.label`), and `MemberDataTable` has two
+  columns.
+- **Every framework action trigger is small.** `partials/modal_trigger.html` and
+  `partials/action_button.html` pass `size="small"`, so page-header, panel-footer, empty-state
+  and selection-bar buttons all render as `btn-sm`; only dialog footers stay full size. A
+  template that relied on the full size for a header action gets the small one.
+- **The quick view is never modal.** `quickView` opens with `show()` at every width; the
+  `#quick-view` dialog drops `modal-backdrop-host`, so a phone sheet has no scrim and the page
+  behind it stays usable. A test asserting `dialog:modal` below md fails.
+- **Every data table shows an entry count.** `DataTablePanel.get_context_data` adds
+  `entry_count` ("12 learners", "Showing 1–10 of 80 learners"), rendered by the new
+  `partials/table_footer.html` or, with bulk actions, by the selection bar until a row is
+  selected (`tableSelection.showEntryCount`). `DataTable.noun_singular` names the singular.
+- **Audit tables sort and filter everywhere.** `AuditLogEntryTable` (and so every History tab)
+  has sortable When, Who, What and Target columns, `default_sort = "-created_at"`, the Who,
+  What and When filters, and the noun "entries".
 
 - **The Members section is now Staff.** Its path moves from `/<org>/members` to `/<org>/staff`
   and its table's query parameters from `members-*` to `staff-*`; the old path answers 404 and no

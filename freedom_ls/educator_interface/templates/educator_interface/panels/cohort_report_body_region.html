@@ -12,7 +12,7 @@ with incorrect answers), refresh_url.
     <div class="space-y-8">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-muted">Figures as of {{ data.generated_at|date:"j M Y, H:i" }}</p>
-            <c-button type="button" variant="ghost" hx-get="{{ refresh_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Refresh</c-button>
+            <c-button type="button" variant="ghost" size="small" hx-get="{{ refresh_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Refresh</c-button>
         </div>
 
         <section aria-labelledby="report-glance-title" class="space-y-3">

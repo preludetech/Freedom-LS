@@ -6,11 +6,15 @@ The actions render in the card footer from the panel base.
 
 {% block panel_body %}
     <div class="space-y-3 text-sm">
-        <p>Change {{ learner.user.display_name }}'s name, add them to a cohort, register them for a course or deactivate them.</p>
-        {% if status == "pending" %}
-            <p>They have not set up their account yet. The setup email can be sent again.</p>
-        {% elif status == "inactive" %}
+        {% if status == "inactive" %}
+            <p>Change {{ learner.user.display_name }}'s name or reactivate them.</p>
             <p>This learner is inactive. Reactivating restores their access to this organisation's courses.</p>
+        {% else %}
+            <p>Change {{ learner.user.display_name }}'s name or deactivate them.</p>
+            {% if status == "pending" %}
+                <p>They have not set up their account yet. The setup email can be sent again.</p>
+            {% endif %}
         {% endif %}
+        <p>Cohorts and course registrations are changed where they are shown: on the Overview and Courses tabs.</p>
     </div>
 {% endblock panel_body %}

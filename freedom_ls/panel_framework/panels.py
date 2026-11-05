@@ -19,7 +19,7 @@ from django.core.paginator import Page
 from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest
 
-from freedom_ls.panel_framework.actions import EditAction, PanelAction
+from freedom_ls.panel_framework.actions import EditAction, PanelAction, count_phrase
 from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.field_display import (
@@ -281,6 +281,24 @@ class DataTablePanel(Panel):
             self.get_queryset(request).model._meta.verbose_name_plural
         )
 
+    def noun_singular(self, request: HttpRequest) -> str:
+        return self.data_table.noun_singular or str(
+            self.get_queryset(request).model._meta.verbose_name
+        )
+
+    def entry_count(self, request: HttpRequest, page_obj: Page) -> str:
+        """The footer's count: which rows this page shows when there are
+        several pages, else how many there are. Empty for an empty table."""
+        count = page_obj.paginator.count
+        if count == 0:
+            return ""
+        if page_obj.paginator.num_pages > 1:
+            return (
+                f"Showing {page_obj.start_index()}\u2013{page_obj.end_index()} "
+                f"of {count} {self.noun(request)}"
+            )
+        return count_phrase(count, self.noun_singular(request), self.noun(request))
+
     def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
@@ -310,6 +328,9 @@ class DataTablePanel(Panel):
             if action.has_permission(self.request)
         ]
         context["noun"] = self.noun(self.request)
+        context["entry_count"] = self.entry_count(
+            self.request, cast(Page, context["page_obj"])
+        )
         # An empty page with every filter at its default is "nothing yet"
         # only when the scope itself is empty; otherwise the defaults are
         # hiding rows, and the empty state must say so and offer them.

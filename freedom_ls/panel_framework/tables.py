@@ -242,6 +242,9 @@ class DataTable:
     #: means the model's `verbose_name_plural`, which is wrong when a table
     #: shows a model under another name (a User as a member).
     noun: str = ""
+    #: The singular of `noun`, for the footer's "1 staff member". Empty means
+    #: the model's `verbose_name`.
+    noun_singular: str = ""
     #: The `sort_field` (with a leading "-" for descending) that the queryset's
     #: own ordering already applies. With no sort in the URL that column's
     #: header reads as sorted this way and its first click flips the direction,

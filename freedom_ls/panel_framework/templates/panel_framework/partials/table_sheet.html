@@ -7,9 +7,9 @@ when htmx swaps this fragment in.
 <dialog id="{{ query.key }}-sheet"
         x-ref="panelDialog"
         data-variant="bottom-sheet"
-        class="side-panel-dialog modal-backdrop-host md:hidden"
+        class="side-panel-dialog modal-backdrop-host bg-transparent md:hidden"
         aria-label="Filter">
-    <div class="side-panel-body bg-surface max-lg:in-data-[variant=bottom-sheet]:bottom-sheet overflow-y-auto overscroll-contain">
+    <div class="side-panel-body bg-surface bottom-sheet overflow-y-auto overscroll-contain">
         <form method="get"
               action="{{ page_url }}"
               hx-get="{{ base_url }}"
@@ -20,14 +20,21 @@ when htmx swaps this fragment in.
                 <input type="hidden" name="{{ name }}" value="{{ value }}">
             {% endfor %}
 
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">Filter</h2>
+            {# The same header as the quick view: the title, then the controls, the close at the end. #}
+            <div class="flex items-center gap-1">
+                <h2 class="flex-1 min-w-0 text-lg font-semibold">Filter</h2>
                 {% querystring request.GET reset_changes as reset_qs %}
                 <c-button variant="link" size="small" class="min-h-11 min-w-11"
                           href="{{ page_url }}{{ reset_qs }}"
                           hx-get="{{ base_url }}{{ reset_qs }}"
                           hx-target="#{{ region_id }}"
                           hx-swap="outerHTML">Reset</c-button>
+                <button type="button"
+                        x-on:click="close"
+                        aria-label="Close"
+                        class="-me-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
+                    <c-icon name="close" class="size-5" />
+                </button>
             </div>
 
             {% for entry in toolbar %}
@@ -47,8 +54,11 @@ when htmx swaps this fragment in.
                     <fieldset class="space-y-2 border-0 p-0">
                         <legend class="px-0 text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
                         {% for group in entry.groups %}
-                            <details class="rounded-md border border-border">
-                                <summary class="flex min-h-11 cursor-pointer items-center px-3 py-2 text-sm font-semibold">{{ group.label|default:entry.filter.label }}</summary>
+                            <details class="group rounded-md border border-border">
+                                <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-semibold">
+                                    {{ group.label|default:entry.filter.label }}
+                                    <c-icon name="dropdown" class="size-4 text-muted group-open:rotate-180" />
+                                </summary>
                                 <div class="space-y-1 px-3 pb-2">
                                     {% for choice in group.choices %}
                                         <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-normal text-on-surface">

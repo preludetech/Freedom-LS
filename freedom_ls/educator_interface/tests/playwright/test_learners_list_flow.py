@@ -1,6 +1,7 @@
-"""E2E Playwright flow for the Learners list: Add learners through the native
+"""E2E Playwright flow for the Learners list: Add learner through the native
 #app-modal. The outcomes and headers are covered by test_actions.py; what only
-a browser shows is that the results replace the form inside the open modal
+a browser shows is that "Add and add another" keeps the dialog on an empty
+form with the outcome above it, that the result replaces the form after Add,
 and that the list behind it refreshes to show the new learner.
 """
 
@@ -50,16 +51,24 @@ def test_add_learners_reports_each_address_and_refreshes_the_list(
     modal = page.locator("#app-modal")
     main = page.locator("#main-content")
 
-    main.get_by_role("button", name="Add learners", exact=True).first.click()
-    modal.get_by_label("Entries").fill(
-        f"existing@example.com\n{inactive_learner.user.email}\nbrand.new@example.com, Bea, Newman"
-    )
-    modal.get_by_role("button", name="Add learners", exact=True).click()
+    main.get_by_role("button", name="Add learner", exact=True).first.click()
+    modal.get_by_label("Email address").fill("existing@example.com")
+    modal.get_by_role("button", name="Add and add another", exact=True).click()
+    expect(modal.get_by_role("status")).to_contain_text("Joined the organisation")
+    expect(modal.get_by_label("Email address")).to_have_value("")
 
-    results = modal.get_by_test_id("add-learners-results")
-    expect(results.get_by_text("Joined the organisation")).to_be_visible()
-    expect(results.get_by_text("Reactivated")).to_be_visible()
-    expect(results.get_by_text("Account created and setup email sent")).to_be_visible()
+    modal.get_by_label("Email address").fill(inactive_learner.user.email)
+    modal.get_by_role("button", name="Add and add another", exact=True).click()
+    expect(modal.get_by_role("status")).to_contain_text("Reactivated")
+
+    modal.get_by_label("Email address").fill("brand.new@example.com")
+    modal.get_by_label("First name").fill("Bea")
+    modal.get_by_label("Last name").fill("Newman")
+    modal.get_by_role("button", name="Add", exact=True).click()
+
+    result = modal.get_by_test_id("add-learner-result")
+    expect(result.get_by_text("Account created and setup email sent")).to_be_visible()
+    expect(modal.get_by_role("button", name="Add another", exact=True)).to_be_visible()
 
     modal.get_by_text("Close", exact=True).click()
 

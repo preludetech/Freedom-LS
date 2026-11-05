@@ -23,17 +23,20 @@ rows start at their status.
         {% endfor %}
     </c-panel-definition-row>
     <c-panel-definition-row label="Course registrations" class="col-span-2">
-        <ul class="list-none ml-0 space-y-1">
+        {# The same row shape as the learner page's Registrations list: the course, how it is held, the figure at the end. #}
+        <ul class="list-none ml-0 space-y-2">
             {% for registration in registrations %}
-                <li class="py-0">
-                    {{ registration.course.title }}
-                    &mdash;
-                    {% if registration.cohort %}through {{ registration.cohort }}{% else %}individual{% endif %}
-                    &mdash;
-                    {% if registration.progress_percentage is not None %}{{ registration.progress_percentage }}%{% else %}No progress yet{% endif %}
+                <li class="flex flex-wrap items-baseline justify-between gap-x-4" data-testid="quick-view-registration">
+                    <span class="font-medium">{{ registration.course.title }}</span>
+                    {% if registration.progress_percentage is not None %}
+                        <span class="tabular-nums">{{ registration.progress_percentage }}%</span>
+                    {% else %}
+                        <span class="text-sm text-muted">No progress yet</span>
+                    {% endif %}
+                    <span class="basis-full text-sm text-muted">{% if registration.cohort %}via {{ registration.cohort }}{% else %}Individual{% endif %}</span>
                 </li>
             {% empty %}
-                <li class="py-0">&mdash;</li>
+                <li>&mdash;</li>
             {% endfor %}
         </ul>
     </c-panel-definition-row>
@@ -46,7 +49,7 @@ rows start at their status.
             <h3 id="quick-view-message-heading" class="m-0 text-base font-semibold text-on-surface">Messages</h3>
             <a href="{{ open_url }}"
                title="Open conversation"
-               class="inline-flex size-8 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
+               class="inline-flex size-8 items-center justify-center rounded-full text-muted no-underline hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
                 <c-icon name="open_page" class="size-5" />
                 <span class="sr-only">Open conversation</span>
             </a>

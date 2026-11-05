@@ -26,7 +26,8 @@
         empty_state_template=""
         empty_no_results=""
         sheet_hidden_inputs=""
-        reset_changes="" />
+        reset_changes=""
+        entry_count="" />
 
 <div id="{{ region_id }}" data-table-region class="panel-data-table">
     <div tabindex="-1" data-table-anchor></div>
@@ -119,7 +120,8 @@
                             </tr>
                         {% endfor %}
                     {% else %}
-                        <tr>
+                        {# The empty state is not a row, so it takes none of the row hover. #}
+                        <tr class="hover:bg-transparent">
                             <td colspan="{% if bulk_actions %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center text-muted py-8">
                                 {% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}
                             </td>
@@ -146,12 +148,7 @@
     {% if bulk_actions %}
         {% include "panel_framework/partials/table_selection_bar.html" %}
     </form>
-    {% else %}
-        <c-pagination :page_obj="page_obj"
-                      :base_url="base_url"
-                      :table_id="region_id"
-                      :links="pagination"
-                      :page_url="page_url"
-                      class="px-4 py-3 sm:px-6" />
+    {% elif entry_count %}
+        {% include "panel_framework/partials/table_footer.html" %}
     {% endif %}
 </div>

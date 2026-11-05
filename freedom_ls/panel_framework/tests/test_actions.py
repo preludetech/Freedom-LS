@@ -4,6 +4,7 @@ permission checks, the htmx responses they send and the modal fragments they ren
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import lxml.html
 import pytest
@@ -24,6 +25,7 @@ from freedom_ls.panel_framework.actions import (
     changed_response,
     count_noun,
     current_page_within,
+    form_fragment_context,
     join_prose,
     navigation_response,
 )
@@ -1062,3 +1064,16 @@ def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
     assert 'tabindex="-1"' in content
     assert "autofocus" in content
     assert "<form" not in content
+
+
+def test_a_form_fragment_can_leave_its_first_field_without_autofocus() -> None:
+    """A form rendered as part of a page must not take focus on load."""
+    form = forms.Form()
+    form.fields["name"] = forms.CharField()
+
+    context = form_fragment_context(
+        form, form_title="t", form_url="/u", submit_buttons=[], autofocus=False
+    )
+
+    rendered = cast(forms.Form, context["form"])
+    assert "autofocus" not in rendered.fields["name"].widget.attrs

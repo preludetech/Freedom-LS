@@ -1,0 +1,33 @@
+{% comment %}
+The cohort's name field, rendered inside the Settings panel and returned
+by the edit action's GET and its 422. Context: form, form_url. The form
+targets itself, so a 422 swaps the errors in place; a save answers 204 and
+the panel's cohortChanged refresh re-renders it with the saved name, with
+focus returned to the field by id.
+{% endcomment %}
+<form id="cohort-name-form"
+      hx-post="{{ form_url }}"
+      hx-target="#cohort-name-form"
+      hx-swap="outerHTML"
+      hx-disabled-elt="find button[type='submit']"
+      x-data="refocusAfterRequest"
+      data-refocus-id="{{ form.name.id_for_label }}"
+      x-on:htmx:after-request="refocus"
+      class="space-y-3">
+    {% if form.non_field_errors %}
+        <div data-error-summary
+             tabindex="-1"
+             role="alert"
+             class="rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+    <div class="form-field">
+        {{ form.name.label_tag }}
+        <div class="flex items-center gap-3">
+            <div class="min-w-0 grow">{{ form.name }}</div>
+            <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving...">Save</c-button>
+        </div>
+        {% if form.name.errors %}<p class="mt-1 text-sm text-error">{{ form.name.errors|join:" " }}</p>{% endif %}
+    </div>
+</form>

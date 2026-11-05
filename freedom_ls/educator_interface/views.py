@@ -65,8 +65,8 @@ from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
-    AddLearnersAction,
-    AddLearnersToCohortAction,
+    AddLearnerAction,
+    AddLearnerToCohortAction,
     AddMemberAction,
     AddMemberToCohortAction,
     AddToCohortAction,
@@ -692,7 +692,9 @@ class LearnerCohortsPanel(DataTablePanel):
         return annotated
 
     def get_actions(self) -> list[PanelAction]:
-        return [RemoveFromCohortAction(), MoveToCohortAction()]
+        # Add to cohort sits with the cohorts it changes; the row actions
+        # render per row through row_action_urls.
+        return [AddToCohortAction(), RemoveFromCohortAction(), MoveToCohortAction()]
 
     def get_context_data(self) -> dict[str, object]:
         request = cast(OrganisationScopedRequest, self.request)
@@ -780,7 +782,15 @@ class LearnerCoursesStack(PanelStack):
 
 
 class AuditLogEntryTable(DataTable):
+    """A log: sortable on when, who and what, and filterable on the same
+    three, wherever it appears (the organisation's Audit log and every
+    History tab alike). The model's own ordering is newest first, which
+    default_sort names so the When header reads as sorted that way."""
+
     page_size = 25
+    default_sort = "-created_at"
+    noun = "entries"
+    noun_singular = "entry"
     empty_message = "Nothing has been recorded yet."
     empty_no_results = "No entries match these filters."
 
@@ -790,21 +800,30 @@ class AuditLogEntryTable(DataTable):
         return AuditLogEntry.objects.filter(organisation=organisation)
 
     @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
+
+    @staticmethod
     def get_columns() -> list[Column]:
         return [
             Column(
                 header="When",
                 template="cotton/data-table-cells/datetime.html",
                 attr="created_at",
+                sortable=True,
             ),
             Column(
                 header="Who",
                 template="educator_interface/data-table-cells/audit_who.html",
+                sortable=True,
+                sort_field="actor_label",
             ),
             Column(
                 header="What",
                 template="educator_interface/data-table-cells/audit_what.html",
                 card="primary",
+                sortable=True,
+                sort_field="action",
             ),
             Column(
                 header="Details",
@@ -825,6 +844,7 @@ class TargetedAuditLogEntryTable(AuditLogEntryTable):
             header="Target",
             template="cotton/data-table-cells/text.html",
             attr="target_label",
+            sortable=True,
         )
         return [when, who, what, target, details]
 
@@ -1043,9 +1063,10 @@ def _oversight_role_label(viewer: User, learner: Learner) -> str:
 
 
 class LearnerSettingsPanel(Panel):
-    """The learner's Settings tab: every action that changes the learner,
-    kept out of the page header. Shown to anyone who may take at least one
-    of them, so a cohort admin still reaches Add to cohort and Register."""
+    """The learner's Settings tab: the actions with no home of their own
+    (name, setup email, active state). Add to cohort lives on the Cohorts
+    panel and Register for a course on the Courses tab, beside what they
+    change. Shown to anyone who may take at least one action."""
 
     model = Learner
     title = "Settings"
@@ -1056,7 +1077,7 @@ class LearnerSettingsPanel(Panel):
         return super().has_permission(request) and bool(self.available_actions)
 
     def get_actions(self) -> list[PanelAction]:
-        return learner_actions(cast(Learner, self.instance))
+        return settings_actions(cast(Learner, self.instance))
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
@@ -1066,14 +1087,24 @@ class LearnerSettingsPanel(Panel):
         return context
 
 
-def learner_actions(learner: Learner) -> list[PanelAction]:
-    """Every action on one learner, in the order the Settings tab offers them."""
+def settings_actions(learner: Learner) -> list[PanelAction]:
+    """The Settings tab's actions on one learner, in the order it offers
+    them: those with no home beside the thing they change."""
     return [
         EditLearnerNameAction(learner),
-        AddToCohortAction(),
-        RegisterLearnerForCourseAction(),
         ResendSetupEmailAction(),
         *learner_state_actions(),
+    ]
+
+
+def learner_actions(learner: Learner) -> list[PanelAction]:
+    """Every action on one learner, so each keeps its instance-level URL.
+    The Settings tab, the Cohorts panel and the Courses tab draw the
+    triggers; the page header draws none."""
+    return [
+        *settings_actions(learner),
+        AddToCohortAction(),
+        RegisterLearnerForCourseAction(),
     ]
 
 
@@ -1193,7 +1224,7 @@ class CohortLearnersPanel(DataTablePanel):
     def get_actions(self) -> list[PanelAction]:
         return [
             AddExistingLearnersAction(),
-            AddLearnersToCohortAction(),
+            AddLearnerToCohortAction(),
             ImportLearnersAction(),
             RemoveFromCohortAction(),
             MoveToCohortAction(),
@@ -1296,26 +1327,15 @@ class CohortCourseCompletionPanel(Panel):
         return context
 
 
-class CohortEducatorsPanel(Panel):
-    title = "Educators"
-    capability = "freedom_ls_learner_management.view_organisationmember"
-    template_name = "educator_interface/panels/cohort_educators.html"
-    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
-
-    def get_actions(self) -> list[PanelAction]:
-        return [AddMemberToCohortAction()]
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context["educators"] = cohort_educators(cast(Cohort, self.instance))
-        return context
-
-
 class CohortSettingsPanel(Panel):
+    """The cohort's Settings tab: its name as a field, its staff with the
+    Add button, and the state and delete actions in the footer. Everything
+    that changes the cohort itself, in one place."""
+
     title = "Settings"
     capability = "freedom_ls_learner_management.change_cohort"
     template_name = "educator_interface/panels/cohort_settings.html"
-    refresh_events = (COHORT_CHANGED,)
+    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
         cohort = cast(Cohort, self.instance)
@@ -1326,6 +1346,7 @@ class CohortSettingsPanel(Panel):
                 instance=cohort,
                 success_events=(COHORT_CHANGED,),
             ),
+            AddMemberToCohortAction(),
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
                 success_url=interface_path(cohort.organisation, "cohorts"),
@@ -1335,7 +1356,12 @@ class CohortSettingsPanel(Panel):
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
         context = super().get_context_data()
+        by_name = {action.action_name: action for action in self.available_actions}
+        edit = by_name.get("edit")
         context["cohort"] = cohort
+        context["rename"] = edit.get_context_data(self.ctx) if edit else None
+        context["add_staff"] = by_name.get("add_member")
+        context["educators"] = cohort_educators(cohort)
         context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
         context["is_empty"] = not context["not_empty_sentence"]
         return context
@@ -1348,7 +1374,6 @@ class CohortOverviewStack(PanelStack):
         "details": CohortDetailsPanel,
         "completion": CohortCourseCompletionPanel,
         "attention": CohortNeedsAttentionPanel,
-        "educators": CohortEducatorsPanel,
     }
 
 
@@ -1476,7 +1501,7 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddLearnersAction(), ImportLearnersAction()]
+        return [AddLearnerAction(), ImportLearnersAction()]
 
     @classmethod
     def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
@@ -1735,6 +1760,7 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 class MemberDataTable(DataTable):
     noun = "staff members"
+    noun_singular = "staff member"
     search_fields = ["first_name", "last_name", "email"]
     default_sort = "first_name"
     empty_message = "No staff yet. Add the first staff member to give someone access to this organisation."
@@ -1799,11 +1825,6 @@ class MemberDataTable(DataTable):
             Column(
                 header="Roles",
                 template="educator_interface/data-table-cells/member_roles.html",
-                card="secondary",
-            ),
-            Column(
-                header="",
-                template="educator_interface/data-table-cells/member_actions.html",
                 card="secondary",
             ),
         ]
@@ -1897,10 +1918,6 @@ class OrganisationAuditLogTable(TargetedAuditLogEntryTable):
             row.run_entry_total = totals.get(row.run_id, 0)
             row.run_entries_more = row.run_entry_total - len(row.run_entries)
         return page_obj
-
-    @staticmethod
-    def get_filters() -> list[TableFilter]:
-        return [AuditActorFilter(), AuditActionFilter(), AuditPeriodFilter()]
 
 
 class AuditLogConfig(OrganisationSectionConfig, ListViewConfig):

@@ -9,12 +9,12 @@ may take are offered instead.
 {% if any_filter_set or query.search %}
     {% querystring request.GET clear_changes clear_search_changes as qs %}
     <c-panel-empty-state message="{{ empty_no_results }}">
-        <c-button variant="link" href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Clear filters</c-button>
+        <c-button variant="link" size="small" href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Clear filters</c-button>
     </c-panel-empty-state>
 {% elif hidden_by_defaults %}
     {% querystring request.GET show_all_changes as qs %}
     <c-panel-empty-state message="{{ empty_no_results }}">
-        <c-button variant="link" href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Show all {{ noun }}</c-button>
+        <c-button variant="link" size="small" href="{{ page_url }}{{ qs }}" hx-get="{{ base_url }}{{ qs }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Show all {{ noun }}</c-button>
     </c-panel-empty-state>
 {% else %}
     <c-panel-empty-state message="{{ empty_message }}">

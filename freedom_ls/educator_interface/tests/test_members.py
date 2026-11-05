@@ -245,12 +245,18 @@ def test_a_member_rows_deactivate_trigger_names_the_member(
 
     document = _members_page(staff_client, organisation)
 
-    labels = {
-        button.get("aria-label")
-        for button in document.cssselect("button[hx-get]")
+    (button,) = [
+        button
+        for button in document.cssselect("td button[hx-get]")
         if f"deactivate?user={member.pk}" in button.get("hx-get")
-    }
-    assert labels == {"Deactivate Thandi Nkosi"}
+    ]
+    assert button.get("aria-label") == "Deactivate Thandi Nkosi"
+    assert button.text_content().strip() == "Deactivate staff member"
+    # It sits last in the Roles cell, under the role entries.
+    cell = button.xpath("ancestor::td")[0]
+    assert cell.cssselect("ul")
+    assert cell.cssselect("ul")[0].getnext() is not None
+    assert len(document.cssselect("thead th")) == 2
 
 
 @pytest.mark.django_db

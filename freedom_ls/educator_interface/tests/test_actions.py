@@ -162,6 +162,47 @@ def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
     assert response.status_code == 422
     assert "Another cohort already has this name." in response.content.decode()
     assert cohort.name == "Year 11 Science"
+    # The 422 is the inline form itself, holding what was typed, not a dialog.
+    document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    (form,) = document.cssselect("form#cohort-name-form")
+    assert form.cssselect("input[name=name]")[0].get("value") == "Year 10 Science"
+    assert not document.cssselect("header")
+
+
+@pytest.mark.django_db
+def test_the_rename_fragment_is_the_inline_form_holding_the_current_name(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+
+    response = staff_client.get(
+        _cohort_url(organisation, cohort, "/__actions/edit"), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 200
+    document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
+    (form,) = document.cssselect("form#cohort-name-form")
+    (name,) = form.cssselect("input[name=name]")
+    assert name.get("value") == "Year 11 Science"
+    assert name.get("autofocus") is None
+
+
+@pytest.mark.django_db
+def test_a_rename_answers_204_with_the_new_title_for_the_page(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+
+    response = _post(
+        staff_client,
+        _cohort_url(organisation, cohort, "/__actions/edit"),
+        {"name": "Year 12 Science"},
+    )
+
+    assert response.status_code == 204
+    trigger = json.loads(response["HX-Trigger"])
+    assert COHORT_CHANGED in trigger
+    assert trigger["instanceTitleChanged"]["title"] == "Year 12 Science"
 
 
 # deactivate
@@ -431,15 +472,14 @@ def test_not_empty_sentence_is_empty_for_an_empty_cohort(
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohorts_page_renders_no_edit_trigger(staff_client: Client):
+def test_an_inactive_cohorts_settings_tab_renders_no_rename_form(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = _cohort_with_courses(organisation, 0, is_active=False)
 
-    response = staff_client.get(_cohort_url(organisation, cohort))
+    response = staff_client.get(_cohort_url(organisation, cohort, "/__tabs/settings"))
 
     document = lxml.html.fromstring(response.content.decode())
-    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
-    assert _cohort_url(organisation, cohort, "/__actions/edit") not in triggers
+    assert not document.cssselect("form#cohort-name-form")
 
 
 @pytest.mark.django_db
@@ -458,6 +498,9 @@ def test_editing_an_inactive_cohort_answers_422_with_the_inactive_fragment(
     assert response.status_code == 422
     assert "to change its name." in " ".join(response.content.decode().split())
     assert "Old group is inactive" in response.content.decode()
+    # The form targets itself, so the notice is sent to the dialog instead.
+    assert response["HX-Retarget"] == "#app-modal-body"
+    assert response["HX-Reswap"] == "innerHTML"
 
 
 def _all_subclasses(cls: type) -> set[type]:
@@ -1670,15 +1713,15 @@ def test_a_stale_learner_picker_post_on_an_inactive_cohort_answers_422(
     assert not CohortMembership.objects.filter(cohort=cohort).exists()
 
 
-# add learners
+# add a learner
 
 
 def _add_learners_list_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "learners/__actions/add_learners")
+    return _interface_url(organisation.slug, "learners/__actions/add_learner")
 
 
 def _add_learners_tab_url(organisation: Organisation, cohort: Cohort) -> str:
-    return _cohort_url(organisation, cohort, "/__tabs/learners/__actions/add_learners")
+    return _cohort_url(organisation, cohort, "/__tabs/learners/__actions/add_learner")
 
 
 def _organisation_admin_on(organisation: Organisation):
@@ -1695,7 +1738,7 @@ def _list_triggers(client: Client, organisation: Organisation) -> list[str]:
     return [
         button.get("hx-get") or ""
         for button in document.cssselect("button[hx-get]")
-        if "__actions/add_learners" in (button.get("hx-get") or "")
+        if "__actions/add_learner" in (button.get("hx-get") or "")
     ]
 
 
@@ -1755,18 +1798,30 @@ def test_add_learners_renders_a_preset_cohort_as_a_hidden_input(staff_client: Cl
 
 
 @pytest.mark.django_db
-def test_add_learners_post_without_entries_answers_422(staff_client: Client):
+def test_add_learner_post_without_an_email_answers_422(staff_client: Client):
     organisation = OrganisationFactory()
 
-    response = _post(
-        staff_client, _add_learners_list_url(organisation), {"entries": ""}
-    )
+    response = _post(staff_client, _add_learners_list_url(organisation), {"email": ""})
 
     assert response.status_code == 422
 
 
 @pytest.mark.django_db
-def test_add_learners_post_answers_200_with_the_results_and_creates_the_learners(
+def test_add_learner_post_with_an_invalid_address_answers_422_and_adds_nobody(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+
+    response = _post(
+        staff_client, _add_learners_list_url(organisation), {"email": "bad-address"}
+    )
+
+    assert response.status_code == 422
+    assert not Learner.objects.filter(organisation=organisation).exists()
+
+
+@pytest.mark.django_db
+def test_add_learner_post_answers_200_with_the_outcome_and_add_another(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -1774,32 +1829,85 @@ def test_add_learners_post_answers_200_with_the_results_and_creates_the_learners
     response = _post(
         staff_client,
         _add_learners_list_url(organisation),
-        {"entries": "new@example.com, Nia, Okoye\nbad-address"},
+        {"email": "new@example.com", "first_name": "Nia", "last_name": "Okoye"},
     )
 
     assert response.status_code == 200
-    assert "Account created and setup email sent" in response.content.decode()
-    assert "Not a valid email address" in response.content.decode()
+    document = lxml.html.fromstring(response.content.decode())
+    (result,) = document.cssselect("[data-testid='add-learner-result']")
+    assert "new@example.com" in result.text_content()
+    assert "Account created and setup email sent." in result.text_content()
+    assert "Learner added" in document.cssselect("h2")[0].text_content()
+    (again,) = [
+        button
+        for button in document.cssselect("button[hx-get]")
+        if button.text_content().strip() == "Add another"
+    ]
+    assert again.get("hx-get") == _add_learners_list_url(organisation)
     assert Learner.objects.filter(
-        organisation=organisation, user__email="new@example.com"
+        organisation=organisation,
+        user__email="new@example.com",
+        user__first_name="Nia",
     ).exists()
 
 
 @pytest.mark.django_db
-def test_add_learners_post_sends_the_learner_changed_trigger(staff_client: Client):
+def test_add_learner_post_for_an_existing_learner_is_titled_not_added(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    LearnerFactory(organisation=organisation, user__email="here@example.com")
+
+    response = _post(
+        staff_client,
+        _add_learners_list_url(organisation),
+        {"email": "here@example.com"},
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("h2")[0].text_content().strip() == "Not added"
+    assert "Already a learner here." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_add_and_add_another_returns_an_empty_form_with_the_outcome_above_it(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, name="Wave One"))
+
+    response = _post(
+        staff_client,
+        _add_learners_list_url(organisation),
+        {"email": "new@example.com", "cohort": str(cohort.pk), "action": "add_another"},
+    )
+
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
+    (status,) = document.cssselect("[data-status-message]")
+    assert " ".join(status.text_content().split()) == (
+        "new@example.com: Account created and setup email sent. Added to the cohort."
+    )
+    (email,) = document.cssselect("input[name=email]")
+    assert not email.get("value")
+    assert document.cssselect("form[hx-post]")
+
+
+@pytest.mark.django_db
+def test_add_learner_post_sends_the_learner_changed_trigger(staff_client: Client):
     organisation = OrganisationFactory()
 
     response = _post(
         staff_client,
         _add_learners_list_url(organisation),
-        {"entries": "new@example.com"},
+        {"email": "new@example.com"},
     )
 
     assert LEARNER_CHANGED in json.loads(response["HX-Trigger"])
 
 
 @pytest.mark.django_db
-def test_add_learners_post_with_a_cohort_sends_the_cohort_changed_trigger_and_adds_them(
+def test_add_learner_post_with_a_cohort_sends_the_cohort_changed_trigger_and_adds_them(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -1808,7 +1916,7 @@ def test_add_learners_post_with_a_cohort_sends_the_cohort_changed_trigger_and_ad
     response = _post(
         staff_client,
         _add_learners_list_url(organisation),
-        {"entries": "new@example.com", "cohort": str(cohort.pk)},
+        {"email": "new@example.com", "cohort": str(cohort.pk)},
     )
 
     assert COHORT_CHANGED in json.loads(response["HX-Trigger"])
@@ -1816,14 +1924,14 @@ def test_add_learners_post_with_a_cohort_sends_the_cohort_changed_trigger_and_ad
 
 
 @pytest.mark.django_db
-def test_add_learners_post_on_a_cohort_tab_adds_to_that_cohort(staff_client: Client):
+def test_add_learner_post_on_a_cohort_tab_adds_to_that_cohort(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
     response = _post(
         staff_client,
         _add_learners_tab_url(organisation, cohort),
-        {"entries": "new@example.com"},
+        {"email": "new@example.com"},
     )
 
     assert response.status_code == 200
@@ -1837,7 +1945,7 @@ def test_the_cohort_tab_title_names_the_cohort(staff_client: Client):
 
     fragment = _get_fragment(staff_client, _add_learners_tab_url(organisation, cohort))
 
-    assert "Add learners to Wave One" in fragment
+    assert "Add a learner to Wave One" in fragment
 
 
 @pytest.mark.django_db
@@ -1855,7 +1963,7 @@ def test_an_organisation_admins_cohort_tab_offers_add_learners_not_the_picker(
         button.get("hx-get") or "" for button in document.cssselect("button[hx-get]")
     ]
     assert [g.rsplit("/", 1)[-1] for g in hx_gets if "__actions/add" in g] == [
-        "add_learners"
+        "add_learner"
     ]
 
 
@@ -1868,7 +1976,7 @@ def test_an_inactive_cohorts_tab_offers_no_add_learners(staff_client: Client):
         _cohort_url(organisation, cohort, "/__tabs/learners")
     ).content.decode()
 
-    assert "__actions/add_learners" not in html
+    assert "__actions/add_learner" not in html
 
 
 @pytest.mark.django_db
@@ -1881,7 +1989,7 @@ def test_a_stale_add_learners_post_on_an_inactive_cohort_answers_422_and_adds_no
     response = _post(
         staff_client,
         _add_learners_tab_url(organisation, cohort),
-        {"entries": "new@example.com"},
+        {"email": "new@example.com"},
     )
 
     assert response.status_code == 422
@@ -4758,7 +4866,7 @@ def _cohort_add_member_url(organisation: Organisation, cohort: Cohort) -> str:
     return _cohort_url(
         organisation,
         cohort,
-        "/__tabs/overview/__panels/educators/__actions/add_member",
+        "/__tabs/settings/__actions/add_member",
     )
 
 
@@ -4878,26 +4986,30 @@ def test_a_post_naming_another_cohort_grants_nothing_on_it(admin_client, organis
 
 
 @pytest.mark.django_db
-def test_the_educators_panel_offers_add_member_to_an_organisation_admin(
+def test_the_settings_tab_offers_add_member_to_an_organisation_admin(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
 
-    html = admin_client.get(_cohort_url(organisation, cohort)).content.decode()
+    html = admin_client.get(
+        _cohort_url(organisation, cohort, "/__tabs/settings")
+    ).content.decode()
 
-    assert "/__panels/educators/__actions/add_member" in html
+    assert "/__tabs/settings/__actions/add_member" in html
 
 
 @pytest.mark.django_db
-def test_the_educators_panel_hides_add_member_from_a_cohort_admin(
+def test_the_settings_tab_is_hidden_from_a_cohort_admin(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
     client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
 
-    html = client.get(_cohort_url(organisation, cohort)).content.decode()
+    response = client.get(
+        _cohort_url(organisation, cohort, "/__tabs/settings"), HTTP_HX_REQUEST="true"
+    )
 
-    assert "/__panels/educators/__actions/add_member" not in html
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
@@ -5065,7 +5177,7 @@ def test_adding_learners_by_email_writes_an_entry_by_the_logged_in_user(
     _post(
         logged_in_client(actor),
         _add_learners_list_url(organisation),
-        {"entries": "new@example.com"},
+        {"email": "new@example.com"},
     )
 
     entry = AuditLogEntry.unscoped.get()
@@ -7266,33 +7378,6 @@ def test_bulk_cohort_unregister_deactivates_the_active_registration(
 
 
 @pytest.mark.django_db
-def test_the_add_learners_cap_message_links_to_the_import_page(
-    mock_site_context, logged_in_client
-):
-    organisation = OrganisationFactory()
-    educator = _organisation_admin_on(organisation)
-    lines = "\n".join(f"person{n}@example.com" for n in range(51))
-
-    response = logged_in_client(educator).post(
-        _add_learners_list_url(organisation),
-        {"entries": lines},
-        HTTP_HX_REQUEST="true",
-    )
-
-    import_url = reverse(
-        "educator_interface:learner_import",
-        kwargs={"organisation_slug": organisation.slug},
-    )
-    assert (
-        response.status_code,
-        f'href="{import_url}"' in response.content.decode(),
-    ) == (
-        422,
-        True,
-    )
-
-
-@pytest.mark.django_db
 def test_posting_to_the_import_link_is_not_allowed(mock_site_context, logged_in_client):
     """The import action is a link to the import page; it has no submit."""
     organisation = OrganisationFactory()
@@ -7304,26 +7389,6 @@ def test_posting_to_the_import_link_is_not_allowed(mock_site_context, logged_in_
     )
 
     assert response.status_code == 405
-
-
-@pytest.mark.django_db
-def test_an_add_learners_error_that_is_not_the_cap_carries_no_import_link(
-    mock_site_context, logged_in_client
-):
-    organisation = OrganisationFactory()
-    educator = _organisation_admin_on(organisation)
-
-    response = logged_in_client(educator).post(
-        _add_learners_list_url(organisation),
-        {"entries": ""},
-        HTTP_HX_REQUEST="true",
-    )
-
-    import_url = reverse(
-        "educator_interface:learner_import",
-        kwargs={"organisation_slug": organisation.slug},
-    )
-    assert import_url not in response.content.decode()
 
 
 # -- recorded runs: the organisation scope and the finished notification ----

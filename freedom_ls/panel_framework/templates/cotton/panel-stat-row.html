@@ -6,7 +6,8 @@ Stat row — lays out a set of panel-stat-tiles.
 Attributes:
   variant  "boxed" (default): a grid, two columns below md and four from
            lg, for tiles that carry their own card border. Anything else:
-           a wrapping flex row with a wider gap, for inline tiles.
+           inline tiles, a two-column grid on a phone so the labels line
+           up, and a wrapping row with a wider gap from md.
 {% endcomment %}
 
-<div class="{% if variant == "boxed" %}grid grid-cols-2 gap-4 lg:grid-cols-4{% else %}flex flex-wrap gap-x-8 gap-y-3{% endif %}" {{ attrs }}>{{ slot }}</div>
+<div class="{% if variant == "boxed" %}grid grid-cols-2 gap-4 lg:grid-cols-4{% else %}grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap{% endif %}" {{ attrs }}>{{ slot }}</div>

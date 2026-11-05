@@ -326,8 +326,8 @@ def test_a_cohort_admins_pasted_add_learners_post_answers_403_and_creates_nothin
     client = logged_in_client(user)
 
     response = client.post(
-        _interface_url(organisation.slug, "learners/__actions/add_learners"),
-        {"entries": "new@example.com", "cohort": str(cohort.pk)},
+        _interface_url(organisation.slug, "learners/__actions/add_learner"),
+        {"email": "new@example.com", "cohort": str(cohort.pk)},
         HTTP_HX_REQUEST="true",
     )
 

@@ -350,9 +350,11 @@ def _control_tags(path: Path) -> list[str]:
 
 
 def test_no_control_link_is_hand_styled() -> None:
-    """A link or button that works as a control takes a component or the
-    row-link style; the prose underline and a hand-typed text-primary are
-    how a control used to be styled by hand, page by page."""
+    """Every anchor in these templates is a control, so it takes a component
+    or the row-link style (no-underline and its own colour). The prose
+    underline, whether hand-typed or left to the base layer by an anchor
+    that names no link style, and a hand-typed text-primary are how a
+    control used to be styled by hand, page by page."""
     offenders: list[str] = []
     for root in (TEMPLATES_DIR, EDUCATOR_TEMPLATES_DIR):
         for path in sorted(root.rglob("*.html")):
@@ -364,8 +366,54 @@ def test_no_control_link_is_hand_styled() -> None:
                 tokens = set(classes.group(1).split()) if classes else set()
                 if "underline" in tokens or "text-primary" in tokens:
                     offenders.append(f"{relative}: {tag[:80]}")
+                elif tag.startswith("<a") and "{{ attrs }}" not in tag:
+                    styled = "no-underline" in tokens or any(
+                        token.startswith("btn") for token in tokens
+                    )
+                    if not styled:
+                        offenders.append(f"{relative}: {tag[:80]}")
 
     assert offenders == []
+
+
+def test_every_framework_action_trigger_is_small() -> None:
+    """The framework renders every action trigger (page header, panel
+    footer, empty state, row) at the small size; only a dialog's footer
+    buttons are full size."""
+    partials = TEMPLATES_DIR / "panel_framework" / "partials"
+    for name in ("modal_trigger.html", "action_button.html"):
+        assert 'size="small"' in (partials / name).read_text(), name
+
+
+def test_the_filter_sheet_has_a_close_control() -> None:
+    """A sheet opens with a header holding the title and a close control,
+    as the quick view does, so how to dismiss it is never in doubt."""
+    sheet = (
+        TEMPLATES_DIR / "panel_framework" / "partials" / "table_sheet.html"
+    ).read_text()
+
+    assert 'aria-label="Close"' in sheet
+    assert "bottom-sheet" in sheet
+
+
+def test_the_quick_view_is_never_modal() -> None:
+    """A quick view leaves the page behind it usable at every width, so it
+    opens with show() and carries no scrim."""
+    host = (
+        TEMPLATES_DIR / "panel_framework" / "partials" / "quick_view_host.html"
+    ).read_text()
+    script = (
+        FREEDOM_LS_PACKAGE_DIR
+        / "panel_framework"
+        / "static"
+        / "panel_framework"
+        / "js"
+        / "alpine-components.js"
+    ).read_text()
+    quick_view = script[script.index('Alpine.data("quickView"') :]
+
+    assert "modal-backdrop-host" not in host
+    assert "showModal" not in quick_view
 
 
 def test_every_anchor_with_visible_text_carries_its_own_classes() -> None:

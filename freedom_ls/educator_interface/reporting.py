@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.educator_interface.actions import RegisterLearnerForCourseAction
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -567,6 +568,10 @@ class LearnerCoursesPanel(Panel):
     title = "Courses"
     template_name = "educator_interface/panels/learner_courses.html"
     refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
+
+    def get_actions(self) -> list[PanelAction]:
+        # Register for a course sits with the registrations it adds to.
+        return [RegisterLearnerForCourseAction()]
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)

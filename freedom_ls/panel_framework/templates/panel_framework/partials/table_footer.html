@@ -1,0 +1,15 @@
+{% comment %}
+The footer of a table without bulk actions: how many entries match at the
+left, the pager at the right. A table with bulk actions gets the same row
+from table_selection_bar.html. Nothing renders for an empty table, whose
+body already says so.
+{% endcomment %}
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+    <p class="text-sm text-muted" data-entry-count>{{ entry_count }}</p>
+    <c-pagination :page_obj="page_obj"
+                  :base_url="base_url"
+                  :table_id="region_id"
+                  :links="pagination"
+                  :page_url="page_url"
+                  class="" />
+</div>
