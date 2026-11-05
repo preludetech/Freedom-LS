@@ -554,7 +554,8 @@ def _educator_with_conversation(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("messaging_on")
 class TestLearnerQuickViewMessageBox:
-    def test_the_composer_carries_the_disclosure_line(self, educator_client):
+    def test_the_send_button_is_a_small_icon_only_ghost_button(self, educator_client):
+        """The quick view is narrow, so Send is an icon named by its label."""
         organisation = OrganisationFactory()
         learner = _learner_in(organisation)
 
@@ -563,11 +564,29 @@ class TestLearnerQuickViewMessageBox:
         )
 
         tree = html.fromstring(f"<div>{response.content.decode()}</div>")
-        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
-        assert (
-            "Organisation admins can read conversations between learners and their educators."
-            in " ".join(box.text_content().split())
+        (send,) = tree.xpath("//form[@id='composer']//button[@type='submit']")
+        classes = set(send.get("class").split())
+        assert {"btn-ghost", "btn-sm"} <= classes
+        assert send.get("aria-label") == "Send"
+        assert send.text_content().strip() == ""
+        assert send.xpath(".//svg[@data-icon='send']")
+        assert "Organisation admins can read" not in tree.text_content()
+
+    def test_the_messages_heading_sits_above_a_rule_with_room_below(
+        self, educator_client
+    ):
+        organisation = OrganisationFactory()
+        learner = _learner_in(organisation)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
         )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        (heading,) = tree.xpath("//h3[@id='quick-view-message-heading']")
+        row = heading.getparent()
+        assert {"border-b", "pb-3", "mb-4"} <= set(row.get("class").split())
+        assert "mt-6" in row.getparent().get("class").split()
 
     def test_shows_the_composer_when_there_is_no_conversation_yet(
         self, educator_client

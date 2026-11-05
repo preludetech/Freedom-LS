@@ -249,20 +249,6 @@ class TestThreadPage:
         assert composer.get("data-counter-from") == "1800"
 
     @pytest.mark.usefixtures("allow_policy")
-    def test_the_thread_composer_carries_the_disclosure_line(
-        self, pair, logged_in_client
-    ) -> None:
-        user, _, conversation = pair
-
-        response = logged_in_client(user).get(thread_url(conversation))
-
-        composer = html.fromstring(response.content).get_element_by_id("composer")
-        assert (
-            "Organisation admins can read conversations between learners and their educators."
-            in " ".join(composer.text_content().split())
-        )
-
-    @pytest.mark.usefixtures("allow_policy")
     def test_the_composer_shows_the_shortcut_hint(self, pair, logged_in_client) -> None:
         user, _, conversation = pair
 
@@ -1010,39 +996,6 @@ class TestStartPage:
         assert "To Kai Ngata" in " ".join(tree.text_content().split())
         assert tree.xpath("//form[@id='composer']")
 
-    def test_the_start_page_composer_carries_the_disclosure_line(
-        self, mock_site_context, logged_in_client
-    ) -> None:
-        other = UserFactory()
-
-        response = logged_in_client(UserFactory()).get(
-            start_url(), {"recipient": other.pk}
-        )
-
-        composer = html.fromstring(response.content).get_element_by_id("composer")
-        assert (
-            "Organisation admins can read conversations between learners and their educators."
-            in " ".join(composer.text_content().split())
-        )
-
-    def test_the_pane_composer_carries_the_disclosure_line(
-        self, mock_site_context, logged_in_client
-    ) -> None:
-        other = UserFactory()
-
-        response = logged_in_client(UserFactory()).get(
-            start_url(),
-            {"recipient": other.pk},
-            HTTP_HX_REQUEST="true",
-            HTTP_HX_TARGET="thread-pane",
-        )
-
-        composer = html.fromstring(response.content).xpath("//form[@id='composer']")[0]
-        assert (
-            "Organisation admins can read conversations between learners and their educators."
-            in " ".join(composer.text_content().split())
-        )
-
     def test_the_full_page_links_back_to_the_messages_page(
         self, mock_site_context, logged_in_client
     ) -> None:
@@ -1568,19 +1521,6 @@ def test_the_start_page_renders_the_results_region_once(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("closed_policy")
 class TestClosedThread:
-    def test_the_closed_note_carries_the_disclosure_line(
-        self, pair, logged_in_client
-    ) -> None:
-        user, _, conversation = pair
-
-        response = logged_in_client(user).get(thread_url(conversation))
-
-        note = html.fromstring(response.content).xpath("//*[@id='composer']")[0]
-        assert (
-            "Organisation admins can read conversations between learners and their educators."
-            in " ".join(note.text_content().split())
-        )
-
     def test_the_note_replaces_the_composer(self, pair, logged_in_client) -> None:
         user, other, conversation = pair
         MessageFactory(conversation=conversation, sender=other, body="Earlier")
@@ -2673,7 +2613,6 @@ class TestReadOnlyThread:
             "Read only. You are viewing this conversation as an organisation admin."
             in text
         )
-        assert "Organisation admins can read conversations" in text
         assert not tree.xpath("//*[@id='composer']")
         assert not tree.xpath("//*[@id='thread-cursor']")
         assert not tree.xpath("//*[@hx-trigger='refresh']")

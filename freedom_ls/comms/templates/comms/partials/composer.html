@@ -61,7 +61,6 @@ message.
         </div>
         {% partial send %}
     </div>
-    {% include "comms/partials/disclosure_line.html" %}
 </form>
 
 {% partialdef body %}
@@ -110,11 +109,19 @@ message.
 {% endpartialdef %}
 
 {% partialdef send %}
+{% comment %}
+In the quick view the composer is narrow, so Send is a small icon-only
+ghost button named by its label; elsewhere it is the primary button with
+its text from sm up.
+{% endcomment %}
+{% if composer.in_quick_view %}
+<c-button type="submit" variant="ghost" size="small" icon_left="send" aria_label="Send" class="max-md:min-h-11 max-md:min-w-11" />
+{% else %}
 <c-button type="submit"
           variant="primary"
           icon_left="send"
-          size="{% if composer.in_quick_view %}small{% endif %}"
           aria-label="Send">
-    <span class="{% if not composer.in_quick_view %}hidden sm:inline{% endif %}">Send</span>
+    <span class="hidden sm:inline">Send</span>
 </c-button>
+{% endif %}
 {% endpartialdef %}
