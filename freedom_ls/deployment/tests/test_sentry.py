@@ -88,6 +88,7 @@ def captured_sentry(request: pytest.FixtureRequest) -> Iterator[CapturingTranspo
 
 
 @pytest.mark.django_db
+@pytest.mark.urls("freedom_ls.deployment.tests.root_urls")
 def test_an_event_from_a_request_carries_no_authorization_header(
     staff_client: Client, captured_sentry: CapturingTransport
 ) -> None:
