@@ -17,7 +17,7 @@ rows start at their status.
     </c-panel-definition-row>
     <c-panel-definition-row label="Cohorts" class="col-span-2">
         {% for membership in memberships %}
-            <a href="{% resolve_url_path_template membership.cohort 'educator_interface:interface' 'cohorts/{pk}' %}" class="font-medium text-on-surface no-underline hover:text-primary">{{ membership.cohort.name }}</a>{% if not forloop.last %}, {% endif %}
+            <a href="{% resolve_url_path_template membership.cohort 'educator_interface:interface' 'cohorts/{pk}' %}" class="font-bold text-on-surface no-underline hover:text-primary">{{ membership.cohort.name }}</a>{% if not forloop.last %}, {% endif %}
         {% empty %}
             &mdash;
         {% endfor %}

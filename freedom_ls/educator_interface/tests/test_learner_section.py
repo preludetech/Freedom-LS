@@ -106,6 +106,22 @@ def _make_pending_learner(*, organisation: Organisation, **user_fields: str) -> 
 
 
 @pytest.mark.django_db
+def test_learners_list_cohort_link_is_bold_like_a_person_link(educator_client):
+    """Cohort names in the Cohorts column used to be medium weight, not bold."""
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    links = document.xpath(f"//a[contains(@href, 'cohorts/{cohort.pk}')]")
+    assert links
+    assert all("font-bold" in link.get("class") for link in links)
+
+
+@pytest.mark.django_db
 def test_learners_list_shows_a_pending_learners_badge(educator_client):
     organisation = OrganisationFactory()
     _make_pending_learner(organisation=organisation)

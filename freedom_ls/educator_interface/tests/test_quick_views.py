@@ -194,6 +194,22 @@ class TestLearnerQuickView:
         assert "Year 9 Maths" in content
         assert f"cohorts/{cohort.pk}" in content
 
+    def test_cohort_link_is_bold_like_a_person_link(self, educator_client):
+        """The quick view's cohort names used to be medium weight, not bold."""
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        document = html.fromstring(response.content.decode())
+        links = document.xpath(f"//a[contains(@href, 'cohorts/{cohort.pk}')]")
+        assert links
+        assert all("font-bold" in link.get("class") for link in links)
+
     def test_shows_a_course_registration_through_a_cohort_with_its_progress(
         self, educator_client
     ):
