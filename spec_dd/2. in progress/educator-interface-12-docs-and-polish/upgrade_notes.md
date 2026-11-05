@@ -1,5 +1,5 @@
 ---
-requires_migrations: false
+requires_migrations: true
 requires_template_review: true
 changed_template_paths:
   - freedom_ls/base/templates/cotton/button.html
@@ -75,6 +75,7 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/partials/quick_view_host.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_selection_bar.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/table_sheet.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/table_empty.html  # new
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -148,6 +149,10 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
   test or override that matched the Title Case strings must follow.
 
 ## Manual steps
+
+- Run `manage.py migrate` before restarting background workers, so the
+  `freedom_ls_educator_interface.0001_rename_unregister_bulk_runs` data migration rewrites stored
+  bulk action runs to the renamed actions.
 
 - Rebuild the Tailwind bundle (`npm run tailwind_build`). Text fields, selects and textareas now
   use the new `border-border-input` utility, file inputs gained styling, interface buttons and
