@@ -178,7 +178,7 @@ def test_rows_sharing_one_updated_at_come_back_once_each_across_pages(
     client, auth, settings, list_name, detail_name, factory, expected_fields
 ):
     settings.API_PAGE_SIZE = 2
-    registrations = [factory() for _ in range(5)]
+    registrations = factory.create_batch(5)
     type(registrations[0])._base_manager.update(
         updated_at=datetime(2030, 1, 1, tzinfo=UTC)
     )
@@ -201,7 +201,7 @@ def _query_count(
 def test_the_query_count_does_not_grow_with_the_page_size(
     client, auth, list_name, detail_name, factory, expected_fields
 ):
-    [factory() for _ in range(6)]
+    factory.create_batch(6)
     _query_count(client, auth, list_name, 50)  # the first request pays one-off lookups
 
     small = _query_count(client, auth, list_name, 2)
