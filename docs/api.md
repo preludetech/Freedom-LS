@@ -4,8 +4,8 @@ A read-only JSON API for scripts that sync a site's data into another system: a 
 tracker, a reporting warehouse. It lives under `/api/v1/` and authenticates with an API key that
 a site's admin issues in the Django admin.
 
-This page covers what every API endpoint shares, then each API endpoint in turn. Today there is
-one: [users](#users).
+This page covers what every API endpoint shares, then each API endpoint in turn: [users](#users)
+and [course applications](#course-applications).
 
 ## Before you start
 
@@ -45,8 +45,8 @@ expiry, rotate it.
 | `referral_data` | `ReferralCode`, `ReferralCodeHit`, `SignupAttribution` |
 | `registrations_and_progress` | `LearnerCourseRegistration`, `CohortCourseRegistration`, `CourseInterest`, `CourseProgress` |
 
-Only `users` has an API endpoint so far. The others are reserved for API endpoints still to come,
-so a key can be issued with them now.
+`users` and `course_applications` have API endpoints so far. The others are reserved for API
+endpoints still to come, so a key can be issued with them now.
 
 ### Rotating a key
 
@@ -165,14 +165,17 @@ The first run sends no `updated_since` and pulls everything.
 ### Deletions
 
 A deleted row stops appearing; no API endpoint reports deletions. Deactivation is visible:
-a deactivated user shows up again with `is_active` set to `false`. To catch deletions, run a
+a deactivated user shows up again with `is_active` set to `false`. A deleted course application
+is not reported either. To catch deletions, run a
 periodic full pull (no `updated_since`) and remove the rows it no longer returns.
 
 ### Example
 
-A complete sync of the users API endpoint with [httpx](https://www.python-httpx.org/). It reads
+A complete sync with [httpx](https://www.python-httpx.org/). One loop, parametrised by the API
+endpoint's path, syncs both users and course applications, each with its own checkpoint. It reads
 the key from the `FLS_API_KEY` environment variable, follows `next`, waits out each 429, and
-returns the checkpoint for the next run.
+returns the checkpoint for the next run. The key needs both the `users` and the
+`course_applications` API scopes.
 
 ```python
 import os
@@ -183,6 +186,9 @@ import httpx
 
 BASE_URL = os.environ["FLS_BASE_URL"]  # e.g. "https://learn.example.org"
 API_KEY = os.environ["FLS_API_KEY"]
+
+# Each path keeps its own checkpoint, e.g. in FLS_CHECKPOINT_COURSE_APPLICATIONS.
+PATHS = ["users", "course-applications"]
 
 
 def get_page(client: httpx.Client, url: str) -> dict:
@@ -195,21 +201,23 @@ def get_page(client: httpx.Client, url: str) -> dict:
         return response.json()
 
 
-def upsert_user(row: dict) -> None:
-    print(row["id"], row["email"], row["updated_at"])  # write to your own store here
+def upsert(path: str, row: dict) -> None:
+    if path == "course-applications" and not row["is_submitted"]:
+        return  # a draft: skip it, or store it apart from submitted applications
+    print(path, row["id"], row["updated_at"])  # write to your own store here
 
 
-def sync_users(updated_since: str | None) -> str | None:
-    """Pull every user changed since the checkpoint. Return the next checkpoint."""
+def sync(path: str, updated_since: str | None) -> str | None:
+    """Pull every row of `path` changed since the checkpoint. Return the next checkpoint."""
     params = {"updated_since": updated_since} if updated_since else {}
-    url = str(httpx.URL(f"{BASE_URL}/api/v1/users/", params=params))
+    url = str(httpx.URL(f"{BASE_URL}/api/v1/{path}/", params=params))
     latest: datetime | None = None
     headers = {"Authorization": f"Bearer {API_KEY}"}
     with httpx.Client(headers=headers, timeout=30) as client:
         while url:
             page = get_page(client, url)
             for row in page["results"]:
-                upsert_user(row)
+                upsert(path, row)
                 seen = datetime.fromisoformat(row["updated_at"])
                 latest = seen if latest is None or seen > latest else latest
             url = page["next"]  # follow verbatim
@@ -218,9 +226,15 @@ def sync_users(updated_since: str | None) -> str | None:
     return (latest - timedelta(minutes=5)).isoformat()
 
 
+def checkpoint_variable(path: str) -> str:
+    return "FLS_CHECKPOINT_" + path.upper().replace("-", "_")
+
+
 if __name__ == "__main__":
-    checkpoint = sync_users(os.environ.get("FLS_CHECKPOINT"))
-    print("next checkpoint:", checkpoint)  # save it only now the run is complete
+    for path in PATHS:
+        checkpoint = sync(path, os.environ.get(checkpoint_variable(path)))
+        # Save each path's checkpoint only once its own run is complete.
+        print(checkpoint_variable(path), "=", checkpoint)
 ```
 
 ## Versioning
@@ -265,3 +279,116 @@ user's email addresses, so `email_verified` changes reach an incremental sync.
 Signing in does **not** move it. `last_login` changes on every sign-in, and counting those would
 send most of your users on every run. An incremental sync therefore sees a fresh `last_login`
 only when something else about the user changes; a full pull always has the current value.
+
+## Course applications
+
+`/api/v1/course-applications/` lists the course applications of the key's site, from signed-in
+and anonymous applicants alike, each with its answers.
+
+| | |
+| --- | --- |
+| API scope | `course_applications` |
+| List | `GET /api/v1/course-applications/` |
+| Detail | `GET /api/v1/course-applications/<id>/` |
+| Filters | `updated_since`, plus `cursor` and `page_size` on the list |
+
+**The list includes drafts.** An application the applicant has started but not submitted comes
+back with `is_submitted: false`. Filter on `is_submitted` if you want only submitted ones; there
+is no server-side filter for it.
+
+```json
+{
+  "id": "6f1c…",
+  "applicant_email": "thandi@example.com",
+  "applicant_name": "Thandi Nkosi",
+  "is_email_verified": false,
+  "course_id": "a83e…",
+  "course_title": "Data Analysis Bootcamp",
+  "is_submitted": true,
+  "submitted_time": "2026-10-02T09:14:07.512304+00:00",
+  "created_at": "2026-10-02T08:51:44.103211+00:00",
+  "updated_at": "2026-10-02T09:14:07.530918+00:00",
+  "answers": [
+    {"question_id": "1d0b…", "question_text": "Which track?", "question_type": "multiple_choice", "value": "Evening"},
+    {"question_id": "77c2…", "question_text": "Tools you use", "question_type": "checkboxes", "value": ["Excel", "SQL"]},
+    {"question_id": "c4aa…", "question_text": "Date of birth", "question_type": "date", "value": "1998-04-17"},
+    {"question_id": "e912…", "question_text": "Upload your ID", "question_type": "file_upload", "value": "id-scan.pdf"}
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Stable for the life of the application. Upsert on this. |
+| `applicant_email` | string | See "Who applied" below. |
+| `applicant_name` | string | First and last name. May be empty. |
+| `is_email_verified` | boolean | Whether somebody has proven they own `applicant_email`. |
+| `course_id` | string (UUID) | The course applied for. |
+| `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
+| `is_submitted` | boolean | `false` for a draft. |
+| `submitted_time` | string (ISO 8601) or `null` | When the applicant submitted. `null` for a draft. For a course whose application has no form, this is `created_at`. |
+| `created_at` | string (ISO 8601) | When the application was started. |
+| `updated_at` | string (ISO 8601) | When the application last changed. Drives paging and `updated_since`. |
+| `answers` | array | See "Answers" below. `[]` for a course whose application has no form. |
+
+### Who applied
+
+A signed-in applicant's `applicant_email` and `applicant_name` come from their user account, and
+follow it when they change it. An anonymous applicant's come from what they typed on the
+application form, and `is_email_verified` stays `false` until they follow the claim link emailed
+to them. Treat an anonymous address as unverified: anyone can type any address.
+
+Consent evidence and claim state are never returned.
+
+### Answers
+
+Each entry in `answers` is one answered question, in the order the form shows them: by page, then
+by question. A question the applicant has not answered has no entry, so do not expect one entry
+per question on the form.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `question_id` | string (UUID) | Stable while the question exists. Key your columns on this, not on the text. |
+| `question_text` | string | The question's text. |
+| `question_type` | string | One of `multiple_choice`, `checkboxes`, `dropdown`, `short_text`, `long_text`, `number`, `date`, `time`, `email`, `url`, `phone`, `file_upload`. |
+| `value` | string, array of strings, or `null` | Depends on `question_type`, below. |
+
+| `question_type` | `value` |
+| --- | --- |
+| `checkboxes` | The selected options' texts as an array, in the form's option order. |
+| `multiple_choice`, `dropdown` | The selected option's text as a string. |
+| `file_upload` | The uploaded file's original filename. |
+| any other type | The text as stored. Dates and times are ISO 8601 text, such as `1998-04-17`; numbers stay strings. |
+
+`value` is `null`, never `""` or `[]`, when the answer holds nothing: no option selected, no file,
+or empty text.
+
+A file upload gives the filename only. The API never returns the file, its storage path or a link
+to it.
+
+### What moves `updated_at`
+
+`updated_at` moves when any of these happens:
+
+1. The applicant submits the application.
+2. The applicant saves a text or option answer.
+3. The applicant clears an answer.
+4. The applicant uploads, replaces or removes a file.
+5. An anonymous applicant's details change.
+6. An anonymous application is claimed by a user account.
+7. A signed-in applicant changes their name or email address.
+
+Reaching a new page of the application form also moves it, so an incremental sync sometimes
+returns an application whose fields have not changed. Upserting by `id` absorbs this.
+
+Saves that change nothing the API returns do **not** move it: the applicant signing in or
+changing their password, and the claim email going out to an anonymous applicant.
+
+Editing the course or its application form never moves it: a new course title, question text or
+type, option text, or page or question order. An application that has not otherwise changed keeps
+its old `course_title` and `question_text` in your store until you pull it again. If your script
+needs current titles, run a periodic full pull (no `updated_since`).
+
+A deleted application is not reported; it stops appearing. See [Deletions](#deletions).
