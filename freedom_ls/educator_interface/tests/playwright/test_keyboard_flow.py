@@ -310,3 +310,35 @@ def test_generating_a_report_by_keyboard_never_leaves_focus_on_the_body(
     expect(page.locator("form.htmx-request")).to_have_count(0)
     assert page.evaluate("window.__bodySamples") == 0
     expect(page.get_by_role("button", name=re.compile("Generate"))).to_be_focused()
+
+
+def test_organisation_switcher_option_shows_a_focus_ring_when_reached_by_keyboard(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """A keyboard-focused organisation option used to have no outline, only a
+    faint background tint, so the focused row was hard to tell from its
+    neighbours."""
+    page = educator_logged_in_page
+    page.set_viewport_size(_DESKTOP)
+    grantor = LearnerFactory(user__superuser=True).user
+    first = cast(Organisation, OrganisationFactory(name="Org A"))
+    second = cast(Organisation, OrganisationFactory(name="Org B"))
+    for organisation in (first, second):
+        assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, first.slug, "learners"))
+
+    page.get_by_role("button", name="Switch organisation").focus()
+    page.keyboard.press("Enter")
+    expect(page.get_by_role("menuitemradio", name="Org A")).to_be_focused()
+    page.keyboard.press("Tab")
+    option = page.get_by_role("menuitemradio", name="Org B")
+    expect(option).to_be_focused()
+
+    outline = option.evaluate(
+        "el => { const s = getComputedStyle(el);"
+        " return {style: s.outlineStyle, width: parseFloat(s.outlineWidth)}; }"
+    )
+    assert outline["style"] != "none"
+    assert outline["width"] >= 2

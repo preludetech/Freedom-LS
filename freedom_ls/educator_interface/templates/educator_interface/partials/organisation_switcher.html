@@ -37,7 +37,7 @@ the trigger, inside the navigation sheet; from lg it is a popover.
                             hx-target="#main-content"
                             hx-push-url="true"
                             hx-swap="outerHTML"
-                            class="flex w-full items-center gap-2.5 px-2.5 py-2 text-left text-sm text-on-surface transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none cursor-pointer aria-checked:font-semibold">
+                            class="flex w-full items-center gap-2.5 px-2.5 py-2 text-left text-sm text-on-surface transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring cursor-pointer aria-checked:font-semibold">
                         {% partial organisation_tile %}
                         <span class="min-w-0 flex-1 wrap-anywhere">{{ organisation.name }}</span>
                         {% comment %}
