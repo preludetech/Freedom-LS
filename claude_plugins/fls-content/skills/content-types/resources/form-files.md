@@ -89,6 +89,7 @@ The **first** `---`-delimited YAML section is the FORM_PAGE.
 | `title` | `str` | Yes | Page heading |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional instruction text |
+| `when` | mapping | No | Show this page only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 
 ### Example FORM_PAGE section
@@ -122,6 +123,8 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | `min` | `str` | No | Inclusive lower bound for `date`, `time` or `number` — `YYYY-MM-DD`, `HH:MM`, or a plain number |
 | `max` | `str` | No | Inclusive upper bound — same formats as `min` |
 | `decimal_places` | `int` | No (default `0`) | Decimal places a `number` answer may use. Only valid on `number` |
+| `slug` | `str` | No | The name a later `when` uses to refer to this question. Lowercase letters, digits and underscores only (`^[a-z0-9_]+$`), at most 100 characters, unique within the form. Only needed on a question that a `when` points at |
+| `when` | mapping | No | Show this question only when an earlier answer matches. See "Conditional pages, questions and content (`when`)" below |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
@@ -268,6 +271,7 @@ The parser selects `FORM_CONTENT` when a subsequent section has a `content` key 
 | Field | Type | Required |
 |---|---|---|
 | `content` | `str` | Yes |
+| `when` | mapping | No |
 | `uuid` | `str` | No |
 
 ### Example
@@ -280,6 +284,71 @@ content: |
   Read the following passage before answering the questions below.
 
   > "The goal of education is not to fill a bucket but to light a fire."
+```
+
+---
+
+## Conditional pages, questions and content (`when`)
+
+`when` shows a page, a question, or a content block only when an earlier answer matches. It works
+in `UNSCORED` and `CATEGORY_VALUE_SUM` forms and is not allowed in a `QUIZ` form. A page's `when`
+goes in its FORM_PAGE section; a question's or content block's `when` goes in its own section.
+
+```yaml
+when:
+  question: employer_pays   # the slug of the source question
+  equals: 'yes'             # or `includes:` for a checkboxes source (exactly one of the two)
+```
+
+Rules (`validate.py` checks all of them across the form's files):
+
+- `question` is the `slug` of a question in the same form. Give that question a `slug:`. A `when`
+  naming a slug no question has is an error, and the error lists the slugs the form does declare.
+- The source question must be on an **earlier page**, not the same page or a later one. Pages run
+  in sorted file-name order, so pad page numbers consistently, as for other numbered files.
+- The source must be a `multiple_choice`, `dropdown` or `checkboxes` question.
+- Use exactly one of `equals` or `includes`. `equals` is for a `multiple_choice` or `dropdown`
+  source; `includes` is for a `checkboxes` source (the value must be among those ticked). Using the
+  wrong one for the source type is an error.
+- The value must be one of the source question's option `value`s (not its `text`). The error lists
+  the valid values.
+- Quote the value. Unquoted `yes`, `no`, `on`, `off`, `true` and `false` are read by YAML as
+  booleans and are rejected: write `equals: 'yes'`. A number such as `3` is accepted and compared
+  as the text `"3"`.
+- `slug` must be unique within the form. A duplicate is an error.
+
+Example, from the `functionality_demo_application_form` demo. Page 1 declares the source question:
+
+```yaml
+question: Is your employer paying for this course?
+type: multiple_choice
+required: true
+slug: employer_pays
+options:
+  - text: 'Yes'
+    value: 'yes'
+  - text: 'No'
+    value: 'no'
+```
+
+Page 2 (`2. your-employer.yaml`) is shown only when the answer was `yes`:
+
+```yaml
+---
+content_type: FORM_PAGE
+title: Your employer
+subtitle: So we can invoice the right people
+when:
+  question: employer_pays
+  equals: 'yes'
+---
+content: |-
+  We invoice employers directly. Tell us who they are and where the invoice
+  should go.
+---
+question: What is your employer's name?
+type: short_text
+required: true
 ```
 
 ---
