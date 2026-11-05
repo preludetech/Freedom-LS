@@ -28,6 +28,18 @@ def _answer(question_type: str, **answer_fields: str) -> QuestionAnswer:
     return answer
 
 
+def _answer_with_options(
+    question_type: str, options: list[tuple[str, int]]
+) -> QuestionAnswer:
+    answer = _answer(question_type)
+    selected = [
+        QuestionOptionFactory(question=answer.question, text=text, order=order)
+        for text, order in options
+    ]
+    answer.selected_options.add(*selected)
+    return answer
+
+
 def test_answer_columns_follow_form_questions_order_with_the_question_text_as_header(
     mock_site_context,
 ):
@@ -249,10 +261,7 @@ def test_a_question_text_used_by_one_form_only_keeps_its_bare_header(
 def test_answer_value_of_an_option_question_follows_option_order(
     mock_site_context, question_type, options, expected
 ):
-    answer = _answer(question_type)
-    for text, order in options:
-        option = QuestionOptionFactory(question=answer.question, text=text, order=order)
-        answer.selected_options.add(option)
+    answer = _answer_with_options(question_type, options)
 
     assert answer_value(answer) == expected
 
