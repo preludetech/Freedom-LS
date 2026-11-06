@@ -3,14 +3,14 @@
 A learner as a person link: avatar, bold name and the email under it when
 the user has a name. A nameless user is shown by the email alone, so the
 link always has text. The quick-view trigger sits at the cell's end edge.
-The avatar colour is keyed on the learner's own id, as the attention rows
-and report rows key it, so a learner keeps one colour across the interface.
+The avatar colour is keyed on the learner's user pk, as the audit log and
+the staff member cells key it, so a person keeps one colour across the interface.
 column.attr names the row's learner; empty means the row is the learner.
 {% endcomment %}
 {% with learner=object|getattr_str:column.attr %}
     {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{pk}' as resolved_url %}
     <c-panel-person-link name="{{ learner.user.display_name }}"
-                         user_id="{{ learner.pk }}"
+                         user_id="{{ learner.user.pk }}"
                          secondary="{% if learner.user.first_name or learner.user.last_name %}{{ learner.user.email }}{% endif %}"
                          href="{{ resolved_url }}"
                          quick_view_url="{{ resolved_url }}/__quick-view"
