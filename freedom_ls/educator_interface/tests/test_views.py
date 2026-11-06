@@ -5111,6 +5111,21 @@ def test_the_error_block_links_to_the_download_and_the_corrected_file_upload(
 
 
 @pytest.mark.django_db
+def test_the_error_block_buttons_are_the_small_size(import_world: SimpleNamespace):
+    """The download and corrected-file links used to render at the default button size."""
+    learner_import = _import_for(
+        import_world.admin, import_world.organisation, "good@example.com,,,", "bad,,,"
+    )
+
+    page = _preview_page(import_world, learner_import)
+
+    buttons = page.cssselect(
+        "[data-error-block] a[data-error-download], [data-error-block] a[data-error-reupload]"
+    )
+    assert [("btn-sm" in b.get("class").split()) for b in buttons] == [True, True]
+
+
+@pytest.mark.django_db
 def test_the_error_block_shows_fifty_error_rows_and_says_how_many_there_are(
     import_world: SimpleNamespace,
 ):
