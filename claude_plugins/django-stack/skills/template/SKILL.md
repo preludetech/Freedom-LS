@@ -26,8 +26,5 @@ allowed-tools: Read, Grep, Glob
 - Check existing cotton components before creating new ones
 - Views returning partials use `partial_` prefix
 - Use Django-style comments `{% comment %}...{% endcomment %}`, never Jinja-style `{# ... #}`
-- Copy: a list page starts at its heading and toolbar, a confirm dialog states the current state
-  and the change, a disabled action shows its reason ("Copy a template carries" in
-  `${CLAUDE_PLUGIN_ROOT}/resources/templates_and_cotton.md`)
 
 Refer to `${CLAUDE_PLUGIN_ROOT}/resources/templates_and_cotton.md` for full patterns and examples.

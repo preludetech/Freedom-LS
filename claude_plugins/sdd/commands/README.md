@@ -71,8 +71,8 @@ How the QA command handles skipped tests, missing test data or the bugs it finds
 business: read its documentation and check `qa_report.md` for the outcome.
 
 Feedback you give on the QA report, a screenshot or a page goes through `sdd:capture-feedback`
-(`/sdd:capture_feedback` by hand) before the fix, so the rule lands in the files `## Feedback
-Hooks` in `.claude/sdd/config.md` names, and the log there shows what was captured.
+(`/sdd:capture_feedback` by hand) before the fix, so the rule lands in one of the files `## Rule
+Files` in `.claude/sdd/config.md` names.
 
 ## Step 5: Document
 

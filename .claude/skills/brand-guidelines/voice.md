@@ -68,7 +68,18 @@ Name the specific problem, suggest a specific fix, in plain language. Explain an
 
 ## Dialogs and list pages
 
-The rule is "Copy a template carries" in `Skill(ds:template)`. This is how it sounds in FLS.
+- A list page opens with its heading and its toolbar, so the list starts at the top. Help for the
+  page lives in a dialog the page opens, or in the docs.
+- A confirm dialog states what is true now and what the action changes. The person confirming
+  reads the before and the after.
+- A disabled action shows its reason beside the control, and the control names it with
+  `aria-describedby`.
+- Two buttons in one row never share a bare verb. Each names its noun.
+- One word for a relation everywhere it appears: a list and a quick view both say "via".
+- Adding a record by hand is a form for one record, with "Add" and "Add and add another". A
+  textarea that asks for one record per line is an import wearing a form's clothes.
+
+This is how it sounds in FLS.
 
 ```
 ✅ "Current cohort: Cohort A. Sam Dlamini will be removed from Cohort A and added to the cohort you choose."
@@ -90,7 +101,7 @@ The rule is "Copy a template carries" in `Skill(ds:template)`. This is how it so
 ❌ A textarea with "One per line: email, first name, last name"
 ```
 
-The glossary's "staff member" is the noun on every button and dialog about an `OrganisationMember`:
+The glossary's "staff member" is the noun on every button and dialog about an `StaffMember`:
 "Deactivate staff member", "Reactivate staff member", "Add staff member".
 
 ## Naming

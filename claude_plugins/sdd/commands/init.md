@@ -134,8 +134,8 @@ They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` look
 command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
 reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills. **PR Hooks**:
 `/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
-**Feedback Hooks**: `sdd:capture-feedback` looks here for the file each kind of rule is written to
-and the log it appends to.
+**Rule Files**: `sdd:capture-feedback` looks here for the file each rule is written to, and the QA
+command walks the `## Visual checklist` section of each file listed.
 Everything else in this dir exists for
 parity and future settings.
 
@@ -215,14 +215,9 @@ parity and future settings.
 
    - Fetch PR comments:
 
-   ## Feedback Hooks
+   ## Rule Files
 
-   - Visual rules:
-   - Generic visual rules:
-   - Copy rules:
-   - Generic copy rules:
-   - QA checklist:
-   - Feedback log:
+   -
 
    ## Vocabulary Sources
 
@@ -293,11 +288,11 @@ parity and future settings.
    `is_outdated` field). Blank means "this project has no such script", and
    `/sdd:address_pr_review` fetches them with `gh` directly.
 
-   **Feedback Hooks** is keyed. **Visual rules** and **Copy rules** point at the project's own
-   files for how its pages look and read; **Generic visual rules** and **Generic copy rules**
-   point at files that take no project name, path or value; **QA checklist** points at the file
-   whose visual review checklist QA walks; **Feedback log** is where each captured rule is
-   dated. A blank key means that kind of feedback is not captured, and the skill says so.
+   **Rule Files** is a list, not keyed. Each bullet is `<scope>: <path>`: a few words naming what
+   the file's rules cover (a brand's visual system, its voice, one UI framework's pages) and the
+   project file holding them. `sdd:capture-feedback` writes each rule into the file whose scope
+   fits it best, and the QA command walks the `## Visual checklist` section of every file listed.
+   An empty list means feedback is not captured, and the skill says so.
 
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
@@ -307,7 +302,7 @@ parity and future settings.
    model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
-   `## Testing Skills`, `## PR Hooks`, `## Feedback Hooks` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
+   `## Testing Skills`, `## PR Hooks`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -349,9 +344,7 @@ in-place edits.
    and `Migrate`, and a `## Testing Skills` section (blank values and an empty list are valid).
 11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
    value is valid).
-12. `.claude/sdd/config.md` has a `## Feedback Hooks` section with the keys `Visual rules`,
-   `Generic visual rules`, `Copy rules`, `Generic copy rules`, `QA checklist` and `Feedback log`
-   (blank values are valid).
+12. `.claude/sdd/config.md` has a `## Rule Files` section (an empty list is valid).
 13. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
 14. `.claude/sdd/config.local.md` is listed in `.gitignore`.
 15. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.

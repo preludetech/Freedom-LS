@@ -36,9 +36,5 @@ allowed-tools: Read, Grep, Glob
 - Run `npm run tailwind_build` after adding new Tailwind classes that aren't already in use.
 - Use the project's spacing scale consistently.
 - Mobile-first responsive design: start with mobile, add `md:` and `lg:` breakpoints.
-- **Controls use a component.** A button, text action, person or record link, back link or
-  clickable row is built from the project's component for that job; the base anchor style is for
-  a link in prose. Padding, gaps, dialog footers and phone sizing follow "Controls, spacing and
-  small screens" in `${CLAUDE_PLUGIN_ROOT}/resources/frontend_styling.md`.
 
 For full details and examples, see `${CLAUDE_PLUGIN_ROOT}/resources/frontend_styling.md`.

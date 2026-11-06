@@ -14,10 +14,10 @@ Manifest name: `fls-dev`. Namespace: `/fls-dev:*`, `Skill(fls-dev:*)`. Config di
 
 ## What's inside (counted from disk)
 
-### Skills (16)
+### Skills (17)
 
 FLS-specific: `domain-glossary`, `file-storage`, `icon-usage` (+2 resources), `markdown-content`,
-`multi-tenant`, `notifications`, `registration`.
+`multi-tenant`, `notifications`, `panel-framework`, `registration`.
 
 Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-interface`, `alpine-js`,
 `app-settings`, `frontend-styling`, `playwright-tests`, `template`, `testing`, `use-playwright`
