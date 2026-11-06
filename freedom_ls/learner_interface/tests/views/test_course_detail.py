@@ -1624,7 +1624,8 @@ def test_detail_outline_marks_a_part_whose_child_closed_closed(mock_site_context
 
     assert html.count(CLOSED_STATUS) == 2
     # One chip: the topic's own row. The part row summarises its children without a date.
-    assert _without_sr_only(html).count("Closed") == 1
+    visible_text = re.sub(r"<[^>]+>", " ", _without_sr_only(html))
+    assert visible_text.count("Closed") == 1
     assert "<time" not in html
 
 
@@ -1918,3 +1919,24 @@ def test_an_ended_learner_still_reaches_a_hidden_course(mock_site_context, clien
     course = _ended_learner_detail(client, visibility=CourseVisibility.HIDDEN)
 
     assert _detail_response_as(client, course).status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_detail_outline_keeps_only_the_closed_chip_inline_in_the_row(due_topic_course):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+    row = next(
+        li
+        for li in lxml.html.fromstring(html).cssselect("nav li")
+        if "Topic" in li.text_content() or "Closed" in li.text_content()
+    )
+    after_title = row.cssselect("span.truncate")[0].getnext()
+
+    assert "<time" not in html
+    assert after_title is not None
+    assert " ".join(after_title.text_content().split()) == "Closed"

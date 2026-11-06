@@ -10,12 +10,13 @@ real widths.
 from __future__ import annotations
 
 import io
+import re
 from datetime import date
 from decimal import Decimal
 
 import pytest
 from PIL import Image
-from playwright.sync_api import FloatRect, Locator, Page, expect
+from playwright.sync_api import FloatRect, Locator, Page, ViewportSize, expect
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -212,6 +213,7 @@ def _browse_course(user: User) -> Course:
     ContentCollectionItemFactory(
         collection_object=course, child_object=topics[4], order=2
     )
+    set_due_date(course, topics[4], due_date=date(2000, 1, 1))
     # Items open in order, so finishing the earlier ones unlocks every page.
     for topic in topics[:4]:
         topic_completion(course, user, topic, complete_time=timezone.now())
@@ -355,6 +357,31 @@ def test_learner_browses_a_course(
             # The row fits because the title is clipped, not because it fit.
             assert title_span.evaluate("el => el.scrollWidth > el.clientWidth")
 
+            page.goto(grid_url)
+            page.get_by_role("button", name="Open course outline").click()
+            sheet = page.get_by_role("dialog", name="Course outline")
+            expect(sheet).to_have_css("transform", "none")
+            row = sheet.locator("li").filter(has_text=LONG_TOPIC_TITLE).last
+            row_title = row.locator("span.truncate")
+            assert row_title.evaluate("el => el.scrollWidth > el.clientWidth")
+            date_element = row.locator("time")
+            expect(date_element).to_have_text(re.compile(r"^(Jan 1, 2000|1 Jan 2000)$"))
+            date_box = _box(date_element)
+            sheet_box = _box(sheet)
+            assert date_box["x"] >= sheet_box["x"]
+            assert (
+                date_box["x"] + date_box["width"] <= sheet_box["x"] + sheet_box["width"]
+            )
+            assert _box(row)["height"] < 2 * date_box["height"] + 16
+
+        page.goto(_item_url(live_server, course, 5))
+        title_box = _box(page.locator("#page-title"))
+        chip_box = _box(page.get_by_test_id("player-item-deadline"))
+        # The deadline chip sits above the title, left-aligned, at every width.
+        assert chip_box["y"] + chip_box["height"] <= title_box["y"]
+        assert abs(chip_box["x"] - title_box["x"]) < 2
+        assert_no_horizontal_overflow(page)
+
     # Below md the stat cells stack, each spanning the strip so dividers line up.
     for width in (375, 640):
         page.set_viewport_size({"width": width, "height": 900})
@@ -382,7 +409,7 @@ def test_due_date_reads_in_the_browser_time_zone(
     )
     # 23:59 on 15 March in Johannesburg is 21:59 UTC, 17:59 in New York (EDT).
     set_due_date(course, topic, due_date=date(2999, 3, 15))
-    due = page.get_by_role("navigation", name="Course outline").locator("time")
+    due = page.get_by_test_id("player-item-deadline").locator("time")
 
     # The site zone is Johannesburg; the browser's own zone wins, unlabelled.
     page.goto(_item_url(live_server, course, 1))
@@ -418,49 +445,6 @@ def test_missed_deadline_row_keeps_its_title_visible_in_the_desktop_sidebar(
     # reports its full width while the box that hides it is zero wide.
     title_box = outline.locator("span.truncate", has_text="Welcome to the Course")
     assert _box(title_box)["width"] > 0
-
-
-@pytest.mark.parametrize("in_part", [False, True], ids=["top_level", "in_a_part"])
-def test_deadline_line_starts_under_the_row_icon(
-    live_server,
-    logged_in_page: Page,
-    logged_in_user: User,
-    in_part: bool,
-) -> None:
-    page = logged_in_page
-    course = CourseFactory(title="Deadline Course", slug="deadline-course")
-    topic = TopicFactory(title="Dated Topic", slug="dated-topic")
-    if in_part:
-        part = CoursePartFactory(title="Part One", slug="part-one")
-        ContentCollectionItemFactory(
-            collection_object=course, child_object=part, order=0
-        )
-        ContentCollectionItemFactory(
-            collection_object=part, child_object=topic, order=0
-        )
-    else:
-        ContentCollectionItemFactory(
-            collection_object=course, child_object=topic, order=0
-        )
-    LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, course=course, is_active=True
-    )
-    set_due_date(course, topic, due_date=date(2000, 1, 1))
-
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    page.goto(_item_url(live_server, course, 1))
-
-    row = (
-        page.get_by_role("navigation", name="Course outline")
-        .locator("li")
-        .filter(has=page.locator("time"))
-        .last
-    )
-    icon = row.locator("svg").first
-    chip = row.get_by_text("Missed deadline", exact=True)
-    expect(chip).to_be_visible()
-    assert abs(_box(chip)["x"] - _box(icon)["x"]) <= 1
-    assert _box(chip)["y"] > _box(icon)["y"]
 
 
 def test_mobile_outline_sheet_and_drawer_stay_within_the_viewport(
@@ -596,9 +580,24 @@ def test_learner_browses_a_grid_of_article_and_course_cards(
 def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
     mock_site_context,
 ) -> None:
     page = logged_in_page
+    banded = CourseFactory(
+        title="Banded Course",
+        slug="banded-course",
+        access_config={"access_type": "free"},
+    )
+    banded.organisations.add(OrganisationFactory(name="Plain Academy"))
+    long_topic = TopicFactory(title=LONG_TOPIC_TITLE, slug="banded-topic")
+    ContentCollectionItemFactory(
+        collection_object=banded, child_object=long_topic, order=0
+    )
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=banded, is_active=True
+    )
+    set_due_date(banded, long_topic, due_date=date(2000, 1, 1))
     for letter in "ABCD":
         CourseFactory(
             title=f"Free Course {letter}",
@@ -645,10 +644,53 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     expect(section.get_by_test_id("section-card-grid")).to_be_visible()
     expect(section.get_by_test_id("section-row-list")).to_be_hidden()
 
-    for viewport in QA_VIEWPORTS:
+    # 1024 is the narrowest card grid: three cards a row.
+    viewports: tuple[ViewportSize, ...] = (
+        *QA_VIEWPORTS,
+        {"width": 1024, "height": 768},
+    )
+    for viewport in viewports:
         page.set_viewport_size(viewport)
         page.goto(dashboard_url)
         assert_no_horizontal_overflow(page)
+        # Cards replace the rows from the lg breakpoint.
+        if viewport["width"] >= 1024:
+            _assert_band_clears_the_mark(page)
+
+
+def _boxes_overlap(a: FloatRect, b: FloatRect) -> bool:
+    return not (
+        a["x"] >= b["x"] + b["width"]
+        or b["x"] >= a["x"] + a["width"]
+        or a["y"] >= b["y"] + b["height"]
+        or b["y"] >= a["y"] + a["height"]
+    )
+
+
+def _assert_band_clears_the_mark(page: Page) -> None:
+    """The banded card's date is whole; its word, title and date clear the mark and the icon."""
+    card = page.get_by_test_id("section-card-grid").locator(
+        "article", has_text="Banded Course"
+    )
+    band = card.get_by_test_id("course-deadline-band")
+    expect(band).to_be_visible()
+    card_box = _box(card)
+    date_box = _box(band.locator("time"))
+    assert date_box["x"] >= card_box["x"]
+    assert date_box["x"] + date_box["width"] <= card_box["x"] + card_box["width"]
+    word_box = _box(band.get_by_text("Missed deadline", exact=True))
+    title_box = _box(band.get_by_text(LONG_TOPIC_TITLE, exact=True))
+    mark_box = _box(
+        card.get_by_test_id("organisation-byline").locator(":scope > *").first
+    )
+    # A truncated title still shows the start of the item's name.
+    assert title_box["width"] >= 40
+    for box in (word_box, title_box, date_box):
+        assert not _boxes_overlap(box, mark_box)
+    icon_box = _box(
+        card.get_by_test_id("course-card-hero").locator(":scope > [aria-hidden]")
+    )
+    assert not _boxes_overlap(icon_box, _box(band))
 
 
 def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(

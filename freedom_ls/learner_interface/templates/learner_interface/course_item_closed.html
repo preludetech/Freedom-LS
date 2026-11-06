@@ -6,7 +6,7 @@
 
 {% block header_width %}max-w-reading{% endblock header_width %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=item_title %}{% endblock page_title %}
+{% block item_page_title %}{% include "partials/page_title.html" with page_title=item_title %}{% endblock item_page_title %}
 
 {% block content %}
     <c-page flush="true" class="pt-0 lg:pt-0">

@@ -8,9 +8,11 @@ Standard fields land in standard places:
   icon + colour  -> <c-course-row-shell> accent panel (accent_slot_key, icon)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
                     status is ever shown; no duplicate chip/badge). Rows show no
-                    "Not registered" status: an unregistered row has no eyebrow
-  details        -> course_details_link.html, on its own right-aligned line in
-                    the footer slot (bottom-right of the row, below everything)
+                    "Not registered" status: an unregistered row has no eyebrow.
+                    "Access ended" is the exception: its chip sits bottom-left on
+                    the footer line (course_footer_line.html), beside Details
+  details        -> course_details_link.html, right-aligned on the footer line
+                    (bottom-right of the row, below everything)
   title + link   -> stretched title link (card_title_link.html)
   price          -> eyebrow right, as a muted chip
   organisation   -> eyebrow, left, with the difficulty
@@ -25,7 +27,7 @@ Title-link target by status:
   complete                 -> course_finish
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
-  access ended (access_ended_at set) -> course_detail, with the "Access ended" eyebrow
+  access ended (access_ended_at set) -> course_detail, with the "Access ended" chip
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in the eyebrow slot.
@@ -57,12 +59,8 @@ show_time_zone_to_learners.
     <c-slot name="eyebrow">
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
         <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-            {% if course.listing_status != "not_registered" %}
-                {% if course.access_ended_at %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True as_chip=True %}
-                {% else %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
-                {% endif %}
+            {% if course.listing_status != "not_registered" and not course.access_ended_at %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
             {% elif not user.is_authenticated and course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
@@ -90,8 +88,6 @@ show_time_zone_to_learners.
                                    bar_class="h-1.5"
                                    label_class="text-xs font-medium tabular-nums text-muted" />
         {% endif %}
-        <div class="flex justify-end">
-            {% include "learner_interface/partials/course_details_link.html" %}
-        </div>
+        {% include "learner_interface/partials/course_footer_line.html" %}
     </c-slot>
 </c-course-row-shell>

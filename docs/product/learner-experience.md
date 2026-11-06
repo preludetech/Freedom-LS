@@ -15,7 +15,7 @@ _Last updated: 2026-11-05_
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
-- A registered learner sees deadlines and a **Missed deadline** mark in the course player's outline and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
+- A registered learner sees each deadline as upcoming, due today, missed or closed, each with its own colour, icon and word, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - A course can belong to particular organisations, and only their learners see it unless it is public. Where a course has one organisation, the dashboard, the all-courses list and the course page name it, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
@@ -295,16 +295,18 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
 
-- **Course player outline** — "Deadline" and the date under each incomplete item that has one. Once it has passed, a **Missed deadline** mark takes the place of "Deadline". A completed item shows neither.
-- **Dashboard course card** — one line above the progress bar: the earliest missed deadline with its title and date, else "Next deadline:" with the title and date of the next one. A passed or coming time limit shows as "Course", as in "Missed deadline Course <date>".
+- **Course player** — the outline opens with a **Next deadline** card for the earliest missed deadline, else the next one, and each incomplete item with a deadline shows its date on its own row, with "Closes <date>." beside it while the item can still close. The item the learner is on shows its deadline in a card beside its title. A completed item shows none.
+- **Dashboard course card** — a band along the bottom of the card's coloured hero names the earliest missed deadline, else the next one, with its title and date. A time limit shows under the title "Course", and a closed item's band says **Closed** and names the item.
+
+A deadline shows in one of four states, each with its own colour, icon and word: **Deadline**, **Deadline today**, **Missed deadline** and **Closed**.
 
 The **course detail page** shows no deadline dates. Where the course has a time limit, a "Time limit" cell gives its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
 
-![Course player outline with a missed deadline](screenshots/learner_course_detail_due_dates.png)
+![Course player with the next-deadline card, outline dates and the deadline chip above the item title](screenshots/learner_course_detail_due_dates.png)
 
-![Dashboard course card showing a missed deadline](screenshots/learner_dashboard_card_overdue.png)
+![Dashboard course card with a missed-deadline band along the bottom of its hero](screenshots/learner_dashboard_card_overdue.png)
 
-Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
+Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. On the dashboard band and the outline rows a deadline falling on the learner's own date reads "Today", and a deadline set to a time of day shows that time ("Today, 09:00"); a deadline given as a date alone shows no time. The **Deadline today** colour itself follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 
 **Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
 

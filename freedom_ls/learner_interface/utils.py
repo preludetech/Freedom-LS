@@ -16,9 +16,14 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
-from freedom_ls.deadlines.consequences import close_instant, is_closed, shows_overdue
+from freedom_ls.deadlines.consequences import (
+    access_end_instant,
+    close_instant,
+    is_closed,
+    shows_overdue,
+)
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
-from freedom_ls.deadlines.resolver import CourseDeadlines
+from freedom_ls.deadlines.resolver import NO_DEADLINE, CourseDeadlines
 from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
@@ -36,6 +41,7 @@ from freedom_ls.learner_progress.queries import (
 
 if TYPE_CHECKING:
     from datetime import datetime
+    from zoneinfo import ZoneInfo
 
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 
@@ -619,12 +625,43 @@ def current_entry_status(course_index: list[dict]) -> str | None:
     return cast("str", entry["status"]) if entry is not None else None
 
 
+class DeadlineTier(StrEnum):
+    UPCOMING = "UPCOMING"
+    TODAY = "TODAY"
+    MISSED = "MISSED"
+    CLOSED = "CLOSED"
+
+
+def deadline_tier(
+    due_at: datetime,
+    *,
+    is_overdue: bool,
+    is_closed: bool,
+    now: datetime,
+    zone: ZoneInfo,
+) -> DeadlineTier:
+    """How urgent an unfinished deadline looks.
+
+    Closed outranks missed, and missed outranks today. "Today" is judged in the site
+    zone, the zone an undated deadline's end of day is fixed in, so a learner elsewhere
+    can read "Today" on a date their browser calls tomorrow. A past deadline whose
+    policy does not mark it overdue is upcoming: that switch suppresses every late mark."""
+    if is_closed:
+        return DeadlineTier.CLOSED
+    if is_overdue:
+        return DeadlineTier.MISSED
+    if now < due_at and due_at.astimezone(zone).date() == now.astimezone(zone).date():
+        return DeadlineTier.TODAY
+    return DeadlineTier.UPCOMING
+
+
 class DeadlineKeys(TypedDict):
     collection_item_id: uuid.UUID
     due_at: datetime | None
     is_overdue: bool
     closes_at: datetime | None
     is_closed: bool
+    deadline_tier: DeadlineTier | None
 
 
 def _deadline_keys(
@@ -643,29 +680,42 @@ def _deadline_keys(
         is_overdue=False,
         closes_at=None,
         is_closed=False,
+        deadline_tier=None,
     )
-    resolved = (
-        course_deadlines.items.get(collection_item.pk) if course_deadlines else None
+    if course_deadlines is None:
+        return keys
+    resolved = course_deadlines.items.get(collection_item.pk)
+    if resolved is None:
+        return keys
+    if deadline_policy is None:
+        raise ValueError(
+            "Deadlines are resolved from a record, so its policy comes too."
+        )
+    keys["due_at"] = resolved.due_at
+    keys["is_overdue"] = shows_overdue(
+        resolved, deadline_policy, status == COMPLETE, now
     )
-    if resolved is not None:
-        if deadline_policy is None:
-            raise ValueError(
-                "Deadlines are resolved from a record, so its policy comes too."
-            )
-        keys["due_at"] = resolved.due_at
-        keys["is_overdue"] = shows_overdue(
-            resolved, deadline_policy, status == COMPLETE, now
+    closes_at = close_instant(resolved, deadline_policy)
+    # Only a row sequential unlock offers can close; a withheld row stays locked
+    # past its close instant and carries no closed mark anywhere it is drawn.
+    keys["is_closed"] = status in (READY, IN_PROGRESS, FAILED) and is_closed(
+        resolved, deadline_policy, status == COMPLETE, now
+    )
+    # A close instant already behind us is only worth naming on a closed row, so a
+    # withheld row past it is not told it "Closes" in the past.
+    if keys["is_closed"] or (closes_at is not None and closes_at > now):
+        keys["closes_at"] = closes_at
+    keys["deadline_tier"] = (
+        deadline_tier(
+            resolved.due_at,
+            is_overdue=keys["is_overdue"],
+            is_closed=keys["is_closed"],
+            now=now,
+            zone=course_deadlines.zone,
         )
-        closes_at = close_instant(resolved, deadline_policy)
-        # Only a row sequential unlock offers can close; a withheld row stays locked
-        # past its close instant and carries no closed mark anywhere it is drawn.
-        keys["is_closed"] = status in (READY, IN_PROGRESS, FAILED) and is_closed(
-            resolved, deadline_policy, status == COMPLETE, now
-        )
-        # A close instant already behind us is only worth naming on a closed row, so a
-        # withheld row past it is not told it "Closes" in the past.
-        if keys["is_closed"] or (closes_at is not None and closes_at > now):
-            keys["closes_at"] = closes_at
+        if resolved.due_at is not None and status != COMPLETE
+        else None
+    )
     return keys
 
 
@@ -1143,3 +1193,139 @@ def get_course_listing(
             )
         )
     return entries
+
+
+COURSE_DEADLINE_TITLE = "Course"
+
+
+@dataclass(frozen=True)
+class CardDeadline:
+    """One deadline a card names: the item's title, when it is due and how urgent it looks."""
+
+    title: str
+    due_at: datetime
+    is_overdue: bool
+    status: str
+    deadline_tier: DeadlineTier
+    closes_at: datetime | None = None
+    is_closed: bool = False
+    # True for a deadline already behind the learner, whether or not it carries the
+    # overdue mark; the eyebrow reads "Deadline" rather than "Next deadline" for it.
+    is_past: bool = False
+
+
+@dataclass(frozen=True)
+class CardDeadlineLine:
+    """The card's one deadline line: the earliest past deadline wins over the next one.
+
+    ``missed`` is the earliest past, unfinished deadline; its ``is_overdue`` says whether
+    it carries the "Missed deadline" chip, which ``mark_overdue`` off withholds.
+    """
+
+    missed: CardDeadline | None
+    next: CardDeadline | None
+    access_ends_at: datetime | None = None
+
+
+def _row_deadline(row: dict, *, is_past: bool) -> CardDeadline:
+    """A card deadline read off one item row. A past row keeps its overdue mark and its
+    closed state; a coming one has neither."""
+    return CardDeadline(
+        title=row["title"],
+        due_at=row["due_at"],
+        is_overdue=row["is_overdue"] if is_past else False,
+        status=row["status"],
+        deadline_tier=row["deadline_tier"],
+        closes_at=row["closes_at"],
+        is_closed=row["is_closed"] if is_past else False,
+        is_past=is_past,
+    )
+
+
+def _missed_and_next(
+    course_index: list[dict],
+    course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
+    now: datetime,
+) -> tuple[CardDeadline | None, CardDeadline | None]:
+    """The earliest past, unfinished deadline and the earliest coming one, either None."""
+    # Only item rows carry due_at; a completed one is neither missed nor next. A past
+    # row counts as missed whether or not it carries the overdue mark or has closed. An
+    # in-progress course is never complete, so the time limit's overdue check takes
+    # completed=False.
+    open_rows = [
+        row
+        for row in _item_rows(course_index)
+        if row.get("due_at") is not None and row["status"] != COMPLETE
+    ]
+    missed = [
+        _row_deadline(row, is_past=True) for row in open_rows if row["due_at"] <= now
+    ]
+    upcoming = [
+        _row_deadline(row, is_past=False) for row in open_rows if row["due_at"] > now
+    ]
+    time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
+    if course_deadlines is not None and time_limit.due_at is not None:
+        overdue = deadline_policy is not None and shows_overdue(
+            time_limit, deadline_policy, False, now
+        )
+        is_past = time_limit.due_at <= now
+        # A time limit never closes an item, so its tier is never CLOSED.
+        tier = deadline_tier(
+            time_limit.due_at,
+            is_overdue=overdue,
+            is_closed=False,
+            now=now,
+            zone=course_deadlines.zone,
+        )
+        (missed if is_past else upcoming).append(
+            CardDeadline(
+                COURSE_DEADLINE_TITLE,
+                time_limit.due_at,
+                overdue,
+                IN_PROGRESS,
+                tier,
+                is_past=is_past,
+            )
+        )
+
+    def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
+        return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
+
+    return earliest(missed), earliest(upcoming)
+
+
+def next_deadline_card(
+    course_index: list[dict],
+    course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
+    now: datetime,
+) -> CardDeadline | None:
+    """The deadline the player's next-deadline card names: the earliest missed one, else the
+    next one, else None. The same pick as the dashboard band, without its access end."""
+    missed, upcoming = _missed_and_next(
+        course_index, course_deadlines, deadline_policy, now
+    )
+    return missed or upcoming
+
+
+def card_deadline_line(
+    course_index: list[dict],
+    course_deadlines: CourseDeadlines | None,
+    deadline_policy: ResolvedDeadlinePolicy | None,
+    now: datetime,
+) -> CardDeadlineLine:
+    missed, upcoming = _missed_and_next(
+        course_index, course_deadlines, deadline_policy, now
+    )
+    time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
+    # Only an end still ahead is announced; one already past has ended the access, and the
+    # card then reads "Access ended" instead of carrying a deadline line.
+    access_ends_at = (
+        access_end_instant(time_limit, deadline_policy)
+        if deadline_policy is not None
+        else None
+    )
+    if access_ends_at is not None and access_ends_at <= now:
+        access_ends_at = None
+    return CardDeadlineLine(missed=missed, next=upcoming, access_ends_at=access_ends_at)

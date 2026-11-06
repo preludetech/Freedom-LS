@@ -55,17 +55,29 @@ Course progress lives under the breadcrumbs on mobile only — on desktop the
 docked outline panel carries its own progress, so the header stays uncluttered.
 {% endcomment %}
 {% block header_extra %}
-    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2" data-testid="player-item-deadline">
-            {% include "learner_interface/partials/deadline_labels.html" with child=current_entry %}
-        </div>
-    {% endif %}
     {% if course_progress %}
         <div class="mt-2 mb-4 lg:hidden">
             <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}" accent_slot_key="{{ course.accent_slot_key }}" label="Progress for {{ course.title }}" bar_class="h-1.5" label_class="text-xs font-medium tabular-nums text-muted" />
         </div>
     {% endif %}
 {% endblock header_extra %}
+
+{% comment %}The item's deadline is a chip row above its title, left-aligned at every width. Pages
+put their title in item_page_title so the row can sit above it. A page whose title lives in its
+body (the form pages) renders an empty title here, and the row then stands alone under the
+breadcrumbs. The h1 keeps its own top margin when there is no row above it.{% endcomment %}
+{% block page_title %}
+    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
+        {% with child=current_entry %}
+            <p class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+               data-testid="player-item-deadline">
+                {% include "learner_interface/partials/deadline_labels.html#header-chip" with today_word=True %}
+                <span class="text-muted">{% include "learner_interface/partials/deadline_labels.html#closes-line" %}</span>
+            </p>
+        {% endwith %}
+    {% endif %}
+    <div class="{% if current_entry.due_at and current_entry.status != "COMPLETE" %}[&_h1]:mt-2{% endif %}">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
+{% endblock page_title %}
 
 {% block sidebar_content %}
     {% comment %}

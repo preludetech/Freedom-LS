@@ -1,10 +1,13 @@
 """Tests for course helper functions in learner_interface.utils."""
 
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -32,23 +35,30 @@ from freedom_ls.learner_interface.utils import (
     BLOCKED,
     CLOSED,
     COMPLETE,
+    COURSE_DEADLINE_TITLE,
     FAILED,
     IN_PROGRESS,
     READY,
+    DeadlineTier,
+    card_deadline_line,
     current_entry,
+    deadline_tier,
     derive_part_status,
     get_all_courses,
     get_completed_courses,
     get_course_index,
     get_current_courses,
+    next_deadline_card,
     next_entry,
     previous_entry,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 
 GET_CURRENT_COURSES_MAX_QUERIES = 5
+UTC_ZONE = ZoneInfo("UTC")
 
 # --- get_all_courses ---
 
@@ -220,7 +230,7 @@ def test_get_course_index_rows_carry_the_collection_item_id_and_deadline(
         can_access_content=True,
         course_progress=record,
         course_deadlines=CourseDeadlines(
-            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
         ),
         deadline_policy=_policy(),
         now=due + timedelta(days=1),
@@ -247,7 +257,7 @@ def test_get_course_index_row_is_not_overdue_before_the_due_instant(mock_site_co
         can_access_content=True,
         course_progress=record,
         course_deadlines=CourseDeadlines(
-            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
         ),
         deadline_policy=_policy(),
         now=due - timedelta(days=1),
@@ -274,7 +284,7 @@ def test_get_course_index_completed_row_is_not_overdue(mock_site_context):
         can_access_content=True,
         course_progress=record,
         course_deadlines=CourseDeadlines(
-            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
         ),
         deadline_policy=_policy(),
         now=due + timedelta(days=1),
@@ -317,7 +327,9 @@ def test_get_course_index_part_rows_carry_no_due_at_but_their_children_do(
         can_access_content=True,
         course_progress=record,
         course_deadlines=CourseDeadlines(
-            items={topic_item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+            items={topic_item.pk: _resolved(due)},
+            time_limit=NO_DEADLINE,
+            zone=UTC_ZONE,
         ),
         deadline_policy=_policy(),
         now=due,
@@ -394,7 +406,7 @@ def test_get_course_index_row_is_not_overdue_when_the_policy_does_not_mark_overd
         can_access_content=True,
         course_progress=record,
         course_deadlines=CourseDeadlines(
-            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
         ),
         deadline_policy=_policy(mark_overdue=False),
         now=due + timedelta(days=1),
@@ -509,6 +521,7 @@ def _closing_index(user, course, record, due_by_item, *, now, grace=timedelta(0)
         course_deadlines=CourseDeadlines(
             items={pk: _resolved(due) for pk, due in due_by_item.items()},
             time_limit=NO_DEADLINE,
+            zone=UTC_ZONE,
         ),
         deadline_policy=_policy(close_items=True, grace_window=grace),
         now=now,
@@ -739,3 +752,211 @@ def test_without_access_ended_outline_no_access_leaves_every_row_blocked(
     )
 
     assert all(row["status"] == BLOCKED and row["url"] is None for row in rows)
+
+
+TIER_NOW = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
+KIRITIMATI = ZoneInfo("Pacific/Kiritimati")
+
+
+def _tier(
+    due_at: datetime,
+    *,
+    is_overdue: bool = False,
+    is_closed: bool = False,
+    zone: ZoneInfo = UTC_ZONE,
+) -> DeadlineTier:
+    return deadline_tier(
+        due_at, is_overdue=is_overdue, is_closed=is_closed, now=TIER_NOW, zone=zone
+    )
+
+
+@pytest.mark.parametrize(
+    ("due_at", "is_overdue", "is_closed", "expected"),
+    [
+        (TIER_NOW - timedelta(days=1), True, True, DeadlineTier.CLOSED),
+        (TIER_NOW - timedelta(days=1), True, False, DeadlineTier.MISSED),
+        (TIER_NOW + timedelta(hours=3), False, False, DeadlineTier.TODAY),
+        (TIER_NOW, False, False, DeadlineTier.UPCOMING),
+        (datetime(2026, 3, 21, 0, 0, tzinfo=UTC), False, False, DeadlineTier.UPCOMING),
+        (TIER_NOW - timedelta(days=1), False, False, DeadlineTier.UPCOMING),
+        (TIER_NOW + timedelta(days=5), False, False, DeadlineTier.UPCOMING),
+    ],
+)
+def test_deadline_tier_ranks_closed_over_missed_over_today(
+    due_at, is_overdue, is_closed, expected
+):
+    assert _tier(due_at, is_overdue=is_overdue, is_closed=is_closed) == expected
+
+
+def test_deadline_tier_judges_today_in_the_site_zone():
+    # In Kiritimati (UTC+14) "now" is already the 21st, and so is 20:00 UTC on the 20th.
+    due_at = datetime(2026, 3, 20, 20, 0, tzinfo=UTC)
+
+    assert _tier(due_at, zone=KIRITIMATI) == DeadlineTier.TODAY
+
+
+def test_deadline_tier_is_upcoming_when_the_site_zone_dates_it_tomorrow():
+    due_at = datetime(2026, 3, 20, 23, 0, tzinfo=UTC)
+
+    assert _tier(due_at, zone=ZoneInfo("Pacific/Auckland")) == DeadlineTier.UPCOMING
+
+
+@pytest.mark.django_db
+def test_get_course_index_rows_carry_the_deadline_tier(mock_site_context):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topic)
+    due = datetime(2026, 3, 20, tzinfo=UTC)
+
+    (row,) = get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=CourseDeadlines(
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
+        ),
+        deadline_policy=_policy(),
+        now=due + timedelta(days=1),
+    )
+
+    assert row["deadline_tier"] == DeadlineTier.MISSED
+
+
+@pytest.mark.django_db
+def test_get_course_index_completed_row_has_no_deadline_tier(mock_site_context):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    topic_completion(course, user, topic, complete_time=timezone.now())
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topic)
+    due = datetime(2026, 3, 20, tzinfo=UTC)
+
+    (row,) = get_course_index(
+        user,
+        course,
+        can_access_content=True,
+        course_progress=record,
+        course_deadlines=CourseDeadlines(
+            items={item.pk: _resolved(due)}, time_limit=NO_DEADLINE, zone=UTC_ZONE
+        ),
+        deadline_policy=_policy(),
+        now=due + timedelta(days=1),
+    )
+
+    assert row["deadline_tier"] is None
+
+
+@pytest.mark.django_db
+def test_get_course_index_part_rows_carry_no_deadline_tier(mock_site_context):
+    user = UserFactory()
+    course = CourseFactory()
+    part = CoursePartFactory()
+    course.items.create(child=part, order=0)
+    part.items.create(child=TopicFactory(), order=0)
+
+    (part_row,) = get_course_index(user, course, can_access_content=True)
+
+    assert "deadline_tier" not in part_row
+
+
+@pytest.mark.django_db
+def test_get_course_index_deadlines_add_no_queries(
+    mock_site_context, django_assert_max_num_queries
+):
+    SiteTimeZoneConfigFactory(time_zone="Pacific/Kiritimati")
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    record = course_progress_record(course, user)
+    item = collection_item_for(course, topic)
+    deadlines = CourseDeadlines(
+        items={item.pk: _resolved(TIER_NOW)}, time_limit=NO_DEADLINE, zone=KIRITIMATI
+    )
+    with CaptureQueriesContext(connection) as without:
+        get_course_index(user, course, can_access_content=True, course_progress=record)
+
+    with django_assert_max_num_queries(len(without)):
+        get_course_index(
+            user,
+            course,
+            can_access_content=True,
+            course_progress=record,
+            course_deadlines=deadlines,
+            deadline_policy=_policy(),
+            now=TIER_NOW,
+        )
+
+
+def _row(due_at: datetime, *, deadline_tier: DeadlineTier) -> dict:
+    return {
+        "title": "Quiz",
+        "due_at": due_at,
+        "is_overdue": False,
+        "is_closed": False,
+        "closes_at": None,
+        "status": READY,
+        "deadline_tier": deadline_tier,
+    }
+
+
+def _line_deadlines(time_limit_due: datetime | None = None) -> CourseDeadlines:
+    return CourseDeadlines(
+        items={},
+        time_limit=_resolved(time_limit_due) if time_limit_due else NO_DEADLINE,
+        zone=UTC_ZONE,
+    )
+
+
+def test_card_deadline_line_keeps_a_row_deadlines_tier():
+    row = _row(TIER_NOW + timedelta(days=5), deadline_tier=DeadlineTier.UPCOMING)
+
+    line = card_deadline_line([row], _line_deadlines(), _policy(), TIER_NOW)
+
+    assert line.next is not None
+    assert line.next.deadline_tier == DeadlineTier.UPCOMING
+    assert line.next.is_past is False
+
+
+def test_card_deadline_line_gives_a_time_limit_due_later_today_the_today_tier():
+    line = card_deadline_line(
+        [], _line_deadlines(TIER_NOW + timedelta(hours=2)), _policy(), TIER_NOW
+    )
+
+    assert line.next is not None
+    assert line.next.title == COURSE_DEADLINE_TITLE
+    assert line.next.deadline_tier == DeadlineTier.TODAY
+
+
+def test_next_deadline_card_prefers_the_missed_deadline_to_the_next_one():
+    missed = _row(TIER_NOW - timedelta(days=2), deadline_tier=DeadlineTier.MISSED)
+    coming = _row(TIER_NOW + timedelta(days=5), deadline_tier=DeadlineTier.UPCOMING)
+
+    picked = next_deadline_card(
+        [coming, missed], _line_deadlines(), _policy(), TIER_NOW
+    )
+
+    assert picked is not None
+    assert picked.is_past is True
+    assert picked.due_at == missed["due_at"]
+
+
+def test_next_deadline_card_is_none_without_an_open_deadline():
+    assert next_deadline_card([], _line_deadlines(), _policy(), TIER_NOW) is None
+
+
+def test_card_deadline_line_marks_a_past_time_limit_as_past_and_missed():
+    line = card_deadline_line(
+        [], _line_deadlines(TIER_NOW - timedelta(days=2)), _policy(), TIER_NOW
+    )
+
+    assert line.missed is not None
+    assert line.missed.is_past is True
+    assert line.missed.deadline_tier == DeadlineTier.MISSED
+    assert line.next is None
