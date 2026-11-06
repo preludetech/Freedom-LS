@@ -356,3 +356,35 @@ def test_form_pages_line_their_header_up_with_their_content(
         )
     )
     assert_header_lines_up_with_content(page)
+
+
+def test_footer_buttons_share_the_question_column_edges(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    """The footer's Next button ends where the option rows end.
+
+    The footer row used to be 32px wider than the question column, so Next
+    stuck out past the column's right edge at tablet and desktop widths.
+    """
+    page = logged_in_page
+    course = _scored_quiz_course("Footer Course", "footer-course")
+    register_user_for_course(course, logged_in_user)
+    navigate_to_form(page, live_server, course)
+    start_form(page)
+
+    for viewport in QA_VIEWPORTS[1:]:
+        page.set_viewport_size(viewport)
+        expect(page.get_by_text("Alpha", exact=True)).to_be_visible()
+
+        option_box = page.locator("label", has_text="Alpha").bounding_box()
+        next_box = page.get_by_role("button", name="Next").bounding_box()
+        assert option_box is not None
+        assert next_box is not None
+        option_right = option_box["x"] + option_box["width"]
+        next_right = next_box["x"] + next_box["width"]
+        assert abs(option_right - next_right) <= 2, (
+            f"{viewport['width']}px: options end at x={option_right}, "
+            f"Next ends at x={next_right}"
+        )
