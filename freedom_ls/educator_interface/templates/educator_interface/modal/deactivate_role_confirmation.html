@@ -1,17 +1,17 @@
 {% comment %}
-The modal fragment a DeactivateRoleAction's GET returns. Context: member, entry,
+The modal fragment a DeactivateRoleAction's GET returns. Context: staff_member, entry,
 description (the role's description), full_scope (every scope name being lost, in
 prose), stays (the cohorts outside the grantor's reach, in prose, or empty), keeps
 (a prose list), last_organisation_admin, grantor_is_site_level,
 target_is_site_level, confirm_url.
 {% endcomment %}
-<c-modal-header>Deactivate {{ entry.display_name }} for {{ member.display_name }}?</c-modal-header>
+<c-modal-header>Deactivate {{ entry.display_name }} for {{ staff_member.display_name }}?</c-modal-header>
 
 <form hx-post="{{ confirm_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="find button[type='submit']">
-    <input type="hidden" name="user" value="{{ member.pk }}">
+    <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
 
     <div class="space-y-3 px-6 py-4 text-sm">
@@ -27,7 +27,7 @@ target_is_site_level, confirm_url.
         <p>You can give the role again later.</p>
         {% if last_organisation_admin and grantor_is_site_level %}
             <c-callout level="warning">
-                {{ member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
+                {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
             </c-callout>
         {% endif %}
     </div>

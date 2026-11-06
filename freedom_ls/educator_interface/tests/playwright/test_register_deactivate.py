@@ -46,7 +46,14 @@ def test_registering_then_unregistering_a_cohort_from_the_courses_tab(
     main = page.locator("#main-content")
 
     main.get_by_role("button", name="Register for a course", exact=True).click()
+    expect(modal.get_by_role("heading")).to_have_text(
+        "Register Evening group for a course?"
+    )
     modal.get_by_label("Course").select_option(label="Algebra")
+    # Choosing a course re-renders the dialog so its title names the course.
+    expect(modal.get_by_role("heading")).to_have_text(
+        "Register Evening group for Algebra?"
+    )
     modal.get_by_role("button", name="Register", exact=True).click()
 
     expect(modal).to_be_hidden()

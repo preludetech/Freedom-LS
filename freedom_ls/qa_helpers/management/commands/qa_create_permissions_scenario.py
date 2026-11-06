@@ -5,7 +5,7 @@ Builds organisations Northside (Cohort A, Cohort B, Cohort Empty) and Southside
 utilities, and one ready GeneratedReport each for Cohort A and Cohort B.
 
 Every persona's password is its own email address. Idempotent: re-running
-restores the documented shape (grants re-activated, member rows reset,
+restores the documented shape (grants re-activated, staff rows reset,
 stale QA cohorts from earlier runs removed, a renamed Cohort A renamed back).
 
 Usage:
@@ -38,7 +38,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.models import Organisation
@@ -108,8 +108,8 @@ def _ensure_user(site: Site, email: str, first: str, last: str) -> User:
     return user
 
 
-def _set_member(user: User, organisation: Organisation, active: bool) -> None:
-    OrganisationMember._base_manager.update_or_create(
+def _set_staff_member(user: User, organisation: Organisation, active: bool) -> None:
+    StaffMember._base_manager.update_or_create(
         site=organisation.site,
         user=user,
         organisation=organisation,
@@ -224,7 +224,7 @@ def _seed(site: Site) -> None:
     # --- Personas -------------------------------------------------------
     site_admin = _ensure_user(site, "site.admin@qa.test", "Sandra", "Siteadmin")
     assign_site_role(site_admin, "site_admin", site=site)
-    OrganisationMember._base_manager.filter(user=site_admin).delete()
+    StaffMember._base_manager.filter(user=site_admin).delete()
 
     org_admin = _ensure_user(site, "org.admin@qa.test", "Oscar", "Orgadmin")
     org_admin2 = _ensure_user(site, "org.admin2@qa.test", "Olga", "Orgadmintwo")
@@ -249,8 +249,8 @@ def _seed(site: Site) -> None:
     )
 
     for user in (org_admin, org_admin2, stale, cohort_admin, cohort_viewer):
-        _set_member(user, northside, True)
-    _set_member(lapsed, northside, False)
+        _set_staff_member(user, northside, True)
+    _set_staff_member(lapsed, northside, False)
 
     report_a = _ensure_ready_report(site, cohort_a, cohort_viewer)
     report_b = _ensure_ready_report(site, cohort_b, cohort_viewer)

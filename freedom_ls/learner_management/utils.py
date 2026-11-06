@@ -19,7 +19,7 @@ if TYPE_CHECKING:
         Cohort,
         CohortCourseRegistration,
         Learner,
-        OrganisationMember,
+        StaffMember,
     )
     from freedom_ls.organisations.models import Organisation
 
@@ -89,14 +89,14 @@ def ensure_learner(user: User, organisation: Organisation) -> Learner:
     return learner
 
 
-def ensure_organisation_member(
+def ensure_staff_member(
     user: User, organisation: Organisation, *, is_active: bool = True
-) -> OrganisationMember:
-    """Get or create the OrganisationMember recording that a user helps run
+) -> StaffMember:
+    """Get or create the StaffMember recording that a user helps run
     an organisation's learners.
 
     Idempotent, but unlike ensure_learner it never reactivates an existing
-    row: a deactivated member must stay deactivated until someone explicitly
+    row: a deactivated staff member must stay deactivated until someone explicitly
     reactivates them, so a fresh grant on the organisation cannot silently
     undo that decision. `is_active` only applies to a row created here.
 
@@ -105,18 +105,18 @@ def ensure_organisation_member(
     the organisation being handled here is not always the Site the current
     request is for. Using the site-aware manager would make the lookup half
     of get_or_create miss an existing row under a foreign ambient site,
-    attempting a second INSERT and hitting unique_member_per_organisation
+    attempting a second INSERT and hitting unique_staff_member_per_organisation
     instead of finding the row that already exists.
     """
-    from freedom_ls.learner_management.models import OrganisationMember
+    from freedom_ls.learner_management.models import StaffMember
 
-    member, _ = OrganisationMember._base_manager.get_or_create(
+    staff_member, _ = StaffMember._base_manager.get_or_create(
         site=organisation.site,
         user=user,
         organisation=organisation,
         defaults={"is_active": is_active},
     )
-    return member
+    return staff_member
 
 
 def learner_webhook_payload(learner: Learner) -> dict[str, object]:

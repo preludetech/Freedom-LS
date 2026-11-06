@@ -7,7 +7,7 @@ Southside (Cohort S with s1), and the educator accounts edu, edu2, viewer,
 south.admin and org.admin. Every persona's password is its own email address,
 with a verified primary EmailAddress.
 
-The seed clears every role assignment and OrganisationMember row the personas
+The seed clears every role assignment and StaffMember row the personas
 hold, then grants: edu cohort_admin on Cohort A, edu2 cohort_admin on Cohort B,
 viewer cohort_viewer on Cohort A, south.admin organisation_admin on
 Southside and org.admin organisation_admin on Northside. It also deletes the
@@ -70,7 +70,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortMembership,
     Learner,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.messaging_policy.models import (
     CohortCourseRegistrationMessagingConfig,
@@ -320,8 +320,8 @@ def _strip_roles(site: Site, users: list[User]) -> None:
         SystemRoleAssignment.objects.filter(user__in=users),
     )
     _echo_delete(
-        "OrganisationMember row(s)",
-        OrganisationMember._base_manager.filter(user__in=users),
+        "StaffMember row(s)",
+        StaffMember._base_manager.filter(user__in=users),
     )
     # The guardian rows a grant syncs; deleting the assignment rows above in
     # bulk leaves them behind, still granting view_cohort and friends.

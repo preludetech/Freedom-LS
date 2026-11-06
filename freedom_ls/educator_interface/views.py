@@ -67,21 +67,21 @@ from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
     AddLearnerAction,
     AddLearnerToCohortAction,
-    AddMemberAction,
-    AddMemberToCohortAction,
+    AddStaffMemberAction,
+    AddStaffMemberToCohortAction,
     AddToCohortAction,
     ChangeCohortsAction,
     DeactivateCohortRegistrationAction,
-    DeactivateMemberAction,
     DeactivateRegistrationAction,
     DeactivateRoleAction,
+    DeactivateStaffMemberAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
     ImportLearnersAction,
     MoveToCohortAction,
-    ReactivateMemberAction,
     ReactivateRegistrationAction,
+    ReactivateStaffMemberAction,
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
@@ -95,8 +95,8 @@ from freedom_ls.educator_interface.actions import (
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
-    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
+    STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
@@ -106,8 +106,8 @@ from freedom_ls.educator_interface.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    MemberRoleFilter,
     ShowInactiveFilter,
+    StaffRoleFilter,
     VisibleCourseFilter,
 )
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
@@ -122,7 +122,6 @@ from freedom_ls.educator_interface.learner_import import (
     error_rows,
     run_learner_import,
 )
-from freedom_ls.educator_interface.members import member_role_entries
 from freedom_ls.educator_interface.messaging import (
     OwnConversation,
     other_educator_conversations,
@@ -140,6 +139,7 @@ from freedom_ls.educator_interface.reporting import (
     DashboardPanel,
     LearnerCoursesPanel,
 )
+from freedom_ls.educator_interface.staff import staff_role_entries
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
@@ -152,11 +152,11 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     LearnerImport,
     LearnerImportRow,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
-    MEMBER_ROLES,
+    STAFF_ROLES,
     VIEW_CONVERSATION,
     LearnerStatus,
     active_organisation_admins,
@@ -166,10 +166,10 @@ from freedom_ls.learner_management.queries import (
     courses_visible_to,
     learner_status,
     learners_visible_to,
-    member_assignments,
-    members_of,
     organisations_accessible_to,
     site_level_admins,
+    staff_assignments,
+    staff_of,
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole
 from freedom_ls.learner_management.utils import record_cohort_entry
@@ -263,7 +263,7 @@ class OrganisationSectionConfig(SectionConfigBase):
         who = f"Ask an organisation admin of {organisation.name}."
         if can(
             request.user,
-            "freedom_ls_learner_management.view_organisationmember",
+            "freedom_ls_learner_management.view_staffmember",
             organisation,
         ):
             names = [
@@ -1335,7 +1335,7 @@ class CohortSettingsPanel(Panel):
     title = "Settings"
     capability = "freedom_ls_learner_management.change_cohort"
     template_name = "educator_interface/panels/cohort_settings.html"
-    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
+    refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
         cohort = cast(Cohort, self.instance)
@@ -1346,7 +1346,7 @@ class CohortSettingsPanel(Panel):
                 instance=cohort,
                 success_events=(COHORT_CHANGED,),
             ),
-            AddMemberToCohortAction(),
+            AddStaffMemberToCohortAction(),
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
                 success_url=interface_path(cohort.organisation, "cohorts"),
@@ -1360,7 +1360,7 @@ class CohortSettingsPanel(Panel):
         edit = by_name.get("edit")
         context["cohort"] = cohort
         context["rename"] = edit.get_context_data(self.ctx) if edit else None
-        context["add_staff"] = by_name.get("add_member")
+        context["add_staff"] = by_name.get("add_staff_member")
         context["educators"] = cohort_educators(cohort)
         context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
         context["is_empty"] = not context["not_empty_sentence"]
@@ -1381,7 +1381,7 @@ class CohortHistoryPanel(HistoryPanel):
     model = Cohort
     data_table = TargetedAuditLogEntryTable
     # A role assigned from the Educators panel is a cohort entry too.
-    refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
+    refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
     empty_message = "No history for this cohort yet. Actions such as adding learners or registering it for a course are recorded here."
 
 
@@ -1758,7 +1758,7 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
     panel = DashboardPanel
 
 
-class MemberDataTable(DataTable):
+class StaffDataTable(DataTable):
     noun = "staff members"
     noun_singular = "staff member"
     search_fields = ["first_name", "last_name", "email"]
@@ -1769,17 +1769,17 @@ class MemberDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
-        return members_of(organisation).prefetch_related(
+        return staff_of(organisation).prefetch_related(
             Prefetch(
                 "object_role_assignments",
-                queryset=member_assignments(organisation)
+                queryset=staff_assignments(organisation)
                 .select_related("assigned_by")
                 .prefetch_related("target"),
                 to_attr="held_assignments",
             ),
             Prefetch(
-                "organisationmember_set",
-                queryset=OrganisationMember.objects.filter(organisation=organisation),
+                "staffmember_set",
+                queryset=StaffMember.objects.filter(organisation=organisation),
                 to_attr="member_rows",
             ),
             Prefetch(
@@ -1793,7 +1793,7 @@ class MemberDataTable(DataTable):
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
-        return [MemberRoleFilter()]
+        return [StaffRoleFilter()]
 
     @classmethod
     def get_rows(
@@ -1808,7 +1808,7 @@ class MemberDataTable(DataTable):
         )
         for row in page_obj.object_list:
             row.is_site_level = row.pk in site_level_ids
-            row.role_entries = member_role_entries(row, site)
+            row.role_entries = staff_role_entries(row, site)
             row.is_inactive = not any(m.is_active for m in row.member_rows)
         return page_obj
 
@@ -1817,14 +1817,14 @@ class MemberDataTable(DataTable):
         return [
             Column(
                 header="Staff member",
-                template="educator_interface/data-table-cells/member.html",
+                template="educator_interface/data-table-cells/staff_member.html",
                 sortable=True,
                 sort_field="first_name",
                 card="primary",
             ),
             Column(
                 header="Roles",
-                template="educator_interface/data-table-cells/member_roles.html",
+                template="educator_interface/data-table-cells/staff_roles.html",
                 card="secondary",
             ),
         ]
@@ -1834,28 +1834,28 @@ class MemberDataTable(DataTable):
         return cast(User, row).display_name
 
 
-class MemberConfig(OrganisationSectionConfig, ListViewConfig):
+class StaffConfig(OrganisationSectionConfig, ListViewConfig):
     url_name = "staff"
     menu_label = "Staff"
     icon = "user"
     model = User
-    list_view = MemberDataTable
+    list_view = StaffDataTable
     table_key = "staff"
-    view_capability = "freedom_ls_learner_management.view_organisationmember"
+    view_capability = "freedom_ls_learner_management.view_staffmember"
     # Rows have no page of their own, so there is nothing to authorise.
     check_access_exempt_reason = "staff members have no instance pages"
 
     intro_template_name = "educator_interface/partials/staff_only_admin_callout.html"
-    refresh_events = (MEMBER_CHANGED,)
+    refresh_events = (STAFF_CHANGED,)
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [
-            AddMemberAction(),
+            AddStaffMemberAction(),
             DeactivateRoleAction(),
             ChangeCohortsAction(),
-            DeactivateMemberAction(),
-            ReactivateMemberAction(),
+            DeactivateStaffMemberAction(),
+            ReactivateStaffMemberAction(),
         ]
 
     @classmethod
@@ -1869,12 +1869,12 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
     def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
         scoped = cast(OrganisationScopedRequest, request)
         config = get_role_config(scoped.organisation.site.name)
-        members = members_of(scoped.organisation)
+        staff = staff_of(scoped.organisation)
         return {
-            "roles": [config[role] for role in MEMBER_ROLES],
-            # One query: the first two member pks are the viewer's alone only
-            # when the viewer is the sole member.
-            "only_member_is_viewer": set(members.values_list("pk", flat=True)[:2])
+            "roles": [config[role] for role in STAFF_ROLES],
+            # One query: the first two staff pks are the viewer's alone only
+            # when the viewer is the sole staff member.
+            "only_staff_member_is_viewer": set(staff.values_list("pk", flat=True)[:2])
             == {scoped.user.pk},
         }
 
@@ -1937,7 +1937,7 @@ interface_config = [
         "Teaching",
         [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig],
     ),
-    NavGroup("Administration", [MemberConfig, AuditLogConfig]),
+    NavGroup("Administration", [StaffConfig, AuditLogConfig]),
 ]
 
 

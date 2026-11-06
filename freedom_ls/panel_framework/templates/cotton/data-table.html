@@ -33,7 +33,7 @@
     <div tabindex="-1" data-table-anchor></div>
     {% include "panel_framework/partials/table_toolbar.html" %}
 
-    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">{% endif %}
+    {% if bulk_actions %}<form method="post" x-data="tableSelection" x-on:resize.window="measureBar">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">{% endif %}
 
     {% if bulk_actions %}
         {% comment %}
@@ -54,7 +54,12 @@
         </div>
     {% endif %}
 
-    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}">
+    {% comment %}
+    With bulk actions the selection bar is fixed over the list below lg, so
+    the list reserves the bar's measured height beneath itself; the padding
+    classes are the fallback before Alpine measures or without JavaScript.
+    {% endcomment %}
+    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}"{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
@@ -131,7 +136,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}">
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}"{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"

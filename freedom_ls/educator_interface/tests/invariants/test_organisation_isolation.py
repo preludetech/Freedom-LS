@@ -105,13 +105,13 @@ class TestCrossOrganisationIsolation:
         # Each Learner is built explicitly so the tests can address the row
         # itself: the detail URLs resolve a Learner pk, not a User pk.
         cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
-        member_a = UserFactory(first_name="MemberOfA", last_name="Only")
-        learner_a = LearnerFactory(user=member_a, organisation=organisation_a)
+        staff_a = UserFactory(first_name="MemberOfA", last_name="Only")
+        learner_a = LearnerFactory(user=staff_a, organisation=organisation_a)
         CohortMembershipFactory(cohort=cohort_a, learner=learner_a)
 
         cohort_b = CohortFactory(organisation=organisation_b, name="Cohort B Only")
-        member_b = UserFactory(first_name="MemberOfB", last_name="Only")
-        learner_b = LearnerFactory(user=member_b, organisation=organisation_b)
+        staff_b = UserFactory(first_name="MemberOfB", last_name="Only")
+        learner_b = LearnerFactory(user=staff_b, organisation=organisation_b)
         CohortMembershipFactory(cohort=cohort_b, learner=learner_b)
 
         # A learner studying through both organisations -- one Learner row per
@@ -133,8 +133,8 @@ class TestCrossOrganisationIsolation:
             organisation_b=organisation_b,
             cohort_a=cohort_a,
             cohort_b=cohort_b,
-            member_a=member_a,
-            member_b=member_b,
+            staff_a=staff_a,
+            staff_b=staff_b,
             learner_a=learner_a,
             learner_b=learner_b,
             shared=shared,
@@ -239,8 +239,8 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert isolation.member_a.first_name in content
-        assert isolation.member_b.first_name not in content
+        assert isolation.staff_a.first_name in content
+        assert isolation.staff_b.first_name not in content
 
     def test_users_list_cohort_cell_never_names_a_cohort_from_organisation_b(
         self, isolation

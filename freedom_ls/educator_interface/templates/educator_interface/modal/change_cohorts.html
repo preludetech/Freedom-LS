@@ -1,17 +1,17 @@
 {% comment %}
-The Change cohorts dialog. Context: step (form or confirmation), member,
+The Change cohorts dialog. Context: step (form or confirmation), staff_member,
 entry and form_url. The form step adds cohort_rows (pk, name, checked) and
 read_only (the held cohorts left as they are, each with its reason); the
 confirmation step adds cohort_ids, added and removed (prose lists),
-widening, removes_role and member_state (missing, inactive or active).
+widening, removes_role and staff_member_state (missing, inactive or active).
 {% endcomment %}
 {% if step == "form" %}
-<c-modal-header>Change cohorts for {{ member.display_name }}</c-modal-header>
+<c-modal-header>Change cohorts for {{ staff_member.display_name }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
-    <input type="hidden" name="user" value="{{ member.pk }}">
+    <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
     <div class="space-y-4 px-6 py-4 text-sm">
         <p>{{ entry.display_name }} on these cohorts.</p>
@@ -42,12 +42,12 @@ widening, removes_role and member_state (missing, inactive or active).
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
-<c-modal-header focus_title="true">{% if removes_role %}Deactivate {{ entry.display_name }} for {{ member.display_name }}{% else %}Change cohorts for {{ member.display_name }}{% endif %}</c-modal-header>
+<c-modal-header focus_title="true">{% if removes_role %}Deactivate {{ entry.display_name }} for {{ staff_member.display_name }}{% else %}Change cohorts for {{ staff_member.display_name }}{% endif %}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
-    <input type="hidden" name="user" value="{{ member.pk }}">
+    <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
     <input type="hidden" name="confirmed" value="1">
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
@@ -55,15 +55,15 @@ widening, removes_role and member_state (missing, inactive or active).
         {% if added %}<p>Adds: {{ added }}</p>{% endif %}
         {% if removed %}<p>Deactivates on: {{ removed }}</p>{% endif %}
         {% if widening %}
-        <p>{{ member.display_name }} will be able to do more than they can now: {{ entry.display_name }} on {{ added }}.</p>
+        <p>{{ staff_member.display_name }} will be able to do more than they can now: {{ entry.display_name }} on {{ added }}.</p>
         {% endif %}
         {% if removed %}
-        <p>{{ member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
+        <p>{{ staff_member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
         {% endif %}
-        {% if added and member_state == "inactive" %}
-        <p>{{ member.display_name }} is inactive here, so the added cohorts take effect only once they are reactivated.</p>
-        {% elif added and member_state == "missing" %}
-        <p>{{ member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
+        {% if added and staff_member_state == "inactive" %}
+        <p>{{ staff_member.display_name }} is inactive here, so the added cohorts take effect only once they are reactivated.</p>
+        {% elif added and staff_member_state == "missing" %}
+        <p>{{ staff_member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
     </div>
     <c-modal-footer>

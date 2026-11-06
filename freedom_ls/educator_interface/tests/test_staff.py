@@ -1,4 +1,4 @@
-"""RoleEntry and member_role_entries: what a member row says about the roles held."""
+"""RoleEntry and staff_role_entries: what a member row says about the roles held."""
 
 from __future__ import annotations
 
@@ -15,16 +15,16 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.educator_interface.members import (
+from freedom_ls.educator_interface.staff import (
     RoleEntry,
-    member_role_entries,
+    staff_role_entries,
 )
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     delete_cohort_leaving_role_rows,
 )
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import member_assignments
+from freedom_ls.learner_management.queries import staff_assignments
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -49,7 +49,7 @@ def _loaded(user: User, organisation: Organisation) -> User:
     loaded: User = User.objects.prefetch_related(
         Prefetch(
             "object_role_assignments",
-            queryset=member_assignments(organisation)
+            queryset=staff_assignments(organisation)
             .select_related("assigned_by")
             .prefetch_related("target"),
             to_attr="held_assignments",
@@ -93,7 +93,7 @@ class TestRoleEntryScope:
 
 @pytest.mark.django_db
 class TestMemberRoleEntries:
-    def test_entries_follow_the_order_of_the_member_roles(
+    def test_entries_follow_the_order_of_the_staff_roles(
         self, mock_site_context: Site
     ) -> None:
         organisation = OrganisationFactory()
@@ -103,7 +103,7 @@ class TestMemberRoleEntries:
         assign_role(grantor, user, "cohort_viewer", cohort)
         assign_role(grantor, user, "organisation_admin", organisation)
 
-        entries = member_role_entries(_loaded(user, organisation), mock_site_context)
+        entries = staff_role_entries(_loaded(user, organisation), mock_site_context)
 
         assert [e.role for e in entries] == ["organisation_admin", "cohort_viewer"]
 
@@ -116,7 +116,7 @@ class TestMemberRoleEntries:
             UserFactory(superuser=True), user, "organisation_admin", organisation
         )
 
-        (entry,) = member_role_entries(_loaded(user, organisation), mock_site_context)
+        (entry,) = staff_role_entries(_loaded(user, organisation), mock_site_context)
 
         assert entry.display_name == "Organisation admin"
 
@@ -128,7 +128,7 @@ class TestMemberRoleEntries:
         assign_role(grantor, user, "cohort_admin", zulu)
         assign_role(grantor, user, "cohort_admin", alpha)
 
-        (entry,) = member_role_entries(_loaded(user, organisation), mock_site_context)
+        (entry,) = staff_role_entries(_loaded(user, organisation), mock_site_context)
 
         assert [c.name for c in entry.cohorts] == ["Alpha", "Zulu"]
 
@@ -144,7 +144,7 @@ class TestMemberRoleEntries:
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
             assign_role(newer, user, "cohort_admin", second_cohort)
 
-        (entry,) = member_role_entries(_loaded(user, organisation), mock_site_context)
+        (entry,) = staff_role_entries(_loaded(user, organisation), mock_site_context)
 
         assert entry.assigned_by == newer
         assert entry.assigned_at == datetime(2026, 2, 1, tzinfo=UTC)
@@ -168,7 +168,7 @@ class TestMemberRoleEntries:
         ).get(pk=user.pk)
 
         with pytest.raises(ValueError, match="no longer exists"):
-            member_role_entries(loaded, mock_site_context)
+            staff_role_entries(loaded, mock_site_context)
 
 
 @pytest.mark.django_db
@@ -204,7 +204,7 @@ def test_the_organisation_log_shows_a_role_removed_through_the_action(
     assert "Cohort admin on Cohort A" in response.content.decode()
 
 
-def _members_page(
+def _staff_page(
     client: Client, organisation: Organisation, query: str = ""
 ) -> lxml.html.HtmlElement:
     response = client.get(
@@ -227,7 +227,7 @@ def test_the_members_table_and_its_scroll_region_are_named_members(
         UserFactory(superuser=True), UserFactory(), "organisation_admin", organisation
     )
 
-    document = _members_page(staff_client, organisation)
+    document = _staff_page(staff_client, organisation)
 
     (caption,) = document.cssselect("[data-table-region] table caption")
     (region,) = document.cssselect("[data-table-region] [role='region']")
@@ -243,7 +243,7 @@ def test_a_member_rows_deactivate_trigger_names_the_member(
     member = UserFactory(first_name="Thandi", last_name="Nkosi")
     assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
 
-    document = _members_page(staff_client, organisation)
+    document = _staff_page(staff_client, organisation)
 
     (button,) = [
         button
@@ -270,7 +270,7 @@ def test_a_members_added_date_reads_day_month_year(staff_client: Client) -> None
             organisation,
         )
 
-    document = _members_page(staff_client, organisation)
+    document = _staff_page(staff_client, organisation)
 
     text = " ".join(document.cssselect("[data-table-region]")[0].text_content().split())
     assert "Added 3 Nov 2026 by" in text
@@ -281,7 +281,7 @@ class TestMembersEmptyState:
     def test_an_organisation_with_no_members_says_so(
         self, staff_client: Client
     ) -> None:
-        document = _members_page(staff_client, OrganisationFactory())
+        document = _staff_page(staff_client, OrganisationFactory())
 
         message = document.cssselect("[data-table-region] table tbody td p")[0]
         assert message.text_content().strip() == (
@@ -292,7 +292,7 @@ class TestMembersEmptyState:
     def test_the_add_member_action_is_offered_to_an_admin(
         self, staff_client: Client
     ) -> None:
-        document = _members_page(staff_client, OrganisationFactory())
+        document = _staff_page(staff_client, OrganisationFactory())
 
         assert (
             "Add staff member"
@@ -328,7 +328,7 @@ class TestMembersEmptyState:
     def test_a_search_with_no_match_says_nothing_matched(
         self, staff_client: Client
     ) -> None:
-        document = _members_page(staff_client, OrganisationFactory(), "?staff-q=zzz")
+        document = _staff_page(staff_client, OrganisationFactory(), "?staff-q=zzz")
 
         message = document.cssselect("[data-table-region] table tbody td p")[0]
         assert message.text_content().strip() == "No staff members match these filters."
@@ -336,7 +336,7 @@ class TestMembersEmptyState:
     def test_clear_filters_drops_the_search_and_filters(
         self, staff_client: Client
     ) -> None:
-        document = _members_page(
+        document = _staff_page(
             staff_client,
             OrganisationFactory(),
             "?staff-q=zzz&staff-role=organisation_admin",
@@ -362,7 +362,7 @@ def test_row_action_buttons_are_small_and_sit_in_an_actions_wrapper(
     other = UserFactory(email="other@example.com")
     assign_role(UserFactory(superuser=True), other, "organisation_admin", organisation)
 
-    document = _members_page(staff_client, organisation)
+    document = _staff_page(staff_client, organisation)
 
     buttons = document.cssselect("td .btn")
     assert buttons

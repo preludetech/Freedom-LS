@@ -20,7 +20,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
 from freedom_ls.learner_management.factories import CohortFactory
-from freedom_ls.learner_management.models import OrganisationMember
+from freedom_ls.learner_management.models import StaffMember
 from freedom_ls.qa_helpers.management.commands.qa_create_direct_messaging_scenario import (
     DELETED_EMAIL,
     _deleted_partner_conversation,
@@ -81,7 +81,7 @@ def test_strip_roles_leaves_other_users_grants(mock_site_context) -> None:
     bystander = cast(User, UserFactory(site=mock_site_context))
     cohort = CohortFactory()
     for user in (persona, bystander):
-        # The role factory also writes the OrganisationMember gate row.
+        # The role factory also writes the StaffMember gate row.
         ObjectRoleAssignmentFactory(user=user, target_object=cohort)
 
     _strip_roles(mock_site_context, [persona])
@@ -89,7 +89,7 @@ def test_strip_roles_leaves_other_users_grants(mock_site_context) -> None:
     assert list(
         ObjectRoleAssignment._base_manager.values_list("user_id", flat=True)
     ) == [bystander.pk]
-    assert list(OrganisationMember._base_manager.values_list("user_id", flat=True)) == [
+    assert list(StaffMember._base_manager.values_list("user_id", flat=True)) == [
         bystander.pk
     ]
 

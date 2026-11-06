@@ -36,7 +36,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
+from freedom_ls.learner_management.models import Cohort, Learner, StaffMember
 from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     learners_visible_to,
@@ -48,7 +48,7 @@ from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
 from freedom_ls.tests.factories import SiteFactory
 
-#: Roles whose grants are gated on an active OrganisationMember. site_admin's
+#: Roles whose grants are gated on an active StaffMember. site_admin's
 #: grant is a SiteRoleAssignment, which _site_grants never gates.
 GATED_ROLES = ("organisation_admin", "cohort_admin", "cohort_viewer")
 
@@ -97,9 +97,9 @@ CHANGE_LEARNERCOURSEREGISTRATION = (
 BULK_MANAGE_LEARNERS = "freedom_ls_learner_management.bulk_manage_learners"
 ASSIGN_COHORT_ADMIN = "freedom_ls_role_based_permissions.assign_cohort_admin"
 ASSIGN_COHORT_VIEWER = "freedom_ls_role_based_permissions.assign_cohort_viewer"
-VIEW_ORGANISATIONMEMBER = "freedom_ls_learner_management.view_organisationmember"
-ADD_ORGANISATIONMEMBER = "freedom_ls_learner_management.add_organisationmember"
-CHANGE_ORGANISATIONMEMBER = "freedom_ls_learner_management.change_organisationmember"
+VIEW_STAFFMEMBER = "freedom_ls_learner_management.view_staffmember"
+ADD_STAFFMEMBER = "freedom_ls_learner_management.add_staffmember"
+CHANGE_STAFFMEMBER = "freedom_ls_learner_management.change_staffmember"
 ASSIGN_ORGANISATION_ADMIN = (
     "freedom_ls_role_based_permissions.assign_organisation_admin"
 )
@@ -303,19 +303,19 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
-    VIEW_ORGANISATIONMEMBER: {
+    VIEW_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
-    ADD_ORGANISATIONMEMBER: {
+    ADD_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
-    CHANGE_ORGANISATIONMEMBER: {
+    CHANGE_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
         "cohort_admin": set(),
@@ -373,9 +373,9 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     BULK_MANAGE_LEARNERS: ("organisation",),
     ASSIGN_COHORT_ADMIN: ("cohort",),
     ASSIGN_COHORT_VIEWER: ("cohort",),
-    VIEW_ORGANISATIONMEMBER: ("organisation",),
-    ADD_ORGANISATIONMEMBER: ("organisation",),
-    CHANGE_ORGANISATIONMEMBER: ("organisation",),
+    VIEW_STAFFMEMBER: ("organisation",),
+    ADD_STAFFMEMBER: ("organisation",),
+    CHANGE_STAFFMEMBER: ("organisation",),
     ASSIGN_ORGANISATION_ADMIN: ("organisation",),
     ASSIGN_SITE_ADMIN: ("site",),
     DOWNLOAD_COHORT_REPORT: ("cohort", "organisation"),
@@ -549,7 +549,7 @@ def test_learners_visible_to_agrees_with_can_on_every_learner(
 def _gated_true_cases() -> list[tuple[str, str, str, str]]:
     """Every (capability, role, kind, relation) case _cases() covers where
     the role is one whose grant only counts through an active
-    OrganisationMember, and the matrix says the answer is True."""
+    StaffMember, and the matrix says the answer is True."""
     return [
         (capability, role, kind, relation)
         for capability, role, kind, relation in _cases()
@@ -561,18 +561,18 @@ def _gated_true_cases() -> list[tuple[str, str, str, str]]:
 @pytest.mark.parametrize(
     ("capability", "role", "kind", "relation"), _gated_true_cases()
 )
-def test_deactivating_the_organisation_member_row_withdraws_the_grant(
+def test_deactivating_the_staff_member_row_withdraws_the_grant(
     mock_site_context: Site, capability: str, role: str, kind: str, relation: str
 ) -> None:
-    """The OrganisationMember gate: an organisation or cohort grant counts
-    only while the grant holder's OrganisationMember row for that
+    """The StaffMember gate: an organisation or cohort grant counts
+    only while the grant holder's StaffMember row for that
     organisation is active. Deactivating it must withdraw exactly this
     answer, and reactivating it must restore exactly this answer, with the
     role assignment and guardian rows never touched."""
     world = _build_world(mock_site_context)
     user = world.users[role]
     scope = world.scopes[(kind, relation)]
-    member = OrganisationMember.objects.get(user=user)
+    member = StaffMember.objects.get(user=user)
 
     def _assignment_snapshot() -> set[tuple[int, int, int, str, str, bool]]:
         return {

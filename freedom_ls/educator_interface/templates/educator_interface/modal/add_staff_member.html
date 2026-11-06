@@ -1,11 +1,11 @@
 {% comment %}
-The Add member dialog, one template for every step. Context: step (email,
+The Add staff member dialog, one template for every step. Context: step (email,
 role or confirmation) and form_url; email and role add dialog_title ("Add a
-member", or "Add a member to {cohort}" when the page fixes the cohort); email adds form, role adds
+member", or "Add a staff member to {cohort}" when the page fixes the cohort); email adds form, role adds
 match (None for an address with no account), new_account, form, role_cards (key, display_name, description, needs_cohorts),
 preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role and role_note;
-confirmation adds match, member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
-scope, current_entries, after_entries, already_held, widening, member_state and
+confirmation adds match, staff_member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
+scope, current_entries, after_entries, already_held, widening, staff_member_state and
 site_level.
 {% endcomment %}
 {% if step == "email" %}
@@ -69,7 +69,7 @@ site_level.
             {% else %}
             <fieldset x-show="showsCohorts" x-cloak x-transition>
                 <legend class="mb-2 font-semibold">Cohorts</legend>
-                <div x-data="cohortChecklist" x-on:member-role-chosen.window="filter" class="space-y-2">
+                <div x-data="cohortChecklist" x-on:staff-role-chosen.window="filter" class="space-y-2">
                     <div class="flex items-center gap-3">
                         <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border-input bg-surface px-3 py-2">
                         <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
@@ -95,7 +95,7 @@ site_level.
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
-<c-modal-header focus_title="true">Add {{ member_name }} as {{ display_name }}</c-modal-header>
+<c-modal-header focus_title="true">Add {{ staff_member_name }} as {{ display_name }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
@@ -116,10 +116,10 @@ site_level.
         <p>{{ description }}</p>
         <p>Scope: {{ scope }}.</p>
         {% if already_held %}
-        <p>{{ member_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
+        <p>{{ staff_member_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
         {% endif %}
         {% if widening %}
-        <p>{{ member_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
+        <p>{{ staff_member_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
         {% endif %}
         {% if current_entries %}
         <div>
@@ -131,13 +131,13 @@ site_level.
             <ul>{% for entry in after_entries %}<li>{{ entry.display_name }}: {{ entry.scope }}</li>{% endfor %}</ul>
         </div>
         {% endif %}
-        {% if member_state == "inactive" %}
-        <p>{{ member_name }} is inactive here, so the role takes effect only once they are reactivated.</p>
-        {% elif member_state == "missing" %}
-        <p>{{ member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
+        {% if staff_member_state == "inactive" %}
+        <p>{{ staff_member_name }} is inactive here, so the role takes effect only once they are reactivated.</p>
+        {% elif staff_member_state == "missing" %}
+        <p>{{ staff_member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
         {% if site_level %}
-        <p>{{ member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
+        <p>{{ staff_member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
         {% endif %}
     </div>
     <c-modal-footer>

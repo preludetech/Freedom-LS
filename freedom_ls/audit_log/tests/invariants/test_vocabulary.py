@@ -17,7 +17,7 @@ NOUNS = frozenset(
         "registration",
         "cohort_registration",
         "role",
-        "member",
+        "staff_member",
         "user",
         "course",
         "bulk_action",
@@ -63,7 +63,7 @@ NOUN_GROUPS = {
     "cohort": "Cohorts",
     "cohort_registration": "Cohorts",
     "role": "Staff and roles",
-    "member": "Staff and roles",
+    "staff_member": "Staff and roles",
 }
 
 

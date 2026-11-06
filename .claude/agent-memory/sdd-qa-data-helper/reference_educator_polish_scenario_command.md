@@ -21,7 +21,13 @@ No settings_local hook exists in config/: create config/settings_local.py (`from
 + overrides), add it to `$(git rev-parse --git-common-dir)/info/exclude`, run the server with
 DJANGO_SETTINGS_MODULE=config.settings_local. Used: REPORTS_MAX_LEARNERS=5, BULK_BACKGROUND_THRESHOLD=50.
 
-cohort_viewer lacks view_organisationmember and view_auditlogentry, so /members and /audit-log are 404
+cohort_viewer lacks view_staffmember and view_auditlogentry, so /members and /audit-log are 404
 for it by design (panel_framework view_capability). Only site_admin/organisation_admin see them.
 Eastside = 0 members, 0 audit entries: do not grant anyone a role there (assign_object_role writes audit).
 Existing inactive-account member: off.viewer@qa.test (Northside, cohort_viewer on Cohort A).
+
+2026-11-05 re-run notes: _member_administration_ REMOVES demodev's organisation_admin on Northside/Southside
+(and its StaffMember rows); the polish command re-grants them, so never stop after step 5.
+Eastside/Harbour College/Northwind Logistics have 0 role holders (site.admin@qa.test, password = email,
+is site_admin). "QA Over 500 Cohort" (DemoDev org, 501 members) exceeds the DEFAULT limit of 500 without
+settings_local. Bash tool runs zsh: `${PIPESTATUS[0]}` prints empty; use `$pipestatus[1]`.

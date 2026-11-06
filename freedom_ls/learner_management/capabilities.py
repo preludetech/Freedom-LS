@@ -20,7 +20,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortMembership,
     Learner,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import organisation_of
@@ -131,8 +131,8 @@ def _grant_exists(model: type[Model], user: Holder, roles: frozenset[str]) -> Ex
     )
 
 
-def _member_organisations(user: Holder) -> QuerySet:
-    """The organisations `user` holds an active OrganisationMember row in.
+def _staff_organisations(user: Holder) -> QuerySet:
+    """The organisations `user` holds an active StaffMember row in.
 
     The gate every organisation or cohort grant is checked against: a role
     assignment alone is not enough, because deactivating this row must
@@ -140,7 +140,7 @@ def _member_organisations(user: Holder) -> QuerySet:
     themselves. A site-level grant never needs this -- _site_grants stays
     ungated.
     """
-    return OrganisationMember.objects.filter(user=user, is_active=True).values(
+    return StaffMember.objects.filter(user=user, is_active=True).values(
         "organisation_id"
     )
 
@@ -149,18 +149,18 @@ def _granted_organisations(
     user: Holder, roles: frozenset[str]
 ) -> QuerySet[Organisation]:
     """Organisations `user` holds an active grant of `roles` on, gated on an
-    active OrganisationMember for each one."""
+    active StaffMember for each one."""
     return Organisation.objects.filter(
-        _grant_exists(Organisation, user, roles), pk__in=_member_organisations(user)
+        _grant_exists(Organisation, user, roles), pk__in=_staff_organisations(user)
     )
 
 
 def _granted_cohorts(user: Holder, roles: frozenset[str]) -> QuerySet[Cohort]:
     """Cohorts `user` holds an active grant of `roles` on, gated on an active
-    OrganisationMember for the cohort's organisation."""
+    StaffMember for the cohort's organisation."""
     return Cohort.objects.filter(
         _grant_exists(Cohort, user, roles),
-        organisation_id__in=_member_organisations(user),
+        organisation_id__in=_staff_organisations(user),
     )
 
 

@@ -36,7 +36,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     CHANGE_LEARNER,
@@ -75,7 +75,6 @@ from freedom_ls.learner_management.queries import (
     learners_permitted_for,
     learners_visible_to,
     members_keeping_access,
-    members_of,
     open_to_organisation_expression,
     organisation_for_learner_course,
     organisations_accessible_to,
@@ -87,6 +86,7 @@ from freedom_ls.learner_management.queries import (
     registerable_courses_for_learner,
     registered_course_pairs,
     site_level_admins,
+    staff_of,
 )
 from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
 from freedom_ls.learner_management.tests.scenario_world import (
@@ -687,7 +687,7 @@ class TestLearnersVisibleTo:
 @pytest.mark.django_db
 class TestActiveOrganisationAdmins:
     """Who to ask when a denied action names an organisation admin: an
-    active organisation_admin whose grant and OrganisationMember are both
+    active organisation_admin whose grant and StaffMember are both
     still active."""
 
     def test_an_active_admin_with_an_active_membership_is_included(
@@ -716,11 +716,11 @@ class TestActiveOrganisationAdmins:
 
         assert list(active_organisation_admins(organisation)) == []
 
-    def test_an_inactive_organisation_member_is_excluded(self, mock_site_context):
+    def test_an_inactive_staff_member_is_excluded(self, mock_site_context):
         organisation = OrganisationFactory()
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
-        OrganisationMember.objects.filter(user=admin, organisation=organisation).update(
+        StaffMember.objects.filter(user=admin, organisation=organisation).update(
             is_active=False
         )
 
@@ -744,11 +744,11 @@ class TestCohortEducators:
             (viewer, roles["cohort_viewer"].display_name),
         ]
 
-    def test_an_inactive_organisation_member_is_excluded(self, mock_site_context):
+    def test_an_inactive_staff_member_is_excluded(self, mock_site_context):
         cohort = _make_cohort()
         educator = UserFactory()
         assign_object_role(educator, cohort, "cohort_admin")
-        OrganisationMember.objects.filter(
+        StaffMember.objects.filter(
             user=educator, organisation=cohort.organisation
         ).update(is_active=False)
 
@@ -1137,11 +1137,11 @@ class TestEducatorsOf:
             "also_o1_admin",
         ],
     )
-    def test_a_site_admin_without_an_organisation_member_row_is_an_educator_of_every_active_learner(
+    def test_a_site_admin_without_an_staff_member_row_is_an_educator_of_every_active_learner(
         self, world: World, learner_name: str
     ) -> None:
         site_admin = world.role_holders["site_admin"]
-        OrganisationMember.objects.filter(user=site_admin).delete()
+        StaffMember.objects.filter(user=site_admin).delete()
 
         assert "site_admin" in educator_names(world, learner_name)
 
@@ -1236,19 +1236,19 @@ class TestColleaguesOf:
     def test_a_site_admin_has_no_colleagues(self, world: World) -> None:
         assert _colleague_names(world, "site_admin") == set()
 
-    def test_deactivating_the_colleagues_organisation_member_removes_them(
+    def test_deactivating_the_colleagues_staff_member_removes_them(
         self, world: World
     ) -> None:
-        OrganisationMember.objects.filter(user=world.role_holders["c1_admin"]).update(
+        StaffMember.objects.filter(user=world.role_holders["c1_admin"]).update(
             is_active=False
         )
 
         assert "c1_admin" not in _colleague_names(world, "o1_admin")
 
-    def test_deactivating_the_senders_organisation_member_removes_their_colleagues(
+    def test_deactivating_the_senders_staff_member_removes_their_colleagues(
         self, world: World
     ) -> None:
-        OrganisationMember.objects.filter(user=world.role_holders["o1_admin"]).update(
+        StaffMember.objects.filter(user=world.role_holders["o1_admin"]).update(
             is_active=False
         )
 
@@ -1993,7 +1993,7 @@ class TestMembersOf:
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
 
-        assert list(members_of(organisation)) == [admin]
+        assert list(staff_of(organisation)) == [admin]
 
     def test_includes_a_cohort_admin_on_an_active_cohort(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -2002,7 +2002,7 @@ class TestMembersOf:
             admin, _make_cohort(organisation=organisation), "cohort_admin"
         )
 
-        assert list(members_of(organisation)) == [admin]
+        assert list(staff_of(organisation)) == [admin]
 
     def test_includes_a_cohort_viewer_on_an_inactive_cohort(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -2011,24 +2011,24 @@ class TestMembersOf:
         viewer = UserFactory()
         assign_object_role(viewer, cohort, "cohort_viewer")
 
-        assert list(members_of(organisation)) == [viewer]
+        assert list(staff_of(organisation)) == [viewer]
 
     def test_includes_a_suspended_member(self, mock_site_context):
         organisation = OrganisationFactory()
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
-        OrganisationMember.objects.filter(user=admin, organisation=organisation).update(
+        StaffMember.objects.filter(user=admin, organisation=organisation).update(
             is_active=False
         )
 
-        assert list(members_of(organisation)) == [admin]
+        assert list(staff_of(organisation)) == [admin]
 
     def test_includes_a_turned_off_account(self, mock_site_context):
         organisation = OrganisationFactory()
         admin = UserFactory(is_active=False)
         assign_object_role(admin, organisation, "organisation_admin")
 
-        assert list(members_of(organisation)) == [admin]
+        assert list(staff_of(organisation)) == [admin]
 
     def test_leaves_out_a_removed_assignment(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -2036,32 +2036,32 @@ class TestMembersOf:
         assign_object_role(admin, organisation, "organisation_admin")
         deactivate_object_role(admin, organisation, "organisation_admin")
 
-        assert list(members_of(organisation)) == []
+        assert list(staff_of(organisation)) == []
 
     def test_leaves_out_another_organisations_members(self, mock_site_context):
         organisation = OrganisationFactory()
         assign_object_role(UserFactory(), OrganisationFactory(), "organisation_admin")
         assign_object_role(UserFactory(), _make_cohort(), "cohort_admin")
 
-        assert list(members_of(organisation)) == []
+        assert list(staff_of(organisation)) == []
 
     def test_leaves_out_a_learner_with_no_role(self, mock_site_context):
         organisation = OrganisationFactory()
         LearnerFactory(organisation=organisation)
 
-        assert list(members_of(organisation)) == []
+        assert list(staff_of(organisation)) == []
 
     def test_leaves_out_a_site_admin_with_no_organisation_role(self, mock_site_context):
         organisation = OrganisationFactory()
         assign_site_role(UserFactory(), "site_admin", site=mock_site_context)
 
-        assert list(members_of(organisation)) == []
+        assert list(staff_of(organisation)) == []
 
     def test_leaves_out_a_superuser_with_no_organisation_role(self, mock_site_context):
         organisation = OrganisationFactory()
         UserFactory(superuser=True)
 
-        assert list(members_of(organisation)) == []
+        assert list(staff_of(organisation)) == []
 
     def test_returns_a_user_holding_several_roles_once(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -2071,7 +2071,7 @@ class TestMembersOf:
             user, _make_cohort(organisation=organisation), "cohort_viewer"
         )
 
-        assert list(members_of(organisation)) == [user]
+        assert list(staff_of(organisation)) == [user]
 
 
 @pytest.mark.django_db

@@ -1,8 +1,8 @@
 {% comment %}
-The modal fragment a ReactivateMemberAction's GET returns. Context: member,
+The modal fragment a ReactivateStaffMemberAction's GET returns. Context: staff_member,
 roles (a prose list of the roles that take effect again), confirm_url.
 {% endcomment %}
-<c-modal-header>Reactivate {{ member.display_name }}?</c-modal-header>
+<c-modal-header>Reactivate {{ staff_member.display_name }}?</c-modal-header>
 
 <div class="space-y-3 px-6 py-4 text-sm">
     <p>These roles take effect again: {{ roles }}.</p>
@@ -15,7 +15,7 @@ roles (a prose list of the roles that take effect again), confirm_url.
           hx-target="#app-modal-body"
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']">
-        <input type="hidden" name="user" value="{{ member.pk }}">
+        <input type="hidden" name="user" value="{{ staff_member.pk }}">
         <c-button type="submit" variant="primary" loading="true" loading_text="Reactivating…">
             Reactivate
         </c-button>

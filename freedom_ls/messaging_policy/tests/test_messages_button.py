@@ -21,7 +21,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
-    OrganisationMemberFactory,
+    StaffMemberFactory,
 )
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.messaging_policy.factories import OrganisationMessagingConfigFactory
@@ -96,7 +96,7 @@ class TestMessagesButtonUnderTheShippedPolicy:
     ) -> None:
         user = UserFactory()
         organisation = OrganisationFactory()
-        OrganisationMemberFactory(user=user, organisation=organisation)
+        StaffMemberFactory(user=user, organisation=organisation)
         assign_object_role(user, organisation, "organisation_admin")
         LearnerFactory(user=user, organisation=organisation)
         LearnerFactory(organisation=organisation)

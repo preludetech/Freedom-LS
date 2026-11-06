@@ -1,12 +1,12 @@
-"""Seed the browser-QA data set for educator-interface member administration.
+"""Seed the browser-QA data set for educator-interface staff administration.
 
 Builds four organisations on the target site (Northside with Cohorts A, B, C
 and the inactive Cohort Old; Southside with Cohort S; Westside with no
 cohorts; Eastside with Cohort E and no members) and the educator personas of
-the member-administration frontend QA plan: site admins, organisation admins
-(one with an inactive OrganisationMember row), cohort admins and viewers
-(one with no OrganisationMember row, one inactive user, one with a null
-grantor, twelve filler viewers so Northside's members list pages), a learner
+the staff-administration frontend QA plan: site admins, organisation admins
+(one with an inactive StaffMember row), cohort admins and viewers
+(one with no StaffMember row, one inactive user, one with a null
+grantor, twelve filler viewers so Northside's staff list pages), a learner
 who is also a cohort admin, a learner with no role, a role-less user, and a
 user on another Site.
 
@@ -14,11 +14,11 @@ Every persona's password is its own email address, with a verified primary
 EmailAddress. Grants are made with the raw role utilities, granted by the
 site's superuser (demodev@email.com on DemoDev) unless stated. Idempotent:
 re-running reuses existing rows and restores any state a QA run changed on
-them (names, active flags, grants, member rows).
+them (names, active flags, grants, staff rows).
 
 Usage:
-    uv run python manage.py qa_create_member_administration_scenario
-    uv run python manage.py qa_create_member_administration_scenario --site-name DemoDev
+    uv run python manage.py qa_create_staff_administration_scenario
+    uv run python manage.py qa_create_staff_administration_scenario --site-name DemoDev
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from freedom_ls.learner_management.factories import CohortMembershipFactory
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortMembership,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
@@ -106,14 +106,16 @@ def _ensure_learner_in_cohort(site: Site, cohort: Cohort, user: User) -> None:
         CohortMembershipFactory(site=site, cohort=cohort, learner__user=user)
 
 
-def _set_member_state(user: User, org: Organisation, is_active: bool | None) -> None:
-    """``None`` means the user must have no OrganisationMember row at all."""
-    rows = OrganisationMember._base_manager.filter(user=user, organisation=org)
+def _set_staff_member_state(
+    user: User, org: Organisation, is_active: bool | None
+) -> None:
+    """``None`` means the user must have no StaffMember row at all."""
+    rows = StaffMember._base_manager.filter(user=user, organisation=org)
     if is_active is None:
         deleted = rows.delete()
         if deleted[0]:
             click.secho(
-                f"Deleted OrganisationMember {user.email} / {org.slug}: {deleted}",
+                f"Deleted StaffMember {user.email} / {org.slug}: {deleted}",
                 fg="yellow",
             )
     else:
@@ -121,7 +123,7 @@ def _set_member_state(user: User, org: Organisation, is_active: bool | None) -> 
 
 
 def _clear_superuser(superuser: User) -> None:
-    """The superuser holds no organisation role and no OrganisationMember rows."""
+    """The superuser holds no organisation role and no StaffMember rows."""
     org_ct = ContentType.objects.get_for_model(Organisation)
     for grant in ObjectRoleAssignment._base_manager.filter(
         user=superuser, content_type=org_ct, is_active=True
@@ -131,10 +133,10 @@ def _clear_superuser(superuser: User) -> None:
             f"Removing {grant.role} on {org.slug} from {superuser.email}", fg="yellow"
         )
         deactivate_object_role(superuser, org, grant.role)
-    deleted = OrganisationMember._base_manager.filter(user=superuser).delete()
+    deleted = StaffMember._base_manager.filter(user=superuser).delete()
     if deleted[0]:
         click.secho(
-            f"Deleted {superuser.email} OrganisationMember rows: {deleted}",
+            f"Deleted {superuser.email} StaffMember rows: {deleted}",
             fg="yellow",
         )
 
@@ -178,7 +180,7 @@ def _seed(site: Site, away_site: Site) -> None:
 
     lapsed = _ensure_user(site, "lapsed.admin@qa.test", "Lars", "Lapsed")
     grant(lapsed, north, "organisation_admin")
-    _set_member_state(lapsed, north, is_active=False)
+    _set_staff_member_state(lapsed, north, is_active=False)
 
     cohort_admin = _ensure_user(site, "cohort.admin@qa.test", "Cora", "Cohortadmin")
     grant(cohort_admin, cohort_a, "cohort_admin")
@@ -189,7 +191,7 @@ def _seed(site: Site, away_site: Site) -> None:
 
     nomember = _ensure_user(site, "nomember@qa.test", "Noa", "Nomember")
     grant(nomember, cohort_b, "cohort_viewer")
-    _set_member_state(nomember, north, is_active=None)
+    _set_staff_member_state(nomember, north, is_active=None)
 
     off_viewer = _ensure_user(
         site, "off.viewer@qa.test", "Otto", "Off", is_active=False
@@ -236,7 +238,7 @@ def _seed(site: Site, away_site: Site) -> None:
     click.echo(f"SITE {site.name} pk={site.pk}; away site {away_site.name}")
     for org in (north, south, west, east):
         members = list(
-            OrganisationMember._base_manager.filter(organisation=org)
+            StaffMember._base_manager.filter(organisation=org)
             .order_by("user__email")
             .values_list("user__email", "is_active")
         )
@@ -262,7 +264,7 @@ def _seed(site: Site, away_site: Site) -> None:
     help=f"Other site for away@qa.test (default: {AWAY_SITE_NAME}).",
 )
 def command(site_name: str, away_site_name: str) -> None:
-    """Seed organisations, cohorts and personas for member administration QA."""
+    """Seed organisations, cohorts and personas for staff administration QA."""
     try:
         site = Site.objects.get(name=site_name)
         away_site = Site.objects.get(name=away_site_name)

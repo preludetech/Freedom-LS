@@ -30,7 +30,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
+from freedom_ls.learner_management.models import Cohort, Learner, StaffMember
 from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
     educators_of,
@@ -110,7 +110,7 @@ def build_world(site: Site, *, scale: int = 1) -> World:
     "in_o1_and_o2" (one user, two rows; this is the o1 row, in no cohort),
     "in_o1_and_o2_via_c3" (the same user's o2 row, in c3), "also_o1_admin"
     (its user is o1's organisation_admin).
-    Role holders: "site_admin"; "o1_admin"; "o2_admin_deactivated_member";
+    Role holders: "site_admin"; "o1_admin"; "o2_admin_deactivated_staff";
     "c1_admin"; "c1_viewer"; "c1_c2_admin"; "c1_c2_viewer";
     "c1_admin_inactive_assignment"; "c1_admin_inactive_user"; "no_role";
     "custom_educator_c2" (a custom role granting VIEW_LEARNER);
@@ -167,7 +167,7 @@ def build_world(site: Site, *, scale: int = 1) -> World:
     role_holders = {
         "site_admin": cast(User, UserFactory()),
         "o1_admin": cast(User, UserFactory()),
-        "o2_admin_deactivated_member": cast(User, UserFactory()),
+        "o2_admin_deactivated_staff": cast(User, UserFactory()),
         "c1_admin": cast(User, UserFactory()),
         "c1_viewer": cast(User, UserFactory()),
         "c1_c2_admin": cast(User, UserFactory()),
@@ -181,10 +181,10 @@ def build_world(site: Site, *, scale: int = 1) -> World:
     assign_site_role(role_holders["site_admin"], "site_admin", site=site)
     assign_object_role(role_holders["o1_admin"], o1, "organisation_admin")
     assign_object_role(
-        role_holders["o2_admin_deactivated_member"], o2, "organisation_admin"
+        role_holders["o2_admin_deactivated_staff"], o2, "organisation_admin"
     )
-    OrganisationMember.objects.filter(
-        user=role_holders["o2_admin_deactivated_member"], organisation=o2
+    StaffMember.objects.filter(
+        user=role_holders["o2_admin_deactivated_staff"], organisation=o2
     ).update(is_active=False)
     assign_object_role(role_holders["c1_admin"], c1, "cohort_admin")
     assign_object_role(role_holders["c1_viewer"], c1, "cohort_viewer")

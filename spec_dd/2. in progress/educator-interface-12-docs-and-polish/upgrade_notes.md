@@ -13,25 +13,25 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/audit_when.html  # deleted
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/deactivate_registration.html
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/staff_member.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_actions.html  # deleted
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_roles.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/staff_roles.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_preview.html
-  - freedom_ls/educator_interface/templates/educator_interface/modal/add_member.html
+  - freedom_ls/educator_interface/templates/educator_interface/modal/add_staff_member.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/change_cohorts.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/cohort_inactive.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_cohort_registration_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_learner_confirmation.html
-  - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_member_confirmation.html
+  - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_staff_member_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_registration_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_role_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/delete_cohort_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/move_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_learner_confirmation.html
-  - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_member_confirmation.html
+  - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_staff_member_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_registration_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/remove_from_cohort_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/modal/resend_setup_email_confirmation.html
@@ -95,7 +95,7 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/modal/add_learner_result.html  # new
   - freedom_ls/educator_interface/templates/educator_interface/partials/cohort_name_form.html  # new
   - freedom_ls/educator_interface/templates/educator_interface/partials/import_learners_link.html
-  - freedom_ls/educator_interface/templates/educator_interface/modal/member_change_refused.html
+  - freedom_ls/educator_interface/templates/educator_interface/modal/staff_change_refused.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_settings.html
   - freedom_ls/educator_interface/templates/educator_interface/panels/learner_settings.html  # new
@@ -142,9 +142,9 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
 - **The cohort Educators panel is gone; its list and Add staff member sit on the Settings tab.**
   `CohortEducatorsPanel` and `panels/cohort_educators.html` are deleted and the Overview stack no
   longer has an `educators` child, so `…/__tabs/overview/__panels/educators` answers 404.
-  `AddMemberToCohortAction` resolves at `…/__tabs/settings/__actions/add_member` and renders
+  `AddStaffMemberToCohortAction` resolves at `…/__tabs/settings/__actions/add_staff_member` and renders
   beside the Staff heading (`renders_in_footer = False`); `CohortSettingsPanel` refreshes on
-  `memberChanged` too.
+  `staffChanged` too.
 - **The cohort name is a field on the Settings tab.** `EditCohortAction` keeps its URL
   (`…/__tabs/settings/__actions/edit`) but renders `partials/cohort_name_form.html` inline
   instead of the dialog form (`renders_in_footer = False`, `autofocus_first_field = False`); a
@@ -156,8 +156,8 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
   sits in the footer of the Overview tab's Cohorts panel and `RegisterLearnerForCourseAction` in
   the footer of the Courses tab. Both keep their instance-level URLs through `learner_actions`.
 - **The staff Actions column is gone.** `member_actions.html` is folded into the bottom of
-  `member_roles.html`; the buttons read "Deactivate staff member" and "Reactivate staff member"
-  (`DeactivateMemberAction.label`, `ReactivateMemberAction.label`), and `MemberDataTable` has two
+  `staff_roles.html`; the buttons read "Deactivate staff member" and "Reactivate staff member"
+  (`DeactivateStaffMemberAction.label`, `ReactivateStaffMemberAction.label`), and `StaffDataTable` has two
   columns.
 - **Every framework action trigger is small.** `partials/modal_trigger.html` and
   `partials/action_button.html` pass `size="small"`, so page-header, panel-footer, empty-state
@@ -176,20 +176,42 @@ rebuild (specs 1 to 12) go in `effort_upgrade_notes.md` beside this file.
 
 - **The Members section is now Staff.** Its path moves from `/<org>/members` to `/<org>/staff`
   and its table's query parameters from `members-*` to `staff-*`; the old path answers 404 and no
-  redirect is kept. `MemberConfig.url_name`, `menu_label` and `table_key` carry the new values;
-  the Python names (`MemberConfig`, `OrganisationMember`, `MEMBER_CHANGED`, the `member.*` audit
-  codes) are unchanged. Every string a person reads says staff or staff member: the heading, the
+  redirect is kept. `StaffConfig.url_name`, `menu_label` and `table_key` carry the new values.
+  Every string a person reads says staff or staff member: the heading, the
   caption and region name ("Staff members"), the empty states, "Add staff member", "Add a staff
   member", and the audit labels "Staff member deactivated" and "Staff member reactivated". The
   intro paragraph above the list, `partials/members_intro.html`, is deleted; the only-admin notice
   it also held moved to `partials/staff_only_admin_callout.html`.
+- **The code says staff too: `OrganisationMember` is `StaffMember`, and `member.*` audit codes
+  are `staff_member.*`.** `freedom_ls_learner_management.0010_rename_organisationmember_staffmember`
+  renames the model (table, content type and the `unique_staff_member_per_organisation`
+  constraint); its permission codenames become `view_staffmember`, `add_staffmember` and
+  `change_staffmember`, and every role in `role_based_permissions/roles.py` and the registry
+  names those. Old `*_organisationmember` `Permission` rows stay in the table unused.
+  `freedom_ls_audit_log.0005_rename_member_audit_codes` rewrites stored `member.deactivated` and
+  `member.reactivated` entries to `staff_member.deactivated` and `staff_member.reactivated`
+  (reversible). The Python names follow: `StaffMemberFactory`, `ensure_staff_member`,
+  `set_staff_member_active`, `STAFF_ROLES`, `staff_assignments`, `staff_of`,
+  `held_by_active_staff_member`, `CHANGE_STAFF_MEMBER`; in `educator_interface`,
+  `educator_interface.staff` (was `members`), `staff_role_entries`, `StaffDataTable`,
+  `StaffConfig`, `StaffRoleFilter`, `AddStaffMemberForm`, `StaffEmailForm`,
+  `AddStaffMemberAction` (action name `add_staff_member`, so its URL ends
+  `/__actions/add_staff_member`), `StaffRoleAction`, `StaffMemberStateAction`,
+  `DeactivateStaffMemberAction`, `ReactivateStaffMemberAction`, `staff_member_changed_response`,
+  the `STAFF_CHANGED` event `staffChanged`, the Alpine event `staff-role-chosen`, and the
+  templates `data-table-cells/staff_member.html`, `data-table-cells/staff_roles.html`,
+  `modal/add_staff_member.html`, `modal/deactivate_staff_member_confirmation.html`,
+  `modal/reactivate_staff_member_confirmation.html`, `modal/staff_change_refused.html`. The
+  dialog context key `member` is `staff_member`, and the audit `details` key written by the
+  staff actions is `staff_member`. The QA seed command is
+  `qa_create_staff_administration_scenario`.
 - **Audit action labels name the noun first, and `AuditAction` gains `group`.** In
   `freedom_ls/audit_log/actions.py` these labels change: `cohort_membership.added` "Learner added
   to cohort", `cohort_membership.removed` "Learner removed from cohort", `cohort_membership.moved`
   "Learner moved between cohorts", `registration.added` "Learner registered for course",
   `registration.reactivated` and `.deactivated` "Learner course registration reactivated /
   deactivated", `cohort_registration.reactivated` and `.deactivated` "Cohort course registration
-  reactivated / deactivated", `member.deactivated` and `.reactivated` "Staff member deactivated /
+  reactivated / deactivated", `staff_member.deactivated` and `.reactivated` "Staff member deactivated /
   reactivated". The seven shared webhook event type labels in
   `freedom_ls/base/webhook_event_types.py` follow (they show in the webhook subscription form).
   Labels are not stored, so no migration. `AuditAction(code, label, describe=None, group="Other")`

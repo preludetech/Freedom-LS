@@ -35,7 +35,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
     LearnerImport,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 #: The roles the educator interface grants and lists. A fixed tuple: a
 #: downstream site may add roles to its config, but none of them has an
 #: assign_ capability, so none can be offered or shown here.
-MEMBER_ROLES: tuple[str, ...] = ("organisation_admin", "cohort_admin", "cohort_viewer")
+STAFF_ROLES: tuple[str, ...] = ("organisation_admin", "cohort_admin", "cohort_viewer")
 
 COURSE_NOT_OPEN_MESSAGE = "This course is not open to the organisation."
 
@@ -101,12 +101,12 @@ class ResolvedRegistration(NamedTuple):
 LEARNER_REGISTRATION_GRANTS_ACCESS = Q(is_active=True, learner__is_active=True)
 
 #: A cohort registration grants access while it and its cohort are both active. The
-#: member's own activity is tested where the member is looked up: see held_by_active_member.
+#: staff member's own activity is tested where the staff member is looked up: see held_by_active_staff_member.
 COHORT_REGISTRATION_GRANTS_ACCESS = Q(is_active=True, cohort__is_active=True)
 
 
-def held_by_active_member(member_filter: Q) -> Q:
-    """Both member conditions in one Q, so they land on one membership join.
+def held_by_active_staff_member(member_filter: Q) -> Q:
+    """Both staff conditions in one Q, so they land on one membership join.
 
     Split across two filter() calls, a cohort holding both a removed and an
     active Learner for the same user would leak access through the removed one.
@@ -156,7 +156,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
         )
     ) | Exists(
         access_granting_cohort_registrations().filter(
-            held_by_active_member(
+            held_by_active_staff_member(
                 Q(cohort__cohortmembership__learner__user=cast("User", user))
             ),
             course=OuterRef("pk"),
@@ -188,7 +188,9 @@ def registered_course_pairs(
     )
     through_cohort = CohortCourseRegistration._base_manager.filter(
         COHORT_REGISTRATION_GRANTS_ACCESS,
-        held_by_active_member(Q(cohort__cohortmembership__learner__user_id__in=ids)),
+        held_by_active_staff_member(
+            Q(cohort__cohortmembership__learner__user_id__in=ids)
+        ),
         site_id=site_id,
     )
     if course_ids is not None:
@@ -776,7 +778,7 @@ def visible_learners_expression(user: User, roles: frozenset[str], site: Site) -
     """Q on a Learner queryset: rows `user` reaches through an active grant of `roles`.
 
     A site grant reaches every row on the site and is never gated; an organisation
-    or cohort grant counts only through an active OrganisationMember, which the
+    or cohort grant counts only through an active StaffMember, which the
     _granted_* builders already enforce. The cohort branch goes through pk__in on
     CohortMembership rather than a join, so no caller needs distinct().
     """
@@ -893,7 +895,7 @@ def educators_of(
     if roles is None:
         roles = roles_granting(VIEW_LEARNER, site)
     # Each _granted_* queryset is the direct argument of an Exists, and inside it
-    # _grant_exists and _member_organisations sit one level deeper, so the User row
+    # _grant_exists and _staff_organisations sit one level deeper, so the User row
     # under test is two levels up. Wrapping a builder in a further subquery would
     # silently move `holder` one level too high.
     holder = OuterRef(OuterRef("pk"))
@@ -917,7 +919,7 @@ def colleagues_of(user: User, site: Site) -> QuerySet[User]:
     VIEW_LEARNER-granting role in an organisation where `user` holds one too.
 
     A site-scoped role makes nobody a colleague, because one site can hold
-    unrelated organisations. Both sides go through the OrganisationMember gate,
+    unrelated organisations. Both sides go through the StaffMember gate,
     which the _granted_* builders enforce.
     """
     from freedom_ls.accounts.models import User
@@ -1053,9 +1055,9 @@ def peers_of(learner: Learner) -> QuerySet[Learner]:
 
 
 def site_level_admins(site: Site) -> QuerySet[User]:
-    """Users who reach every organisation on the site without a member row:
+    """Users who reach every organisation on the site without a staff row:
     superusers and active site_admin holders. The one definition both the
-    last-admin locks and the members list read."""
+    last-admin locks and the staff list read."""
     from freedom_ls.accounts.models import User
 
     return User.objects.filter(
@@ -1072,8 +1074,8 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
     """Active organisation_admin role holders currently helping run this
     organisation, ordered by name.
 
-    Gated on an active OrganisationMember the same way can() gates every
-    organisation- or cohort-level grant: a deactivated member must not be
+    Gated on an active StaffMember the same way can() gates every
+    organisation- or cohort-level grant: a deactivated staff member must not be
     named as someone to ask just because their role assignment is still
     active.
     """
@@ -1082,23 +1084,21 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
     grants = _active_role_assignments(
         Organisation, frozenset({"organisation_admin"})
     ).filter(object_id=str(organisation.pk))
-    members = OrganisationMember.objects.filter(
-        organisation=organisation, is_active=True
-    )
+    staff = StaffMember.objects.filter(organisation=organisation, is_active=True)
     return (
         User.objects.filter(is_active=True)
         .filter(pk__in=grants.values("user_id"))
-        .filter(pk__in=members.values("user_id"))
+        .filter(pk__in=staff.values("user_id"))
         .order_by("first_name", "last_name")
     )
 
 
-def member_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignment]:
-    """Active member-role assignments on the organisation itself or on any
+def staff_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignment]:
+    """Active staff-role assignments on the organisation itself or on any
     of its cohorts, active cohorts and inactive alike. Built from the
-    assignment rows rather than OrganisationMember rows, because a member
+    assignment rows rather than StaffMember rows, because a staff
     row only exists once a grant created it and nothing backfilled them."""
-    roles = frozenset(MEMBER_ROLES)
+    roles = frozenset(STAFF_ROLES)
     cohort_keys = (
         Cohort.objects.filter(organisation=organisation)
         .annotate(key=Cast("pk", output_field=CharField()))
@@ -1109,22 +1109,22 @@ def member_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignm
     ) | _active_role_assignments(Cohort, roles).filter(object_id__in=cohort_keys)
 
 
-def members_of(organisation: Organisation) -> QuerySet[User]:
-    """Everyone holding a member role in the organisation, inactive members
+def staff_of(organisation: Organisation) -> QuerySet[User]:
+    """Everyone holding a staff role in the organisation, inactive staff
     and turned-off accounts included: they still hold the role. A site
     admin or superuser is here only through such a role, never through
     their site-level access."""
     from freedom_ls.accounts.models import User
 
     return User.objects.filter(
-        pk__in=member_assignments(organisation).values("user_id")
+        pk__in=staff_assignments(organisation).values("user_id")
     ).order_by("first_name", "last_name", "email", "pk")
 
 
 def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
     """Active users holding an active assignment on this cohort of any role
     granting view_cohort, each with the role's display name, gated on an
-    active OrganisationMember the same way can() gates every cohort-level
+    active StaffMember the same way can() gates every cohort-level
     grant. Ordered by name, then role.
 
     The roles come from the site's config, as every other grant lookup
@@ -1137,7 +1137,7 @@ def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
         .select_related("user")
     )
     member_user_ids = set(
-        OrganisationMember.objects.filter(
+        StaffMember.objects.filter(
             organisation=cohort.organisation,
             is_active=True,
             user_id__in=[assignment.user_id for assignment in assignments],

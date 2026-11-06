@@ -25,26 +25,26 @@ changed_template_paths:
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_links.html                      # changed
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html             # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_courses.html                   # changed
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member.html                            # new
-  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/member_roles.html                      # new
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/staff_member.html                            # new
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/staff_roles.html                      # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html                # new
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/progress_check.html                    # deleted
   - freedom_ls/educator_interface/templates/educator_interface/interface.html                                          # changed
   - freedom_ls/educator_interface/templates/educator_interface/learner_import_preview.html                             # new
-  - freedom_ls/educator_interface/templates/educator_interface/modal/add_member.html                                   # new
+  - freedom_ls/educator_interface/templates/educator_interface/modal/add_staff_member.html                                   # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/change_cohorts.html                               # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/cohort_inactive.html                              # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_cohort_registration_confirmation.html  # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_confirmation.html                      # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_learner_confirmation.html              # new
-  - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_member_confirmation.html               # new
+  - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_staff_member_confirmation.html               # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_registration_confirmation.html         # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_role_confirmation.html                 # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/delete_cohort_confirmation.html                   # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/move_confirmation.html                            # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_confirmation.html                      # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_learner_confirmation.html              # new
-  - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_member_confirmation.html               # new
+  - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_staff_member_confirmation.html               # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_registration_confirmation.html         # new
   - freedom_ls/educator_interface/templates/educator_interface/modal/add_learner_result.html                          # new
   - freedom_ls/educator_interface/templates/educator_interface/partials/cohort_name_form.html                         # new
@@ -155,7 +155,7 @@ the per-spec notes should follow those instead (see [Per-spec notes](#per-spec-n
 Every project:
 
 - [ ] Add `"freedom_ls.audit_log"` to `INSTALLED_APPS` ([Settings](#settings)).
-- [ ] Run `uv run manage.py migrate`, then create `OrganisationMember` rows for existing role
+- [ ] Run `uv run manage.py migrate`, then create `StaffMember` rows for existing role
       holders ([Migrations and data](#migrations-and-data)). Until then, every organisation
       admin, cohort admin and cohort viewer loses access.
 - [ ] Run `uv run manage.py sync_role_permissions` and `uv run manage.py check`.
@@ -211,28 +211,32 @@ Only if your project does this:
    - `freedom_ls_learner_management`: `0003_organisationmember`,
      `0004_alter_cohort_options_alter_learner_options`, `0005_cohort_is_active` (every existing
      cohort becomes active), `0006_delete_orphan_cohort_role_rows` (data: deletes role assignments
-     and guardian rows whose cohort no longer exists) and `0009_learnerimport_learnerimportrow`.
+     and guardian rows whose cohort no longer exists), `0009_learnerimport_learnerimportrow` and
+     `0010_rename_organisationmember_staffmember` (renames `OrganisationMember` to `StaffMember`,
+     its table, content type and unique constraint).
    - `freedom_ls_learner_progress`: `0002_course_progress_cohort_constraint_deferrable`.
    - `freedom_ls_panel_framework`: `0001_initial` (the bulk run record).
-   - `freedom_ls_audit_log`: `0001_initial` to `0004_actor_index_and_delete_handler`.
-2. **Create `OrganisationMember` rows for existing role holders.** An organisation admin, cohort
-   admin or cohort viewer role counts only while the person is an active `OrganisationMember` of
+   - `freedom_ls_audit_log`: `0001_initial` to `0004_actor_index_and_delete_handler`, and
+     `0005_rename_member_audit_codes` (data: stored `member.deactivated` and `member.reactivated`
+     become `staff_member.deactivated` and `staff_member.reactivated`).
+2. **Create `StaffMember` rows for existing role holders.** An organisation admin, cohort
+   admin or cohort viewer role counts only while the person is an active `StaffMember` of
    that organisation. New grants create the row, but no migration backfills existing ones. Run
    this once in `uv run manage.py shell`. It is idempotent and never reactivates a row someone
    deactivated:
 
    ```python
    from freedom_ls.learner_management.models import Cohort
-   from freedom_ls.learner_management.utils import ensure_organisation_member
+   from freedom_ls.learner_management.utils import ensure_staff_member
    from freedom_ls.organisations.models import Organisation
    from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
    for assignment in ObjectRoleAssignment._base_manager.filter(is_active=True).select_related("user"):
        target = assignment.target
        if isinstance(target, Organisation):
-           ensure_organisation_member(assignment.user, target)
+           ensure_staff_member(assignment.user, target)
        elif isinstance(target, Cohort):
-           ensure_organisation_member(assignment.user, target.organisation)
+           ensure_staff_member(assignment.user, target.organisation)
    ```
 
 3. Run `uv run manage.py sync_role_permissions` so existing grants pick up the new permission
@@ -249,7 +253,10 @@ only with `prune_audit_log`.
   `cohort_viewer`. `site_admin` keeps its key. A module in `FREEDOMLS_PERMISSIONS_MODULES` that
   inherits from or overrides an old key fails at import. Code, fixtures and tests that pass an old
   key to `assign_object_role` or `assign_site_role` fail too.
-- **Every role's permission set changed**, and the role descriptions were rewritten. New
+- **Every role's permission set changed**, and the role descriptions were rewritten. The staff
+  row's permissions are `freedom_ls_learner_management.view_staffmember`, `add_staffmember` and
+  `change_staffmember` (the model is `StaffMember`; old `*_organisationmember` `Permission` rows
+  stay in the table unused). New
   permissions include `freedom_ls_learner_management.download_cohort_report` (needed to generate
   and download a cohort report), `freedom_ls_accounts.change_user` (site admin; edits a learner's
   name) and `freedom_ls_audit_log.view_auditlogentry` (site and organisation admin; the History
@@ -347,11 +354,19 @@ Only for projects that build their own interface on `freedom_ls.panel_framework`
   Notable: `CohortDetailsStack` and `CourseRegistrationsPanel` are gone (`CohortOverviewStack`,
   `CohortCoursesPanel`); `DashboardPanel`, `CohortNeedsAttentionPanel` and `LearnerCoursesPanel`
   live in `reporting.py`.
+- The staff concept is named staff in code as well as in the GUI: `StaffMember` (model),
+  `StaffMemberFactory`, `ensure_staff_member`, `set_staff_member_active`, `STAFF_ROLES`,
+  `staff_assignments`, `staff_of`, `CHANGE_STAFF_MEMBER`; `educator_interface.staff`,
+  `staff_role_entries`, `StaffDataTable`, `StaffConfig`, `StaffRoleFilter`, `AddStaffMemberForm`,
+  `StaffEmailForm`, `AddStaffMemberAction` (`add_staff_member`), `StaffRoleAction`,
+  `StaffMemberStateAction`, `DeactivateStaffMemberAction`, `ReactivateStaffMemberAction`,
+  `staff_member_changed_response`, `STAFF_CHANGED` (`staffChanged`) and the
+  `staff-role-chosen` Alpine event. The spec-12 notes list the templates.
 - Action classes and slugs (the `/__actions/<slug>` URL and the `row_action_urls` key) follow the
   glossary: `DeactivateRegistrationAction` (`deactivate_registration`),
   `ReactivateRegistrationAction` (`reactivate_registration`), `DeactivateCohortRegistrationAction`
   (`deactivate_cohort_registration`), `DeactivateRoleAction` (`deactivate_role`) and
-  `DeactivateMemberAction` (`deactivate`). Bulk: `DeactivateRegistrationBulkAction`
+  `DeactivateStaffMemberAction` (`deactivate`). Bulk: `DeactivateRegistrationBulkAction`
   (`deactivate_registration`) and `DeactivateCohortRegistrationBulkAction`
   (`deactivate_cohort_registration`).
 - Service functions: `deactivate_registration` and `deactivate_cohort_registration` in
@@ -376,7 +391,7 @@ Only for projects that build their own interface on `freedom_ls.panel_framework`
 
 - **htmx events.** `panelChanged` and `educatorChanged` are gone. Panels refresh on the domain
   events in `freedom_ls/educator_interface/events.py`: `learnerChanged`, `cohortChanged`,
-  `registrationChanged` and `memberChanged`, each carrying `{"ids": [...]}` (build the header with
+  `registrationChanged` and `staffChanged`, each carrying `{"ids": [...]}` (build the header with
   `freedom_ls.panel_framework.events.build_hx_trigger`). An edit sends `instanceTitleChanged`, a
   dialog closes on `closeModal`, and a background bulk run starts with `bulkRunStarted`.
 - **Error swaps.** The `htmx:beforeSwap` listener in

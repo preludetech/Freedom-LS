@@ -19,9 +19,9 @@ from django.db import transaction
 
 from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
-from freedom_ls.learner_management.models import Cohort, OrganisationMember
+from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import (
-    MEMBER_ROLES,
+    STAFF_ROLES,
     active_organisation_admins,
     cohorts_visible_to,
     site_level_admins,
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
 ASSIGN = "freedom_ls_role_based_permissions.assign_{role}"
-CHANGE_MEMBER = "freedom_ls_learner_management.change_organisationmember"
+CHANGE_STAFF_MEMBER = "freedom_ls_learner_management.change_staffmember"
 
 
 def _refuse_unless(
@@ -79,7 +79,7 @@ def is_site_level_admin(user: User, site: Site) -> bool:
 
 def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
     """Whether `user` holds an active organisation_admin assignment on
-    `organisation`, regardless of their OrganisationMember state."""
+    `organisation`, regardless of their StaffMember state."""
     return (
         _active_role_assignments(Organisation, frozenset({"organisation_admin"}))
         .filter(user=user, object_id=str(organisation.pk))
@@ -105,7 +105,7 @@ def _lock_and_refuse_last_organisation_admin(
     the lock is skipped for them. Otherwise it locks the organisation row
     rather than the assignment rows: an empty set of rows locks nothing, and
     locking the assignment being removed still leaves a race against a
-    concurrent deactivation of someone else's OrganisationMember. The caller
+    concurrent deactivation of someone else's StaffMember. The caller
     must already be inside transaction.atomic().
     """
     if not _holds_organisation_admin(user, organisation):
@@ -159,34 +159,42 @@ def deactivate_role(
         )
 
 
-def set_organisation_member_active(
-    actor: User, member: OrganisationMember, is_active: bool, *, reason: str = ""
+def set_staff_member_active(
+    actor: User, staff_member: StaffMember, is_active: bool, *, reason: str = ""
 ) -> None:
-    """Reactivate or deactivate `member`'s OrganisationMember row, on the
+    """Reactivate or deactivate `staff_member`'s StaffMember row, on the
     actor's behalf. Deactivating one who is the organisation's last
     organisation_admin runs the same lock as deactivating that role, since it
     has the same effect: nobody left to administer the organisation.
     """
     _refuse_unless(
-        actor, member.user, CHANGE_MEMBER, member.organisation, assigning=is_active
+        actor,
+        staff_member.user,
+        CHANGE_STAFF_MEMBER,
+        staff_member.organisation,
+        assigning=is_active,
     )
     with transaction.atomic():
-        if not is_active and not is_site_level_admin(actor, member.site):
-            _lock_and_refuse_last_organisation_admin(member.organisation, member.user)
+        if not is_active and not is_site_level_admin(actor, staff_member.site):
+            _lock_and_refuse_last_organisation_admin(
+                staff_member.organisation, staff_member.user
+            )
         # The caller's instance may be stale: two overlapping requests would
         # each see the old state and each write an entry for the one change.
-        stored = OrganisationMember._base_manager.select_for_update().get(pk=member.pk)
+        stored = StaffMember._base_manager.select_for_update().get(pk=staff_member.pk)
         changed = stored.is_active != is_active
-        member.is_active = is_active
-        member.save(update_fields=["is_active"])
+        staff_member.is_active = is_active
+        staff_member.save(update_fields=["is_active"])
         if changed:
             record_entry(
-                action="member.deactivated" if not is_active else "member.reactivated",
+                action="staff_member.deactivated"
+                if not is_active
+                else "staff_member.reactivated",
                 actor=actor,
-                target=member,
-                target_label=member.user.display_name,
-                organisation=member.organisation,
-                subjects=(member.user,),
+                target=staff_member,
+                target_label=staff_member.user.display_name,
+                organisation=staff_member.organisation,
+                subjects=(staff_member.user,),
                 reason=reason,
             )
 
@@ -202,13 +210,13 @@ class GrantableRole:
 
 def grantable_roles(grantor: User, organisation: Organisation) -> list[GrantableRole]:
     """The roles and cohorts a grantor may hand out in this organisation,
-    in MEMBER_ROLES order. The cohorts come from one queryset per role,
+    in STAFF_ROLES order. The cohorts come from one queryset per role,
     built from the same grant builders can() reads, so the cost does not
     grow with the number of cohorts. This is the source of every choice
     offered and every submitted choice checked; assign_role and
     deactivate_role remain the authoritative check on each target."""
     result: list[GrantableRole] = []
-    for role in MEMBER_ROLES:
+    for role in STAFF_ROLES:
         capability = ASSIGN.format(role=role)
         if role == "organisation_admin":
             if can(grantor, capability, organisation):

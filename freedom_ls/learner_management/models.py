@@ -182,11 +182,11 @@ class Learner(LoadedIsActiveMixin, SiteAwareModel):
         return f"{self.user} - {self.organisation}"
 
 
-class OrganisationMember(SiteAwareModel):
+class StaffMember(SiteAwareModel):
     """A user who helps run an organisation's learners, whether or not they teach.
 
     The counterpart of Learner, and independent of it: a user may hold both
-    an OrganisationMember and a Learner row in the same organisation. This
+    a StaffMember and a Learner row in the same organisation. This
     is the gate can() checks before an organisation- or cohort-level role
     assignment counts -- deactivating a row here suspends every grant it
     covers without touching the role assignments themselves, and
@@ -204,7 +204,7 @@ class OrganisationMember(SiteAwareModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "user", "organisation"],
-                name="unique_member_per_organisation",
+                name="unique_staff_member_per_organisation",
             )
         ]
 

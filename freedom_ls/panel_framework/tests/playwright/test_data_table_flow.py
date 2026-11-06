@@ -394,6 +394,52 @@ def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
         assert last_is_topmost, f"bar covers the last row at {viewport}"
 
 
+def _wait_for_space_under(page: Page, listing: str, matches_bar: bool) -> None:
+    """Wait until the listing's bottom padding is the fixed bar's height, or
+    nothing at all when the bar is in the flow."""
+    page.wait_for_function(
+        """([listing, matchesBar]) => {
+            const padding = parseFloat(
+                getComputedStyle(document.querySelector(listing)).paddingBottom);
+            const bar = document.querySelector("[data-total-count]");
+            const expected = matchesBar ? bar.offsetHeight : 0;
+            return Math.abs(padding - expected) <= 2;
+        }""",
+        arg=[listing, matches_bar],
+        timeout=3000,
+    )
+
+
+def test_the_space_under_the_list_follows_the_fixed_bars_height(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The list reserved a fixed 160px (256px on a phone) beneath itself for
+    the selection bar, sized for a bar full of actions, so with nothing
+    selected a tablet showed an empty band under the last row. The space now
+    follows the bar's own height, growing as a selection fills the bar."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+
+    for viewport, listing, matches_bar in (
+        (QA_VIEWPORTS[0], "#stubs-table ul", True),
+        (QA_VIEWPORTS[1], "#stubs-table [role='region']", True),
+        (QA_VIEWPORTS[2], "#stubs-table [role='region']", False),
+    ):
+        page.set_viewport_size(viewport)
+        page.goto(list_url)
+        _wait_for_space_under(page, listing, matches_bar)
+
+        page.locator("#stubs-table input[name='keys']:visible").first.check()
+        expect(
+            page.locator("[data-total-count]").get_by_role("status")
+        ).to_contain_text("1 selected")
+        _wait_for_space_under(page, listing, matches_bar)
+
+
 def test_selection_bar_actions_fieldset_draws_no_box(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,

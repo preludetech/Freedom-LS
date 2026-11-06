@@ -1,5 +1,5 @@
 """Tests for the checked assignment utilities: assign_role, deactivate_role and
-set_organisation_member_active."""
+set_staff_member_active."""
 
 from __future__ import annotations
 
@@ -18,19 +18,19 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.learner_management.factories import (
     CohortFactory,
-    OrganisationMemberFactory,
+    StaffMemberFactory,
 )
-from freedom_ls.learner_management.models import OrganisationMember
+from freedom_ls.learner_management.models import StaffMember
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
-    CHANGE_MEMBER,
+    CHANGE_STAFF_MEMBER,
     assign_role,
     deactivate_role,
     grantable_roles,
     is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
-    set_organisation_member_active,
+    set_staff_member_active,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -172,7 +172,7 @@ def test_the_last_organisation_admin_removing_themselves_is_refused_as_self(
 def test_deactivating_the_last_organisation_admins_membership_is_refused(
     mock_site_context: Site, settings
 ) -> None:
-    """A custom role can carry change_organisationmember without counting
+    """A custom role can carry change_staffmember without counting
     toward the quorum active_organisation_admins tracks -- the lock keys off
     the organisation_admin role specifically, not off whoever holds the
     capability, so an org_helper-style role never lets an org empty out."""
@@ -191,7 +191,7 @@ def test_deactivating_the_last_organisation_admins_membership_is_refused(
             ),
             "org_helper": Role(
                 display_name="Org helper",
-                permissions=frozenset({CHANGE_MEMBER}),
+                permissions=frozenset({CHANGE_STAFF_MEMBER}),
                 assignment_scope=SCOPE_OBJECT,
             ),
         }
@@ -205,10 +205,10 @@ def test_deactivating_the_last_organisation_admins_membership_is_refused(
         clear_caches()
         assign_object_role(admin, organisation, "organisation_admin")
         assign_object_role(actor, organisation, "org_helper")
-        member = OrganisationMember.objects.get(user=admin, organisation=organisation)
+        member = StaffMember.objects.get(user=admin, organisation=organisation)
 
         with pytest.raises(RoleChangeRefused) as exc_info:
-            set_organisation_member_active(actor, member, False)
+            set_staff_member_active(actor, member, False)
 
     assert exc_info.value.reason == RefusalReason.LAST_ORGANISATION_ADMIN
     member.refresh_from_db()
@@ -216,7 +216,7 @@ def test_deactivating_the_last_organisation_admins_membership_is_refused(
 
 
 @pytest.mark.django_db
-def test_assigning_to_a_user_with_an_inactive_organisation_member_leaves_it_inactive(
+def test_assigning_to_a_user_with_an_inactive_staff_member_leaves_it_inactive(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
@@ -224,14 +224,14 @@ def test_assigning_to_a_user_with_an_inactive_organisation_member_leaves_it_inac
     assign_site_role(grantor, "site_admin")
     cohort = CohortFactory(organisation=organisation)
     user = UserFactory()
-    OrganisationMemberFactory(organisation=organisation, user=user, is_active=False)
+    StaffMemberFactory(organisation=organisation, user=user, is_active=False)
 
     assign_role(grantor, user, "cohort_viewer", cohort)
 
     assert ObjectRoleAssignment.objects.filter(
         user=user, role="cohort_viewer", is_active=True
     ).exists()
-    member = OrganisationMember.objects.get(user=user, organisation=organisation)
+    member = StaffMember.objects.get(user=user, organisation=organisation)
     assert member.is_active is False
 
 
@@ -290,10 +290,10 @@ def test_suspending_a_member_who_is_no_organisation_admin_takes_no_lock(
     assign_object_role(grantor, organisation, "organisation_admin")
     viewer = UserFactory()
     assign_object_role(viewer, cohort, "cohort_viewer")
-    member = OrganisationMember.objects.get(user=viewer, organisation=organisation)
+    member = StaffMember.objects.get(user=viewer, organisation=organisation)
 
     with CaptureQueriesContext(connection) as captured:
-        set_organisation_member_active(grantor, member, False)
+        set_staff_member_active(grantor, member, False)
 
     assert not _locks_the_organisation_row(captured)
     member.refresh_from_db()
@@ -567,10 +567,10 @@ def test_a_user_without_the_admin_role_is_not_the_last_organisation_admin(
 
 @pytest.mark.django_db
 class TestMemberAndRoleAudit:
-    def _member(self, organisation: Organisation) -> OrganisationMember:
+    def _member(self, organisation: Organisation) -> StaffMember:
         user = UserFactory()
         assign_object_role(user, organisation, "organisation_admin")
-        member: OrganisationMember = OrganisationMember.objects.get(
+        member: StaffMember = StaffMember.objects.get(
             user=user, organisation=organisation
         )
         return member
@@ -580,12 +580,12 @@ class TestMemberAndRoleAudit:
     ) -> None:
         organisation = OrganisationFactory()
         actor = UserFactory(superuser=True)
-        member = OrganisationMemberFactory(organisation=organisation)
+        member = StaffMemberFactory(organisation=organisation)
 
-        set_organisation_member_active(actor, member, False, reason="Left")
+        set_staff_member_active(actor, member, False, reason="Left")
 
         assert_entry(
-            action="member.deactivated",
+            action="staff_member.deactivated",
             actor=actor,
             target=member,
             target_label=member.user.display_name,
@@ -598,9 +598,9 @@ class TestMemberAndRoleAudit:
         self, mock_site_context: Site
     ) -> None:
         actor = UserFactory(superuser=True)
-        member = OrganisationMemberFactory(is_active=False)
+        member = StaffMemberFactory(is_active=False)
 
-        set_organisation_member_active(actor, member, False)
+        set_staff_member_active(actor, member, False)
 
         assert AuditLogEntry.unscoped.count() == 0
 
@@ -608,11 +608,11 @@ class TestMemberAndRoleAudit:
         self, mock_site_context: Site
     ) -> None:
         actor = UserFactory(superuser=True)
-        member = OrganisationMemberFactory(is_active=False)
+        member = StaffMemberFactory(is_active=False)
 
-        set_organisation_member_active(actor, member, True)
+        set_staff_member_active(actor, member, True)
 
-        assert AuditLogEntry.unscoped.get().action == "member.reactivated"
+        assert AuditLogEntry.unscoped.get().action == "staff_member.reactivated"
 
     def test_a_change_already_made_by_another_request_writes_nothing(
         self, mock_site_context: Site
@@ -620,10 +620,10 @@ class TestMemberAndRoleAudit:
         """The stored row decides whether anything changed, not the caller's
         instance, which another request may have overtaken."""
         actor = UserFactory(superuser=True)
-        member = OrganisationMemberFactory(is_active=False)
-        OrganisationMember._base_manager.filter(pk=member.pk).update(is_active=True)
+        member = StaffMemberFactory(is_active=False)
+        StaffMember._base_manager.filter(pk=member.pk).update(is_active=True)
 
-        set_organisation_member_active(actor, member, True)
+        set_staff_member_active(actor, member, True)
 
         assert AuditLogEntry.unscoped.count() == 0
 
@@ -633,7 +633,7 @@ class TestMemberAndRoleAudit:
         before = AuditLogEntry.unscoped.count()
 
         with pytest.raises(RoleChangeRefused):
-            set_organisation_member_active(member.user, member, False)
+            set_staff_member_active(member.user, member, False)
 
         assert AuditLogEntry.unscoped.count() == before
 
@@ -642,11 +642,11 @@ class TestMemberAndRoleAudit:
         self, mock_site_context: Site
     ) -> None:
         actor = UserFactory(superuser=True)
-        member = OrganisationMemberFactory()
+        member = StaffMemberFactory()
 
         def deactivate() -> None:
             with transaction.atomic():
-                set_organisation_member_active(actor, member, False)
+                set_staff_member_active(actor, member, False)
                 raise RuntimeError
 
         with pytest.raises(RuntimeError):

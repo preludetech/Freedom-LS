@@ -697,12 +697,28 @@ document.addEventListener("alpine:init", () => {
         page: 0,
         allChecked: false,
         regionId: "",
+        // What the list reserves beneath itself while the bar is fixed over
+        // it (below lg): the bar's own height, which grows with a selection.
+        barHeight: 0,
 
         init() {
             const bar = this.$el.querySelector("[data-total-count]");
             this.total = Number(bar.dataset.totalCount);
             this.page = Number(bar.dataset.pageCount);
             this.regionId = this.$el.closest("[data-table-region]").id;
+            this._barObserver = new ResizeObserver(() => this.measureBar());
+            this._barObserver.observe(bar);
+            this.measureBar();
+        },
+
+        destroy() {
+            this._barObserver.disconnect();
+        },
+
+        measureBar() {
+            const bar = this.$root.querySelector("[data-total-count]");
+            this.barHeight =
+                getComputedStyle(bar).position === "fixed" ? bar.offsetHeight : 0;
         },
 
         get hasSelection() {

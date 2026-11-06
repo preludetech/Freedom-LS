@@ -20,13 +20,13 @@ from freedom_ls.learner_management.models import (
     Learner,
 )
 from freedom_ls.learner_management.queries import (
-    MEMBER_ROLES,
+    STAFF_ROLES,
     LearnerStatus,
     cohorts_visible_to,
     courses_visible_to,
     holds_registration_for_any_expression,
     learner_status_q,
-    member_assignments,
+    staff_assignments,
 )
 from freedom_ls.panel_framework.filters import (
     ChoiceFilter,
@@ -140,8 +140,8 @@ class LearnerCourseFilter(VisibleCourseFilter):
         return queryset.filter(holds_registration_for_any_expression(None, values))
 
 
-class MemberRoleFilter(ChoiceFilter):
-    """Narrows members to those holding a chosen role here; every role while
+class StaffRoleFilter(ChoiceFilter):
+    """Narrows staff to those holding a chosen role here; every role while
     the parameter is absent or "All roles" is among the values."""
 
     ALL = "all"
@@ -157,7 +157,7 @@ class MemberRoleFilter(ChoiceFilter):
         config = get_role_config(scoped.organisation.site.name)
         return [
             (self.ALL, "All roles"),
-            *((role, config[role].display_name) for role in MEMBER_ROLES),
+            *((role, config[role].display_name) for role in STAFF_ROLES),
         ]
 
     def toggled(self, values: list[str], value: str) -> list[str]:
@@ -175,7 +175,7 @@ class MemberRoleFilter(ChoiceFilter):
             return queryset
         scoped = cast("OrganisationScopedRequest", request)
         return queryset.filter(
-            pk__in=member_assignments(scoped.organisation)
+            pk__in=staff_assignments(scoped.organisation)
             .filter(role__in=values)
             .values("user_id")
         )

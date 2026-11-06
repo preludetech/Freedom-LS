@@ -194,17 +194,17 @@ class AddLearnerForm(forms.Form):
         )
 
 
-class MemberEmailForm(forms.Form):
+class StaffEmailForm(forms.Form):
     """The email step: one address, looked up before anything is chosen."""
 
     email = forms.EmailField(label="Email address")
 
 
-class AddMemberForm(forms.Form):
+class AddStaffMemberForm(forms.Form):
     """The role step and the submit.
 
     On a GET the choices are what the grantor may give; on a POST they are
-    every member role and every cohort of the organisation, so a submitted
+    every staff role and every cohort of the organisation, so a submitted
     choice outside the grantor's reach reaches the permission check and is
     refused as a denial rather than as a form error.
     """

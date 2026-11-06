@@ -17,7 +17,7 @@ document.addEventListener("alpine:init", () => {
 
         chooseRole() {
             this.syncRole();
-            window.dispatchEvent(new CustomEvent("member-role-chosen"));
+            window.dispatchEvent(new CustomEvent("staff-role-chosen"));
         },
     }));
 

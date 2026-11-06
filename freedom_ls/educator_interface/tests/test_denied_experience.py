@@ -23,7 +23,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, OrganisationMember
+from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import (
@@ -85,13 +85,13 @@ def test_cohort_admin_gets_404_for_a_cohort_in_their_organisation_they_hold_no_g
 
 
 @pytest.mark.django_db
-def test_organisation_admin_with_an_inactive_organisation_member_gets_404(
+def test_organisation_admin_with_an_inactive_staff_member_gets_404(
     mock_site_context: Site, logged_in_client
 ) -> None:
     organisation = OrganisationFactory()
     user = UserFactory()
     assign_object_role(user, organisation, "organisation_admin")
-    OrganisationMember.objects.filter(user=user, organisation=organisation).update(
+    StaffMember.objects.filter(user=user, organisation=organisation).update(
         is_active=False
     )
     client = logged_in_client(user)
@@ -135,13 +135,13 @@ def test_denied_create_cohort_action_answers_403_naming_an_organisation_admin(
 
 
 @pytest.mark.django_db
-def test_denied_context_names_organisation_admins_for_a_viewer_of_organisationmember(
+def test_denied_context_names_organisation_admins_for_a_viewer_of_staffmember(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
     admin = UserFactory(first_name="Ada", last_name="Admin")
     assign_object_role(admin, organisation, "organisation_admin")
-    # A site_admin holds view_organisationmember on every organisation on
+    # A site_admin holds view_staffmember on every organisation on
     # its site without itself being an organisation_admin, so the asker
     # never appears among the names it is asking for.
     asker = UserFactory()
@@ -159,7 +159,7 @@ def test_denied_context_names_organisation_admins_for_a_viewer_of_organisationme
 
 
 @pytest.mark.django_db
-def test_denied_context_omits_names_for_an_asker_who_may_not_view_organisationmember(
+def test_denied_context_omits_names_for_an_asker_who_may_not_view_staffmember(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
@@ -347,9 +347,9 @@ def test_a_member_who_lost_every_role_gets_404_on_members_and_the_unavailable_fr
     assign_object_role(user, cohort, "cohort_viewer")
     assign_object_role(target, cohort, "cohort_viewer")
     client = logged_in_client(user)
-    members_url = _interface_url(organisation.slug, "staff")
+    staff_url = _interface_url(organisation.slug, "staff")
     action_url = _interface_url(organisation.slug, "members/__actions/deactivate_role")
-    assert client.get(members_url).status_code == 200
+    assert client.get(staff_url).status_code == 200
 
     deactivate_object_role(user, organisation, "organisation_admin")
 
@@ -358,7 +358,7 @@ def test_a_member_who_lost_every_role_gets_404_on_members_and_the_unavailable_fr
         {"user": str(target.pk), "role": "cohort_viewer"},
         HTTP_HX_REQUEST="true",
     )
-    assert client.get(members_url).status_code == 404
+    assert client.get(staff_url).status_code == 404
     assert stale.status_code == 404
     assert "data-htmx-swap-error" in stale.content.decode()
     assert target.object_role_assignments.filter(is_active=True).exists()

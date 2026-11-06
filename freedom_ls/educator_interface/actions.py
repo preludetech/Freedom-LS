@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
@@ -43,12 +43,12 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
-    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
+    STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
-    AddMemberForm,
+    AddStaffMemberForm,
     BulkTargetPickerForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
@@ -56,12 +56,12 @@ from freedom_ls.educator_interface.forms import (
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
-    MemberEmailForm,
     ReasonForm,
+    StaffEmailForm,
     choice_error,
 )
 from freedom_ls.educator_interface.learner_import import check_import_gate
-from freedom_ls.educator_interface.members import (
+from freedom_ls.educator_interface.staff import (
     ORGANISATION_SCOPE,
     RoleEntry,
     current_role_entries,
@@ -89,7 +89,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTCOURSEREGISTRATION,
@@ -101,7 +101,7 @@ from freedom_ls.learner_management.queries import (
     CHANGE_LEARNER,
     CHANGE_LEARNERCOURSEREGISTRATION,
     DELETE_COHORTMEMBERSHIP,
-    MEMBER_ROLES,
+    STAFF_ROLES,
     CourseNotOpenError,
     can_on_any,
     cohort_course_count,
@@ -115,15 +115,15 @@ from freedom_ls.learner_management.queries import (
     learners_keeping_access_count,
     learners_permitted_for,
     learners_visible_to,
-    member_assignments,
     members_keeping_access,
-    members_of,
     other_grants_for,
     registerable_courses,
+    staff_assignments,
+    staff_of,
 )
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
-    CHANGE_MEMBER,
+    CHANGE_STAFF_MEMBER,
     GrantableRole,
     assign_role,
     deactivate_role,
@@ -131,11 +131,11 @@ from freedom_ls.learner_management.role_assignment import (
     is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
-    set_organisation_member_active,
+    set_staff_member_active,
 )
 from freedom_ls.learner_management.utils import (
     deactivate_cohort_registration,
-    ensure_organisation_member,
+    ensure_staff_member,
     record_cohort_entry,
     register_cohort_for_course,
 )
@@ -209,14 +209,14 @@ def _uuid_param(request: HttpRequest, name: str) -> UUID:
     return _uuid_from(_action_params(request), name)
 
 
-def _member_param(ctx: PanelContext) -> User:
-    """The organisation member named by the action's `user` parameter. A
-    missing, malformed or non-member value is a 404."""
+def _staff_member_param(ctx: PanelContext) -> User:
+    """The staff member named by the action's `user` parameter. A
+    missing, malformed or non-staff value is a 404."""
     try:
         pk = int(_action_params(ctx.request).get("user", ""))
     except ValueError:
         raise Http404("No such user") from None
-    return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
+    return get_object_or_404(staff_of(_organisation(ctx)), pk=pk)
 
 
 def inactive_cohort_response(
@@ -531,7 +531,6 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     def _bind(self, ctx: PanelContext) -> None:
         self._cohort = cast(Cohort, ctx.instance)
         self._page_url = ctx.page_url
-        self.form_title = f"Register {self._cohort} for a course"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         self._bind(ctx)
@@ -546,8 +545,19 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     ) -> forms.ModelForm:
         # On a POST, instance is the cohort, which must never reach a
         # registration form.
-        data = request.POST if request.method == "POST" else None
-        return CohortCourseRegistrationForm(data, cohort=self._cohort)
+        if request.method == "POST":
+            return CohortCourseRegistrationForm(request.POST, cohort=self._cohort)
+        return _picker_on_get(
+            lambda data: CohortCourseRegistrationForm(data, cohort=self._cohort),
+            request,
+            "course",
+        )
+
+    def _fragment_context(
+        self, form: forms.ModelForm, form_url: str
+    ) -> dict[str, object]:
+        _prepare_register_dialog(self, form, form_url, str(self._cohort))
+        return super()._fragment_context(form, form_url)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         register_cohort_for_course(
@@ -756,7 +766,6 @@ class RegisterLearnerForCourseAction(FormPanelAction):
 
     def _bind(self, ctx: PanelContext) -> None:
         self._learner = cast(Learner, ctx.instance)
-        self.form_title = f"Register {self._learner.user.display_name} for a course"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         self._bind(ctx)
@@ -778,8 +787,19 @@ class RegisterLearnerForCourseAction(FormPanelAction):
     ) -> forms.ModelForm:
         # On a POST, instance is the learner, which must never reach a
         # registration form.
-        data = request.POST if request.method == "POST" else None
-        return LearnerCourseRegistrationForm(data, learner=self._learner)
+        if request.method == "POST":
+            return LearnerCourseRegistrationForm(request.POST, learner=self._learner)
+        return _picker_on_get(
+            lambda data: LearnerCourseRegistrationForm(data, learner=self._learner),
+            request,
+            "course",
+        )
+
+    def _fragment_context(
+        self, form: forms.ModelForm, form_url: str
+    ) -> dict[str, object]:
+        _prepare_register_dialog(self, form, form_url, self._learner.user.display_name)
+        return super()._fragment_context(form, form_url)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         register_for_course(
@@ -1169,6 +1189,65 @@ def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str |
     return None if queryset is not None and queryset.exists() else message
 
 
+def _refresh_on_change(form: forms.BaseForm, field_name: str, url: str) -> None:
+    """Make choosing a value re-render the dialog from `url`, so the title
+    can name the choice before anything is submitted. Without JavaScript the
+    title keeps its generic form and the submit still works."""
+    form.fields[field_name].widget.attrs.update(
+        {
+            "hx-get": url,
+            "hx-include": "closest form",
+            "hx-trigger": "change",
+            "hx-target": "#app-modal-body",
+            "hx-swap": "innerHTML",
+        }
+    )
+
+
+def _picker_on_get[F: forms.BaseForm](
+    build: Callable[[Mapping[str, str] | None], F],
+    request: HttpRequest,
+    field_name: str,
+) -> F:
+    """The picker a GET renders: bound to the choice the query names when
+    the picker offers it, else unbound. A stale choice is not a submission,
+    so it earns no error."""
+    if field_name in request.GET:
+        form = build(request.GET)
+        if form.is_valid():
+            return form
+    return build(None)
+
+
+def _picker_title[M: Model](
+    form: forms.BaseForm,
+    field_name: str,
+    *,
+    unchosen: str,
+    chosen: Callable[[M], str],
+) -> str:
+    """The question a picker dialog asks: `chosen` names the valid choice the
+    form holds, `unchosen` stands until there is one."""
+    if form.is_bound and form.is_valid():
+        return f"{chosen(cast(M, form.cleaned_data[field_name]))}?"
+    return f"{unchosen}?"
+
+
+def _prepare_register_dialog(
+    action: FormPanelAction, form: forms.BaseForm, form_url: str, subject: str
+) -> None:
+    """Title a register-for-a-course dialog for `subject` (a learner's or a
+    cohort's name) and make its course select re-render it."""
+
+    def chosen(course: Course) -> str:
+        return f"Register {subject} for {course.title}"
+
+    action.form_title = _picker_title(
+        form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
+    )
+    _refresh_on_change(form, "course", form_url)
+
+
 def _picker_fragment(
     action: PanelAction,
     ctx: PanelContext,
@@ -1207,17 +1286,32 @@ class AddToCohortAction(PanelAction):
     }
 
     def _form(self, ctx: PanelContext) -> CohortPickerForm:
-        return _cohort_picker(ctx, cast(Learner, ctx.instance), None)
+        learner = cast(Learner, ctx.instance)
+        if ctx.request.method == "POST":
+            form = _cohort_picker(ctx, learner, None)
+        else:
+            form = _picker_on_get(
+                lambda data: _cohort_picker(ctx, learner, data), ctx.request, "cohort"
+            )
+        _refresh_on_change(form, "cohort", self.get_action_url(ctx))
+        return form
 
-    def _title(self, ctx: PanelContext) -> str:
-        return f"Add {cast(Learner, ctx.instance).user.display_name} to a cohort"
+    def _title(self, ctx: PanelContext, form: CohortPickerForm) -> str:
+        name = cast(Learner, ctx.instance).user.display_name
+
+        def chosen(cohort: Cohort) -> str:
+            return f"Add {name} to {cohort.name}"
+
+        return _picker_title(
+            form, "cohort", unchosen=f"Add {name} to a cohort", chosen=chosen
+        )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         form = self._form(ctx)
         name = cast(Learner, ctx.instance).user.display_name
         return form_fragment_context(
             form,
-            form_title=self._title(ctx),
+            form_title=self._title(ctx, form),
             form_url=self.get_action_url(ctx),
             submit_buttons=[self._BUTTON],
             empty_message=_empty_message(
@@ -1231,7 +1325,12 @@ class AddToCohortAction(PanelAction):
         form = self._form(ctx)
         if not form.is_valid():
             return _picker_fragment(
-                self, ctx, form, title=self._title(ctx), button=self._BUTTON, status=422
+                self,
+                ctx,
+                form,
+                title=self._title(ctx, form),
+                button=self._BUTTON,
+                status=422,
             )
         cohort = cast(Cohort, form.cleaned_data["cohort"])
         if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
@@ -1534,10 +1633,10 @@ def _organisation(ctx: PanelContext) -> Organisation:
 
 
 def _refused(ctx: PanelContext, message: str) -> HttpResponse:
-    """The 422 message a member dialog shows in place of its body."""
+    """The 422 message a staff dialog shows in place of its body."""
     return render(
         ctx.request,
-        "educator_interface/modal/member_change_refused.html",
+        "educator_interface/modal/staff_change_refused.html",
         {"message": message},
         status=422,
     )
@@ -1553,36 +1652,36 @@ def refusal_response(
     return _refused(ctx, REFUSAL_MESSAGES[refused.reason].format(name=name))
 
 
-def _member_name(user: User | None, email: str) -> str:
+def _staff_member_name(user: User | None, email: str) -> str:
     """What the dialog calls the person: their name, or the address of an
     account not yet created."""
     return email if user is None else user.display_name
 
 
-def member_changed_response(user: User) -> HttpResponse:
-    return changed_response({MEMBER_CHANGED: [str(user.pk)]})
+def staff_member_changed_response(user: User) -> HttpResponse:
+    return changed_response({STAFF_CHANGED: [str(user.pk)]})
 
 
 def _held_pairs(user: User, organisation: Organisation) -> set[tuple[str, str]]:
     """Every (role, target key) pair `user` holds here, for is_widening."""
     return {
         (assignment.role, assignment.object_id)
-        for assignment in member_assignments(organisation).filter(user=user)
+        for assignment in staff_assignments(organisation).filter(user=user)
     }
 
 
-def member_state(user: User | None, organisation: Organisation) -> str:
+def staff_member_state(user: User | None, organisation: Organisation) -> str:
     """Where a role given now would land: "new" for an account not yet
-    created, "missing" for one with no OrganisationMember row here,
+    created, "missing" for one with no StaffMember row here,
     "inactive" for an inactive row, else "active"."""
     if user is None:
         return "new"
-    member = OrganisationMember.objects.filter(
+    staff_member = StaffMember.objects.filter(
         organisation=organisation, user=user
     ).first()
-    if member is None:
+    if staff_member is None:
         return "missing"
-    if not member.is_active:
+    if not staff_member.is_active:
         return "inactive"
     return "active"
 
@@ -1594,7 +1693,7 @@ def _entries_after(
     display_name: str,
     cohorts: list[Cohort],
 ) -> list[RoleEntry]:
-    """`before` with `role` on `cohorts` merged in, in MEMBER_ROLES order."""
+    """`before` with `role` on `cohorts` merged in, in STAFF_ROLES order."""
     held = {entry.role: entry for entry in before}
     existing = held.get(role)
     merged = {*(existing.cohorts if existing else ()), *cohorts}
@@ -1605,22 +1704,22 @@ def _entries_after(
         assigned_by=grantor,
         assigned_at=timezone.now(),
     )
-    return [held[key] for key in MEMBER_ROLES if key in held]
+    return [held[key] for key in STAFF_ROLES if key in held]
 
 
-class AddMemberAction(PanelAction):
-    """Gives an existing account a member role, in a dialog of steps: look up
+class AddStaffMemberAction(PanelAction):
+    """Gives an existing account a staff role, in a dialog of steps: look up
     the address, choose the role, confirm. Nothing is written until the
     confirmation is submitted."""
 
     label = "Add staff member"
-    action_name = "add_member"
-    capability = "freedom_ls_learner_management.add_organisationmember"
+    action_name = "add_staff_member"
+    capability = "freedom_ls_learner_management.add_staffmember"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
-    template_name = "educator_interface/modal/add_member.html"
+    template_name = "educator_interface/modal/add_staff_member.html"
     #: Every role this dialog could offer. A role missing from the grantor's
     #: grantable roles counts as withheld only when it is in here.
-    offerable_roles: tuple[str, ...] = MEMBER_ROLES
+    offerable_roles: tuple[str, ...] = STAFF_ROLES
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
@@ -1639,7 +1738,7 @@ class AddMemberAction(PanelAction):
         return f"Add a staff member to {preset}" if preset else "Add a staff member"
 
     def _email_step(
-        self, ctx: PanelContext, form: MemberEmailForm, status: int = 200
+        self, ctx: PanelContext, form: StaffEmailForm, status: int = 200
     ) -> HttpResponse:
         return render(
             ctx.request,
@@ -1657,7 +1756,7 @@ class AddMemberAction(PanelAction):
         return {
             "step": "email",
             "dialog_title": self._dialog_title(ctx),
-            "form": MemberEmailForm(),
+            "form": StaffEmailForm(),
             "form_url": self.get_action_url(ctx),
         }
 
@@ -1669,7 +1768,7 @@ class AddMemberAction(PanelAction):
         return self._submit(ctx)
 
     def _other_site_response(self, ctx: PanelContext) -> HttpResponse:
-        form = MemberEmailForm(ctx.request.POST)
+        form = StaffEmailForm(ctx.request.POST)
         form.is_valid()
         form.add_error("email", OTHER_SITE_MESSAGE)
         return self._email_step(ctx, form, status=422)
@@ -1730,7 +1829,7 @@ class AddMemberAction(PanelAction):
         self,
         ctx: PanelContext,
         user: User | None,
-        form: AddMemberForm,
+        form: AddStaffMemberForm,
         status: int = 200,
     ) -> HttpResponse:
         chosen = [str(pk) for pk in form["cohorts"].value() or []]
@@ -1754,13 +1853,13 @@ class AddMemberAction(PanelAction):
         )
 
     def _lookup(self, ctx: PanelContext) -> HttpResponse:
-        email_form = MemberEmailForm(ctx.request.POST)
+        email_form = StaffEmailForm(ctx.request.POST)
         if not email_form.is_valid():
             return self._email_step(ctx, email_form, status=422)
         matched = self._match(ctx, email_form.cleaned_data["email"])
         if isinstance(matched, HttpResponse):
             return matched
-        form = AddMemberForm(
+        form = AddStaffMemberForm(
             None,
             roles=[
                 (grantable.role, grantable.role) for grantable in self._grantable(ctx)
@@ -1795,9 +1894,9 @@ class AddMemberAction(PanelAction):
         matched = self._match(ctx, ctx.request.POST.get("email", ""))
         if isinstance(matched, HttpResponse):
             return matched
-        form = AddMemberForm(
+        form = AddStaffMemberForm(
             ctx.request.POST,
-            roles=[(role, role) for role in MEMBER_ROLES],
+            roles=[(role, role) for role in STAFF_ROLES],
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
             new_account=matched is None,
@@ -1816,7 +1915,7 @@ class AddMemberAction(PanelAction):
         if role == "organisation_admin" and any(e.role == role for e in before):
             return _refused(
                 ctx,
-                f"{_member_name(matched, email)} is already an organisation admin here.",
+                f"{_staff_member_name(matched, email)} is already an organisation admin here.",
             )
         held = self._already_held(ctx, matched, role, cohorts)
         names = (
@@ -1831,7 +1930,7 @@ class AddMemberAction(PanelAction):
         if cohorts and not new_cohorts:
             return _refused(
                 ctx,
-                f"{_member_name(matched, email)} already holds this role on "
+                f"{_staff_member_name(matched, email)} already holds this role on "
                 "these cohorts.",
             )
         new_targets: list[Organisation | Cohort] = [*new_cohorts] or targets
@@ -1848,7 +1947,7 @@ class AddMemberAction(PanelAction):
         if user is None or not cohorts:
             return []
         held_keys = set(
-            member_assignments(_organisation(ctx))
+            staff_assignments(_organisation(ctx))
             .filter(user=user, role=role)
             .values_list("object_id", flat=True)
         )
@@ -1869,7 +1968,7 @@ class AddMemberAction(PanelAction):
         organisation = _organisation(ctx)
         site = organisation.site
         role_config = get_role_config(site.name)[role]
-        name = _member_name(user, email)
+        name = _staff_member_name(user, email)
         after = (
             _entries_after(
                 before,
@@ -1893,7 +1992,7 @@ class AddMemberAction(PanelAction):
             {
                 "step": "confirmation",
                 "match": user,
-                "member_name": name,
+                "staff_member_name": name,
                 "creates_account": user is None,
                 "first_name": names[0],
                 "last_name": names[1],
@@ -1912,7 +2011,7 @@ class AddMemberAction(PanelAction):
                 ),
                 "current_entries": before,
                 "after_entries": after,
-                "member_state": member_state(user, organisation),
+                "staff_member_state": staff_member_state(user, organisation),
                 "site_level": user is not None and is_site_level_admin(user, site),
             },
         )
@@ -1927,7 +2026,7 @@ class AddMemberAction(PanelAction):
         names: tuple[str, str],
     ) -> HttpResponse:
         organisation = _organisation(ctx)
-        name = _member_name(user, email)
+        name = _staff_member_name(user, email)
         try:
             with transaction.atomic():
                 user, created = match_or_create_user(organisation.site, email, *names)
@@ -1939,11 +2038,11 @@ class AddMemberAction(PanelAction):
             return refusal_response(ctx, self, refused, name)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
-        return member_changed_response(user)
+        return staff_member_changed_response(user)
 
 
-class AddMemberToCohortAction(AddMemberAction):
-    """Add a member on a cohort's page, with the cohort fixed. Rendered by
+class AddStaffMemberToCohortAction(AddStaffMemberAction):
+    """Add a staff member on a cohort's page, with the cohort fixed. Rendered by
     the Settings panel beside its Staff heading, not in the footer."""
 
     capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
@@ -1965,10 +2064,10 @@ class AddMemberToCohortAction(AddMemberAction):
         return cast(Cohort, ctx.instance)
 
 
-class MemberRoleAction(PanelAction):
-    """An action on one role entry of one member, named by the `user` and
+class StaffRoleAction(PanelAction):
+    """An action on one role entry of one staff member, named by the `user` and
     `role` parameters. Renders per entry, never in the header. The target
-    is re-read on every request through members_of, so a member who has
+    is re-read on every request through staff_of, so a staff member who has
     since lost every role, or a role no longer held, is a 404 that the
     action route answers with its unavailable fragment."""
 
@@ -1978,7 +2077,7 @@ class MemberRoleAction(PanelAction):
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         role = _action_params(ctx.request).get("role", "")
-        if role in MEMBER_ROLES:
+        if role in STAFF_ROLES:
             return ASSIGN.format(role=role)
         return ASSIGN.format(role="cohort_viewer")
 
@@ -2006,11 +2105,11 @@ class MemberRoleAction(PanelAction):
         for entry in entries:
             if entry.role == role:
                 return entry
-        raise Http404("The member does not hold this role")
+        raise Http404("The staff member does not hold this role")
 
 
-class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
-    """Takes one role entry off a member: on the organisation, or on every
+class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
+    """Takes one role entry off a staff member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
     cohort in reach is a 404 dialog and a 403 submit, since the trigger
@@ -2055,7 +2154,7 @@ class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
         organisation = _organisation(ctx)
         site = organisation.site
         grantor = cast("User", ctx.request.user)
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
         removed, staying = self._split(ctx, entry)
@@ -2065,7 +2164,7 @@ class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
         context = super().get_context_data(ctx)
         context.update(
             {
-                "member": user,
+                "staff_member": user,
                 "entry": entry,
                 "description": description,
                 "full_scope": (
@@ -2086,7 +2185,7 @@ class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         removed, _ = self._split(ctx, entry)
         targets: list[Organisation | Cohort] = (
@@ -2106,7 +2205,7 @@ class DeactivateRoleAction(ReasonMixin, MemberRoleAction):
                     )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return member_changed_response(user)
+        return staff_member_changed_response(user)
 
 
 class CohortChange(NamedTuple):
@@ -2115,7 +2214,7 @@ class CohortChange(NamedTuple):
     untouched: list[Cohort]
 
 
-class ChangeCohortsAction(MemberRoleAction):
+class ChangeCohortsAction(StaffRoleAction):
     """Adds and removes the cohorts of one cohort-role entry in a single
     transaction, after a confirmation that names what is gained and lost."""
 
@@ -2153,7 +2252,7 @@ class ChangeCohortsAction(MemberRoleAction):
         offered = self._offered(ctx, entry.role)
         held = set(entry.cohorts)
         return {
-            "member": user,
+            "staff_member": user,
             "entry": entry,
             "form_url": self.get_action_url(ctx),
             "cohort_rows": [
@@ -2174,7 +2273,7 @@ class ChangeCohortsAction(MemberRoleAction):
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         return {"step": "form", **self._dialog(ctx, user, entry)}
 
@@ -2191,7 +2290,7 @@ class ChangeCohortsAction(MemberRoleAction):
         return chosen
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
@@ -2210,7 +2309,7 @@ class ChangeCohortsAction(MemberRoleAction):
                     deactivate_role(grantor, user, entry.role, cohort)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return member_changed_response(user)
+        return staff_member_changed_response(user)
 
     def _confirmation(
         self,
@@ -2233,7 +2332,7 @@ class ChangeCohortsAction(MemberRoleAction):
             self.template_name,
             {
                 "step": "confirmation",
-                "member": user,
+                "staff_member": user,
                 "entry": entry,
                 "form_url": self.get_action_url(ctx),
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
@@ -2242,41 +2341,39 @@ class ChangeCohortsAction(MemberRoleAction):
                 "widening": widening,
                 "removes_role": not plan.added
                 and len(plan.removed) == len(entry.cohorts),
-                "member_state": member_state(user, organisation),
+                "staff_member_state": staff_member_state(user, organisation),
             },
         )
 
 
-class MemberStateAction(PanelAction):
-    """Flips one member's OrganisationMember row, named by the `user`
+class StaffMemberStateAction(PanelAction):
+    """Flips one staff member's StaffMember row, named by the `user`
     parameter, after confirmation. Renders per row, never in the header."""
 
     variant = "secondary"
     renders_in_footer = False
-    capability = CHANGE_MEMBER
+    capability = CHANGE_STAFF_MEMBER
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
 
-    def _row(self, user: User, organisation: Organisation) -> OrganisationMember | None:
-        return OrganisationMember.objects.filter(
-            user=user, organisation=organisation
-        ).first()
+    def _row(self, user: User, organisation: Organisation) -> StaffMember | None:
+        return StaffMember.objects.filter(user=user, organisation=organisation).first()
 
 
-class DeactivateMemberAction(ReasonMixin, MemberStateAction):
+class DeactivateStaffMemberAction(ReasonMixin, StaffMemberStateAction):
     label = "Deactivate staff member"
     action_name = "deactivate"
-    template_name = "educator_interface/modal/deactivate_member_confirmation.html"
+    template_name = "educator_interface/modal/deactivate_staff_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         context = super().get_context_data(ctx)
         context.update(
             {
-                "member": user,
+                "staff_member": user,
                 "organisation": organisation,
                 "last_organisation_admin": is_last_organisation_admin(
                     organisation, user
@@ -2291,12 +2388,12 @@ class DeactivateMemberAction(ReasonMixin, MemberStateAction):
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
-            raise Http404("The member is already inactive")
+            raise Http404("The staff member is already inactive")
         try:
-            set_organisation_member_active(
+            set_staff_member_active(
                 cast("User", ctx.request.user),
                 row,
                 False,
@@ -2304,19 +2401,19 @@ class DeactivateMemberAction(ReasonMixin, MemberStateAction):
             )
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return member_changed_response(user)
+        return staff_member_changed_response(user)
 
 
-class ReactivateMemberAction(MemberStateAction):
+class ReactivateStaffMemberAction(StaffMemberStateAction):
     label = "Reactivate staff member"
     action_name = "reactivate"
-    template_name = "educator_interface/modal/reactivate_member_confirmation.html"
+    template_name = "educator_interface/modal/reactivate_staff_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         entries = current_role_entries(user, _organisation(ctx))
         return {
-            "member": user,
+            "staff_member": user,
             "roles": join_prose(
                 [f"{entry.display_name} on {entry.scope}" for entry in entries]
             ),
@@ -2325,26 +2422,22 @@ class ReactivateMemberAction(MemberStateAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _member_param(ctx)
+        user = _staff_member_param(ctx)
         row = self._row(user, organisation)
         if row is not None and row.is_active:
-            raise Http404("The member is already active")
+            raise Http404("The staff member is already active")
         try:
             with transaction.atomic():
-                # A member with no row has no access, so the row is created
+                # A staff member with no row has no access, so the row is created
                 # inactive and reactivated below rather than created active:
-                # set_organisation_member_active is the one path that checks
+                # set_staff_member_active is the one path that checks
                 # the actor's capability, locks the row and writes the entry,
                 # and it only writes for a real change.
-                row = row or ensure_organisation_member(
-                    user, organisation, is_active=False
-                )
-                set_organisation_member_active(
-                    cast("User", ctx.request.user), row, True
-                )
+                row = row or ensure_staff_member(user, organisation, is_active=False)
+                set_staff_member_active(cast("User", ctx.request.user), row, True)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
-        return member_changed_response(user)
+        return staff_member_changed_response(user)
 
 
 BULK_ACTIONS: dict[tuple[str, str], type[EducatorBulkAction]] = {}
@@ -2553,7 +2646,7 @@ class LearnerBulkAction(EducatorBulkAction):
 
 class CohortMembershipBulkAction(LearnerBulkAction):
     """Adds learners to, or removes them from, the one cohort the educator
-    picks. `member_ids` holds the selected learners already in that cohort,
+    picks. `staff_member_ids` holds the selected learners already in that cohort,
     read once per classification so previewing costs a fixed number of queries
     however many learners are selected."""
 
@@ -2562,7 +2655,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
     # organisation, with a ValueError; a cohort deactivated between the
     # confirmation and the run fails each learner instead of aborting the run.
     failure_exceptions = (ValueError,)
-    member_ids: frozenset[object] = frozenset()
+    staff_member_ids: frozenset[object] = frozenset()
 
     def get_form(
         self, request: HttpRequest, data: QueryDict | None
@@ -2595,7 +2688,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> dict[str, BulkOutcome] | None:
-        self.member_ids = frozenset(
+        self.staff_member_ids = frozenset(
             CohortMembership.objects.filter(
                 cohort=cleaned_data["cohort"], learner__in=queryset
             ).values_list("learner_id", flat=True)
@@ -2627,7 +2720,7 @@ class AddToCohortBulkAction(CohortMembershipBulkAction):
     unchanged_reason = "already in the cohort"
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        return self.unchanged_reason if obj.pk in self.member_ids else None
+        return self.unchanged_reason if obj.pk in self.staff_member_ids else None
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return add_to_cohort(
@@ -2650,7 +2743,7 @@ class RemoveFromCohortBulkAction(CohortMembershipBulkAction):
     unchanged_reason = "not a member"
 
     def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        return None if obj.pk in self.member_ids else self.unchanged_reason
+        return None if obj.pk in self.staff_member_ids else self.unchanged_reason
 
     def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
         return remove_from_cohort(

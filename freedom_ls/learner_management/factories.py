@@ -16,7 +16,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.signals import delete_cohort_role_rows
 from freedom_ls.learner_management.utils import ensure_learner
@@ -57,11 +57,11 @@ class LearnerFactory(SiteAwareFactory):
         return learner
 
 
-class OrganisationMemberFactory(SiteAwareFactory):
-    """Factory for creating OrganisationMember instances."""
+class StaffMemberFactory(SiteAwareFactory):
+    """Factory for creating StaffMember instances."""
 
     class Meta:
-        model = OrganisationMember
+        model = StaffMember
 
     user = factory.SubFactory(UserFactory)
     organisation = factory.SubFactory(OrganisationFactory)

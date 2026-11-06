@@ -22,11 +22,11 @@ from freedom_ls.educator_interface.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
-    MemberRoleFilter,
     ShowInactiveFilter,
+    StaffRoleFilter,
     VisibleCourseFilter,
 )
-from freedom_ls.educator_interface.views import CohortDataTable, MemberDataTable
+from freedom_ls.educator_interface.views import CohortDataTable, StaffDataTable
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -331,19 +331,19 @@ def test_learner_course_filter_drops_a_member_of_an_inactive_cohort_registered()
     assert list(result) == []
 
 
-def _member_pks(request, roles: list[str] | None = None) -> list:
+def _staff_member_pks(request, roles: list[str] | None = None) -> list:
     filters = {} if roles is None else {"role": roles}
     query = TableQuery(key="staff", filters=filters)
     return [
         user.pk
-        for user in MemberDataTable.filter_queryset(
-            request, MemberDataTable.get_queryset(request), query
+        for user in StaffDataTable.filter_queryset(
+            request, StaffDataTable.get_queryset(request), query
         )
     ]
 
 
 @pytest.fixture
-def members_request(site_aware_request: RequestFactory):
+def staff_request(site_aware_request: RequestFactory):
     organisation = OrganisationFactory()
     request = _educator_request(site_aware_request, organisation)
     return request, organisation
@@ -353,8 +353,8 @@ def members_request(site_aware_request: RequestFactory):
 @pytest.mark.parametrize(
     "role", ["organisation_admin", "cohort_admin", "cohort_viewer"]
 )
-def test_the_role_filter_narrows_members_to_each_role(members_request, role):
-    request, organisation = members_request
+def test_the_role_filter_narrows_members_to_each_role(staff_request, role):
+    request, organisation = staff_request
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory(superuser=True)
     holders = {}
@@ -363,76 +363,76 @@ def test_the_role_filter_narrows_members_to_each_role(members_request, role):
         target = organisation if held == "organisation_admin" else cohort
         assign_role(grantor, holders[held], held, target)
 
-    result = set(_member_pks(request, [role]))
+    result = set(_staff_member_pks(request, [role]))
 
     assert result & {h.pk for h in holders.values()} == {holders[role].pk}
 
 
 @pytest.mark.django_db
-def test_a_member_holding_two_roles_is_returned_once(members_request):
-    request, organisation = members_request
+def test_a_member_holding_two_roles_is_returned_once(staff_request):
+    request, organisation = staff_request
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory(superuser=True)
     both = UserFactory()
     assign_role(grantor, both, "cohort_admin", cohort)
     assign_role(grantor, both, "cohort_viewer", cohort)
 
-    result = _member_pks(request, ["cohort_admin", "cohort_viewer"])
+    result = _staff_member_pks(request, ["cohort_admin", "cohort_viewer"])
 
     assert result.count(both.pk) == 1
 
 
 @pytest.mark.django_db
-def test_all_roles_narrows_nothing(members_request):
-    request, organisation = members_request
+def test_all_roles_narrows_nothing(staff_request):
+    request, organisation = staff_request
     cohort = CohortFactory(organisation=organisation)
     assign_role(UserFactory(superuser=True), UserFactory(), "cohort_viewer", cohort)
 
-    assert len(_member_pks(request, [MemberRoleFilter.ALL])) == len(
-        _member_pks(request)
+    assert len(_staff_member_pks(request, [StaffRoleFilter.ALL])) == len(
+        _staff_member_pks(request)
     )
-    assert len(_member_pks(request)) == 2
+    assert len(_staff_member_pks(request)) == 2
 
 
 @pytest.mark.django_db
-def test_all_roles_beside_a_role_still_means_every_role(members_request):
-    request, organisation = members_request
+def test_all_roles_beside_a_role_still_means_every_role(staff_request):
+    request, organisation = staff_request
     cohort = CohortFactory(organisation=organisation)
     assign_role(UserFactory(superuser=True), UserFactory(), "cohort_viewer", cohort)
 
-    result = _member_pks(request, [MemberRoleFilter.ALL, "organisation_admin"])
+    result = _staff_member_pks(request, [StaffRoleFilter.ALL, "organisation_admin"])
 
     assert len(result) == 2
 
 
 @pytest.mark.django_db
-def test_the_role_filter_narrows_by_itself(members_request):
-    request, organisation = members_request
+def test_the_role_filter_narrows_by_itself(staff_request):
+    request, organisation = staff_request
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory(superuser=True)
     admin = UserFactory()
     assign_role(grantor, admin, "cohort_admin", cohort)
     viewer = UserFactory()
     assign_role(grantor, viewer, "cohort_viewer", cohort)
-    everyone = MemberDataTable.get_queryset(request)
+    everyone = StaffDataTable.get_queryset(request)
 
-    narrowed = MemberRoleFilter().apply(request, everyone, ["cohort_admin"])
-    unchanged = MemberRoleFilter().apply(request, everyone, [MemberRoleFilter.ALL])
+    narrowed = StaffRoleFilter().apply(request, everyone, ["cohort_admin"])
+    unchanged = StaffRoleFilter().apply(request, everyone, [StaffRoleFilter.ALL])
 
     assert set(narrowed) == {admin}
     assert set(unchanged) == set(everyone)
 
 
 @pytest.mark.django_db
-def test_all_roles_is_the_roles_default(members_request):
-    assert MemberRoleFilter().default == (MemberRoleFilter.ALL,)
+def test_all_roles_is_the_roles_default(staff_request):
+    assert StaffRoleFilter().default == (StaffRoleFilter.ALL,)
 
 
 @pytest.mark.django_db
-def test_the_role_choices_carry_the_display_names(members_request):
-    request, _ = members_request
+def test_the_role_choices_carry_the_display_names(staff_request):
+    request, _ = staff_request
 
-    choices = MemberRoleFilter().get_choices(request)
+    choices = StaffRoleFilter().get_choices(request)
 
     assert choices == [
         ("all", "All roles"),

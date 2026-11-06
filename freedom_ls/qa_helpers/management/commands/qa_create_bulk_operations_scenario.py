@@ -48,7 +48,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
     LearnerImport,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.models import CourseProgress
@@ -298,14 +298,14 @@ def _purge_stale(
     )
     stale_org_members = [
         m.pk
-        for m in OrganisationMember._base_manager.filter(
+        for m in StaffMember._base_manager.filter(
             user__email__iendswith=QA_DOMAIN
         ).select_related("user")
         if (m.user.email, m.organisation_id) not in expected_org_members
     ]
     _delete(
-        "OrganisationMember",
-        OrganisationMember._base_manager.filter(pk__in=stale_org_members),
+        "StaffMember",
+        StaffMember._base_manager.filter(pk__in=stale_org_members),
         counts,
     )
     return counts

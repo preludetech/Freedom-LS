@@ -4,7 +4,7 @@ Builds four courses (Course Pub / Hid / Soon / Other, one topic each), two
 organisations (Northside, Southside), seven cohorts covering the empty,
 removed-member, stale-registration and inactive-cohort edge cases, and the
 educator personas (organisation_admin, cohort_admin, cohort_viewer, a lapsed
-cohort_viewer whose OrganisationMember is inactive).
+cohort_viewer whose StaffMember is inactive).
 
 Every persona's password is its own email address, with a verified primary
 EmailAddress. Idempotent: re-running reuses existing rows.
@@ -44,7 +44,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.models import CourseProgress
@@ -227,7 +227,7 @@ def _seed(site: Site) -> None:
     assign_object_role(cohort_viewer, cohort_a, "cohort_viewer")
     lapsed = _ensure_user(site, "lapsed.viewer@qa.test")
     assign_object_role(lapsed, cohort_a, "cohort_viewer")
-    OrganisationMember._base_manager.filter(user=lapsed, organisation=north).update(
+    StaffMember._base_manager.filter(user=lapsed, organisation=north).update(
         is_active=False
     )
     south_admin = _ensure_user(site, "south.admin@qa.test")
@@ -273,12 +273,10 @@ def _seed(site: Site) -> None:
         f"completed={a2_progress.completed_time}"
     )
     click.echo(
-        "OrganisationMember: "
+        "StaffMember: "
         + str(
             list(
-                OrganisationMember._base_manager.filter(
-                    user__email__endswith="@qa.test"
-                )
+                StaffMember._base_manager.filter(user__email__endswith="@qa.test")
                 .order_by("user__email")
                 .values_list("user__email", "organisation__slug", "is_active")
             )

@@ -366,8 +366,8 @@ class LayeredMessagingPolicy(MessagingPolicy):
         cohort_members: dict[UUID, tuple[str, set[int]]] = {}
         for cohort_id, cohort_name, user_id in memberships:
             cohort_members.setdefault(cohort_id, (cohort_name, set()))[1].add(user_id)
-        for cohort_name, member_ids in cohort_members.values():
-            place_ids(cohort_name, member_ids)
+        for cohort_name, staff_member_ids in cohort_members.values():
+            place_ids(cohort_name, staff_member_ids)
         place(_("Colleagues"), colleagues_of(sender, site))
         # Anyone the policy offers but no group above claimed still appears.
         place(_("Others"), User.objects.filter(site=site))

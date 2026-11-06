@@ -10,7 +10,7 @@ from django.db.models.signals import post_save, pre_delete
 from django.dispatch import Signal, receiver
 
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.utils import ensure_organisation_member
+from freedom_ls.learner_management.utils import ensure_staff_member
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
@@ -22,10 +22,10 @@ cohort_membership_moved = Signal()
 
 
 @receiver(post_save, sender=ObjectRoleAssignment)
-def ensure_member_for_active_grant(
+def ensure_staff_member_for_active_grant(
     sender: type[ObjectRoleAssignment], instance: ObjectRoleAssignment, **kwargs: object
 ) -> None:
-    """Every organisation or cohort grant needs an OrganisationMember to be
+    """Every organisation or cohort grant needs an StaffMember to be
     counted by can(), so any path that creates or reactivates one -- the
     checked utilities, a QA command, a raw factory in a test -- gets one
     without having to ask for it separately.
@@ -39,9 +39,9 @@ def ensure_member_for_active_grant(
         return
     target = instance.target
     if isinstance(target, Organisation):
-        ensure_organisation_member(instance.user, target)
+        ensure_staff_member(instance.user, target)
     elif isinstance(target, Cohort):
-        ensure_organisation_member(instance.user, target.organisation)
+        ensure_staff_member(instance.user, target.organisation)
 
 
 @receiver(pre_delete, sender=Cohort)

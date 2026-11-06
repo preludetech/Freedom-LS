@@ -91,7 +91,7 @@ from freedom_ls.learner_management.models import (
     ImportStatus,
     Learner,
     LearnerImport,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
@@ -1195,7 +1195,7 @@ def test_the_settings_tab_lists_a_person_added_from_the_cohort_page(
     client = logged_in_client(admin)
 
     client.post(
-        _settings_url(organisation, cohort) + "/__actions/add_member",
+        _settings_url(organisation, cohort) + "/__actions/add_staff_member",
         {
             "step": "submit",
             "email": "ada@example.com",
@@ -1223,14 +1223,14 @@ def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     assert "No staff assigned to this cohort." in section.text_content()
     (trigger,) = section.cssselect("button[hx-get]")
     assert trigger.get("hx-get") == (
-        _settings_url(organisation, cohort) + "/__actions/add_member"
+        _settings_url(organisation, cohort) + "/__actions/add_staff_member"
     )
     assert "btn-sm" in trigger.get("class").split()
     footer_urls = {
         b.get("hx-get")
         for b in document.cssselect("section[data-panel='settings'] footer button")
     }
-    assert not any(url.endswith("/__actions/add_member") for url in footer_urls)
+    assert not any(url.endswith("/__actions/add_staff_member") for url in footer_urls)
 
 
 @pytest.mark.django_db
@@ -2162,7 +2162,7 @@ def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
 
 
 @pytest.fixture
-def members_client(
+def role_holder_client(
     mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> Callable[[Organisation | Cohort, str], Client]:
     """Factory: a logged-in staff user holding `role` on `target`."""
@@ -2177,19 +2177,19 @@ def members_client(
     return _make
 
 
-def _grant_member(
+def _grant_staff_member(
     target: Organisation | Cohort, role: str = "organisation_admin", **user_fields: str
 ) -> None:
     assign_role(UserFactory(superuser=True), UserFactory(**user_fields), role, target)
 
 
 @pytest.mark.django_db
-def test_an_organisation_admin_sees_each_members_name_and_email(members_client):
+def test_an_organisation_admin_sees_each_members_name_and_email(role_holder_client):
     organisation = OrganisationFactory()
-    _grant_member(
+    _grant_staff_member(
         organisation, first_name="Ada", last_name="Lovelace", email="ada@example.com"
     )
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     text = _get_document(client, _interface_url(organisation.slug, "staff"))
 
@@ -2199,10 +2199,10 @@ def test_an_organisation_admin_sees_each_members_name_and_email(members_client):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
-def test_a_cohort_role_holder_sees_no_administration_group(members_client, role):
+def test_a_cohort_role_holder_sees_no_administration_group(role_holder_client, role):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
-    client = members_client(cohort, role)
+    client = role_holder_client(cohort, role)
 
     document = _get_document(client, _interface_url(organisation.slug, "cohorts"))
 
@@ -2212,10 +2212,10 @@ def test_a_cohort_role_holder_sees_no_administration_group(members_client, role)
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
-def test_members_is_a_404_for_a_cohort_role_holder(members_client, role):
+def test_members_is_a_404_for_a_cohort_role_holder(role_holder_client, role):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
-    client = members_client(cohort, role)
+    client = role_holder_client(cohort, role)
 
     response = client.get(_interface_url(organisation.slug, "staff"))
 
@@ -2240,10 +2240,12 @@ def test_a_site_admin_with_no_role_in_the_organisation_can_open_members(
 
 
 @pytest.mark.django_db
-def test_a_nameless_member_shows_the_email_alone(members_client):
+def test_a_nameless_member_shows_the_email_alone(role_holder_client):
     organisation = OrganisationFactory()
-    _grant_member(organisation, first_name="", last_name="", email="bare@example.com")
-    client = members_client(organisation, "organisation_admin")
+    _grant_staff_member(
+        organisation, first_name="", last_name="", email="bare@example.com"
+    )
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _get_document(client, _interface_url(organisation.slug, "staff"))
 
@@ -2255,9 +2257,9 @@ def test_a_nameless_member_shows_the_email_alone(members_client):
 
 
 @pytest.mark.django_db
-def test_a_member_path_with_an_id_under_it_is_a_404(members_client):
+def test_a_member_path_with_an_id_under_it_is_a_404(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     response = client.get(_interface_url(organisation.slug, f"staff/{uuid.uuid4()}"))
 
@@ -2265,10 +2267,10 @@ def test_a_member_path_with_an_id_under_it_is_a_404(members_client):
 
 
 @pytest.mark.django_db
-def test_a_member_name_is_escaped(members_client):
+def test_a_member_name_is_escaped(role_holder_client):
     organisation = OrganisationFactory()
-    _grant_member(organisation, first_name="<b>x</b>")
-    client = members_client(organisation, "organisation_admin")
+    _grant_staff_member(organisation, first_name="<b>x</b>")
+    client = role_holder_client(organisation, "organisation_admin")
 
     response = client.get(_interface_url(organisation.slug, "staff"))
 
@@ -2276,11 +2278,11 @@ def test_a_member_name_is_escaped(members_client):
     assert "<b>x</b>" not in response.content.decode()
 
 
-def _members_document(client: Client, organisation: Organisation):
+def _staff_document(client: Client, organisation: Organisation):
     return _get_document(client, _interface_url(organisation.slug, "staff"))
 
 
-def _member_row(document, email: str):
+def _staff_member_row(document, email: str):
     """The table row whose text includes `email`."""
     (row,) = [
         r
@@ -2310,41 +2312,41 @@ def _hold(user, role: str, target, grantor=None) -> None:
 
 
 @pytest.mark.django_db
-def test_an_organisation_admins_roles_cell_reads_whole_organisation(members_client):
+def test_an_organisation_admins_roles_cell_reads_whole_organisation(role_holder_client):
     organisation = OrganisationFactory()
     _hold(UserFactory(email="boss@example.com"), "organisation_admin", organisation)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "boss@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "boss@example.com")
 
     assert _scope_lines(row) == ["Whole organisation"]
     assert "Organisation admin" in row.text_content()
 
 
 @pytest.mark.django_db
-def test_two_cohorts_read_both_names(members_client):
+def test_two_cohorts_read_both_names(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="two@example.com")
     for name in ("Alpha", "Bravo"):
         _hold(user, "cohort_admin", CohortFactory(organisation=organisation, name=name))
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "two@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "two@example.com")
 
     assert _scope_lines(row) == ["Alpha, Bravo"]
 
 
 @pytest.mark.django_db
-def test_four_cohorts_read_two_names_and_the_rest_as_a_count(members_client):
+def test_four_cohorts_read_two_names_and_the_rest_as_a_count(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="four@example.com")
     for name in ("Alpha", "Bravo", "Charlie", "Delta"):
         _hold(
             user, "cohort_viewer", CohortFactory(organisation=organisation, name=name)
         )
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "four@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "four@example.com")
 
     (scope,) = row.cssselect("ul li span[title]")
     assert scope.text_content().strip() == "Alpha, Bravo +2 more"
@@ -2352,19 +2354,19 @@ def test_four_cohorts_read_two_names_and_the_rest_as_a_count(members_client):
 
 
 @pytest.mark.django_db
-def test_an_inactive_cohort_carries_the_inactive_marker(members_client):
+def test_an_inactive_cohort_carries_the_inactive_marker(role_holder_client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Old", is_active=False)
     _hold(UserFactory(email="old@example.com"), "cohort_viewer", cohort)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "old@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "old@example.com")
 
     assert _scope_lines(row) == ["Old (inactive)"]
 
 
 @pytest.mark.django_db
-def test_a_role_names_who_added_it(members_client):
+def test_a_role_names_who_added_it(role_holder_client):
     organisation = OrganisationFactory()
     grantor = UserFactory(superuser=True, first_name="Grace", last_name="Hopper")
     _hold(
@@ -2373,15 +2375,15 @@ def test_a_role_names_who_added_it(members_client):
         organisation,
         grantor,
     )
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "added@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "added@example.com")
 
     assert "by Grace Hopper" in row.text_content()
 
 
 @pytest.mark.django_db
-def test_a_role_with_no_recorded_grantor_reads_not_recorded(members_client):
+def test_a_role_with_no_recorded_grantor_reads_not_recorded(role_holder_client):
     organisation = OrganisationFactory()
     grantor = UserFactory(superuser=True)
     _hold(
@@ -2391,20 +2393,20 @@ def test_a_role_with_no_recorded_grantor_reads_not_recorded(members_client):
         grantor,
     )
     grantor.delete()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "orphan@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "orphan@example.com")
 
     assert "by Not recorded" in row.text_content()
 
 
-def _make_viewer_and_subject(members_client, organisation, case: str):
+def _make_viewer_and_subject(role_holder_client, organisation, case: str):
     """Returns (client, email of the row to inspect) for a marker case."""
     subject = UserFactory(email="subject@example.com")
     _hold(subject, "cohort_viewer", CohortFactory(organisation=organisation))
-    viewer_client = members_client(organisation, "organisation_admin")
+    viewer_client = role_holder_client(organisation, "organisation_admin")
     if case == "membership_inactive":
-        OrganisationMember.objects.filter(user=subject).update(is_active=False)
+        StaffMember.objects.filter(user=subject).update(is_active=False)
     elif case == "account_inactive":
         subject.is_active = False
         subject.save()
@@ -2426,23 +2428,27 @@ def _make_viewer_and_subject(members_client, organisation, case: str):
         ("inactive_learner", set()),
     ],
 )
-def test_each_marker_appears_for_its_case_only(members_client, case, expected):
+def test_each_marker_appears_for_its_case_only(role_holder_client, case, expected):
     organisation = OrganisationFactory()
-    client = _make_viewer_and_subject(members_client, organisation, case)
+    client = _make_viewer_and_subject(role_holder_client, organisation, case)
 
-    row = _member_row(_members_document(client, organisation), "subject@example.com")
+    row = _staff_member_row(
+        _staff_document(client, organisation), "subject@example.com"
+    )
 
     assert _marker_labels(row) == expected
 
 
 @pytest.mark.django_db
-def test_the_inactive_marker_is_muted(members_client):
+def test_the_inactive_marker_is_muted(role_holder_client):
     organisation = OrganisationFactory()
     client = _make_viewer_and_subject(
-        members_client, organisation, "membership_inactive"
+        role_holder_client, organisation, "membership_inactive"
     )
 
-    row = _member_row(_members_document(client, organisation), "subject@example.com")
+    row = _staff_member_row(
+        _staff_document(client, organisation), "subject@example.com"
+    )
 
     (marker,) = [
         e for e in row.cssselect("span") if e.text_content().strip() == "Inactive"
@@ -2451,10 +2457,10 @@ def test_the_inactive_marker_is_muted(members_client):
 
 
 @pytest.mark.django_db
-def test_the_viewers_own_row_is_marked_you(members_client):
+def test_the_viewers_own_row_is_marked_you(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
-    document = _members_document(client, organisation)
+    client = role_holder_client(organisation, "organisation_admin")
+    document = _staff_document(client, organisation)
 
     (row,) = document.cssselect("#main-content tbody tr")
 
@@ -2462,37 +2468,39 @@ def test_the_viewers_own_row_is_marked_you(members_client):
 
 
 @pytest.mark.django_db
-def test_a_member_with_no_organisation_member_row_is_inactive(members_client):
+def test_a_staff_member_with_no_staff_member_row_is_inactive(role_holder_client):
     organisation = OrganisationFactory()
     subject = UserFactory(email="subject@example.com")
     _hold(subject, "organisation_admin", organisation)
-    OrganisationMember.objects.filter(user=subject).delete()
-    client = members_client(organisation, "organisation_admin")
+    StaffMember.objects.filter(user=subject).delete()
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "subject@example.com")
+    row = _staff_member_row(
+        _staff_document(client, organisation), "subject@example.com"
+    )
 
     assert _marker_labels(row) == {"Inactive"}
 
 
 @pytest.mark.django_db
-def test_a_superuser_holding_one_cohort_role_shows_that_role_only(members_client):
+def test_a_superuser_holding_one_cohort_role_shows_that_role_only(role_holder_client):
     organisation = OrganisationFactory()
     superuser = UserFactory(superuser=True, email="super@example.com")
     _hold(superuser, "cohort_viewer", CohortFactory(organisation=organisation))
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "super@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "super@example.com")
 
     assert len(row.cssselect("ul li")) == 1
     assert "Cohort viewer" in row.text_content()
 
 
 @pytest.mark.django_db
-def test_a_cohort_name_is_escaped_in_the_scope(members_client):
+def test_a_cohort_name_is_escaped_in_the_scope(role_holder_client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="<i>x</i>")
     _hold(UserFactory(), "cohort_viewer", cohort)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     content = client.get(_interface_url(organisation.slug, "staff")).content.decode()
 
@@ -2502,7 +2510,7 @@ def test_a_cohort_name_is_escaped_in_the_scope(members_client):
 
 @pytest.mark.django_db
 def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
-    members_client, django_assert_max_num_queries
+    role_holder_client, django_assert_max_num_queries
 ):
     organisation = OrganisationFactory()
     grantor = UserFactory(superuser=True)
@@ -2511,7 +2519,7 @@ def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
         _hold(user, "organisation_admin", organisation, grantor)
         _hold(user, "cohort_viewer", CohortFactory(organisation=organisation), grantor)
         LearnerFactory(user=user, organisation=organisation)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
     url = _interface_url(organisation.slug, "staff")
 
     with django_assert_max_num_queries(QUERY_BOUND):
@@ -2545,7 +2553,9 @@ def _members_search(client: Client, organisation: Organisation, term: str):
 @pytest.mark.parametrize(
     "term", ["Wanjiru", "Kamau", "wanjiru.k@"], ids=["first", "last", "email"]
 )
-def test_members_search_matches_first_name_last_name_and_email(members_client, term):
+def test_members_search_matches_first_name_last_name_and_email(
+    role_holder_client, term
+):
     organisation = OrganisationFactory()
     _hold(
         UserFactory(first_name="Wanjiru", last_name="Kamau", email="wanjiru.k@x.org"),
@@ -2553,7 +2563,7 @@ def test_members_search_matches_first_name_last_name_and_email(members_client, t
         organisation,
     )
     _hold(UserFactory(email="other@x.org"), "organisation_admin", organisation)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _members_search(client, organisation, term)
 
@@ -2562,11 +2572,11 @@ def test_members_search_matches_first_name_last_name_and_email(members_client, t
 
 
 @pytest.mark.django_db
-def test_the_role_filter_narrows_the_members_page(members_client):
+def test_the_role_filter_narrows_the_members_page(role_holder_client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     _hold(UserFactory(email="viewer@x.org"), "cohort_viewer", cohort)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _get_document(
         client,
@@ -2578,13 +2588,15 @@ def test_the_role_filter_narrows_the_members_page(members_client):
 
 
 @pytest.mark.django_db
-def test_picking_a_role_from_the_default_drops_all_roles_from_its_link(members_client):
+def test_picking_a_role_from_the_default_drops_all_roles_from_its_link(
+    role_holder_client,
+):
     """From the default "All roles" state, a role's choice link selected only
     that role instead of keeping "All roles" beside it."""
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    document = _members_document(client, organisation)
+    document = _staff_document(client, organisation)
 
     (link,) = [
         a
@@ -2595,47 +2607,47 @@ def test_picking_a_role_from_the_default_drops_all_roles_from_its_link(members_c
 
 
 @pytest.mark.django_db
-def test_the_mobile_role_select_has_a_single_all_roles_option(members_client):
+def test_the_mobile_role_select_has_a_single_all_roles_option(role_holder_client):
     """The mobile Role select listed both a blank "All" and "All roles"."""
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    document = _members_document(client, organisation)
+    document = _staff_document(client, organisation)
 
     (select,) = document.cssselect("select[name=staff-role]")
     labels = [o.text_content().strip() for o in select.cssselect("option")]
     assert labels[:2] == ["All roles", "Organisation admin"]
 
 
-ONLY_MEMBER_LINE = "You're the only staff member here."
+ONLY_STAFF_MEMBER_LINE = "You're the only staff member here."
 
 
 @pytest.mark.django_db
-def test_a_lone_organisation_admin_is_told_they_are_the_only_member(members_client):
+def test_a_lone_organisation_admin_is_told_they_are_the_only_member(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    text = _members_document(client, organisation).text_content()
+    text = _staff_document(client, organisation).text_content()
 
-    assert ONLY_MEMBER_LINE in text
+    assert ONLY_STAFF_MEMBER_LINE in text
 
 
 @pytest.mark.django_db
-def test_the_only_member_line_goes_once_a_second_member_exists(members_client):
+def test_the_only_member_line_goes_once_a_second_member_exists(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
     _hold(UserFactory(), "organisation_admin", organisation)
 
-    text = _members_document(client, organisation).text_content()
+    text = _staff_document(client, organisation).text_content()
 
-    assert ONLY_MEMBER_LINE not in text
+    assert ONLY_STAFF_MEMBER_LINE not in text
 
 
 @pytest.mark.django_db
-def test_the_member_header_first_links_to_descending_first_name(members_client):
+def test_the_member_header_first_links_to_descending_first_name(role_holder_client):
     """The list already arrives by first name, so the first click flips it."""
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _get_document(client, _interface_url(organisation.slug, "staff"))
 
@@ -2644,9 +2656,9 @@ def test_the_member_header_first_links_to_descending_first_name(members_client):
 
 
 @pytest.mark.django_db
-def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_client):
+def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _members_search(client, organisation, "nobody-has-this-name")
 
@@ -2660,9 +2672,9 @@ def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_clie
 
 
 @pytest.mark.django_db
-def test_a_filter_with_no_match_says_so(members_client):
+def test_a_filter_with_no_match_says_so(role_holder_client):
     organisation = OrganisationFactory()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
     document = _get_document(
         client,
@@ -2681,7 +2693,7 @@ def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_cl
         UserFactory(superuser=True), site_admin, "site_admin", mock_site_context
     )
 
-    document = _members_document(logged_in_client(site_admin), organisation)
+    document = _staff_document(logged_in_client(site_admin), organisation)
 
     (cell,) = document.cssselect("#main-content tbody td")
     assert "No staff yet." in cell.text_content()
@@ -2696,13 +2708,13 @@ def test_the_cohort_settings_panel_refreshes_on_member_changes(staff_client: Cli
     document = _get_document(staff_client, _settings_url(organisation, cohort))
 
     (card,) = document.cssselect("section[data-panel='settings']")
-    assert "memberChanged from:body" in card.get("hx-trigger")
+    assert "staffChanged from:body" in card.get("hx-trigger")
 
 
 @pytest.mark.django_db
 def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Client):
     """Adding a staff member from the Settings tab writes a role.assigned
-    entry with the cohort as subject and answers with memberChanged alone."""
+    entry with the cohort as subject and answers with staffChanged alone."""
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
@@ -2712,7 +2724,7 @@ def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Clie
     )
 
     (card,) = document.cssselect("section[data-panel='history']")
-    assert "memberChanged from:body" in card.get("hx-trigger")
+    assert "staffChanged from:body" in card.get("hx-trigger")
 
 
 def _remove_triggers(row) -> list[str]:
@@ -2724,14 +2736,14 @@ def _remove_triggers(row) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_the_viewers_own_row_has_no_trigger_and_says_why(members_client):
+def test_the_viewers_own_row_has_no_trigger_and_says_why(role_holder_client):
     organisation = OrganisationFactory()
     viewer = UserFactory(staff=True, email="me@example.com")
     assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
     client = Client()
     client.force_login(viewer)
 
-    row = _member_row(_members_document(client, organisation), "me@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "me@example.com")
 
     assert row.cssselect("button[hx-get]") == []
     assert row.cssselect("[aria-label='Locked']")
@@ -2741,14 +2753,16 @@ def test_the_viewers_own_row_has_no_trigger_and_says_why(members_client):
 
 
 @pytest.mark.django_db
-def test_another_members_entry_offers_remove_to_an_organisation_admin(members_client):
+def test_another_members_entry_offers_remove_to_an_organisation_admin(
+    role_holder_client,
+):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     cohort = CohortFactory(organisation=organisation)
     _hold(user, "cohort_viewer", cohort)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     (trigger,) = _remove_triggers(row)
     assert f"user={user.pk}&role=cohort_viewer" in trigger
@@ -2763,32 +2777,32 @@ def _change_cohorts_triggers(row) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_a_cohort_role_entry_offers_change_cohorts(members_client):
+def test_a_cohort_role_entry_offers_change_cohorts(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     (trigger,) = _change_cohorts_triggers(row)
     assert f"user={user.pk}&role=cohort_viewer" in trigger
 
 
 @pytest.mark.django_db
-def test_an_organisation_admin_entry_offers_no_change_cohorts(members_client):
+def test_an_organisation_admin_entry_offers_no_change_cohorts(role_holder_client):
     organisation = OrganisationFactory()
     _hold(UserFactory(email="boss@example.com"), "organisation_admin", organisation)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "boss@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "boss@example.com")
 
     assert _change_cohorts_triggers(row) == []
 
 
 @pytest.mark.django_db
 def test_a_role_the_viewer_may_not_give_has_no_change_cohorts(
-    members_client, monkeypatch
+    role_holder_client, monkeypatch
 ):
     organisation = OrganisationFactory()
     _hold(
@@ -2796,55 +2810,57 @@ def test_a_role_the_viewer_may_not_give_has_no_change_cohorts(
         "cohort_viewer",
         CohortFactory(organisation=organisation),
     )
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.grantable_roles",
         lambda *args: [GrantableRole("organisation_admin", None)],
     )
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     assert _change_cohorts_triggers(row) == []
 
 
 @pytest.mark.django_db
-def test_a_turned_off_accounts_row_has_no_change_cohorts(members_client):
+def test_a_turned_off_accounts_row_has_no_change_cohorts(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="off@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
     User.objects.filter(pk=user.pk).update(is_active=False)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "off@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "off@example.com")
 
     assert _change_cohorts_triggers(row) == []
 
 
 @pytest.mark.django_db
-def test_an_entry_the_viewer_may_not_revoke_has_no_remove(members_client, monkeypatch):
+def test_an_entry_the_viewer_may_not_revoke_has_no_remove(
+    role_holder_client, monkeypatch
+):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     _hold(UserFactory(email="other@example.com"), "cohort_viewer", cohort)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.grantable_roles",
         lambda *args: [GrantableRole("organisation_admin", None)],
     )
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     assert _remove_triggers(row) == []
 
 
 @pytest.mark.django_db
-def test_a_turned_off_accounts_row_offers_remove_and_nothing_else(members_client):
+def test_a_turned_off_accounts_row_offers_remove_and_nothing_else(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="off@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
     User.objects.filter(pk=user.pk).update(is_active=False)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "off@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "off@example.com")
 
     assert len(row.cssselect("button[hx-get]")) == 1
     assert len(_remove_triggers(row)) == 1
@@ -2859,13 +2875,13 @@ def _state_triggers(row, action: str) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_an_active_member_row_offers_deactivate_and_not_reactivate(members_client):
+def test_an_active_member_row_offers_deactivate_and_not_reactivate(role_holder_client):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     (trigger,) = _state_triggers(row, "deactivate")
     assert f"user={user.pk}" in trigger
@@ -2875,19 +2891,19 @@ def test_an_active_member_row_offers_deactivate_and_not_reactivate(members_clien
 @pytest.mark.django_db
 @pytest.mark.parametrize("row_state", ["inactive", "missing"])
 def test_an_inactive_member_row_offers_reactivate_and_not_deactivate(
-    members_client, row_state
+    role_holder_client, row_state
 ):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
-    members = OrganisationMember.objects.filter(user=user)
+    members = StaffMember.objects.filter(user=user)
     if row_state == "inactive":
         members.update(is_active=False)
     else:
         members.delete()
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     (trigger,) = _state_triggers(row, "reactivate")
     assert f"user={user.pk}" in trigger
@@ -2907,29 +2923,29 @@ def _turn_off(user: User, organisation: Organisation) -> None:
     "prepare", [_make_site_level, _turn_off], ids=["site_level", "turned_off"]
 )
 def test_a_site_level_or_turned_off_row_offers_neither_state_action(
-    members_client, prepare
+    role_holder_client, prepare
 ):
     organisation = OrganisationFactory()
     user = UserFactory(email="other@example.com")
     _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
     prepare(user, organisation)
-    client = members_client(organisation, "organisation_admin")
+    client = role_holder_client(organisation, "organisation_admin")
 
-    row = _member_row(_members_document(client, organisation), "other@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "other@example.com")
 
     assert _state_triggers(row, "deactivate") == []
     assert _state_triggers(row, "reactivate") == []
 
 
 @pytest.mark.django_db
-def test_the_viewers_own_row_offers_neither_state_action(members_client):
+def test_the_viewers_own_row_offers_neither_state_action(role_holder_client):
     organisation = OrganisationFactory()
     viewer = UserFactory(staff=True, email="me@example.com")
     assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
     client = Client()
     client.force_login(viewer)
 
-    row = _member_row(_members_document(client, organisation), "me@example.com")
+    row = _staff_member_row(_staff_document(client, organisation), "me@example.com")
 
     assert _state_triggers(row, "deactivate") == []
     assert _state_triggers(row, "reactivate") == []
@@ -5423,7 +5439,7 @@ EDUCATOR_TABLES: list[type[DataTable]] = [
     educator_views.CohortCourseRegistrationDataTable,
     educator_views.CourseCohortRegistrationDataTable,
     educator_views.CourseLearnerRegistrationDataTable,
-    educator_views.MemberDataTable,
+    educator_views.StaffDataTable,
     educator_views.OrganisationAuditLogTable,
 ]
 

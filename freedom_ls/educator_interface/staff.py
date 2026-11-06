@@ -1,4 +1,4 @@
-"""What the Staff section shows about the roles a member holds."""
+"""What the Staff section shows about the roles a staff member holds."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import MEMBER_ROLES, member_assignments
+from freedom_ls.learner_management.queries import STAFF_ROLES, staff_assignments
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
@@ -23,7 +23,7 @@ _NAMED_COHORTS = 2
 
 @dataclass(frozen=True)
 class RoleEntry:
-    """One role a member holds in the organisation: its scope, and the
+    """One role a staff member holds in the organisation: its scope, and the
     newest grant that set who added it."""
 
     role: str
@@ -52,16 +52,16 @@ class RoleEntry:
         return ", ".join(c.name for c in self.cohorts)
 
 
-def member_role_entries(user: User, site: Site) -> list[RoleEntry]:
+def staff_role_entries(user: User, site: Site) -> list[RoleEntry]:
     """Reads only the held_assignments prefetch and each assignment's
     prefetched target, so a page costs the same as one row. Entries follow
-    MEMBER_ROLES order; cohorts sort by name; the display names come from
+    STAFF_ROLES order; cohorts sort by name; the display names come from
     the site's role config."""
     # Set by the table's Prefetch(to_attr=...), so it is not a declared attribute.
     held = cast("list[ObjectRoleAssignment]", user.__dict__["held_assignments"])
     config = get_role_config(site.name)
     entries: list[RoleEntry] = []
-    for role in MEMBER_ROLES:
+    for role in STAFF_ROLES:
         assignments = [a for a in held if a.role == role]
         if not assignments:
             continue
@@ -90,9 +90,9 @@ def member_role_entries(user: User, site: Site) -> list[RoleEntry]:
 def current_role_entries(user: User, organisation: Organisation) -> list[RoleEntry]:
     """The roles `user` holds in `organisation`, loaded for just this user."""
     user.__dict__["held_assignments"] = list(
-        member_assignments(organisation)
+        staff_assignments(organisation)
         .filter(user=user)
         .select_related("assigned_by")
         .prefetch_related("target")
     )
-    return member_role_entries(user, organisation.site)
+    return staff_role_entries(user, organisation.site)

@@ -46,10 +46,10 @@ from freedom_ls.educator_interface.actions import (
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
-    MEMBER_CHANGED,
     REGISTRATION_CHANGED,
+    STAFF_CHANGED,
 )
-from freedom_ls.educator_interface.members import current_role_entries
+from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.educator_interface.views import OrganisationScopedRequest
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
@@ -65,7 +65,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.learner_management.queries import (
     CHANGE_LEARNER,
@@ -139,6 +139,17 @@ def _get_fragment(client: Client, url: str) -> str:
 
 def _post(client: Client, url: str, data: dict[str, str] | None = None):
     return client.post(url, data or {}, HTTP_HX_REQUEST="true")
+
+
+def _picker_dialog(client: Client, url: str) -> lxml.html.HtmlElement:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
+def _dialog_title(document: lxml.html.HtmlElement) -> str:
+    (title,) = document.cssselect("#app-modal-title")
+    return " ".join(title.text_content().split())
 
 
 # rename clash
@@ -549,7 +560,20 @@ def test_register_fragment_title_names_the_cohort(staff_client: Client):
 
     text = _get_fragment(staff_client, _register_url(organisation, cohort))
 
-    assert "Register Evening group for a course" in text
+    assert "Register Evening group for a course?" in text
+
+
+@pytest.mark.django_db
+def test_the_cohort_register_dialog_names_the_chosen_course(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0, name="Evening group")
+    course = CourseFactory(title="Algebra")
+
+    document = _picker_dialog(
+        staff_client, _register_url(organisation, cohort) + f"?course={course.pk}"
+    )
+
+    assert _dialog_title(document) == "Register Evening group for Algebra?"
 
 
 @pytest.mark.django_db
@@ -1492,6 +1516,53 @@ def test_add_to_cohort_offers_only_active_cohorts_the_learner_is_not_in(
     assert offered == {str(open_cohort.pk)}
     assert str(member_of.pk) not in offered
     assert str(inactive.pk) not in offered
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_dialog_asks_before_a_cohort_is_chosen(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    CohortFactory(organisation=organisation)
+
+    document = _picker_dialog(staff_client, _add_to_cohort_url(organisation, learner))
+
+    assert _dialog_title(document) == "Add Ada Lovelace to a cohort?"
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_dialog_names_the_chosen_cohort_and_keeps_it_selected(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    cohort = CohortFactory(organisation=organisation, name="Cohort A")
+
+    document = _picker_dialog(
+        staff_client, _add_to_cohort_url(organisation, learner) + f"?cohort={cohort.pk}"
+    )
+
+    assert _dialog_title(document) == "Add Ada Lovelace to Cohort A?"
+    (selected,) = document.cssselect("select[name='cohort'] option[selected]")
+    assert selected.get("value") == str(cohort.pk)
+
+
+@pytest.mark.django_db
+def test_choosing_a_cohort_in_the_add_to_cohort_dialog_re_renders_it(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    CohortFactory(organisation=organisation)
+    url = _add_to_cohort_url(organisation, learner)
+
+    document = _picker_dialog(staff_client, url)
+
+    (select,) = document.cssselect("select[name='cohort']")
+    assert select.get("hx-get") == url
+    assert select.get("hx-trigger") == "change"
+    assert select.get("hx-target") == "#app-modal-body"
 
 
 @pytest.mark.django_db
@@ -2482,6 +2553,84 @@ def test_register_fragment_offers_the_registerable_courses(staff_client: Client)
     assert str(held.pk) not in offered
 
 
+def _ada(organisation: Organisation) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user__first_name="Ada",
+            user__last_name="Lovelace",
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_the_register_dialog_asks_before_a_course_is_chosen(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    CourseFactory()
+
+    document = _picker_dialog(
+        staff_client, _learner_register_url(organisation, learner)
+    )
+
+    assert _dialog_title(document) == "Register Ada Lovelace for a course?"
+
+
+@pytest.mark.django_db
+def test_the_register_dialog_names_the_chosen_course_and_keeps_it_selected(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    course = CourseFactory(title="Course Other")
+
+    document = _picker_dialog(
+        staff_client,
+        _learner_register_url(organisation, learner) + f"?course={course.pk}",
+    )
+
+    assert _dialog_title(document) == "Register Ada Lovelace for Course Other?"
+    (selected,) = document.cssselect("select[name='course'] option[selected]")
+    assert selected.get("value") == str(course.pk)
+
+
+@pytest.mark.django_db
+def test_choosing_a_course_in_the_register_dialog_re_renders_it(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    CourseFactory()
+    url = _learner_register_url(organisation, learner)
+
+    document = _picker_dialog(staff_client, url)
+
+    (select,) = document.cssselect("select[name='course']")
+    assert select.get("hx-get") == url
+    assert select.get("hx-trigger") == "change"
+    assert select.get("hx-target") == "#app-modal-body"
+
+
+@pytest.mark.django_db
+def test_a_course_the_register_dialog_does_not_offer_leaves_the_question_open(
+    staff_client: Client,
+):
+    """A stale choice on the refresh is not a submission, so the dialog
+    neither names it nor shows an error."""
+    organisation = OrganisationFactory()
+    learner = _ada(organisation)
+    CourseFactory()
+    held = LearnerCourseRegistrationFactory(learner=learner, is_active=True).course
+
+    document = _picker_dialog(
+        staff_client,
+        _learner_register_url(organisation, learner) + f"?course={held.pk}",
+    )
+
+    assert _dialog_title(document) == "Register Ada Lovelace for a course?"
+    assert document.cssselect("[role='alert']") == []
+    assert document.cssselect("option[selected]:not([value=''])") == []
+
+
 @pytest.mark.django_db
 def test_register_post_creates_the_registration_with_both_events(
     staff_client: Client,
@@ -3009,8 +3158,8 @@ def test_grantable_roles_are_cached_on_the_request(
 # add member
 
 
-def _add_member_url(organisation: Organisation) -> str:
-    return _interface_url(organisation.slug, "staff/__actions/add_member")
+def _add_staff_member_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "staff/__actions/add_staff_member")
 
 
 def _holder_client(
@@ -3023,7 +3172,7 @@ def _holder_client(
 
 def _lookup(client: Client, organisation: Organisation, email: str):
     return _post(
-        client, _add_member_url(organisation), {"step": "lookup", "email": email}
+        client, _add_staff_member_url(organisation), {"step": "lookup", "email": email}
     )
 
 
@@ -3036,7 +3185,7 @@ def _submit_role(
 ):
     return _post(
         client,
-        _add_member_url(organisation),
+        _add_staff_member_url(organisation),
         {"step": "submit", "email": email, "role": role, **extra},
     )
 
@@ -3066,7 +3215,9 @@ def admin_client(logged_in_client, organisation: Organisation) -> Client:
 
 @pytest.mark.django_db
 def test_the_email_step_asks_for_an_address(admin_client, organisation):
-    response = admin_client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+    response = admin_client.get(
+        _add_staff_member_url(organisation), HTTP_HX_REQUEST="true"
+    )
 
     document = lxml.html.fromstring(response.content.decode())
     assert document.cssselect("input[name='email']")
@@ -3233,7 +3384,7 @@ def test_the_lookup_of_an_invalid_address_is_422(admin_client, organisation):
 
 
 @pytest.mark.django_db
-def test_the_role_step_offers_the_three_member_roles_with_their_descriptions(
+def test_the_role_step_offers_the_three_staff_roles_with_their_descriptions(
     admin_client, organisation
 ):
     UserFactory(email="ada@example.com")
@@ -3303,7 +3454,7 @@ def test_submitting_without_confirmation_shows_the_confirmation_and_writes_nothi
 ):
     UserFactory(email="ada@example.com", first_name="Ada", last_name="Lovelace")
     roles_before = ObjectRoleAssignment.objects.count()
-    members_before = OrganisationMember.objects.count()
+    members_before = StaffMember.objects.count()
     config = get_role_config(organisation.site.name)["organisation_admin"]
 
     response = _submit_role(
@@ -3317,7 +3468,7 @@ def test_submitting_without_confirmation_shows_the_confirmation_and_writes_nothi
     assert "Scope: Whole organisation." in text
     assert (
         ObjectRoleAssignment.objects.count(),
-        OrganisationMember.objects.count(),
+        StaffMember.objects.count(),
     ) == (
         roles_before,
         members_before,
@@ -3353,7 +3504,7 @@ def test_confirming_grants_organisation_admin_and_fires_member_changed(
 
     trigger = json.loads(response["HX-Trigger"])
     assert response.status_code == 204
-    assert trigger[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert trigger[STAFF_CHANGED] == {"ids": [str(user.pk)]}
     assert ObjectRoleAssignment.objects.filter(
         user=user, role="organisation_admin", object_id=str(organisation.pk)
     ).exists()
@@ -3576,9 +3727,11 @@ def test_the_confirmation_for_a_suspended_member_says_the_role_waits_for_reactiv
     admin_client, organisation
 ):
     cohort = CohortFactory(organisation=organisation)
-    inactive_member = UserFactory(email="ada@example.com")
-    assign_role(UserFactory(superuser=True), inactive_member, "cohort_viewer", cohort)
-    OrganisationMember.objects.filter(user=inactive_member).update(is_active=False)
+    inactive_staff_member = UserFactory(email="ada@example.com")
+    assign_role(
+        UserFactory(superuser=True), inactive_staff_member, "cohort_viewer", cohort
+    )
+    StaffMember.objects.filter(user=inactive_staff_member).update(is_active=False)
 
     text = _text(
         _submit_role(
@@ -3588,7 +3741,7 @@ def test_the_confirmation_for_a_suspended_member_says_the_role_waits_for_reactiv
     _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
 
     assert "takes effect only once they are reactivated" in text
-    assert not OrganisationMember.objects.get(user=inactive_member).is_active
+    assert not StaffMember.objects.get(user=inactive_staff_member).is_active
 
 
 @pytest.mark.django_db
@@ -3605,9 +3758,7 @@ def test_a_grant_to_someone_with_no_member_row_creates_an_active_one(
     _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
 
     assert "Adding this role creates one" in text
-    assert OrganisationMember.objects.get(
-        user=user, organisation=organisation
-    ).is_active
+    assert StaffMember.objects.get(user=user, organisation=organisation).is_active
 
 
 @pytest.mark.django_db
@@ -3617,7 +3768,7 @@ def test_a_cohort_admin_reaching_the_add_member_url_gets_404(
     cohort = CohortFactory(organisation=organisation)
     client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
 
-    response = client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+    response = client.get(_add_staff_member_url(organisation), HTTP_HX_REQUEST="true")
 
     assert response.status_code == 404
 
@@ -3638,8 +3789,8 @@ def test_the_empty_members_page_offers_add_member_in_the_header_and_the_empty_st
     )
 
     header, _, empty_state = html.partition("No staff yet.")
-    assert "/staff/__actions/add_member" in header
-    assert "/staff/__actions/add_member" in empty_state
+    assert "/staff/__actions/add_staff_member" in header
+    assert "/staff/__actions/add_staff_member" in empty_state
 
 
 @pytest.mark.django_db
@@ -3648,7 +3799,7 @@ def test_the_members_page_header_holds_the_add_member_trigger(
 ):
     html = admin_client.get(_interface_url(organisation.slug, "staff")).content.decode()
 
-    assert "/staff/__actions/add_member" in html
+    assert "/staff/__actions/add_staff_member" in html
 
 
 @pytest.mark.django_db
@@ -3669,7 +3820,7 @@ def test_a_site_admin_with_nothing_to_grant_sees_no_add_member_trigger(
         .content.decode()
     )
 
-    assert "/staff/__actions/add_member" not in html
+    assert "/staff/__actions/add_staff_member" not in html
 
 
 def _cohort(organisation: Organisation, **kwargs: str) -> Cohort:
@@ -3691,7 +3842,7 @@ def _cohort_post(
     }
     if confirmed:
         data["confirmed"] = "1"
-    return _post(client, _add_member_url(organisation), data)
+    return _post(client, _add_staff_member_url(organisation), data)
 
 
 @pytest.mark.django_db
@@ -3888,7 +4039,7 @@ def _remove_role_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "staff/__actions/deactivate_role")
 
 
-def _member_holding(
+def _staff_member_holding(
     role: str, target: Organisation | Cohort | list[Cohort], **fields: str
 ) -> User:
     user = cast(User, UserFactory(**fields))
@@ -3923,7 +4074,7 @@ def test_the_remove_confirmation_names_the_person_the_role_and_the_scope(
     admin_client, organisation
 ):
     cohort = _cohort(organisation, name="Evening group")
-    user = _member_holding(
+    user = _staff_member_holding(
         "cohort_admin", cohort, first_name="Ada", last_name="Lovelace"
     )
 
@@ -3947,7 +4098,7 @@ def test_the_remove_confirmation_names_every_cohort_without_truncating(
         _cohort(organisation, name="Cohort B"),
         _cohort(organisation, name="Cohort C"),
     ]
-    user = _member_holding("cohort_admin", cohorts)
+    user = _staff_member_holding("cohort_admin", cohorts)
 
     text = _text(_remove_dialog(admin_client, organisation, user, "cohort_admin"))
 
@@ -3959,7 +4110,7 @@ def test_the_remove_confirmation_lists_what_the_person_keeps(
     admin_client, organisation
 ):
     cohort = _cohort(organisation, name="Evening group")
-    user = _member_holding("cohort_admin", cohort)
+    user = _staff_member_holding("cohort_admin", cohort)
     assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
     LearnerFactory(user=user, organisation=organisation)
 
@@ -3976,7 +4127,7 @@ def test_the_remove_confirmation_loads_the_persons_roles_once(
     admin_client, organisation, monkeypatch
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_admin", cohort)
+    user = _staff_member_holding("cohort_admin", cohort)
     assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
     calls: list[User] = []
     real_entries = current_role_entries
@@ -3998,7 +4149,7 @@ def test_the_remove_confirmation_loads_the_persons_roles_once(
 
 @pytest.mark.django_db
 def test_the_remove_confirmation_writes_nothing(admin_client, organisation):
-    user = _member_holding("cohort_admin", _cohort(organisation))
+    user = _staff_member_holding("cohort_admin", _cohort(organisation))
     before = _active_roles(user)
 
     _remove_dialog(admin_client, organisation, user, "cohort_admin")
@@ -4011,13 +4162,13 @@ def test_a_confirmed_removal_ends_the_role_on_every_cohort_of_the_entry(
     admin_client, organisation
 ):
     cohorts = [_cohort(organisation), _cohort(organisation)]
-    user = _member_holding("cohort_viewer", cohorts)
+    user = _staff_member_holding("cohort_viewer", cohorts)
 
     response = _remove(admin_client, organisation, user, "cohort_viewer")
 
     assert response.status_code == 204
     assert _active_roles(user) == set()
-    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
 
 
 def _reach_only(monkeypatch, *cohorts: Cohort) -> None:
@@ -4034,7 +4185,7 @@ def test_a_confirmed_removal_leaves_a_cohort_outside_the_grantors_reach(
 ):
     reachable = _cohort(organisation)
     unreachable = _cohort(organisation)
-    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    user = _staff_member_holding("cohort_viewer", [reachable, unreachable])
     _reach_only(monkeypatch, reachable)
 
     response = _remove(admin_client, organisation, user, "cohort_viewer")
@@ -4049,7 +4200,7 @@ def test_the_remove_confirmation_names_the_cohort_that_stays_out_of_reach(
 ):
     reachable = _cohort(organisation, name="Reachable")
     unreachable = _cohort(organisation, name="Beyond reach")
-    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    user = _staff_member_holding("cohort_viewer", [reachable, unreachable])
     _reach_only(monkeypatch, reachable)
 
     text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
@@ -4066,7 +4217,7 @@ def test_a_removal_with_no_cohort_in_reach_is_refused_and_writes_nothing(
     admin_client, organisation, monkeypatch
 ):
     unreachable = _cohort(organisation)
-    user = _member_holding("cohort_viewer", unreachable)
+    user = _staff_member_holding("cohort_viewer", unreachable)
     _reach_only(monkeypatch, _cohort(organisation))
     before = _active_roles(user)
 
@@ -4083,22 +4234,20 @@ def test_a_confirmed_removal_leaves_the_other_roles_and_the_member_row(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_admin", cohort)
+    user = _staff_member_holding("cohort_admin", cohort)
     assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
 
     _remove(admin_client, organisation, user, "cohort_admin")
 
     assert _active_roles(user) == {("cohort_viewer", str(cohort.pk))}
-    assert OrganisationMember.objects.get(
-        user=user, organisation=organisation
-    ).is_active
+    assert StaffMember.objects.get(user=user, organisation=organisation).is_active
 
 
 @pytest.mark.django_db
 def test_the_remove_confirmation_for_a_site_level_target_says_their_access_is_unaffected(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
     assign_role(UserFactory(superuser=True), user, "site_admin", organisation.site)
 
     text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
@@ -4110,7 +4259,7 @@ def test_the_remove_confirmation_for_a_site_level_target_says_their_access_is_un
 def test_an_organisation_admin_removing_the_last_organisation_admin_is_422(
     admin_client, organisation, monkeypatch
 ):
-    sole = _member_holding("organisation_admin", organisation)
+    sole = _staff_member_holding("organisation_admin", organisation)
     monkeypatch.setattr(
         "freedom_ls.learner_management.role_assignment.is_last_organisation_admin",
         lambda *args: True,
@@ -4127,7 +4276,7 @@ def test_an_organisation_admin_removing_the_last_organisation_admin_is_422(
 def test_a_site_admin_removing_the_last_organisation_admin_is_warned_then_succeeds(
     mock_site_context, logged_in_client, organisation
 ):
-    sole = _member_holding(
+    sole = _staff_member_holding(
         "organisation_admin", organisation, first_name="Ada", last_name="Lovelace"
     )
     site_admin = UserFactory(staff=True)
@@ -4148,7 +4297,7 @@ def test_a_site_admin_removing_the_last_organisation_admin_is_warned_then_succee
 def test_the_warning_is_absent_when_another_organisation_admin_remains(
     admin_client, organisation
 ):
-    other = _member_holding("organisation_admin", organisation)
+    other = _staff_member_holding("organisation_admin", organisation)
 
     text = _text(
         _remove_dialog(admin_client, organisation, other, "organisation_admin")
@@ -4174,7 +4323,7 @@ def test_removing_your_own_role_is_422_with_the_self_message(
 def test_removing_a_role_the_user_does_not_hold_answers_the_unavailable_fragment(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
 
     response = _remove(admin_client, organisation, user, "cohort_admin")
 
@@ -4197,7 +4346,7 @@ def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
     admin_client, organisation, monkeypatch
 ):
     cohorts = [_cohort(organisation), _cohort(organisation)]
-    user = _member_holding("cohort_viewer", cohorts)
+    user = _staff_member_holding("cohort_viewer", cohorts)
     before = _active_roles(user)
     real_remove_role = deactivate_role
     calls: list[Cohort] = []
@@ -4220,7 +4369,7 @@ def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
 
 @pytest.mark.django_db
 def test_the_remove_confirmation_escapes_the_persons_name(admin_client, organisation):
-    user = _member_holding(
+    user = _staff_member_holding(
         "cohort_viewer", _cohort(organisation), first_name="<b>Bold</b>"
     )
 
@@ -4278,7 +4427,7 @@ def test_the_change_dialog_ticks_the_cohorts_the_person_holds(
 ):
     held = _cohort(organisation, name="Held group")
     free = _cohort(organisation, name="Free group")
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
 
     response = _change_dialog(admin_client, organisation, user)
 
@@ -4292,7 +4441,7 @@ def test_a_held_cohort_outside_the_grantors_reach_is_listed_read_only(
 ):
     reachable = _cohort(organisation, name="Reachable")
     unreachable = _cohort(organisation, name="Beyond reach")
-    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    user = _staff_member_holding("cohort_viewer", [reachable, unreachable])
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.grantable_roles",
         lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
@@ -4308,7 +4457,7 @@ def test_a_held_cohort_outside_the_grantors_reach_is_listed_read_only(
 def test_an_inactive_held_cohort_is_listed_read_only(admin_client, organisation):
     active = _cohort(organisation)
     dormant = _cohort(organisation, name="Dormant group")
-    user = _member_holding("cohort_viewer", [active, dormant])
+    user = _staff_member_holding("cohort_viewer", [active, dormant])
     Cohort.objects.filter(pk=dormant.pk).update(is_active=False)
 
     response = _change_dialog(admin_client, organisation, user)
@@ -4321,7 +4470,7 @@ def test_an_inactive_held_cohort_is_listed_read_only(admin_client, organisation)
 def test_an_inactive_held_cohort_is_untouched_by_a_change(admin_client, organisation):
     active = _cohort(organisation)
     dormant = _cohort(organisation)
-    user = _member_holding("cohort_viewer", [active, dormant])
+    user = _staff_member_holding("cohort_viewer", [active, dormant])
     Cohort.objects.filter(pk=dormant.pk).update(is_active=False)
 
     _change(admin_client, organisation, user, [])
@@ -4335,7 +4484,7 @@ def test_a_held_cohort_outside_the_grantors_reach_is_untouched_by_a_change(
 ):
     reachable = _cohort(organisation)
     unreachable = _cohort(organisation)
-    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    user = _staff_member_holding("cohort_viewer", [reachable, unreachable])
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.grantable_roles",
         lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
@@ -4352,7 +4501,7 @@ def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
 ):
     held = _cohort(organisation)
     added = _cohort(organisation, name="Newly given")
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
 
     response = _change(admin_client, organisation, user, [held, added], confirmed=False)
 
@@ -4368,7 +4517,7 @@ def test_adding_a_cohort_held_with_a_stronger_role_is_no_widening(
 ):
     held = _cohort(organisation)
     administered = _cohort(organisation, name="Already run")
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
     assign_role(UserFactory(superuser=True), user, "cohort_admin", administered)
 
     response = _change(
@@ -4386,7 +4535,7 @@ def test_the_confirmation_for_a_removed_cohort_names_the_loss(
 ):
     kept = _cohort(organisation)
     dropped = _cohort(organisation, name="Let go")
-    user = _member_holding("cohort_viewer", [kept, dropped])
+    user = _staff_member_holding("cohort_viewer", [kept, dropped])
 
     response = _change(admin_client, organisation, user, [kept], confirmed=False)
 
@@ -4402,7 +4551,7 @@ def test_the_confirmation_for_an_added_and_a_removed_cohort_names_both(
 ):
     held = _cohort(organisation, name="Dropped one")
     added = _cohort(organisation, name="Added one")
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
 
     response = _change(admin_client, organisation, user, [added], confirmed=False)
 
@@ -4416,7 +4565,7 @@ def test_the_confirmation_for_every_cohort_removed_uses_the_remove_wording(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_viewer", cohort)
+    user = _staff_member_holding("cohort_viewer", cohort)
 
     response = _change(admin_client, organisation, user, [], confirmed=False)
 
@@ -4430,7 +4579,7 @@ def test_the_confirmation_for_every_cohort_removed_uses_the_remove_wording(
 def test_a_confirmed_addition_grants_the_cohort(admin_client, organisation):
     held = _cohort(organisation)
     added = _cohort(organisation)
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
 
     _change(admin_client, organisation, user, [held, added])
 
@@ -4444,7 +4593,7 @@ def test_a_confirmed_addition_grants_the_cohort(admin_client, organisation):
 def test_a_confirmed_removal_deactivates_the_cohort(admin_client, organisation):
     kept = _cohort(organisation)
     dropped = _cohort(organisation)
-    user = _member_holding("cohort_viewer", [kept, dropped])
+    user = _staff_member_holding("cohort_viewer", [kept, dropped])
 
     _change(admin_client, organisation, user, [kept])
 
@@ -4457,7 +4606,7 @@ def test_a_confirmed_change_with_an_addition_and_a_removal_does_both(
 ):
     dropped = _cohort(organisation)
     added = _cohort(organisation)
-    user = _member_holding("cohort_viewer", dropped)
+    user = _staff_member_holding("cohort_viewer", dropped)
 
     _change(admin_client, organisation, user, [added])
 
@@ -4469,7 +4618,7 @@ def test_removing_every_cohort_leaves_no_active_assignment_for_the_role(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_viewer", cohort)
+    user = _staff_member_holding("cohort_viewer", cohort)
     assign_role(UserFactory(superuser=True), user, "cohort_admin", cohort)
 
     _change(admin_client, organisation, user, [])
@@ -4479,12 +4628,12 @@ def test_removing_every_cohort_leaves_no_active_assignment_for_the_role(
 
 @pytest.mark.django_db
 def test_a_confirmed_change_answers_204_with_member_changed(admin_client, organisation):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
 
     response = _change(admin_client, organisation, user, [_cohort(organisation)])
 
     assert response.status_code == 204
-    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
 
 
 @pytest.mark.django_db
@@ -4492,7 +4641,7 @@ def test_an_unconfirmed_change_leaves_every_assignment_unchanged(
     admin_client, organisation
 ):
     held = _cohort(organisation)
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
     before = _active_roles(user)
 
     _change(admin_client, organisation, user, [_cohort(organisation)], confirmed=False)
@@ -4503,7 +4652,7 @@ def test_an_unconfirmed_change_leaves_every_assignment_unchanged(
 @pytest.mark.django_db
 def test_an_unchanged_selection_is_422(admin_client, organisation):
     held = _cohort(organisation)
-    user = _member_holding("cohort_viewer", held)
+    user = _staff_member_holding("cohort_viewer", held)
 
     response = _change(admin_client, organisation, user, [held], confirmed=False)
 
@@ -4517,7 +4666,7 @@ def test_a_cohort_outside_the_offered_set_answers_the_unavailable_fragment(
 ):
     reachable = _cohort(organisation)
     outside = _cohort(organisation)
-    user = _member_holding("cohort_viewer", reachable)
+    user = _staff_member_holding("cohort_viewer", reachable)
     monkeypatch.setattr(
         "freedom_ls.educator_interface.actions.grantable_roles",
         lambda *args: [GrantableRole("cohort_viewer", (reachable,))],
@@ -4552,8 +4701,8 @@ def test_the_confirmation_for_a_person_with_no_member_row_says_the_grant_creates
 ):
     held = _cohort(organisation)
     added = _cohort(organisation)
-    user = _member_holding("cohort_viewer", held)
-    OrganisationMember.objects.filter(user=user).delete()
+    user = _staff_member_holding("cohort_viewer", held)
+    StaffMember.objects.filter(user=user).delete()
 
     response = _change(admin_client, organisation, user, [held, added], confirmed=False)
 
@@ -4566,8 +4715,8 @@ def test_the_confirmation_for_a_suspended_member_says_the_cohorts_wait_for_react
 ):
     held = _cohort(organisation)
     added = _cohort(organisation)
-    user = _member_holding("cohort_viewer", held)
-    OrganisationMember.objects.filter(user=user).update(is_active=False)
+    user = _staff_member_holding("cohort_viewer", held)
+    StaffMember.objects.filter(user=user).update(is_active=False)
 
     text = _text(
         _change(admin_client, organisation, user, [held, added], confirmed=False)
@@ -4581,7 +4730,7 @@ def test_the_confirmation_for_a_suspended_member_says_the_cohorts_wait_for_react
 def test_a_change_for_an_organisation_admin_role_answers_the_unavailable_fragment(
     admin_client, organisation
 ):
-    user = _member_holding("organisation_admin", organisation)
+    user = _staff_member_holding("organisation_admin", organisation)
 
     response = _change(
         admin_client, organisation, user, [_cohort(organisation)], "organisation_admin"
@@ -4596,7 +4745,7 @@ def test_a_refusal_partway_through_a_change_keeps_every_assignment(
 ):
     dropped = _cohort(organisation)
     added = _cohort(organisation)
-    user = _member_holding("cohort_viewer", dropped)
+    user = _staff_member_holding("cohort_viewer", dropped)
     before = _active_roles(user)
 
     def refuse(*args: object, **kwargs: object) -> None:
@@ -4626,10 +4775,10 @@ def _state_post(client: Client, organisation: Organisation, user: User, action: 
     return _post(client, _state_url(organisation, action), {"user": str(user.pk)})
 
 
-def _member_row(user: User, organisation: Organisation) -> OrganisationMember:
+def _staff_member_row(user: User, organisation: Organisation) -> StaffMember:
     return cast(
-        OrganisationMember,
-        OrganisationMember.objects.get(user=user, organisation=organisation),
+        StaffMember,
+        StaffMember.objects.get(user=user, organisation=organisation),
     )
 
 
@@ -4638,17 +4787,17 @@ def _member_row(user: User, organisation: Organisation) -> OrganisationMember:
 def test_the_state_dialogs_leave_the_member_row_unchanged(
     admin_client, organisation, action
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
-    before = _member_row(user, organisation).is_active
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    before = _staff_member_row(user, organisation).is_active
 
     _state_dialog(admin_client, organisation, user, action)
 
-    assert _member_row(user, organisation).is_active == before
+    assert _staff_member_row(user, organisation).is_active == before
 
 
 @pytest.mark.django_db
 def test_the_suspend_dialog_says_they_keep_their_roles(admin_client, organisation):
-    user = _member_holding(
+    user = _staff_member_holding(
         "cohort_viewer", _cohort(organisation), first_name="Ada", last_name="Lovelace"
     )
 
@@ -4666,15 +4815,15 @@ def test_suspending_stops_a_cohort_capability_and_answers_204(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_viewer", cohort)
+    user = _staff_member_holding("cohort_viewer", cohort)
     capability = "freedom_ls_learner_management.view_cohort"
     assert can(user, capability, cohort)
 
     response = _state_post(admin_client, organisation, user, "deactivate")
 
     assert response.status_code == 204
-    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
-    assert not _member_row(user, organisation).is_active
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
+    assert not _staff_member_row(user, organisation).is_active
     assert not can(user, capability, cohort)
 
 
@@ -4683,13 +4832,13 @@ def test_reactivating_restores_the_capability_and_answers_204(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
-    user = _member_holding("cohort_viewer", cohort)
-    OrganisationMember.objects.filter(user=user).update(is_active=False)
+    user = _staff_member_holding("cohort_viewer", cohort)
+    StaffMember.objects.filter(user=user).update(is_active=False)
 
     response = _state_post(admin_client, organisation, user, "reactivate")
 
     assert response.status_code == 204
-    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
     assert can(user, "freedom_ls_learner_management.view_cohort", cohort)
 
 
@@ -4697,13 +4846,13 @@ def test_reactivating_restores_the_capability_and_answers_204(
 def test_the_reactivate_dialog_lists_the_roles_that_take_effect_again(
     admin_client, organisation
 ):
-    user = _member_holding(
+    user = _staff_member_holding(
         "cohort_viewer",
         _cohort(organisation, name="Evening group"),
         first_name="Ada",
         last_name="Lovelace",
     )
-    OrganisationMember.objects.filter(user=user).update(is_active=False)
+    StaffMember.objects.filter(user=user).update(is_active=False)
 
     text = _text(_state_dialog(admin_client, organisation, user, "reactivate"))
 
@@ -4715,26 +4864,26 @@ def test_the_reactivate_dialog_lists_the_roles_that_take_effect_again(
 def test_reactivating_a_member_with_no_row_creates_an_active_one(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
-    OrganisationMember.objects.filter(user=user).delete()
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    StaffMember.objects.filter(user=user).delete()
 
     response = _state_post(admin_client, organisation, user, "reactivate")
 
     assert response.status_code == 204
-    assert _member_row(user, organisation).is_active
+    assert _staff_member_row(user, organisation).is_active
 
 
 @pytest.mark.django_db
 def test_reactivating_a_member_with_no_row_writes_member_reactivated(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
-    OrganisationMember.objects.filter(user=user).delete()
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    StaffMember.objects.filter(user=user).delete()
 
     _state_post(admin_client, organisation, user, "reactivate")
 
-    entry = AuditLogEntry.unscoped.get(action="member.reactivated")
-    assert entry.target == _member_row(user, organisation)
+    entry = AuditLogEntry.unscoped.get(action="staff_member.reactivated")
+    assert entry.target == _staff_member_row(user, organisation)
     assert entry.subjects[1:] == [subject_key(user)]
 
 
@@ -4742,7 +4891,7 @@ def test_reactivating_a_member_with_no_row_writes_member_reactivated(
 def test_an_organisation_admin_suspending_the_last_organisation_admin_is_422(
     admin_client, organisation, monkeypatch
 ):
-    sole = _member_holding("organisation_admin", organisation, first_name="Ada")
+    sole = _staff_member_holding("organisation_admin", organisation, first_name="Ada")
     monkeypatch.setattr(
         "freedom_ls.learner_management.role_assignment.is_last_organisation_admin",
         lambda *args: True,
@@ -4752,14 +4901,14 @@ def test_an_organisation_admin_suspending_the_last_organisation_admin_is_422(
 
     assert response.status_code == 422
     assert "Ada is this organisation's only organisation admin." in _text(response)
-    assert _member_row(sole, organisation).is_active
+    assert _staff_member_row(sole, organisation).is_active
 
 
 @pytest.mark.django_db
 def test_a_site_admin_is_warned_in_the_suspend_dialog_and_succeeds(
     mock_site_context, logged_in_client, organisation
 ):
-    sole = _member_holding(
+    sole = _staff_member_holding(
         "organisation_admin", organisation, first_name="Ada", last_name="Lovelace"
     )
     site_admin = UserFactory(staff=True)
@@ -4773,14 +4922,14 @@ def test_a_site_admin_is_warned_in_the_suspend_dialog_and_succeeds(
 
     assert "Ada Lovelace is the only organisation admin." in dialog
     assert response.status_code == 204
-    assert not _member_row(sole, organisation).is_active
+    assert not _staff_member_row(sole, organisation).is_active
 
 
 @pytest.mark.django_db
 def test_the_suspend_dialog_has_no_warning_while_another_organisation_admin_remains(
     admin_client, organisation
 ):
-    other = _member_holding("organisation_admin", organisation)
+    other = _staff_member_holding("organisation_admin", organisation)
 
     text = _text(_state_dialog(admin_client, organisation, other, "deactivate"))
 
@@ -4791,8 +4940,8 @@ def test_the_suspend_dialog_has_no_warning_while_another_organisation_admin_rema
 def test_a_stale_suspend_of_an_inactive_row_answers_the_unavailable_fragment(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
-    OrganisationMember.objects.filter(user=user).update(is_active=False)
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    StaffMember.objects.filter(user=user).update(is_active=False)
 
     response = _state_post(admin_client, organisation, user, "deactivate")
 
@@ -4804,8 +4953,8 @@ def test_a_stale_suspend_of_an_inactive_row_answers_the_unavailable_fragment(
 def test_a_stale_suspend_of_a_member_with_no_row_answers_the_unavailable_fragment(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
-    OrganisationMember.objects.filter(user=user).delete()
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    StaffMember.objects.filter(user=user).delete()
 
     response = _state_post(admin_client, organisation, user, "deactivate")
 
@@ -4816,7 +4965,7 @@ def test_a_stale_suspend_of_a_member_with_no_row_answers_the_unavailable_fragmen
 def test_a_stale_reactivate_of_an_active_row_answers_the_unavailable_fragment(
     admin_client, organisation
 ):
-    user = _member_holding("cohort_viewer", _cohort(organisation))
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
 
     response = _state_post(admin_client, organisation, user, "reactivate")
 
@@ -4834,7 +4983,7 @@ def test_suspending_yourself_is_422_with_the_self_message(
 
     assert response.status_code == 422
     assert "You can't change your own roles." in _text(response)
-    assert _member_row(me, organisation).is_active
+    assert _staff_member_row(me, organisation).is_active
 
 
 @pytest.mark.django_db
@@ -4850,7 +4999,7 @@ def test_a_state_change_for_a_non_member_answers_the_unavailable_fragment(
 
 @pytest.mark.django_db
 def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
-    user = _member_holding(
+    user = _staff_member_holding(
         "cohort_viewer", _cohort(organisation), first_name="<b>Bold</b>"
     )
 
@@ -4862,18 +5011,18 @@ def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
     assert "&lt;b&gt;Bold&lt;/b&gt;" in html
 
 
-def _cohort_add_member_url(organisation: Organisation, cohort: Cohort) -> str:
+def _cohort_add_staff_member_url(organisation: Organisation, cohort: Cohort) -> str:
     return _cohort_url(
         organisation,
         cohort,
-        "/__tabs/settings/__actions/add_member",
+        "/__tabs/settings/__actions/add_staff_member",
     )
 
 
 def _cohort_overview_lookup(client: Client, organisation: Organisation, cohort: Cohort):
     return _post(
         client,
-        _cohort_add_member_url(organisation, cohort),
+        _cohort_add_staff_member_url(organisation, cohort),
         {"step": "lookup", "email": "ada@example.com"},
     )
 
@@ -4882,7 +5031,7 @@ def _cohort_overview_confirm(
     client: Client, organisation: Organisation, cohort: Cohort, cohorts: list[Cohort]
 ):
     return client.post(
-        _cohort_add_member_url(organisation, cohort),
+        _cohort_add_staff_member_url(organisation, cohort),
         {
             "step": "submit",
             "email": "ada@example.com",
@@ -4961,7 +5110,7 @@ def test_the_cohort_confirmation_names_the_cohort_as_the_scope(
     UserFactory(email="ada@example.com")
 
     response = admin_client.post(
-        _cohort_add_member_url(organisation, cohort),
+        _cohort_add_staff_member_url(organisation, cohort),
         {
             "step": "submit",
             "email": "ada@example.com",
@@ -4995,7 +5144,7 @@ def test_the_settings_tab_offers_add_member_to_an_organisation_admin(
         _cohort_url(organisation, cohort, "/__tabs/settings")
     ).content.decode()
 
-    assert "/__tabs/settings/__actions/add_member" in html
+    assert "/__tabs/settings/__actions/add_staff_member" in html
 
 
 @pytest.mark.django_db
@@ -5014,7 +5163,9 @@ def test_the_settings_tab_is_hidden_from_a_cohort_admin(
 
 @pytest.mark.django_db
 def test_the_members_dialog_is_titled_add_a_member(admin_client, organisation):
-    response = admin_client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+    response = admin_client.get(
+        _add_staff_member_url(organisation), HTTP_HX_REQUEST="true"
+    )
 
     document = lxml.html.fromstring(response.content.decode())
     (title,) = document.cssselect("#app-modal-title")
@@ -5028,7 +5179,7 @@ def test_the_cohort_dialog_email_step_is_titled_with_the_cohort(
     cohort = _cohort(organisation, name="Spring")
 
     response = admin_client.get(
-        _cohort_add_member_url(organisation, cohort), HTTP_HX_REQUEST="true"
+        _cohort_add_staff_member_url(organisation, cohort), HTTP_HX_REQUEST="true"
     )
 
     document = lxml.html.fromstring(response.content.decode())
@@ -5579,7 +5730,7 @@ def _reason_unregister_learner(organisation: Organisation) -> _DialogRequest:
 
 
 def _reason_remove_role(organisation: Organisation) -> _DialogRequest:
-    user = _member_holding("cohort_admin", _cohort(organisation))
+    user = _staff_member_holding("cohort_admin", _cohort(organisation))
     return _remove_role_url(organisation), {
         "user": str(user.pk),
         "role": "cohort_admin",
@@ -5587,7 +5738,7 @@ def _reason_remove_role(organisation: Organisation) -> _DialogRequest:
 
 
 def _reason_suspend_member(organisation: Organisation) -> _DialogRequest:
-    user = _member_holding("cohort_viewer", _cohort(organisation))
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
     return _state_url(organisation, "deactivate"), {"user": str(user.pk)}
 
 
@@ -6040,8 +6191,8 @@ def test_classify_all_counts_changed_skipped_and_not_permitted(
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     member = _bulk_learner(organisation=organisation)
     outsider = _bulk_learner(organisation=organisation)
-    inactive_member = _bulk_learner(organisation=organisation, is_active=False)
-    for learner in (member, inactive_member):
+    inactive_staff_member = _bulk_learner(organisation=organisation, is_active=False)
+    for learner in (member, inactive_staff_member):
         CohortMembershipFactory(cohort=cohort, learner=learner)
     educator = UserFactory(staff=True)
     assign_object_role(educator, cohort, cohort_learner_manager_role)
@@ -6049,7 +6200,9 @@ def test_classify_all_counts_changed_skipped_and_not_permitted(
 
     outcomes = action.classify_all(
         _scoped_request(educator, organisation),
-        Learner.objects.filter(pk__in=[member.pk, outsider.pk, inactive_member.pk]),
+        Learner.objects.filter(
+            pk__in=[member.pk, outsider.pk, inactive_staff_member.pk]
+        ),
         {},
     )
 
@@ -6058,7 +6211,7 @@ def test_classify_all_counts_changed_skipped_and_not_permitted(
         str(outsider.pk): BulkOutcome(
             "skipped", "learners you don't have permission to change"
         ),
-        str(inactive_member.pk): BulkOutcome("skipped", "already inactive"),
+        str(inactive_staff_member.pk): BulkOutcome("skipped", "already inactive"),
     }
 
 
@@ -7710,11 +7863,11 @@ def _single_row_dialog_url(name: str, organisation: Organisation) -> str:
     if name == "deactivate_cohort_registration":
         registration = CohortCourseRegistrationFactory(cohort=cohort)
         return _unregister_url(organisation, cohort, registration)
-    member = _member_holding("cohort_viewer", cohort)
+    member = _staff_member_holding("cohort_viewer", cohort)
     if name == "deactivate_member":
         return f"{_state_url(organisation, 'deactivate')}?user={member.pk}"
     if name == "reactivate_member":
-        OrganisationMember.objects.filter(user=member).update(is_active=False)
+        StaffMember.objects.filter(user=member).update(is_active=False)
         return f"{_state_url(organisation, 'reactivate')}?user={member.pk}"
     return f"{_remove_role_url(organisation)}?user={member.pk}&role=cohort_viewer"
 

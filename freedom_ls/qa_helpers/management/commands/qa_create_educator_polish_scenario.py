@@ -49,7 +49,7 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
-    OrganisationMember,
+    StaffMember,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
@@ -129,7 +129,7 @@ def _quiet_organisation(site: Site) -> Organisation:
     org = _ensure_organisation(site, QUIET_ORG_NAME, QUIET_ORG_SLUG)
     cohort = _ensure_cohort(site, org, QUIET_COHORT)
     viewer = User.objects.get(email=COHORT_VIEWER_EMAIL)
-    OrganisationMember._base_manager.update_or_create(
+    StaffMember._base_manager.update_or_create(
         site=site, user=viewer, organisation=org, defaults={"is_active": True}
     )
     assign_object_role(viewer, cohort, "cohort_viewer")
