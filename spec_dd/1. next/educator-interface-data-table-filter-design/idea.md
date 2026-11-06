@@ -1,0 +1,1 @@
+Currently, in order to filter a data table, there is a drop-down with all of the filters inside it, and this can be quite a long thing to do. It would be better to have filter buttons per... I don't know how to make the UX look good, so this is maybe we need to figure out a nice way to do it before we implement it.
