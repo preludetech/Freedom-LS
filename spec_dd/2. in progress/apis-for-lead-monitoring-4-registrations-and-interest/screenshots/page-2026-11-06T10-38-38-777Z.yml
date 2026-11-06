@@ -1,0 +1,64 @@
+- generic [active] [ref=f26e1]:
+  - banner [ref=f26e2]:
+    - link [ref=f26e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f26e4]
+      - heading "FirstClass" [level=1] [ref=f26e5]
+    - navigation [ref=f26e6]:
+      - generic [ref=f26e7]:
+        - generic [ref=f26e8]:
+          - button "Notifications, 2 new" [ref=f26e9]
+          - status:
+            - generic [ref=f26e13]: Notifications, 2 new
+            - generic [aria-hidden] [ref=f26e14]: "2"
+        - button "Open user menu for Sol Solo" [ref=f26e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f26e17]: SS
+  - generic:
+    - status
+    - alert
+  - main [ref=f26e18]:
+    - generic [ref=f26e20]:
+      - dialog "Course outline" [ref=f26e21]:
+        - generic [ref=f26e24]:
+          - generic [ref=f26e25]:
+            - generic [ref=f26e26]:
+              - generic [aria-hidden] [ref=f26e27]: "NO"
+              - generic [ref=f26e28]: Northside
+            - paragraph [ref=f26e29]: Course outline
+            - paragraph [ref=f26e30]: Northside QA Course
+            - generic [ref=f26e32]:
+              - progressbar "Progress for Northside QA Course" [ref=f26e33]: 0%
+              - generic [ref=f26e34]: 0% complete
+          - navigation "Course outline" [ref=f26e35]:
+            - list [ref=f26e36]:
+              - listitem [ref=f26e37]:
+                - generic [ref=f26e38]:
+                  - generic [ref=f26e39]: "1."
+                  - generic [ref=f26e40]: In progress
+                  - generic [ref=f26e44]: Northside QA Course - Intro Topic
+      - generic [ref=f26e45]:
+        - generic [ref=f26e47]:
+          - navigation "Breadcrumb" [ref=f26e50]:
+            - list [ref=f26e51]:
+              - listitem [ref=f26e52]:
+                - link "Northside QA Course" [ref=f26e53] [cursor=pointer]:
+                  - /url: /courses/northside-qa-course/detail/
+              - listitem [ref=f26e54]:
+                - generic [aria-hidden] [ref=f26e55]: ">"
+                - generic "Northside QA Course - Intro Topic" [ref=f26e56]
+          - heading "Northside QA Course - Intro Topic" [level=1] [ref=f26e58]
+        - generic [ref=f26e60]:
+          - generic [ref=f26e61]:
+            - heading "Welcome" [level=2] [ref=f26e62]
+            - paragraph [ref=f26e63]: This is a QA topic so the course player resolves.
+          - button "Finish Course" [ref=f26e66] [cursor=pointer]
+  - contentinfo [ref=f26e70]:
+    - generic [ref=f26e71]:
+      - paragraph [ref=f26e72]: © 2026 FirstClass
+      - navigation "Legal" [ref=f26e73]:
+        - link "Terms and Conditions" [ref=f26e74] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f26e75] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f26e76] [cursor=pointer]: apis-for-lead-monitoring-4-registrations-and-interest
+  - generic "Show toolbar" [ref=f26e78]: DJDT

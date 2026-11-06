@@ -1,0 +1,138 @@
+- generic [ref=f22e1]:
+  - banner [ref=f22e2]:
+    - link [ref=f22e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f22e4]
+      - heading "FirstClass" [level=1] [ref=f22e5]
+    - navigation [ref=f22e6]:
+      - generic [ref=f22e7]:
+        - generic [ref=f22e8]:
+          - button "Messages, none unread" [ref=f22e9]
+          - status:
+            - generic [ref=f22e13]: Messages, none unread
+        - generic [ref=f22e14]:
+          - button "Notifications, none new" [ref=f22e15]
+          - status:
+            - generic [ref=f22e19]: Notifications, none new
+        - button "Open user menu for Orla Admin" [ref=f22e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f22e22]: OA
+  - generic:
+    - status
+    - alert
+  - main [ref=f22e23]:
+    - generic [ref=f22e25]:
+      - dialog "Navigation" [ref=f22e26]:
+        - generic [ref=f22e28]:
+          - generic [ref=f22e202]:
+            - paragraph [ref=f22e203]: Organisation
+            - generic [ref=f22e204]:
+              - generic [aria-hidden] [ref=f22e205]: "N"
+              - generic "Northside" [ref=f22e206]
+          - navigation "Sections" [ref=f22e207]:
+            - heading "Teaching" [level=2] [ref=f22e208]
+            - list [ref=f22e209]:
+              - listitem [ref=f22e210]:
+                - link "Dashboard" [ref=f22e211] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/dashboard
+              - listitem [ref=f22e216]:
+                - link "Cohorts" [ref=f22e217] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/cohorts
+              - listitem [ref=f22e222]:
+                - link "Learners" [ref=f22e223] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/learners
+              - listitem [ref=f22e228]:
+                - link "Courses" [ref=f22e229] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/courses
+            - heading "Administration" [level=2] [ref=f22e234]
+            - list [ref=f22e235]:
+              - listitem [ref=f22e236]:
+                - link "Staff" [ref=f22e237] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/staff
+              - listitem [ref=f22e242]:
+                - link "Audit log" [ref=f22e243] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/audit-log
+          - generic [ref=f22e75]:
+            - generic [ref=f22e77]:
+              - generic [aria-hidden] [ref=f22e78]: OA
+              - generic [ref=f22e79]:
+                - generic [ref=f22e80]: Orla Admin
+                - generic [ref=f22e81]: org.admin@qa.test
+            - link "Account settings" [ref=f22e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f22e87]:
+        - navigation "Back" [ref=f22e248]:
+          - link "Cohorts" [ref=f22e249] [cursor=pointer]:
+            - /url: /educator/organisations/northside/cohorts
+        - generic [active] [ref=f22e253]:
+          - generic [ref=f22e255]:
+            - heading "Cohort B" [level=1] [ref=f22e260]
+            - navigation "Cohort sections" [ref=f22e261]:
+              - list [ref=f22e262]:
+                - listitem [ref=f22e263]:
+                  - link "Overview" [ref=f22e264] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/overview
+                - listitem [ref=f22e265]:
+                  - link "Learners 3" [ref=f22e266] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/learners
+                    - text: Learners
+                    - generic [ref=f22e267]: "3"
+                - listitem [ref=f22e268]:
+                  - link "Courses 1" [ref=f22e269] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/courses
+                    - text: Courses
+                    - generic [ref=f22e270]: "1"
+                - listitem [ref=f22e271]:
+                  - link "Report" [ref=f22e272] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/report
+                - listitem [ref=f22e273]:
+                  - link "Settings" [ref=f22e274] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/settings
+                - listitem [ref=f22e275]:
+                  - link "History" [ref=f22e276] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/cohorts/5ccd48ae-c0fc-4445-829c-be640cc09d19/__tabs/history
+          - generic [ref=f22e281]:
+            - heading "Courses" [level=2] [ref=f22e284]
+            - generic [ref=f22e286]:
+              - region "Cohort course registrations" [ref=f22e287]:
+                - table [ref=f22e288]:
+                  - caption [ref=f22e289]: Cohort course registrations
+                  - rowgroup [ref=f22e290]:
+                    - row [ref=f22e291]:
+                      - columnheader "Course" [ref=f22e292]
+                      - columnheader "Status" [ref=f22e293]
+                      - columnheader "Registered" [ref=f22e294]
+                      - columnheader [ref=f22e295]
+                  - rowgroup [ref=f22e296]:
+                    - row [ref=f22e297]:
+                      - cell [ref=f22e298]:
+                        - link "Course Hid" [ref=f22e299] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/courses/1c54bde5-2f75-41b4-8f12-c9bb6176bfaf
+                      - cell "Active" [ref=f22e300]
+                      - cell "5 Nov 2026, 17:25" [ref=f22e302]:
+                        - time [ref=f22e303]:
+                          - generic [ref=f22e304]: 5 Nov 2026,
+                          - generic [ref=f22e305]: 17:25
+                      - cell [ref=f22e306]:
+                        - button "Deactivate the Course Hid registration" [ref=f22e307] [cursor=pointer]: Deactivate
+                    - row [ref=f22e308]:
+                      - cell [ref=f22e309]:
+                        - link "Course Pub" [ref=f22e310] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/courses/c7eb446c-d2be-4896-9860-a05af64bba0e
+                      - cell "Inactive" [ref=f22e311]
+                      - cell "5 Nov 2026, 17:25" [ref=f22e313]:
+                        - time [ref=f22e314]:
+                          - generic [ref=f22e315]: 5 Nov 2026,
+                          - generic [ref=f22e316]: 17:25
+                      - cell [ref=f22e317]
+              - paragraph [ref=f22e319]: 2 cohort course registrations
+            - button "Register for a course" [ref=f22e322] [cursor=pointer]
+  - contentinfo [ref=f22e193]:
+    - generic [ref=f22e194]:
+      - paragraph [ref=f22e195]: © 2026 FirstClass
+      - navigation "Legal" [ref=f22e196]:
+        - link "Terms and Conditions" [ref=f22e197] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f22e198] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f22e199] [cursor=pointer]: apis-for-lead-monitoring-4-registrations-and-interest
+  - generic "Show toolbar" [ref=f22e201]: DJDT

@@ -1,4 +1,4 @@
-- generic [active] [ref=f7e1]:
+- generic [ref=f7e1]:
   - generic [ref=f7e2]:
     - navigation [ref=f7e5]:
       - generic [ref=f7e7]:
@@ -339,83 +339,127 @@
           - generic [ref=f7e284]: demodev@email.com
         - generic [ref=f7e285]: unfold_more
     - generic [ref=f7e286]:
-      - generic [ref=f7e291]:
-        - generic [ref=f7e292] [cursor=pointer]: dock_to_right
-        - heading "API administration" [level=1] [ref=f7e295]
-      - table [ref=f7e303]:
-        - caption [ref=f7e304]:
-          - link "API" [ref=f7e305] [cursor=pointer]:
-            - /url: /admin/freedom_ls_api/
-        - rowgroup [ref=f7e306]:
-          - row [ref=f7e307]:
-            - rowheader [ref=f7e308]:
-              - link "API keys" [ref=f7e309] [cursor=pointer]:
-                - /url: /admin/freedom_ls_api/apikey/
-            - cell [ref=f7e310]:
-              - link "add" [ref=f7e312] [cursor=pointer]:
-                - /url: /admin/freedom_ls_api/apikey/add/
-  - list [ref=f7e315]:
-    - listitem [ref=f7e316]:
-      - link "Hide »" [ref=f7e317] [cursor=pointer]:
+      - generic [ref=f7e290]:
+        - generic [ref=f7e291]:
+          - generic [ref=f7e292] [cursor=pointer]: dock_to_right
+          - link "arrow_back" [ref=f7e295] [cursor=pointer]:
+            - /url: /admin/freedom_ls_api/apikey/
+          - heading "API chevron_right API keys" [level=1] [ref=f7e297]:
+            - link "API" [ref=f7e298] [cursor=pointer]:
+              - /url: /admin/freedom_ls_api/
+            - generic [ref=f7e299]: chevron_right
+            - link "API keys" [ref=f7e300] [cursor=pointer]:
+              - /url: /admin/freedom_ls_api/apikey/
+        - link "add" [ref=f7e303] [cursor=pointer]:
+          - /url: /admin/freedom_ls_api/apikey/add/
+      - group [ref=f7e310]:
+        - generic [ref=f7e311]:
+          - generic [ref=f7e313]:
+            - generic [ref=f7e314]: Name*
+            - textbox "Name*" [active] [ref=f7e318]
+          - generic [ref=f7e320]:
+            - generic [ref=f7e321]: Scopes
+            - generic [ref=f7e323]:
+              - generic [ref=f7e324]:
+                - generic [ref=f7e326]:
+                  - 'checkbox "Users: User" [ref=f7e327]': check_small
+                  - generic [ref=f7e328]: "Users: User"
+                - generic [ref=f7e330]:
+                  - 'checkbox "Course applications: CourseApplication and its answers" [ref=f7e331]': check_small
+                  - generic [ref=f7e332]: "Course applications: CourseApplication and its answers"
+                - generic [ref=f7e334]:
+                  - 'checkbox "Referral data: ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount" [ref=f7e335]': check_small
+                  - generic [ref=f7e336]: "Referral data: ReferralCode, ReferralCodeHit, SignupAttribution, FirstTouchCount"
+                - generic [ref=f7e338]:
+                  - 'checkbox "Registrations and progress: LearnerCourseRegistration, CohortCourseRegistration, CourseInterest, CourseProgress" [ref=f7e339]': check_small
+                  - generic [ref=f7e340]: "Registrations and progress: LearnerCourseRegistration, CohortCourseRegistration, CourseInterest, CourseProgress"
+              - generic [ref=f7e341]: Each API scope names the data a key with it can read.
+          - generic [ref=f7e343]:
+            - generic [ref=f7e344]: Expires at
+            - generic [ref=f7e347]:
+              - generic [ref=f7e350]:
+                - textbox "Date" [ref=f7e351]
+                - generic [ref=f7e352]:
+                  - text: update |
+                  - link "calendar_today" [ref=f7e353] [cursor=pointer]:
+                    - /url: "#"
+                    - generic "Choose a Date" [ref=f7e354]: calendar_today
+                - generic [ref=f7e355]: "warning Note: You are 2 hours ahead of server time."
+              - generic [ref=f7e358]:
+                - textbox "Time" [ref=f7e359]
+                - generic [ref=f7e360]:
+                  - text: update |
+                  - link "schedule" [ref=f7e361] [cursor=pointer]:
+                    - /url: "#"
+                    - generic "Choose a Time" [ref=f7e362]: schedule
+                - generic [ref=f7e363]: "warning Note: You are 2 hours ahead of server time."
+      - generic [ref=f7e366]:
+        - button "Save" [ref=f7e367] [cursor=pointer]
+        - button "Save and continue editing" [ref=f7e368] [cursor=pointer]
+        - button "Save and add another" [ref=f7e369] [cursor=pointer]
+  - list [ref=f7e371]:
+    - listitem [ref=f7e372]:
+      - link "Hide »" [ref=f7e373] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e318]:
-      - link "Toggle Theme" [ref=f7e319] [cursor=pointer]:
+    - listitem [ref=f7e374]:
+      - link "Toggle Theme" [ref=f7e375] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e322]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e323]
-      - link "History /admin/freedom_ls_api/" [ref=f7e324] [cursor=pointer]:
+    - listitem [ref=f7e378]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e379]
+      - link "History /admin/freedom_ls_api/apikey/add/" [ref=f7e380] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e325]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e326]
-      - link "Versions Django 6.0.4" [ref=f7e327] [cursor=pointer]:
+    - listitem [ref=f7e381]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e382]
+      - link "Versions Django 6.0.4" [ref=f7e383] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e328]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e329]
-      - 'link "Time CPU: 92.25ms (126.48ms)" [ref=f7e330] [cursor=pointer]':
+    - listitem [ref=f7e384]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e385]
+      - 'link "Time CPU: 103.23ms (123.10ms)" [ref=f7e386] [cursor=pointer]':
         - /url: "#"
-    - listitem [ref=f7e331]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e332]
-      - link "Settings" [ref=f7e333] [cursor=pointer]:
+    - listitem [ref=f7e387]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e388]
+      - link "Settings" [ref=f7e389] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e334]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e335]
-      - link "Headers" [ref=f7e336] [cursor=pointer]:
+    - listitem [ref=f7e390]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e391]
+      - link "Headers" [ref=f7e392] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e337]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e338]
-      - link "Request app_index" [ref=f7e339] [cursor=pointer]:
+    - listitem [ref=f7e393]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e394]
+      - link "Request add_view" [ref=f7e395] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e340]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e341]
-      - link "SQL 6 queries in 10.51ms" [ref=f7e342] [cursor=pointer]:
+    - listitem [ref=f7e396]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e397]
+      - link "SQL 11 queries in 15.24ms" [ref=f7e398] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e343]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e344]
-      - link "Static files 15 files used" [ref=f7e345] [cursor=pointer]:
+    - listitem [ref=f7e399]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e400]
+      - link "Static files 28 files used" [ref=f7e401] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e346]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e347]
-      - link "Templates admin/app_index.html" [ref=f7e348] [cursor=pointer]:
+    - listitem [ref=f7e402]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e403]
+      - link "Templates admin/change_form.html" [ref=f7e404] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e349]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e350]
-      - link "Alerts" [ref=f7e351] [cursor=pointer]:
+    - listitem [ref=f7e405]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e406]
+      - link "Alerts" [ref=f7e407] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e352]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e353]
-      - link "Cache 0 calls in 0.00ms" [ref=f7e354] [cursor=pointer]:
+    - listitem [ref=f7e408]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e409]
+      - link "Cache 0 calls in 0.00ms" [ref=f7e410] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e355]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e356]
-      - link "Signals 128 receivers of 15 signals" [ref=f7e357] [cursor=pointer]:
+    - listitem [ref=f7e411]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e412]
+      - link "Signals 128 receivers of 15 signals" [ref=f7e413] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e358]:
-      - checkbox "Disable for next and successive requests" [checked] [ref=f7e359]
-      - link "Community" [ref=f7e360] [cursor=pointer]:
+    - listitem [ref=f7e414]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f7e415]
+      - link "Community" [ref=f7e416] [cursor=pointer]:
         - /url: "#"
-    - listitem [ref=f7e361]:
-      - checkbox "Enable for next and successive requests" [ref=f7e362]
-      - generic [ref=f7e363]: Intercept redirects
-    - listitem [ref=f7e364]:
-      - checkbox "Enable for next and successive requests" [ref=f7e365]
-      - generic [ref=f7e366]: Profiling
+    - listitem [ref=f7e417]:
+      - checkbox "Enable for next and successive requests" [ref=f7e418]
+      - generic [ref=f7e419]: Intercept redirects
+    - listitem [ref=f7e420]:
+      - checkbox "Enable for next and successive requests" [ref=f7e421]
+      - generic [ref=f7e422]: Profiling
+  - text: navigate_before navigate_next
