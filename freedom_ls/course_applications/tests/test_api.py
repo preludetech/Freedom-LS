@@ -255,7 +255,7 @@ def test_updated_since_returns_only_rows_changed_at_or_after_it(client, auth):
     assert [row["id"] for row in body["results"]] == [str(new.pk)]
 
 
-QUERY_BOUND = 6
+QUERY_BOUND = 9
 
 EXPECTED_ANSWER_FIELDS = ["question_id", "question_text", "question_type", "value"]
 
@@ -428,6 +428,59 @@ def test_an_unanswered_question_has_no_entry(client, auth):
     application = CourseApplicationFactory(anonymous=True, form_progress=sitting)
 
     assert _answers_of(client, auth, application) == []
+
+
+def _draft_that_closed_a_gate() -> tuple[CourseApplication, QuestionAnswer]:
+    """A draft whose page 2 opens only on "yes", answered while the gate was
+    open, after which the gate was switched to "no". Returns the application
+    and the answer page 2 still holds."""
+    sitting = FormProgressFactory(user=None)
+    gate = FormQuestionFactory(
+        form_page=FormPageFactory(form=sitting.form, order=0),
+        type="multiple_choice",
+        question="Employed?",
+    )
+    yes = QuestionOptionFactory(question=gate, value="yes", order=0)
+    no = QuestionOptionFactory(question=gate, value="no", order=1)
+    QuestionAnswerFactory(form_progress=sitting, question=gate).selected_options.add(no)
+    gated = FormQuestionFactory(
+        form_page=FormPageFactory(form=sitting.form, order=1, condition_option=yes),
+        type="short_text",
+        question="Employer?",
+    )
+    stale = cast(
+        QuestionAnswer,
+        QuestionAnswerFactory(
+            form_progress=sitting, question=gated, text_answer="Acme"
+        ),
+    )
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(anonymous=True, form_progress=sitting),
+    )
+    return application, stale
+
+
+def test_an_answer_on_a_page_the_draft_no_longer_reaches_has_no_entry(client, auth):
+    application, _stale = _draft_that_closed_a_gate()
+
+    entries = _answers_of(client, auth, application)
+
+    assert [entry["question_text"] for entry in entries] == ["Employed?"]
+
+
+def test_an_answer_the_draft_no_longer_reaches_is_hidden_whatever_the_ambient_site(
+    mock_site_context,
+):
+    _draft_that_closed_a_gate()
+    other = SiteFactory(name="Other", domain="other.example.com")
+
+    with site_context(other):
+        rows = CourseApplicationApiSerializer(
+            CourseApplicationApiViewSet().get_queryset(), many=True
+        ).data
+
+    assert [entry["question_text"] for entry in rows[0]["answers"]] == ["Employed?"]
 
 
 def test_answers_are_complete_when_the_ambient_site_is_not_the_applications_site(

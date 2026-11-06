@@ -63,6 +63,7 @@ from freedom_ls.content_engine.validate import (
     validate_children_lists,
     validate_due_date_placements,
 )
+from freedom_ls.form_engine import schema as form_schema
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
@@ -680,13 +681,18 @@ def _resolve_condition(
 
 
 def save_form_page(
-    item, form, site, base_path, order=0, condition_option: QuestionOption | None = None
-):
+    item: form_schema.FormPage,
+    form: Form,
+    site: Site,
+    base_path: Path,
+    order: int = 0,
+    condition_option: QuestionOption | None = None,
+) -> FormPage:
     """Save a FormPage to the database."""
     # condition_option is written even when None: save_with_uuid drops None
     # keys, so leaving it out would keep whatever condition the row had from an
     # earlier import.
-    return save_with_uuid(
+    page: FormPage = save_with_uuid(
         FormPage,
         item,
         site,
@@ -696,18 +702,19 @@ def save_form_page(
         order=order,
         condition_option=condition_option,
     )
+    return page
 
 
 def save_form_content(
-    item,
-    form_page,
-    site,
-    base_path,
-    order=0,
+    item: form_schema.FormContent,
+    form_page: FormPage,
+    site: Site,
+    base_path: Path,
+    order: int = 0,
     condition_option: QuestionOption | None = None,
-):
+) -> FormContent:
     """Save FormContent to the database."""
-    return save_with_uuid(
+    content: FormContent = save_with_uuid(
         FormContent,
         item,
         site,
@@ -717,14 +724,15 @@ def save_form_content(
         order=order,
         condition_option=condition_option,
     )
+    return content
 
 
 def save_form_question(
-    item,
-    form_page,
-    site,
-    base_path,
-    order=0,
+    item: form_schema.FormQuestion,
+    form_page: FormPage,
+    site: Site,
+    base_path: Path,
+    order: int = 0,
     condition_option: QuestionOption | None = None,
 ) -> tuple[FormQuestion, dict[str, QuestionOption]]:
     """Save FormQuestion and its options to the database.

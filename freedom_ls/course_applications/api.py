@@ -8,8 +8,14 @@ from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
 from freedom_ls.api.viewsets import ReadOnlyApiViewSet
 from freedom_ls.form_engine.enums import QuestionType
-from freedom_ls.form_engine.exports import answer_value
-from freedom_ls.form_engine.models import QuestionAnswer, QuestionOption
+from freedom_ls.form_engine.exports import answer_value, off_path_question_ids
+from freedom_ls.form_engine.models import (
+    FormContent,
+    FormPage,
+    FormQuestion,
+    QuestionAnswer,
+    QuestionOption,
+)
 
 from .models import CourseApplication
 
@@ -70,10 +76,19 @@ class CourseApplicationApiSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(QuestionAnswerApiSerializer(many=True))
     def get_answers(self, application: CourseApplication) -> list[dict[str, object]]:
-        if application.form_progress is None:
+        form_progress = application.form_progress
+        if form_progress is None:
             return []
+        # An answer to a question the sitting's path never reached is kept until
+        # the sitting completes, but was never asked: the admin and the export
+        # hide it, so this does too. The form tree is already prefetched.
+        off_path = off_path_question_ids([form_progress])[form_progress.pk]
         # .all() reads the prefetched rows in their prefetched order.
-        answers = application.form_progress.answers.all()
+        answers = [
+            answer
+            for answer in form_progress.answers.all()
+            if answer.question_id not in off_path
+        ]
         return list(QuestionAnswerApiSerializer(answers, many=True).data)
 
 
@@ -94,6 +109,29 @@ def answers_prefetch() -> Prefetch:
     return Prefetch("form_progress__answers", queryset=answers)
 
 
+def form_tree_prefetches() -> list[Prefetch]:
+    """The pages and children of each sitting's form, with their gates, complete
+    whatever host the request is on (see answers_prefetch).
+
+    Each level selects its condition_option, so the path code's own tree load
+    finds every lookup fetched and runs no query.
+    """
+    return [
+        Prefetch(
+            "form_progress__form__pages",
+            queryset=FormPage._base_manager.select_related("condition_option"),
+        ),
+        Prefetch(
+            "form_progress__form__pages__questions",
+            queryset=FormQuestion._base_manager.select_related("condition_option"),
+        ),
+        Prefetch(
+            "form_progress__form__pages__text_items",
+            queryset=FormContent._base_manager.select_related("condition_option"),
+        ),
+    ]
+
+
 class CourseApplicationFilterSet(UpdatedSinceFilterSet):
     class Meta:
         model = CourseApplication
@@ -109,8 +147,8 @@ class CourseApplicationApiViewSet(ReadOnlyApiViewSet):
         # The base manager crosses sites; the base viewset's filter_queryset
         # narrows every lookup to the key's site.
         return CourseApplication._base_manager.select_related(
-            "user", "anonymous_applicant", "course", "form_progress"
-        ).prefetch_related(answers_prefetch())
+            "user", "anonymous_applicant", "course", "form_progress__form"
+        ).prefetch_related(answers_prefetch(), *form_tree_prefetches())
 
 
 router.register(

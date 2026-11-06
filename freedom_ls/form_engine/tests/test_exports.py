@@ -6,6 +6,9 @@ from uuid import uuid4
 
 import pytest
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
 from freedom_ls.form_engine.exports import (
     answer_cell,
     answer_columns,
@@ -98,6 +101,33 @@ def test_off_path_question_ids_are_per_sitting(mock_site_context):
 
     assert off_path[yes_sitting.pk] == frozenset()
     assert off_path[no_sitting.pk] == {gated.id}
+
+
+def _loaded_sittings_of_new_forms(count: int) -> list[FormProgress]:
+    """One sitting per form, each form with a page and a question, loaded the
+    way an export loads them: the form prefetched, so sittings share it."""
+    sittings = []
+    for _ in range(count):
+        form = FormFactory(strategy=FormStrategy.UNSCORED)
+        FormQuestionFactory(form_page=FormPageFactory(form=form, order=0), order=0)
+        sittings.append(FormProgressFactory(form=form))
+    return list(
+        FormProgress.objects.filter(pk__in=[sitting.pk for sitting in sittings])
+        .prefetch_related("form", "answers__selected_options", "answers__question")
+        .order_by("pk")
+    )
+
+
+def test_off_path_question_ids_loads_the_trees_of_every_form_together(
+    mock_site_context, django_assert_num_queries
+):
+    one_form = _loaded_sittings_of_new_forms(1)
+    three_forms = _loaded_sittings_of_new_forms(3)
+    with CaptureQueriesContext(connection) as for_one_form:
+        off_path_question_ids(one_form)
+
+    with django_assert_num_queries(len(for_one_form)):
+        off_path_question_ids(three_forms)
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(

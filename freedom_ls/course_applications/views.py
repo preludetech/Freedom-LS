@@ -754,8 +754,10 @@ def application_form_page(
         if read_only:
             return redirect("course_applications:status", pk=app.pk)
         submission = submit_page(current, request.POST, form_progress)
+        # The answers just saved can change which pages come next, and so what
+        # a rejected page's count and page-jump nav show.
+        path = current_path(form_progress)
         if submission.accepted:
-            path = current_path(form_progress)
             if return_to_check:
                 # The edit can open a page the applicant has never filled in;
                 # walk them through its required questions before review.
@@ -771,6 +773,8 @@ def application_form_page(
             if next_number is not None:
                 return redirect(url_for_page(next_number))
             return redirect("course_applications:check_answers", pk=app.pk)
+        # A page's gate is on an earlier page, so the posted page is still on it.
+        current = resolve_page(path, page_number)
 
     if not read_only:
         form_progress.record_page_reached(page_number)
@@ -812,8 +816,18 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
 
+    # Fills the answers cache once; the path is computed from it, and
+    # existing_answers_dict then reads from it, so the loop below makes no
+    # per-row queries.
+    prefetch_related_objects(
+        [form_progress], "answers__selected_options", "answers__answer_file"
+    )
+    path = sitting_path(
+        form_progress,
+        {answer.question_id: answer for answer in form_progress.answers.all()},
+    )
+
     if request.method == "POST" and not submitted:
-        path = current_path(form_progress)
         unanswered = unanswered_required_in_form(form_progress, path)
         if not unanswered:
             form_progress.complete()
@@ -834,13 +848,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     elif request.method == "POST":
         return redirect("course_applications:status", pk=app.pk)
 
-    # Fills the answers cache once; existing_answers_dict then reads from it, so
-    # the loop below makes no per-row queries.
-    prefetch_related_objects(
-        [form_progress], "answers__selected_options", "answers__answer_file"
-    )
     sections = []
-    path = sitting_path(form_progress)
     for position, (number, page) in enumerate(path.numbered_pages(), start=1):
         questions = path.questions_of(page)
         if not questions:

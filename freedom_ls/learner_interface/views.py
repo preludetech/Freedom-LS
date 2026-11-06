@@ -1935,7 +1935,7 @@ def _render_form_fill_page(
         **_player_chrome_context(
             request, course, form, index, course_progress=course_progress
         ),
-        **answered_counts(form, form_progress, current.questions, current.path),
+        **answered_counts(form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
         "submit_and_exit_url": reverse(
             "learner_interface:form_submit_and_exit",
@@ -2004,13 +2004,14 @@ def form_fill_page(
     submission = PageSubmission()
     if request.method == "POST":
         submission = submit_page(current, request.POST, form_progress)
+        # The answers just saved can change which pages come next, and so what
+        # a rejected page's count and page-jump nav show.
+        path = current_path(form_progress)
         if submission.accepted:
-            # The answers just saved can change which pages come next.
-            next_number = current_path(form_progress).next_page_number(page_number)
+            next_number = path.next_page_number(page_number)
             if next_number is not None:
                 return redirect(_form_page_url(course_slug, index, next_number))
 
-            path = current_path(form_progress)
             unanswered = unanswered_required_in_form(form_progress, path)
             onward = first_page_number_with_unanswered_required(path, unanswered)
             if onward is not None:
@@ -2032,6 +2033,8 @@ def form_fill_page(
                 course_slug=course_slug,
                 index=index,
             )
+        # A page's gate is on an earlier page, so the posted page is still on it.
+        current = resolve_page(path, page_number)
 
     return _render_form_fill_page(
         request,
@@ -2358,12 +2361,13 @@ def form_submit_and_exit(
                 posted, request.POST, form_progress, require_answers=False
             )
             if not submission.accepted:
+                # The answers that were saved can change which pages come next.
                 return _render_form_fill_page(
                     request,
                     course,
                     form,
                     index,
-                    posted,
+                    resolve_page(current_path(form_progress), posted.number),
                     course_progress,
                     form_progress,
                     submission,

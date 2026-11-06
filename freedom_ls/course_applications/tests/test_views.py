@@ -644,6 +644,26 @@ class TestApplicationFormPaging:
         urls = [link["url"] for link in response.context["page_links"]]
         assert urls == [_page_url(app, 1), _page_url(app, 3)]
 
+    def test_a_rejected_page_is_re_rendered_along_the_path_its_saved_answers_give(
+        self, client, mock_site_context
+    ):
+        """Switching the gate to "no" is saved even though the date beside it
+        is rejected, so the 422 page's nav must already omit page 2."""
+        app, yes, no, choice = _gated_application_with_a_skippable_page(client)
+        date = FormQuestionFactory(
+            form_page=choice.form_page, type="date", order=1, required=False
+        )
+        client.post(_page_url(app, 1), {f"question_{choice.id}": str(yes.id)})
+
+        response = client.post(
+            _page_url(app, 1),
+            {f"question_{choice.id}": str(no.id), f"question_{date.id}": "banana"},
+        )
+
+        assert response.status_code == 422
+        urls = [link["url"] for link in response.context["page_links"]]
+        assert urls == [_page_url(app, 1), _page_url(app, 3)]
+
     def test_a_submitted_application_pages_along_its_frozen_path(
         self, client, mock_site_context
     ):

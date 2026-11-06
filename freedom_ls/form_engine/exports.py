@@ -12,7 +12,7 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
-from .conditions import FORM_TREE_LOOKUPS, load_form_tree, sitting_path
+from .conditions import FORM_TREE_LOOKUPS, sitting_path
 from .enums import OPTION_QUESTION_TYPES, QuestionType
 from .models import Form, FormProgress, FormQuestion, QuestionAnswer
 from .queries import form_questions
@@ -125,8 +125,7 @@ def off_path_question_ids(
     forms = {
         form_progress.form_id: form_progress.form for form_progress in form_progresses
     }
-    for form in forms.values():
-        load_form_tree(form)
+    prefetch_related_objects(list(forms.values()), *FORM_TREE_LOOKUPS)
     on_page_by_form = {
         form_id: frozenset(question.id for question in form_questions(form))
         for form_id, form in forms.items()

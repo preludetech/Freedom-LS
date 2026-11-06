@@ -61,10 +61,6 @@ class CurrentPage:
     def total_pages(self) -> int:
         return self.path.page_count
 
-    @property
-    def is_last(self) -> bool:
-        return self.path.next_page_number(self.number) is None
-
 
 def page_at(path: SittingPath, page_number: int) -> CurrentPage | None:
     """The page this number names, or None when the form has no such page.
@@ -198,7 +194,7 @@ def page_context(
         "question_positions": current.path.question_positions(),
         "existing_answers": form_progress.existing_answers_dict(current.questions),
         "page_links": build_page_links(
-            form, form_progress, current.number, url_for_page, current.path
+            form_progress, current.number, url_for_page, current.path
         ),
         "required_answers_error": submission.required_answers_error,
         "rejected_answers": submission.rejected_answers,

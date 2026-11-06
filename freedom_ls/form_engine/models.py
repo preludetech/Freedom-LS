@@ -445,9 +445,14 @@ class FormProgress(SiteAwareModel):
 
         with transaction.atomic():
             path = current_path(self)
-            # Deleting cascades to any attached file row; its receiver removes the
-            # stored object only once this block commits.
-            self.answers.exclude(question_id__in=path.question_ids).delete()
+            # Only this form's own off-path questions: an answer whose question
+            # has since moved to another form is still an answer, and the admin
+            # and the export list it. Deleting cascades to any attached file
+            # row; its receiver removes the stored object only once this block
+            # commits.
+            self.answers.filter(question__form_page__form_id=self.form_id).exclude(
+                question_id__in=path.question_ids
+            ).delete()
             self.asked = path.as_asked()
             self.completed_time = timezone.now()
             self.score(path)

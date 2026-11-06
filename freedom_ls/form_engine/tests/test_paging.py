@@ -174,7 +174,6 @@ def test_build_page_links_marks_the_current_page_and_the_reachable_ones(
     form_progress = FormProgressFactory(form=four_page_form)
 
     links = build_page_links(
-        four_page_form,
         form_progress,
         2,
         lambda number: f"/page/{number}/",
@@ -222,9 +221,7 @@ def test_answered_counts_exclude_the_current_page_from_the_other_pages_tally(
     _answer(form_progress, _question_on_page(four_page_form, 2))
     current = [_question_on_page(four_page_form, 2)]
 
-    counts = answered_counts(
-        four_page_form, form_progress, current, current_path(form_progress)
-    )
+    counts = answered_counts(form_progress, current, current_path(form_progress))
 
     assert counts == {
         "answered_count": 2,
@@ -341,7 +338,6 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
     form_progress.record_page_reached(2)
 
     links = build_page_links(
-        four_page_form,
         form_progress,
         current_page_number=1,
         url_for_page=str,
@@ -363,7 +359,6 @@ def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
 
     assert resume_page_number(form_progress, current_path(form_progress)) == 2
     links = build_page_links(
-        four_page_form,
         form_progress,
         current_page_number=1,
         url_for_page=str,
@@ -400,10 +395,10 @@ def gated_page_form(mock_site_context) -> tuple[Form, FormProgress, FormQuestion
 def test_build_page_links_omits_an_off_path_page_and_labels_by_position(
     gated_page_form,
 ):
-    form, sitting, _last = gated_page_form
+    _form, sitting, _last = gated_page_form
 
     links = build_page_links(
-        form, sitting, 1, lambda number: f"/page/{number}/", current_path(sitting)
+        sitting, 1, lambda number: f"/page/{number}/", current_path(sitting)
     )
 
     assert [(link["number"], link["url"]) for link in links] == [
@@ -533,9 +528,7 @@ def test_answered_counts_leave_out_an_off_path_answer_and_question(gated_tail):
     _answer(gated_tail.sitting, gated_tail.first)
     _answer(gated_tail.sitting, gated_tail.gated)
 
-    counts = answered_counts(
-        gated_tail.form, gated_tail.sitting, [], current_path(gated_tail.sitting)
-    )
+    counts = answered_counts(gated_tail.sitting, [], current_path(gated_tail.sitting))
 
     assert counts == {
         "answered_count": 2,

@@ -16,7 +16,7 @@ from django.http import QueryDict
 
 from .conditions import SittingPath
 from .enums import QuestionType
-from .models import Form, FormProgress, FormQuestion
+from .models import FormProgress, FormQuestion
 from .submissions import has_submitted_answer
 
 
@@ -84,7 +84,6 @@ def page_accessibility_limit(
 
 
 def build_page_links(
-    form: Form,
     form_progress: FormProgress,
     current_page_number: int,
     url_for_page: Callable[[int], str],
@@ -189,7 +188,6 @@ def rejected_answers_message(questions: list[FormQuestion], path: SittingPath) -
 
 
 def answered_counts(
-    form: Form,
     form_progress: FormProgress,
     current_page_questions: list[FormQuestion],
     path: SittingPath,

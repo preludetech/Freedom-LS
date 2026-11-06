@@ -24,6 +24,7 @@ from freedom_ls.form_engine.admin import (
 )
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
+    FormContentFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
@@ -695,3 +696,46 @@ def test_an_ungated_form_page_has_no_condition(mock_site_context) -> None:
     page = FormPageFactory()
 
     assert FormPageAdmin(FormPage, admin.site).condition(page) is None
+
+
+@pytest.fixture
+def gated_content(gated_page) -> FormContent:
+    content: FormContent = FormContentFactory(
+        form_page=gated_page.form.pages.get(order=0),
+        content="Tell us about your employer below.",
+        condition_option=gated_page.condition_option,
+    )
+    return content
+
+
+@pytest.mark.django_db
+def test_the_form_content_changelist_shows_which_answer_gates_a_block(
+    staff_client, gated_content
+) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_formcontent_changelist")
+    )
+
+    assert "Are you employed? = Yes, I am" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_form_content_change_page_shows_its_gate_and_offers_no_option_select(
+    staff_client, gated_content
+) -> None:
+    response = staff_client.get(
+        reverse(
+            "admin:freedom_ls_form_engine_formcontent_change", args=[gated_content.pk]
+        )
+    )
+
+    page = response.content.decode()
+    assert "Are you employed? = Yes, I am" in page
+    assert 'name="condition_option"' not in page
+
+
+@pytest.mark.django_db
+def test_an_ungated_form_content_block_has_no_condition(mock_site_context) -> None:
+    content = FormContentFactory()
+
+    assert FormContentAdmin(FormContent, admin.site).condition(content) is None

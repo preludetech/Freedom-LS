@@ -48,6 +48,13 @@ def _with_applicant_select_related(
     return related
 
 
+def _condition_label(option: QuestionOption | None) -> str | None:
+    """The "question = option" a gated row shows; None when the row is ungated."""
+    if option is None:
+        return None
+    return f"{option.question.question[:50]} = {option.text}"
+
+
 class QuestionOptionInline(admin.TabularInline):
     """Inline for question options."""
 
@@ -98,14 +105,24 @@ class FormContentAdmin(SiteAwareModelAdmin):
         "content_preview",
         "form_page",
         "order",
+        "condition",
     ]
+    list_select_related = ("form_page__form", "condition_option__question")
     list_filter = ("form_page__form",)
     search_fields = ("content", "form_page__title")
     ordering = ("form_page", "order")
+    # The gate is read-only: an editable dropdown would offer every option on
+    # the site, including ones from other forms or later pages.
+    exclude = ["condition_option"]
+    readonly_fields = ("condition",)
 
     @admin.display(description="Content")
     def content_preview(self, obj):
         return obj.content[:50]
+
+    @admin.display(description="Shown when")
+    def condition(self, obj: FormContent) -> str | None:
+        return _condition_label(obj.condition_option)
 
     def has_delete_permission(
         self, request: HttpRequest, obj: FormContent | None = None
@@ -212,10 +229,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Shown when")
     def condition(self, obj: FormPage) -> str | None:
-        option = obj.condition_option
-        if option is None:
-            return None
-        return f"{option.question.question[:50]} = {option.text}"
+        return _condition_label(obj.condition_option)
 
     def has_delete_permission(
         self, request: HttpRequest, obj: FormPage | None = None

@@ -3613,3 +3613,68 @@ def test_submit_and_exit_on_a_partial_sitting_records_the_unreached_on_path_page
 
     asked = FormProgress.objects.get(user=user, form=form).asked
     assert str(gated.form_page_id) in asked["pages"]
+
+
+def _started_form_whose_second_page_opens_on_yes(client, *, submit_on_exit=False):
+    """The yes/no form above, with a date question beside the gate, started by
+    a logged-in learner who has answered "yes"; page 2 is open."""
+    form, gate, yes, no, _gated, _last = _make_form_whose_second_page_opens_on_yes()
+    form.submit_on_exit = submit_on_exit
+    form.save()
+    date = FormQuestionFactory(
+        form_page=gate.form_page, type="date", order=1, required=False
+    )
+    user = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course, 1), {f"question_{gate.id}": str(yes.id)})
+    return course, gate, no, date
+
+
+@pytest.mark.django_db
+def test_a_rejected_page_is_re_rendered_along_the_path_its_saved_answers_give(
+    mock_site_context, client
+):
+    """Switching the gate to "no" is saved even though the date beside it is
+    rejected, so the 422 page must already count page 2 as closed."""
+    course, gate, no, date = _started_form_whose_second_page_opens_on_yes(client)
+
+    response = client.post(
+        _fill_page_url(course, 1),
+        {f"question_{gate.id}": str(no.id), f"question_{date.id}": "banana"},
+    )
+
+    assert response.status_code == 422
+    assert "Page 1 of 2" in response.content.decode()
+    assert [link["url"] for link in response.context["page_links"]] == [
+        _fill_page_url(course, 1),
+        _fill_page_url(course, 3),
+    ]
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_re_renders_a_rejected_page_along_the_path_its_saved_answers_give(
+    mock_site_context, client
+):
+    course, gate, no, date = _started_form_whose_second_page_opens_on_yes(
+        client, submit_on_exit=True
+    )
+
+    response = client.post(
+        _exit_url(course),
+        {
+            "page_number": "1",
+            f"question_{gate.id}": str(no.id),
+            f"question_{date.id}": "banana",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Page 1 of 2" in response.content.decode()

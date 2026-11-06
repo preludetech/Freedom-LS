@@ -99,12 +99,6 @@ def test_resolve_page_raises_404_for_a_page_the_form_does_not_have(two_page_form
 
 
 @pytest.mark.django_db
-def test_is_last_marks_only_the_final_page(two_page_form):
-    assert resolve_page(full_path(two_page_form), 1).is_last is False
-    assert resolve_page(full_path(two_page_form), 2).is_last is True
-
-
-@pytest.mark.django_db
 def test_a_submission_with_no_errors_is_accepted(two_page_form, sitting):
     current = resolve_page(full_path(two_page_form), 1)
     required = current.questions[0]
@@ -353,18 +347,6 @@ def test_page_at_omits_an_off_path_question_from_its_page(gated_form):
 
     assert current is not None
     assert current.questions == gated_form.last_questions
-
-
-@pytest.mark.django_db
-def test_is_last_holds_on_the_last_on_path_page_when_later_pages_exist(gated_form):
-    form = gated_form.form
-    _choose(gated_form, gated_form.no)
-    trailing = FormPageFactory(form=form, order=3, condition_option=gated_form.yes)
-    FormQuestionFactory(form_page=trailing, type="short_text", order=0)
-
-    current = resolve_page(current_path(gated_form.sitting), 3)
-
-    assert current.is_last is True
 
 
 @pytest.mark.django_db

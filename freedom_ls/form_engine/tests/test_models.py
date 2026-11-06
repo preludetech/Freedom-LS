@@ -348,6 +348,19 @@ def test_complete_keeps_the_answers_to_on_path_questions(gated_sitting):
 
 
 @pytest.mark.django_db
+def test_complete_keeps_the_answer_to_a_question_moved_to_another_form(
+    gated_sitting,
+):
+    moved = gated_sitting.off_path
+    moved.form_page = FormPageFactory(form=FormFactory())
+    moved.save()
+
+    gated_sitting.progress.complete()
+
+    assert gated_sitting.progress.answers.filter(question=moved).exists()
+
+
+@pytest.mark.django_db
 def test_complete_records_the_path_the_sitting_was_asked(gated_sitting):
     expected = current_path(gated_sitting.progress).as_asked()
 
