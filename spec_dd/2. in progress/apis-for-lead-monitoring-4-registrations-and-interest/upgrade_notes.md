@@ -27,7 +27,7 @@ incremental sync misses the change.
 
 Run `manage.py migrate`. Two migrations ship:
 
-- `freedom_ls/learner_management/migrations/0010_registration_updated_at.py` adds `updated_at` to
+- `freedom_ls/learner_management/migrations/0011_registration_updated_at.py` adds `updated_at` to
   both registration models, backfills it from `registered_at`, and adds an index on
   `(site, updated_at, id)` to each.
 - `freedom_ls/course_interest/migrations/0002_courseinterest_updated_at.py` does the same for
