@@ -18,6 +18,7 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `csv-formula-extra-triggers`
 - `deadlines-3-extensions-and-pause`
 - `deadlines-7-educator-at-risk`
+- `educator-interface-13-staff-roles`
 - `failed-login-follow-up`
 - `file-scanning`
 - `forced-site-name-for-host-based-site-lookup`
@@ -32,6 +33,7 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `test-organisation-and-hygene-11-reports`
 - `test-organisation-and-hygene-12-accounts`
 - `test-organisation-and-hygene-13-learner-interface-part-1`
+- `test-organisation-and-hygene-15-educator-interface`
 - `test-organisation-and-hygene-5-foundational-apps`
 - `test-organisation-and-hygene-6-small-apps`
 - `test-organisation-and-hygene-7-course-access-and-applications`
@@ -61,7 +63,6 @@ run, so it is twelve.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 12 | `educator-interface-12-docs-and-polish` | The educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | in progress |
 | 13 | `educator-interface-13-staff-roles` | A person holds different roles on different cohorts and gains them through Add role; the cohort Settings tab changes and removes roles per person; the Add-staff email field searches the organisation's people as you type. | `educator-interface-12-docs-and-polish` | next |
 
 ```
