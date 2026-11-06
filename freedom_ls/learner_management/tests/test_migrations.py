@@ -30,7 +30,7 @@ migration = importlib.import_module(
 )
 
 updated_at_migration = importlib.import_module(
-    "freedom_ls.learner_management.migrations.0010_registration_updated_at"
+    "freedom_ls.learner_management.migrations.0011_registration_updated_at"
 )
 
 

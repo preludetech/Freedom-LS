@@ -18,7 +18,7 @@ def backfill_updated_at(
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("freedom_ls_learner_management", "0009_learnerimport_learnerimportrow")
+        ("freedom_ls_learner_management", "0010_rename_organisationmember_staffmember")
     ]
 
     operations = [
