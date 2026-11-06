@@ -2115,7 +2115,7 @@ def test_all_courses_row_with_an_empty_eyebrow_draws_no_eyebrow_line(
 
     html = logged_in_client(UserFactory()).get(reverse("learner_interface:courses"))
 
-    assert "justify-between" not in html.content.decode()
+    assert "items-start justify-between" not in html.content.decode()
 
 
 @pytest.mark.django_db
@@ -2126,7 +2126,7 @@ def test_all_courses_row_with_a_difficulty_draws_the_eyebrow_line(
 
     html = logged_in_client(UserFactory()).get(reverse("learner_interface:courses"))
 
-    assert "justify-between" in html.content.decode()
+    assert "items-start justify-between" in html.content.decode()
 
 
 @pytest.mark.django_db
