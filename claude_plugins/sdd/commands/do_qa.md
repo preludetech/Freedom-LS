@@ -344,7 +344,10 @@ lopsided page gets passed or a sound one failed. A blank value means no prep.
 The probe measures what a glance at a screenshot misses: a header that does not line up with the
 content under it, a region spilling past the viewport, two regions drawn over each other. It
 measures **ink**, meaning text and anything with a border, background or replaced content, so an
-intentionally centred narrow column inside a wide wrapper is not flagged.
+intentionally centred narrow column inside a wide wrapper is not flagged. Ink is measured at what
+shows: whatever an ancestor's `overflow` (hidden, auto or scroll), `clip` or `clip-path` cuts off
+does not count, so an ellipsis-truncated label, a screen-reader-only span or a table inside a
+horizontal scroll region is not overflow. The document `scrollWidth` check is separate and unchanged.
 
 **Load it once**, right after this step's capture check, as a solo call. Call
 `<prefix>browser_run_code_unsafe` with:

@@ -28,15 +28,48 @@ window.__qaLayoutProbe = (REGIONS = {}) => {
     return hasBorder || hasBackground;
   };
 
-  // The union of what is actually drawn inside the given roots, ignoring empty wrappers.
+  // An element clips what it contains: overflow other than visible, or a clip.
+  const clips = (el) => {
+    const style = getComputedStyle(el);
+    return (
+      style.overflowX !== "visible" || style.overflowY !== "visible" ||
+      style.clip !== "auto" || style.clipPath !== "none"
+    );
+  };
+
+  const UNBOUNDED = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+  const intersect = (a, b) => ({
+    left: Math.max(a.left, b.left),
+    top: Math.max(a.top, b.top),
+    right: Math.min(a.right, b.right),
+    bottom: Math.min(a.bottom, b.bottom),
+  });
+
+  // The box an element's contents are clipped to by it and every ancestor,
+  // memoised because siblings share their ancestors.
+  const contentClips = new Map();
+  const contentClip = (el) => {
+    if (!el || el === document.documentElement) return UNBOUNDED;
+    if (contentClips.has(el)) return contentClips.get(el);
+    const inherited = contentClip(el.parentElement);
+    const box = clips(el) ? intersect(inherited, el.getBoundingClientRect()) : inherited;
+    contentClips.set(el, box);
+    return box;
+  };
+
+  // The union of what is actually drawn inside the given roots, ignoring empty
+  // wrappers and whatever an ancestor clips away: ink past an overflow hidden,
+  // auto or scroll edge, such as an ellipsis-truncated label, a screen-reader-only
+  // span or a table inside a horizontal scroll region, is measured at what shows.
   const inkBounds = (roots) => {
     let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-    const add = (rect) => {
-      if (rect.width <= 0 || rect.height <= 0) return;
-      left = Math.min(left, rect.left);
-      right = Math.max(right, rect.right);
-      top = Math.min(top, rect.top);
-      bottom = Math.max(bottom, rect.bottom);
+    const add = (rect, clip) => {
+      const shown = intersect(rect, clip);
+      if (shown.right - shown.left <= 0 || shown.bottom - shown.top <= 0) return;
+      left = Math.min(left, shown.left);
+      right = Math.max(right, shown.right);
+      top = Math.min(top, shown.top);
+      bottom = Math.max(bottom, shown.bottom);
     };
     for (const root of roots) {
       if (!isVisible(root)) continue;
@@ -47,10 +80,12 @@ window.__qaLayoutProbe = (REGIONS = {}) => {
           if (node.textContent.trim() && node.parentElement && isVisible(node.parentElement)) {
             const range = document.createRange();
             range.selectNodeContents(node);
-            for (const rect of range.getClientRects()) add(rect);
+            const clip = contentClip(node.parentElement);
+            for (const rect of range.getClientRects()) add(rect, clip);
           }
         } else if (isVisible(node) && paints(node)) {
-          add(node.getBoundingClientRect());
+          // Its own overflow clips its contents, not its border or background.
+          add(node.getBoundingClientRect(), contentClip(node.parentElement));
         }
         node = walker.nextNode();
       }
