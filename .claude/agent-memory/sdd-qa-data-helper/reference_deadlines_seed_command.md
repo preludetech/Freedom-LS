@@ -67,6 +67,9 @@ Scripted, idempotent, run right after the seed:
 It reuses the outline-scenario command's _course/_topic/_place helpers. Note: it deletes the
 CourseDeadlineConfig that qa_create_deadline_outline_scenario leaves on "Deadline Outline Course"
 (the plan demands zero config rows) -- report that. A third ask -> promote to a qa_helpers command.
+Run 3 (Nov 6 2026, after a rebase): caller said "reuse the script", so ran it as-is (content_save -> seed -> script).
+DB was NOT empty despite the rebuild warning; the seed cleaned the residue. LearnerCourseRegistration FK is `course`
+(not `collection`). Next ask: promote to a qa_helpers command (`--with-today-and-long-title` on the seed) up front.
 
 ## Band states for §1.2.5 / §1.3.1 / §1.3.5 (Nov 2026) -- scripted
 `uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_deadline_band_progress_script.py`
@@ -94,3 +97,23 @@ no prior attempt on A's forms, so re-run only after the seed. Never touches fres
   -> topics (slug qa-long-deadline-*) -> course, THEN re-run the seed (it strips every override,
   completion and sitting, and wipes all of fresh's registrations incl. the plain course). Seed pks for
   overrides/configs/attempts change on every run.
+
+## Re-arming the band states WITHOUT re-running the seed (Nov 6 2026)
+Caller asked: reset fresh/parts to baseline (tester had walked items 1-4 + opened KC), then the
+band states again. Scripted the reset: `qa_deadline_fresh_parts_reset_script.py` (deletes fresh/parts
+TopicProgress + CFA + FormProgress, recalcs to 0%, asserts overrides untouched). Then the band script
+and the plain-complete script ran as-is. The seed run had again wiped the solo/parts course-wide
+override, so the band read "Missed deadline Course 27 Oct": re-added `_fixed_override(cp, site,
+_local_today()+30d)` (an override, not a config row -- caller had said "don't change their deadline
+config"). Third time this fix was needed: next time fold it into the band script.
+Verify with django.test.Client(HTTP_HOST="127.0.0.1") + force_login + regex-stripped HTML of "/" and
+"/courses/<slug>/<n>/"; DemoDev domain is 127.0.0.1:8000, set settings.ALLOWED_HOSTS=["*"] in-shell.
+
+## Course-wide mark_overdue=off row on the parts course (Nov 2026)
+Asked for a CourseDeadlineConfig (parts course, mark_overdue='off', rest model default 'inherit')
+to prove the fresh learner's past-due Welcome reads UPCOMING not MISSED. Made with
+`CourseDeadlineConfigFactory(course=c, site=c.site, mark_overdue='off')`; caller will delete it.
+Model defaults are 'inherit' (resolve to settings: close/end_access off, grace 0) -- "defaults" means inherit,
+not explicit 'off'. Verify via scratch script: get_deadline_policy().resolve(cp) + course_deadlines_for([cp])
++ get_course_index(...) + _item_rows -> row['deadline_tier']. Shared by all 4 qa_deadline_* parts
+learners (no higher layer sets mark_overdue). Dashboard "Missed deadline" text from QA Long Deadline Titles is unrelated.
