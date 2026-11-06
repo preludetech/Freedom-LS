@@ -35,10 +35,10 @@ the learner never saw.
         plain count exists to avoid claiming.{% endcomment %}
         <td class="confusion-ratio">
           {% if question.show_percentage %}
-          <span class="ratio-value">{{ question.wrong_percentage }}% of {{ question.respondent_count }} learners</span>
+          <span class="ratio-value">{{ question.wrong_percentage }}% of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}</span>
           <span class="ratio-bar"><span class="ratio-bar-fill" style="width: {{ question.wrong_percentage }}%;"></span></span>
           {% else %}
-          <span class="ratio-value">{{ question.wrong_count }} of {{ question.respondent_count }} learners</span>
+          <span class="ratio-value">{{ question.wrong_count }} of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}</span>
           {% endif %}
         </td>
       </tr>

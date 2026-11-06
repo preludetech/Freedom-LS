@@ -982,7 +982,8 @@ class TestCohortReportBody:
         first_row = " ".join(region.cssselect("tbody tr")[0].text_content().split())
         assert "Ada Able" in first_row
         assert "Complete" in first_row
-        assert "1 of 1 items" in first_row
+        assert "1 of 1 item" in first_row
+        assert "1 of 1 items" not in first_row
 
     def test_refresh_replaces_a_stale_cache_entry_with_fresh_figures(
         self, logged_in_client
@@ -1046,6 +1047,27 @@ class TestCohortReportBody:
         text = " ".join(region.text_content().split())
         assert "3 of 9 learners" in text
         assert "%" not in text.split("Got it wrong")[-1]
+
+    def test_a_quiz_with_one_respondent_says_learner_not_learners(
+        self, logged_in_client
+    ):
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(
+            cohort,
+            _confusion(
+                respondent_count=1,
+                wrong_count=1,
+                show_percentage=False,
+                wrong_percentage=None,
+            ),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        text = " ".join(region.text_content().split())
+        assert "1 of 1 learner" in text
+        assert "1 of 1 learners" not in text
 
     def test_a_cohort_without_incorrect_answers_says_so(self, logged_in_client):
         cohort = _seeded_report_cohort()

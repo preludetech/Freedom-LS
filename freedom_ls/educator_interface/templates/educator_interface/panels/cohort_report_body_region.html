@@ -81,7 +81,7 @@ with incorrect answers), refresh_url.
                                                     </td>
                                                     <td class="min-w-40 px-2 py-2">
                                                         <c-panel-progress-bar :percentage="row.completion_percentage" label="{{ row.full_name }} completion" />
-                                                        <span class="text-xs text-muted">{{ row.completed_item_count }} of {{ row.total_item_count }} items</span>
+                                                        <span class="text-xs text-muted">{{ row.completed_item_count }} of {{ row.total_item_count }} item{{ row.total_item_count|pluralize }}</span>
                                                     </td>
                                                     <td class="px-2 py-2">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
                                                     <td class="px-2 py-2 whitespace-nowrap">{% if row.last_completed_at %}{{ row.last_completed_at|date:"j M Y" }}{% else %}—{% endif %}</td>
@@ -141,7 +141,7 @@ with incorrect answers), refresh_url.
                                             <div class="flex flex-wrap gap-1">{% for text, count in question.distractors %}<c-chip variant="error" size="xs">{{ text }} ×{{ count }}</c-chip>{% endfor %}</div>
                                         </td>
                                         <td class="px-2 py-2">
-                                            {% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} learners{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} learners{% endif %}
+                                            {% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} learner{{ question.respondent_count|pluralize }}{% endif %}
                                         </td>
                                     </tr>
                                 {% endfor %}

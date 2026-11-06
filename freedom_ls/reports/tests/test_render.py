@@ -1554,6 +1554,28 @@ class TestQuizConfusion:
         assert "Option B" in html
         assert "×3" in html  # noqa: RUF001 -- the multiplication sign the template renders
 
+    def test_a_single_respondent_is_one_learner_not_learners(self) -> None:
+        question = QuizConfusion(
+            question_number=1,
+            question_text="What is X?",
+            respondent_count=1,
+            wrong_count=1,
+            show_percentage=False,
+            wrong_percentage=None,
+            distractors=[("Option B", 1)],
+            correct_option_texts=["Option A"],
+        )
+        block = ConfusionBlock(questions=[question], shown=1, total=1)
+        quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
+        )
+
+        html = render_to_string(
+            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
+        )
+
+        assert "1 of 1 learner<" in html
+
     def test_renders_percentage_not_counts_when_show_percentage_true(self) -> None:
         question = QuizConfusion(
             question_number=1,
