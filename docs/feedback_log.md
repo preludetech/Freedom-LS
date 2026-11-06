@@ -28,3 +28,4 @@ One line per rule captured from the user's feedback by `sdd:capture-feedback`: t
 - 2026-11-05: A log table sorts and filters on who, what and when wherever it appears, History tabs included → claude_plugins/django-stack/resources/frontend_styling.md, .claude/skills/brand-guidelines/visual.md, claude_plugins/sdd/commands/do_qa.md
 - 2026-11-05: A record's own name is a field on its Settings tab, not a dialog → claude_plugins/django-stack/resources/frontend_styling.md, .claude/skills/brand-guidelines/visual.md
 - 2026-11-05: Entering an email for a person who may exist searches as you type → claude_plugins/django-stack/resources/frontend_styling.md
+- 2026-11-06: A registration is deactivated or reactivated from the learner's Course registrations list on the Overview tab, the only place an inactive registration is shown; the Courses tab holds only Register for a course → .claude/skills/brand-guidelines/visual.md

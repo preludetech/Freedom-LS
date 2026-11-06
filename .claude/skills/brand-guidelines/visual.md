@@ -114,7 +114,8 @@ looking at without going somewhere else:
 | Thing shown | Control beside it |
 |---|---|
 | A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
-| A learner's Courses tab | Register for a course, Deactivate / Reactivate a registration |
+| A learner's Courses tab | Register for a course |
+| A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration: the list is the only place an inactive registration is shown, so Reactivate has no other home |
 | A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
 | A cohort's Learners tab | Add learners, Remove, Move |
 | A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
