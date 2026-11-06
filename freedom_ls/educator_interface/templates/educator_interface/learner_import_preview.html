@@ -28,7 +28,7 @@
                 </a>
             {% endfor %}
         </c-panel-stat-row>
-        {% if label %}<p class="mt-2 text-sm"><a href="{{ preview_url }}">Clear filter</a></p>{% endif %}
+        {% if label %}<p class="mt-2 text-sm"><c-button variant="link" size="small" href="{{ preview_url }}">Clear filter</c-button></p>{% endif %}
     </div>
     {% if error_count %}
         {% include "educator_interface/partials/import_error_block.html" with heading_count=error_count %}
