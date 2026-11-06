@@ -735,18 +735,26 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Rewrites a <time> element into the viewer's own zone. The server text
-    // stays in place when the instant does not parse.
+    // Rewrites a <time> element into the viewer's own zone, as "3 Nov 2026, 07:37"
+    // whatever the browser's locale. The server text stays in place when the
+    // instant does not parse.
     Alpine.data("localTime", () => ({
         init() {
             const instant = new Date(this.$el.getAttribute("datetime"));
             if (Number.isNaN(instant.getTime())) return;
             const options = {
                 day: "numeric", month: "short", year: "numeric",
-                hour: "2-digit", minute: "2-digit",
+                hour: "2-digit", minute: "2-digit", hourCycle: "h23",
             };
-            if (this.$el.dataset.showZone === "true") options.timeZoneName = "short";
-            this.$el.textContent = new Intl.DateTimeFormat(undefined, options).format(instant);
+            const showZone = this.$el.dataset.showZone === "true";
+            if (showZone) options.timeZoneName = "short";
+            const parts = {};
+            for (const part of new Intl.DateTimeFormat("en-US", options).formatToParts(instant)) {
+                parts[part.type] = part.value;
+            }
+            let text = `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute}`;
+            if (showZone) text += ` ${parts.timeZoneName}`;
+            this.$el.textContent = text;
         },
     }));
 
