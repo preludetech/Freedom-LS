@@ -66,8 +66,8 @@ section shows the designer's own default picks, which are not the ones `idea.md`
 | Course player outline sidebar header, A course due date and C deadlines shortcut (`p-sb__sb-a`, `p-sb__sb-c`) | none | none (out of scope) |
 | Course player outline rows, A date in place of the duration, coloured by urgency (`p-outline__ol-a`) | none | `design_learner-interface-deadlines` |
 | Course player outline rows, B line under the module (`p-outline__ol-b`) | none | none (out of scope) |
-| Course player section header, B block on the right (`p-head__hd-b`) | none | `design_learner-interface-deadlines` |
-| Course player section header, A chip (`p-head__hd-a`) | none | none (out of scope) |
+| Course player section header, A chip (`p-head__hd-a`) | none | `design_learner-interface-deadlines` |
+| Course player section header, B block on the right (`p-head__hd-b`) | none | none (out of scope) |
 | Course player due-soon / overdue banner, A bar and B callout (`p-banner__bn-a`, `p-banner__bn-b`) | none | none (out of scope) |
 | Course player all course deadlines, A side drawer and B popover (`p-drawer__dr-a`, `p-drawer__dr-b`) | none | none (out of scope) |
 | Assembled dashboard and course player (`assembled__as-dash`, `assembled__as-player`) | none | none (out of scope) |

@@ -3949,7 +3949,7 @@ def test_sidebar_shows_a_missed_deadline_for_a_past_due_topic(due_course):
 
     text = " ".join(re.sub(r"<[^>]+>", " ", _player_html(client, course)).split())
 
-    assert re.search(r"Missed deadline 1 Jan 2020", text)
+    assert re.search(r"Missed deadline (· )?1 Jan 2020", text)
     assert "Deadline 1 Jan 2020" not in text
     assert "Overdue" not in text
 
@@ -3963,7 +3963,7 @@ def test_finish_page_outline_shows_the_same_missed_deadline_as_the_player(due_co
     html = _finish(client, user, course).content.decode()
     text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
 
-    assert re.search(r"Missed deadline 1 Jan 2020", text)
+    assert re.search(r"Missed deadline (· )?1 Jan 2020", text)
     assert 'data-show-zone="true"' in html
 
 
@@ -4191,9 +4191,18 @@ def test_sidebar_learner_none_override_removes_the_date(overridden_player):
 
 
 def _header_deadline_text(html: str) -> str:
-    """The visible text of the item header's deadline labels, empty when it has none."""
+    """The text of the item header's deadline labels, empty when it has none.
+
+    The decorative dot between the word and the date is dropped, as a screen
+    reader drops it, so the assertions read the copy alone.
+    """
     nodes = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
-    return " ".join(nodes[0].text_content().split()) if nodes else ""
+    if not nodes:
+        return ""
+    for hidden in nodes[0].cssselect('[aria-hidden="true"]'):
+        if hidden.text_content().strip() == "·":
+            hidden.drop_tree()
+    return " ".join(nodes[0].text_content().split())
 
 
 @pytest.mark.django_db
@@ -4322,7 +4331,7 @@ def test_header_card_is_absent_for_a_completed_item(due_course):
 
 
 @pytest.mark.django_db
-def test_header_card_follows_the_page_title_and_header_extra_holds_no_deadline(
+def test_header_chip_precedes_the_page_title_and_header_extra_holds_no_deadline(
     due_course,
 ):
     course, first, _second, _user, client = due_course
@@ -4330,12 +4339,12 @@ def test_header_card_follows_the_page_title_and_header_extra_holds_no_deadline(
 
     html = _player_html(client, course)
 
-    assert html.index('id="page-title"') < html.index(
-        'data-testid="player-item-deadline"'
+    assert html.index('data-testid="player-item-deadline"') < html.index(
+        'id="page-title"'
     )
-    card = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
-    assert len(card) == 1
-    assert card[0].getparent().cssselect("#page-title")
+    chip = lxml.html.fromstring(html).cssselect('[data-testid="player-item-deadline"]')
+    assert len(chip) == 1
+    assert chip[0].getparent().cssselect("#page-title")
 
 
 @pytest.mark.django_db

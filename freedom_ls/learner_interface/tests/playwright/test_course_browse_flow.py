@@ -376,11 +376,10 @@ def test_learner_browses_a_course(
 
         page.goto(_item_url(live_server, course, 5))
         title_box = _box(page.locator("#page-title"))
-        card_box = _box(page.get_by_test_id("player-item-deadline"))
-        if viewport["width"] == 375:
-            assert card_box["y"] >= title_box["y"] + title_box["height"]
-        elif viewport["width"] == max(v["width"] for v in QA_VIEWPORTS):
-            assert card_box["x"] >= title_box["x"] + title_box["width"]
+        chip_box = _box(page.get_by_test_id("player-item-deadline"))
+        # The deadline chip sits above the title, left-aligned, at every width.
+        assert chip_box["y"] + chip_box["height"] <= title_box["y"]
+        assert abs(chip_box["x"] - title_box["x"]) < 2
         assert_no_horizontal_overflow(page)
 
     # Below md the stat cells stack, each spanning the strip so dividers line up.

@@ -1,6 +1,6 @@
 {% load deadline_tags %}
 {% comment %}The one file that writes deadline copy. Each surface (course row, outline row,
-band, next-deadline card, header card) composes these partials in its own layout.
+band, next-deadline card, header chip) composes these partials in its own layout.
 
 Required context for every partial: child (an index row or a CardDeadline: due_at, closes_at,
 is_overdue, is_closed, status, deadline_tier) and show_time_zone_to_learners. Optional: title.
@@ -41,14 +41,35 @@ no leading or trailing whitespace, so callers can follow it with punctuation.{% 
 
 {% partialdef tier-chip %}
     {% comment %}An upcoming deadline is a muted icon and a date; the other tiers are a chip. The
-    variant is picked by branching because a cotton attribute cannot hold a template tag.{% endcomment %}
+    variant is picked by branching because a cotton attribute cannot hold a template tag.
+    chip_class lets a tinted surface give the chip a background that stands out on it.{% endcomment %}
     {% if child.deadline_tier == "UPCOMING" %}
         <span class="inline-flex items-center gap-1 text-muted whitespace-nowrap">{% partial tier-chip-body %}</span>
     {% elif child.deadline_tier == "TODAY" %}
-        <c-chip variant="warning" size="xs" class="forced-colors:border whitespace-nowrap">{% partial tier-chip-body %}</c-chip>
+        <c-chip variant="warning" size="xs" class="forced-colors:border whitespace-nowrap {{ chip_class }}">{% partial tier-chip-body %}</c-chip>
     {% else %}
-        <c-chip variant="error" size="xs" class="forced-colors:border whitespace-nowrap">{% partial tier-chip-body %}</c-chip>
+        <c-chip variant="error" size="xs" class="forced-colors:border whitespace-nowrap {{ chip_class }}">{% partial tier-chip-body %}</c-chip>
     {% endif %}
+{% endpartialdef %}
+
+{% partialdef header-chip %}
+    {% comment %}The item header's chip: the icon, the header word and the full date, read in
+    full because the row above a title has the room. The dot between the word and the date
+    is decorative.{% endcomment %}
+    {% if child.deadline_tier == "UPCOMING" %}
+        <c-chip variant="muted" size="xs" class="forced-colors:border">{% partial header-chip-body %}</c-chip>
+    {% elif child.deadline_tier == "TODAY" %}
+        <c-chip variant="warning" size="xs" class="forced-colors:border">{% partial header-chip-body %}</c-chip>
+    {% else %}
+        <c-chip variant="error" size="xs" class="forced-colors:border">{% partial header-chip-body %}</c-chip>
+    {% endif %}
+{% endpartialdef %}
+
+{% partialdef header-chip-body %}
+    {% partial tier-icon %}
+    <span class="font-semibold">{% partial tier-word %}</span>
+    <span aria-hidden="true">·</span>
+    <span class="whitespace-nowrap">{% partial tier-date %}</span>
 {% endpartialdef %}
 
 {% partialdef closes-line %}
@@ -59,6 +80,11 @@ no leading or trailing whitespace, so callers can follow it with punctuation.{% 
     {% comment %}The tint a band or card takes from its tier. forced-colors:border keeps the
     block's edge when the tint is removed.{% endcomment %}
     forced-colors:border {% if child.deadline_tier == "UPCOMING" %}bg-surface-2 text-muted{% elif child.deadline_tier == "TODAY" %}bg-warning-light text-on-warning-light{% else %}bg-error-light text-on-error-light{% endif %}
+{% endpartialdef %}
+
+{% partialdef tier-border %}
+    {% comment %}The border a card takes from its tier, beside tier-tint.{% endcomment %}
+    {% if child.deadline_tier == "UPCOMING" %}border-border{% elif child.deadline_tier == "TODAY" %}border-warning{% else %}border-error{% endif %}
 {% endpartialdef %}
 
 {% partialdef next-deadline-eyebrow %}

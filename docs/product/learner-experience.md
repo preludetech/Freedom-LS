@@ -302,7 +302,7 @@ A deadline shows in one of four states, each with its own colour, icon and word:
 
 The **course detail page** shows no deadline dates. Where the course has a time limit, a "Time limit" cell gives its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
 
-![Course player with the next-deadline card, outline dates and the deadline card beside the item title](screenshots/learner_course_detail_due_dates.png)
+![Course player with the next-deadline card, outline dates and the deadline chip above the item title](screenshots/learner_course_detail_due_dates.png)
 
 ![Dashboard course card with a missed-deadline band along the bottom of its hero](screenshots/learner_dashboard_card_overdue.png)
 

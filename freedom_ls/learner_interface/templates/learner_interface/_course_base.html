@@ -62,27 +62,21 @@ docked outline panel carries its own progress, so the header stays uncluttered.
     {% endif %}
 {% endblock header_extra %}
 
-{% comment %}The item title and its deadline share one row from lg; narrower screens stack them.
-Pages put their title in item_page_title so the card can sit beside it.{% endcomment %}
+{% comment %}The item's deadline is a chip row above its title, left-aligned at every width. Pages
+put their title in item_page_title so the row can sit above it. A page whose title lives in its
+body (the form pages) renders an empty title here, and the row then stands alone under the
+breadcrumbs. The h1 keeps its own top margin when there is no row above it.{% endcomment %}
 {% block page_title %}
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div class="min-w-0 flex-1">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
-        {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
-            {% with child=current_entry %}
-                <div class="shrink-0 rounded-lg px-3 py-2 text-sm {% include "learner_interface/partials/deadline_labels.html#tier-tint" %}"
-                     data-testid="player-item-deadline">
-                    <p class="flex items-center gap-1 font-semibold">
-                        {% include "learner_interface/partials/deadline_labels.html#tier-icon" %}
-                        {% include "learner_interface/partials/deadline_labels.html#tier-word" with today_word=True %}
-                    </p>
-                    <p class="text-xs">
-                        {% include "learner_interface/partials/deadline_labels.html#tier-date" %}
-                        {% include "learner_interface/partials/deadline_labels.html#closes-line" %}
-                    </p>
-                </div>
-            {% endwith %}
-        {% endif %}
-    </div>
+    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
+        {% with child=current_entry %}
+            <p class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+               data-testid="player-item-deadline">
+                {% include "learner_interface/partials/deadline_labels.html#header-chip" with today_word=True %}
+                <span class="text-muted">{% include "learner_interface/partials/deadline_labels.html#closes-line" %}</span>
+            </p>
+        {% endwith %}
+    {% endif %}
+    <div class="{% if current_entry.due_at and current_entry.status != "COMPLETE" %}[&_h1]:mt-2{% endif %}">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
 {% endblock page_title %}
 
 {% block sidebar_content %}

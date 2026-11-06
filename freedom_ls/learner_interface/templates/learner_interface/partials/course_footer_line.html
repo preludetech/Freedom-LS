@@ -1,0 +1,18 @@
+{% comment %}
+The bottom line of a course card or row: the "Access ended <date>" chip at the left when
+access has ended, and the Details link at the right. The chip is the only status shown
+down here; every other status stays in the eyebrow. On a narrow row the link drops to
+its own line, still at the right, rather than squeezing the chip.
+
+Required context: course (access_ended_at, slug, title).
+{% endcomment %}
+<div class="flex flex-wrap items-center justify-between gap-2 mt-auto">
+    {% if course.access_ended_at %}
+        <span class="min-w-0">
+            {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True as_chip=True %}
+        </span>
+    {% endif %}
+    <div class="ml-auto shrink-0">
+        {% include "learner_interface/partials/course_details_link.html" %}
+    </div>
+</div>
