@@ -604,6 +604,22 @@ class TestLearnerQuickViewMessageBox:
         assert {"border-b", "pb-3", "mb-4"} <= set(row.get("class").split())
         assert "mt-6" in row.getparent().get("class").split()
 
+    def test_the_composer_draws_no_rule_of_its_own_under_the_messages_heading(
+        self, educator_client
+    ):
+        """The heading row already draws the section's rule; a second one on
+        the composer stacked two rules a few pixels apart."""
+        organisation = OrganisationFactory()
+        learner = _learner_in(organisation)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        (form,) = tree.xpath("//form[@id='composer']")
+        assert "border-t" not in form.get("class").split()
+
     def test_shows_the_composer_when_there_is_no_conversation_yet(
         self, educator_client
     ):

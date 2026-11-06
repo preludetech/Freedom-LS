@@ -2,7 +2,8 @@
 The composer form. It keeps the id #composer through every swap so a refused
 send can replace it in place, and the textarea keeps #message-body so htmx can
 restore focus after the swap. Send sits under the textarea, on the hint's
-row, so the textarea gets the full width.
+row, so the textarea gets the full width. In the quick view the Messages
+heading row draws the section's rule, so the form draws none of its own.
 
 In a thread the send carries the page's cursor, so its answer holds whatever
 arrived since the last poll as well, and it shares the log's sync scope with
@@ -38,7 +39,7 @@ message.
       x-on:htmx:timeout="onFailed"
       x-on:htmx:before-request="onBeforeRequest"
       x-on:htmx:after-settle="onAfterSettle"
-      class="border-t border-border bg-surface px-4 py-3">
+      class="{% if not composer.in_quick_view %}border-t border-border {% endif %}bg-surface px-4 py-3">
     {% csrf_token %}
     <input type="hidden" name="client_key" value="{{ composer.client_key }}" />
     <input type="hidden" name="composer" value="open" id="composer-state" />
