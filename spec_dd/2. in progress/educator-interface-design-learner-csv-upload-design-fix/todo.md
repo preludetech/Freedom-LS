@@ -20,6 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: Preview confirm card has an extra gap above its first line (TDD: failing test first, then fix)
 - [x] (user) Decide what to do about QA bug: Error-block row cards label Line/Reason in primary blue (TDD: failing test first, then fix)
+- [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/learner_interface/tests/playwright/test_course_browse_flow.py::test_due_date_reads_in_the_browser_time_zone (it expects the old locale text 'Mar 15, 2999, 05:59 PM'; localTime now renders '15 Mar 2999, 17:59')
 
 ## 4. Documentation and pull request
 
