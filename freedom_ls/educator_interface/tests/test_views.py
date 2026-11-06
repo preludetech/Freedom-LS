@@ -3955,6 +3955,41 @@ def test_a_person_target_has_the_same_avatar_colour_as_that_person_as_actor(
 
 
 @pytest.mark.django_db
+def test_the_learners_list_avatar_colours_match_the_audit_log_for_the_same_people(
+    staff_client: Client,
+):
+    """The learners list keyed the avatar on the learner row's pk, so people
+    were different colours there than in the audit log, which keys on the user.
+    Many people are checked because any one pair could match by chance."""
+    organisation = OrganisationFactory()
+    names = [f"Person{letter}" for letter in "ABCDEFGH"]
+    for name in names:
+        user = UserFactory(first_name=name, last_name="Tester")
+        LearnerFactory(organisation=organisation, user=user)
+        AuditLogEntryFactory(
+            target=organisation, target_label=name, actor=user, actor_label=name
+        )
+
+    audit_document = _audit_log_document(staff_client, organisation)
+    audit_slots = [
+        _avatar_slot(_audit_row_cells(audit_document, name)["who"]) for name in names
+    ]
+    list_document = _get_document(
+        staff_client, _interface_url(organisation.slug, "learners")
+    )
+    list_slots = []
+    for name in names:
+        (row,) = [
+            row
+            for row in list_document.cssselect("tbody tr")
+            if name in row.text_content()
+        ]
+        list_slots.append(_avatar_slot(row))
+
+    assert list_slots == audit_slots
+
+
+@pytest.mark.django_db
 def test_a_learner_target_whose_row_was_deleted_shows_the_user_icon_and_stored_label(
     staff_client: Client,
 ):
