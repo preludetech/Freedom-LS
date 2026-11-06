@@ -56,7 +56,7 @@
                             <td class="px-4 py-2">{{ row.first_name }}</td>
                             <td class="px-4 py-2">{{ row.last_name }}</td>
                             <td class="px-4 py-2">{% firstof learner_import.cohort.name row.cohort_name %}</td>
-                            <td class="px-4 py-2" data-tone="{{ row.tone }}"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></td>
+                            <td class="whitespace-nowrap px-4 py-2" data-tone="{{ row.tone }}"><c-panel-status-badge tone="{{ row.tone }}" label="{{ row.get_preview_label_display }}" /></td>
                             <td class="px-4 py-2">{{ row.preview_reason }}</td>
                         </tr>
                     {% endfor %}
