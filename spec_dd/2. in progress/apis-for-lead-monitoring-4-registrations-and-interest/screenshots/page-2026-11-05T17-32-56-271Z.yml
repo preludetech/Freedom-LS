@@ -1,0 +1,180 @@
+- generic [active] [ref=f20e1]:
+  - banner [ref=f20e2]:
+    - link [ref=f20e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f20e4]
+      - heading "FirstClass" [level=1] [ref=f20e5]
+    - navigation [ref=f20e6]:
+      - generic [ref=f20e7]:
+        - generic [ref=f20e8]:
+          - button "Messages, none unread" [ref=f20e206]:
+            - img "message" [ref=f20e11]
+          - status:
+            - generic [ref=f20e207]: Messages, none unread
+        - generic [ref=f20e14]:
+          - button "Notifications, none new" [ref=f20e15]:
+            - img "notifications" [ref=f20e17]
+          - status:
+            - generic [ref=f20e19]: Notifications, none new
+        - button "Open user menu for Orla Admin" [ref=f20e21] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f20e22]: OA
+  - generic:
+    - status
+    - alert
+  - main [ref=f20e23]:
+    - generic [ref=f20e25]:
+      - dialog "Navigation" [ref=f20e26]:
+        - generic [ref=f20e28]:
+          - generic [ref=f20e29]:
+            - paragraph [ref=f20e30]: Organisation
+            - generic [ref=f20e31]:
+              - generic [aria-hidden] [ref=f20e32]: "N"
+              - generic "Northside" [ref=f20e33]
+          - navigation "Sections" [ref=f20e34]:
+            - heading "Teaching" [level=2] [ref=f20e35]
+            - list [ref=f20e36]:
+              - listitem [ref=f20e37]:
+                - link "home Dashboard" [ref=f20e38] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/dashboard
+                  - img "home" [ref=f20e40]
+                  - generic [ref=f20e42]: Dashboard
+              - listitem [ref=f20e43]:
+                - link "cohort Cohorts" [ref=f20e44] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/cohorts
+                  - img "cohort" [ref=f20e46]
+                  - generic [ref=f20e48]: Cohorts
+              - listitem [ref=f20e49]:
+                - link "user Learners" [ref=f20e50] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/learners
+                  - img "user" [ref=f20e52]
+                  - generic [ref=f20e54]: Learners
+              - listitem [ref=f20e55]:
+                - link "course Courses" [ref=f20e56] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/courses
+                  - img "course" [ref=f20e58]
+                  - generic [ref=f20e60]: Courses
+            - heading "Administration" [level=2] [ref=f20e61]
+            - list [ref=f20e62]:
+              - listitem [ref=f20e63]:
+                - link "user Members" [ref=f20e64] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/members
+                  - img "user" [ref=f20e66]
+                  - generic [ref=f20e68]: Members
+              - listitem [ref=f20e69]:
+                - link "notes Audit log" [ref=f20e70] [cursor=pointer]:
+                  - /url: /educator/organisations/northside/audit-log
+                  - img "notes" [ref=f20e72]
+                  - generic [ref=f20e74]: Audit log
+          - generic [ref=f20e75]:
+            - generic [ref=f20e77]:
+              - generic [aria-hidden] [ref=f20e78]: OA
+              - generic [ref=f20e79]:
+                - generic [ref=f20e80]: Orla Admin
+                - generic [ref=f20e81]: org.admin@qa.test
+            - link "Account settings" [ref=f20e82] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f20e83]
+      - generic [ref=f20e87]:
+        - navigation "Back" [ref=f20e89]:
+          - link "Learners" [ref=f20e90] [cursor=pointer]:
+            - /url: /educator/organisations/northside/learners
+        - generic [ref=f20e94]:
+          - generic [ref=f20e96]:
+            - generic [ref=f20e97]:
+              - generic [ref=f20e98]:
+                - generic [ref=f20e100]:
+                  - heading "Sol Solo" [level=1] [ref=f20e101]
+                  - generic [ref=f20e102]: Active
+                - paragraph [ref=f20e103]: solo@qa.test
+              - generic [ref=f20e104]:
+                - button "Add to cohort" [ref=f20e105] [cursor=pointer]
+                - button "Register for a course" [ref=f20e106] [cursor=pointer]
+                - button "Deactivate" [ref=f20e107] [cursor=pointer]
+            - navigation "Learner sections" [ref=f20e108]:
+              - list [ref=f20e109]:
+                - listitem [ref=f20e110]:
+                  - link "Overview" [ref=f20e111] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/overview
+                - listitem [ref=f20e112]:
+                  - link "Courses" [ref=f20e113] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/courses
+                - listitem [ref=f20e114]:
+                  - link "Messages" [ref=f20e115] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/messages
+                - listitem [ref=f20e116]:
+                  - link "History" [ref=f20e117] [cursor=pointer]:
+                    - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/history
+          - generic [ref=f20e121]:
+            - generic [ref=f20e230]:
+              - heading "Details" [level=2] [ref=f20e233]
+              - generic [ref=f20e235]:
+                - generic [ref=f20e236]:
+                  - term [ref=f20e237]: Name
+                  - definition [ref=f20e238]: Sol Solo
+                - generic [ref=f20e239]:
+                  - term [ref=f20e240]: Email
+                  - definition [ref=f20e241]: solo@qa.test
+                - generic [ref=f20e242]:
+                  - term [ref=f20e243]: Status
+                  - definition [ref=f20e244]:
+                    - generic [ref=f20e245]: Active
+                - generic [ref=f20e246]:
+                  - term [ref=f20e247]: Date added
+                  - definition [ref=f20e248]: 5 Nov 2026
+            - generic [ref=f20e143]:
+              - heading "Cohorts" [level=2] [ref=f20e146]
+              - generic [ref=f20e249]:
+                - generic [ref=f20e250]:
+                  - generic [ref=f20e252]:
+                    - generic [ref=f20e253]: Search
+                    - searchbox "Search" [ref=f20e154]
+                  - generic [ref=f20e255]: Sorted by Name
+                - table [ref=f20e258]:
+                  - rowgroup [ref=f20e259]:
+                    - row [ref=f20e260]:
+                      - columnheader [ref=f20e261]:
+                        - link [ref=f20e262] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/overview?cohorts-sort=-name
+                          - text: Name
+                          - img "sort_asc" [ref=f20e263]
+                      - columnheader "Status" [ref=f20e265]
+                      - columnheader [ref=f20e266]:
+                        - link [ref=f20e267] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/overview?cohorts-sort=learner_count
+                          - text: Learners
+                          - img "sort_neutral" [ref=f20e268]
+                      - columnheader "Courses" [ref=f20e270]
+                      - columnheader [ref=f20e271]:
+                        - link [ref=f20e272] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/overview?cohorts-sort=created_at
+                          - text: Created
+                          - img "sort_neutral" [ref=f20e273]
+                      - columnheader [ref=f20e275]:
+                        - link [ref=f20e276] [cursor=pointer]:
+                          - /url: /educator/organisations/northside/learners/4495a46b-afae-484f-97f9-2fd10736fae4/__tabs/overview?cohorts-sort=joined_at
+                          - text: Joined
+                          - img "sort_neutral" [ref=f20e277]
+                      - columnheader [ref=f20e279]
+                  - rowgroup [ref=f20e280]:
+                    - row [ref=f20e281]:
+                      - cell "Nothing to see" [ref=f20e282]
+            - generic [ref=f20e284]:
+              - heading "Registrations" [level=2] [ref=f20e287]
+              - list [ref=f20e289]:
+                - listitem [ref=f20e290]:
+                  - generic [ref=f20e291]: Course Pub
+                  - generic [ref=f20e292]:
+                    - text: Individual
+                    - generic [ref=f20e293]: Inactive
+                    - button "Reactivate" [ref=f20e294] [cursor=pointer]
+        - generic [ref=f20e195]: No results
+  - contentinfo [ref=f20e197]:
+    - generic [ref=f20e198]:
+      - paragraph [ref=f20e199]: © 2026 FirstClass
+      - navigation "Legal" [ref=f20e200]:
+        - link "Terms and Conditions" [ref=f20e201] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f20e202] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f20e203] [cursor=pointer]: apis-for-lead-monitoring-4-registrations-and-interest
+  - generic "Show toolbar" [ref=f20e205]: DJDT
