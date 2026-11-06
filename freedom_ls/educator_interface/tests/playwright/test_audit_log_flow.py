@@ -69,3 +69,21 @@ def test_the_phone_sheet_lists_the_actions_under_collapsed_groups(
 
     expect(page).to_have_url(re.compile(r"audit_log-what=cohort\.created"))
     expect(page.locator("#main-content").get_by_role("listitem")).to_have_count(1)
+
+
+def test_when_cell_keeps_date_and_time_on_one_line_at_the_md_breakpoint(
+    live_server, educator_logged_in_page: Page, educator_user: AbstractBaseUser
+) -> None:
+    """At 768px the When cell wrapped the time under the date, making every
+    audit log row two lines tall."""
+    page = educator_logged_in_page
+    organisation = _seed(educator_user)
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+
+    spans = page.locator("#main-content table tbody tr time").first.locator("span")
+    date_box = spans.nth(0).bounding_box()
+    time_box = spans.nth(1).bounding_box()
+    assert date_box is not None
+    assert time_box is not None
+    assert time_box["y"] == date_box["y"]
