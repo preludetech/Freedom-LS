@@ -8,9 +8,11 @@ Standard fields land in standard places via the shared skeleton and partials:
   organisation   -> <c-course-card-shell> avatar overlapping the bottom of
                     the hero (card_organisation)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
-                    status is ever shown; no duplicate chip/badge)
+                    status is ever shown; no duplicate chip/badge). "Access ended"
+                    is the exception: its chip sits bottom-left on the footer line
+                    (course_footer_line.html), beside Details
   title + link   -> stretched title link (card_title_link.html)
-  details        -> course_details_link.html (own right-aligned line)
+  details        -> course_details_link.html, right-aligned on the footer line
   deadline       -> band slot in the hero (course_deadline_band.html: missed deadline,
                     else next deadline); "Access ends" stays in the body
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
@@ -19,7 +21,7 @@ Title-link target by status:
   complete                 -> course_finish
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
-  access ended (access_ended_at set) -> course_detail, with the "Access ended" eyebrow
+  access ended (access_ended_at set) -> course_detail, with the "Access ended" chip
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in place of the registration eyebrow — the badge is an access signal, not a
@@ -61,9 +63,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
             {% elif course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
-        {% elif course.access_ended_at %}
-            {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True %}
-        {% else %}
+        {% elif not course.access_ended_at %}
             {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
         {% endif %}
     </c-slot>
@@ -82,9 +82,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
 
     {% include "learner_interface/partials/deadline_labels.html#access-ends-line" %}
 
-    <div class="flex justify-end mt-auto">
-        {% include "learner_interface/partials/course_details_link.html" %}
-    </div>
+    {% include "learner_interface/partials/course_footer_line.html" %}
 
     {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
         <c-slot name="footer">

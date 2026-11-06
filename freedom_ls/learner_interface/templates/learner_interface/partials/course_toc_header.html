@@ -6,8 +6,8 @@ CourseProgress.progress_percentage — the single stored source of truth — so
 they can never disagree. No N / M counter (decision 3).
 
 Under the bar, next_deadline_card (when set) names the deadline the dashboard card's band
-names, tinted by tier. It sits in the sticky block so it stays in view above the rows, and
-it is absent for a course with no deadline, a completed course or ended access.
+names, tinted and bordered by tier. It sits in the sticky block so it stays in view above the
+rows, and it is absent for a course with no deadline, a completed course or ended access.
 {% endcomment %}
 <div class="sticky top-0 z-10 bg-sidepanel pb-4 mb-2 border-b border-border">
     {% include "learner_interface/partials/course_organisation_chip.html" %}
@@ -20,14 +20,16 @@ it is absent for a course with no deadline, a completed course or ended access.
                                suffix=" complete" />
     </div>
     {% if next_deadline_card %}
-        <div class="mt-3 rounded-lg p-3 {% include "learner_interface/partials/deadline_labels.html#tier-tint" with child=next_deadline_card %}"
+        <div class="mt-3 rounded-lg border p-3 {% include "learner_interface/partials/deadline_labels.html#tier-tint" with child=next_deadline_card %} {% include "learner_interface/partials/deadline_labels.html#tier-border" with child=next_deadline_card %}"
              data-testid="next-deadline-card">
             {% with child=next_deadline_card %}
                 <p class="text-xs font-semibold uppercase tracking-wide">{% include "learner_interface/partials/deadline_labels.html#next-deadline-eyebrow" %}</p>
                 <p class="font-semibold text-on-surface truncate">{{ child.title }}</p>
-                <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                    {% comment %}The eyebrow already names the tier, so the chip adds no sr-only word.{% endcomment %}
-                    {% include "learner_interface/partials/deadline_labels.html#tier-chip" with tier_named=True %}
+                <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                    {% comment %}The eyebrow already names the tier, so the chip adds no sr-only word.
+                    The chip's own tint is the card's tint, so it takes the page surface to read
+                    as a pill.{% endcomment %}
+                    {% include "learner_interface/partials/deadline_labels.html#tier-chip" with tier_named=True chip_class="bg-surface" %}
                     <span>{% include "learner_interface/partials/deadline_labels.html#closes-line" %}</span>
                 </p>
             {% endwith %}
