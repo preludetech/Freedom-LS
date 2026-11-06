@@ -3320,7 +3320,9 @@ def test_a_move_shows_on_the_learner_history_tab_as_from_a_to_b(staff_client: Cl
 
     rows = _history_rows(_learner_page(staff_client, learner, "history"))
 
-    assert [row[2] for row in rows] == ["Learner moved between cohorts From Alpha to Beta"]
+    assert [row[2] for row in rows] == [
+        "Learner moved between cohorts From Alpha to Beta"
+    ]
 
 
 def _cohort_history_tab(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
@@ -3884,7 +3886,7 @@ def test_the_system_actor_shows_the_settings_icon_and_no_chip(staff_client: Clie
 
     who = cells["who"]
     assert (
-        len(who.cssselect("[aria-label='settings']")),
+        len(who.cssselect("svg[data-icon='settings']")),
         _visible_text(who),
         _avatar_slot(who),
     ) == (1, "System", None)
@@ -3903,7 +3905,7 @@ def test_a_deleted_actor_shows_the_user_icon_beside_the_stored_name(
 
     who = cells["who"]
     assert (
-        len(who.cssselect("[aria-label='user']")),
+        len(who.cssselect("svg[data-icon='user']")),
         _visible_text(who),
         _avatar_slot(who),
     ) == (1, "Gone Person", None)
@@ -3971,7 +3973,7 @@ def test_a_learner_target_whose_row_was_deleted_shows_the_user_icon_and_stored_l
     )
 
     target = cells["target"]
-    assert (len(target.cssselect("[aria-label='user']")), _avatar_slot(target)) == (
+    assert (len(target.cssselect("svg[data-icon='user']")), _avatar_slot(target)) == (
         1,
         None,
     )
@@ -6169,9 +6171,16 @@ def test_the_history_tab_names_a_nameless_actor_by_their_email(staff_client: Cli
         organisation=learner.organisation,
     )
 
-    rows = _history_rows(_learner_page(staff_client, learner, "history"))
+    document = _learner_page(staff_client, learner, "history")
 
-    assert [row[1] for row in rows] == ["nameless@example.com"]
+    # The name beside the avatar; the avatar's initial is aria-hidden.
+    names = [
+        span.text_content().strip()
+        for span in document.cssselect(
+            "[data-tab-set] tbody tr:not([data-row-detail]) span.truncate"
+        )
+    ]
+    assert names == ["nameless@example.com"]
 
 
 def _get_table_fragment(client: Client, path: str):
