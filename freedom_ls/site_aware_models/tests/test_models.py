@@ -263,3 +263,14 @@ def test_site_time_zone_config_rejects_unknown_zone_on_full_clean(
         config.full_clean(exclude=["site"])
 
     assert "time_zone" in error.value.message_dict
+
+
+@pytest.mark.django_db
+def test_a_new_timestamped_row_is_not_updated_before_it_is_created(
+    mock_site_context: Site,
+) -> None:
+    """Fields stamp in declaration order, so updated_at was once stamped
+    microseconds before created_at on every TimestampedModel row."""
+    policy = SiteSignupPolicyFactory()
+
+    assert policy.updated_at >= policy.created_at

@@ -25,6 +25,7 @@ import djclick as click
 from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -151,7 +152,7 @@ def command(site_name: str) -> None:
     # record is PROTECTed, and deactivating is the house removal for both
     # registration models anyway.
     LearnerCourseRegistration.objects.filter(learner__user=learner, site=site).update(
-        is_active=False
+        is_active=False, updated_at=timezone.now()
     )
     CourseApplication.objects.filter(user=learner, site=site).delete()
 

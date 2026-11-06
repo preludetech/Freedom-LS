@@ -10,10 +10,10 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-from freedom_ls.site_aware_models.models import SiteAwareModel, UpdatedAtModel
+from freedom_ls.site_aware_models.models import SiteAwareModel
 
 
-class CourseInterest(SiteAwareModel, UpdatedAtModel):
+class CourseInterest(SiteAwareModel):
     """A learner's expressed interest in a coming-soon course.
 
     Extends SiteAwareModel (UUID pk + site FK). Site isolation is automatic
@@ -35,9 +35,6 @@ class CourseInterest(SiteAwareModel, UpdatedAtModel):
         related_name="interests",
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    # Redeclared after the creation timestamp: fields stamp in declaration
-    # order, and the inherited updated_at would otherwise be stamped first and
-    # land before it.
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

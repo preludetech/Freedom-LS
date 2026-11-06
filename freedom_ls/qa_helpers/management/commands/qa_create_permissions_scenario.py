@@ -22,6 +22,7 @@ from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -127,7 +128,7 @@ def _ensure_membership(site: Site, cohort: Cohort, user: User) -> None:
 
 def _ensure_cohort_registration(site: Site, cohort: Cohort, course: Course) -> None:
     CohortCourseRegistration._base_manager.filter(cohort=cohort, course=course).update(
-        is_active=True
+        is_active=True, updated_at=timezone.now()
     )
     if not CohortCourseRegistration._base_manager.filter(
         cohort=cohort, course=course

@@ -10,11 +10,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.panel_framework.models import RunStatus
-from freedom_ls.site_aware_models.models import (
-    SiteAwareModel,
-    TimestampedModel,
-    UpdatedAtModel,
-)
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 User = get_user_model()
 
@@ -268,7 +264,7 @@ class CohortMembership(SiteAwareModel, TimestampedModel):
 
 
 class LearnerCourseRegistration(
-    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel, UpdatedAtModel
+    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel
 ):
     """Individual learner registration for a course."""
 
@@ -285,9 +281,6 @@ class LearnerCourseRegistration(
         help_text="The learner registered themselves rather than being registered by staff.",
     )
     registered_at = models.DateTimeField(auto_now_add=True)
-    # Redeclared after the creation timestamp: fields stamp in declaration
-    # order, and the inherited updated_at would otherwise be stamped first and
-    # land before it.
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -317,7 +310,7 @@ class LearnerCourseRegistration(
 
 
 class CohortCourseRegistration(
-    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel, UpdatedAtModel
+    UpdatedAtInUpdateFieldsMixin, LoadedIsActiveMixin, SiteAwareModel
 ):
     """Cohort-wide registration for a course."""
 
@@ -331,9 +324,6 @@ class CohortCourseRegistration(
     )
     is_active = models.BooleanField(default=True)
     registered_at = models.DateTimeField(auto_now_add=True)
-    # Redeclared after the creation timestamp: fields stamp in declaration
-    # order, and the inherited updated_at would otherwise be stamped first and
-    # land before it.
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

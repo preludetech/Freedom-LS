@@ -11,7 +11,7 @@ def backfill_updated_at(
 ) -> None:
     # Rows that predate the column are stamped with the registration date, so
     # incremental sync sees them in age order rather than all at deploy time.
-    for name in ("LearnerCourseRegistration", "CohortCourseRegistration"):
+    for name in MODELS:
         model = apps.get_model("freedom_ls_learner_management", name)
         model._base_manager.update(updated_at=F("registered_at"))
 

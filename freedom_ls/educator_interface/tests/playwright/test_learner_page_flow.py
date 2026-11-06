@@ -289,6 +289,7 @@ def test_registration_rows_share_the_left_edge_of_the_registrations_heading(
         assert row_box is not None
         heading_left = heading_box["x"]
         row_left = row_box["x"]
-        assert row_left == heading_left, (
+        # Within a pixel: sub-pixel rounding is not an indent.
+        assert abs(row_left - heading_left) < 1, (
             f"registration row at x={row_left}, heading at x={heading_left}"
         )

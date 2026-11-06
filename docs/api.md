@@ -499,7 +499,9 @@ The copied fields do **not** move it: a change to the user's email or name, the 
 name or the course's title leaves the row as it was. An incremental sync keeps the old values in
 your store until the registration itself changes. For current identity, join `user_id` to `id` on
 the [users](#users) API endpoint; for current names and titles, run a periodic full pull (no
-`updated_since`).
+`updated_since`). This differs from [course applications](#course-applications), where a change
+to the applicant's email or name does move `updated_at`: an applicant's identity is part of the
+application itself, while a registration's user is a row of their own on the users endpoint.
 
 On registrations that existed before this API endpoint shipped, `updated_at` starts as
 `registered_at`.
@@ -639,7 +641,9 @@ a full pull removes it, and the new row from the next incremental sync.
 
 The copied fields do **not** move it: a change to the user's email or name or the course's title
 leaves the row as it was. For current identity, join `user_id` to `id` on the [users](#users) API
-endpoint; for current titles, run a periodic full pull (no `updated_since`).
+endpoint; for current titles, run a periodic full pull (no `updated_since`). As with
+registrations, this differs from [course applications](#course-applications), where a change to
+the applicant's email or name does move `updated_at`.
 
 On interest shown before this API endpoint shipped, `updated_at` starts as `created_at`.
 

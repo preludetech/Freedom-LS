@@ -23,10 +23,6 @@ too, so it moves on every `is_active` flip. `QuerySet.update()` and `bulk_update
 Project code that changes these models through either must set `updated_at` itself, or the API's
 incremental sync misses the change.
 
-`freedom_ls.site_aware_models.models.TimestampedModel` now inherits its `updated_at` from a new
-abstract `freedom_ls.site_aware_models.models.UpdatedAtModel`. The field definitions are
-unchanged, so a project model built on `TimestampedModel` needs no migration.
-
 ## Manual steps
 
 Run `manage.py migrate`. Two migrations ship:

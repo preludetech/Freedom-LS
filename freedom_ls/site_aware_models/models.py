@@ -170,21 +170,7 @@ class SiteAwareModel(SiteAwareModelBase):
         abstract = True
 
 
-class UpdatedAtModel(models.Model):
-    """Adds a modification timestamp on its own.
-
-    The base the API's keyset paging reads updated_at through, for models that
-    record their creation under a domain name such as registered_at and must
-    not gain a second creation column.
-    """
-
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
-
-
-class TimestampedModel(UpdatedAtModel):
+class TimestampedModel(models.Model):
     """Adds creation and modification timestamps.
 
     Composed alongside whichever base a model already uses, rather than folded
@@ -193,6 +179,7 @@ class TimestampedModel(UpdatedAtModel):
     """
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True

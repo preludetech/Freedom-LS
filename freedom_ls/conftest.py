@@ -2,13 +2,14 @@
 
 import base64
 import tempfile
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import pytest
 
+from django.core.cache import cache
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -45,6 +46,19 @@ if TYPE_CHECKING:
 def _disable_force_site_name(settings):
     """Ensure FORCE_SITE_NAME is always None during tests."""
     settings.FORCE_SITE_NAME = None
+
+
+@pytest.fixture(autouse=True)
+def _clear_django_cache() -> Iterator[None]:
+    """Empty the cache around every test.
+
+    The API throttles count requests in the cache, and the default LocMemCache
+    lives for the whole test process, so counts would otherwise carry from one
+    test into the next.
+    """
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

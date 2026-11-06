@@ -1,4 +1,3 @@
-from django.db.models import QuerySet
 from rest_framework import serializers
 
 from freedom_ls.accounts.api import user_fields
@@ -42,11 +41,9 @@ class CourseInterestApiViewSet(ReadOnlyApiViewSet):
     filterset_class = CourseInterestFilterSet
     required_scope = ApiScope.REGISTRATIONS_AND_PROGRESS
     serializer_class = CourseInterestApiSerializer
-
-    def get_queryset(self) -> QuerySet[CourseInterest]:
-        # The base manager crosses sites; the base viewset's filter_queryset
-        # narrows every lookup to the key's site.
-        return CourseInterest._base_manager.select_related("course", "user")
+    # The base manager crosses sites; the base viewset's filter_queryset
+    # narrows every lookup to the key's site.
+    queryset = CourseInterest._base_manager.select_related("course", "user")
 
 
 router.register(
