@@ -189,6 +189,21 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
                 assert abs(gap_above - gap_below) <= 1, (
                     f"confirm card gap above {gap_above}px, below {gap_below}px"
                 )
+            if is_preview and viewport["width"] == 768:
+                # The Label column used to be squeezed until a long status
+                # such as "Already a member" wrapped onto two lines.
+                page.goto(preview_url)
+                badges = page.locator("[data-import-rows] td[data-tone] > *")
+                assert badges.count()
+                wrapped = badges.evaluate_all(
+                    """els => els.filter(el => {
+                        const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+                        const padding = parseFloat(getComputedStyle(el).paddingTop)
+                            + parseFloat(getComputedStyle(el).paddingBottom);
+                        return el.getBoundingClientRect().height > lineHeight + padding + 2;
+                    }).map(el => el.textContent.trim())"""
+                )
+                assert not wrapped, f"status badges wrapped onto two lines: {wrapped}"
             if is_preview and viewport["width"] == 375:
                 expect(page.get_by_text("Step 2 of 3: Preview")).to_be_visible()
                 # The labels are visually hidden (sr-only), so they stay
