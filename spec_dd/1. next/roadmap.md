@@ -15,7 +15,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `cookie-banner`
 - `corporate-job-course-recommendations-4-educator-interface-screens`
 - `corporate-job-course-recommendations-5-attribute-csv-import`
-- `csv-formula-extra-triggers`
 - `deadlines-3-extensions-and-pause`
 - `deadlines-7-educator-at-risk`
 - `educator-interface-13-staff-roles`
@@ -889,7 +888,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
 | `cookie-banner` | A cookie banner telling visitors how they are tracked, dismissed once and remembered so it stops showing. | none | next | |
-| `csv-formula-extra-triggers` | Extend the CSV formula-escaping helper to neutralise line-feed and full-width =, +, -, @ so every FLS CSV export is safe for spreadsheet users. | none | next | Pull-in from First-Class-LMS. |
+| `csv-formula-extra-triggers` | Extend the CSV formula-escaping helper to neutralise line-feed and full-width =, +, -, @ so every FLS CSV export is safe for spreadsheet users. | none | in progress | Pull-in from First-Class-LMS. |
 | `design_educator-interface-bulk-action` | Restyle the educator bulk-action bar to the Claude Design mock: appears on selection with a count, select and clear all, text buttons, a More menu, modal confirmation. | none | in progress | Design in `design_prompt.md`. Edits framework templates and `tableSelection`, so it lands before `extract_panels_framework-1-gather-generic-code`. |
 | `educator-interface-design-learner-csv-upload-design-fix` | Restyle the educator learner CSV upload to match its Claude Design design. | none | in progress | Design in `prompt.md`. |
 | `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
