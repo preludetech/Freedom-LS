@@ -287,7 +287,7 @@ Write the regression test and see it fail, then write the fix and see it pass. R
 Run the command it prints. Then:
 
 ```
-uv run git commit -m "fix: <what> (found integrating <spec> into <project>)"
+git commit -m "fix: <what> (found integrating <spec> into <project>)"
 ```
 
 The fix lands without a separate approval question; the size test, the targeted tier, the borderline question and the operator's attendance are the gates. Print `git diff main...HEAD --stat` and the regression test name so the transcript shows what lands, then:
@@ -305,7 +305,7 @@ claude_plugins/sdd/scripts/land_on_main.sh land
 **Large fix.** Write `spec_dd/1. next/<slug>/idea.md` following `claude_plugins/sdd/resources/idea_standard.md`: the failure, the project path and spec it surfaced in, the failing test or step with its evidence lines, and the expected fix in one paragraph. Then, on `main`:
 
 ```
-uv run git commit -m "idea: <slug> (found integrating <spec> into <project>)"
+git commit -m "idea: <slug> (found integrating <spec> into <project>)"
 ```
 
 Stage the idea file only. Then:

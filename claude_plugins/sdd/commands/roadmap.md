@@ -131,7 +131,7 @@ Delete this run's `.sdd-work/roadmap_entry_*.md` files by name.
 ## S8: Commit
 
 Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md` and commit with
-`uv run git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
+`git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
 `main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, as in
 `protected/move_spec_to_in_progress.md`, which commits there without pushing.
 

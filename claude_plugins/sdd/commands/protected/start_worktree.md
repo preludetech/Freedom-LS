@@ -28,14 +28,18 @@ Do not read the spec or any other files; only the feature name matters.
 
 ## Step 2: Create the worktree
 
-Create the worktree from the **bare repo parent directory** (not from inside an existing worktree). Never create a worktree inside an existing worktree.
-
-The bare repo is the parent of all worktree directories. To find it, navigate one directory up from your current worktree:
+The new worktree is a sibling of the current one: the bare repo is the parent of all worktree
+directories. Run this from inside the current worktree, with an absolute path and the current
+branch as the base, so the worktree can never land inside another one and always holds the move
+commit:
 
 ```bash
-cd ..  # from current worktree to bare repo
-git worktree add <spec-folder-name>
+parent="$(dirname "$(git rev-parse --show-toplevel)")"
+git worktree add -b <spec-folder-name> "$parent/<spec-folder-name>" HEAD
 ```
+
+Never `cd ..` first: from the bare repo, `git worktree add <name>` branches off the bare repo's
+`HEAD`, not the branch that holds the move.
 
 ## Step 3: Prepare the new worktree for development
 
@@ -47,7 +51,7 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists —
 - If it is blank, or the config file / section is absent, skip this step — this project has no per-worktree setup step.
 
 ```bash
-cd <spec-folder-path>   # then run the configured Setup script, if any
+cd "$parent/<spec-folder-name>"   # then run the configured Setup script, if any
 ```
 
 ## Step 4: Report back

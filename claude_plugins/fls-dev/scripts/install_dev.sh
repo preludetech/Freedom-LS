@@ -6,6 +6,10 @@
 # pull FLS and the plugin in as submodules).
 git submodule update --init --recursive
 
+# Every worktree shares one pre-commit hook. Keep it a shim that runs pre-commit from whichever
+# worktree is committing, so a plain `git commit` runs the hooks everywhere.
+"$(dirname "$0")/../../django-stack/scripts/install_pre_commit_hook.sh"
+
 "$(dirname "$0")/rebuild_after_rebase.sh"
 
 # Apply migrations

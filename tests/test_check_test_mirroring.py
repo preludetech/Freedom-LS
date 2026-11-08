@@ -111,6 +111,25 @@ def test_flat_templatetag_test_fails_naming_expected_module(tmp_path: Path) -> N
     assert "pkg/alpha/x.py" in result.stderr
 
 
+def test_misplaced_test_in_an_app_copy_under_claude_worktrees_is_not_reported(
+    tmp_path: Path,
+) -> None:
+    copy = ".claude/worktrees/agent-x/"
+    files = one_app() | {
+        f"{copy}pkg/alpha/__init__.py": "",
+        f"{copy}pkg/alpha/apps.py": apps_py("pkg.alpha", "AlphaConfig"),
+        f"{copy}pkg/alpha/templatetags/__init__.py": "",
+        f"{copy}pkg/alpha/templatetags/x.py": "",
+        f"{copy}pkg/alpha/tests/__init__.py": "",
+        f"{copy}pkg/alpha/tests/test_x.py": "",
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 0
+
+
 def test_project_rooted_under_skipped_directory_name_still_reports_violations(
     tmp_path: Path,
 ) -> None:

@@ -32,6 +32,7 @@ from pathlib import Path
 
 SKIP_DIRS: frozenset[str] = frozenset(
     {
+        ".claude",
         ".git",
         ".venv",
         "venv",

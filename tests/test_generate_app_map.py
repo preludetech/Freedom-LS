@@ -226,6 +226,24 @@ def test_project_rooted_under_skipped_directory_name_still_finds_apps_and_edges(
     assert "alpha --> beta" in doc
 
 
+def test_app_copy_under_claude_worktrees_is_not_scanned(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        ".claude/worktrees/agent-x/pkg/gamma/__init__.py": "",
+        ".claude/worktrees/agent-x/pkg/gamma/apps.py": app_config(
+            "pkg.gamma", "GammaConfig"
+        ),
+        ".claude/worktrees/agent-x/pkg/gamma/services.py": "from pkg.beta import views\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert "gamma" not in doc
+
+
 def user_model_fk_field() -> str:
     return (
         "from django.conf import settings\n"

@@ -31,8 +31,9 @@ The subject names the spec first, so `git log` reads as a per-spec history:
 
 `<spec name>` is the spec directory's folder name, e.g. `interested_login: write the spec`.
 
-Commit with `uv run git commit`. The `uv run` prefix is required by `CLAUDE.md`: the
-pre-commit hooks live in the uv environment.
+Commit with plain `git commit`, never through a launcher such as `uv run`: Claude Code refuses a
+wrapped `git` in a session that entered a worktree and in an `isolation: "worktree"` sub-agent.
+The project's pre-commit hook fires on a plain `git commit`.
 
 If a hook rewrites a file, re-stage it and commit again. If a hook fails on something you did not
 touch, stop and report it rather than fixing unrelated code.

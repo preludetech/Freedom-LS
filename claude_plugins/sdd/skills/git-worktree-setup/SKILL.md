@@ -12,13 +12,17 @@ The project uses a **bare repository** layout:
 - Each worktree is a sibling directory (e.g., `main/`, `some-feature/`)
 - Each worktree has a `.git` **file** (not directory) pointing to its git dir
 
-To create a new worktree:
+To create a new worktree, from inside the current worktree:
 ```bash
-cd .. # navigate to the bare repo (parent of current worktree)
-git worktree add <branch-name>
-cd <branch-name>
+parent="$(dirname "$(git rev-parse --show-toplevel)")"   # the bare repo
+git worktree add -b <branch-name> "$parent/<branch-name>" HEAD
+cd "$parent/<branch-name>"
 # then run the configured Setup script, if any (dependency install, DB creation, migrations, seed data)
 ```
+
+The absolute path keeps the new worktree a sibling, never nested inside the current one, and
+`HEAD` makes the current branch its base. From the bare repo itself, `git worktree add <name>`
+branches off the bare repo's `HEAD` instead.
 
 Per-worktree resources (e.g. a per-branch dev database) are set up by the project's own tooling, not
 this generic skill. The setup and teardown scripts are configured under the **Worktree Scripts**

@@ -80,7 +80,7 @@ Then remove leftover batch worktrees, taking names the way `implement_plan.md` S
 "Names from git" says: for each `git worktree list` path under this checkout's
 `.claude/worktrees/` whose branch holds a `[batch …]` commit, run the Teardown script inside it
 (`cd <path> && <script>`; skip when the script is blank), then
-`git worktree remove --force .claude/worktrees/<name>` and `git branch -D <branch>`. Report
+`git worktree remove --force --force .claude/worktrees/<name>` and `git branch -D <branch>`. Report
 each one in Step 8.
 
 # Step 3: Update the todo list

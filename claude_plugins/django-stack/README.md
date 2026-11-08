@@ -57,7 +57,8 @@ host project's own reviewer memory (the same convention `sdd` uses for `sdd-qa-d
 
 ### Scripts
 `find_available_port.sh`, `generate_app_map.py`, `db_clear.sh`, `fetch_pr_comments.sh`,
-`kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
+`kill_runserver.sh`, `install_pre_commit_hook.sh` (makes the shared git pre-commit hook run from
+whichever worktree commits), plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
 ### Resources (15)

@@ -34,7 +34,7 @@ If this is empty, skip to Step 3. Otherwise:
 
 ```
 git add -A
-uv run git commit -m "<branch>: wip before rebase onto main"
+git commit -m "<branch>: wip before rebase onto main"
 ```
 
 A commit, not a stash, so the lost-change check in Step 7 covers this work like every other commit
@@ -145,7 +145,7 @@ Read the exit code:
 - `0` → lost-change check: pass. Continue to Step 8.
 - `1` → for each path under `LOST:`, restore the branch's own change from the old tip:
   `git diff $OLD_BASE $OLD_TIP -- <file>` is the hunk to re-apply. Commit it as
-  `uv run git commit -m "<branch>: restore <what> lost in rebase"`, then re-run the script.
+  `git commit -m "<branch>: restore <what> lost in rebase"`, then re-run the script.
 - `2` → read the range-diff printed for each path under `REVIEW:`. A benign difference is
   context drift; a `-`/`+` pair inside a commit that never meant to touch that code is a
   dropped or altered change, restored the same way as for exit `1`. Then check the file
@@ -157,7 +157,7 @@ Read the exit code:
   - A path that is absent from `git diff --name-only --no-renames $OLD_BASE $OLD_TIP` belongs to a file the
     branch never changed, so it must match `origin/main`. Any difference means conflict resolution
     undid main's change. Restore it with `git checkout origin/main -- <file>`, then
-    commit as `uv run git commit -m "<branch>: restore main's <what> reverted in rebase"`.
+    commit as `git commit -m "<branch>: restore main's <what> reverted in rebase"`.
   - A migration renumbered in Step 6 appears as both its old and its new path. Compare them with
     `git diff $OLD_TIP:<old path> HEAD:<new path>`. The only allowed differences are the number
     and `dependencies`.
@@ -209,7 +209,7 @@ A failure is fixed on the branch, test first, following "When a targeted run or 
 in the tier definition, then committed:
 
 ```
-uv run git commit -m "<branch>: fix <what> after rebase"
+git commit -m "<branch>: fix <what> after rebase"
 ```
 
 Three attempts. If the run still fails after that, stop with `status: failed`.

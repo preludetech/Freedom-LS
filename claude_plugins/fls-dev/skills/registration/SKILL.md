@@ -98,7 +98,7 @@ Workflow when changing a Terms/Privacy doc:
 
 1. Edit the file under `legal_docs/<site_domain>/` or `legal_docs/_default/` (e.g. `legal_docs/_default/terms.md`).
 2. **Bump `version`** in the YAML frontmatter (and update `effective_date` if appropriate). This is what business queries key on.
-3. **Commit** — e.g. `uv run git add legal_docs/_default/terms.md && uv run git commit -m "..."`. Until then, `runserver` keeps serving the **previously committed** version: uncommitted, staged and dirty-tree edits all behave the same way.
+3. **Commit** — e.g. `git add legal_docs/_default/terms.md && git commit -m "..."`. Until then, `runserver` keeps serving the **previously committed** version: uncommitted, staged and dirty-tree edits all behave the same way.
 4. Reload the page on `runserver`. The new version is now what users see and what `LegalConsent.git_hash` records.
 
 ### Why "git blob at HEAD"?

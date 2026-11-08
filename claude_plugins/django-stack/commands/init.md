@@ -289,6 +289,13 @@ touch and why, and every report-only finding from **Step 1, item 5**. Point the 
 `PLUGINS_ROOT` resolved to `.` but this project holds `claude_plugins/` elsewhere (e.g. a submodule),
 tell them to edit `PLUGINS_ROOT` in `claude.sh` and re-run.
 
+If `$(git rev-parse --git-path hooks/pre-commit)` is missing, or does not contain
+`Installed by django-stack install_pre_commit_hook.sh`, list running
+`<PLUGINS_ROOT>/claude_plugins/django-stack/scripts/install_pre_commit_hook.sh` as an outstanding
+action, ideally from the project's per-worktree Setup script. Without it a plain `git commit` does
+not run the pre-commit hooks in every worktree, and inside an isolated worktree Claude Code refuses
+`uv run git commit`.
+
 **If any plugin under `<PLUGINS_ROOT>/claude_plugins/` has no `--plugin-dir` line in `claude.sh`,
 this is the most consequential outstanding action and must be listed first** - always, not only when
 the launcher step retired a pre-split argument. A plugin without a line is simply not loaded, and

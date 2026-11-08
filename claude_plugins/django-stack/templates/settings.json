@@ -11,6 +11,7 @@
       "Bash(git log*)",
       "Bash(git add:*)",
       "Bash(uv run git commit:*)",
+      "Bash(git commit:*)",
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "Bash(.claude/ds/scripts/*.sh:*)",

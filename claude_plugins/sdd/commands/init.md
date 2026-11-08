@@ -119,7 +119,7 @@ files exist, catches this.
    every worktree Claude Code creates in the project: `head` branches a sub-agent's worktree
    from the current branch, so a batch worktree starts from the feature branch.
 4. Add these `allow` entries if absent: `Bash(git worktree list*)`,
-   `Bash(git worktree remove --force .claude/worktrees/*)`, `Bash(git cherry-pick *)`. The
+   `Bash(git worktree remove --force --force .claude/worktrees/*)`, `Bash(git cherry-pick *)`. The
    commands that use the second one build the name they pass from the last path component of
    a `git worktree list` line and never from free text.
 5. Add `"sdd": true` to `enabledPlugins`. Do not add or remove another plugin's key.

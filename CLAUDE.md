@@ -16,12 +16,14 @@ Python 3.13+, Django 6.x, PostgreSQL 17, HTMX 2.x, TailwindCSS
 
 ## Committing to Git
 
-If you need to commit to Git, use uv:
+Commit with plain `git commit`, never `uv run git commit`:
 
 ```
-uv run git commit ...
+git commit ...
 ```
-This is because we are using pre-commit hooks
+The shared pre-commit hook runs the project's hooks from the committing worktree's own uv
+environment (`claude_plugins/django-stack/scripts/install_pre_commit_hook.sh`, run by the Setup
+script). Claude Code refuses `uv run git …` inside an isolated worktree.
 
 Several processes often work in the same worktree at once, so commits you didn't make, and files changing under you, are normal. Every commit is intentional unless the user says otherwise. Commit your work on top of whatever is there and push the branch as it stands, commits from other processes included. History stays as it is: rewrite, drop, squash or reset a commit only when the user asks for that specific commit.
 

@@ -97,7 +97,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ## Step 4: Commit
 
 ```
-uv run git commit -m "…"
+git commit -m "…"
 ```
 
 `uv run` is required by the project's `CLAUDE.md` — the pre-commit hooks live in the uv environment.

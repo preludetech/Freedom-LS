@@ -42,7 +42,7 @@ If it reports the row was not found, carry on and say so in Step 4 ("not on the 
 
 ## Step 3: Commit all changes
 
-Make a git commit with `uv run git commit` (per `CLAUDE.md`). This commit captures the `todo.md`
+Make a git commit with plain `git commit`. This commit captures the `todo.md`
 created in the previous `/sdd:start` step, the directory move, and the roadmap edit from Step 2.5
 (stage `spec_dd/1. next/roadmap.md` by path when it changed). Lead the subject with the spec
 directory name, as every SDD commit does — e.g. `interested_login: start the spec`.

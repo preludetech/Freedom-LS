@@ -45,6 +45,15 @@ worktree under `.claude/worktrees/` of the current checkout, on a new branch fro
 (`head` branches from the feature branch; the default branches from the remote default branch).
 Nothing is installed in it and gitignored files are absent, so a project's Setup script runs inside
 it. Writes and git commands aimed at the main checkout are blocked. A worktree with commits stays on
-disk until removed by name. `EnterWorktree` with `path` moves the whole session into an existing
-worktree that `git worktree list` shows; it is a session move, not a parallelism primitive.
-Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/worktrees
+disk until removed by name, and it stays **locked** after the agent returns, so removing it takes
+`git worktree remove --force --force`. `EnterWorktree` with `path` moves the whole session into an
+existing worktree that `git worktree list` shows; it is a session move, not a parallelism
+primitive. A session that has entered a worktree switches again only to one under
+`.claude/worktrees/`.
+
+In both kinds of isolated worktree, Claude Code refuses a `git` command it cannot see the target
+of, and a launcher in front of it counts: `uv run git commit` is refused, so is a compound command
+naming `git` in several places. Commit there with a plain `git commit`, which means the project's
+pre-commit hook has to work without the launcher.
+Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/worktrees;
+the locking and the launcher refusal were observed running batch waves.

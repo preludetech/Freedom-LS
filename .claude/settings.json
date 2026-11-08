@@ -14,6 +14,7 @@
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run git commit:*)",
+      "Bash(git commit:*)",
       "Bash(uv run git revert:*)",
       "mcp__ide__getDiagnostics",
       "Bash(tail:*)",
@@ -151,7 +152,7 @@
       "Bash(uv sync --directory *)",
       "Bash(npm --prefix * run tailwind_build*)",
       "Bash(git worktree list*)",
-      "Bash(git worktree remove --force .claude/worktrees/*)",
+      "Bash(git worktree remove --force --force .claude/worktrees/*)",
       "Bash(git cherry-pick *)"
     ],
     "deny": [
