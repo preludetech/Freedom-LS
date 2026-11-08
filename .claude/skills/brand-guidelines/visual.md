@@ -90,6 +90,12 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 
 Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-md` (`--fls-radius-md`) unless the component says otherwise. Padding, gaps, dialog footers and phone sizing are set by the panel-framework components; `Skill(fls-dev:panel-framework)` says what they do.
 
+**A button label fits on one line, down to a 375px phone.** Keep it to a verb and a noun ("Download errors", "Upload a corrected file"). A count or a sentence goes in the heading or text beside the button, not in the label. A label wraps only when no shorter wording names the action.
+
+**A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
+
+**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
+
 ## Placement
 
 A control that changes a thing sits where the thing is shown, so the person changes what they are
@@ -116,6 +122,9 @@ What QA checks in a screenshot of any FLS page.
 - A control that changes a thing sits beside the thing it changes, as the Placement table says; a
   Settings tab holds only the actions with no home of their own.
 - Status badges carry one of the five status tones; a label that is not a status is a chip.
+- Every button label sits on one line at 375px, 768px and 1280px.
+- A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
+- What succeeded and what failed sit in separate panels, not one card.
 
 ## Example page
 
