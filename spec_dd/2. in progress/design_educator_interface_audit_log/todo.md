@@ -19,7 +19,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: learner History mobile card uses the generic labelled card instead of the Who+When / label layout — the spec and QA plan want the custom card there, the plan limits it to tables with a Target column (TDD: failing test first, then fix)
-- [ ] (user) Decide whether the leading-chevron row detail from commit 22cd0717e (toggle in a leading column under a hidden "Details" header, untinted indented detail, chevron instead of "More" on mobile cards) is the intended design, then update the spec's row-detail section and `3. frontend_qa.md` §1/§8 to match it, or change the build back
+- [x] (user) Decide whether the leading-chevron row detail from commit 22cd0717e (toggle in a leading column under a hidden "Details" header, untinted indented detail, chevron instead of "More" on mobile cards) is the intended design, then update the spec's row-detail section and `3. frontend_qa.md` §1/§8 to match it, or change the build back
 
 ## 4. Documentation and pull request
 
