@@ -15,8 +15,15 @@ FORMULA_TRIGGERS = (
 UTF8_BOM = "\ufeff"
 
 
+def _starts_formula(line: str) -> bool:
+    # str.lstrip() strips exactly what str.isspace() accepts. The first character
+    # is checked on its own because tab is both a trigger and whitespace. An
+    # empty slice is "", which is never a trigger.
+    return line[:1] in FORMULA_TRIGGERS or line.lstrip()[:1] in FORMULA_TRIGGERS
+
+
 def escape_csv_formula(value: str) -> str:
     """Stop a cell being executed as a formula when the CSV is opened."""
-    if value and value[0] in FORMULA_TRIGGERS:
+    if _starts_formula(value):
         return f"'{value}"
     return value
