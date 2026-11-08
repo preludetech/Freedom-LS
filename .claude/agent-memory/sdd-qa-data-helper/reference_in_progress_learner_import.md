@@ -26,3 +26,12 @@ If asked again, wrap as a qa_helpers command with --status/--rows/--processed.
 - Every demodev import URL (upload/preview/result) 404s for a non-demodev educator (scope_request).
 - BULK_BACKGROUND_THRESHOLD lives in freedom_ls/panel_framework/config.py (AppSettings, default 250,
   read from Django settings by name; no env var, not set in config/settings_*.py).
+
+## Round 3 (6 Nov 2026): REUSE rather than re-create
+- Asked again for RUNNING + FAILED imports: reused 962e2d06 (running 300/120, still frozen) and
+  38d52845 (failed, "Something broke.", 3 rows, started/finished set). Check they're still in state before creating new ones.
+- Cohort admin persona: `qa_create_single_org_educator --cohort-name "<cohort>"` (option added this round)
+  grants cohort_admin on that cohort instead of organisation_admin. Made qa-cohortadmin-r1106@example.com on
+  demodev "Cohort 2025.04.06" (testpass123). Other-org staff = qa-otherstaff-r1105@example.com (qa-other-org), password reset to testpass123.
+- Non-member user: import `_ensure_user`/`_ensure_consents` from that command inside `_site_context`; made qa-joiner-r1106@example.com (testpass123), no Learner/StaffMember/ORA.
+- Org membership models are learner_management.Learner / StaffMember (no OrganisationMember class).
