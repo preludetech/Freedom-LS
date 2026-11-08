@@ -32,7 +32,7 @@ The format and the bullet grammar live in `claude_plugins/sdd/resources/roadmap_
 ## Step 1: Capture the idea
 
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
-2. If the work has a design drawn in Claude Design, run `/sdd:register_design [dir] <handoff prompt or claude-design-url>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
+2. If the work has a design in Claude, run `/sdd:register_design [dir] <design artifact link>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. The command takes the link of a Design Artifact in Claude (or a handoff prompt holding one), reads the canvas with the `Artifact` tool and writes `design_prompt.md`, `design_source/`, `design_screenshots/` and `design.md`. `design.md` tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it. See **Registering a design** below.
 
 ## Step 2: Spec
 
@@ -90,6 +90,15 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
 
 `/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. When the commit is a checkpoint you have not verified, use a commit command that runs the targeted test tier first, if the project has one.
+
+## Registering a design
+
+1. The design is a Design Artifact in Claude: an Artifact made from the Design Artifact type, at a `claude.ai/artifact/<id>` link. Its owner moves a design still in standalone Claude Design into Claude before 14 December 2026. A project that cannot move is redrawn in Claude.
+2. The person running the command can edit the design: they own it, or the owner shared it with edit access. A design shared for viewing only reads back as a summary, and the command stops.
+3. Copy the design's link. A handoff prompt Claude generates for the design also works if it contains that link.
+4. Either paste the link into `<spec-dir>/design_prompt.md` before `/sdd:start`, which registers it while it sets up the worktree, or run `/sdd:register_design <link> [notes]` on the feature branch.
+5. Check the report: the canvas title, version, artboards, synced files and assets, any missing asset, the screenshots.
+6. After the design changes in Claude, register it again. The same command re-syncs `design_source/` and rewrites `design.md`.
 
 ---
 

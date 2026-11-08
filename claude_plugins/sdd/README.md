@@ -38,10 +38,10 @@ and lean notes. With no argument it syncs the file with the spec directories; wi
 cuts a big idea into ordered sibling specs and adds them as a feature. `scripts/roadmap.py` derives
 statuses, "Up next" and the diagrams.
 
-`/sdd:register_design [dir] <handoff prompt or claude-design-url>` records a design drawn in Claude
-Design on the spec the current branch is working on (on `main`, on the spec or cut effort's parent you
-name), and commits it to the current branch only: it writes `<dir>/design.md` (the link, how to read it through the Claude Design
-integration rather than the web, how faithfully to build to it, which spec owns each screen) and points
+`/sdd:register_design [dir] <design artifact link>` records a Design Artifact on the spec the current
+branch is working on (on `main`, on the spec or cut effort's parent you name), and commits it to the
+current branch only. It reads the design through the `Artifact` tool and writes `<dir>/design.md` (the
+link and version, how to read it, how faithfully to build to it, which spec owns each artboard) and points
 the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `design.md` they are pointed at.
 
 `commands/protected/` (7 read-and-followed helper files, not advertised as slash commands): `setup_todo_list`,
