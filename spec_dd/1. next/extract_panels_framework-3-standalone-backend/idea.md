@@ -14,7 +14,9 @@ and its unit tests run without FLS.
 - **CSV helpers.** The framework carries its own `escape_csv_formula`, `EchoWriter` and `UTF8_BOM`
   (today imported by `tables.py` and `views.py` from `freedom_ls/base/csv_safety.py` and
   `csv_import.py`). Only these three symbols are copied, not the learner-import parsing in
-  `csv_import.py`. FLS keeps its own copies.
+  `csv_import.py`. FLS keeps its own copies. The copied `escape_csv_formula` and `FORMULA_TRIGGERS`
+  must be the widened version from the csv-formula-extra-triggers spec (line feed and full-width
+  triggers, a trigger after leading whitespace, a trigger at the start of any line), with its tests.
 - **Site handling.** `BulkActionRun` stops subclassing `SiteAwareModel` and keeps its `site` foreign
   key to `django.contrib.sites`. The framework resolves the request's site through a settings-declared
   callable that takes a request and returns a `Site`. The default is Django's `get_current_site`; FLS
