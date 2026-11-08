@@ -56,22 +56,23 @@ section shows the designer's own default picks, which are not the ones `idea.md`
 | Screen or state | Brief section | Built by |
 |---|---|---|
 | Deadline states key: urgency levels, outcomes after the date, deadline types (`key__key`) | none | `design_learner-interface-deadlines` |
-| Dashboard course cards, C band under the thumbnail (`cards__card-c`) | none | `design_learner-interface-deadlines` |
-| Dashboard course cards, A status pill and B two lines (`cards__card-a`, `cards__card-b`) | none | none (out of scope) |
+| Dashboard course cards, B two lines at the bottom of the card, below the progress bar (`cards__card-b`) | none | `design_learner-interface-deadlines` |
+| Dashboard course cards, A status pill and C band under the thumbnail (`cards__card-a`, `cards__card-c`) | none | none (out of scope) |
 | Dashboard upcoming deadlines, A grouped list (`panel__panel-a`) | none | none (out of scope: `idea.md` defers it to a new spec) |
 | Dashboard upcoming deadlines, B timeline and C rail (`panel__panel-b`, `panel__panel-c`) | none | none (out of scope) |
-| Dashboard continue-learning hero, A chip, B date tile, C strip (`hero__hero-a`, `hero__hero-b`, `hero__hero-c`) | none | none (out of scope) |
+| Dashboard continue-learning hero, C strip (`hero__hero-c`): only its placement, the deadline at the bottom after a divider with the action on the right, used for the course row. Its pill is not built | none | `design_learner-interface-deadlines` |
+| Dashboard continue-learning hero, A chip and B date tile (`hero__hero-a`, `hero__hero-b`) | none | none (out of scope) |
 | Dashboard top-of-page alert, A banner, B chips, C two cards (`alert__alert-a`, `alert__alert-b`, `alert__alert-c`) | none | none (out of scope) |
-| Course player outline sidebar header, B next-deadline card (`p-sb__sb-b`) | none | `design_learner-interface-deadlines` |
-| Course player outline sidebar header, A course due date and C deadlines shortcut (`p-sb__sb-a`, `p-sb__sb-c`) | none | none (out of scope) |
-| Course player outline rows, A date in place of the duration, coloured by urgency (`p-outline__ol-a`) | none | `design_learner-interface-deadlines` |
+| Course player outline sidebar header, A course due date, B next-deadline card and C deadlines shortcut (`p-sb__sb-a`, `p-sb__sb-b`, `p-sb__sb-c`) | none | none (out of scope: the tinted card is not built; the outline deadline is plain text, as in `mobile__m-toc`) |
+| Course player outline rows, A date in place of the duration, coloured by urgency, as icon and text (`p-outline__ol-a`) | none | `design_learner-interface-deadlines` |
 | Course player outline rows, B line under the module (`p-outline__ol-b`) | none | none (out of scope) |
-| Course player section header, A chip (`p-head__hd-a`) | none | `design_learner-interface-deadlines` |
-| Course player section header, B block on the right (`p-head__hd-b`) | none | none (out of scope) |
-| Course player due-soon / overdue banner, A bar and B callout (`p-banner__bn-a`, `p-banner__bn-b`) | none | none (out of scope) |
+| Course player section header, A chip and B block on the right (`p-head__hd-a`, `p-head__hd-b`) | none | none (out of scope: no chip or block is built) |
+| Course player due-soon / overdue banner, A bar (`p-banner__bn-a`): only its icon-and-bold-text treatment, used as the header deadline line above the item title. The full-width bar is not built | none | `design_learner-interface-deadlines` |
+| Course player due-soon / overdue banner, B callout (`p-banner__bn-b`) | none | none (out of scope) |
 | Course player all course deadlines, A side drawer and B popover (`p-drawer__dr-a`, `p-drawer__dr-b`) | none | none (out of scope) |
 | Assembled dashboard and course player (`assembled__as-dash`, `assembled__as-player`) | none | none (out of scope) |
-| Tablet player: next-deadline card and outline dates at tablet width (`tablet__tb-player`) | none | `design_learner-interface-deadlines` |
+| Tablet player: outline deadline and outline dates at tablet width (`tablet__tb-player`) | none | `design_learner-interface-deadlines` |
 | Tablet dashboard (`tablet__tb-dash`) | none | none (out of scope) |
-| Mobile player outline sheet with dates (`mobile__m-toc`) | none | `design_learner-interface-deadlines` |
-| Mobile dashboard, player bar and deadlines sheet (`mobile__m-dash`, `mobile__m-player`, `mobile__m-sheet`) | none | none (out of scope) |
+| Mobile player outline sheet: the plain-text deadline under the progress bar and the row dates (`mobile__m-toc`). Its chip is not built | none | `design_learner-interface-deadlines` |
+| Mobile player (`mobile__m-player`): only the closed-item state, a large centred icon with text under it | none | `design_learner-interface-deadlines` |
+| Mobile dashboard and deadlines sheet (`mobile__m-dash`, `mobile__m-sheet`) | none | none (out of scope) |

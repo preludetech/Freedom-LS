@@ -295,26 +295,26 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
 
-- **Course player** — the outline opens with a **Next deadline** card for the earliest missed deadline, else the next one, and each incomplete item with a deadline shows its date on its own row, with "Closes <date>." beside it while the item can still close. The item the learner is on shows its deadline in a card beside its title. A completed item shows none.
-- **Dashboard course card** — a band along the bottom of the card's coloured hero names the earliest missed deadline, else the next one, with its title and date. A time limit shows under the title "Course", and a closed item's band says **Closed** and names the item.
+- **Course player** — under the outline's progress bar, a line names the earliest missed deadline, else the next one, with its title, full date and time. Each incomplete item with a deadline shows its date at the right of its own row, with "Closes <date>." beside it while the item can still close. The item the learner is on shows its deadline on a line above its title. A completed item shows none.
+- **Dashboard course card** — the card's last line, below the progress bar, names the earliest missed deadline, else the next one, with its title and short date, and Details at its right. The compact course rows on phones and tablets show the same line at their bottom. A time limit shows under the title "Course", and a closed item's line says **Closed** and names the item.
 
-A deadline shows in one of four states, each with its own colour, icon and word: **Deadline**, **Deadline today**, **Missed deadline** and **Closed**.
+A deadline shows in one of four states, each with its own colour, icon and word: **Deadline**, **Deadline today**, **Missed deadline** and **Closed**. Each is an icon and coloured text, never a badge or a tinted box.
 
 The **course detail page** shows no deadline dates. Where the course has a time limit, a "Time limit" cell gives its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
 
-![Course player with the next-deadline card, outline dates and the deadline chip above the item title](screenshots/learner_course_detail_due_dates.png)
+![Course player with the outline's deadline line, outline dates and the deadline line above the item title](screenshots/learner_course_detail_due_dates.png)
 
-![Dashboard course card with a missed-deadline band along the bottom of its hero](screenshots/learner_dashboard_card_overdue.png)
+![Dashboard course card with a missed deadline on its last line, below the progress bar](screenshots/learner_dashboard_card_overdue.png)
 
-Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. On the dashboard band and the outline rows a deadline falling on the learner's own date reads "Today", and a deadline set to a time of day shows that time ("Today, 09:00"); a deadline given as a date alone shows no time. The **Deadline today** colour itself follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
+Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. On the dashboard card and the outline rows a deadline falling on the learner's own date reads "Today", and a deadline set to a time of day shows that time ("Today, 09:00"); a deadline given as a date alone shows no time. The **Deadline today** colour itself follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 
 **Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
 
 - **Missed deadline mark.** It can be switched off. The deadline's date still shows, without the mark.
-- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards the item carries a **Closed** chip, and opening it shows a notice that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**. Those results offer no retry, and a failed result says the quiz has closed.
+- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards its outline row reads **Closed** with a lock icon, and opening it shows a large lock icon with a note that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**. Those results offer no retry, and a failed result says the quiz has closed.
 - **Ending course access.** Access to a course can end a grace window after its time limit. The dashboard card shows "Access ends <date>." and then "Access ended <date>" with no Continue action, and the course detail page says access has ended and offers no button. Depending on the policy, the learner can then still open the outline, their completed items and their results, or nothing. A completed course never ends.
 
-![A closed topic in the course player, with its Closed chip and notice](screenshots/learner_closed_item_notice.png)
+![A closed topic in the course player, with its Closed row and notice](screenshots/learner_closed_item_notice.png)
 
 ![Course detail page after the learner's access has ended](screenshots/learner_course_access_ended.png)
 

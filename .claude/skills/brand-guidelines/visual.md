@@ -76,9 +76,10 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A panel-framework page or component (a table, an action, a filter, the quick view, a dialog or sheet, the selection bar) | `Skill(fls-dev:panel-framework)`: it names the component for each job and how it looks |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
-| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Missed deadline, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
+| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. A learner-facing deadline is never a badge: see Learner deadlines. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
 | A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
+| A page a learner cannot use (a closed or blocked course item) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
 | A progress bar | `<c-course-progress-bar>`, tinted to the course's own accent |
@@ -95,6 +96,16 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
 **Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
+
+## Learner deadlines
+
+Follow the registered design for every learner deadline surface. Never add a chip, badge, card, border or tint that the design does not draw.
+
+- **Treatment**: a deadline is a tier-coloured `<c-icon>` and text. The tier word (and title) is bold in the tier colour; the date and any "Closes …" detail are muted beneath or beside it. It never sits in a chip, badge, bordered card or tinted box. This holds on course cards, course rows, the outline header, the outline rows and the content header.
+- **Outline rows**: the date is icon plus text at the right of the row, coloured by tier, with no pill behind it.
+- **Course cards and rows**: the deadline is the bottom line of the card, below the progress bar, with Details at its right.
+- **Card hero**: the hero holds only the course icon. The organisation avatar overlaps the hero's bottom edge with the name beside it, below the hero. Nothing else goes inside the hero or along its bottom edge, and the avatar does not move.
+- **Content header**: the deadline line above the item title has clear space above it and below it (at least `mt-6` above, `mt-3` to the title).
 
 ## Placement
 
@@ -125,6 +136,11 @@ What QA checks in a screenshot of any FLS page.
 - Every button label sits on one line at 375px, 768px and 1280px.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
+- A learner deadline is an icon and text: no chip, badge, border or tinted box around it on a card, row, outline header, outline row or content header.
+- A course card or row shows its deadline as its last line, below the progress bar, with Details on the right.
+- A course card's hero holds only the course icon; the organisation avatar straddles its bottom edge with the name beside it.
+- A closed course item page shows a large centred icon with text under it, not a callout.
+- The content header's deadline line has visible space above and below it.
 
 ## Example page
 
