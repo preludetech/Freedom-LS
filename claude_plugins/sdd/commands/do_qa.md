@@ -164,6 +164,18 @@ exists to avoid.
 This bounds *what kind of data* moves, not *whether* data moves: Step 13 reads the structured bug
 records it needs to brief the fixer.
 
+## Rule 5 — The spec documents hold the current design
+
+The **spec documents** are the spec, every `*plan.md` and every `*frontend_qa.md` in `<spec-dir>`.
+Together with the files under `## Rule Files` they hold the current design. After a QA run the user
+often changes the design, and `sdd:capture-feedback` rewrites these files to match, so they can
+be newer than the design screenshots, the screenshots under `spec_dd/3. done/` and the look of
+older sibling pages. Where those disagree, the spec documents and rule files win.
+
+A page that matches them **passes**. Its difference from a drawing, an earlier screenshot or a
+sibling is the decided design: record it as a pass, never as a failure, bug, design miss or todo,
+and never fix it back. Read the spec documents' passages on a page before judging it.
+
 ---
 
 # Instructions
@@ -381,7 +393,8 @@ concern as a failing `test` record, never only in its notes:
   or are deliberately centred together.
 - **Consistency with siblings**: pages in the same shell (every page of one player, one panel, one
   wizard) place their header and content the same way. Compare with the sibling pages already
-  shot this run: one page that sits differently from the rest is a bug even if it looks fine alone.
+  shot this run: one page that sits differently from the rest is a bug even if it looks fine alone,
+  unless the spec documents or rule files describe the difference (Rule 5).
 - **Space**: no region is squeezed, clipped or cut off, and no large gap opens that the
   rest of the shell does not have.
 - **Cover**: nothing is hidden under dev tooling, a sticky bar or another region.
@@ -391,7 +404,9 @@ concern as a failing `test` record, never only in its notes:
   under `## Rule Files`. A file without that heading contributes nothing. A line that fails is a
   failing `test` record like any other.
 
-When a page looks wrong and you cannot tell whether it is intended, compare it with the most recent
+When a page looks wrong and you cannot tell whether it is intended, read what the spec documents
+and rule files say about it first (Rule 5): a look they describe is intended, a pass. When they are
+silent, compare it with the most recent
 screenshot of the same page under `spec_dd/3. done/*/screenshots/`. Unchanged since then means
 the look predates this branch. That is a reason to name it as pre-existing in the record, not to
 pass it.
@@ -421,6 +436,9 @@ the same qualities judged and ignored). Append one record per test and viewport:
 - The design is a visual reference, never a source of scope. A drawn element the checklist does
   not list is not a miss: the build is right to lack it. Never raise a question or todo about
   building something the design draws. Colour, font and icons follow the project's theme.
+- The checklist line is the judge, never the drawing. Where the design screenshot draws an element
+  one way and the checklist line or another spec document describes it another way, the page is
+  right to follow the words (Rule 5): that is a pass.
 
 ### Escalation
 
@@ -597,12 +615,14 @@ with "fix it" belongs in the green lane.
 
 1. The failure is a clear functional defect observed in this run. It does not matter whether the
    bug predates this branch: a bug that is also on `main` still gets fixed. A design miss meets
-   this condition when the plan's design checklist names the expected treatment.
+   this condition when the plan's design checklist names the expected treatment and no other spec
+   document or rule file describes the page differently.
 2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test, so a defect in JS, htmx
    swaps, `<dialog>` or history behaviour qualifies.
-3. No product or UX decision is required. When the spec, the test plan and the code disagree about
-   the intended behaviour, choosing which one is right is a product decision, even when the code
-   seems to work.
+3. No product or UX decision is required. When the spec documents, the rule files and the code
+   disagree about the intended behaviour, choosing which one is right is a product decision, even
+   when the code seems to work. A fix that would take the page away from what any spec document
+   or rule file describes is never green-lane: file it as a category-4 decision in Step 15.
 4. No schema migration is required.
 5. It is not security-adjacent (no auth, no permissions, no data-exposure risk).
 
@@ -634,6 +654,9 @@ Spawn **`sdd:qa-bugfixer`** as a solo `Agent` call. Pass it:
 - The slug for the report file — a short kebab-case identifier derived from the bug title, e.g.
   `progress-page-404`.
 - The expected report path: `.sdd-work/bugfix_<slug>.md`.
+- The `<spec-dir>` path and the `## Rule Files` paths, which hold the current design (Rule 5). A
+  fixer that finds the bug's expected behaviour contradicts them returns `status=blocked`, and the
+  bug goes to Step 15 as a category-4 decision.
 
 It returns:
 `status=<ok|failed|blocked> slug=<slug> report=<path> commit=<hash|none> reason=<short>`

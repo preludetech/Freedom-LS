@@ -72,7 +72,9 @@ business: read its documentation and check `qa_report.md` for the outcome.
 
 Feedback you give on the QA report, a screenshot or a page goes through `sdd:capture-feedback`
 (`/sdd:capture_feedback` by hand) before the fix, so the rule lands in one of the files `## Rule
-Files` in `.claude/sdd/config.md` names.
+Files` in `.claude/sdd/config.md` names. It also rewrites the passages of the spec, plan and QA
+plan that the feedback overrides. The next QA run reads those documents as the current design, so
+it passes the changed page instead of flagging it or fixing it back.
 
 ## Step 5: Document
 

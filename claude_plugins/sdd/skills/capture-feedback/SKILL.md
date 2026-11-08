@@ -1,6 +1,6 @@
 ---
 name: capture-feedback
-description: Turn the user's feedback on a QA result, a screenshot, how a page looks, behaves or reads, its design, frontend or copy, or "I've told you before", into a rule in the files the project configures, before any fix starts. Use the moment such feedback arrives, and whenever the user says a point has come up before.
+description: Turn the user's feedback on a QA result, a screenshot, how a page looks, behaves or reads, its design, frontend or copy, or "I've told you before", into a rule in the files the project configures and into the spec documents it overrides, before any fix starts. Use the moment such feedback arrives, and whenever the user says a point has come up before.
 allowed-tools: Read, Edit, Write, Grep, Glob, AskUserQuestion, Skill
 ---
 
@@ -8,7 +8,9 @@ allowed-tools: Read, Edit, Write, Grep, Glob, AskUserQuestion, Skill
 
 Feedback that stays in the conversation is lost at the end of it. This skill writes each point as
 a rule into the project file that holds rules on that subject, so the next agent reads it before
-building, and QA fails on it after. It runs before the fix, at depth 0.
+building, and QA fails on it after. The in-progress spec's documents are rewritten to match, so
+the next QA run reads the feedback as the design and never undoes it. It runs before the fix, at
+depth 0.
 
 ## Inputs
 
@@ -16,7 +18,11 @@ building, and QA fails on it after. It runs before the fix, at depth 0.
   screenshots included.
 - **`## Rule Files`** in `.claude/sdd/config.md` (`config.local.md` wins when it exists). Each
   bullet is `<scope>: <path>`: what the file's rules cover, and the file. An absent section or an
-  empty list means nothing can be captured: say so, point at `/sdd:init`, and go to Step 5.
+  empty list means no rule can be captured: say so, point at `/sdd:init`, skip Steps 3 and 4,
+  and still run Step 5.
+- **The spec directory**: the directory under `spec_dd/2. in progress/` whose `todo.md` belongs to
+  the current branch. Its **spec documents** are the spec, every `*plan.md` and every
+  `*frontend_qa.md` in it. No such directory means Step 5 has nothing to do.
 
 A subagent cannot ask the user. Reached at depth 1 with a question to ask, return
 `status: blocked · needs: <the questions>` and write nothing.
@@ -38,11 +44,13 @@ Done when every sentence of the feedback belongs to exactly one item.
 
 ## Step 2: Check, then ask
 
-Read the target file for each item and find any passage on the same subject. Three cases need
-the user before anything is written:
+Read the target file for each item and find any passage on the same subject. Read the spec
+documents too, and find every passage the item **overrides**: text that describes the old look,
+behaviour or copy. Three cases need the user before anything is written:
 
 - the item is hard to understand, or two readings are possible;
-- it contradicts a rule already in a file;
+- it contradicts a rule already in a file, or it is unclear which spec-document passage it
+  overrides;
 - it seems mistaken: the screenshot, the code or the stylesheet shows something other than what
   the feedback describes.
 
@@ -65,7 +73,7 @@ Edit the target file in place:
 - Rule files carry rules only: no date, no "feedback" heading, no attribution, no observation.
 
 Invoke `Skill(productivity:writing-for-agents)` and `Skill(productivity:unslop)` over each
-passage you wrote. When either cannot be loaded, skip it and say so in Step 5.
+passage you wrote. When either cannot be loaded, skip it and say so in Step 6.
 
 Done when every item has landed in its file.
 
@@ -78,8 +86,24 @@ an existing line when one covers the subject. The QA command walks that section.
 
 Done when every screenshot-visible item has a check line.
 
-## Step 5: Hand back
+## Step 5: Bring the spec documents in line
 
-Report: the items, each file touched, the questions asked and their answers. End with
+Rewrite every overridden passage from Step 2 in place so it describes the feedback's version:
+
+- the spec's description of the screen, its layout, behaviour or copy;
+- each plan's Design transcription: elements, order, hierarchy, copy and design checklist lines;
+- each QA plan's expected results and the design checklists copied into its tests.
+
+A checklist line becomes the checkable line for the new version, so QA passes the page the user
+asked for and fails the old one. The design itself stays as drawn: leave `design_screenshots/`,
+`design_source/`, `design.md` and research notes untouched. Where the spec documents now differ
+from the drawing, the spec documents hold, as `design.md` already says.
+
+Done when no spec document still describes what an item replaced.
+
+## Step 6: Hand back
+
+Report: the items, each file touched (rule files and spec documents), the questions asked and
+their answers. End with
 `changed: <paths>` or `changed: none`. Then, and only then, do what the user asked for: the fix, or
 the todo items that file it.

@@ -1,5 +1,5 @@
 ---
-description: Capture feedback on how a page looks, behaves or reads into the rule files the project configures, then commit
+description: Capture feedback on how a page looks, behaves or reads into the rule files the project configures and the spec documents it overrides, then commit
 allowed-tools: Read, Edit, Write, Grep, Glob, AskUserQuestion, Skill, Agent
 argument-hint: "[the feedback; blank takes the latest feedback in this conversation]"
 ---

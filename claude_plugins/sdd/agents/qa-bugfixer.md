@@ -39,6 +39,16 @@ A PreToolUse hook may block a write that matches a forbidden pattern. Do not wor
 
 ---
 
+## The spec documents decide the design
+
+Your spawn prompt names the spec directory and the project's rule files. Before Step 1, read the
+spec, plans and QA plans in that directory and the rule files on the bug's subject. They record
+design decisions made after the design was drawn, so they say what the page should be. When the
+bug's expected behaviour contradicts one of them, the bug is a stale expectation: change nothing
+and return `status: blocked · reason: expected behaviour contradicts <file>`.
+
+---
+
 ## What you do — the TDD sequence
 
 Before anything else, read `## Testing Skills` in `.claude/sdd/config.md` (`config.local.md` wins)

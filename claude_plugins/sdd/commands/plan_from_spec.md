@@ -99,7 +99,7 @@ This can include multiple tests and workflows.
 
 When scoping QA, don't only walk the golden path. For each area of functionality the change touches, explicitly reason about what *else* is affected and what could reasonably break — including unintended side-effects and failure/adversarial branches (e.g. "an existing account signs up again", enumeration/permission branches, invalid input, repeat submissions) — and add QA steps that exercise those. Keep it proportionate: prompt side-effect/failure-mode thinking, don't mandate exhaustive matrices.
 
-A QA test that maps to a design state names that state's design screenshot path and copies the state's design checklist from the plan's transcription.
+A QA test that maps to a design state names that state's design screenshot path and copies the state's design checklist from the plan's transcription. The checklist, not the screenshot, is what QA judges against: when the design changes after QA, `sdd:capture-feedback` rewrites these lines and the screenshot stays as drawn.
 
 If this plan is created then reference it in the plan file as a final step.
 
