@@ -312,8 +312,9 @@ parity and future settings.
 
    **Rule Files** is a list, not keyed. Each bullet is `<scope>: <path>`: a few words naming what
    the file's rules cover (a brand's visual system, its voice, one UI framework's pages) and the
-   project file holding them. `sdd:capture-feedback` writes each rule into the file whose scope
-   fits it best, and the QA command walks the `## Visual checklist` section of every file listed.
+   project file holding them. A file holds rules that hold across its whole scope; one feature's
+   details stay in that feature's spec. `sdd:capture-feedback` writes each rule into the file whose
+   scope fits it best, and the QA command walks the `## Visual checklist` section of every file listed.
    An empty list means feedback is not captured, and the skill says so.
 
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
