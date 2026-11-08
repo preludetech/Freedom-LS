@@ -51,6 +51,15 @@ def test_formula_safe_csv_escapes_body_cell_when_header_is_plain() -> None:
     assert row == ["'=1+1", "2"]
 
 
+def test_formula_safe_csv_escapes_later_line_of_body_cell() -> None:
+    dataset = Dataset(headers=["name", "count"])
+    dataset.append(["note\n=1+1", 2])
+
+    _, row = _rows(FormulaSafeCSV().export_data(dataset))
+
+    assert row == ["note\n'=1+1", "2"]
+
+
 def test_formula_safe_csv_starts_with_utf8_bom() -> None:
     dataset = Dataset(headers=["a"])
     dataset.append(["b"])
