@@ -29,11 +29,16 @@ from freedom_ls.learner_progress.factories import (
 )
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import (
+    change_course_title,
+    change_organisation_name,
+    change_user_email,
+    change_user_first_name,
     cohort_registration_record,
     inactive_cohort_registration_record,
     inactive_learner_record,
     inactive_learner_registration_record,
     learner_registration_record,
+    query_count,
     resolve_ref,
     set_updated_at,
 )
@@ -51,6 +56,12 @@ EXPECTED_FIELDS = {
     "course_title",
     "registration_id",
     "registration_kind",
+    "user_id",
+    "user_email",
+    "user_first_name",
+    "user_last_name",
+    "organisation_id",
+    "organisation_name",
     "progress_percentage",
     "started_at",
     "last_accessed_time",
@@ -257,3 +268,72 @@ def test_the_schema_types_registration_id_and_registration_kind(client, auth):
         "readOnly": True,
     }
     assert kind["enum"] == ["learner", "cohort"]
+
+
+def test_a_row_carries_the_learners_user_and_organisation(client, auth):
+    record = CourseProgressFactory(
+        learner__user__email="ada@example.com",
+        learner__user__first_name="Ada",
+        learner__user__last_name="Lovelace",
+        learner__organisation__name="Analytical Engines",
+    )
+
+    row = client.get(reverse(LIST_URL_NAME), headers=auth).json()["results"][0]
+
+    assert (
+        row["user_id"],
+        row["user_email"],
+        row["user_first_name"],
+        row["user_last_name"],
+        row["organisation_id"],
+        row["organisation_name"],
+    ) == (
+        record.learner.user.pk,
+        "ada@example.com",
+        "Ada",
+        "Lovelace",
+        str(record.learner.organisation.pk),
+        "Analytical Engines",
+    )
+
+
+def test_blank_user_names_are_empty_strings(client, auth):
+    CourseProgressFactory(learner__user__first_name="", learner__user__last_name="")
+
+    row = client.get(reverse(LIST_URL_NAME), headers=auth).json()["results"][0]
+
+    assert (row["user_first_name"], row["user_last_name"]) == ("", "")
+
+
+def test_the_query_count_does_not_grow_with_the_page_size(client, auth):
+    for _ in range(3):
+        learner_registration_record()
+        cohort_registration_record()
+    url = reverse(LIST_URL_NAME)
+    client.get(url, headers=auth)  # warm per-process caches the first request fills
+
+    small = query_count(client, f"{url}?page_size=2", auth)
+    large = query_count(client, f"{url}?page_size=50", auth)
+
+    assert small == large
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        change_user_email,
+        change_user_first_name,
+        change_organisation_name,
+        change_course_title,
+    ],
+)
+def test_changing_a_flattened_source_leaves_updated_at_alone(
+    client, auth, mutate: Callable[[CourseProgress], None]
+):
+    record = learner_registration_record()
+    url = reverse(DETAIL_URL_NAME, args=[record.pk])
+    before = client.get(url, headers=auth).json()["updated_at"]
+
+    mutate(record)
+
+    assert client.get(url, headers=auth).json()["updated_at"] == before

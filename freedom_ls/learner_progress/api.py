@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema_field
 from django.db.models import QuerySet
 from rest_framework import serializers
 
+from freedom_ls.accounts.api import user_fields
 from freedom_ls.api.filters import UpdatedSinceFilterSet
 from freedom_ls.api.routers import router
 from freedom_ls.api.scopes import ApiScope
@@ -19,6 +20,13 @@ class CourseProgressApiSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source="course.title", read_only=True)
     registration_id = serializers.SerializerMethodField()
     registration_kind = serializers.SerializerMethodField()
+    user_id, user_email, user_first_name, user_last_name = user_fields("learner.user")
+    organisation_id = serializers.UUIDField(
+        source="learner.organisation.id", read_only=True
+    )
+    organisation_name = serializers.CharField(
+        source="learner.organisation.name", read_only=True
+    )
 
     class Meta:
         model = CourseProgress
@@ -28,6 +36,12 @@ class CourseProgressApiSerializer(serializers.ModelSerializer):
             "course_title",
             "registration_id",
             "registration_kind",
+            "user_id",
+            "user_email",
+            "user_first_name",
+            "user_last_name",
+            "organisation_id",
+            "organisation_name",
             "progress_percentage",
             "started_at",
             "last_accessed_time",

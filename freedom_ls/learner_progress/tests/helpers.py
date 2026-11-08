@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import cast
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
@@ -165,3 +168,34 @@ def resolve_ref(
     for part in str(ref).removeprefix("#/").split("/"):
         target = cast(dict[str, object], target[part])
     return target
+
+
+def query_count(client: APIClient, url: str, headers: dict[str, str]) -> int:
+    """The number of queries one GET of `url` runs."""
+    with CaptureQueriesContext(connection) as context:
+        client.get(url, headers=headers)
+    return len(context)
+
+
+def change_user_email(record: CourseProgress) -> None:
+    user = record.learner.user
+    user.email = "changed@example.com"
+    user.save()
+
+
+def change_user_first_name(record: CourseProgress) -> None:
+    user = record.learner.user
+    user.first_name = "Changed"
+    user.save()
+
+
+def change_organisation_name(record: CourseProgress) -> None:
+    organisation = record.learner.organisation
+    organisation.name = "Changed organisation"
+    organisation.save()
+
+
+def change_course_title(record: CourseProgress) -> None:
+    course = record.course
+    course.title = "Changed title"
+    course.save()
