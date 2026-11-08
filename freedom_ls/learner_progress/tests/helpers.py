@@ -6,10 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import cast
 
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
-from rest_framework.test import APIClient
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
@@ -110,7 +107,7 @@ def cohort_record(
 def age_updated_at(record: CourseProgress) -> datetime:
     """Write an old `updated_at` onto the record past `auto_now`, and return it."""
     past = timezone.now() - timedelta(days=30)
-    CourseProgress._base_manager.filter(pk=record.pk).update(updated_at=past)
+    set_updated_at(record, past)
     return past
 
 
@@ -168,13 +165,6 @@ def resolve_ref(
     for part in str(ref).removeprefix("#/").split("/"):
         target = cast(dict[str, object], target[part])
     return target
-
-
-def query_count(client: APIClient, url: str, headers: dict[str, str]) -> int:
-    """The number of queries one GET of `url` runs."""
-    with CaptureQueriesContext(connection) as context:
-        client.get(url, headers=headers)
-    return len(context)
 
 
 def change_user_email(record: CourseProgress) -> None:

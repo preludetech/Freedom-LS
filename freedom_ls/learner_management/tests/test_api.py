@@ -6,8 +6,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -18,7 +16,7 @@ if app_not_installed("freedom_ls.api"):
     pytest.skip("freedom_ls.api not installed", allow_module_level=True)
 
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages
+from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages, query_count
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -219,23 +217,18 @@ def test_rows_sharing_one_updated_at_come_back_once_each_across_pages(
     assert sorted(ids) == sorted(str(registration.pk) for registration in registrations)
 
 
-def _query_count(
-    client: APIClient, auth: dict[str, str], list_name: str, page_size: int
-) -> int:
-    with CaptureQueriesContext(connection) as queries:
-        client.get(reverse(list_name), {"page_size": page_size}, headers=auth)
-    return len(queries)
-
-
 @pytest.mark.parametrize(ENDPOINT_PARAMS, ENDPOINTS)
 def test_the_query_count_does_not_grow_with_the_page_size(
     client, auth, list_name, detail_name, factory, expected_fields
 ):
     factory.create_batch(6)
-    _query_count(client, auth, list_name, 50)  # the first request pays one-off lookups
+    url = reverse(list_name)
+    query_count(
+        client, url, {"page_size": 50}, auth
+    )  # the first request pays one-off lookups
 
-    small = _query_count(client, auth, list_name, 2)
-    large = _query_count(client, auth, list_name, 50)
+    small = query_count(client, url, {"page_size": 2}, auth)
+    large = query_count(client, url, {"page_size": 50}, auth)
 
     assert small == large
 

@@ -169,7 +169,7 @@ def _complete_first_topic(
         ),
     )
     CourseProgress._base_manager.filter(pk=progress.pk).update(
-        started_at=progress.started_at or now, last_accessed_time=now
+        started_at=progress.started_at or now, last_accessed_time=now, updated_at=now
     )
     return topic_progress
 

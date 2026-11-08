@@ -3,7 +3,6 @@ from uuid import UUID
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 
-from django.db.models import QuerySet
 from rest_framework import serializers
 
 from freedom_ls.accounts.api import user_fields
@@ -76,17 +75,13 @@ class CourseProgressApiViewSet(ReadOnlyApiViewSet):
     required_scope = ApiScope.REGISTRATIONS_AND_PROGRESS
     serializer_class = CourseProgressApiSerializer
 
-    def get_queryset(self) -> QuerySet[CourseProgress]:
-        # The base manager crosses sites; the base viewset's filter_queryset
-        # narrows every lookup to the key's site. last_accessed_item is not
-        # joined: nothing here reads it.
-        return CourseProgress._base_manager.select_related(
-            "course",
-            "learner__user",
-            "learner__organisation",
-            "learner_registration",
-            "cohort_registration",
-        )
+    # The base manager crosses sites; the base viewset's filter_queryset
+    # narrows every lookup to the key's site. The two registrations and
+    # last_accessed_item are not joined: the serializer reads only the
+    # registration ids, and nothing here reads the item.
+    queryset = CourseProgress._base_manager.select_related(
+        "course", "learner__user", "learner__organisation"
+    )
 
 
 router.register("course-progress", CourseProgressApiViewSet, basename="course_progress")

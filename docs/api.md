@@ -235,7 +235,7 @@ Deactivation is visible: a deactivated row shows up again with `is_active` set t
 | `learner-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its user is deleted and the registration goes with them. |
 | `cohort-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its cohort is deleted and the registration goes with it. |
 | `course-interests` | Nothing. | The user removes their interest, or the user or the course is deleted. |
-| `course-progress` | Nothing: a row has no `is_active`. See [Course progress](#course-progress). | Only the operator's `danger_clear_all_course_progress` development command. A row's learner, course and registration cannot be deleted while the row exists. |
+| `course-progress` | Nothing: a row has no `is_active`. See [Course progress](#course-progress). | Only the operator's development commands `danger_clear_all_course_progress` and `danger_content_delete`. A row's learner, course and registration cannot be deleted while the row exists. |
 | `course-applications` | Nothing. | An admin deletes the application. |
 | `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
 | `referral-code-hits` | Nothing. | Older than the cutoff of the operator's `prune_referral_code_hits --older-than-days` command. How often it runs, and with what cutoff, is the operator's choice. |

@@ -6,7 +6,9 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -22,7 +24,7 @@ if app_not_installed("freedom_ls.api"):
     pytest.skip("freedom_ls.api not installed", allow_module_level=True)
 
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages
+from freedom_ls.api.tests.helpers import bearer_auth_for, collect_pages, query_count
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
@@ -38,7 +40,6 @@ from freedom_ls.learner_progress.tests.helpers import (
     inactive_learner_record,
     inactive_learner_registration_record,
     learner_registration_record,
-    query_count,
     resolve_ref,
     set_updated_at,
 )
@@ -73,7 +74,7 @@ SINCE = {"updated_since": "2025-01-01T00:00:00Z"}
 
 
 @pytest.fixture
-def auth(mock_site_context) -> dict[str, str]:
+def auth(mock_site_context: Site) -> dict[str, str]:
     return bearer_auth_for(ApiScope.REGISTRATIONS_AND_PROGRESS)
 
 
@@ -87,7 +88,9 @@ def _listed_ids(client: APIClient, auth: dict[str, str], **params: str) -> list[
     return [row["id"] for row in body["results"]]
 
 
-def test_a_key_without_the_scope_is_403(client, mock_site_context):
+def test_a_key_without_the_scope_is_403(
+    client: APIClient, mock_site_context: Site
+) -> None:
     response = client.get(
         reverse(LIST_URL_NAME), headers=bearer_auth_for(ApiScope.USERS)
     )
@@ -96,7 +99,9 @@ def test_a_key_without_the_scope_is_403(client, mock_site_context):
     assert response.json()["code"] == "permission_denied"
 
 
-def test_a_valid_key_lists_exactly_the_serialized_fields(client, auth):
+def test_a_valid_key_lists_exactly_the_serialized_fields(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     learner_registration_record()
 
     body = client.get(reverse(LIST_URL_NAME), headers=auth).json()
@@ -123,12 +128,12 @@ def test_a_valid_key_lists_exactly_the_serialized_fields(client, auth):
     ],
 )
 def test_a_row_carries_its_registration_kind_and_id(
-    client,
-    auth,
+    client: APIClient,
+    auth: dict[str, str],
     builder: Callable[[], CourseProgress],
     expected_kind: str,
     registration_id_of: Callable[[CourseProgress], object],
-):
+) -> None:
     record = builder()
 
     row = client.get(reverse(LIST_URL_NAME), headers=auth).json()["results"][0]
@@ -137,7 +142,9 @@ def test_a_row_carries_its_registration_kind_and_id(
     assert row["registration_id"] == str(registration_id_of(record))
 
 
-def test_a_not_started_row_has_null_timestamps_and_zero_progress(client, auth):
+def test_a_not_started_row_has_null_timestamps_and_zero_progress(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     course = CourseFactory(title="Intro")
     record = CourseProgressFactory(course=course)
 
@@ -163,16 +170,16 @@ def test_a_not_started_row_has_null_timestamps_and_zero_progress(client, auth):
     ],
 )
 def test_rows_under_deactivated_records_are_listed(
-    client, auth, builder: Callable[[], CourseProgress]
-):
+    client: APIClient, auth: dict[str, str], builder: Callable[[], CourseProgress]
+) -> None:
     record = builder()
 
     assert _listed_ids(client, auth) == [str(record.pk)]
 
 
 def test_another_sites_rows_are_absent_from_the_list_and_404_on_detail(
-    client, auth, mock_site_context
-):
+    client: APIClient, auth: dict[str, str], mock_site_context: Site
+) -> None:
     mine = learner_registration_record()
     with site_context(SiteFactory(name="Other", domain="other.example.com")):
         theirs = learner_registration_record()
@@ -183,7 +190,7 @@ def test_another_sites_rows_are_absent_from_the_list_and_404_on_detail(
     assert detail.status_code == 404
 
 
-def test_the_detail_returns_one_row(client, auth):
+def test_the_detail_returns_one_row(client: APIClient, auth: dict[str, str]) -> None:
     record = learner_registration_record()
 
     response = client.get(reverse(DETAIL_URL_NAME, args=[record.pk]), headers=auth)
@@ -192,7 +199,9 @@ def test_the_detail_returns_one_row(client, auth):
     assert response.json()["id"] == str(record.pk)
 
 
-def test_updated_since_returns_rows_at_or_after_it(client, auth):
+def test_updated_since_returns_rows_at_or_after_it(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     old = learner_registration_record()
     new = learner_registration_record()
     boundary = learner_registration_record()
@@ -205,7 +214,9 @@ def test_updated_since_returns_rows_at_or_after_it(client, auth):
     )
 
 
-def test_a_naive_updated_since_is_400_naming_the_parameter(client, auth):
+def test_a_naive_updated_since_is_400_naming_the_parameter(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     response = client.get(
         reverse(LIST_URL_NAME), {"updated_since": "2025-01-01T00:00:00"}, headers=auth
     )
@@ -215,8 +226,8 @@ def test_a_naive_updated_since_is_400_naming_the_parameter(client, auth):
 
 
 def test_rows_sharing_one_updated_at_come_back_once_each_across_pages(
-    client, auth, settings
-):
+    client: APIClient, auth: dict[str, str], settings: SettingsWrapper
+) -> None:
     settings.API_PAGE_SIZE = 2
     records = [
         learner_registration_record(),
@@ -236,7 +247,9 @@ def test_rows_sharing_one_updated_at_come_back_once_each_across_pages(
     assert len(set(ids)) == 5
 
 
-def test_completing_a_topic_re_emits_the_row_under_updated_since(client, auth):
+def test_completing_a_topic_re_emits_the_row_under_updated_since(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     course = CourseFactory()
     record = CourseProgressFactory(course=course)
     item = ContentCollectionItemFactory(
@@ -256,7 +269,9 @@ def test_completing_a_topic_re_emits_the_row_under_updated_since(client, auth):
     ]
 
 
-def test_the_schema_types_registration_id_and_registration_kind(client, auth):
+def test_the_schema_types_registration_id_and_registration_kind(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     document = client.get(reverse("api:schema"), headers=auth).json()
     component = document["components"]["schemas"]["CourseProgressApi"]["properties"]
 
@@ -270,7 +285,9 @@ def test_the_schema_types_registration_id_and_registration_kind(client, auth):
     assert kind["enum"] == ["learner", "cohort"]
 
 
-def test_a_row_carries_the_learners_user_and_organisation(client, auth):
+def test_a_row_carries_the_learners_user_and_organisation(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     record = CourseProgressFactory(
         learner__user__email="ada@example.com",
         learner__user__first_name="Ada",
@@ -297,7 +314,9 @@ def test_a_row_carries_the_learners_user_and_organisation(client, auth):
     )
 
 
-def test_blank_user_names_are_empty_strings(client, auth):
+def test_blank_user_names_are_empty_strings(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     CourseProgressFactory(learner__user__first_name="", learner__user__last_name="")
 
     row = client.get(reverse(LIST_URL_NAME), headers=auth).json()["results"][0]
@@ -305,15 +324,17 @@ def test_blank_user_names_are_empty_strings(client, auth):
     assert (row["user_first_name"], row["user_last_name"]) == ("", "")
 
 
-def test_the_query_count_does_not_grow_with_the_page_size(client, auth):
+def test_the_query_count_does_not_grow_with_the_page_size(
+    client: APIClient, auth: dict[str, str]
+) -> None:
     for _ in range(3):
         learner_registration_record()
         cohort_registration_record()
     url = reverse(LIST_URL_NAME)
     client.get(url, headers=auth)  # warm per-process caches the first request fills
 
-    small = query_count(client, f"{url}?page_size=2", auth)
-    large = query_count(client, f"{url}?page_size=50", auth)
+    small = query_count(client, url, {"page_size": 2}, auth)
+    large = query_count(client, url, {"page_size": 50}, auth)
 
     assert small == large
 
@@ -328,8 +349,8 @@ def test_the_query_count_does_not_grow_with_the_page_size(client, auth):
     ],
 )
 def test_changing_a_flattened_source_leaves_updated_at_alone(
-    client, auth, mutate: Callable[[CourseProgress], None]
-):
+    client: APIClient, auth: dict[str, str], mutate: Callable[[CourseProgress], None]
+) -> None:
     record = learner_registration_record()
     url = reverse(DETAIL_URL_NAME, args=[record.pk])
     before = client.get(url, headers=auth).json()["updated_at"]

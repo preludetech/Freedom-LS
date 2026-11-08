@@ -34,6 +34,7 @@ from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
 from freedom_ls.learner_progress.models import CourseProgress
 
 ScoredQuiz = tuple[Course, Form, FormQuestion, QuestionOption, QuestionOption]
+SitQuiz = Callable[[CourseProgress, Form, FormQuestion, QuestionOption], FormProgress]
 
 
 @pytest.fixture
@@ -70,9 +71,7 @@ def course_with_scored_quiz(mock_site_context: Site) -> Callable[..., ScoredQuiz
 
 
 @pytest.fixture
-def sit_quiz() -> Callable[
-    [CourseProgress, Form, FormQuestion, QuestionOption], FormProgress
-]:
+def sit_quiz() -> SitQuiz:
     """Factory: complete one attempt at `form` within `course_progress`.
 
     The attempt is scoped to the collection item placing `form` in that

@@ -4,8 +4,11 @@ same percentages a single pass would."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
+from django.contrib.sites.models import Site
 from django.core.management import call_command
 
 from freedom_ls.form_engine.models import FormProgress
@@ -13,6 +16,7 @@ from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import age_updated_at
+from freedom_ls.learner_progress.tests.quiz_fixtures import ScoredQuiz, SitQuiz
 
 
 @pytest.fixture
@@ -124,10 +128,10 @@ def test_backfill_survives_an_attempt_scored_under_another_strategy(
 
 @pytest.mark.django_db
 def test_only_a_corrected_record_has_its_updated_at_advanced(
-    mock_site_context,
-    course_with_scored_quiz,
-    sit_quiz,
-):
+    mock_site_context: Site,
+    course_with_scored_quiz: Callable[..., ScoredQuiz],
+    sit_quiz: SitQuiz,
+) -> None:
     course, form, question, right, _wrong = course_with_scored_quiz(slug="stamps")
     corrected = CourseProgressFactory(course=course)
     untouched = CourseProgressFactory(course=course)

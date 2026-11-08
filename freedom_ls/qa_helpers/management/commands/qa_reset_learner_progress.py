@@ -31,6 +31,7 @@ from collections import Counter
 import djclick as click
 
 from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Topic
@@ -139,6 +140,8 @@ def command(
         last_accessed_time=None,
         progress_percentage=0,
         completed_time=None,
+        # update() skips auto_now and the save() mixin alike.
+        updated_at=timezone.now(),
     )
 
     click.secho("\n--- Progress reset ---", fg="cyan", bold=True)

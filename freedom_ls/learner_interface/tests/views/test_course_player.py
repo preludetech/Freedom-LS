@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import re
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ import pytest
 import time_machine
 from PIL import Image
 
+from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.test import Client, override_settings
@@ -91,6 +93,7 @@ from freedom_ls.learner_progress.tests.helpers import (
     age_updated_at,
     course_progress_record,
 )
+from freedom_ls.learner_progress.tests.quiz_fixtures import ScoredQuiz, SitQuiz
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
@@ -2610,8 +2613,11 @@ def test_finish_page_completes_a_course_once_the_quiz_is_passed(
 
 @pytest.mark.django_db
 def test_finish_page_completing_a_course_advances_updated_at(
-    mock_site_context, client, course_with_scored_quiz, sit_quiz
-):
+    mock_site_context: Site,
+    client: Client,
+    course_with_scored_quiz: Callable[..., ScoredQuiz],
+    sit_quiz: SitQuiz,
+) -> None:
     user = UserFactory()
     course, form, question, right, _wrong = course_with_scored_quiz(
         slug="finish-updated"
@@ -3022,7 +3028,7 @@ def test_started_at_is_stamped_on_first_content_access(mock_site_context, client
 
 
 @pytest.mark.django_db
-def test_a_visit_advances_updated_at(mock_site_context, client):
+def test_a_visit_advances_updated_at(mock_site_context: Site, client: Client) -> None:
     course = _course_with_titled_topics("Only Topic")
     user = UserFactory()
     record = course_progress_record(course, user)

@@ -57,20 +57,21 @@ def recalculate_progress_percentage(record: CourseProgress) -> None:
     The escape hatch for code that writes completions without a transition to
     fire — see `recalculate_course_progress_on_save`.
 
-    `update_fields`, because `last_accessed_time` is written by the player: a
-    background recalculation must not look like a visit.
+    One conditional update, not a save: `last_accessed_time` is written by the
+    player, so a background recalculation must not look like a visit, and no
+    receiver listens on CourseProgress saves.
     """
     new_percentage = calculate_course_progress_percentage(
         record.course, completed_collection_item_ids(record)
     )
-    # Compared against the database, not the instance: a caller holding a stale
-    # instance must still write, and a recalculation that changes nothing must
-    # not move updated_at and re-emit the row to changed-since readers.
-    record.refresh_from_db(fields=["progress_percentage"])
-    if record.progress_percentage == new_percentage:
-        return
+    # Compared in the database, not against the instance: a caller holding a
+    # stale instance must still write, and a recalculation that changes nothing
+    # must not move updated_at and re-emit the row to changed-since readers.
+    # update() skips auto_now, so the stamp is explicit.
+    CourseProgress._base_manager.filter(pk=record.pk).exclude(
+        progress_percentage=new_percentage
+    ).update(progress_percentage=new_percentage, updated_at=timezone.now())
     record.progress_percentage = new_percentage
-    record.save(update_fields=["progress_percentage"])
 
 
 def update_course_progress_on_completion(item_progress: CourseItemProgress) -> None:

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from django.db import connection
 from django.db.models import Model, QuerySet
+from django.test.utils import CaptureQueriesContext
 from rest_framework.request import Request
 from rest_framework.test import APIClient, APIRequestFactory
 from rest_framework.views import APIView
@@ -20,6 +22,15 @@ def bearer_auth_for(*scopes: ApiScope) -> dict[str, str]:
     """
     key = ApiKeyFactory(scopes=list(scopes))
     return {"Authorization": f"Bearer {key.issued_key}"}
+
+
+def query_count(
+    client: APIClient, url: str, params: dict[str, str | int], headers: dict[str, str]
+) -> int:
+    """The number of queries one GET of `url` with `params` runs."""
+    with CaptureQueriesContext(connection) as queries:
+        client.get(url, params, headers=headers)
+    return len(queries)
 
 
 def api_route_names() -> list[str]:

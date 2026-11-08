@@ -17,6 +17,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.factories import (
@@ -220,7 +221,9 @@ def test_recalculate_progress_percentage_catches_up_a_bulk_written_record(
 
 @pytest.mark.django_db
 class TestRecalculationMovesUpdatedAt:
-    def _complete_topic(self, record, collection_item) -> None:
+    def _complete_topic(
+        self, record: CourseProgress, collection_item: ContentCollectionItem
+    ) -> None:
         TopicProgressFactory(
             course_progress=record,
             collection_item=collection_item,
@@ -229,8 +232,8 @@ class TestRecalculationMovesUpdatedAt:
         )
 
     def test_a_changed_percentage_advances_updated_at_and_not_last_accessed_time(
-        self, topic_placement
-    ):
+        self, topic_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
         from freedom_ls.learner_progress.signals import (
             recalculate_progress_percentage,
         )
@@ -253,7 +256,9 @@ class TestRecalculationMovesUpdatedAt:
             record.last_accessed_time,
         ) == (100, True, visited_at)
 
-    def test_an_unchanged_percentage_leaves_updated_at(self, topic_placement):
+    def test_an_unchanged_percentage_leaves_updated_at(
+        self, topic_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
         from freedom_ls.learner_progress.signals import (
             recalculate_progress_percentage,
         )
@@ -268,8 +273,8 @@ class TestRecalculationMovesUpdatedAt:
         assert record.updated_at == past
 
     def test_a_stale_instance_still_writes_the_recalculated_percentage(
-        self, topic_placement
-    ):
+        self, topic_placement: tuple[CourseProgress, ContentCollectionItem]
+    ) -> None:
         from freedom_ls.learner_progress.signals import (
             recalculate_progress_percentage,
         )

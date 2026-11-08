@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
-from django.db.models.base import ModelBase
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.models import Form, FormProgress
@@ -14,6 +12,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
+    UpdatedAtInUpdateFieldsMixin,
 )
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
@@ -105,7 +104,7 @@ class TopicProgress(CourseItemProgress):
         return f"{self.course_progress.learner} - {self.topic.title}"
 
 
-class CourseProgress(SiteAwareModel):
+class CourseProgress(UpdatedAtInUpdateFieldsMixin, SiteAwareModel):
     """One learner's pass through one course, granted by one registration."""
 
     learner = models.ForeignKey(
@@ -144,7 +143,7 @@ class CourseProgress(SiteAwareModel):
     progress_percentage = models.IntegerField(default=0, db_index=True)
 
     # The changed-since signal for readers that sync this table: auto_now and
-    # the save() override below move it on every write to the row.
+    # UpdatedAtInUpdateFieldsMixin move it on every write to the row.
     # last_accessed_time is the learner's last visit and is not it.
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -247,26 +246,6 @@ class CourseProgress(SiteAwareModel):
                 raise ValidationError(
                     "The learner is not a member of the registered cohort."
                 )
-
-    def save(
-        self,
-        *,
-        force_insert: bool | tuple[ModelBase, ...] = False,
-        force_update: bool = False,
-        using: str | None = None,
-        update_fields: Iterable[str] | None = None,
-    ) -> None:
-        # Every production writer passes update_fields, which makes Django skip
-        # auto_now. An empty update_fields writes nothing and stays empty.
-        fields = None if update_fields is None else frozenset(update_fields)
-        if fields:
-            fields = fields | {"updated_at"}
-        super().save(
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-            update_fields=fields,
-        )
 
     def __str__(self):
         return f"{self.learner} - {self.course.title}"
