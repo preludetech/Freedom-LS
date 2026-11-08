@@ -43,9 +43,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TypedDict
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, Response, sync_playwright
 
 # Replaces the design's own design-canvas.jsx in the served copy. Claude Design's canvas pans and
 # zooms, which leaves artboards scaled and offscreen; this one lays them out at 1:1.
@@ -72,6 +72,12 @@ SETTLED_JS = """
   state.last = count;
   return state.stable >= 5;
 }
+"""
+
+# An unmounted <x-dc> template or a <dc-import>-only artboard draws nothing.
+BLANK_JS = """
+() => !document.body.innerText.trim()
+   && !document.body.querySelector('img, svg, canvas, video, picture')
 """
 
 # Finds the frames of a .dc.html document, tags each with its index for the locator, and returns
@@ -109,6 +115,9 @@ FRAMES_JS = """
 }
 """
 
+# A saved image asset is requested at this root-absolute URL; its id is 32 hex characters.
+BLOB_URL = re.compile(r"^/_blob/([0-9a-f]{32})$")
+
 CANVAS_JSON = Path("project") / "canvas.json"
 
 # Chromium's viewport limit; also stops a corrupt size from exhausting memory.
@@ -144,6 +153,17 @@ class DesignScreenshotError(Exception):
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         return
+
+
+class SourceHandler(QuietHandler):
+    def translate_path(self, path: str) -> str:
+        match = BLOB_URL.match(urlsplit(path).path)
+        if match:
+            blobs = Path(self.directory) / "_blob"
+            saved = next(iter(sorted(blobs.glob(f"{match.group(1)}.*"))), None)
+            if saved is not None:
+                return str(saved)
+        return super().translate_path(path)
 
 
 def read_entry_file(spec_dir: Path) -> str:
@@ -283,7 +303,7 @@ def prepare_copy(source: Path, dest: Path, is_canvas: bool) -> None:
 
 def serve(directory: Path) -> ThreadingHTTPServer:
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(QuietHandler, directory=str(directory))
+        ("127.0.0.1", 0), partial(SourceHandler, directory=str(directory))
     )
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
@@ -298,6 +318,18 @@ def load(page: Page, url: str) -> None:
     page.evaluate("() => document.fonts.ready")
 
 
+def missing_blob_id(response: Response) -> str | None:
+    if response.status != 404:
+        return None
+    match = BLOB_URL.match(urlsplit(response.url).path)
+    return match.group(1) if match else None
+
+
+def assert_not_blank(page: Page, artboard: Artboard) -> None:
+    if page.evaluate(BLANK_JS):
+        raise DesignScreenshotError(f"{artboard['path']}: rendered blank")
+
+
 def screenshot_page(page: Page, path: Path, full_page: bool = False) -> None:
     page.screenshot(path=path, full_page=full_page, animations="disabled", scale="css")
 
@@ -307,10 +339,25 @@ def screenshot_canvas_artboard(
 ) -> Path:
     # Sized before loading so an expand: "fill" artboard lays out at its drawn width.
     page.set_viewport_size({"width": artboard["width"], "height": artboard["height"]})
-    load(page, f"{base_url}/project/{quote(artboard['path'])}")
+    missing: list[str] = []
+
+    def note_missing(response: Response) -> None:
+        blob_id = missing_blob_id(response)
+        # A page can request the same blob more than once; report it once.
+        if blob_id is not None and blob_id not in missing:
+            missing.append(blob_id)
+
+    page.on("response", note_missing)
+    try:
+        load(page, f"{base_url}/project/{quote(artboard['path'])}")
+    finally:
+        page.remove_listener("response", note_missing)
+    assert_not_blank(page, artboard)
     page.add_style_tag(content=PREVIEW_CSS)
     path = unique_path(out, artboard_stem(artboard["path"]), taken)
     screenshot_page(page, path, full_page=artboard["fill"])
+    for blob_id in missing:
+        sys.stderr.write(f"{artboard['path']}: missing blob {blob_id}\n")
     return path
 
 

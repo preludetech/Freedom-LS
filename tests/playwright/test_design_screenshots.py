@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -129,8 +130,15 @@ SUPPORT_JS = """document.addEventListener('DOMContentLoaded', () => {
 });
 """
 
+BLOB_ID = "0123456789abcdef0123456789abcdef"
+
+ONE_PIXEL_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/"
+    "iZk9HQAAAABJRU5ErkJggg=="
+)
+
 ARTBOARD = (
-    "<!doctype html><html><body><x-dc><p>{text}</p></x-dc>"
+    "<!doctype html><html><body><x-dc><p>{text}</p>{extra}</x-dc>"
     '<script src="{support}"></script></body></html>'
 )
 
@@ -145,11 +153,17 @@ def make_canvas_spec_dir(tmp_path: Path) -> Path:
     (project / "flows").mkdir(parents=True)
     (project / "support.js").write_text(SUPPORT_JS)
     (project / "Fixed.dc.html").write_text(
-        ARTBOARD.format(text="Fixed board", support="./support.js")
+        ARTBOARD.format(text="Fixed board", extra="", support="./support.js")
     )
     (project / "flows" / "Fill.dc.html").write_text(
-        ARTBOARD.format(text="Fill board", support="../support.js")
+        ARTBOARD.format(
+            text="Fill board",
+            extra=f'<img src="/_blob/{BLOB_ID}">',
+            support="../support.js",
+        )
     )
+    (spec_dir / "design_source" / "_blob").mkdir()
+    (spec_dir / "design_source" / "_blob" / f"{BLOB_ID}.png").write_bytes(ONE_PIXEL_PNG)
     (project / "canvas.json").write_text(
         json.dumps(
             {
@@ -183,3 +197,62 @@ def test_canvas_json_renders_one_png_per_artboard_at_its_drawn_size(
     ]
     assert (png_width(out / "Fixed.png"), png_height(out / "Fixed.png")) == (300, 200)
     assert png_width(out / "flows__Fill.png") == 400
+
+
+@pytest.mark.playwright
+def test_blob_url_is_served_from_the_saved_blob_file(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = make_canvas_spec_dir(tmp_path)
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 0, result.stderr
+    assert "missing blob" not in result.stderr
+
+
+@pytest.mark.playwright
+def test_missing_blob_is_reported_once_and_screenshots_still_written(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    spec_dir = make_canvas_spec_dir(tmp_path)
+    (spec_dir / "design_source" / "_blob" / f"{BLOB_ID}.png").unlink()
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 0, result.stderr
+    missing = [line for line in result.stderr.splitlines() if "missing blob" in line]
+    assert len(missing) == 1
+    assert BLOB_ID in missing[0]
+    out = spec_dir / "design_screenshots"
+    assert sorted(path.name for path in out.iterdir()) == [
+        "Fixed.png",
+        "flows__Fill.png",
+    ]
+
+
+@pytest.mark.playwright
+def test_artboard_that_renders_nothing_exits_1_naming_it(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / "2026-09-29 my spec"
+    project = spec_dir / "design_source" / "project"
+    project.mkdir(parents=True)
+    (project / "Empty.dc.html").write_text(
+        '<!doctype html><html><body><x-dc><dc-import name="Other"></dc-import></x-dc>'
+        "</body></html>"
+    )
+    (project / "canvas.json").write_text(
+        json.dumps({"boards": {"Empty.dc.html": {"w": 300, "h": 200}}})
+    )
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 1
+    assert "Empty.dc.html" in result.stderr
+    assert "rendered blank" in result.stderr
