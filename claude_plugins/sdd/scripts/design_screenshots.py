@@ -2,11 +2,18 @@
 
 Usage: design_screenshots.py <spec-dir>
 
-Renders every HTML page at the top level of <spec-dir>/design_source/, the entry file named on
-the "Entry file" line of <spec-dir>/design.md first, from a copy served over local HTTP, so the
-source directory is never written to. Writes one PNG per screen to <spec-dir>/design_screenshots/.
+A Design Artifact's <spec-dir>/design_source/project/canvas.json names the artboards and their
+sizes, and each is rendered from <spec-dir>/design_source/project/<path>: one PNG per artboard, in
+the canvas's order, named `<path without .dc.html, with / as __>.png`. A fixed artboard is captured
+at its drawn width and height; an `expand: "fill"` artboard is captured full-page at its drawn
+width. design.md is not read.
 
-Claude Design draws screens in two shapes, and a page is read for each in turn:
+Without a canvas.json, the older shapes below apply. Every HTML page at the top level of
+<spec-dir>/design_source/ is rendered, the entry file named on the "Entry file" line of
+<spec-dir>/design.md first. Pages are served over local HTTP from a copy, so the source directory
+is never written to. One PNG per screen goes to <spec-dir>/design_screenshots/.
+
+Claude Design draws screens in three shapes, and a page is read for each in turn:
 
 1. Artboards: `[data-artboard]` elements, which a design-canvas.jsx project draws. Named
    `<section-id>__<artboard-id>.png`, the ids the canvas gives them.
@@ -29,6 +36,8 @@ import shutil
 import sys
 import threading
 import unicodedata
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -100,6 +109,11 @@ FRAMES_JS = """
 }
 """
 
+CANVAS_JSON = Path("project") / "canvas.json"
+
+# Chromium's viewport limit; also stops a corrupt size from exhausting memory.
+MAX_ARTBOARD_SIDE = 10_000
+
 # Chains a component's `height:100%` through to the viewport, the way its preview pane does.
 PREVIEW_CSS = "html,body,#dc-root,#dc-root>.sc-host{height:100%;margin:0}"
 
@@ -114,6 +128,13 @@ class Frame(TypedDict):
 class Preview(TypedDict):
     width: int
     height: int
+
+
+class Artboard(TypedDict):
+    path: str
+    width: int
+    height: int
+    fill: bool
 
 
 class DesignScreenshotError(Exception):
@@ -133,6 +154,72 @@ def read_entry_file(spec_dir: Path) -> str:
     if match is None:
         raise DesignScreenshotError(f"no 'Entry file' line in {design_md}")
     return match.group(1)
+
+
+def load_canvas(source: Path) -> dict[str, object]:
+    canvas_json = source / CANVAS_JSON
+    try:
+        canvas = json.loads(canvas_json.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise DesignScreenshotError(f"could not read {canvas_json}: {error}") from error
+    if not isinstance(canvas, dict):
+        raise DesignScreenshotError(f"{canvas_json}: not a JSON object")
+    return canvas
+
+
+def parse_artboard(path: str, board: object, canvas_json: Path) -> Artboard:
+    if not isinstance(board, dict):
+        raise DesignScreenshotError(f"{canvas_json}: board {path!r} is not an object")
+    try:
+        width, height = int(board["w"]), int(board["h"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise DesignScreenshotError(
+            f"{canvas_json}: board {path!r} has no usable w and h"
+        ) from error
+    for side in (width, height):
+        if not 0 < side <= MAX_ARTBOARD_SIDE:
+            raise DesignScreenshotError(
+                f"{canvas_json}: board {path!r} is {width}x{height}"
+            )
+    return {
+        "path": path,
+        "width": width,
+        "height": height,
+        "fill": board.get("expand") == "fill",
+    }
+
+
+def read_canvas(source: Path) -> list[Artboard]:
+    canvas_json = source / CANVAS_JSON
+    canvas = load_canvas(source)
+    boards = canvas.get("boards")
+    if not isinstance(boards, dict):
+        raise DesignScreenshotError(f"{canvas_json}: no boards")
+    order = canvas.get("order")
+    if not isinstance(order, list):
+        order = list(boards)
+    project = (source / "project").resolve()
+    artboards: list[Artboard] = []
+    for path in order:
+        if not isinstance(path, str) or path not in boards:
+            raise DesignScreenshotError(
+                f"{canvas_json}: order names {path!r}, not a board"
+            )
+        file = (project / path).resolve()
+        if not file.is_relative_to(project):
+            raise DesignScreenshotError(
+                f"{canvas_json}: board {path!r} points outside project/"
+            )
+        if not file.is_file():
+            raise DesignScreenshotError(
+                f"artboard file not found: {source / 'project' / path}"
+            )
+        artboards.append(parse_artboard(path, boards[path], canvas_json))
+    return artboards
+
+
+def artboard_stem(path: str) -> str:
+    return path.removesuffix(".dc.html").replace("/", "__")
 
 
 def list_pages(source: Path, entry: str) -> list[str]:
@@ -211,6 +298,22 @@ def load(page: Page, url: str) -> None:
     page.evaluate("() => document.fonts.ready")
 
 
+def screenshot_page(page: Page, path: Path, full_page: bool = False) -> None:
+    page.screenshot(path=path, full_page=full_page, animations="disabled", scale="css")
+
+
+def screenshot_canvas_artboard(
+    page: Page, base_url: str, artboard: Artboard, out: Path, taken: set[Path]
+) -> Path:
+    # Sized before loading so an expand: "fill" artboard lays out at its drawn width.
+    page.set_viewport_size({"width": artboard["width"], "height": artboard["height"]})
+    load(page, f"{base_url}/project/{quote(artboard['path'])}")
+    page.add_style_tag(content=PREVIEW_CSS)
+    path = unique_path(out, artboard_stem(artboard["path"]), taken)
+    screenshot_page(page, path, full_page=artboard["fill"])
+    return path
+
+
 def screenshot_artboards(page: Page, out: Path, taken: set[Path]) -> list[Path]:
     written: list[Path] = []
     artboards = page.locator("[data-artboard]")
@@ -246,12 +349,12 @@ def screenshot_whole_page(
         page.set_viewport_size({"width": preview["width"], "height": preview["height"]})
         page.add_style_tag(content=PREVIEW_CSS)
         path = unique_path(out, f"{page_id(name)}__{preview['width']}", taken)
-        page.screenshot(path=path, animations="disabled", scale="css")
+        screenshot_page(page, path)
         return [path]
     for width in FALLBACK_WIDTHS:
         page.set_viewport_size({"width": width, "height": 900})
         path = unique_path(out, f"{page_id(name)}__{width}", taken)
-        page.screenshot(path=path, full_page=True, animations="disabled", scale="css")
+        screenshot_page(page, path, full_page=True)
         written.append(path)
     return written
 
@@ -281,24 +384,16 @@ def capture_page(
     return written
 
 
-def capture(spec_dir: Path) -> list[Path]:
-    entry = read_entry_file(spec_dir)
-    source = spec_dir / "design_source"
-    if not (source / entry).is_file():
-        raise DesignScreenshotError(f"entry file not found: {source / entry}")
-    pages = list_pages(source, entry)
-    is_canvas = any(uses_design_canvas((source / name).read_text()) for name in pages)
-
-    out = spec_dir / "design_screenshots"
+@contextmanager
+def served_page(
+    source: Path, out: Path, needs_stand_in: bool
+) -> Iterator[tuple[Page, str]]:
     out.mkdir(exist_ok=True)
     for stale in out.glob("*.png"):
         stale.unlink()
-
-    written: list[Path] = []
-    taken: set[Path] = set()
     with TemporaryDirectory() as tmp:
         served = Path(tmp) / "site"
-        prepare_copy(source, served, is_canvas)
+        prepare_copy(source, served, needs_stand_in)
         server = serve(served)
         try:
             base_url = f"http://127.0.0.1:{server.server_port}"
@@ -308,15 +403,47 @@ def capture(spec_dir: Path) -> list[Path]:
                     context = browser.new_context(
                         viewport=VIEWPORT, device_scale_factor=1
                     )
-                    page = context.new_page()
-                    for name in pages:
-                        written.extend(
-                            capture_page(page, base_url, source, name, out, taken)
-                        )
+                    yield context.new_page(), base_url
                 finally:
                     browser.close()
         finally:
             server.shutdown()
+
+
+def capture_canvas(source: Path, out: Path) -> list[Path]:
+    # Read before anything is copied or launched, so a missing artboard file fails fast.
+    artboards = read_canvas(source)
+    written: list[Path] = []
+    taken: set[Path] = set()
+    with served_page(source, out, needs_stand_in=False) as (page, base_url):
+        for artboard in artboards:
+            written.append(
+                screenshot_canvas_artboard(page, base_url, artboard, out, taken)
+            )
+            fill = " fill" if artboard["fill"] else ""
+            sys.stderr.write(
+                f"{artboard['path']}: artboard {artboard['width']}x{artboard['height']}{fill}\n"
+            )
+    return written
+
+
+def capture(spec_dir: Path) -> list[Path]:
+    source = spec_dir / "design_source"
+    out = spec_dir / "design_screenshots"
+    if (source / CANVAS_JSON).is_file():
+        return capture_canvas(source, out)
+
+    entry = read_entry_file(spec_dir)
+    if not (source / entry).is_file():
+        raise DesignScreenshotError(f"entry file not found: {source / entry}")
+    pages = list_pages(source, entry)
+    is_canvas = any(uses_design_canvas((source / name).read_text()) for name in pages)
+
+    written: list[Path] = []
+    taken: set[Path] = set()
+    with served_page(source, out, is_canvas) as (page, base_url):
+        for name in pages:
+            written.extend(capture_page(page, base_url, source, name, out, taken))
     return written
 
 

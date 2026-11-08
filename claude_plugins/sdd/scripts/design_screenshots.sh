@@ -4,7 +4,8 @@
 #
 # Renders every page at the top level of <spec-dir>/design_source/ (the entry file named in
 # <spec-dir>/design.md first) and writes one PNG per screen into <spec-dir>/design_screenshots/:
-# a canvas project's artboards, the fixed frames a .dc.html page draws, or the whole page when it
+# a Design Artifact's artboards (named in <spec-dir>/design_source/project/canvas.json), a canvas
+# project's artboards, the fixed frames a .dc.html page draws, or the whole page when it
 # draws neither. design_screenshots.py says how each is found and named.
 #
 # Thin wrapper around design_screenshots.py. It exists so callers have a stable path to invoke

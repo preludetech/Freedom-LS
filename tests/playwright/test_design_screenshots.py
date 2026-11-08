@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -118,3 +119,67 @@ def test_page_without_artboards_gets_two_whole_page_screenshots(
     out = spec_dir / "design_screenshots"
     assert png_width(out / "index__1280.png") == 1280
     assert png_width(out / "index__375.png") == 375
+
+
+SUPPORT_JS = """document.addEventListener('DOMContentLoaded', () => {
+  const dc = document.querySelector('x-dc');
+  const root = document.createElement('div'); root.id = 'dc-root';
+  const host = document.createElement('div'); host.className = 'sc-host';
+  host.innerHTML = dc.innerHTML; root.appendChild(host); dc.replaceWith(root);
+});
+"""
+
+ARTBOARD = (
+    "<!doctype html><html><body><x-dc><p>{text}</p></x-dc>"
+    '<script src="{support}"></script></body></html>'
+)
+
+
+def png_height(path: Path) -> int:
+    return int.from_bytes(path.read_bytes()[20:24], "big")
+
+
+def make_canvas_spec_dir(tmp_path: Path) -> Path:
+    spec_dir = tmp_path / "2026-09-29 my spec"
+    project = spec_dir / "design_source" / "project"
+    (project / "flows").mkdir(parents=True)
+    (project / "support.js").write_text(SUPPORT_JS)
+    (project / "Fixed.dc.html").write_text(
+        ARTBOARD.format(text="Fixed board", support="./support.js")
+    )
+    (project / "flows" / "Fill.dc.html").write_text(
+        ARTBOARD.format(text="Fill board", support="../support.js")
+    )
+    (project / "canvas.json").write_text(
+        json.dumps(
+            {
+                "boards": {
+                    "Fixed.dc.html": {"w": 300, "h": 200},
+                    "flows/Fill.dc.html": {"w": 400, "h": 300, "expand": "fill"},
+                },
+                "order": ["Fixed.dc.html", "flows/Fill.dc.html"],
+            }
+        )
+    )
+    return spec_dir
+
+
+@pytest.mark.playwright
+def test_canvas_json_renders_one_png_per_artboard_at_its_drawn_size(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    spec_dir = make_canvas_spec_dir(tmp_path)
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 0, result.stderr
+    out = spec_dir / "design_screenshots"
+    assert sorted(path.name for path in out.iterdir()) == [
+        "Fixed.png",
+        "flows__Fill.png",
+    ]
+    assert (png_width(out / "Fixed.png"), png_height(out / "Fixed.png")) == (300, 200)
+    assert png_width(out / "flows__Fill.png") == 400

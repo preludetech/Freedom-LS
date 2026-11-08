@@ -7,6 +7,7 @@ The script is `claude_plugins/sdd/scripts/design_screenshots.py`, run with the p
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -103,3 +104,43 @@ def test_prepare_copy_swaps_in_flat_canvas_for_the_copy_only(tmp_path: Path) -> 
     # Assert
     assert (dest / "design-canvas.jsx").read_bytes() == module.STAND_IN.read_bytes()
     assert (source / "design-canvas.jsx").read_text() == "// the original canvas"
+
+
+def test_canvas_naming_a_missing_artboard_file_exits_1_before_the_browser_starts(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    spec_dir = make_spec_dir(tmp_path)
+    project = spec_dir / "design_source" / "project"
+    project.mkdir()
+    (project / "canvas.json").write_text(
+        json.dumps(
+            {
+                "boards": {"Gone.dc.html": {"w": 300, "h": 200}},
+                "order": ["Gone.dc.html"],
+            }
+        )
+    )
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 1
+    assert "design_source/project/Gone.dc.html" in result.stderr
+    assert not (spec_dir / "design_screenshots").exists()
+
+
+@pytest.mark.parametrize(
+    ("path", "stem"),
+    [("Main.dc.html", "Main"), ("flows/Signup.dc.html", "flows__Signup")],
+)
+def test_artboard_stem_maps_path_to_png_stem(path: str, stem: str) -> None:
+    # Arrange
+    module = load_script_module()
+
+    # Act
+    result = module.artboard_stem(path)
+
+    # Assert
+    assert result == stem
