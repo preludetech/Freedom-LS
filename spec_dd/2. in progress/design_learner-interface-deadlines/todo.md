@@ -20,6 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Decide what to do about QA bug: dashboard band drops the item title on narrow cards with an organisation mark (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: outline row title squeezed to a few characters by a wide deadline treatment (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: layout probe flags the open modal outline sheet as overlapping the content (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
