@@ -5652,7 +5652,7 @@ def test_the_preview_links_to_the_error_rows_download_only_when_there_are_errors
         ]
 
     assert (download_links(with_errors), download_links(without_errors)) == (
-        ["Download the 1 error row"],
+        ["Download errors"],
         [],
     )
 
@@ -6257,6 +6257,19 @@ def test_a_result_with_no_new_accounts_has_no_setup_email_text(
     page = _finished_result_page(import_world, "nonsense,,,")
 
     assert "setup email" not in page.text_content()
+
+
+@pytest.mark.django_db
+def test_a_result_shows_the_summary_and_the_error_rows_in_separate_panels(
+    import_world: SimpleNamespace,
+):
+    page = _finished_result_page(import_world, "a@example.com,,,", "nonsense,,,")
+
+    (summary,) = page.cssselect("#run-status .panel-surface")
+    (error_block,) = page.cssselect("#run-status [data-error-block]")
+    assert "Added 1 learner." in summary.text_content()
+    assert not summary.cssselect("[data-error-block]")
+    assert not [a for a in error_block.iterancestors() if "panel-surface" in a.classes]
 
 
 @pytest.mark.django_db

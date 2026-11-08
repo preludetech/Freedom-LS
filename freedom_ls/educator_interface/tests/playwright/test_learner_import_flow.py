@@ -102,7 +102,7 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
     expect(page.get_by_text("Step 3 of 3")).to_be_visible()
     expect(page.get_by_text("Added 2 learners. 1 row was not added.")).to_be_visible()
     with page.expect_download() as download_info:
-        page.get_by_role("link", name="Download the 1 error row").click()
+        page.get_by_role("link", name="Download errors").click()
     download = download_info.value
     content = Path(download.path()).read_text(encoding="utf-8-sig")
     assert content.splitlines()[0] == "email,first_name,last_name,cohort,reason"

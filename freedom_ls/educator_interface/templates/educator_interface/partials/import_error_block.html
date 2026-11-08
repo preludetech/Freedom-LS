@@ -1,7 +1,8 @@
 {% comment %}
 The error rows of an import in an error-tinted block: the download of every
 error row, then a table from md and a card list below it, capped at the
-first IMPORT_RESULT_ERROR_ROWS. Context: error_rows (row and reason pairs),
+first IMPORT_RESULT_ERROR_ROWS, in a height-capped region that scrolls so
+a long list does not stretch the page. Context: error_rows (row and reason pairs),
 error_count, errors_url. Optional: heading_count, which adds the heading and
 the fix-or-continue line above the rows; upload_url, which adds the "Upload
 a corrected file" link beside the download.
@@ -12,13 +13,13 @@ a corrected file" link beside the download.
         <p class="mt-1 text-sm">Fix them in your file and upload it again, or add the other rows now.</p>
     {% endif %}
     <div class="{% if heading_count %}mt-4 {% endif %}flex flex-col gap-2 sm:flex-row">
-        <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" size="small" class="min-h-11 md:min-h-0" data-error-download>Download the {{ error_count }} error row{{ error_count|pluralize }}</c-button>
+        <c-button variant="secondary" href="{{ errors_url }}" icon_left="download" size="small" class="min-h-11 md:min-h-0" data-error-download>Download errors</c-button>
         {% if upload_url %}<c-button variant="secondary" href="{{ upload_url }}" size="small" class="min-h-11 md:min-h-0" data-error-reupload>Upload a corrected file</c-button>{% endif %}
     </div>
-    <div class="mt-4 hidden overflow-x-auto md:block">
+    <div tabindex="0" role="region" aria-label="Error rows" class="mt-4 hidden max-h-96 overflow-auto md:block">
         <table data-error-rows class="w-full text-left text-sm">
             <thead>
-                <tr class="text-xs uppercase tracking-wide">
+                <tr class="sticky top-0 bg-error-light text-xs uppercase tracking-wide">
                     <th scope="col" class="py-2 pr-3 font-medium">Line</th>
                     <th scope="col" class="py-2 pr-3 font-medium">Email</th>
                     <th scope="col" class="py-2 font-medium">Reason</th>
@@ -35,7 +36,8 @@ a corrected file" link beside the download.
             </tbody>
         </table>
     </div>
-    <ul data-row-cards class="mt-4 ml-0 list-none space-y-0 divide-y divide-error/30 md:hidden">
+    <div tabindex="0" role="region" aria-label="Error rows" class="mt-4 max-h-96 overflow-y-auto md:hidden">
+    <ul data-row-cards class="ml-0 list-none space-y-0 divide-y divide-error/30">
         {% for item in error_rows %}
             <li class="py-3">
                 <p class="min-w-0 break-words font-bold">{{ item.row.email }}</p>
@@ -48,6 +50,7 @@ a corrected file" link beside the download.
             </li>
         {% endfor %}
     </ul>
+    </div>
     {% if error_count > error_rows|length %}
         <p class="mt-2 text-sm">Showing the first {{ error_rows|length }} of {{ error_count }}. Download the error rows to see them all.</p>
     {% endif %}

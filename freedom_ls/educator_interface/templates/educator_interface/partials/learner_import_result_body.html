@@ -1,10 +1,11 @@
 {% comment %}
 The outcome of a finished or failed learner import, rendered inside the run
-status partial. The heading takes focus on load so the outcome is announced
+status partial: the summary in one panel and the error rows in a second panel
+below it, then the follow-up actions. The heading takes focus on load so the outcome is announced
 once the page re-renders.
 {% endcomment %}
 {% load time_tags %}
-<div>
+<c-panel-card>
     {% if learner_import.status == "done" %}
         <span aria-hidden="true"><c-icon name="success" class="size-16 text-success" /></span>
         <h2 tabindex="-1" autofocus class="mt-3 font-display text-xl font-semibold">Added {{ added_count }} learner{{ added_count|pluralize }}.{% if not_added_count %} {{ not_added_count }} row{{ not_added_count|pluralize }} {{ not_added_count|pluralize:"was,were" }} not added.{% endif %}</h2>
@@ -25,7 +26,7 @@ once the page re-renders.
         <h2 tabindex="-1" autofocus class="mt-3 font-display text-xl font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</h2>
         {% if learner_import.error_message %}<p class="mt-2 text-sm">{{ learner_import.error_message }}</p>{% endif %}
     {% endif %}
-</div>
+</c-panel-card>
 {% if error_rows %}
     <div class="mt-6">{% include "educator_interface/partials/import_error_block.html" with upload_url="" %}</div>
 {% endif %}
