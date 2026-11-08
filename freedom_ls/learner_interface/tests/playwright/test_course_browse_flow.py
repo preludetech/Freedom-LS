@@ -386,12 +386,12 @@ def test_due_date_reads_in_the_browser_time_zone(
 
     # The site zone is Johannesburg; the browser's own zone wins, unlabelled.
     page.goto(_item_url(live_server, course, 1))
-    expect(due).to_have_text("Mar 15, 2999, 05:59 PM")
+    expect(due).to_have_text("15 Mar 2999, 17:59")
 
     zone_config.show_time_zone_to_learners = True
     zone_config.save()
     page.reload()
-    expect(due).to_have_text("Mar 15, 2999, 05:59 PM EDT")
+    expect(due).to_have_text("15 Mar 2999, 17:59 EDT")
 
 
 def test_missed_deadline_row_keeps_its_title_visible_in_the_desktop_sidebar(
