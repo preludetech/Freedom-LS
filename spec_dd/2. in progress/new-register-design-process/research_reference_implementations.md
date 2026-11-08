@@ -3,7 +3,7 @@
 Date: 2026-11-08. Web findings are mostly secondary sources (blogs, aggregators); official docs were
 reachable only for the Claude migration article, the Figma MCP guide, Lovable and Storybook. Where a
 claim is secondhand it is marked. Live Claude Code tool facts come from
-`.sdd-work/spec_from_idea_platform_facts.md` (not repeated here).
+`platform_facts.md` (not repeated here).
 
 ## Summary table
 

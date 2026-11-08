@@ -1,7 +1,7 @@
 # Research: known complaints about getting AI-tool designs into a codebase for coding agents
 
 Scope: Claude Design (and its move into Claude as Artifacts), plus brief notes on Figma MCP, v0,
-Lovable, Figma Make. Platform baseline is `.sdd-work/spec_from_idea_platform_facts.md`.
+Lovable, Figma Make. Platform baseline is `platform_facts.md`.
 
 Evidence quality: the claudeissues.com pages are mirrors of anthropics/claude-code issues; only #51980
 was confirmed on github.com (search tool output). I could not open claudeissues.com directly (DNS

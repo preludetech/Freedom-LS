@@ -1,6 +1,6 @@
 # Research: codebase (what the register_design rework touches, reuses or conflicts with)
 
-Paths are relative to the repo root. Platform facts: `.sdd-work/spec_from_idea_platform_facts.md`.
+Paths are relative to the repo root. Platform facts: `platform_facts.md`.
 
 ## 1. The command itself: `claude_plugins/sdd/commands/register_design.md`
 

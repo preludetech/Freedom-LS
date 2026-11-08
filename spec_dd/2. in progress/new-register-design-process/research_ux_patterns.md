@@ -1,7 +1,7 @@
 # Research: UX patterns for handing a design from a hosted design tool to a CLI coding agent
 
 Topic `ux_patterns`. Web findings are mostly from Anthropic help pages (official) and third-party
-blogs (marked unverified). Platform facts from the repo are in `.sdd-work/spec_from_idea_platform_facts.md`.
+blogs (marked unverified). Platform facts from the repo are in `platform_facts.md`.
 
 ## 1. Claude Design now (official help page)
 

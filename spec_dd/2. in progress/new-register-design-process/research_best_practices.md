@@ -4,7 +4,7 @@ Topic: `best_practices`. Date: 2026-11-08.
 
 ## Evidence quality (read first)
 
-- Platform facts about how Claude Design works now come from `.sdd-work/spec_from_idea_platform_facts.md`
+- Platform facts about how Claude Design works now come from `platform_facts.md`
   (live tool definitions). That is the primary source. The web adds almost nothing on the move into
   Artifacts.
 - Web search found no Anthropic page confirming the Artifact-based Design type or the 2026-12-14
