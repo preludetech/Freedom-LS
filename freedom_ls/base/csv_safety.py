@@ -6,7 +6,12 @@ Shared by every CSV export in the project: the Django admin export in
 
 from __future__ import annotations
 
-FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+# Includes the full-width forms, which some spreadsheets normalise to the ASCII
+# operators, and line feed, which a spreadsheet may treat like carriage return.
+FORMULA_TRIGGERS = (
+    "=", "+", "-", "@", "\t", "\r", "\n",
+    "\uff1d", "\uff0b", "\uff0d", "\uff20",
+)  # fmt: skip
 UTF8_BOM = "\ufeff"
 
 

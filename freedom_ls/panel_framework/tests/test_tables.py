@@ -974,6 +974,15 @@ def test_formula_cells_escaped(mock_site_context: Site) -> None:
     assert kind_cell == "Alpha"
 
 
+def test_full_width_formula_cells_escaped(mock_site_context: Site) -> None:
+    stub = make_stub(name="\uff1dcmd", kind="a")
+
+    response = fetch(_panel_path(stub.pk), data={"stub-export": "csv"})
+
+    _header, (name_cell, _kind_cell) = _rows(response)
+    assert name_cell == "'\uff1dcmd"
+
+
 def test_bom_and_headers(mock_site_context: Site) -> None:
     stub = make_stub(name="row-x", kind="a")
 
