@@ -138,6 +138,20 @@ the viewport at 375px; the list reserves its height beneath itself while it is f
 - Entering an email for a person who may already exist searches as you type and offers the
   matches, so the person picks rather than remembers.
 
+### Placement
+
+A control sits beside the thing it changes, as the brand's visual system says. On the educator
+instance pages that puts each action here:
+
+| Thing shown | Control beside it |
+|---|---|
+| A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
+| A learner's Courses tab | Register for a course |
+| A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration: the list is the only place an inactive registration is shown, so Reactivate has no other home |
+| A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
+| A cohort's Learners tab | Add learners, Remove, Move |
+| A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
+
 ### Padding, gaps and phones
 
 - Every control has padding on all four sides. The base `<select>` rule draws its chevron inside
@@ -182,4 +196,5 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
-- A Settings tab holds only actions that have no home beside the thing they change.
+- Each instance-page action sits where the Placement table puts it; a Settings tab holds only
+  actions that have no home beside the thing they change.

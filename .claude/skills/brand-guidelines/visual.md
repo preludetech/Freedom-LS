@@ -2,6 +2,8 @@
 
 The brand as it reaches markup. FLS is themed: every colour, face and radius reaches a template through a role token or a component, and the `default` theme maps the brand onto those tokens. Style through the token and the component, so a theme that repoints one applies everywhere. `Skill(fls-dev:frontend-styling)` owns the token mechanics (the `on-*` pairings, which roles have `*-hover`); this file owns what the brand means by them.
 
+Every rule here holds on every FLS page. A feature's own layout, its component's props and the spacing on one screen live in that feature's spec, its component's doc comment and `docs/product/`.
+
 ## Colour
 
 ### Palette
@@ -76,10 +78,10 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A panel-framework page or component (a table, an action, a filter, the quick view, a dialog or sheet, the selection bar) | `Skill(fls-dev:panel-framework)`: it names the component for each job and how it looks |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
-| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. A learner-facing deadline is never a badge: see Learner deadlines. |
+| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
 | A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
-| A page a learner cannot use (a closed or blocked course item) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
+| A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
 | A progress bar | `<c-course-progress-bar>`, tinted to the course's own accent |
@@ -95,35 +97,13 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
-**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
-
-## Learner deadlines
-
-Follow the registered design for every learner deadline surface. Never add a chip, badge, card, border or tint that the design does not draw.
-
-- **One component**: every learner deadline, "Access ended" included, renders through `<c-deadline-label>`. Cards, rows, the outline header, the outline rows and the content header share its styling; no surface hand-builds deadline markup.
-- **Treatment**: the icon and the main text ("Missed deadline", "Closed", "Access ended") take the tier colour, and the main text is bold. What was missed and the date and time are normal text in the standard text colour. Text breaks at natural places (between parts, never inside a date). It never sits in a chip, badge, bordered card or tinted box.
-- **Layouts**: `layout="inline"` is one line: icon, bold main text, what was missed, date and time. `layout="stacked"` puts the icon in its own column, vertically centred on the block, with the bold main text, what was missed and the date and time on separate lines beside it. `layout="minimal"` is for outline rows: the coloured icon and the short date only, with the words for screen readers.
-- **Course cards and rows**: the deadline is the bottom line of the card, below the progress bar, with Details at its right.
-- **Card hero**: the hero holds only the course icon. The organisation avatar overlaps the hero's bottom edge with the name beside it, below the hero. Nothing else goes inside the hero or along its bottom edge, and the avatar does not move.
-- **Content header**: the deadline line above the item title has clear space above it and below it (at least `mt-6` above, `mt-3` to the title).
+**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both.
 
 ## Placement
 
 A control that changes a thing sits where the thing is shown, so the person changes what they are
-looking at without going somewhere else:
-
-| Thing shown | Control beside it |
-|---|---|
-| A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
-| A learner's Courses tab | Register for a course |
-| A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration: the list is the only place an inactive registration is shown, so Reactivate has no other home |
-| A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
-| A cohort's Learners tab | Add learners, Remove, Move |
-| A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
-
-A new panel or action goes next to what it changes. The Settings tab is the last resort, not the
-default.
+looking at without going somewhere else. A new panel or action goes next to what it changes. A
+Settings tab is the last resort, for actions with no home of their own.
 
 ## Visual checklist
 
@@ -131,18 +111,13 @@ What QA checks in a screenshot of any FLS page.
 
 - A person is linked with the avatar-and-name person link, never a bare name.
 - A link that acts as a control carries no prose underline; a link inside prose does.
-- A control that changes a thing sits beside the thing it changes, as the Placement table says; a
-  Settings tab holds only the actions with no home of their own.
+- A control that changes a thing sits beside the thing it changes; a Settings tab holds only the
+  actions with no home of their own.
 - Status badges carry one of the five status tones; a label that is not a status is a chip.
 - Every button label sits on one line at 375px, 768px and 1280px.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
-- A learner deadline is an icon and text: no chip, badge, border or tinted box around it on a card, row, outline header, outline row or content header.
-- Every learner deadline looks the same: coloured icon, bold main text in the icon's colour, the date in the standard text colour; a stacked label centres its icon on the whole block.
-- A course card or row shows its deadline as its last line, below the progress bar, with Details on the right.
-- A course card's hero holds only the course icon; the organisation avatar straddles its bottom edge with the name beside it.
-- A closed course item page shows a large centred icon with text under it, not a callout.
-- The content header's deadline line has visible space above and below it.
+- A page a person cannot use shows a large centred icon with text under it, not a callout.
 
 ## Example page
 
