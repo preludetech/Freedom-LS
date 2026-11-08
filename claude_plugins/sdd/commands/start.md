@@ -1,6 +1,6 @@
 ---
 description: Initialise an SDD workflow — create the todo.md checklist next to the spec or idea, then create an isolated git worktree for the work
-allowed-tools: AskUserQuestion, EnterWorktree, Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, WebFetch, WebSearch
+allowed-tools: AskUserQuestion, EnterWorktree, Artifact, Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, WebFetch, WebSearch
 ---
 
 This command kicks off Spec-Driven Development for a new spec. It is a chain: it sets up the todo
@@ -61,10 +61,12 @@ While the mechanic runs:
   four per `AskUserQuestion`, each with a recommended answer and one clause on why it matters.
   Further calls follow while the mechanic runs. Nothing is held back for a question.
 - When `<spec-dir>/design_prompt.md` exists and `<spec-dir>/design.md` does not: load
-  `DesignSync` (`ToolSearch` with `select:DesignSync`), take the project id from the prompt the
-  way `register_design.md` Step 1 does, and call `get_project`. On an authorisation error ask
-  one question: "Run `/design-login` now, then choose Done (Recommended)" or "Register the
-  design without reading it". The answer is passed to Step 6.
+  `Artifact` (`ToolSearch` with `select:Artifact`), take the link from the file the way
+  `register_design.md` Step 1 does, and call `list` with it as `url` and `scope: "files"`. Ask
+  one question when the file holds no Design Artifact link (only a `claude.ai/design/p/` link,
+  say), the listing has no `project/canvas.json`, or the tool returns a summary: "Get edit access
+  to the design (or move it into Claude), then choose Done (Recommended)" or "Register the design
+  without reading it". The answer is the design-access answer, passed to Step 6.
 - Answers stay in context until Step 5.
 
 Then collect the mechanic's return. A `blocked` return is handled as in Step 1 (ask, re-spawn), and the chain continues after it. Done when the mechanic has reported the worktree path.
@@ -87,7 +89,7 @@ Asked by `/sdd:start` before the spec was written.
 - Q: <question>? → A: <answer> (asked up front)
 ```
 
-One line per question asked in Step 3, the design-login answer included. No questions asked is an
+One line per question asked in Step 3, the design-access answer included. No questions asked is an
 empty list under the heading, and the file is still written.
 
 When Step 7 will be skipped, or the chain stops before `spec_from_idea` Step 4 commits, delegate to
@@ -99,7 +101,7 @@ commits it.
 
 When `<spec-dir>/design_prompt.md` exists and `design.md` does not, read
 `${CLAUDE_PLUGIN_ROOT}/commands/register_design.md` and follow it with `mode: hook`, `<spec-dir>`,
-the design input `<spec-dir>/design_prompt.md`, no notes, and the design-login answer. Otherwise
+the design input `<spec-dir>/design_prompt.md`, no notes, and the design-access answer. Otherwise
 skip and say which condition failed.
 
 ## Step 7: Write the spec

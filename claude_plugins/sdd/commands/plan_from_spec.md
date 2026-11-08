@@ -1,6 +1,6 @@
 ---
 description: Create an implementation plan based on a spec file
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, AskUserQuestion, Artifact
 argument-hint: <spec path> [suffix, e.g. 2b]
 ---
 
@@ -41,7 +41,7 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 Read the spec carefully and make sure you understand what is needed. Spawn the Step 4 skills/MCP scan now, in the background; it needs only the spec.
 
-If the spec or its directory names a `design.md`, it registers a Claude Design design, and the Design section (Step 3) applies. Read `design_source/` and `design_screenshots/` from the directory that holds the `design.md`, and treat the design the way `design.md` says: a visual reference, never a source of scope. Load `DesignSync` (`ToolSearch` with `select:DesignSync`) only when those files are missing, and say so in the summary.
+If the spec or its directory names a `design.md`, it registers a Claude Design design, and the Design section (Step 3) applies. Read `design_source/` and `design_screenshots/` from the directory that holds the `design.md`, and treat the design the way `design.md` says: a visual reference, never a source of scope. Read the design through the `Artifact` tool as its `design.md` says only when those files are missing, and say so in the summary.
 
 The plan builds only what the spec asks for. A drawn element the spec does not ask for is left out without a question: never ask the user whether to build something the design draws, and never add it to the spec.
 
