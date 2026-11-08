@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-08_
 
 ## Summary
 
@@ -15,7 +15,7 @@ _Last updated: 2026-11-05_
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
-- A registered learner sees each deadline as upcoming, due today, missed or closed, each with its own colour, icon and word, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
+- A registered learner sees each deadline as upcoming, due today, missed or closed, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. See [Deadlines](#deadlines).
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - A course can belong to particular organisations, and only their learners see it unless it is public. Where a course has one organisation, the dashboard, the all-courses list and the course page name it, so same-titled versions of a course can be told apart. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
@@ -30,7 +30,7 @@ _Last updated: 2026-11-05_
 
 The learner dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
 
-**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the site's course-discovery sections: any category sections it has declared, the catch-all **Available courses**, and **Coming soon** where a course isn't yet open for enrolment. The personalised sections — the "Welcome back" greeting, In progress, Recommended courses and Learning history — are not shown. The one exception is the **Your applications** panel (below), which an anonymous visitor sees for applications started in their browser session. They are omitted entirely rather than shown as "sign in to see this" placeholders.
+**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA), followed by the site's course-discovery sections: any category sections it has declared, the catch-all **Available courses**, and **Coming soon** where a course isn't yet open for enrolment. The personalised sections — the "Welcome back" greeting, In progress, Recommended courses and Learning history — are not shown. The one exception is the **Your applications** panel (below), which an anonymous visitor sees for applications started in their browser session. They are omitted entirely rather than shown as "sign in to see this" placeholders.
 
 ![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
 
@@ -42,15 +42,15 @@ The learner dashboard serves as the home page at `/`. Its content branches on wh
 
 Each category chosen for the dashboard gets a section of its own, headed by its title and description, in the order the site declared. A published course appears in exactly one section however many categories it carries. A coming-soon course is the exception: where its category is one the site shows on the dashboard, it appears both in that category's section and in **Coming soon**; where it has no category, or its category isn't shown, it appears only in Coming soon and never in Available courses. A category whose courses are all coming soon therefore gets a section of its own — one with nothing in it a learner can start yet — and it leads the page if the site's declared order puts it first. A learner has no control over any of this — no section can be hidden, reordered, or collapsed — and a section's "Browse all" link goes to the full catalogue, which cannot yet filter down to one category's courses.
 
-Every section shows up to three cards at a time, with previous/next controls and a "1 to 3 of 12" position beside the heading to reach the rest. Paging one section leaves the others where they are. On phones and tablets each section shows its courses as compact rows in a single column instead of cards.
+Every section shows up to three courses at a time and pages through the rest, saying which ones are in view. Paging one section leaves the others where they are.
 
 Each course card shows the course title, its registration status, and a progress percentage once the learner has started it, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action. A card does not name the course's category; the [detail page](#course-detail-page) does.
 
-A course card names its organisation with a small circular avatar, the organisation's profile logo, else its logo, else its initials, that overlaps the bottom of the card's colour block. An in-progress or registered card names the organisation the learner studies the course through. A card for a course the learner is not registered for names the course's organisation when it has exactly one. A completed card names none. The compact rows that phones and tablets show put the organisation's name and the course's difficulty at the top left, with the status and price as small chips at the top right. The site's default organisation is never named, on any surface.
+A course card names its organisation with its profile logo, else its logo, else its initials. An in-progress or registered card names the organisation the learner studies the course through. A card for a course the learner is not registered for names the course's organisation when it has exactly one. A completed card names none. On phones and tablets each course shows as a compact row with the same information. The site's default organisation is never named, on any surface.
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
-When application-gated courses are in use, the dashboard also shows a **Your applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses. An anonymous visitor sees the panel for the applications their browser session has started, with no name or email shown on the page. The panel shows three applications at a time, paged with the same previous/next controls and position text as the course sections, and each application shows its course's icon. Each application is laid out like the compact course rows: the course's organisation (where it has exactly one) and difficulty at the top left, the "Pending review" or "Incomplete" chip at the right, and the same "Details" link beside the button.
+When application-gated courses are in use, the dashboard also shows a **Your applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses. An anonymous visitor sees the panel for the applications their browser session has started, with no name or email shown on the page. The panel shows three applications at a time, paged like the course sections. Each application names its course's organisation (where it has exactly one), difficulty and status, with the same "Details" link as the course cards.
 
 The site header shows **Log in** and **Sign up** affordances for anonymous visitors (carrying a `?next=` parameter so the visitor returns to the page they were on after authenticating). These affordances are absent from the header for authenticated users.
 
@@ -58,7 +58,7 @@ The site header shows **Log in** and **Sign up** affordances for anonymous visit
 
 ## Course Listing
 
-The course listing page is publicly accessible — no login is required to browse it. It shows all courses available on the current site. Each row names the course's organisation, where it has exactly one, in the same way as the compact dashboard rows: organisation and difficulty at the top left, status and price as small chips on the right.
+The course listing page is publicly accessible — no login is required to browse it. It shows all courses available on the current site. Each row names the course's organisation, where it has exactly one, its difficulty, status and price.
 
 Each entry shows an **access-model badge** ("Free" or "By application") so a visitor can identify the access model before clicking through to the detail page.
 
@@ -116,9 +116,9 @@ The course detail page is publicly accessible. Anonymous visitors and authentica
 - **Difficulty** — one of: beginner, intermediate, advanced, all levels (authored as `all_levels`).
 - **Estimated duration** — a human-readable estimate of how long the course takes.
 - **Description** — full course markdown description.
-- **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses.
+- **Access model** — whether the course is free or by application.
 - **Table of contents** — all items are shown locked for visitors who are not registered, whether anonymous or signed in.
-- **Organisation** — where the course has exactly one, its name and mark appear in the page's hero. Under the sign-up panel a card repeats the name and mark and, if the organisation has written one, its bio. Neither appears for a course with several organisations or only the site's default one.
+- **Organisation** — where the course has exactly one, the page shows its name and mark and, if the organisation has written one, its bio. Neither appears for a course with several organisations or only the site's default one.
 
 A single **Back** link returns the learner to the page they came from on this site, or to the dashboard when they did not arrive from another page on the site.
 
@@ -138,11 +138,11 @@ The CTA label is action-forward and does not mention login. An anonymous visitor
 
 ## Course Prices
 
-A course can show a price. It can be a fixed amount, a range ("From …" in listings), a discounted amount with the original struck through, or "Price on request". The price appears in three places. Visitors who have not registered see it on catalogue and dashboard entries, and in the course page's sign-up panel with an optional tax note. Every visitor sees it in the course page's stats strip. When a discount's end date passes, the original amount shows again without anyone editing the course.
+A course can show a price. It can be a fixed amount, a range ("From …" in listings), a discounted amount with the original struck through, or "Price on request". Every visitor sees it on the course page. Visitors who have not registered also see it on catalogue and dashboard entries, with an optional tax note on the course page. When a discount's end date passes, the original amount shows again without anyone editing the course.
 
 **FLS takes no payment.** A price changes nothing about the course's access model, its badge or its call to action. In practice a price goes on an application-gated course: the visitor sees the price and still clicks "Apply now". Payment, if there is any, happens outside FLS.
 
-![Application-gated course page showing a discounted price in the stats strip and sign-up panel](screenshots/learner_course_detail_price.png)
+![Application-gated course page showing a discounted price](screenshots/learner_course_detail_price.png)
 
 Prices are authored with the rest of the course metadata; see [content editing workflow](./content-editing-workflow.md). The default currency and the display locale are set in [configuration](./configuration-and-extension.md#settings-reference).
 
@@ -207,7 +207,7 @@ For a gated course with no application form, selecting "Apply now" leads to a co
 
 Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
 
-When the course names an application form, "Apply now" opens the first page of that form directly, with no confirmation page, and walks the applicant through it page by page. "Previous" and "Next" sit left and right with arrow icons, and the last page's "Next" leads to the check-your-answers page. Short text, long text, number, date, time, email, URL, phone, multiple-choice, checkbox, dropdown and file-upload questions are all supported; a phone question is a mobile-keypad hint and does not validate the number entered. An answer that does not match its question's type — an invalid date, a malformed email address — is refused at submission: the applicant sees the reason on that question, and nothing is stored for it until it is corrected. The applicant can leave partway through and come back later with their answers preserved, then reaches a **check-your-answers page** listing every page's answers with an Edit link back to each one. The check-your-answers page lists only the pages and questions that applicant was asked; if editing an answer makes a required question apply, the applicant is taken through it before returning to review. Submitting from that page is one-way: the application is read-only afterwards, and the applicant lands back on the dashboard with a confirmation toast, where the application is listed as "Pending review" (an applicant without an account lands on the status page instead). A file-upload question accepts one JPEG, PNG or PDF up to 6 MB, and the applicant can download, replace or remove it at any point before submitting. The handling of uploaded files is described in [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
+When the course names an application form, "Apply now" opens the first page of that form directly, with no confirmation page, and walks the applicant through it page by page. The last page leads to the check-your-answers page. Short text, long text, number, date, time, email, URL, phone, multiple-choice, checkbox, dropdown and file-upload questions are all supported; a phone question is a mobile-keypad hint and does not validate the number entered. An answer that does not match its question's type — an invalid date, a malformed email address — is refused at submission: the applicant sees the reason on that question, and nothing is stored for it until it is corrected. The applicant can leave partway through and come back later with their answers preserved, then reaches a **check-your-answers page** listing every page's answers with an Edit link back to each one. The check-your-answers page lists only the pages and questions that applicant was asked; if editing an answer makes a required question apply, the applicant is taken through it before returning to review. Submitting from that page is one-way: the application is read-only afterwards, and the applicant lands back on the dashboard with a confirmation toast, where the application is listed as "Pending review" (an applicant without an account lands on the status page instead). A file-upload question accepts one JPEG, PNG or PDF up to 6 MB, and the applicant can download, replace or remove it at any point before submitting. The handling of uploaded files is described in [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
 
 ![Application form page with a rejected date answer: an "Invalid answers" callout naming the question, and the reason shown under the date input](screenshots/learner_application_form_invalid_answer.png)
 
@@ -251,9 +251,9 @@ Returning to a course sends the learner straight back to the item they last view
 
 ### Organisation Co-Branding
 
-![Course player with an organisation logo and name above the course title](screenshots/learner_player_organisation_logo.png)
+![Course player with an organisation logo and name](screenshots/learner_player_organisation_logo.png)
 
-If a learner is studying a course through an organisation — reached either through their cohort or through their own registration — that organisation's logo and name appear in the course outline header, directly above the course title, as a small, clearly secondary mark. If the organisation has no logo, an initials monogram derived from its name is shown instead; if its name has no usable letters, a generic icon.
+If a learner is studying a course through an organisation — reached either through their cohort or through their own registration — that organisation's logo and name appear in the course player as a clearly secondary mark. If the organisation has no logo, an initials monogram derived from its name is shown instead; if its name has no usable letters, a generic icon.
 
 A learner who self-registers for an organisation's course is registered through their own organisation. For any other course, a self-registered learner is registered through the site's own default organisation, so no mark appears unless an administrator has given that organisation a logo.
 
@@ -293,28 +293,23 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 ## Deadlines
 
-A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees the result in two places:
+A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees their deadlines in the course player, against each incomplete item and as the course's next or earliest missed deadline, and on the course's dashboard card, which also covers the time limit. A deadline reads as upcoming, due today, missed (**Missed deadline**) or closed (**Closed**). A completed item shows none.
 
-- **Course player** — under the outline's progress bar, a line names the earliest missed deadline, else the next one, with its title, full date and time. Each incomplete item with a deadline shows its date at the right of its own row, with "Closes <date>." beside it while the item can still close. The item the learner is on shows its deadline on a line above its title. A completed item shows none.
-- **Dashboard course card** — the card's last line, below the progress bar, names the earliest missed deadline, else the next one, with its title and short date, and Details at its right. The compact course rows on phones and tablets show the same line at their bottom. A time limit shows under the title "Course", and a closed item's line says **Closed** and names the item.
+The **course detail page** shows no deadline dates. Where the course has a time limit, the page shows its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
 
-A deadline shows in one of four states, each with its own colour, icon and word: **Deadline**, **Deadline today**, **Missed deadline** and **Closed**. Each is an icon and coloured text, never a badge or a tinted box. The icon and the bold word share the state's colour; the item's name and the date read in the normal text colour. Every deadline, and the card's **Access ended** line, looks the same wherever it appears. Outline rows show only the coloured icon and date.
+![Course player showing deadlines](screenshots/learner_course_detail_due_dates.png)
 
-The **course detail page** shows no deadline dates. Where the course has a time limit, a "Time limit" cell gives its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
+![Dashboard course card with a missed deadline](screenshots/learner_dashboard_card_overdue.png)
 
-![Course player with the outline's deadline line, outline dates and the deadline line above the item title](screenshots/learner_course_detail_due_dates.png)
-
-![Dashboard course card with a missed deadline on its last line, below the progress bar](screenshots/learner_dashboard_card_overdue.png)
-
-Dates show in the learner's own time zone, taken from their browser, with no zone name beside them. A site can choose to show the zone label as well; it is off by default. On the dashboard card and the outline rows a deadline falling on the learner's own date reads "Today", and a deadline set to a time of day shows that time ("Today, 09:00"); a deadline given as a date alone shows no time. The **Deadline today** colour itself follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
+Dates show in the learner's own time zone, taken from their browser; a site can choose to show the zone name as well, off by default. Whether a deadline is due today follows the site's time zone, the zone a date-only deadline ends its day in. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each registration's own deadlines apply.
 
 **Consequences are a policy staff set, and all are off by default except the Missed deadline mark.** Staff choose them for a whole site, an organisation, a course, a cohort or a single registration; see [admin interface](./admin-interface.md#deadline-overrides). Until staff turn something on, a due date or time limit that has passed locks nothing and blocks nothing.
 
 - **Missed deadline mark.** It can be switched off. The deadline's date still shows, without the mark.
-- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Before then the learner sees "Closes <date>."; afterwards its outline row reads **Closed** with a lock icon, and opening it shows a large lock icon with a note that it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**. Those results offer no retry, and a failed result says the quiz has closed.
-- **Ending course access.** Access to a course can end a grace window after its time limit. The dashboard card shows "Access ends <date>." and then "Access ended <date>" with no Continue action, and the course detail page says access has ended and offers no button. Depending on the policy, the learner can then still open the outline, their completed items and their results, or nothing. A completed course never ends.
+- **Closing items.** An incomplete topic or form can close a set time after its deadline, the grace window. Until then the learner is told when it closes; afterwards it is marked **Closed**, and opening it says it has closed and to ask their educator for more time. A completed item never closes, and a closed item does not unlock the items after it. A closed form with an attempt in progress offers **Submit your answers**, which submits what was already saved. A closed form with a submitted attempt offers **See your results**. Those results offer no retry, and a failed result says the quiz has closed.
+- **Ending course access.** Access to a course can end a grace window after its time limit. The dashboard card shows when access ends and then that it has ended, and the learner can no longer continue the course from the card or its detail page. Depending on the policy, the learner can then still open the outline, their completed items and their results, or nothing. A completed course never ends.
 
-![A closed topic in the course player, with its Closed row and notice](screenshots/learner_closed_item_notice.png)
+![A closed topic in the course player](screenshots/learner_closed_item_notice.png)
 
 ![Course detail page after the learner's access has ended](screenshots/learner_course_access_ended.png)
 
