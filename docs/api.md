@@ -8,9 +8,9 @@ This page covers what every API endpoint shares, then each API endpoint in turn:
 
 - [users](#users);
 - [learner course registrations](#learner-course-registrations),
-  [cohort course registrations](#cohort-course-registrations) and
-  [course interest](#course-interest), who is registered for or interested in each course.
-  Course progress is still to come, under the same `registrations_and_progress` API scope;
+  [cohort course registrations](#cohort-course-registrations),
+  [course interest](#course-interest) and [course progress](#course-progress): who is
+  registered for or interested in each course, and how far each registration has got;
 - [course applications](#course-applications);
 - [referral codes](#referral-codes), [referral code hits](#referral-code-hits),
   [signup attributions](#signup-attributions) and [first-touch counts](#first-touch-counts),
@@ -54,9 +54,8 @@ expiry, rotate it.
 | `referral_data` | `ReferralCode`, `ReferralCodeHit`, `SignupAttribution`, `FirstTouchCount` |
 | `registrations_and_progress` | `LearnerCourseRegistration`, `CohortCourseRegistration`, `CourseInterest`, `CourseProgress` |
 
-`registrations_and_progress` reads learner course registrations, cohort course registrations and
-course interest. Course progress (`CourseProgress`) has no API endpoint yet; it is still to come
-under the same API scope.
+`registrations_and_progress` reads learner course registrations, cohort course registrations,
+course interest and course progress.
 
 ### Rotating a key
 
@@ -170,6 +169,7 @@ its rows change after they are written, and whether anything records the change.
 | `learner-course-registrations` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `cohort-course-registrations` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `course-interests` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
+| `course-progress` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `course-applications` | `updated_at` | `updated_since` on `updated_at` | [Checkpoint](#checkpoint) |
 | `referral-codes` | `created_at` | none | [Full pull](#full-pull) |
 | `referral-code-hits` | `hit_at` | `updated_since` on `hit_at` | [Checkpoint](#checkpoint) |
@@ -184,7 +184,7 @@ Every filter is inclusive: it returns rows at or after the value you give.
 ISO 8601 with a timezone offset or `Z`, such as `2026-11-03T02:00:00Z`. A time with no timezone,
 or one that does not parse, is a 400.
 
-On users, course registrations, course interest and course applications the filter field is
+On users, course registrations, course interest, course progress and course applications the filter field is
 `updated_at`. Referral code hits and signup attributions are never changed once written, so they have no `updated_at`: there `updated_since` compares against
 `hit_at` or `signed_up_at`, the time the row was written. Both are stamped before the write
 commits, so the same 5-minute margin applies.
@@ -235,6 +235,7 @@ Deactivation is visible: a deactivated row shows up again with `is_active` set t
 | `learner-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its user is deleted and the registration goes with them. |
 | `cohort-course-registrations` | Deactivated: `is_active: false`. | An admin deletes the registration, or its cohort is deleted and the registration goes with it. |
 | `course-interests` | Nothing. | The user removes their interest, or the user or the course is deleted. |
+| `course-progress` | Nothing: a row has no `is_active`. See [Course progress](#course-progress). | Only the operator's `danger_clear_all_course_progress` development command. A row's learner, course and registration cannot be deleted while the row exists. |
 | `course-applications` | Nothing. | An admin deletes the application. |
 | `referral-codes` | Deactivated: `is_active: false`. | Never deleted. |
 | `referral-code-hits` | Nothing. | Older than the cutoff of the operator's `prune_referral_code_hits --older-than-days` command. How often it runs, and with what cutoff, is the operator's choice. |
@@ -275,6 +276,7 @@ PATHS = {
     "learner-course-registrations": "updated_at",
     "cohort-course-registrations": "updated_at",
     "course-interests": "updated_at",
+    "course-progress": "updated_at",
     "course-applications": "updated_at",
     "referral-code-hits": "hit_at",
     "signup-attributions": "signed_up_at",
@@ -646,6 +648,116 @@ registrations, this differs from [course applications](#course-applications), wh
 the applicant's email or name does move `updated_at`.
 
 On interest shown before this API endpoint shipped, `updated_at` starts as `created_at`.
+
+## Course progress
+
+`/api/v1/course-progress/` lists the course progress on the key's site: one row per course
+registration a learner has, saying how far they have got through the course.
+
+| | |
+| --- | --- |
+| API scope | `registrations_and_progress` |
+| List | `GET /api/v1/course-progress/` |
+| Detail | `GET /api/v1/course-progress/<id>/` |
+| Ordering field | `updated_at` |
+| Filters | `updated_since`, plus `cursor` and `page_size` on the list |
+| Recipe | [Checkpoint](#checkpoint) |
+
+```json
+{
+  "next": null,
+  "results": [
+    {
+      "id": "c4f2…",
+      "course_id": "a83e…",
+      "course_title": "Data Analysis Bootcamp",
+      "registration_id": "0b7e…",
+      "registration_kind": "learner",
+      "user_id": 412,
+      "user_email": "thandi@example.com",
+      "user_first_name": "Thandi",
+      "user_last_name": "Nkosi",
+      "organisation_id": "5c21…",
+      "organisation_name": "Ubuntu Skills Trust",
+      "progress_percentage": 45,
+      "started_at": "2026-10-04T08:02:41.120934+00:00",
+      "last_accessed_time": "2026-10-19T17:23:08.664210+00:00",
+      "completed_time": null,
+      "updated_at": "2026-10-19T17:23:08.671852+00:00"
+    },
+    {
+      "id": "e81a…",
+      "course_id": "a83e…",
+      "course_title": "Data Analysis Bootcamp",
+      "registration_id": "3a96…",
+      "registration_kind": "cohort",
+      "user_id": 397,
+      "user_email": "sipho@example.com",
+      "user_first_name": "Sipho",
+      "user_last_name": "Dlamini",
+      "organisation_id": "5c21…",
+      "organisation_name": "Ubuntu Skills Trust",
+      "progress_percentage": 100,
+      "started_at": "2026-09-14T06:48:19.007513+00:00",
+      "last_accessed_time": "2026-10-20T12:10:44.385027+00:00",
+      "completed_time": "2026-10-20T12:10:44.385027+00:00",
+      "updated_at": "2026-10-20T12:10:44.392166+00:00"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string (UUID) | Stable for the life of the row. Upsert on this. |
+| `course_id` | string (UUID) | The course. |
+| `course_title` | string | The course's title. Can be stale on an incremental sync; see "What moves `updated_at`" below. |
+| `registration_id` | string (UUID) | The registration this row belongs to: the `id` on the API endpoint `registration_kind` names. |
+| `registration_kind` | string | `"learner"` for a row under a [learner course registration](#learner-course-registrations), `"cohort"` for one under a [cohort course registration](#cohort-course-registrations). |
+| `user_id` | integer | The learner's user: the `id` the [users](#users) API endpoint returns. |
+| `user_email` | string | That user's sign-in address. |
+| `user_first_name` | string | May be empty. |
+| `user_last_name` | string | May be empty. |
+| `organisation_id` | string (UUID) | The organisation the learner belongs to. |
+| `organisation_name` | string | That organisation's name. |
+| `progress_percentage` | integer | 0 to 100. See "Progress and visits" below. |
+| `started_at` | string (ISO 8601) or `null` | When the learner first opened the course. `null` if they never have. |
+| `last_accessed_time` | string (ISO 8601) or `null` | The learner's last visit. Not the sync key; see "Progress and visits" below. |
+| `completed_time` | string (ISO 8601) or `null` | When the learner completed the course. `null` until they do. |
+| `updated_at` | string (ISO 8601) | When the row last changed. Drives paging and `updated_since`. |
+
+### Progress and visits
+
+- **`progress_percentage`** is the stored value, the same one the learner sees in the course.
+  FreedomLS recalculates it in the background when the learner finishes a topic or a form, and
+  when an operator runs the `recalculate_progress_percentages` command.
+- **`last_accessed_time`** is when the learner last opened something in the course. It is not
+  the sync key: page and checkpoint on `updated_at`, which also moves for changes the learner did
+  not make.
+- **Rows are per registration, not per person.** A learner registered for a course both directly
+  and through a cohort, or in more than one organisation, has a row for each. To count people on
+  a course, count distinct `user_id` per `course_id`.
+- **Deactivated rows are returned.** A row under a deactivated registration, or for a learner
+  deactivated in their organisation, is returned like any other, and the row has no `is_active`.
+  To tell, read `is_active` on the registration: look up `registration_id` on the API endpoint
+  `registration_kind` names.
+
+### What moves `updated_at`
+
+Any change to the row moves it: a background recalculation of `progress_percentage`, every visit
+to the course's content, completing the course, and moving the learner to another cohort. A
+recalculation that leaves the percentage as it was does not.
+
+The copied fields do **not** move it, and neither does the registration's `is_active`: a change
+to the user's email or name, the organisation's name or the course's title leaves the row as it
+was. For current identity, join `user_id` to `id` on the [users](#users) API endpoint; for the
+registration's state, join `registration_id` to the registration API endpoint; for current names
+and titles, run a periodic full pull (no `updated_since`).
+
+Rows that existed before this API endpoint shipped carry the latest of their existing timestamps
+as `updated_at`, so start with a full pull.
 
 ## Course applications
 
