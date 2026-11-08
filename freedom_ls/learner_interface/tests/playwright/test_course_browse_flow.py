@@ -376,10 +376,10 @@ def test_learner_browses_a_course(
 
         page.goto(_item_url(live_server, course, 5))
         title_box = _box(page.locator("#page-title"))
-        chip_box = _box(page.get_by_test_id("player-item-deadline"))
-        # The deadline chip sits above the title, left-aligned, at every width.
-        assert chip_box["y"] + chip_box["height"] <= title_box["y"]
-        assert abs(chip_box["x"] - title_box["x"]) < 2
+        deadline_box = _box(page.get_by_test_id("player-item-deadline"))
+        # The deadline line sits above the title, left-aligned, at every width.
+        assert deadline_box["y"] + deadline_box["height"] <= title_box["y"]
+        assert abs(deadline_box["x"] - title_box["x"]) < 2
         assert_no_horizontal_overflow(page)
 
     # Below md the stat cells stack, each spanning the strip so dividers line up.
@@ -584,20 +584,20 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
     mock_site_context,
 ) -> None:
     page = logged_in_page
-    banded = CourseFactory(
-        title="Banded Course",
-        slug="banded-course",
+    dated = CourseFactory(
+        title="Dated Course",
+        slug="dated-course",
         access_config={"access_type": "free"},
     )
-    banded.organisations.add(OrganisationFactory(name="Plain Academy"))
-    long_topic = TopicFactory(title=LONG_TOPIC_TITLE, slug="banded-topic")
+    dated.organisations.add(OrganisationFactory(name="Plain Academy"))
+    long_topic = TopicFactory(title=LONG_TOPIC_TITLE, slug="dated-topic")
     ContentCollectionItemFactory(
-        collection_object=banded, child_object=long_topic, order=0
+        collection_object=dated, child_object=long_topic, order=0
     )
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, course=banded, is_active=True
+        learner__user=logged_in_user, course=dated, is_active=True
     )
-    set_due_date(banded, long_topic, due_date=date(2000, 1, 1))
+    set_due_date(dated, long_topic, due_date=date(2000, 1, 1))
     for letter in "ABCD":
         CourseFactory(
             title=f"Free Course {letter}",
@@ -655,7 +655,7 @@ def test_dashboard_sections_page_as_rows_on_phones_and_tablets(
         assert_no_horizontal_overflow(page)
         # Cards replace the rows from the lg breakpoint.
         if viewport["width"] >= 1024:
-            _assert_band_clears_the_mark(page)
+            _assert_deadline_line_ends_the_card(page)
 
 
 def _boxes_overlap(a: FloatRect, b: FloatRect) -> bool:
@@ -667,30 +667,33 @@ def _boxes_overlap(a: FloatRect, b: FloatRect) -> bool:
     )
 
 
-def _assert_band_clears_the_mark(page: Page) -> None:
-    """The banded card's date is whole; its word, title and date clear the mark and the icon."""
+def _assert_deadline_line_ends_the_card(page: Page) -> None:
+    """The dated card's deadline sits below its progress bar, whole inside the card,
+    with the Details link beside or below it and nothing over the mark."""
     card = page.get_by_test_id("section-card-grid").locator(
-        "article", has_text="Banded Course"
+        "article", has_text="Dated Course"
     )
-    band = card.get_by_test_id("course-deadline-band")
-    expect(band).to_be_visible()
+    line = card.get_by_test_id("course-deadline-line")
+    expect(line).to_be_visible()
+    expect(line).to_contain_text("Missed deadline")
+    expect(line).to_contain_text(LONG_TOPIC_TITLE)
     card_box = _box(card)
-    date_box = _box(band.locator("time"))
-    assert date_box["x"] >= card_box["x"]
-    assert date_box["x"] + date_box["width"] <= card_box["x"] + card_box["width"]
-    word_box = _box(band.get_by_text("Missed deadline", exact=True))
-    title_box = _box(band.get_by_text(LONG_TOPIC_TITLE, exact=True))
+    line_box = _box(line)
+    date_box = _box(line.locator("time"))
+    for box in (line_box, date_box):
+        assert box["x"] >= card_box["x"]
+        assert box["x"] + box["width"] <= card_box["x"] + card_box["width"]
+    assert line_box["y"] + line_box["height"] <= card_box["y"] + card_box["height"]
+    progress_box = _box(card.get_by_role("progressbar"))
+    assert progress_box["y"] + progress_box["height"] <= line_box["y"]
+    details_box = _box(card.get_by_role("link", name=re.compile(r"^Details")))
+    assert details_box["y"] >= line_box["y"] or details_box["x"] >= (
+        line_box["x"] + line_box["width"]
+    )
     mark_box = _box(
         card.get_by_test_id("organisation-byline").locator(":scope > *").first
     )
-    # A truncated title still shows the start of the item's name.
-    assert title_box["width"] >= 40
-    for box in (word_box, title_box, date_box):
-        assert not _boxes_overlap(box, mark_box)
-    icon_box = _box(
-        card.get_by_test_id("course-card-hero").locator(":scope > [aria-hidden]")
-    )
-    assert not _boxes_overlap(icon_box, _box(band))
+    assert not _boxes_overlap(line_box, mark_box)
 
 
 def test_back_on_the_course_detail_page_returns_where_the_learner_came_from(

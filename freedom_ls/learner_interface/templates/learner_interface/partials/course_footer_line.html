@@ -1,17 +1,28 @@
+{% load deadline_tags %}
 {% comment %}
-The bottom line of a course card or row: the "Access ended <date>" chip at the left when
-access has ended, and the Details link at the right. The chip is the only status shown
-down here; every other status stays in the eyebrow. On a narrow row the link drops to
-its own line, still at the right, rather than squeezing the chip.
+The bottom line of a course card or row, below the progress bar. At the left, the first of:
+access ended, the earliest missed deadline, the next deadline. "Access ends" sits under it. At
+the right, the Details link. Every one is an icon and text, never a chip. When the deadline has
+under 10rem beside it, the link drops to its own line, still at the right.
 
-Required context: course (access_ended_at, slug, title).
+Required context: course (access_ended_at, access_ends_at, missed_deadline, next_deadline, slug,
+title) and show_time_zone_to_learners. A course the view did not annotate lacks the deadline
+attributes, which {% if %} tolerates.
 {% endcomment %}
-<div class="flex flex-wrap items-center justify-between gap-2 mt-auto">
-    {% if course.access_ended_at %}
-        <span class="min-w-0">
-            {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True as_chip=True %}
-        </span>
-    {% endif %}
+<div class="flex flex-wrap items-center justify-between gap-2 mt-auto" data-testid="course-footer-line">
+    <div class="min-w-0 flex-1 basis-40 space-y-0.5" data-testid="course-deadline-line">
+        {% if course.access_ended_at %}
+            <p class="flex items-start gap-1.5 text-sm text-muted" data-testid="course-status-access_ended">
+                <span aria-hidden="true" class="mt-0.5 inline-flex shrink-0"><c-icon name="locked" class="size-4" /></span>
+                <span class="min-w-0">Access ended {% local_time course.access_ended_at %}</span>
+            </p>
+        {% elif course.missed_deadline %}
+            {% include "learner_interface/partials/deadline_labels.html#deadline-text" with child=course.missed_deadline title=course.missed_deadline.title date_format="short" %}
+        {% elif course.next_deadline %}
+            {% include "learner_interface/partials/deadline_labels.html#deadline-text" with child=course.next_deadline title=course.next_deadline.title date_format="short" %}
+        {% endif %}
+        {% include "learner_interface/partials/deadline_labels.html#access-ends-line" %}
+    </div>
     <div class="ml-auto shrink-0">
         {% include "learner_interface/partials/course_details_link.html" %}
     </div>

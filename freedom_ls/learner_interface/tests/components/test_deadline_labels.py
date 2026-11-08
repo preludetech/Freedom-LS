@@ -9,11 +9,11 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 
-def test_upcoming_line_has_no_space_before_full_stop() -> None:
-    """The upcoming deadline line used to render a space between the date and its full stop."""
+def test_closes_line_has_no_space_before_full_stop() -> None:
+    """The closes line used to render a space between the date and its full stop."""
     child = SimpleNamespace(
         due_at=timezone.now() + timedelta(days=30),
-        closes_at=None,
+        closes_at=timezone.now() + timedelta(days=33),
         is_closed=False,
         is_overdue=False,
         status="INCOMPLETE",
@@ -21,7 +21,7 @@ def test_upcoming_line_has_no_space_before_full_stop() -> None:
     )
 
     html = render_to_string(
-        "learner_interface/partials/deadline_labels.html#line",
+        "learner_interface/partials/deadline_labels.html#deadline-text",
         {
             "child": child,
             "title": "Knowledge Check",

@@ -7,6 +7,7 @@ import re
 from dataclasses import replace
 from datetime import UTC
 
+import lxml.html
 import pytest
 import time_machine
 
@@ -1540,8 +1541,8 @@ def test_card_shows_the_earliest_missed_deadline_across_topics_and_time_limit(
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Second Topic 1 Jan 2020" in text
-    assert "Missed deadline Course " not in text
+    assert "Missed deadline · Second Topic 1 Jan 2020" in text
+    assert "Missed deadline · Course " not in text
     assert "Next deadline" not in text
 
 
@@ -1568,7 +1569,7 @@ def test_card_names_a_missed_time_limit_course(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Course 31 Mar 2026" in text
+    assert "Missed deadline · Course 31 Mar" in text
     assert "time limit" not in text.lower()
     assert "Overdue" not in text
 
@@ -1582,7 +1583,7 @@ def test_card_shows_a_missed_deadline_ahead_of_the_next_deadline(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "Missed deadline · Second Topic 1 Jan 2020" in text
     assert "Next deadline" not in text
     assert "overdue" not in text.lower()
 
@@ -1596,7 +1597,7 @@ def test_card_shows_the_earliest_of_several_missed_deadlines(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "Missed deadline · Second Topic 1 Jan 2020" in text
     assert "1 Jan 2021" not in text
 
 
@@ -1613,7 +1614,7 @@ def test_card_shows_the_earliest_next_deadline_across_topics_and_time_limit(
 
     text = _dashboard_text(client)
 
-    assert "Deadline Course 30 May 2026" in text
+    assert "Deadline · Course 30 May" in text
     assert "Missed deadline" not in text
 
 
@@ -1625,7 +1626,7 @@ def test_card_names_the_topic_of_the_next_deadline(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Deadline First Topic 1 Jan 2999" in text
+    assert "Deadline · First Topic 1 Jan 2999" in text
     assert "Next due" not in text
     assert "overdue" not in text.lower()
 
@@ -1693,7 +1694,7 @@ def test_card_ignores_a_completed_topics_deadline_for_the_next_deadline(
 
     text = _dashboard_text(client)
 
-    assert "Deadline Second Topic 1 Jun 2999" in text
+    assert "Deadline · Second Topic 1 Jun 2999" in text
     assert "1 Jan 2999" not in text
 
 
@@ -1706,139 +1707,171 @@ def test_card_shows_a_learner_registered_today_a_fixed_past_date_missed(
     record.save()
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
 
-    assert "Missed deadline First Topic" in _dashboard_text(client)
+    assert "Missed deadline · First Topic" in _dashboard_text(client)
 
 
-def _band_texts(html: str) -> list[str]:
-    """The visible text of each deadline band in the HTML, tags stripped."""
-    parts = html.split('data-testid="course-deadline-band">')[1:]
+def _node_text(node: lxml.html.HtmlElement) -> str:
+    """A node's text with whitespace collapsed."""
+    return " ".join(node.text_content().split())
+
+
+def _first_card(html: str) -> lxml.html.HtmlElement:
+    """The first card in the first section's card grid."""
+    grid = lxml.html.fromstring(html).cssselect('[data-testid="section-card-grid"]')[0]
+    return grid.cssselect("article")[0]
+
+
+def _deadline_line_texts(html: str) -> list[str]:
+    """The text of every card and row deadline line in the HTML."""
     return [
-        " ".join(re.sub(r"<[^>]+>", " ", part.split("</p>")[0]).split())
-        for part in parts
+        _node_text(node)
+        for node in lxml.html.fromstring(html).cssselect(
+            '[data-testid="course-deadline-line"]'
+        )
     ]
 
 
-def _body_text(card_grid: str) -> str:
-    """A card grid's visible text after its deadline band, where the card body starts."""
-    body = card_grid.split('data-testid="course-deadline-band">')[-1].split("</p>", 1)[
-        -1
-    ]
-    return " ".join(re.sub(r"<[^>]+>", " ", body).split())
+def _first_card_deadline_line(html: str) -> str:
+    [line] = _first_card(html).cssselect('[data-testid="course-deadline-line"]')
+    return _node_text(line)
 
 
 @pytest.mark.django_db
-def test_the_band_sits_in_the_hero_before_the_organisation_byline(deadline_card):
+def test_the_card_hero_holds_no_deadline_text(deadline_card):
     course, topics, _user, _record, client = deadline_card
     course.organisations.add(OrganisationFactory(name="Plain Academy"))
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
 
-    html = _first_card_grid(_dashboard_html(client))
+    card = _first_card(_dashboard_html(client))
 
-    hero = html.index('data-testid="course-card-hero"')
-    band = html.index('data-testid="course-deadline-band"')
-    assert hero < band
-    assert band < html.index('data-testid="organisation-byline"')
+    hero = card.cssselect('div[aria-hidden="true"]')[0]
+    assert "Deadline" not in _node_text(hero)
+    assert "First Topic" not in _node_text(hero)
+    assert not hero.cssselect('[data-testid="course-deadline-line"]')
 
 
 @pytest.mark.django_db
-@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_for_an_upcoming_deadline_names_the_word_title_and_short_date(
+def test_the_card_deadline_line_follows_the_progress_bar_and_ends_the_card(
     deadline_card,
 ):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    card = _first_card(_dashboard_html(client))
 
-    assert band.startswith("Deadline First Topic")
-    assert band.endswith("1 Jan 2999")
+    card_html = lxml.html.tostring(card, encoding="unicode")
+    progress = card_html.index("Progress for")
+    line = card_html.index('data-testid="course-deadline-line"')
+    details = card_html.index("Details<span")
+    assert progress < line < details
+    [footer] = card.cssselect('[data-testid="course-footer-line"]')
+    deadline_line, link_block = footer.getchildren()
+    assert deadline_line.get("data-testid") == "course-deadline-line"
+    assert _node_text(link_block).startswith("Details")
+    elements = list(card.iter())
+    after_footer = elements[elements.index(footer) + 1 :]
+    assert all(footer in element.iterancestors() for element in after_footer)
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_for_a_deadline_due_today_reads_today(deadline_card):
+def test_the_deadline_line_for_an_upcoming_deadline_names_the_word_title_and_short_date(
+    deadline_card,
+):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+
+    line = _first_card_deadline_line(_dashboard_html(client))
+
+    assert line == "Deadline · First Topic 1 Jan 2999"
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_deadline_line_for_a_deadline_due_today_reads_today(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2026, 4, 1))
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert band == "Deadline First Topic Today"
+    assert line == "Deadline · First Topic Today"
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_for_a_missed_deadline_names_the_word_title_and_short_date(
+def test_the_deadline_line_for_a_missed_deadline_names_the_word_title_and_short_date(
     deadline_card,
 ):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert band == "Missed deadline Second Topic 1 Jan 2020"
+    assert line == "Missed deadline · Second Topic 1 Jan 2020"
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_for_a_closed_item_names_the_word_title_and_close_date(
+def test_the_deadline_line_for_a_closed_item_names_the_word_title_and_close_date(
     deadline_card,
 ):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
     CourseDeadlineConfigFactory(course=course, close_items="on")
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert band.startswith("Closed First Topic")
-    assert "Closes" not in band
+    assert line.startswith("Closed · First Topic")
+    assert "Closes" not in line
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 4, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_prefers_a_missed_deadline_to_the_next_one(deadline_card):
+def test_the_deadline_line_prefers_a_missed_deadline_to_the_next_one(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert band.startswith("Missed deadline Second Topic")
+    assert line.startswith("Missed deadline · Second Topic")
+    assert "First Topic" not in line
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_band_says_when_a_missed_deadline_closes(deadline_card):
+def test_the_deadline_line_says_when_a_missed_deadline_closes(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2026, 8, 30))
     CourseDeadlineConfigFactory(
         course=course, close_items="on", grace_window=datetime.timedelta(days=7)
     )
 
-    [band] = _band_texts(_first_card_grid(_dashboard_html(client)))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert band.endswith("Closes 6 Sep .")
+    assert line.endswith("Closes 6 Sep.")
 
 
 @pytest.mark.django_db
-def test_no_band_without_deadlines(deadline_card):
+def test_the_deadline_line_is_empty_without_deadlines(deadline_card):
     _course, _topics, _user, _record, client = deadline_card
 
-    assert _band_texts(_first_card_grid(_dashboard_html(client))) == []
+    assert _first_card_deadline_line(_dashboard_html(client)) == ""
 
 
 @pytest.mark.django_db
-def test_no_band_for_a_completed_course(deadline_card):
+def test_no_deadline_line_text_for_a_completed_course(deadline_card):
     course, topics, _user, record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
     record.progress_percentage = 100
     record.completed_time = timezone.now()
     record.save()
 
-    assert _band_texts(_dashboard_html(client)) == []
+    assert not any(_deadline_line_texts(_dashboard_html(client)))
 
 
 @pytest.mark.django_db
-def test_no_band_when_content_access_is_withheld(deadline_card):
+def test_no_deadline_line_text_when_content_access_is_withheld(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[0], due_date=datetime.date(2020, 1, 1))
 
@@ -1846,59 +1879,77 @@ def test_no_band_when_content_access_is_withheld(deadline_card):
         get_course_access_backend.cache_clear()
         html = _dashboard_html(client)
 
-    assert _band_texts(html) == []
+    assert not any(_deadline_line_texts(html))
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_no_band_once_access_has_ended(access_ending_card):
+def test_the_deadline_line_names_no_deadline_once_access_has_ended(access_ending_card):
     _course, _user, client = access_ending_card
 
-    assert _band_texts(_first_card_grid(_dashboard_html(client))) == []
+    line = _first_card_deadline_line(_dashboard_html(client))
+
+    assert line.startswith("Access ended")
+    assert "Deadline" not in line
+    assert "Missed deadline" not in line
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 3, 10, 10, 0, tzinfo=UTC), tick=False)
-def test_access_ends_stays_in_the_card_body_and_out_of_the_band(access_ending_card):
-    course, _user, client = access_ending_card
-    topic = TopicFactory(title="Banded Topic")
-    course.items.create(child=topic, order=5)
-    set_due_date(course, topic, due_date=datetime.date(2999, 1, 1))
+def test_access_ends_sits_under_the_deadline_in_the_deadline_line(access_ending_card):
+    _course, _user, client = access_ending_card
 
-    card = _first_card_grid(_dashboard_html(client))
+    line = _first_card_deadline_line(_dashboard_html(client))
 
-    [band] = _band_texts(card)
-    assert "Access ends" not in band
-    assert "Access ends" in _body_text(card)
+    assert line == "Deadline · Course 31 Mar Access ends 31 Mar 2026, 23:59 UTC."
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_card_body_carries_no_deadline_line_or_overdue_wording(deadline_card):
+def test_only_the_deadline_line_carries_deadline_wording(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    card = _first_card_grid(_dashboard_html(client))
+    card = _first_card(_dashboard_html(client))
 
-    body = _body_text(card)
-    assert "Deadline" not in body
-    assert "Next deadline" not in body
-    card_text = " ".join(re.sub(r"<[^>]+>", " ", card).split())
+    card_text = _node_text(card)
     assert "Due" not in card_text
     assert "Overdue" not in card_text
+    for line in card.cssselect('[data-testid="course-deadline-line"]'):
+        line.drop_tree()
+    rest = _node_text(card)
+    assert "Deadline" not in rest
+    assert "Missed deadline" not in rest
 
 
 @pytest.mark.django_db
-def test_the_status_eyebrow_is_still_the_only_chip_in_the_card_body(deadline_card):
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_status_eyebrow_is_still_the_only_status_in_the_card(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
 
-    card = _first_card_grid(_dashboard_html(client))
+    card = _first_card(_dashboard_html(client))
 
-    body = card.split('data-testid="course-deadline-band">')[-1].split("</p>", 1)[-1]
-    body = body.split("</article>")[0]
-    assert body.count('data-testid="course-status-') == 1
-    assert "Missed deadline" not in body
+    card_html = lxml.html.tostring(card, encoding="unicode")
+    assert card_html.count('data-testid="course-status-') == 1
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
+def test_the_card_and_row_deadline_lines_hold_no_chip(deadline_card):
+    course, topics, _user, _record, client = deadline_card
+    set_due_date(course, topics[0], due_date=datetime.date(2999, 1, 1))
+    set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
+
+    lines = lxml.html.fromstring(_dashboard_html(client)).cssselect(
+        '[data-testid="course-deadline-line"]'
+    )
+
+    assert len(lines) >= 2
+    for line in lines:
+        line_html = lxml.html.tostring(line, encoding="unicode")
+        assert not re.search(r'class="[^"]*\bchip', line_html)
+        assert "c-chip" not in line_html
 
 
 @pytest.mark.django_db
@@ -1969,7 +2020,7 @@ def test_card_cohort_override_beats_the_content_default(overridden_card):
 
     text = _dashboard_text(client)
 
-    assert "Deadline First Topic 1 Jan 2999" in text
+    assert "Deadline · First Topic 1 Jan 2999" in text
     assert "Missed deadline" not in text
 
 
@@ -1995,7 +2046,7 @@ def test_card_individual_registration_ignores_the_cohort_override(overridden_car
         record, item, kind=DeadlineKind.NONE, due_days_after_registration=None
     )
 
-    assert "Missed deadline First Topic" in _dashboard_text(individual_client)
+    assert "Missed deadline · First Topic" in _dashboard_text(individual_client)
 
 
 # --- Learner deadline overrides on the dashboard card ---
@@ -2024,7 +2075,7 @@ def test_card_learner_override_beats_the_cohort_override_and_the_default(
 
     text = _dashboard_text(client)
 
-    assert "Deadline First Topic 1 Jan 2999" in text
+    assert "Deadline · First Topic 1 Jan 2999" in text
     assert "1 Jan 2030" not in text
     assert "Missed deadline" not in text
 
@@ -2277,7 +2328,7 @@ def test_narrow_row_shows_the_difficulty(mock_site_context):
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_drops_the_missed_item_chip_when_mark_overdue_is_off(deadline_card):
+def test_card_drops_the_missed_item_word_when_mark_overdue_is_off(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
     CourseDeadlineConfigFactory(course=course, mark_overdue="off")
@@ -2289,7 +2340,7 @@ def test_card_drops_the_missed_item_chip_when_mark_overdue_is_off(deadline_card)
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_drops_the_missed_time_limit_chip_when_mark_overdue_is_off(deadline_card):
+def test_card_drops_the_missed_time_limit_word_when_mark_overdue_is_off(deadline_card):
     course, _topics, _user, _record, client = deadline_card
     course.time_limit_days = 30
     course.save()
@@ -2302,7 +2353,7 @@ def test_card_drops_the_missed_time_limit_chip_when_mark_overdue_is_off(deadline
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_the_compact_row_drops_the_missed_chip_when_mark_overdue_is_off(deadline_card):
+def test_the_compact_row_drops_the_missed_word_when_mark_overdue_is_off(deadline_card):
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
     CourseDeadlineConfigFactory(course=course, mark_overdue="off")
@@ -2321,7 +2372,7 @@ def test_card_keeps_the_past_item_date_when_mark_overdue_is_off(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Deadline Second Topic 1 Jan 2020" in text
+    assert "Deadline · Second Topic 1 Jan 2020" in text
     assert "Next deadline" not in text
 
 
@@ -2335,7 +2386,7 @@ def test_card_keeps_the_past_time_limit_date_when_mark_overdue_is_off(deadline_c
 
     text = _dashboard_text(client)
 
-    assert "Deadline Course 31 Mar 2026" in text
+    assert "Deadline · Course 31 Mar" in text
 
 
 @pytest.mark.django_db
@@ -2349,7 +2400,7 @@ def test_the_compact_row_keeps_the_past_date_when_mark_overdue_is_off(deadline_c
         re.sub(r"<[^>]+>", " ", _row_lists(_dashboard_html(client))).split()
     )
 
-    assert "Deadline Second Topic 1 Jan 2020" in rows
+    assert "Deadline · Second Topic 1 Jan 2020" in rows
 
 
 @pytest.mark.django_db
@@ -2363,10 +2414,7 @@ def test_card_says_when_the_next_deadline_closes(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert (
-        "Deadline Second Topic 1 Oct 2026, 23:59 UTC . Closes 4 Oct 2026, 23:59 UTC ."
-        in text
-    )
+    assert "Deadline · Second Topic 1 Oct · Closes 4 Oct ." in text
 
 
 @pytest.mark.django_db
@@ -2379,13 +2427,13 @@ def test_card_says_closed_once_a_deadline_has_closed(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Closed Second Topic 1 Jan 2020" in text
+    assert "Closed · Second Topic 1 Jan 2020" in text
     assert "Missed deadline" not in text
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_card_shows_no_closed_chip_for_a_locked_item(deadline_card):
+def test_card_shows_no_closed_word_for_a_locked_item(deadline_card):
     """Sequential unlock wins over closing: a withheld item is overdue, not closed."""
     course, topics, _user, _record, client = deadline_card
     set_due_date(course, topics[1], due_date=datetime.date(2020, 1, 1))
@@ -2394,7 +2442,7 @@ def test_card_shows_no_closed_chip_for_a_locked_item(deadline_card):
     text = _dashboard_text(client)
 
     assert "Closed" not in text
-    assert "Missed deadline Second Topic 1 Jan 2020" in text
+    assert "Missed deadline · Second Topic 1 Jan 2020" in text
 
 
 @pytest.mark.django_db
@@ -2408,10 +2456,7 @@ def test_card_says_when_a_missed_deadline_closes(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert (
-        "Missed deadline Second Topic 30 Aug 2026, 23:59 UTC Closes 6 Sep 2026, 23:59 UTC ."
-        in text
-    )
+    assert "Missed deadline · Second Topic 30 Aug · Closes 6 Sep ." in text
 
 
 @pytest.fixture
@@ -2501,7 +2546,7 @@ def test_card_names_the_item_on_a_closed_deadline(deadline_card):
         re.sub(r"<[^>]+>", " ", _first_card_grid(_dashboard_html(client))).split()
     )
 
-    assert "Closed Second Topic 1 Jan 2020" in grid
+    assert "Closed · Second Topic 1 Jan 2020" in grid
 
 
 @pytest.mark.django_db
@@ -2516,12 +2561,12 @@ def test_course_row_names_the_item_on_a_closed_deadline(deadline_card):
         re.sub(r"<[^>]+>", " ", _row_lists(_dashboard_html(client))).split()
     )
 
-    assert "Closed Second Topic 1 Jan 2020" in rows
+    assert "Closed · Second Topic 1 Jan 2020" in rows
 
 
 @pytest.mark.django_db
 @time_machine.travel(datetime.datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
-def test_missed_deadline_chip_icon_is_hidden_from_assistive_technology(
+def test_missed_deadline_icon_is_hidden_from_assistive_technology(
     deadline_card,
 ):
     course, topics, _user, _record, client = deadline_card
@@ -2529,7 +2574,11 @@ def test_missed_deadline_chip_icon_is_hidden_from_assistive_technology(
 
     html = _dashboard_html(client)
 
-    assert '<span aria-hidden="true" class="inline-flex">' in html
+    [line] = _first_card(html).cssselect('[data-testid="course-deadline-line"]')
+    [icon] = line.cssselect("svg")
+    assert any(
+        ancestor.get("aria-hidden") == "true" for ancestor in icon.iterancestors()
+    )
     assert 'aria-label="warning"' not in html
 
 
