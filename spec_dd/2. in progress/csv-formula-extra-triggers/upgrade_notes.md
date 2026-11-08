@@ -23,16 +23,16 @@ Exported CSV content changes. `escape_csv_formula` now prefixes `'` in more case
 - a cell starting with a line feed or a full-width `＝`, `＋`, `－` or `＠`
   (these are now in `FORMULA_TRIGGERS`);
 - a trigger that follows leading whitespace (anything `str.isspace()` accepts, such as a space,
-  NBSP or the ideographic space);
-- a trigger at the start of any line of a multi-line cell (lines split at `\r\n`, `\r` and `\n`),
-  where the `'` is inserted at the start of that line.
+  NBSP or the ideographic space).
+
+Only the start of the cell is checked; a trigger at the start of a later line of a multi-line cell
+is left alone.
 
 Every FLS CSV export goes through this helper: the Django admin export (`FormulaSafeCSV` in
 `freedom_ls/site_aware_models/admin_exports.py`), the panel-framework table export, and the
 learner-import error CSV (`write_error_csv` in `freedom_ls/base/csv_import.py`). A downstream
-process that reads FLS CSV exports back in will see the extra `'` marks, including inside
-multi-line cells. Code that compares exported cells to the stored values, or strips only a single
-leading `'`, needs to account for this.
+process that reads FLS CSV exports back in will see the extra `'` marks. Code that compares
+exported cells to the stored values needs to account for this.
 
 ## Manual steps
 
