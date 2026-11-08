@@ -21,8 +21,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (user) Add a line to `spec_dd/1. next/extract_panels_framework-3-standalone-backend/idea.md` saying its copy of `escape_csv_formula` must take the widened version from csv-formula-extra-triggers (spec section: Documentation and downstream, Panel-framework extraction)
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (user) Add a line to `spec_dd/1. next/extract_panels_framework-3-standalone-backend/idea.md` saying its copy of `escape_csv_formula` must take the widened version from csv-formula-extra-triggers (spec section: Documentation and downstream, Panel-framework extraction)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
