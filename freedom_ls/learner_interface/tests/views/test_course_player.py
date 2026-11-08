@@ -4823,7 +4823,7 @@ def test_a_missed_row_in_its_grace_window_says_when_it_closes(titled_due_course)
 
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
-def test_a_closed_row_shows_closed_and_its_close_date_in_its_own_li(
+def test_a_closed_row_shows_its_close_date_and_names_closed_for_screen_readers(
     titled_due_course,
 ):
     course, topics, _user, client = titled_due_course
@@ -4834,7 +4834,12 @@ def test_a_closed_row_shows_closed_and_its_close_date_in_its_own_li(
 
     row = _outline_row(_player_html(client, course, 1), "Current Topic")
 
-    assert _visible_row_text(row).endswith("Closed 4 Jan")
+    assert _visible_row_text(row).endswith("4 Jan")
+    assert "Closed" in " ".join(
+        row.cssselect('[data-testid="outline-row-date"] .sr-only')[0]
+        .text_content()
+        .split()
+    )
 
 
 @pytest.mark.django_db
@@ -4937,7 +4942,7 @@ def test_outline_deadline_names_an_upcoming_deadline(due_course):
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith(f"Deadline · {second.title}")
+    assert deadline.startswith(f"Deadline {second.title}")
     assert "1 Jan 2999" in deadline
     assert "Next deadline" not in deadline
 
@@ -4951,7 +4956,7 @@ def test_outline_deadline_reads_deadline_today_for_a_deadline_due_today(due_cour
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith(f"Deadline today · {second.title}")
+    assert deadline.startswith(f"Deadline today {second.title}")
     assert "1 Apr 2026" in deadline
 
 
@@ -4965,7 +4970,7 @@ def test_outline_deadline_names_a_missed_deadline_ahead_of_the_next_one(due_cour
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith(f"Missed deadline · {second.title}")
+    assert deadline.startswith(f"Missed deadline {second.title}")
     assert "1 Jan 2020" in deadline
     assert "1 Jan 2999" not in deadline
 
@@ -4978,7 +4983,7 @@ def test_outline_deadline_reads_closed_for_a_closed_item(closing_topic_course):
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith(f"Closed · {first.title}")
+    assert deadline.startswith(f"Closed {first.title}")
     assert "4 Jan 2020" in deadline
 
 
@@ -5027,7 +5032,7 @@ def test_outline_deadline_names_the_time_limit_as_course(mock_site_context):
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith("Missed deadline · Course")
+    assert deadline.startswith("Missed deadline Course")
     assert "31 Mar 2026" in deadline
 
 
@@ -5043,7 +5048,7 @@ def test_outline_deadline_reads_deadline_for_a_past_deadline_not_marked_overdue(
     deadline = _outline_deadline(_player_html(client, course))
 
     assert deadline is not None
-    assert deadline.startswith(f"Deadline · {second.title}")
+    assert deadline.startswith(f"Deadline {second.title}")
     assert "Missed deadline" not in deadline
 
 

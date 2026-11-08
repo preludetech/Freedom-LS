@@ -1,38 +1,11 @@
 {% load deadline_tags %}
-{% comment %}The one file that writes deadline copy. Each surface (card and row bottom line, outline
-deadline, outline row, header line) composes these partials in its own layout.
+{% comment %}The deadline dates and lines that go inside <c-deadline-label>, which draws every learner
+deadline. The component owns the icon, the colour and the main text; these partials write the
+date and time that fill its slot.
 
-A deadline is a tier-coloured icon and text. It never sits in a chip, badge, border or tint.
-
-Required context for every partial: child (an index row or a CardDeadline: due_at, closes_at,
-is_overdue, is_closed, status, deadline_tier) and show_time_zone_to_learners. Optional: title.
-The top level is empty, so include a named partial.{% endcomment %}
-
-{% partialdef tier-icon %}
-    {% comment %}Decorative: the word beside it, visible or sr-only, carries the meaning, so the
-    wrapper hides the icon from assistive technology. Each icon still gets that word as its
-    label, because the icon's default label is its semantic name ("warning").{% endcomment %}
-    <span aria-hidden="true" class="inline-flex shrink-0">
-        {% if child.deadline_tier == "MISSED" %}<c-icon name="warning" class="size-4" aria_label="Missed deadline" />
-        {% elif child.deadline_tier == "CLOSED" %}<c-icon name="locked" class="size-4" aria_label="Closed" />
-        {% else %}<c-icon name="deadline" class="size-4" aria_label="Deadline" />{% endif %}
-    </span>
-{% endpartialdef %}
-
-{% partialdef tier-word %}
-    {% comment %}today_word asks for the header line's longer word.{% endcomment %}
-    {% if child.deadline_tier == "MISSED" %}Missed deadline{% elif child.deadline_tier == "CLOSED" %}Closed{% elif child.deadline_tier == "TODAY" and today_word %}Deadline today{% else %}Deadline{% endif %}
-{% endpartialdef %}
-
-{% partialdef tier-text %}
-    {% comment %}The text colour a deadline takes from its tier. An upcoming deadline is muted and
-    regular weight; the other tiers are bold so the word reads before the date.{% endcomment %}
-    {% if child.deadline_tier == "UPCOMING" %}text-muted{% elif child.deadline_tier == "TODAY" %}font-semibold text-on-warning-light{% else %}font-semibold text-error{% endif %}
-{% endpartialdef %}
-
-{% partialdef access-ends-line %}
-    {% if course.access_ends_at %}<p class="text-xs text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
-{% endpartialdef %}
+Required context: child (an index row or a CardDeadline: due_at, closes_at, is_closed,
+deadline_tier) and show_time_zone_to_learners. Optional: date_format ("short" for cards, rows and
+outline rows). The top level is empty, so include a named partial.{% endcomment %}
 
 {% comment %}A closed deadline is dated by when it closed. The partial body is one line with
 no leading or trailing whitespace, so callers can follow it with punctuation.{% endcomment %}
@@ -42,38 +15,12 @@ no leading or trailing whitespace, so callers can follow it with punctuation.{% 
     {% if child.closes_at and not child.is_closed %}Closes {% local_time child.closes_at format=date_format %}.{% endif %}
 {% endpartialdef %}
 
-{% partialdef deadline-text %}
-    {% comment %}Two lines: the coloured icon with the bold tier word and the title, then the date
-    and when it closes, muted. The card and row bottom line and the outline deadline use it.{% endcomment %}
-    <span class="flex min-w-0 flex-col gap-0.5" data-testid="deadline-text">
-        {% comment %}The line wraps rather than truncates, so a narrow card still names the item.{% endcomment %}
-        <span class="flex min-w-0 items-start gap-1.5 text-sm font-semibold {% partial tier-text %}">
-            <span class="mt-0.5 inline-flex">{% partial tier-icon %}</span>
-            <span class="min-w-0 break-words">{% partial tier-word %}{% if title %} · {{ title }}{% endif %}</span>
-        </span>
-        <span class="text-xs text-muted">{% partial tier-date %}{% if child.closes_at and not child.is_closed %} · {% partial closes-line %}{% endif %}</span>
-    </span>
+{% partialdef date-text %}
+    {% comment %}The slot for <c-deadline-label>: the date, then when it closes. Each keeps itself on
+    one line, so the label wraps between them, never inside a date.{% endcomment %}
+    <span class="whitespace-nowrap">{% partial tier-date %}</span>{% if child.closes_at and not child.is_closed %} <span class="whitespace-nowrap">{% partial closes-line %}</span>{% endif %}
 {% endpartialdef %}
 
-{% partialdef row-date %}
-    {% comment %}The date at the right of an outline row: the coloured icon and the short date as
-    text. "Closed" is read; the other tier words are for screen readers only, so a short form
-    still says it is a deadline.{% endcomment %}
-    <span class="inline-flex items-center gap-1 whitespace-nowrap {% partial tier-text %}">
-        {% partial tier-icon %}
-        {% if child.deadline_tier == "CLOSED" %}{% partial tier-word %}{% else %}<span class="sr-only">{% partial tier-word %}</span>{% endif %}
-        {% partial tier-date %}
-    </span>
-{% endpartialdef %}
-
-{% partialdef header-line %}
-    {% comment %}The line above an item's title: the coloured icon and bold tier word, then the
-    full date and when it closes, muted. The dot between the word and the date is decorative.{% endcomment %}
-    <span class="inline-flex items-center gap-1.5 {% partial tier-text %} font-semibold">
-        {% partial tier-icon %}
-        {% partial tier-word %}
-    </span>
-    <span class="text-muted" aria-hidden="true">·</span>
-    <span class="text-muted whitespace-nowrap">{% partial tier-date %}</span>
-    {% if child.closes_at and not child.is_closed %}<span class="text-muted">{% partial closes-line %}</span>{% endif %}
+{% partialdef access-ends-line %}
+    {% if course.access_ends_at %}<p class="text-xs text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
 {% endpartialdef %}

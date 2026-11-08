@@ -1,0 +1,57 @@
+<c-vars tier="UPCOMING" word="" today_word="" detail="" layout="inline" class="" />
+
+{% comment %}
+The one way a learner page shows a deadline: a coloured icon, the main text bold in the same
+colour, then what was missed and the date and time in the standard text colour. Never a chip,
+border or tint.
+
+Props:
+  tier       - UPCOMING | TODAY | MISSED | CLOSED | ACCESS_ENDED. Picks the colour, the icon and
+               the main text.
+  word       - main text that replaces the tier's own word (e.g. "Access ended").
+  today_word - truthy: a TODAY deadline reads "Deadline today" instead of "Deadline".
+  detail     - what the deadline is for (an item or "Course"), normal text.
+  layout     - inline:  one line that wraps between its parts:
+                        [icon] [main text] [detail] [date and time]
+               stacked: the icon in its own column, centred on the block, beside three lines:
+                        main text / detail / date and time
+               minimal: for outline rows. The icon and the date, both in the tier colour; the
+                        main text and detail are for screen readers. Without a date the main
+                        text is shown instead.
+  class      - extra classes on the outer element.
+
+Default slot: the date and time. Callers wrap each date in whitespace-nowrap so text breaks
+between dates, never inside one (deadline_labels.html#date-text does this).
+
+The icon is decorative: the main text, visible or sr-only, carries the meaning.
+{% endcomment %}
+{% with date_text=slot|striptags %}
+{% if tier == "MISSED" %}{% firstof word "Missed deadline" as main_text %}{% elif tier == "CLOSED" %}{% firstof word "Closed" as main_text %}{% elif tier == "ACCESS_ENDED" %}{% firstof word "Access ended" as main_text %}{% elif tier == "TODAY" and today_word %}{% firstof word "Deadline today" as main_text %}{% else %}{% firstof word "Deadline" as main_text %}{% endif %}
+{% if tier == "UPCOMING" %}{% firstof "text-primary" as tone %}{% elif tier == "TODAY" %}{% firstof "text-on-warning-light" as tone %}{% else %}{% firstof "text-error" as tone %}{% endif %}
+{% if tier == "MISSED" %}{% firstof "warning" as icon_name %}{% elif tier == "CLOSED" or tier == "ACCESS_ENDED" %}{% firstof "locked" as icon_name %}{% else %}{% firstof "deadline" as icon_name %}{% endif %}
+
+{% if layout == "stacked" %}
+    <div class="flex items-center gap-2.5 text-sm text-on-surface {{ class }}" data-testid="deadline-label" data-layout="stacked">
+        <span aria-hidden="true" class="inline-flex shrink-0 {{ tone }}"><c-icon :name="icon_name" class="size-5" /></span>
+        <span class="flex min-w-0 flex-col">
+            <span class="font-semibold {{ tone }}">{{ main_text }}</span>
+            {% if detail %}<span class="break-words">{{ detail }}</span>{% endif %}
+            {% if date_text.strip %}<span>{{ slot }}</span>{% endif %}
+        </span>
+    </div>
+{% elif layout == "minimal" %}
+    <span class="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold {{ tone }} {{ class }}" data-testid="deadline-label" data-layout="minimal">
+        <span aria-hidden="true" class="inline-flex shrink-0"><c-icon :name="icon_name" class="size-4" /></span>
+        {% if date_text.strip %}
+            <span class="sr-only">{{ main_text }}{% if detail %} {{ detail }}{% endif %}</span>
+            {{ slot }}
+        {% else %}
+            {{ main_text }}
+        {% endif %}
+    </span>
+{% else %}
+    <p class="text-sm text-on-surface {{ class }}" data-testid="deadline-label" data-layout="inline">
+        <span aria-hidden="true" class="inline-flex align-text-bottom mr-1 {{ tone }}"><c-icon :name="icon_name" class="size-4" /></span><span class="font-semibold {{ tone }}">{{ main_text }}</span>{% if detail %} <span>{{ detail }}</span>{% endif %}{% if date_text.strip %} <span>{{ slot }}</span>{% endif %}
+    </p>
+{% endif %}
+{% endwith %}

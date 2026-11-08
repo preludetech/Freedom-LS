@@ -1,18 +1,18 @@
 {% load course_storage_keys deadline_tags %}
 
 {% partialdef due-date %}
-    {% comment %}At the right of the row line: the coloured icon and date as text, then when the
+    {% comment %}At the right of the row line: a minimal <c-deadline-label> (the coloured icon and date), then when the
     item closes, so a row in its grace window says how long it has. hide_deadlines keeps every
     date off an outline that shows only status; a closed row still says "Closed" there, without
     the date, so the state is not told by colour alone.{% endcomment %}
     {% if child.due_at and child.status != "COMPLETE" %}
         {% if not hide_deadlines %}
             <span class="shrink-0 inline-flex items-center gap-1 text-xs" data-testid="outline-row-date">
-                {% include "learner_interface/partials/deadline_labels.html#row-date" with date_format="short" %}
-                {% if child.closes_at and not child.is_closed %}<span class="text-muted whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#closes-line" with date_format="short" %}</span>{% endif %}
+                <c-deadline-label tier="{{ child.deadline_tier }}" layout="minimal"><span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#tier-date" with date_format="short" %}</span></c-deadline-label>
+                {% if child.closes_at and not child.is_closed %}<span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#closes-line" with date_format="short" %}</span>{% endif %}
             </span>
         {% elif child.is_closed %}
-            <span class="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-error" data-testid="outline-row-date">{% include "learner_interface/partials/deadline_labels.html#tier-icon" %}{% include "learner_interface/partials/deadline_labels.html#tier-word" %}</span>
+            <span class="shrink-0 inline-flex" data-testid="outline-row-date"><c-deadline-label tier="CLOSED" layout="minimal" /></span>
         {% endif %}
     {% endif %}
 {% endpartialdef %}

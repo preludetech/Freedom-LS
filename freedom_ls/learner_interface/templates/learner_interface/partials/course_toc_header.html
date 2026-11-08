@@ -6,7 +6,7 @@ CourseProgress.progress_percentage — the single stored source of truth — so
 they can never disagree. No N / M counter (decision 3).
 
 Under the bar, next_deadline_card (when set) names the deadline the dashboard card's bottom
-line names, as a coloured icon and text with the full date. It sits in the sticky block so it
+line names, as a stacked <c-deadline-label> with the full date. It sits in the sticky block so it
 stays in view above the rows, and it is absent for a course with no deadline, a completed course
 or ended access.
 {% endcomment %}
@@ -23,7 +23,9 @@ or ended access.
     {% if next_deadline_card %}
         {% comment %}Plain text: no border, no tint, no chip.{% endcomment %}
         <div class="mt-3" data-testid="outline-deadline">
-            {% include "learner_interface/partials/deadline_labels.html#deadline-text" with child=next_deadline_card title=next_deadline_card.title today_word=True %}
+            {% with child=next_deadline_card %}
+                <c-deadline-label tier="{{ child.deadline_tier }}" today_word="true" detail="{{ child.title }}" layout="stacked">{% include "learner_interface/partials/deadline_labels.html#date-text" %}</c-deadline-label>
+            {% endwith %}
         </div>
     {% endif %}
 </div>

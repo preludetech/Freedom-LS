@@ -101,8 +101,9 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 Follow the registered design for every learner deadline surface. Never add a chip, badge, card, border or tint that the design does not draw.
 
-- **Treatment**: a deadline is a tier-coloured `<c-icon>` and text. The tier word (and title) is bold in the tier colour; the date and any "Closes …" detail are muted beneath or beside it. It never sits in a chip, badge, bordered card or tinted box. This holds on course cards, course rows, the outline header, the outline rows and the content header.
-- **Outline rows**: the date is icon plus text at the right of the row, coloured by tier, with no pill behind it.
+- **One component**: every learner deadline, "Access ended" included, renders through `<c-deadline-label>`. Cards, rows, the outline header, the outline rows and the content header share its styling; no surface hand-builds deadline markup.
+- **Treatment**: the icon and the main text ("Missed deadline", "Closed", "Access ended") take the tier colour, and the main text is bold. What was missed and the date and time are normal text in the standard text colour. Text breaks at natural places (between parts, never inside a date). It never sits in a chip, badge, bordered card or tinted box.
+- **Layouts**: `layout="inline"` is one line: icon, bold main text, what was missed, date and time. `layout="stacked"` puts the icon in its own column, vertically centred on the block, with the bold main text, what was missed and the date and time on separate lines beside it. `layout="minimal"` is for outline rows: the coloured icon and the short date only, with the words for screen readers.
 - **Course cards and rows**: the deadline is the bottom line of the card, below the progress bar, with Details at its right.
 - **Card hero**: the hero holds only the course icon. The organisation avatar overlaps the hero's bottom edge with the name beside it, below the hero. Nothing else goes inside the hero or along its bottom edge, and the avatar does not move.
 - **Content header**: the deadline line above the item title has clear space above it and below it (at least `mt-6` above, `mt-3` to the title).
@@ -137,6 +138,7 @@ What QA checks in a screenshot of any FLS page.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
 - A learner deadline is an icon and text: no chip, badge, border or tinted box around it on a card, row, outline header, outline row or content header.
+- Every learner deadline looks the same: coloured icon, bold main text in the icon's colour, the date in the standard text colour; a stacked label centres its icon on the whole block.
 - A course card or row shows its deadline as its last line, below the progress bar, with Details on the right.
 - A course card's hero holds only the course icon; the organisation avatar straddles its bottom edge with the name beside it.
 - A closed course item page shows a large centred icon with text under it, not a callout.
