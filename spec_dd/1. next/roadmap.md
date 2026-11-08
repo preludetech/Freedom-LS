@@ -910,7 +910,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
 | `in-app-feedback` | Configurable feedback prompts at natural pause points, with a rating and free text. | none | in progress | Spec, plan and QA plan exist. |
-| `design_educator_interface_audit_log` | Tighten the educator audit log table so it reads like a log, ideally with expandable rows. | none | in progress | |
 | `design_learner-interface-deadlines` | Redesign how deadlines and windows look to learners. | none | in progress | |
 | `downstream_bugs_oct_29` | Fix the bugs a downstream project flagged so it can drop its workarounds. | none | in progress | Nests 14 sub-ideas, one per bug. |
 | `learner-facing-ux-refinements` | Compact course rows below `lg`, a single Back link on course detail, and a restyled "Your applications" panel paged three at a time. | `organisation-courses`, `applying-for-courses`, `better-learner-dashboard-course-display` | in progress | |
