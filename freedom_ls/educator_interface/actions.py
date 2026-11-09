@@ -136,6 +136,7 @@ from freedom_ls.learner_management.role_assignment import (
     is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
+    may_edit_own_roles,
     set_staff_member_active,
 )
 from freedom_ls.learner_management.utils import (
@@ -2485,7 +2486,7 @@ class ChangeCohortsAction(StaffRoleAction):
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
-        if user == grantor:
+        if user == grantor and not may_edit_own_roles(grantor, _organisation(ctx)):
             return _refused(ctx, REFUSAL_MESSAGES[RefusalReason.SELF])
         plan = self._plan(ctx, entry, chosen)
         if not plan.added and not plan.removed:

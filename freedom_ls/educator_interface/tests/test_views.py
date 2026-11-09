@@ -3248,6 +3248,27 @@ def test_the_cohort_history_panel_refreshes_on_member_changes(staff_client: Clie
     assert "staffChanged from:body" in card.get("hx-trigger")
 
 
+@pytest.mark.django_db
+def test_an_organisation_admins_own_row_offers_role_triggers_but_no_state_trigger(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True, email="me@example.com")
+    assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
+    client = Client()
+    client.force_login(viewer)
+
+    row = _staff_member_row(_staff_document(client, organisation), "me@example.com")
+
+    urls = [button.get("hx-get") for button in row.cssselect("button[hx-get]")]
+    assert any("add_role" in url for url in urls)
+    assert any("deactivate_role" in url for url in urls)
+    assert not any(
+        url.split("?")[0].endswith(("/deactivate", "/reactivate")) for url in urls
+    )
+    assert not row.cssselect("[aria-label='Locked']")
+
+
 def _remove_triggers(row) -> list[str]:
     return [
         button.get("hx-get")
@@ -3257,10 +3278,13 @@ def _remove_triggers(row) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_the_viewers_own_row_has_no_trigger_and_says_why(role_holder_client):
+def test_a_cohort_admins_own_row_has_no_trigger_and_says_why(role_holder_client):
     organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
     viewer = UserFactory(staff=True, email="me@example.com")
-    assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
+    superuser = UserFactory(superuser=True)
+    assign_role(superuser, viewer, "cohort_admin", cohort)
+    assign_role(superuser, viewer, "organisation_staff_roles_viewer", organisation)
     client = Client()
     client.force_login(viewer)
 

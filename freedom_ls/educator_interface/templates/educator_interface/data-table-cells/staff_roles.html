@@ -20,30 +20,32 @@ would not change what they can do; a turned-off account's row has nothing.
             <span class="block font-bold text-on-surface">{{ entry.display_name }}</span>
             <span class="block text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
             <span class="block text-xs text-muted">Added <c-date :value="entry.assigned_at" />{% if entry.assigned_by %} by {{ entry.assigned_by.display_name }}{% endif %}</span>
+            {% if object.pk != viewer.pk or edits_own_roles %}
             <c-data-table-actions class="mt-2 empty:hidden">
-                {% if object.pk != viewer.pk and entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
+                {% if entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
                     <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />
                 {% endif %}
-                {% if object.pk != viewer.pk and object.is_active and entry.target == "cohort" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
+                {% if object.is_active and entry.target == "cohort" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
                     <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" size="small" />
                 {% endif %}
             </c-data-table-actions>
+            {% endif %}
         </li>
     {% endfor %}
 </ul>
-{% if object.pk == viewer.pk %}
+{% if object.pk == viewer.pk and not edits_own_roles %}
     <span class="mt-3 flex items-center gap-2 text-sm text-muted">
         <c-icon name="locked" class="size-4" aria_label="Locked" />
         You can't change your own roles. Ask another organisation admin.
     </span>
 {% endif %}
 {% endif %}
-{% if object.pk != viewer.pk and object.is_active %}
+{% if object.pk != viewer.pk or edits_own_roles %}
     <c-data-table-actions class="mt-3 empty:hidden">
-        {% if grantable_role_keys and row_action_urls.add_role %}
+        {% if object.is_active and grantable_role_keys and row_action_urls.add_role %}
             <c-modal-trigger url="{{ row_action_urls.add_role }}?user={{ object.pk }}" label="Add role" aria_label="Add role for {{ object.display_name }}" variant="secondary" size="small" />
         {% endif %}
-        {% if not object.is_site_level %}
+        {% if object.pk != viewer.pk and object.is_active and not object.is_site_level %}
             {% if not object.is_inactive and row_action_urls.deactivate %}
                 <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate staff member" aria_label="Deactivate {{ object.display_name }}" variant="secondary" size="small" />
             {% elif object.is_inactive and row_action_urls.reactivate %}

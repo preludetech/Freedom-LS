@@ -3728,18 +3728,6 @@ def test_a_user_with_nothing_to_grant_is_denied_at_the_lookup(
 
 
 @pytest.mark.django_db
-def test_a_refused_grant_to_oneself_is_422_with_the_message(
-    mock_site_context, logged_in_client, organisation
-):
-    CohortFactory(organisation=organisation)
-    client, me = _holder_client(logged_in_client, organisation)
-
-    response = _confirm(client, organisation, me.email, "cohort_admin")
-
-    assert response.status_code == 422
-
-
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("reason", "message"),
     [
@@ -4473,13 +4461,45 @@ def test_the_warning_is_absent_when_another_organisation_admin_remains(
 def test_removing_your_own_role_is_422_with_the_self_message(
     mock_site_context, logged_in_client, organisation
 ):
+    cohort = _cohort(organisation)
+    client, me = _holder_client(logged_in_client, cohort, "cohort_admin")
+    assign_role(
+        UserFactory(superuser=True), me, "organisation_staff_viewer", organisation
+    )
+
+    response = _remove(client, organisation, me, "cohort_admin")
+
+    assert response.status_code == 422
+    assert "You can't change your own roles." in _text(response)
+    assert ("cohort_admin", str(cohort.pk)) in _active_roles(me)
+
+
+@pytest.mark.django_db
+def test_removing_the_last_organisation_admin_role_from_yourself_is_422_with_the_lock_message(
+    mock_site_context, logged_in_client, organisation
+):
     client, me = _holder_client(logged_in_client, organisation)
 
     response = _remove(client, organisation, me, "organisation_admin")
 
     assert response.status_code == 422
-    assert "You can't change your own roles." in _text(response)
+    assert REFUSAL_MESSAGES[RefusalReason.LAST_ORGANISATION_ADMIN].format(
+        name=me.display_name
+    ) in _text(response)
     assert _active_roles(me) == {("organisation_admin", str(organisation.pk))}
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_removes_their_own_role_while_another_remains(
+    mock_site_context, logged_in_client, organisation
+):
+    _staff_member_holding("organisation_admin", organisation)
+    client, me = _holder_client(logged_in_client, organisation)
+
+    response = _remove(client, organisation, me, "organisation_admin")
+
+    assert response.status_code == 204
+    assert _active_roles(me) == set()
 
 
 @pytest.mark.django_db
@@ -4846,12 +4866,15 @@ def test_a_cohort_outside_the_offered_set_answers_the_unavailable_fragment(
 def test_a_change_naming_the_viewer_is_422_with_the_self_message(
     mock_site_context, logged_in_client, organisation
 ):
-    client, me = _holder_client(logged_in_client, organisation)
     cohort = _cohort(organisation)
+    client, me = _holder_client(logged_in_client, cohort, "cohort_admin")
     assign_role(UserFactory(superuser=True), me, "cohort_viewer", cohort)
+    assign_role(
+        UserFactory(superuser=True), me, "organisation_staff_viewer", organisation
+    )
     before = _active_roles(me)
 
-    response = _change(client, organisation, me, [_cohort(organisation)])
+    response = _change(client, organisation, me, [cohort])
 
     assert response.status_code == 422
     assert "You can't change your own roles." in _text(response)
@@ -5140,6 +5163,7 @@ def test_a_stale_reactivate_of_an_active_row_answers_the_unavailable_fragment(
 def test_suspending_yourself_is_422_with_the_self_message(
     mock_site_context, logged_in_client, organisation
 ):
+    _staff_member_holding("organisation_admin", organisation)
     client, me = _holder_client(logged_in_client, organisation)
 
     response = _state_post(client, organisation, me, "deactivate")
@@ -8480,3 +8504,35 @@ def test_add_role_answers_403_for_a_cohort_the_cohort_admin_cannot_give(
 
     assert response.status_code == 403
     assert ("cohort_admin", str(foreign.pk)) not in _active_roles(colleague)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_forged_add_role_on_themselves_is_422_with_the_self_message(
+    logged_in_client, organisation, cohort_admin_setup, viewing_cohort_admin
+):
+    cohort, _ = cohort_admin_setup
+
+    response = _add_role(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        viewing_cohort_admin,
+        "cohort_viewer",
+        [cohort],
+    )
+
+    assert response.status_code == 422
+    assert REFUSAL_MESSAGES[RefusalReason.SELF] in _text(response)
+    assert ("cohort_viewer", str(cohort.pk)) not in _active_roles(viewing_cohort_admin)
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_adds_a_role_to_themselves(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, me = _holder_client(logged_in_client, organisation)
+
+    response = _add_role(client, organisation, me, "cohort_viewer", [cohort])
+
+    assert response.status_code == 204
+    assert ("cohort_viewer", str(cohort.pk)) in _active_roles(me)

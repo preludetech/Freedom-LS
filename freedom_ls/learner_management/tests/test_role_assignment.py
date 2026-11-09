@@ -61,18 +61,29 @@ def _clear_role_caches():
 
 
 @pytest.mark.django_db
-def test_a_grantor_cannot_change_their_own_role(mock_site_context: Site) -> None:
+def test_a_cohort_admin_cannot_change_their_own_role(mock_site_context: Site) -> None:
     organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory()
-    assign_site_role(grantor, "site_admin")
+    assign_object_role(grantor, cohort, "cohort_admin")
 
     with pytest.raises(RoleChangeRefused) as exc_info:
-        assign_role(grantor, grantor, "organisation_admin", organisation)
+        assign_role(grantor, grantor, "cohort_viewer", cohort)
 
     assert exc_info.value.reason == RefusalReason.SELF
     assert not ObjectRoleAssignment.objects.filter(
-        user=grantor, role="organisation_admin", is_active=True
+        user=grantor, role="cohort_viewer", is_active=True
     ).exists()
+
+
+@pytest.mark.django_db
+def test_a_site_role_cannot_be_changed_by_its_holder(mock_site_context: Site) -> None:
+    grantor = UserFactory(superuser=True)
+
+    with pytest.raises(RoleChangeRefused) as exc_info:
+        assign_role(grantor, grantor, "site_admin", mock_site_context)
+
+    assert exc_info.value.reason == RefusalReason.SELF
 
 
 @pytest.mark.django_db
@@ -230,7 +241,7 @@ def test_a_site_admin_removing_the_last_organisation_admin_succeeds(
 
 
 @pytest.mark.django_db
-def test_the_last_organisation_admin_removing_themselves_is_refused_as_self(
+def test_the_last_organisation_admin_removing_themselves_is_refused_by_the_lock(
     mock_site_context: Site,
 ) -> None:
     organisation = OrganisationFactory()
@@ -240,10 +251,78 @@ def test_the_last_organisation_admin_removing_themselves_is_refused_as_self(
     with pytest.raises(RoleChangeRefused) as exc_info:
         deactivate_role(admin, admin, "organisation_admin", organisation)
 
-    assert exc_info.value.reason == RefusalReason.SELF
+    assert exc_info.value.reason == RefusalReason.LAST_ORGANISATION_ADMIN
     assert ObjectRoleAssignment.objects.filter(
         user=admin, role="organisation_admin", is_active=True
     ).exists()
+
+
+def _organisation_admin(organisation: Organisation) -> User:
+    admin = cast(User, UserFactory())
+    assign_object_role(admin, organisation, "organisation_admin")
+    return admin
+
+
+def _site_admin() -> User:
+    admin = cast(User, UserFactory())
+    assign_site_role(admin, "site_admin")
+    return admin
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "make_grantor",
+    [
+        _organisation_admin,
+        lambda organisation: _site_admin(),
+        lambda organisation: UserFactory(superuser=True),
+    ],
+    ids=["organisation_admin", "site_admin", "superuser"],
+)
+def test_an_admin_adds_and_deactivates_their_own_roles(
+    mock_site_context: Site, make_grantor
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    _organisation_admin(organisation)
+    grantor = make_grantor(organisation)
+
+    assign_role(grantor, grantor, "cohort_viewer", cohort)
+    deactivate_role(grantor, grantor, "cohort_viewer", cohort)
+
+    assert not ObjectRoleAssignment.objects.filter(
+        user=grantor, role="cohort_viewer", is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_deactivates_their_own_role_while_another_remains(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    admin = _organisation_admin(organisation)
+    _organisation_admin(organisation)
+
+    deactivate_role(admin, admin, "organisation_admin", organisation)
+
+    assert not ObjectRoleAssignment.objects.filter(
+        user=admin, role="organisation_admin", is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_deactivating_ones_own_staff_member_row_is_refused_as_self(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    admin = _organisation_admin(organisation)
+    _organisation_admin(organisation)
+    member = StaffMember.objects.get(user=admin, organisation=organisation)
+
+    with pytest.raises(RoleChangeRefused) as exc_info:
+        set_staff_member_active(admin, member, False)
+
+    assert exc_info.value.reason == RefusalReason.SELF
 
 
 @pytest.mark.django_db

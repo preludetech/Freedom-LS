@@ -18,7 +18,11 @@ from django.contrib.sites.models import Site
 from django.db import transaction
 
 from freedom_ls.audit_log.writer import record_entry
-from freedom_ls.learner_management.capabilities import _active_role_assignments, can
+from freedom_ls.learner_management.capabilities import (
+    _active_role_assignments,
+    _organisation_of,
+    can,
+)
 from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import (
     ADD_STAFF_MEMBER,
@@ -56,14 +60,15 @@ def _refuse_unless(
     target: Site | Organisation | Cohort,
     *,
     assigning: bool,
+    may_act_on_self: bool = False,
 ) -> None:
     """The checks every entry point below runs, in this order:
-    a grantor can't act on themselves, can't hand out access to an inactive
+    a grantor can't act on themselves (unless `may_act_on_self`), can't hand out access to an inactive
     account, and needs the capability itself. Removal skips the
     inactive-account check, since taking access away from a deactivated
     account is still allowed.
     """
-    if grantor == user:
+    if grantor == user and not may_act_on_self:
         raise RoleChangeRefused(RefusalReason.SELF)
     if assigning and not user.is_active:
         raise RoleChangeRefused(RefusalReason.INACTIVE_USER)
@@ -80,6 +85,13 @@ def is_site_level_admin(user: User, site: Site) -> bool:
     return site_level_admins(site).filter(pk=user.pk).exists()
 
 
+def _may_act_on_self(grantor: User, target: Site | Organisation | Cohort) -> bool:
+    """Whether `grantor` may change their own role on `target`: only on an
+    organisation or a cohort in it, never on the site."""
+    organisation = _organisation_of(target)
+    return organisation is not None and may_edit_own_roles(grantor, organisation)
+
+
 def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
     """Whether `user` holds an active organisation_admin assignment on
     `organisation`, regardless of their StaffMember state."""
@@ -87,6 +99,15 @@ def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
         _active_role_assignments(Organisation, frozenset({"organisation_admin"}))
         .filter(user=user, object_id=str(organisation.pk))
         .exists()
+    )
+
+
+def may_edit_own_roles(user: User, organisation: Organisation) -> bool:
+    """Whether `user` may change their own roles here: an organisation admin
+    or a site-level admin always has another way back in, so the only
+    protection they need is the last-organisation-admin lock."""
+    return _holds_organisation_admin(user, organisation) or is_site_level_admin(
+        user, organisation.site
     )
 
 
@@ -134,7 +155,14 @@ def assign_role(
     """Grant `role` to `user` on `target`, on the grantor's behalf."""
     if not _target_suits_role(role, target):
         raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
-    _refuse_unless(grantor, user, ASSIGN.format(role=role), target, assigning=True)
+    _refuse_unless(
+        grantor,
+        user,
+        ASSIGN.format(role=role),
+        target,
+        assigning=True,
+        may_act_on_self=_may_act_on_self(grantor, target),
+    )
     if isinstance(target, Site):
         assign_site_role(user, role, site=target, assigned_by=grantor)
     else:
@@ -156,7 +184,14 @@ def deactivate_role(
     organisation_admin an organisation depends on runs its own lock here,
     since that check has nowhere else to live.
     """
-    _refuse_unless(grantor, user, ASSIGN.format(role=role), target, assigning=False)
+    _refuse_unless(
+        grantor,
+        user,
+        ASSIGN.format(role=role),
+        target,
+        assigning=False,
+        may_act_on_self=_may_act_on_self(grantor, target),
+    )
     if isinstance(target, Site):
         deactivate_site_role(
             user, role, site=target, deactivated_by=grantor, reason=reason

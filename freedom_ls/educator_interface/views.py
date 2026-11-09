@@ -193,7 +193,10 @@ from freedom_ls.learner_management.queries import (
     staff_assignments,
     staff_of,
 )
-from freedom_ls.learner_management.role_assignment import GrantableRole
+from freedom_ls.learner_management.role_assignment import (
+    GrantableRole,
+    may_edit_own_roles,
+)
 from freedom_ls.learner_management.utils import record_cohort_entry
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
@@ -2388,8 +2391,12 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
+        scoped = cast(OrganisationScopedRequest, request)
         return {
             "viewer": request.user,
+            "edits_own_roles": may_edit_own_roles(
+                cast("User", scoped.user), scoped.organisation
+            ),
             "grantable_role_keys": {g.role for g in grantable_roles_for(request)},
             "shows_roles": may_see_staff_roles(request),
         }
