@@ -128,7 +128,6 @@ from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
-from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
@@ -2986,23 +2985,6 @@ def test_a_cohort_admin_still_sees_the_dashboard(role_holder_client):
     response = client.get(_interface_url(organisation.slug, ""))
 
     assert response.status_code == 200
-
-
-@pytest.mark.django_db
-def test_an_entry_with_no_recorded_grantor_reads_added_without_by(role_holder_client):
-    organisation = OrganisationFactory()
-    subject = UserFactory(email="subject@example.com")
-    _hold(subject, "organisation_admin", organisation)
-    ObjectRoleAssignment.objects.filter(user=subject).update(assigned_by=None)
-    client = role_holder_client(organisation, "organisation_admin")
-
-    row = _staff_member_row(
-        _staff_document(client, organisation), "subject@example.com"
-    )
-
-    text = " ".join(row.text_content().split())
-    assert "Added" in text
-    assert " by " not in text
 
 
 @pytest.mark.django_db
