@@ -62,8 +62,14 @@ touched, and keeps Step 7 from needing a second rebase when local `main` was ahe
 
 # Step 1: Full tier
 
-When Step 0's rebase reported `tier: full`, the branch is proven. Otherwise delegate to
-`sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with
+When Step 0's rebase reported `tier: full`, the branch is proven. Otherwise, first rebuild
+generated assets: read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`, whose values take
+precedence) under `## Test Hooks`, and when the `Pre-test rebuild` value is a non-blank path, run it
+from the project root. A non-zero exit is `status: failed · reason: pre-test rebuild failed: <its
+output>`. Blank, or the key absent, skips the rebuild. Built assets such as compiled CSS are often
+gitignored, so a branch that needed no rebase can still hold output older than its templates.
+
+Then delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with
 `<tier>`: `full`, returning the summary line and any failing test names. A failure is `status: failed · reason: full
 run failed before landing: <tests>`; nothing is moved or landed until a human fixes it. A rebased
 branch has also passed pre-commit; there is nothing to re-run for that.

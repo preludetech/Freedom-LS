@@ -177,6 +177,7 @@ parity and future settings.
    ## Test Hooks
 
    - Test tiers:
+   - Pre-test rebuild:
 
    ## Plan Review Hooks
 
@@ -261,6 +262,10 @@ parity and future settings.
    one runs. Blank means "this project has no tier definition", and `protected/run_test_tier.md`
    falls back to the project's plain pytest command. If another plugin owns that file in this
    project, the user points this key at it.
+
+   A **Pre-test rebuild** value points at a script that rebuilds generated assets (dependencies,
+   compiled CSS) the tests read. `/sdd:finish_worktree` runs it before its own full test run, when
+   no rebase already rebuilt and tested the branch. Blank means "this project has no such step".
 
    **Plan Review Hooks** is an ordered list of `<label>: <path>` bullets, and **Documentation
    Hooks** an ordered list of `<label>: <skill>` bullets, where `<skill>` is a plugin skill name
@@ -349,8 +354,8 @@ in-place edits.
    `Front-end check` keys (blank values are valid).
 5. `.claude/sdd/config.md` has a `## Design Hooks` section with a `Design check` key (a blank value
    is valid).
-6. `.claude/sdd/config.md` has a `## Test Hooks` section with a `Test tiers` key (a blank value
-   is valid).
+6. `.claude/sdd/config.md` has a `## Test Hooks` section with `Test tiers` and `Pre-test rebuild`
+   keys (blank values are valid).
 7. `.claude/sdd/config.md` has a `## Plan Review Hooks` section (an empty list is valid).
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
    `Test standard` keys (blank values are valid).
@@ -379,7 +384,7 @@ in-place edits.
 Print what was done, then the outstanding actions: every Step 0 WARN, anything Step 5 flagged,
 and each worktree setting, allow entry or ignore line that was not merged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths and Parallel batches count,
-the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
+the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers and Pre-test rebuild paths, the Plan Review Hooks and Documentation Hooks lists, the Review
 Hooks Comment standard and Test standard paths, the QA Hooks, QA Login, QA Dev Data and Testing Skills values, the PR Hooks Fetch PR
 comments path, and to list the project's Vocabulary Sources.
 

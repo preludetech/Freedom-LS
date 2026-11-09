@@ -48,6 +48,7 @@ the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `desig
 `move_spec_to_in_progress`, `start_worktree`, `update_todo`, `update_roadmap`, `pre_step_rebase`,
 `run_test_tier`. `run_test_tier` reaches the project's test tier definition through the `Test tiers`
 key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to the project's plain pytest command.
+The `Pre-test rebuild` key in the same section names a script `/sdd:finish_worktree` runs before its full test run.
 
 `/sdd:init` wires this plugin into a project (its own `enabledPlugins` key + `Skill(sdd:*)` permission +
 `.claude/sdd/` config). It expects the shared launcher artifacts (`claude.sh`, the `SessionStart` hook,
