@@ -4,6 +4,7 @@ set_staff_member_active."""
 from __future__ import annotations
 
 from types import ModuleType
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -24,6 +25,7 @@ from freedom_ls.learner_management.models import StaffMember
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
     CHANGE_STAFF_MEMBER,
+    add_staff_member,
     assign_role,
     deactivate_role,
     grantable_roles,
@@ -47,6 +49,7 @@ from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
 from freedom_ls.tests.audit_assertions import assert_entry
+from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.fixture(autouse=True)
@@ -747,3 +750,87 @@ class TestMemberAndRoleAudit:
             AuditLogEntry.unscoped.get(action="role.deactivated").reason
             == "Moved teams"
         )
+
+
+@pytest.mark.django_db
+class TestAddStaffMember:
+    def _admin(self, organisation: Organisation) -> User:
+        admin = cast(User, UserFactory())
+        assign_object_role(admin, organisation, "organisation_admin")
+        return admin
+
+    def test_an_organisation_admin_adds_a_staff_member_with_one_entry(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        admin = UserFactory(superuser=True)
+        user = UserFactory()
+
+        staff_member = add_staff_member(admin, user, organisation)
+
+        assert staff_member.is_active is True
+        assert StaffMember.objects.get(user=user, organisation=organisation) == (
+            staff_member
+        )
+        assert_entry(
+            action="staff_member.added",
+            actor=admin,
+            target=staff_member,
+            target_label=user.display_name,
+            organisation=organisation,
+            subjects=(user,),
+        )
+
+    def test_a_cohort_admin_is_refused(self, mock_site_context: Site) -> None:
+        organisation = OrganisationFactory()
+        cohort_admin = UserFactory()
+        assign_object_role(
+            cohort_admin, CohortFactory(organisation=organisation), "cohort_admin"
+        )
+        user = UserFactory()
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            add_staff_member(cohort_admin, user, organisation)
+
+        assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
+        assert not StaffMember.objects.filter(user=user).exists()
+
+    @pytest.mark.parametrize(
+        ("is_active", "reason"),
+        [
+            (True, RefusalReason.ALREADY_STAFF),
+            (False, RefusalReason.INACTIVE_STAFF_MEMBER),
+        ],
+    )
+    def test_an_existing_row_is_refused_by_its_state(
+        self, mock_site_context: Site, is_active: bool, reason: RefusalReason
+    ) -> None:
+        organisation = OrganisationFactory()
+        admin = self._admin(organisation)
+        existing = StaffMemberFactory(organisation=organisation, is_active=is_active)
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            add_staff_member(admin, existing.user, organisation)
+
+        assert exc_info.value.reason == reason
+        assert AuditLogEntry.unscoped.filter(action="staff_member.added").count() == 0
+
+    def test_an_inactive_account_is_refused(self, mock_site_context: Site) -> None:
+        organisation = OrganisationFactory()
+        admin = self._admin(organisation)
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            add_staff_member(admin, UserFactory(is_active=False), organisation)
+
+        assert exc_info.value.reason == RefusalReason.INACTIVE_USER
+
+    def test_a_user_on_another_site_is_refused(self, mock_site_context: Site) -> None:
+        organisation = OrganisationFactory()
+        admin = self._admin(organisation)
+        away = User._base_manager.create(site=SiteFactory(), email="away@example.com")
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            add_staff_member(admin, away, organisation)
+
+        assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
+        assert not StaffMember._base_manager.filter(user=away).exists()

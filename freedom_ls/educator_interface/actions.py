@@ -96,6 +96,7 @@ from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
     ADD_LEARNER,
     ADD_LEARNERCOURSEREGISTRATION,
+    ADD_STAFF_MEMBER,
     CHANGE_COHORT,
     CHANGE_COHORTCOURSEREGISTRATION,
     CHANGE_LEARNER,
@@ -126,6 +127,7 @@ from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
     CHANGE_STAFF_MEMBER,
     GrantableRole,
+    add_staff_member,
     assign_role,
     deactivate_role,
     grantable_roles,
@@ -1622,6 +1624,10 @@ REFUSAL_MESSAGES: dict[RefusalReason, str] = {
         "{name} is this organisation's only organisation admin. "
         "Add another organisation admin first."
     ),
+    RefusalReason.ALREADY_STAFF: "{name} is already on the staff here.",
+    RefusalReason.INACTIVE_STAFF_MEMBER: (
+        "{name} is an inactive staff member here. Use Reactivate staff member instead."
+    ),
 }
 
 OTHER_SITE_MESSAGE = (
@@ -1715,15 +1721,23 @@ class AddStaffMemberAction(PanelAction):
 
     label = "Add staff member"
     action_name = "add_staff_member"
-    capability = "freedom_ls_learner_management.add_staffmember"
+    capability = ADD_STAFF_MEMBER
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "educator_interface/modal/add_staff_member.html"
     #: Every role this dialog could offer. A role missing from the grantor's
     #: grantable roles counts as withheld only when it is in here.
     offerable_roles: tuple[str, ...] = STAFF_ROLES
+    #: Whether the dialog may add someone to the staff with no role.
+    offers_no_role: bool = True
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
+
+    def _adds_staff(self, ctx: PanelContext) -> bool:
+        """Whether this viewer is offered "No roles yet"."""
+        return self.offers_no_role and can(
+            cast("User", ctx.request.user), ADD_STAFF_MEMBER, _organisation(ctx)
+        )
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return bool(self._grantable(ctx))
@@ -1848,6 +1862,7 @@ class AddStaffMemberAction(PanelAction):
                 "preset_cohort": self._preset(ctx),
                 "cohort_rows": self._cohort_rows(ctx, chosen),
                 "selected_role": form["role"].value() or "",
+                "offers_no_role": self._adds_staff(ctx),
                 "role_note": self._role_note(ctx),
             },
             status=status,
@@ -1868,6 +1883,7 @@ class AddStaffMemberAction(PanelAction):
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
             new_account=matched is None,
+            allow_no_role=self._adds_staff(ctx),
         )
         form.fields["email"].initial = email_form.cleaned_data["email"]
         return self._role_step(ctx, matched, form)
@@ -1901,15 +1917,18 @@ class AddStaffMemberAction(PanelAction):
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
             new_account=matched is None,
+            allow_no_role=self._adds_staff(ctx),
         )
         if not form.is_valid():
             return self._role_step(ctx, matched, form, status=422)
         role = cast(str, form.cleaned_data["role"])
         cohorts = sorted(form.cleaned_data["cohorts"], key=lambda c: c.name)
-        targets = self._targets(ctx, role, cohorts)
+        targets = [] if not role else self._targets(ctx, role, cohorts)
         if targets is None:
             return denied_response(ctx, self)
         email = cast(str, form.cleaned_data["email"])
+        if not role:
+            return self._submit_without_role(ctx, matched, email, form)
         before = (
             [] if matched is None else current_role_entries(matched, _organisation(ctx))
         )
@@ -1941,6 +1960,54 @@ class AddStaffMemberAction(PanelAction):
                 ctx, email, matched, role, new_cohorts, held, cohorts, names, before
             )
         return self._perform(ctx, matched, email, role, new_targets, names)
+
+    def _submit_without_role(
+        self,
+        ctx: PanelContext,
+        user: User | None,
+        email: str,
+        form: AddStaffMemberForm,
+    ) -> HttpResponse:
+        """Add `email` to the staff with no role: refused up front for
+        someone already on the staff, so the person sees why before a
+        confirm step."""
+        organisation = _organisation(ctx)
+        names = (
+            (
+                cast(str, form.cleaned_data["first_name"]),
+                cast(str, form.cleaned_data["last_name"]),
+            )
+            if user is None
+            else ("", "")
+        )
+        existing = {
+            "active": RefusalReason.ALREADY_STAFF,
+            "inactive": RefusalReason.INACTIVE_STAFF_MEMBER,
+        }.get(staff_member_state(user, organisation))
+        if existing is not None:
+            return _refused(
+                ctx,
+                REFUSAL_MESSAGES[existing].format(name=_staff_member_name(user, email)),
+            )
+        if ctx.request.POST.get("confirmed") != "1":
+            return render(
+                ctx.request,
+                self.template_name,
+                {
+                    "step": "confirmation",
+                    "no_role": True,
+                    "match": user,
+                    "staff_member_name": _staff_member_name(user, email),
+                    "creates_account": user is None,
+                    "first_name": names[0],
+                    "last_name": names[1],
+                    "form_url": self.get_action_url(ctx),
+                    "email": email,
+                    "role": "",
+                    "cohort_ids": [],
+                },
+            )
+        return self._perform(ctx, user, email, "", [], names)
 
     def _already_held(
         self, ctx: PanelContext, user: User | None, role: str, cohorts: list[Cohort]
@@ -2032,8 +2099,11 @@ class AddStaffMemberAction(PanelAction):
         try:
             with transaction.atomic():
                 user, created = match_or_create_user(organisation.site, email, *names)
-                for target in targets:
-                    assign_role(cast("User", ctx.request.user), user, role, target)
+                if role:
+                    for target in targets:
+                        assign_role(cast("User", ctx.request.user), user, role, target)
+                else:
+                    add_staff_member(cast("User", ctx.request.user), user, organisation)
                 if created:
                     send_account_setup_email(user, organisation.name)
         except RoleChangeRefused as refused:
@@ -2050,6 +2120,7 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
     capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
     renders_in_footer = False
     offerable_roles = ("cohort_admin", "cohort_viewer")
+    offers_no_role = False
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return ctx.instance

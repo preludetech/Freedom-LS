@@ -58,6 +58,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
+    StaffMemberFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -3376,6 +3377,105 @@ def test_a_refusal_after_the_account_step_rolls_the_account_back(
     assert mail.outbox == []
 
 
+def _role_values(response) -> list[str]:
+    document = lxml.html.fromstring(response.content.decode())
+    return [radio.get("value") for radio in document.cssselect("input[name='role']")]
+
+
+@pytest.mark.django_db
+def test_an_organisation_admins_role_step_offers_no_roles_yet_first(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com")
+
+    response = _lookup(admin_client, organisation, "ada@example.com")
+
+    assert _role_values(response)[0] == ""
+    assert "No roles yet" in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_role_step_does_not_offer_no_roles_yet(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_overview_lookup(admin_client, organisation, cohort)
+
+    assert "" not in _role_values(response)
+
+
+@pytest.mark.django_db
+def test_the_no_role_confirmation_says_they_appear_in_staff_with_no_roles(
+    admin_client, organisation
+):
+    UserFactory(email="ada@example.com", first_name="Ada", last_name="Lovelace")
+
+    response = _submit_role(admin_client, organisation, "ada@example.com", "")
+
+    assert response.status_code == 200
+    assert "Add Ada Lovelace to the staff" in _text(response)
+    assert "They'll appear in Staff with no roles." in _text(response)
+    assert not StaffMember.objects.filter(user__email="ada@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_confirming_no_role_creates_the_row_audits_and_fires_staff_changed(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+
+    response = _confirm(admin_client, organisation, "ada@example.com", "")
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
+    staff_member = StaffMember.objects.get(user=user, organisation=organisation)
+    entry = AuditLogEntry.unscoped.get(action="staff_member.added")
+    assert (entry.target_label, entry.organisation) == (
+        user.display_name,
+        organisation,
+    )
+    assert entry.target == staff_member
+    assert not ObjectRoleAssignment.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("is_active", "reason"),
+    [
+        (True, RefusalReason.ALREADY_STAFF),
+        (False, RefusalReason.INACTIVE_STAFF_MEMBER),
+    ],
+)
+def test_adding_an_existing_staff_member_with_no_role_is_422_before_confirming(
+    admin_client, organisation, is_active, reason
+):
+    existing = StaffMemberFactory(organisation=organisation, is_active=is_active)
+    email = existing.user.email
+
+    response = _submit_role(admin_client, organisation, email, "")
+
+    message = actions_module.REFUSAL_MESSAGES[reason].format(
+        name=existing.user.display_name
+    )
+    assert response.status_code == 422
+    assert message in _text(response)
+
+
+@pytest.mark.django_db
+def test_confirming_no_role_for_a_new_address_creates_the_account_and_sends_the_setup_email(
+    admin_client, organisation, django_capture_on_commit_callbacks
+):
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _confirm(admin_client, organisation, "nobody@example.com", "")
+
+    user = User.objects.get(email="nobody@example.com")
+    assert response.status_code == 204
+    assert StaffMember.objects.filter(user=user, organisation=organisation).exists()
+    assert [message.to for message in mail.outbox] == [["nobody@example.com"]]
+
+
 @pytest.mark.django_db
 def test_the_lookup_of_an_invalid_address_is_422(admin_client, organisation):
     response = _lookup(admin_client, organisation, "not-an-email")
@@ -3393,7 +3493,9 @@ def test_the_role_step_offers_every_staff_role_with_its_description(
     response = _lookup(admin_client, organisation, "ada@example.com")
 
     document = lxml.html.fromstring(response.content.decode())
-    offered = [r.get("value") for r in document.cssselect("input[name='role']")]
+    offered = [
+        r.get("value") for r in document.cssselect("input[name='role']:not([value=''])")
+    ]
     text = _text(response)
     assert offered == [
         "organisation_admin",
@@ -3403,7 +3505,7 @@ def test_the_role_step_offers_every_staff_role_with_its_description(
         "cohort_viewer",
     ]
     assert all(config[role].description in text for role in offered)
-    assert not document.cssselect("input[name='role'][checked]")
+    assert not document.cssselect("input[name='role']:not([value=''])[checked]")
 
 
 @pytest.mark.django_db
@@ -3420,7 +3522,7 @@ def test_a_site_admin_is_offered_five_roles(
     response = _lookup(logged_in_client(site_admin), organisation, "ada@example.com")
 
     document = lxml.html.fromstring(response.content.decode())
-    assert len(document.cssselect("input[name='role']")) == 5
+    assert len(document.cssselect("input[name='role']:not([value=''])")) == 5
 
 
 @pytest.mark.django_db
@@ -3433,7 +3535,9 @@ def test_with_no_active_cohort_only_the_organisation_roles_are_offered(
     response = _lookup(client, organisation, "ada@example.com")
 
     document = lxml.html.fromstring(response.content.decode())
-    assert [r.get("value") for r in document.cssselect("input[name='role']")] == [
+    assert [
+        r.get("value") for r in document.cssselect("input[name='role']:not([value=''])")
+    ] == [
         "organisation_admin",
         "organisation_staff_viewer",
         "organisation_staff_roles_viewer",

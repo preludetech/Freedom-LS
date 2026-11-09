@@ -137,7 +137,9 @@ def test_learner_picker_labels_each_learner_by_display_name(mock_site_context):
 
 
 def _staff_member_form(
-    data: dict[str, str | list[str]], preset: Cohort | None = None
+    data: dict[str, str | list[str]],
+    preset: Cohort | None = None,
+    allow_no_role: bool = False,
 ) -> AddStaffMemberForm:
     return AddStaffMemberForm(
         _query_dict(data),
@@ -147,6 +149,7 @@ def _staff_member_form(
         ],
         cohorts=Cohort.objects.all(),
         preset=preset,
+        allow_no_role=allow_no_role,
     )
 
 
@@ -155,6 +158,27 @@ def _query_dict(data: dict[str, str | list[str]]) -> QueryDict:
     for name, value in data.items():
         query.setlist(name, value if isinstance(value, list) else [value])
     return query
+
+
+@pytest.mark.django_db
+def test_add_member_form_accepts_an_empty_role_with_no_cohorts_when_allowed(
+    mock_site_context,
+):
+    form = _staff_member_form(
+        {"email": "a@example.com", "role": ""}, allow_no_role=True
+    )
+
+    assert form.is_valid()
+    assert form.cleaned_data["role"] == ""
+    assert not form.cleaned_data["cohorts"]
+
+
+@pytest.mark.django_db
+def test_add_member_form_rejects_an_empty_role_when_not_allowed(mock_site_context):
+    form = _staff_member_form({"email": "a@example.com", "role": ""})
+
+    assert not form.is_valid()
+    assert "role" in form.errors
 
 
 @pytest.mark.django_db

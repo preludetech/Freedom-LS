@@ -89,16 +89,14 @@ def ensure_learner(user: User, organisation: Organisation) -> Learner:
     return learner
 
 
-def ensure_staff_member(
+def get_or_create_staff_member(
     user: User, organisation: Organisation, *, is_active: bool = True
-) -> StaffMember:
-    """Get or create the StaffMember recording that a user helps run
-    an organisation's learners.
-
-    Idempotent, but unlike ensure_learner it never reactivates an existing
-    row: a deactivated staff member must stay deactivated until someone explicitly
-    reactivates them, so a fresh grant on the organisation cannot silently
-    undo that decision. `is_active` only applies to a row created here.
+) -> tuple[StaffMember, bool]:
+    """The StaffMember row for `user` here, created if missing. Never
+    reactivates an existing row: a deactivated staff member stays
+    deactivated until someone explicitly reactivates them, so a fresh grant
+    cannot silently undo that decision. `is_active` only applies to a row
+    created here.
 
     _base_manager, not objects: SiteAwareManager.get_queryset() ANDs the
     ambient thread-local site onto every lookup when a request exists, and
@@ -106,17 +104,25 @@ def ensure_staff_member(
     request is for. Using the site-aware manager would make the lookup half
     of get_or_create miss an existing row under a foreign ambient site,
     attempting a second INSERT and hitting unique_staff_member_per_organisation
-    instead of finding the row that already exists.
+    instead of finding the row that already exists. `site` comes from the
+    organisation, never from request input.
     """
     from freedom_ls.learner_management.models import StaffMember
 
-    staff_member, _ = StaffMember._base_manager.get_or_create(
+    return StaffMember._base_manager.get_or_create(
         site=organisation.site,
         user=user,
         organisation=organisation,
         defaults={"is_active": is_active},
     )
-    return staff_member
+
+
+def ensure_staff_member(
+    user: User, organisation: Organisation, *, is_active: bool = True
+) -> StaffMember:
+    """Get or create the StaffMember recording that a user helps run
+    an organisation's learners. Idempotent; see get_or_create_staff_member."""
+    return get_or_create_staff_member(user, organisation, is_active=is_active)[0]
 
 
 def learner_webhook_payload(learner: Learner) -> dict[str, object]:

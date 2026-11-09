@@ -91,6 +91,7 @@ VIEW_ORGANISATION_STAFF_ROLES = (
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 VIEW_CONVERSATION = "freedom_ls_comms.view_conversation"
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"
+ADD_STAFF_MEMBER = "freedom_ls_learner_management.add_staffmember"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"

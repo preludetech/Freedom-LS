@@ -47,6 +47,7 @@ from freedom_ls.learner_management.utils import (
     deactivate_cohort_registration,
     ensure_learner,
     ensure_staff_member,
+    get_or_create_staff_member,
     is_registered_for_course,
     register_cohort_for_course,
 )
@@ -371,6 +372,21 @@ class TestEnsureStaffMember:
 
 
 @pytest.mark.django_db
+class TestGetOrCreateStaffMember:
+    def test_reports_creation_once_and_never_reactivates(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+
+        first, created_first = get_or_create_staff_member(user, organisation)
+        first.is_active = False
+        first.save()
+        second, created_second = get_or_create_staff_member(user, organisation)
+
+        assert (created_first, created_second) == (True, False)
+        assert second.pk == first.pk
+        assert second.is_active is False
+
+
 @pytest.mark.django_db
 class TestCohortRegistrationWebhooks:
     def test_registering_records_a_cohort_registration_added_event(

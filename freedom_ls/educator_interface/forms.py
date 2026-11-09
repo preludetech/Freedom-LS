@@ -237,6 +237,7 @@ class AddStaffMemberForm(forms.Form):
         cohorts: QuerySet[Cohort],
         preset: Cohort | None = None,
         new_account: bool = False,
+        allow_no_role: bool = False,
     ) -> None:
         if preset is not None and isinstance(data, QueryDict):
             data = data.copy()
@@ -245,7 +246,12 @@ class AddStaffMemberForm(forms.Form):
         if not new_account:
             del self.fields["first_name"]
             del self.fields["last_name"]
-        cast(forms.ChoiceField, self.fields["role"]).choices = roles
+        role_field = cast(forms.ChoiceField, self.fields["role"])
+        self.allow_no_role = allow_no_role
+        if allow_no_role:
+            role_field.required = False
+            roles = [("", "No roles yet"), *roles]
+        role_field.choices = roles
         cohort_field = cast(forms.ModelMultipleChoiceField, self.fields["cohorts"])
         cohort_field.queryset = cohorts
         if preset is not None:
@@ -254,6 +260,9 @@ class AddStaffMemberForm(forms.Form):
 
     def clean(self) -> dict[str, object]:
         cleaned = super().clean() or {}
+        if self.allow_no_role and cleaned.get("role") == "":
+            cleaned["cohorts"] = Cohort.objects.none()
+            return cleaned
         if cleaned.get("role") in ORGANISATION_ROLES:
             cleaned["cohorts"] = Cohort.objects.none()
         elif cleaned.get("role") and not cleaned.get("cohorts"):

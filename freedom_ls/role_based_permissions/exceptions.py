@@ -11,6 +11,8 @@ class RefusalReason(StrEnum):
     NOT_PERMITTED = "not_permitted"
     LAST_SITE_ADMIN = "last_site_admin"
     LAST_ORGANISATION_ADMIN = "last_organisation_admin"
+    ALREADY_STAFF = "already_staff"
+    INACTIVE_STAFF_MEMBER = "inactive_staff_member"
 
 
 class RoleChangeRefused(Exception):  # noqa: N818 - callers catch this name, so it is public API

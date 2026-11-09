@@ -21,12 +21,14 @@ from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import (
+    ADD_STAFF_MEMBER,
     ORGANISATION_ROLES,
     STAFF_ROLES,
     active_organisation_admins,
     cohorts_visible_to,
     site_level_admins,
 )
+from freedom_ls.learner_management.utils import get_or_create_staff_member
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
@@ -276,3 +278,35 @@ def is_widening(
         if not (permissions | after_organisation) <= had:
             return True
     return False
+
+
+def add_staff_member(
+    actor: User, user: User, organisation: Organisation
+) -> StaffMember:
+    """Put `user` on the organisation's staff with no role, on the actor's
+    behalf. Only someone who may add staff here can do it; an account on
+    another site never belongs here; an existing row, active or inactive,
+    is refused so the caller can say which."""
+    if not can(actor, ADD_STAFF_MEMBER, organisation):
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+    if user.site_id != organisation.site_id:
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+    if not user.is_active:
+        raise RoleChangeRefused(RefusalReason.INACTIVE_USER)
+    with transaction.atomic():
+        staff_member, created = get_or_create_staff_member(user, organisation)
+        if not created:
+            raise RoleChangeRefused(
+                RefusalReason.ALREADY_STAFF
+                if staff_member.is_active
+                else RefusalReason.INACTIVE_STAFF_MEMBER
+            )
+        record_entry(
+            action="staff_member.added",
+            actor=actor,
+            target=staff_member,
+            target_label=user.display_name,
+            organisation=organisation,
+            subjects=(user,),
+        )
+    return staff_member

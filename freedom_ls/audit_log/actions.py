@@ -199,6 +199,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction(
         "role.removed", "Role removed", _describe_role, group="Staff and roles"
     ),
+    AuditAction("staff_member.added", "Staff member added", group="Staff and roles"),
     AuditAction(
         "staff_member.deactivated", "Staff member deactivated", group="Staff and roles"
     ),

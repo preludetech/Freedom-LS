@@ -3,8 +3,8 @@ The Add staff member dialog, one template for every step. Context: step (email,
 role or confirmation) and form_url; email and role add dialog_title ("Add a
 member", or "Add a staff member to {cohort}" when the page fixes the cohort); email adds form, role adds
 match (None for an address with no account), new_account, form, role_cards (key, display_name, description, needs_cohorts),
-preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role and role_note;
-confirmation adds match, staff_member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
+preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role, offers_no_role (offer "No roles yet" first) and role_note;
+confirmation adds no_role (true for a staff member added with no role, which uses only the fields up to cohort_ids), match, staff_member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
 scope, current_entries, after_entries, already_held, widening, staff_member_state and
 site_level.
 {% endcomment %}
@@ -56,6 +56,13 @@ site_level.
         <div x-data="memberRoleChooser" class="space-y-4">
             <fieldset class="space-y-2">
                 <legend class="mb-2 font-semibold">Role</legend>
+                {% if offers_no_role %}
+                <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
+                    <input type="radio" name="role" value="" data-needs-cohorts="false" x-on:change="chooseRole"{% if not selected_role %} checked{% endif %} class="mr-2">
+                    <span class="font-semibold">No roles yet</span>
+                    <span class="mt-1 block text-muted">They'll appear in Staff but can't see any cohort until you add a role.</span>
+                </label>
+                {% endif %}
                 {% for card in role_cards %}
                 <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
                     <input type="radio" name="role" value="{{ card.key }}" data-needs-cohorts="{{ card.needs_cohorts|yesno:'true,false' }}" x-on:change="chooseRole"{% if card.key == selected_role %} checked{% endif %} class="mr-2">
@@ -95,7 +102,7 @@ site_level.
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
-<c-modal-header focus_title="true">Add {{ staff_member_name }} as {{ display_name }}</c-modal-header>
+<c-modal-header focus_title="true">{% if no_role %}Add {{ staff_member_name }} to the staff{% else %}Add {{ staff_member_name }} as {{ display_name }}{% endif %}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
@@ -113,6 +120,9 @@ site_level.
         {% if creates_account %}
         <p>An account will be created for {{ email }} and a setup email sent.</p>
         {% endif %}
+        {% if no_role %}
+        <p>They'll appear in Staff with no roles. Give them a role whenever you're ready.</p>
+        {% else %}
         <p>{{ description }}</p>
         <p>Scope: {{ scope }}.</p>
         {% if already_held %}
@@ -138,6 +148,7 @@ site_level.
         {% endif %}
         {% if site_level %}
         <p>{{ staff_member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
+        {% endif %}
         {% endif %}
     </div>
     <c-modal-footer>

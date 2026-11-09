@@ -22,6 +22,12 @@ def test_get_audit_action_returns_the_registered_action():
     assert (action.code, action.label) == ("learner.deactivated", "Learner deactivated")
 
 
+def test_staff_member_added_is_registered_under_staff_and_roles():
+    action = get_audit_action("staff_member.added")
+
+    assert (action.label, action.group) == ("Staff member added", "Staff and roles")
+
+
 def test_get_audit_action_falls_back_to_a_label_of_the_code():
     action = get_audit_action("widget.exploded")
 
