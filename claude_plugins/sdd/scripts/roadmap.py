@@ -11,7 +11,7 @@ The roadmap's feature sections are the source. Each run:
 - retires a feature section that has no spec bullets left, archiving it to
   ``<parent>/spec-order.md`` when it names a parent;
 - regenerates the "Up next" section;
-- writes one SVG per feature with edges, plus ``up-next.svg``, into ``<stem>_diagrams/``.
+- writes one SVG per feature, plus ``up-next.svg``, into ``<stem>_diagrams/``.
 
 Problems it cannot fix (directories with no bullet, bullets for directories that exist nowhere,
 unknown dependencies, cycles) are printed and make the exit status 1.
@@ -55,6 +55,7 @@ TITLE_H = 34
 LEGEND_H = 40
 WRAP_CHARS = 30
 WAYPOINT_H = 6
+GRID_COLS = 3
 CHAR_W = 7.3
 FONT = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
 
@@ -265,6 +266,10 @@ def draw_svg(
     captions: dict[str, str],
     layer: dict[str, int] | None = None,
 ) -> str:
+    # Specs with no edge sit in a grid under the graph, so they never read as a dependency chain.
+    linked = {n for edge in edges for n in edge}
+    isolated = [n for n in nodes if n not in linked]
+    nodes = [n for n in nodes if n in linked]
     layer = dict(layer or layer_by_longest_path(nodes, edges))
 
     # An edge that skips layers runs through one waypoint per layer it crosses, so the waypoints
@@ -281,18 +286,18 @@ def draw_svg(
         routes.append(route)
         chained += list(pairwise(route))
     waypoints = [n for route in routes for n in route[1:-1]]
-    layers = order_layers([*nodes, *waypoints], layer, chained)
+    layers = order_layers([*nodes, *waypoints], layer, chained) if nodes else []
 
-    labels = {n: wrap_name(n) for n in nodes}
+    labels = {n: wrap_name(n) for n in [*nodes, *isolated]}
     heights = {
         n: (len(labels[n]) + (1 if n in captions else 0)) * LINE_H + 2 * PAD_Y
-        for n in nodes
+        for n in [*nodes, *isolated]
     }
     heights.update(dict.fromkeys(waypoints, WAYPOINT_H))
     column_heights = [
         sum(heights[n] for n in row) + ROW_GAP * max(len(row) - 1, 0) for row in layers
     ]
-    body_h = max(column_heights)
+    body_h = max(column_heights, default=0)
 
     boxes: dict[str, tuple[float, float, float]] = {}
     for i, row in enumerate(layers):
@@ -302,7 +307,22 @@ def draw_svg(
             boxes[node] = (x, y, heights[node])
             y += heights[node] + ROW_GAP
 
-    width = float(2 * MARGIN + len(layers) * BOX_W + (len(layers) - 1) * LAYER_GAP)
+    grid_cols = max(len(layers), min(GRID_COLS, len(isolated)))
+    grid_y = MARGIN + TITLE_H + body_h + (ROW_GAP * 2 if layers and isolated else 0)
+    for start in range(0, len(isolated), grid_cols):
+        row = isolated[start : start + grid_cols]
+        for col, node in enumerate(row):
+            boxes[node] = (
+                float(MARGIN + col * (BOX_W + LAYER_GAP)),
+                grid_y,
+                heights[node],
+            )
+        grid_y += max(heights[n] for n in row) + ROW_GAP
+    if isolated:
+        body_h = grid_y - ROW_GAP - MARGIN - TITLE_H
+
+    columns = max(len(layers), grid_cols)
+    width = float(2 * MARGIN + columns * BOX_W + (columns - 1) * LAYER_GAP)
     legend_x: list[float] = []
     cursor = float(MARGIN)
     for _, label in LEGEND:
@@ -346,7 +366,7 @@ def draw_svg(
             f'<path d="{path}" fill="none" stroke="#4b5563" stroke-width="1.3" '
             'marker-end="url(#arrow)"/>'
         )
-    for node in nodes:
+    for node in [*nodes, *isolated]:
         x, y, h = boxes[node]
         fill, stroke, dash = STYLES[states[node]]
         dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
@@ -394,8 +414,7 @@ def feature_graph(
                 edges.append((dep, spec.dir))
                 if dep not in own:
                     captions[dep] = specs[dep].feature
-    linked = {n for edge in edges for n in edge}
-    nodes = [n for n in own if n in linked] + sorted(n for n in captions if n in linked)
+    nodes = own + sorted(captions)
     states = {n: ("external" if n in captions else specs[n].state) for n in nodes}
     return nodes, edges, states, captions
 
@@ -556,7 +575,7 @@ def main(argv: list[str]) -> int:
         nodes, edges, states, captions = feature_graph(section, specs)
         image = f"![{section.name}]({diagram_dir_name}/{slugify(section.name)}.svg)"
         body = [ln for ln in section.lines if not IMAGE_RE.match(ln)]
-        if edges and not any(
+        if nodes and not any(
             find_cycles({n: [d for d, s in edges if s == n] for n in nodes})
         ):
             filename = f"{slugify(section.name)}.svg"

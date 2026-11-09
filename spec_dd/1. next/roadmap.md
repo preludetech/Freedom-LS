@@ -75,6 +75,8 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `educator-interface-dark-mode` — **ready** — Dark token values for both shipped themes. They follow `prefers-color-scheme`, and a user can choose explicitly.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks the date its history starts.
 
+![Educator interface](roadmap_diagrams/educator-interface.svg)
+
 **Notes**
 - `educator-interface-13-staff-roles` edits only `educator_interface`, so it can run beside the `extract_panels_framework-*` specs.
 - `design_educator-interface-bulk-action`, `educator-interface-misc-polish`, `educator-interface-data-table-filter-design` and `educator-interface-dark-mode` change framework templates or JS. Land them before `extract_panels_framework-1-gather-generic-code` where possible; otherwise rebase onto it.
@@ -165,6 +167,8 @@ Rules that register or recommend courses based on a learner's HR attributes. Par
 
 - `corporate-job-course-recommendations-4-educator-interface-screens` — **ready** — Educator-interface screens for attribute lists, a learner's attributes, and registration rules with their preview.
 - `corporate-job-course-recommendations-5-attribute-csv-import` — **ready** — Import learners' HR attributes by CSV through the bulk import flow, with a preview, and evaluate rules once per import.
+
+![Registration rules](roadmap_diagrams/registration-rules.svg)
 
 **Notes**
 - Both run in parallel. Both edit educator-interface learner views; whichever lands second rebases.
@@ -261,6 +265,8 @@ Form engine features and the course application flow.
 - `in-app-feedback` — **in progress** — Configurable feedback prompts at natural pause points, with a rating and free text.
 - `content_snapshots` — **in progress** — Immutable snapshots of content, recording what a learner saw on the day.
 
+![Learner experience](roadmap_diagrams/learner-experience.svg)
+
 ## Tooling and operations
 
 Developer tooling, deployment and downstream fixes.
@@ -274,6 +280,8 @@ Developer tooling, deployment and downstream fixes.
 - `downstream_bugs_oct_29` — **in progress** — Fix the bugs a downstream project flagged, so it can drop its workarounds.
 - `new-register-design-process` — **in progress** — A new procedure for bringing Claude Design designs into the repo, and an updated `register_design`.
 - `mega-qa` — **ready** — Staging reset endpoint, a whole-system QA suite, and downstream projects inheriting the plans. Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas: staging reset, then the suite, then downstream propagation).
+
+![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
 
 **Notes**
 - `retry-sent-emails` is the transport that `user-communication-2-notification-email` sends through.

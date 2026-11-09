@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="958" height="157" viewBox="0 0 958 157" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
+<rect width="958" height="157" fill="#ffffff"/>
+<text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Learner experience</text>
+<rect x="24.0" y="58.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="34.0" y="80.0" fill="#111827">learner-facing-ux-refinements</text>
+<rect x="354.0" y="58.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="364.0" y="80.0" fill="#111827">in-app-feedback</text>
+<rect x="684.0" y="58.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="694.0" y="80.0" fill="#111827">content_snapshots</text>
+<rect x="24.0" y="117" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="46.0" y="127" fill="#374151">in progress</text>
+<rect x="154.3" y="117" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="176.3" y="127" fill="#374151">ready</text>
+<rect x="240.8" y="117" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="262.8" y="127" fill="#374151">needs work on main first</text>
+<rect x="466.0" y="117" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="488.0" y="127" fill="#374151">blocked</text>
+<rect x="567.1" y="117" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="589.1" y="127" fill="#374151">other feature</text>
+</svg>

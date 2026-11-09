@@ -21,7 +21,8 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
    standalone specs about the same area. A spec that fits nowhere gets a new feature.
 5. **The script owns the derived parts.** `python3 claude_plugins/sdd/scripts/roadmap.py
    "spec_dd/1. next/roadmap.md"` sets each bullet's status from its directory's location, drops
-   done specs from bullets and `blocked by` lists, regenerates "Up next", writes the SVGs into
+   done specs from bullets and `blocked by` lists, regenerates "Up next", writes one SVG per feature
+   (every feature, even one with a single spec) and `up-next.svg` into
    `spec_dd/1. next/roadmap_diagrams/` and retires an emptied feature. Run it after every edit.
    Hand edits go in scopes, `blocked by` lists, precursors, feature intros and notes.
 6. **Notes stay lean.** At most about ten one-line bullets per feature: build order and which specs
@@ -91,8 +92,8 @@ Developer tooling and deployment.
 - `mega-qa` — **ready** — Whole-system QA suite and staging reset. Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory).
 ````
 
-The script places each feature's diagram line after its bullets, and only when the feature has a
-dependency edge.
+The script places each feature's diagram line after its bullets. Every feature gets one, even
+with a single spec: specs with no dependency sit in a grid under the graph.
 
 ## Child idea header
 
