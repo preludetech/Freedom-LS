@@ -16,8 +16,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: when the 'You can't change your own roles' note shows — the QA plan and spec R8 disagree (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: a names-only staff viewer sees people's roles in the Add role dialog's 'Now' list (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Deactivate role and Change cohorts are offered on role items held only on cohorts the viewer cannot give (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: a cohort admin cannot open the cohort's History tab, so cannot see the role changes they made (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
