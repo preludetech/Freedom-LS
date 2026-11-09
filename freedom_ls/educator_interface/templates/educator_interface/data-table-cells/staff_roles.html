@@ -11,6 +11,7 @@ site-level admin's or a turned-off account's row has nothing, since
 deactivating would not change what they can do.
 {% endcomment %}
 {% if shows_roles %}
+{% if not object.role_entries %}<span class="text-sm text-muted">No roles yet</span>{% endif %}
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
     {% for entry in object.role_entries %}
         <li>

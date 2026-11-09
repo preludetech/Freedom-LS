@@ -26,6 +26,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import staff_assignments
 from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_management.utils import ensure_staff_member
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
@@ -288,6 +289,26 @@ def test_a_member_rows_deactivate_trigger_names_the_member(
     assert cell.cssselect("ul")
     assert cell.cssselect("ul")[0].getnext() is not None
     assert len(document.cssselect("thead th")) == 2
+
+
+@pytest.mark.django_db
+def test_a_staff_member_with_no_roles_says_so_and_offers_deactivate(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    member = UserFactory(first_name="Thandi", last_name="Nkosi")
+    ensure_staff_member(member, organisation)
+
+    document = _staff_page(staff_client, organisation)
+
+    (cell,) = [
+        cell
+        for cell in document.cssselect("tbody td")
+        if "No roles yet" in cell.text_content()
+    ]
+    assert not cell.cssselect("li")
+    (button,) = cell.cssselect("button[hx-get]")
+    assert f"deactivate?user={member.pk}" in button.get("hx-get")
 
 
 @pytest.mark.django_db

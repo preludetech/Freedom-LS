@@ -1123,8 +1123,7 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
 def staff_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignment]:
     """Active staff-role assignments on the organisation itself or on any
     of its cohorts, active cohorts and inactive alike. Built from the
-    assignment rows rather than StaffMember rows, because a staff
-    row only exists once a grant created it and nothing backfilled them."""
+    assignment rows rather than StaffMember rows."""
     roles = frozenset(STAFF_ROLES)
     cohort_keys = (
         Cohort.objects.filter(organisation=organisation)
@@ -1137,14 +1136,19 @@ def staff_assignments(organisation: Organisation) -> QuerySet[ObjectRoleAssignme
 
 
 def staff_of(organisation: Organisation) -> QuerySet[User]:
-    """Everyone holding a staff role in the organisation, inactive staff
-    and turned-off accounts included: they still hold the role. A site
-    admin or superuser is here only through such a role, never through
-    their site-level access."""
+    """Everyone on the organisation's staff: the users with a StaffMember
+    row here, active or not, together with everyone holding a staff role
+    here. Inactive accounts stay listed; they still hold the row or the
+    role. A site admin or superuser is here only through a row or a role,
+    never through their site-level access. _base_manager, because the
+    organisation handled is not always the Site the current request is for,
+    and the site-aware manager would hide its rows."""
     from freedom_ls.accounts.models import User
 
+    members = StaffMember._base_manager.filter(organisation=organisation)
     return User.objects.filter(
-        pk__in=staff_assignments(organisation).values("user_id")
+        Q(pk__in=members.values("user_id"))
+        | Q(pk__in=staff_assignments(organisation).values("user_id"))
     ).order_by("first_name", "last_name", "email", "pk")
 
 

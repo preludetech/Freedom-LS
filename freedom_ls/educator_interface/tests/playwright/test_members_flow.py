@@ -87,7 +87,8 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     modal.get_by_role("button", name="Deactivate", exact=True).click()
 
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Erin Existing")).to_have_count(0)
+    expect(row.get_by_text("No roles yet")).to_be_visible()
+    expect(row.get_by_text("Cohort admin")).to_have_count(0)
     page.wait_for_load_state("networkidle")
     assert failed == []
 

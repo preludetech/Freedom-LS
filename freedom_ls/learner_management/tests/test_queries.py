@@ -97,7 +97,10 @@ from freedom_ls.learner_management.tests.scenario_world import (
     educator_pairs,
     visible_pairs,
 )
-from freedom_ls.learner_management.utils import is_registered_for_course
+from freedom_ls.learner_management.utils import (
+    ensure_staff_member,
+    is_registered_for_course,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
@@ -2048,13 +2051,23 @@ class TestMembersOf:
 
         assert list(staff_of(organisation)) == [admin]
 
-    def test_leaves_out_a_removed_assignment(self, mock_site_context):
+    @pytest.mark.parametrize("is_active", [True, False])
+    def test_includes_a_staff_member_holding_no_role(
+        self, mock_site_context, is_active
+    ):
+        organisation = OrganisationFactory()
+        user = UserFactory()
+        ensure_staff_member(user, organisation, is_active=is_active)
+
+        assert list(staff_of(organisation)) == [user]
+
+    def test_keeps_a_member_whose_only_assignment_was_removed(self, mock_site_context):
         organisation = OrganisationFactory()
         admin = UserFactory()
         assign_object_role(admin, organisation, "organisation_admin")
         deactivate_object_role(admin, organisation, "organisation_admin")
 
-        assert list(staff_of(organisation)) == []
+        assert list(staff_of(organisation)) == [admin]
 
     def test_leaves_out_another_organisations_members(self, mock_site_context):
         organisation = OrganisationFactory()
