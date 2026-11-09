@@ -523,6 +523,55 @@ def test_selection_bar_actions_fieldset_draws_no_box(
     assert box_styles == ["0px", "0px", "0px", "0px"]
 
 
+def test_clearing_the_bar_returns_focus_to_the_page_checkbox(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """Emptying the selection hides the bar that held focus, so focus goes to
+    the page checkbox on screen: the header's on desktop, the card list's on
+    a phone."""
+    for i in range(PAGE_SIZE + 3):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+    table = page.locator("#stubs-table")
+    bar = page.locator("[data-total-count]")
+    clear = bar.get_by_role("button", name="Clear", exact=True)
+    select_all = bar.get_by_role("button", name=re.compile(r"^(Select|Deselect) all"))
+
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(list_url)
+    header_checkbox = table.locator("thead").get_by_label("Select all on this page")
+    table.locator("tbody input[name='keys']").first.check()
+    clear.click()
+    expect(header_checkbox).to_be_focused()
+
+    table.locator("tbody input[name='keys']").first.check()
+    # A partial selection leaves the bar checkbox unchecked and indeterminate,
+    # so it is ticked to cover the page before it is unticked.
+    bar_checkbox = bar.get_by_label("Select page")
+    bar_checkbox.check()
+    bar_checkbox.uncheck()
+    expect(header_checkbox).to_be_focused()
+
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(list_url)
+    card_checkbox = table.locator(".md\\:hidden").get_by_label(
+        "Select all on this page"
+    )
+    cards = table.locator("ul li input[name='keys']")
+    cards.first.check()
+    clear.click()
+    expect(card_checkbox).to_be_focused()
+
+    cards.first.check()
+    select_all.click()
+    select_all.click()
+    expect(select_all).to_be_hidden()
+    expect(card_checkbox).to_be_focused()
+
+
 def test_select_all_matching_spans_every_page(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,

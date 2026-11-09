@@ -242,6 +242,15 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
         pk__in=[learner.pk for learner in learners], is_active=True
     ).exists()
     assert page_errors == []
+    # A fresh active learner gives the table a row to tick with the full
+    # action set showing in the bar at phone width.
+    LearnerFactory(organisation=organisation)
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(learners_url)
+    table.locator("input[name='keys']:visible").first.check()
+    expect(bar).to_be_visible()
+    expect(bar.get_by_role("button", name="Clear", exact=True)).to_be_visible()
+    assert_no_horizontal_overflow(page)
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)

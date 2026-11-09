@@ -837,7 +837,22 @@ document.addEventListener("alpine:init", () => {
             this.count = this.total;
         },
 
-        clearSelection() {
+        // A control inside the bar that empties the selection takes the bar
+        // away with it, so focus is moved to the page checkbox that is
+        // actually on screen: the header's from md up, the card list's below.
+        _returnFocus(event) {
+            if (!event.target.closest("[data-total-count]")) return;
+            const box = Array.from(
+                this.$root.querySelectorAll("[data-select-all]"),
+            ).find(
+                (candidate) =>
+                    candidate.offsetParent !== null &&
+                    !candidate.closest("[data-total-count]"),
+            );
+            if (box) box.focus();
+        },
+
+        clearSelection(event) {
             this._setMode("keys");
             this.excluded = [];
             this._syncExcludedInputs();
@@ -851,6 +866,7 @@ document.addEventListener("alpine:init", () => {
                 box.checked = false;
                 box.indeterminate = false;
             });
+            this._returnFocus(event);
         },
 
         toggleAll(event) {
@@ -859,6 +875,7 @@ document.addEventListener("alpine:init", () => {
                 box.checked = checked;
             });
             this._recount();
+            if (!this.hasSelection) this._returnFocus(event);
         },
 
         get allMatchingMode() {
@@ -883,9 +900,9 @@ document.addEventListener("alpine:init", () => {
         // One link for both directions. Selecting ticks the visible rows
         // first so the page checkboxes agree with the count; only a table
         // with more matches than this page switches to all_matching mode.
-        activateSelectAll() {
+        activateSelectAll(event) {
             if (this.allMatchingSelected) {
-                this.clearSelection();
+                this.clearSelection(event);
                 return;
             }
             this._visibleRowBoxes(this._form()).forEach((box) => {
