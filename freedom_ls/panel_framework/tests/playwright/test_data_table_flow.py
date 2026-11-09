@@ -543,33 +543,48 @@ def test_select_all_matching_spans_every_page(
     expect(status).to_have_count(1)
     row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
     expect(row_checkboxes).to_have_count(PAGE_SIZE)
-    select_all_matching = page.get_by_role(
-        "button", name=f"Select all {matching} matching"
+    bar = page.locator("[data-total-count]")
+    select_all = bar.get_by_role("button", name=re.compile(r"^(Select|Deselect) all"))
+    header_checkbox = page.locator("#stubs-table thead").get_by_label(
+        "Select all on this page"
     )
-    expect(select_all_matching).to_be_hidden()
+    bar_checkbox = bar.get_by_label("Select page")
+    expect(select_all).to_be_hidden()
 
-    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
-    expect(
-        page.get_by_text(f"All {PAGE_SIZE} on this page are selected.")
-    ).to_be_visible()
-    select_all_matching.click()
-    expect(status).to_contain_text(f"{matching} selected")
-    expect(page.get_by_text(f"All {matching} matching are selected.")).to_be_visible()
+    # Ticking one row offers to select every match.
+    row_checkboxes.first.check()
+    expect(status).to_have_text("1 selected")
+    expect(select_all).to_have_text(f"Select all {matching}")
+
+    # Selecting every match flips the link and keeps both page checkboxes checked.
+    select_all.click()
+    expect(status).to_have_text(f"{matching} selected")
+    expect(select_all).to_have_text("Deselect all")
     expect(
         page.get_by_text("Changing page, sort or filters clears the selection.")
     ).to_be_visible()
+    expect(header_checkbox).to_be_checked()
+    expect(bar_checkbox).to_be_checked()
 
     # Unticking one row leaves every other matching row selected.
     row_checkboxes.first.uncheck()
-    expect(status).to_contain_text(f"{matching - 1} selected")
-    expect(
-        page.get_by_text(f"{matching - 1} of {matching} matching are selected.")
-    ).to_be_visible()
-    expect(
-        page.get_by_text(f"All {matching - 1} matching are selected.")
-    ).to_be_hidden()
+    expect(status).to_have_text(f"{matching - 1} selected")
+    expect(select_all).to_have_text(f"Select all {matching}")
+    expect(header_checkbox).to_be_checked(indeterminate=True)
+    expect(bar_checkbox).to_be_checked(indeterminate=True)
+    select_all.click()
+    expect(row_checkboxes.first).to_be_checked()
+    expect(status).to_have_text(f"{matching} selected")
 
-    page.get_by_role("button", name="Mark processed").click()
+    select_all.click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+    row_checkboxes.first.check()
+    row_checkboxes.nth(1).check()
+    select_all.click()
+    row_checkboxes.first.uncheck()
+    expect(status).to_have_text(f"{matching - 1} selected")
+
+    bar.get_by_role("button", name="Mark processed").click()
     modal = page.locator("#app-modal")
     expect(
         modal.get_by_text(f"This will affect {matching - 1} stub models.")
@@ -587,25 +602,63 @@ def test_select_all_matching_spans_every_page(
 
     # Sorting swaps the table and clears the selection.
     page.goto(filtered_url)
-    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
-    select_all_matching.click()
-    expect(status).to_contain_text(f"{matching} selected")
+    header_checkbox.check()
+    select_all.click()
+    expect(status).to_have_text(f"{matching} selected")
     page.get_by_role("link", name="Name").click()
     expect(status.get_by_text("selected")).to_be_hidden()
     expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
         0
     )
 
-    # Clear selection returns to ticking rows one by one.
-    page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
-    select_all_matching.click()
-    page.get_by_role("button", name="Clear selection", exact=True).click()
+    # Clear after Select all hides the bar; the next selection starts in page mode.
+    header_checkbox.check()
+    select_all.click()
+    bar.get_by_role("button", name="Clear", exact=True).click()
     expect(status.get_by_text("selected")).to_be_hidden()
+    expect(page.locator("#stubs-table").get_by_role("searchbox")).to_be_visible()
+    row_checkboxes.first.check()
+    expect(status).to_have_text("1 selected")
+    expect(select_all).to_have_text(f"Select all {matching}")
+
+    # Deselect all hides the bar and unticks every row.
+    select_all.click()
+    select_all.click()
+    expect(status.get_by_text("selected")).to_be_hidden()
+    expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
+        0
+    )
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(filtered_url)
         assert_no_horizontal_overflow(page)
+
+
+def test_select_all_on_a_single_page_table_stays_in_page_mode(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    rows = PAGE_SIZE - 1
+    for i in range(rows):
+        make_stub(name=f"row-{i:02d}")
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+
+    status = page.locator("#stubs-table").get_by_role("status")
+    bar = page.locator("[data-total-count]")
+    row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
+    row_checkboxes.first.check()
+    bar.get_by_role("button", name=f"Select all {rows}").click()
+
+    expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
+        rows
+    )
+    expect(bar.get_by_role("button", name="Deselect all")).to_be_visible()
+    expect(status).to_have_text(f"{rows} selected")
+    expect(page.locator("input[name='mode']")).to_have_value("keys")
 
 
 def test_filter_sheet_is_visible_with_javascript_off(
@@ -641,6 +694,14 @@ def test_bulk_action_posts_with_javascript_off(
         row_checkboxes = no_js_page.locator("#stubs-table tbody input[name='keys']")
         row_checkboxes.nth(0).check()
         row_checkboxes.nth(1).check()
+        # The selection controls need JavaScript; only the actions remain.
+        expect(
+            no_js_page.get_by_role("button", name=re.compile("Select all"))
+        ).to_have_count(0)
+        expect(
+            no_js_page.get_by_role("button", name="Clear", exact=True)
+        ).to_have_count(0)
+        expect(no_js_page.get_by_text(" selected")).to_have_count(0)
         no_js_page.get_by_role("button", name="Mark processed").click()
         expect(
             no_js_page.get_by_text("This will affect 2 stub models.")

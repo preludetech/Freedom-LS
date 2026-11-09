@@ -7,6 +7,8 @@ and that the list behind it refreshes to show the new learner.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Browser, Page, Response, Route, expect
 
@@ -107,10 +109,8 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     main = page.locator("#main-content")
     table = page.locator("#learners-table")
 
-    page.locator("#learners-table thead").get_by_label(
-        "Select all on this page"
-    ).check()
-    page.get_by_role("button", name=f"Select all {matching} matching").click()
+    table.locator("tbody input[name='keys']").first.check()
+    main.get_by_role("button", name=f"Select all {matching}").click()
     main.get_by_role("button", name="Add to cohort", exact=True).click()
     modal.get_by_label("Cohort").select_option(label="Evening group")
     expect(
@@ -130,14 +130,9 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     expect(table.locator("tbody td", has_text="Evening group").first).to_be_visible()
     modal.get_by_text("Close", exact=True).click()
     expect(modal).to_be_hidden()
-    # The refresh leaves the header checkbox ticked but the selection empty,
-    # so it is toggled to select everything again.
-    header_checkbox = page.locator("#learners-table thead").get_by_label(
-        "Select all on this page"
-    )
-    header_checkbox.uncheck()
-    header_checkbox.check()
-    page.get_by_role("button", name=f"Select all {matching} matching").click()
+    # The refresh leaves the selection empty, so a row is ticked again.
+    table.locator("tbody input[name='keys']").first.check()
+    main.get_by_role("button", name=f"Select all {matching}").click()
     main.get_by_role("button", name="More actions").click()
     main.get_by_role("menuitem", name="Remove from cohort", exact=True).click()
     modal.get_by_label("Cohort").select_option(label="Evening group")
@@ -153,8 +148,7 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
 
     expect(table.locator("tbody td", has_text="Evening group")).to_have_count(0)
     modal.get_by_text("Close", exact=True).click()
-    header_checkbox.uncheck()
-    header_checkbox.check()
+    table.locator("tbody input[name='keys']").first.check()
     main.get_by_role("button", name="More actions").click()
     expect(
         main.get_by_role("menuitem", name="Resend setup email", exact=True)
@@ -217,10 +211,14 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     )
     assert bar_height < 120
     checkboxes = table.locator("input[name='keys'], input[data-select-all]")
-    # A header and a mobile "select all", and a table and a card box per row.
-    expect(checkboxes).to_have_count(2 + 2 * len(learners))
+    # A header, a mobile and a bar "select all", and a table and a card box per row.
+    expect(checkboxes).to_have_count(3 + 2 * len(learners))
     for checkbox in checkboxes.all():
         expect(checkbox).to_be_disabled()
+    select_all = bar.get_by_role("button", name=re.compile("^(Select|Deselect) all"))
+    clear = bar.get_by_role("button", name="Clear", exact=True)
+    expect(select_all).to_be_disabled()
+    expect(clear).to_be_disabled()
 
     finished = True
 
@@ -235,6 +233,11 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     expect(bar).to_be_hidden()
     for checkbox in checkboxes.all():
         expect(checkbox).to_be_enabled()
+    # The bar is hidden again, so its buttons are found past the role filter.
+    for name in (re.compile("^(Select|Deselect) all"), "Clear"):
+        expect(
+            bar.get_by_role("button", name=name, include_hidden=True)
+        ).to_be_enabled()
     assert not Learner.objects.filter(
         pk__in=[learner.pk for learner in learners], is_active=True
     ).exists()

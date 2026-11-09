@@ -363,6 +363,40 @@ def test_selection_bar_holds_no_pagination(mock_site_context: Site) -> None:
     assert not bar.cssselect("a[href*='page=']")
 
 
+def test_selection_bar_checkbox_selects_the_page(mock_site_context: Site) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (bar,) = document.cssselect("[data-total-count]")
+    (checkbox,) = bar.cssselect("input[type='checkbox']")
+    assert checkbox.get("aria-label") == "Select page"
+    assert checkbox.get("data-select-all") is not None
+
+
+def test_selection_bar_controls_are_hidden_until_alpine_takes_over(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (bar,) = document.cssselect("[data-total-count]")
+    (checkbox,) = bar.cssselect("input[type='checkbox']")
+    (count_text,) = bar.cssselect("[x-text='countSentence']")
+    count = count_text.getparent()
+    (select_all,) = bar.cssselect("[x-text='selectAllLabel']")
+    (clear,) = bar.xpath(".//button[contains(normalize-space(.), 'Clear')]")
+    for control in (checkbox, count, select_all, clear):
+        assert control.get("x-cloak") is not None
+
+
+def test_the_region_holds_no_old_selection_prompts(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    text = document.text_content()
+    assert "on this page are selected" not in text
+    assert "matching are selected" not in text
+
+
 def test_the_live_region_is_one_and_outside_the_bar(
     mock_site_context: Site,
 ) -> None:

@@ -683,11 +683,6 @@ document.addEventListener("alpine:init", () => {
     // than from the region. There is no persisted state: every region swap
     // re-renders the region from scratch, which is how a sort, search or
     // filter change clears the selection.
-    //
-    // The checkbox handlers find the form from the triggering event's target
-    // rather than `this.$el`: a shared Alpine.data() method's `$el` is the
-    // element the firing x-on directive is declared on, not the component's
-    // x-data root, so `this.$el` inside update() would be the checkbox itself.
     Alpine.data("tableSelection", () => ({
         count: 0,
         // "keys" submits the ticked rows; "all_matching" submits every row
@@ -770,30 +765,10 @@ document.addEventListener("alpine:init", () => {
             return this.running ? this.run.label : "";
         },
 
-        get showSelectionCount() {
-            return this.hasSelection && !this.running;
-        },
-
         // The action buttons give way to the status line while a run is going,
         // so the bar does not grow a second row of disabled buttons.
         get actionsVisible() {
             return this.hasSelection && !this.running;
-        },
-
-        get allOnPageSelected() {
-            return this.allChecked;
-        },
-
-        get showPagePrompt() {
-            return (
-                this.mode === "keys" &&
-                this.allOnPageSelected &&
-                this.total > this.page
-            );
-        },
-
-        get showMatchingPrompt() {
-            return this.mode === "all_matching" && this.hasSelection;
         },
 
         // Below md every row has two checkboxes — one in the desktop <table>,
@@ -808,11 +783,15 @@ document.addEventListener("alpine:init", () => {
             );
         },
 
-        // Recount checked rows and sync every header "select all" checkbox
-        // to match: unchecked when none are selected, indeterminate when
-        // some are, checked when every row on the page is.
-        update(event) {
-            const form = event.target.closest("form");
+        update() {
+            this._recount();
+        },
+
+        // Recount the visible row boxes and sync every page checkbox:
+        // unchecked when none are ticked, indeterminate when some are,
+        // checked when all are.
+        _recount() {
+            const form = this._form();
             const rowBoxes = this._visibleRowBoxes(form);
             const checkedBoxes = rowBoxes.filter((box) => box.checked);
             const allChecked =
@@ -875,12 +854,45 @@ document.addEventListener("alpine:init", () => {
         },
 
         toggleAll(event) {
-            const form = event.target.closest("form");
             const checked = event.target.checked;
-            this._visibleRowBoxes(form).forEach((box) => {
+            this._visibleRowBoxes(this._form()).forEach((box) => {
                 box.checked = checked;
             });
-            this.update(event);
+            this._recount();
+        },
+
+        get allMatchingMode() {
+            return this.mode === "all_matching";
+        },
+
+        // Every row the table's filters match is selected: in all_matching
+        // mode nothing has been unticked, and in page mode the page holds
+        // every match and every row on it is ticked.
+        get allMatchingSelected() {
+            if (!this.hasSelection) return false;
+            if (this.allMatchingMode) return this.excluded.length === 0;
+            return this.allChecked && this.total <= this.page;
+        },
+
+        get selectAllLabel() {
+            return this.allMatchingSelected
+                ? "Deselect all"
+                : "Select all " + this.total;
+        },
+
+        // One link for both directions. Selecting ticks the visible rows
+        // first so the page checkboxes agree with the count; only a table
+        // with more matches than this page switches to all_matching mode.
+        activateSelectAll() {
+            if (this.allMatchingSelected) {
+                this.clearSelection();
+                return;
+            }
+            this._visibleRowBoxes(this._form()).forEach((box) => {
+                box.checked = true;
+            });
+            this._recount();
+            if (this.total > this.page) this.selectAllMatching();
         },
     }));
 

@@ -12,6 +12,11 @@ also sets a transform, which would make the bar the containing block of the
 fixed "More actions" menu while it fades. The count and link swaps inside it
 take no transition: a fade on an element that changes width would shift its
 neighbours.
+The left group holds the page checkbox, the count, the select-all link and the
+actions; Clear is a sibling of that wrapping group, so it stays alone at the
+right edge however the group wraps. Without JavaScript only the action buttons
+show: the checkbox, count, link and Clear are x-cloak, and the count is empty
+until tableSelection fills it.
 {% endcomment %}
 <div class="panel-table-selection-bar fixed inset-x-0 bottom-0 z-10 flex items-start gap-x-4 gap-y-2 border-t border-border bg-surface px-4 py-3 md:px-6 lg:static lg:min-h-16.75 lg:border-t-0 lg:border-b lg:px-6"
      data-selection-bar-pending
@@ -25,20 +30,16 @@ neighbours.
      data-page-count="{{ page_obj|length }}"
      data-total-count="{{ page_obj.paginator.count }}">
     <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-        <span class="text-sm">
-            <span x-show="running" x-cloak class="inline-flex items-center gap-2"><c-icon name="loading" class="size-5 animate-spin" /><span><span x-text="runLabel"></span> is running…</span></span>
-            <span x-show="showSelectionCount" x-text="countSentence"></span>
+        <input type="checkbox" aria-label="Select page" data-select-all x-cloak
+               x-on:change="toggleAll" x-bind:disabled="running">
+        <span class="inline-flex items-center gap-2 text-sm" x-cloak>
+            <span x-show="running"><c-icon name="loading" class="size-4 animate-spin" /></span>
+            <span x-text="countSentence"></span>
         </span>
-        <span x-show="showPagePrompt" x-cloak x-transition class="text-sm">
-            All {{ page_obj|length }} on this page are selected.
-            <c-button type="button" variant="link" size="small" x-on:click="selectAllMatching" x-bind:disabled="running">Select all {{ page_obj.paginator.count }} matching</c-button>
-        </span>
-        <span x-show="showMatchingPrompt" x-cloak x-transition class="text-sm">
-            <span x-show="excluded.length === 0">All <span x-text="count"></span> matching are selected.</span>
-            <span x-show="excluded.length > 0" x-cloak><span x-text="count"></span> of {{ page_obj.paginator.count }} matching are selected.</span>
-            <c-button type="button" variant="link" size="small" x-on:click="clearSelection" x-bind:disabled="running">Clear selection</c-button>
-            <span class="text-muted">Changing page, sort or filters clears the selection.</span>
-        </span>
+        <c-button type="button" variant="link" size="small" x-cloak
+                  x-on:click="activateSelectAll" x-bind:disabled="running"
+                  x-text="selectAllLabel"></c-button>
+        <span x-show="allMatchingMode" x-cloak class="text-sm text-muted">Changing page, sort or filters clears the selection.</span>
         <span x-ref="excluded" hidden></span>
         <fieldset x-show="actionsVisible" class="m-0 flex min-w-0 flex-wrap items-center gap-2 rounded-none border-0 p-0">
             {% querystring request.GET as qs %}
