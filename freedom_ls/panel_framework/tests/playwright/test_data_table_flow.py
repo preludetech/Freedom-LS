@@ -766,6 +766,24 @@ def test_bulk_action_posts_with_javascript_off(
     assert active_by_name["row-02"] is True
 
 
+def test_more_actions_trigger_is_hidden_with_javascript_off(
+    browser: Browser,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """The More actions menu opens through Alpine, so its trigger used to show inert."""
+    for i in range(3):
+        make_stub(name=f"row-{i:02d}")
+
+    with _no_js_page(browser) as no_js_page:
+        no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
+        no_js_page.locator("#stubs-table tbody input[name='keys']").nth(0).check()
+
+        expect(no_js_page.get_by_role("button", name="Mark processed")).to_be_visible()
+        expect(no_js_page.get_by_role("button", name="More actions")).to_be_hidden()
+
+
 def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,

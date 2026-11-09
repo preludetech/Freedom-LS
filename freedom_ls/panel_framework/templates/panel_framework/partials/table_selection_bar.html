@@ -55,6 +55,7 @@ until tableSelection fills it.
                 </c-button>
             {% endfor %}
             {% if overflow_bulk_actions %}
+                <span class="contents" x-cloak>
                 <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-ghost btn-sm" panel_class="fixed w-64">
                     <c-slot name="trigger">
                         More
@@ -73,7 +74,8 @@ until tableSelection fills it.
                         </c-button>
                     {% endfor %}
                 </c-dropdown-menu>
-                {% comment %}The menu opens through Alpine, so without JavaScript its actions are plain buttons.{% endcomment %}
+                </span>
+                {% comment %}The menu opens through Alpine: its wrapper is x-cloak so the trigger stays hidden without JavaScript, where the actions are plain buttons.{% endcomment %}
                 <noscript>
                     {% for entry in overflow_bulk_actions %}
                         <c-button type="submit"
