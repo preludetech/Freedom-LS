@@ -1,6 +1,6 @@
 {% comment %}
 The Add staff member dialog, one template for every step. Context: step (email,
-role or confirmation) and form_url; email and role add dialog_title ("Add a
+role, confirmation or search, the as-you-type results fragment) and form_url; search adds term, results (pk, display_name, email), truncated, needs_term, searches_pickable_only and listbox_id; email and role add dialog_title ("Add a
 member", or "Add a staff member to {cohort}" when the page fixes the cohort); email adds form, role adds
 match (None for an address with no account), new_account, person (the staff member fixed by their row, or None), current_entries (the roles person holds), form, role_cards (key, display_name, description, needs_cohorts, unavailable_reason),
 preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role, offers_no_role (offer "No roles yet" first) and role_note;
@@ -8,15 +8,80 @@ confirmation adds person, no_role (true for a staff member added with no role, w
 scope, current_entries, after_entries, already_held, widening, staff_member_state and
 site_level.
 {% endcomment %}
-{% if step == "email" %}
+{% if step == "search" %}
+{% partial search-results %}
+{% elif step == "email" %}
 <c-modal-header>{{ dialog_title }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <input type="hidden" name="step" value="lookup">
-    <div class="px-6 py-4">
-        {% include "partials/form.html" %}
+    <div class="px-6 py-4 text-left"
+         x-data="staffSearchCombobox"
+         x-on:click.away="close"
+         x-on:htmx:after-swap="afterSwap"
+         x-on:htmx:before-request="beforeRequest">
+        <input type="hidden" name="email" value="{{ form.email.value|default:'' }}">
+        <label for="staff-search-input" class="mb-1 block font-semibold">Email address</label>
+        <input type="text"
+               id="staff-search-input"
+               name="q"
+               value="{{ form.email.value|default:'' }}"
+               autocomplete="off"
+               role="combobox"
+               aria-autocomplete="list"
+               aria-controls="{{ listbox_id }}"
+               x-bind:aria-expanded="expanded"
+               x-bind:aria-activedescendant="activeId"
+               x-on:input="syncEmail"
+               x-on:keydown="onKeydown"
+               hx-get="{{ search_url }}"
+               hx-trigger="input changed delay:300ms"
+               hx-sync="this:replace"
+               hx-target="#staff-search-results"
+               hx-swap="outerHTML"
+               class="w-full rounded-md border border-border-input bg-surface px-3 py-2">
+        {% if form.email.errors %}
+        <div class="mt-1 text-sm text-error">{{ form.email.errors }}</div>
+        {% endif %}
+        <p role="status" aria-live="polite" id="staff-search-status" class="sr-only" x-ref="status"></p>
+        {% partialdef search-results inline %}
+        <div id="staff-search-results"
+             data-count="{{ results|length }}"
+             data-state="{% if needs_term %}prompt{% elif results %}results{% else %}empty{% endif %}"
+             class="relative">
+            {% if needs_term %}
+            <p class="mt-1 text-sm text-muted">Type at least 2 characters to search, or enter a full email.</p>
+            {% endif %}
+            {% if searches_pickable_only %}
+            <p class="mt-1 text-sm text-muted">Searching staff you can add</p>
+            {% endif %}
+            <ul role="listbox"
+                id="{{ listbox_id }}"
+                aria-label="Matching people"
+                x-show="expanded"
+                x-cloak
+                x-transition
+                class="mt-1 list-none divide-y divide-border overflow-hidden rounded-md border border-border bg-surface p-0">
+                {% for user in results %}
+                <li role="option"
+                    id="staff-option-{{ user.pk }}"
+                    data-email="{{ user.email }}"
+                    x-on:click="pick"
+                    class="min-h-11 cursor-pointer px-3 py-2 hover:bg-surface-2 aria-selected:bg-surface-2">
+                    <c-panel-avatar-chip :name="user.display_name" :user_id="user.pk" :secondary="user.email" size="sm" />
+                </li>
+                {% endfor %}
+                {% if truncated %}
+                <li aria-disabled="true" class="px-3 py-2 text-sm text-muted">Showing the first 8. Keep typing to narrow.</li>
+                {% endif %}
+            </ul>
+            {% if not needs_term and not results %}
+            <p class="mt-1 text-sm text-muted">No one matches '{{ term }}'.{% if not searches_pickable_only %} Type their full email to add someone else.{% endif %}</p>
+            {% endif %}
+        </div>
+        {% endpartialdef %}
     </div>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>

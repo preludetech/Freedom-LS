@@ -85,4 +85,112 @@ document.addEventListener("alpine:init", () => {
             ).length;
         },
     }));
+
+    // The email field of the Add staff member dialog as a list-autocomplete
+    // combobox. The server swaps in the matching people as role="option"
+    // rows; the arrow keys move through them, Enter or a click copies the
+    // option's data-email into the posted email field and submits the lookup,
+    // and Escape closes the list without closing the dialog (the native
+    // dialog closes on Escape unless its default action is prevented). The visible
+    // input is the search term (q); the hidden email input is what posts.
+    Alpine.data("staffSearchCombobox", () => ({
+        expanded: false,
+        activeIndex: -1,
+
+        get activeId() {
+            const active = this.options()[this.activeIndex];
+            return active === undefined ? null : active.id;
+        },
+
+        options() {
+            return Array.from(
+                this.$root.querySelectorAll('[role="option"]:not([aria-disabled])'),
+            );
+        },
+
+        syncEmail(event) {
+            this.$root.querySelector('input[name="email"]').value = event.target.value;
+        },
+
+        markActive() {
+            this.options().forEach((option, index) => {
+                if (index === this.activeIndex) {
+                    option.setAttribute("aria-selected", "true");
+                    option.scrollIntoView({ block: "nearest" });
+                } else {
+                    option.removeAttribute("aria-selected");
+                }
+            });
+        },
+
+        onKeydown(event) {
+            const count = this.options().length;
+            const pressed = event.key;
+            if (pressed === "ArrowDown" || pressed === "ArrowUp") {
+                if (count === 0) {
+                    return;
+                }
+                event.preventDefault();
+                this.expanded = true;
+                const step = pressed === "ArrowDown" ? 1 : -1;
+                this.activeIndex = (this.activeIndex + step + count) % count;
+                this.markActive();
+            } else if (pressed === "Enter") {
+                const active = this.options()[this.activeIndex];
+                if (this.expanded && active !== undefined) {
+                    event.preventDefault();
+                    this.choose(active);
+                }
+            } else if (pressed === "Escape" && this.expanded) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.close();
+            }
+        },
+
+        pick(event) {
+            this.choose(event.currentTarget);
+        },
+
+        choose(option) {
+            const email = option.dataset.email;
+            this.$root.querySelector('input[name="q"]').value = email;
+            this.$root.querySelector('input[name="email"]').value = email;
+            this.close();
+            this.$root.closest("form").requestSubmit();
+        },
+
+        close() {
+            this.expanded = false;
+            this.activeIndex = -1;
+            this.markActive();
+        },
+
+        setStatus(text) {
+            this.$refs.status.textContent = text;
+        },
+
+        beforeRequest(event) {
+            if (event.target.getAttribute("name") === "q") {
+                this.setStatus("Searching…");
+            }
+        },
+
+        afterSwap(event) {
+            const results = this.$root.querySelector("#staff-search-results");
+            if (event.target !== results) {
+                return;
+            }
+            const count = parseInt(results.dataset.count, 10);
+            this.activeIndex = -1;
+            this.expanded = count > 0;
+            if (results.dataset.state === "prompt") {
+                this.setStatus("");
+            } else if (count === 0) {
+                this.setStatus("No results");
+            } else {
+                this.setStatus(count + (count === 1 ? " person found" : " people found"));
+            }
+        },
+    }));
 });

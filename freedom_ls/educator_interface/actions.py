@@ -38,6 +38,7 @@ from freedom_ls.accounts.account_setup import (
 )
 from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.accounts.models import User, display_name_for
+from freedom_ls.accounts.search import MIN_TERM_LENGTH, term_condition
 from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
@@ -1656,6 +1657,7 @@ REFUSAL_MESSAGES: dict[RefusalReason, str] = {
     ),
 }
 
+SEARCH_LISTBOX_ID = "staff-search-listbox"
 OTHER_SITE_MESSAGE = (
     "This address belongs to an account on another site. Use a different address."
 )
@@ -1755,6 +1757,7 @@ class AddStaffMemberAction(PanelAction):
     offerable_roles: tuple[str, ...] = STAFF_ROLES
     #: Whether the dialog may add someone to the staff with no role.
     offers_no_role: bool = True
+    SEARCH_RESULT_LIMIT = 8
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
@@ -1778,28 +1781,63 @@ class AddStaffMemberAction(PanelAction):
         preset = self._preset(ctx)
         return f"Add a staff member to {preset}" if preset else "Add a staff member"
 
+    def _email_context(
+        self, ctx: PanelContext, form: StaffEmailForm
+    ) -> dict[str, object]:
+        return {
+            "step": "email",
+            "dialog_title": self._dialog_title(ctx),
+            "form": form,
+            "form_url": self.get_action_url(ctx),
+            "search_url": self.get_action_url(ctx),
+            "listbox_id": SEARCH_LISTBOX_ID,
+            "searches_pickable_only": not self._adds_staff(ctx),
+            "results": [],
+            "needs_term": True,
+            "term": "",
+        }
+
     def _email_step(
         self, ctx: PanelContext, form: StaffEmailForm, status: int = 200
     ) -> HttpResponse:
         return render(
             ctx.request,
             self.template_name,
-            {
-                "step": "email",
-                "dialog_title": self._dialog_title(ctx),
-                "form": form,
-                "form_url": self.get_action_url(ctx),
-            },
+            self._email_context(ctx, form),
             status=status,
         )
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        return {
-            "step": "email",
-            "dialog_title": self._dialog_title(ctx),
-            "form": StaffEmailForm(),
-            "form_url": self.get_action_url(ctx),
+    def _search_context(self, ctx: PanelContext) -> dict[str, object]:
+        """The as-you-type matches for the typed term: up to
+        ``SEARCH_RESULT_LIMIT`` of the people this viewer may pick."""
+        term = ctx.request.GET["q"].strip()
+        context: dict[str, object] = {
+            "step": "search",
+            "term": term,
+            "listbox_id": SEARCH_LISTBOX_ID,
+            "searches_pickable_only": not self._adds_staff(ctx),
+            "needs_term": len(term) < MIN_TERM_LENGTH,
+            "results": [],
+            "truncated": False,
         }
+        if context["needs_term"]:
+            return context
+        fetched = list(
+            pickable_staff(cast("User", ctx.request.user), _organisation(ctx)).filter(
+                term_condition(term, include_email=True)
+            )[: self.SEARCH_RESULT_LIMIT + 1]
+        )
+        context["results"] = [
+            {"pk": user.pk, "display_name": user.display_name, "email": user.email}
+            for user in fetched[: self.SEARCH_RESULT_LIMIT]
+        ]
+        context["truncated"] = len(fetched) > self.SEARCH_RESULT_LIMIT
+        return context
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        if "q" in ctx.request.GET:
+            return self._search_context(ctx)
+        return self._email_context(ctx, StaffEmailForm())
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         if not self._grantable(ctx):

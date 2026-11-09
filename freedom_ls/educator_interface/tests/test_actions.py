@@ -5198,6 +5198,145 @@ def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
     assert "&lt;b&gt;Bold&lt;/b&gt;" in html
 
 
+def _search(
+    client: Client, organisation: Organisation, term: str, cohort: Cohort | None = None
+):
+    url = (
+        _cohort_add_staff_member_url(organisation, cohort)
+        if cohort
+        else _add_staff_member_url(organisation)
+    )
+    return client.get(url, {"q": term}, HTTP_HX_REQUEST="true")
+
+
+def _options(response) -> list[lxml.html.HtmlElement]:
+    document = lxml.html.fromstring(response.content.decode())
+    return list(document.cssselect("[role='option']"))
+
+
+@pytest.mark.django_db
+def test_a_search_term_under_the_minimum_asks_for_more(admin_client, organisation):
+    response = _search(admin_client, organisation, "e")
+
+    assert "Type at least 2 characters to search, or enter a full email." in _text(
+        response
+    )
+    assert _options(response) == []
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_finds_a_learner_who_is_not_staff(
+    admin_client, organisation
+):
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name="Erin", user__last_name="Learner"
+    )
+
+    options = _options(_search(admin_client, organisation, "erin"))
+
+    assert [option.get("id") for option in options] == [
+        f"staff-option-{learner.user.pk}"
+    ]
+    assert options[0].get("data-email") == learner.user.email
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_search_lists_only_people_they_may_pick(
+    logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
+    LearnerFactory(
+        organisation=organisation, user__first_name="Erin", user__last_name="Learner"
+    )
+    peer = UserFactory(first_name="Erin", last_name="Peer")
+    assign_role(UserFactory(superuser=True), peer, "cohort_viewer", cohort)
+
+    response = _search(client, organisation, "erin", cohort)
+
+    assert [option.get("id") for option in _options(response)] == [
+        f"staff-option-{peer.pk}"
+    ]
+    assert "Searching staff you can add" in _text(response)
+    assert "Type their full email" not in _text(
+        _search(client, organisation, "zzz", cohort)
+    )
+
+
+@pytest.mark.django_db
+def test_nine_matches_render_eight_options_and_the_cap_line(admin_client, organisation):
+    for number in range(9):
+        LearnerFactory(organisation=organisation, user__first_name=f"Sam{number}")
+
+    response = _search(admin_client, organisation, "sam")
+
+    assert len(_options(response)) == 8
+    assert "Showing the first 8. Keep typing to narrow." in _text(response)
+
+
+@pytest.mark.django_db
+def test_search_results_carry_the_name_and_email_and_nothing_more(
+    admin_client, organisation
+):
+    LearnerFactory(
+        organisation=organisation,
+        user__first_name="Erin",
+        user__last_name="Learner",
+        user__email="erin@example.com",
+    )
+
+    context = _search(admin_client, organisation, "erin").context
+
+    (result,) = context["results"]
+    assert set(result) == {"pk", "display_name", "email"}
+
+
+@pytest.mark.django_db
+def test_a_search_term_is_escaped_in_the_no_match_note(admin_client, organisation):
+    html = _search(admin_client, organisation, "<script>x</script>").content.decode()
+
+    assert "<script>x</script>" not in html
+    assert "&lt;script&gt;x&lt;/script&gt;" in html
+
+
+@pytest.mark.django_db
+def test_a_viewer_without_the_add_capability_cannot_search(
+    logged_in_client, organisation
+):
+    client, _ = _holder_client(
+        logged_in_client, organisation, "organisation_staff_viewer"
+    )
+
+    assert _search(client, organisation, "erin").status_code == 403
+
+
+@pytest.mark.django_db
+def test_search_results_are_an_unlinked_listbox_with_a_stable_id(
+    admin_client, organisation
+):
+    LearnerFactory(organisation=organisation, user__first_name="Erin")
+
+    document = lxml.html.fromstring(_search(admin_client, organisation, "erin").content)
+
+    (listbox,) = document.cssselect("[role='listbox']")
+    assert listbox.get("id")
+    assert document.cssselect("[role='option'] a") == []
+
+
+@pytest.mark.django_db
+def test_the_email_input_is_a_list_autocomplete_combobox(admin_client, organisation):
+    response = admin_client.get(
+        _add_staff_member_url(organisation), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (combobox,) = document.cssselect("input[role='combobox']")
+    listbox_id = combobox.get("aria-controls")
+    assert combobox.get("aria-autocomplete") == "list"
+    assert combobox.get("hx-get") == _add_staff_member_url(organisation)
+    assert document.cssselect(f"[id='{listbox_id}'][role='listbox']")
+
+
 def _cohort_add_staff_member_url(organisation: Organisation, cohort: Cohort) -> str:
     return _cohort_url(
         organisation,

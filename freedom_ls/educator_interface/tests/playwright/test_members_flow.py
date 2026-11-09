@@ -40,7 +40,13 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     CohortFactory(organisation=organisation, name="Alpha Cohort")
     CohortFactory(organisation=organisation, name="Beta Cohort")
-    UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
+    LearnerFactory(
+        organisation=organisation,
+        user__email="existing@example.com",
+        user__first_name="Erin",
+        user__last_name="Existing",
+    )
+    UserFactory(email="second@example.com", first_name="Sam", last_name="Second")
     failed: list[str] = []
 
     def record_failure(response: Response) -> None:
@@ -53,9 +59,18 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     main = page.locator("#main-content")
 
     main.get_by_role("button", name="Add staff member", exact=True).first.click()
-    modal.get_by_label("Email address").fill("existing@example.com")
-    modal.get_by_role("button", name="Look up", exact=True).click()
-    expect(modal.get_by_text("Existing account")).to_be_visible()
+    combobox = modal.get_by_role("combobox", name="Email address")
+    combobox.press_sequentially("eri")
+    expect(modal.get_by_role("option")).to_have_count(1)
+    expect(modal.get_by_role("option")).to_contain_text("Erin Existing")
+    combobox.press("ArrowDown")
+    expect(combobox).to_have_attribute("aria-expanded", "true")
+    combobox.press("Escape")
+    expect(combobox).to_have_attribute("aria-expanded", "false")
+    expect(modal).to_be_visible()
+    combobox.press("ArrowDown")
+    combobox.press("Enter")
+    expect(modal.get_by_text("Existing account: Erin Existing")).to_be_visible()
 
     modal.get_by_text("Cohort admin", exact=True).click()
     modal.get_by_label("Alpha Cohort").check()
@@ -89,6 +104,26 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     expect(modal).to_be_hidden()
     expect(row.get_by_text("No roles yet")).to_be_visible()
     expect(row.get_by_text("Cohort admin")).to_have_count(0)
+
+    main.get_by_role("button", name="Add staff member", exact=True).first.click()
+    modal.get_by_role("combobox", name="Email address").fill("second@example.com")
+    modal.get_by_role("button", name="Look up", exact=True).click()
+    modal.get_by_text("No roles yet", exact=True).click()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    expect(modal).to_be_hidden()
+    second_row = main.get_by_role("row").filter(has_text="Sam Second")
+    expect(second_row.get_by_text("No roles yet")).to_be_visible()
+
+    second_row.get_by_role("button", name="Add role").locator(
+        "visible=true"
+    ).first.click()
+    modal.get_by_text("Cohort viewer", exact=True).click()
+    modal.get_by_label("Alpha Cohort").check()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(second_row.get_by_text("Cohort viewer")).to_be_visible()
     page.wait_for_load_state("networkidle")
     assert failed == []
 

@@ -30,6 +30,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
+from freedom_ls.accounts.search import MIN_TERM_LENGTH, term_condition
 from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_policy import (
@@ -48,7 +49,6 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
 BLANK_BODY = _("Type a message first.")
-PICKER_MIN_TERM_LENGTH = 2
 PICKER_RESULT_LIMIT = 20
 TOO_LONG_BODY = _("This message is too long. The limit is %(limit)s characters.")
 
@@ -595,16 +595,9 @@ def search_recipients(
     if candidates is None:
         candidates = policy.recipients_for(sender=sender, site=site)
     term = term.strip()
-    if term and len(term) < PICKER_MIN_TERM_LENGTH:
+    if term and len(term) < MIN_TERM_LENGTH:
         return RecipientSearch(groups=[], needs_term=True)
-    # Every word must match some field, so "Jane Smith" finds Jane Smith. No
-    # words means no narrowing.
-    condition = Q()
-    for word in term.split():
-        word_condition = Q(first_name__icontains=word) | Q(last_name__icontains=word)
-        if include_email:
-            word_condition |= Q(email__icontains=word)
-        condition &= word_condition
+    condition = term_condition(term, include_email=include_email)
     fetched = list(
         candidates.filter(condition).order_by("first_name", "last_name", "pk")[
             : PICKER_RESULT_LIMIT + 1
