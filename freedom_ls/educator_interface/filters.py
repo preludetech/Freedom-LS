@@ -14,6 +14,7 @@ from django.utils import timezone
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import audit_actions, audit_actions_by_group
 from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
@@ -21,6 +22,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     STAFF_ROLES,
+    VIEW_ORGANISATION_STAFF_ROLES,
     LearnerStatus,
     cohorts_visible_to,
     courses_visible_to,
@@ -140,6 +142,19 @@ class LearnerCourseFilter(VisibleCourseFilter):
         return queryset.filter(holds_registration_for_any_expression(None, values))
 
 
+def may_see_staff_roles(request: HttpRequest) -> bool:
+    """Whether the viewer may see which roles staff members hold, computed once
+    and kept on the request because the roles cell, the Role filter's choices
+    and its narrowing all ask. A viewer who may see names only must not learn
+    who holds which role, so the filter withholds itself too."""
+    scoped = cast("OrganisationScopedRequest", request)
+    cached = getattr(scoped, "may_see_staff_roles", None)
+    if cached is None:
+        cached = can(scoped.user, VIEW_ORGANISATION_STAFF_ROLES, scoped.organisation)
+        scoped.may_see_staff_roles = cached
+    return cached
+
+
 class StaffRoleFilter(ChoiceFilter):
     """Narrows staff to those holding a chosen role here; every role while
     the parameter is absent or "All roles" is among the values."""
@@ -153,6 +168,8 @@ class StaffRoleFilter(ChoiceFilter):
         )
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        if not may_see_staff_roles(request):
+            return []
         scoped = cast("OrganisationScopedRequest", request)
         config = get_role_config(scoped.organisation.site.name)
         return [
@@ -171,7 +188,7 @@ class StaffRoleFilter(ChoiceFilter):
         self, request: HttpRequest, queryset: QuerySet[User], values: list[str]
     ) -> QuerySet[User]:
         # "All roles" beside a role still means every role.
-        if self.ALL in values:
+        if self.ALL in values or not may_see_staff_roles(request):
             return queryset
         scoped = cast("OrganisationScopedRequest", request)
         return queryset.filter(

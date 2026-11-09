@@ -428,12 +428,14 @@ def _resolved_or_none[ModelT: Model](
 def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
     """Organisations this user may enter.
 
-    Union of two paths: an organisation-level role granting
-    freedom_ls_organisations.view_organisation, or a role assignment on any
-    cohort inside the organisation granting view_cohort. The second half is
-    load-bearing — without it, an educator holding only per-cohort role
-    assignments would have no way to reach an organisation-scoped interface
-    at all, no matter how many cohorts they hold one on.
+    Union of three paths: an organisation-level role granting
+    freedom_ls_organisations.view_organisation, an organisation-level role
+    granting view_organisation_staff (which lets its holder see the staff
+    list and nothing else), or a role assignment on any cohort inside the
+    organisation granting view_cohort. The cohort half is load-bearing --
+    without it, an educator holding only per-cohort role assignments would
+    have no way to reach an organisation-scoped interface at all, no matter
+    how many cohorts they hold one on.
     """
     resolved = _resolved_or_none(user, Organisation.objects.all())
     if resolved is not None:
@@ -448,9 +450,10 @@ def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
     if _site_grants(user, organisation_roles, site).exists():
         return Organisation.objects.filter(site=site).order_by("name")
 
+    granted_roles = organisation_roles | roles_granting(VIEW_ORGANISATION_STAFF, site)
     cohort_roles = roles_granting(VIEW_COHORT, site)
     return Organisation.objects.filter(
-        Q(pk__in=_granted_organisations(user, organisation_roles).values("pk"))
+        Q(pk__in=_granted_organisations(user, granted_roles).values("pk"))
         | Q(pk__in=_granted_cohorts(user, cohort_roles).values("organisation_id"))
     ).order_by("name")
 

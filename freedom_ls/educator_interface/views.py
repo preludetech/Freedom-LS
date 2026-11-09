@@ -119,6 +119,7 @@ from freedom_ls.educator_interface.filters import (
     ShowInactiveFilter,
     StaffRoleFilter,
     VisibleCourseFilter,
+    may_see_staff_roles,
 )
 from freedom_ls.educator_interface.forms import CohortForm, LearnerImportForm
 from freedom_ls.educator_interface.learner_import import (
@@ -174,9 +175,12 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
     STAFF_ROLES,
+    VIEW_COHORT,
     VIEW_CONVERSATION,
+    VIEW_ORGANISATION_STAFF,
     LearnerStatus,
     active_organisation_admins,
+    can_on_any,
     cohort_counts,
     cohort_educators,
     cohorts_visible_to,
@@ -256,6 +260,9 @@ class OrganisationScopedRequest(HttpRequest):
     panel_extra_oob: list[str]
     grantable_roles: list[GrantableRole]
 
+    may_see_staff_roles: bool
+    works_with_cohorts: bool
+
 
 class OrganisationSectionConfig(SectionConfigBase):
     """Shared by every section scoped to the organisation interface() resolves."""
@@ -273,16 +280,31 @@ class OrganisationSectionConfig(SectionConfigBase):
         return can(request.user, capability, scope)
 
     @classmethod
+    def is_visible(cls, request: HttpRequest) -> bool:
+        # A section that names no capability is for people who work with the
+        # organisation's cohorts; a role that only sees the staff list stops at Staff.
+        if cls.view_capability is None:
+            return cls._works_with_cohorts(request)
+        return super().is_visible(request)
+
+    @staticmethod
+    def _works_with_cohorts(request: HttpRequest) -> bool:
+        """Whether the viewer holds view_cohort here, answered once per
+        request because every section without a capability asks."""
+        scoped = cast(OrganisationScopedRequest, request)
+        cached = getattr(scoped, "works_with_cohorts", None)
+        if cached is None:
+            cached = can_on_any(scoped.user, scoped.organisation, VIEW_COHORT)
+            scoped.works_with_cohorts = cached
+        return cached
+
+    @classmethod
     def get_denied_context(
         cls, request: HttpRequest, capability: str | None, scope: Model | None
     ) -> dict[str, str]:
         organisation = cast(OrganisationScopedRequest, request).organisation
         who = f"Ask an organisation admin of {organisation.name}."
-        if can(
-            request.user,
-            "freedom_ls_learner_management.view_staffmember",
-            organisation,
-        ):
+        if can(request.user, VIEW_ORGANISATION_STAFF, organisation):
             names = [
                 admin.display_name for admin in active_organisation_admins(organisation)
             ]
@@ -2345,7 +2367,7 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
     model = User
     list_view = StaffDataTable
     table_key = "staff"
-    view_capability = "freedom_ls_learner_management.view_staffmember"
+    view_capability = VIEW_ORGANISATION_STAFF
     # Rows have no page of their own, so there is nothing to authorise.
     check_access_exempt_reason = "staff members have no instance pages"
 
@@ -2367,6 +2389,7 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
         return {
             "viewer": request.user,
             "grantable_role_keys": {g.role for g in grantable_roles_for(request)},
+            "shows_roles": may_see_staff_roles(request),
         }
 
     @classmethod

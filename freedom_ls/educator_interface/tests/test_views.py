@@ -128,6 +128,7 @@ from freedom_ls.panel_framework.bulk_runs import run_bulk_action
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.reports.tests.helpers import topic_progress
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.factories import SiteFactory
@@ -2730,7 +2731,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 60
+QUERY_BOUND = 66
 
 
 MARKERS = {"You", "Inactive", "Account inactive", "Also a learner"}
@@ -2816,7 +2817,9 @@ def test_a_role_names_who_added_it(role_holder_client):
 
 
 @pytest.mark.django_db
-def test_a_role_with_no_recorded_grantor_reads_not_recorded(role_holder_client):
+def test_a_role_with_no_recorded_grantor_reads_added_without_a_by_clause(
+    role_holder_client,
+):
     organisation = OrganisationFactory()
     grantor = UserFactory(superuser=True)
     _hold(
@@ -2830,7 +2833,10 @@ def test_a_role_with_no_recorded_grantor_reads_not_recorded(role_holder_client):
 
     row = _staff_member_row(_staff_document(client, organisation), "orphan@example.com")
 
-    assert "by Not recorded" in row.text_content()
+    text = " ".join(row.text_content().split())
+    assert "Added" in text
+    assert " by " not in text
+    assert "Not recorded" not in text
 
 
 def _make_viewer_and_subject(role_holder_client, organisation, case: str):
@@ -2898,6 +2904,105 @@ def test_the_viewers_own_row_is_marked_you(role_holder_client):
     (row,) = document.cssselect("#main-content tbody tr")
 
     assert _marker_labels(row) == {"You"}
+
+
+VIEWER_ROLE_SECTIONS = [
+    "dashboard",
+    "learners",
+    "cohorts",
+    "courses",
+    "audit-log",
+]
+
+
+@pytest.mark.django_db
+def test_a_staff_viewer_sees_names_and_no_roles_or_buttons(role_holder_client):
+    organisation = OrganisationFactory()
+    _hold(
+        UserFactory(email="subject@example.com", first_name="Sam", last_name="Subject"),
+        "organisation_admin",
+        organisation,
+    )
+    client = role_holder_client(organisation, "organisation_staff_viewer")
+
+    response = client.get(_interface_url(organisation.slug, "staff"))
+    document = lxml.html.fromstring(response.content)
+
+    assert response.status_code == 200
+    assert "Sam Subject" in document.text_content()
+    assert (
+        "Organisation admin"
+        not in document.cssselect("#main-content tbody")[0].text_content()
+    )
+    assert document.cssselect("#main-content tbody button[hx-get]") == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("section", VIEWER_ROLE_SECTIONS)
+@pytest.mark.parametrize(
+    "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
+)
+def test_a_staff_viewer_role_gets_404_outside_the_staff_section(
+    role_holder_client, role, section
+):
+    organisation = OrganisationFactory()
+    client = role_holder_client(organisation, role)
+
+    response = client.get(_interface_url(organisation.slug, section))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_sidebar_of_a_staff_viewer_lists_staff_alone(role_holder_client):
+    organisation = OrganisationFactory()
+    client = role_holder_client(organisation, "organisation_staff_viewer")
+
+    document = _staff_document(client, organisation)
+
+    (nav,) = document.cssselect("#sidebar-nav")
+    assert [a.text_content().strip() for a in nav.cssselect("a")] == ["Staff"]
+
+
+@pytest.mark.django_db
+def test_a_roles_viewer_sees_role_names_and_no_buttons(role_holder_client):
+    organisation = OrganisationFactory()
+    _hold(UserFactory(email="subject@example.com"), "organisation_admin", organisation)
+    client = role_holder_client(organisation, "organisation_staff_roles_viewer")
+
+    document = _staff_document(client, organisation)
+    row = _staff_member_row(document, "subject@example.com")
+
+    assert "Organisation admin" in row.text_content()
+    assert row.cssselect("button[hx-get]") == []
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_still_sees_the_dashboard(role_holder_client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    client = role_holder_client(cohort, "cohort_admin")
+
+    response = client.get(_interface_url(organisation.slug, ""))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_entry_with_no_recorded_grantor_reads_added_without_by(role_holder_client):
+    organisation = OrganisationFactory()
+    subject = UserFactory(email="subject@example.com")
+    _hold(subject, "organisation_admin", organisation)
+    ObjectRoleAssignment.objects.filter(user=subject).update(assigned_by=None)
+    client = role_holder_client(organisation, "organisation_admin")
+
+    row = _staff_member_row(
+        _staff_document(client, organisation), "subject@example.com"
+    )
+
+    text = " ".join(row.text_content().split())
+    assert "Added" in text
+    assert " by " not in text
 
 
 @pytest.mark.django_db

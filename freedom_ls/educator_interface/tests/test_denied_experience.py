@@ -159,6 +159,27 @@ def test_denied_context_names_organisation_admins_for_a_viewer_of_staffmember(
 
 
 @pytest.mark.django_db
+def test_denied_context_names_organisation_admins_for_a_holder_of_view_organisation_staff(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    admin = UserFactory(first_name="Ada", last_name="Admin")
+    assign_object_role(admin, organisation, "organisation_admin")
+    asker = UserFactory()
+    assign_object_role(asker, organisation, "organisation_staff_viewer")
+    request = RequestFactory().get("/")
+    request.user = asker
+    request.organisation = organisation
+
+    context = OrganisationSectionConfig.get_denied_context(request, None, organisation)
+
+    assert (
+        context["who_to_ask"]
+        == f"Ask an organisation admin of {organisation.name}: Ada Admin."
+    )
+
+
+@pytest.mark.django_db
 def test_denied_context_omits_names_for_an_asker_who_may_not_view_staffmember(
     mock_site_context: Site,
 ) -> None:

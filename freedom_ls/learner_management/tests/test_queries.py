@@ -318,6 +318,24 @@ class TestOrganisationsAccessibleTo:
 
         assert list(organisations_accessible_to(user)) == [organisation]
 
+    def test_organisation_staff_viewer_sees_the_organisation(self, mock_site_context):
+        organisation = OrganisationFactory()
+        OrganisationFactory()  # decoy: held by nobody
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff_viewer")
+
+        assert list(organisations_accessible_to(user)) == [organisation]
+
+    def test_organisation_staff_viewer_with_an_inactive_staff_member_sees_nothing(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff_viewer")
+        StaffMember.objects.filter(user=user).update(is_active=False)
+
+        assert list(organisations_accessible_to(user)) == []
+
     def test_guardian_grant_on_a_cohort_grants_the_organisation(
         self, mock_site_context
     ):

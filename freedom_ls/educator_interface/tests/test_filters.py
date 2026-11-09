@@ -424,6 +424,73 @@ def test_the_role_filter_narrows_by_itself(staff_request):
 
 
 @pytest.mark.django_db
+def test_the_role_filter_offers_no_choices_to_a_names_only_viewer(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), viewer, "organisation_staff_viewer", organisation
+    )
+    request = site_aware_request.get("/")
+    request.user = viewer
+    request.organisation = organisation
+
+    assert StaffRoleFilter().get_choices(request) == []
+
+
+@pytest.mark.django_db
+def test_the_role_filter_offers_the_usual_five_to_a_roles_viewer(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True),
+        viewer,
+        "organisation_staff_roles_viewer",
+        organisation,
+    )
+    request = site_aware_request.get("/")
+    request.user = viewer
+    request.organisation = organisation
+
+    choices = StaffRoleFilter().get_choices(request)
+
+    assert [value for value, _ in choices] == [
+        "all",
+        "organisation_admin",
+        "organisation_staff_viewer",
+        "organisation_staff_roles_viewer",
+        "cohort_admin",
+        "cohort_viewer",
+    ]
+
+
+@pytest.mark.django_db
+def test_a_role_parameter_from_a_names_only_viewer_narrows_nothing(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    viewer = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), viewer, "organisation_staff_viewer", organisation
+    )
+    holder = UserFactory()
+    assign_role(UserFactory(superuser=True), holder, "cohort_viewer", cohort)
+    request = site_aware_request.get("/")
+    request.user = viewer
+    request.organisation = organisation
+
+    narrowed = _staff_member_pks(request, ["organisation_admin"])
+    unfiltered = _staff_member_pks(request)
+
+    assert holder.pk in narrowed
+    assert set(narrowed) == set(unfiltered)
+
+
+@pytest.mark.django_db
 def test_all_roles_is_the_roles_default(staff_request):
     assert StaffRoleFilter().default == (StaffRoleFilter.ALL,)
 
