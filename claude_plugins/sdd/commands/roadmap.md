@@ -4,12 +4,14 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, Skill
 argument-hint: [<spec-dir to cut>]
 ---
 
-This command owns the spec roadmap, `spec_dd/1. next/roadmap.md`: the one file that lists every
-spec waiting in `spec_dd/1. next/` or in flight in `spec_dd/2. in progress/`, what each delivers,
-what it depends on, and which can run beside which. It runs at **depth 0**.
+This command owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then every
+spec waiting in `spec_dd/1. next/` or in flight in `spec_dd/2. in progress/`, grouped by feature,
+with its state, its blockers and a dependency diagram. It runs at **depth 0**.
 
 Read `${CLAUDE_PLUGIN_ROOT}/resources/roadmap_format.md` first. It defines the file's shape, how a
-directory is classified, and the row grammar. Everything below assumes it.
+directory is classified, and the bullet grammar. Everything below assumes it. The script
+`${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py` derives statuses, "Up next" and the diagrams; never
+write those by hand.
 
 Two modes:
 
@@ -61,68 +63,62 @@ suffix).
 ## S2: Classify
 
 Sort every directory into effort parent, effort child or standalone per the format file, and note
-where a *needs a cut* flag applies. An effort child belongs to the effort whose parent it names.
+where a *needs a cut* flag applies. An effort child belongs to the feature whose `Parent:` line
+names its parent. A standalone spec belongs to the feature about the same area.
 
 ## S3: Diff
 
 Work out, without writing anything yet:
 
-- **Rows to add**: a directory with no row (a parent gets a `Parent:` line, not a row).
-- **Rows to drop**: a row whose directory is in neither `1. next/` nor `2. in progress/`. Say
-  whether it is now in `3. done/` or is simply gone.
-- **Status to correct**: a row whose Status does not match its directory's location.
-- **Efforts to retire**: an effort whose parent directory is gone and whose rows are all gone.
-- **Precursors to add**: a standalone row that needs a cut but whose Notes cell does not start
-  with `Before starting:`.
-- **Start lists to correct**: a bullet in "Ready to start" or "Needs work on main first" that
-  rule 8 of the format file does not put there (an `in progress` row, a row with unmet
-  dependencies, a row with a precursor listed as ready), and a row the rule puts there that is
-  missing.
+- **Bullets to add**: a directory with no bullet (a parent gets a `Parent:` line, not a bullet),
+  and the feature each goes in.
+- **Bullets to drop**: a bullet whose directory is in neither `1. next/` nor `2. in progress/`.
+  Say whether it is now in `3. done/` or is simply gone.
+- **Blockers to correct**: a `blocked by` list that misses a prerequisite the spec's idea names,
+  or names something that is not one.
+- **Precursors to add**: a bullet that needs a cut but has no `Before starting:` sentence.
+- **Format to fix**: anything that breaks the format file's rules: a spec named by number or
+  shorthand, finished work mentioned, notes that are long, repeated or about done specs.
 
-## S4: Write the new rows (fan-out)
+## S4: Write the new bullets (fan-out)
 
-Each row to add needs a one-line scope, its dependencies and any needs-a-cut reason, read from the
-directory's idea or spec. When four or more rows are missing, spawn one `sdd:sdd-worker` per
-directory writing `.sdd-work/roadmap_entry_<dir>.md` with:
+Each bullet to add needs a scope of at most 20 words, its blockers and any needs-a-cut reason,
+read from the directory's idea or spec. When four or more are missing, spawn one `sdd:sdd-worker`
+per directory writing `.sdd-work/roadmap_entry_<dir>.md` with:
 
-- `scope:` one line, at most 25 words, in the project's words
+- `scope:` one line, at most 20 words, in the project's words
   (`${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`), saying what ships and for whom.
 - `depends_on:` bare directory names the idea or spec names as prerequisites, matched against the
   list of known directories you bake into the prompt. Anything it names that matches nothing goes
   under `unresolved:` with the sentence that implied it.
+- `feature:` the existing feature it belongs to (list them in the prompt), or a proposed new one.
 - `needs_cut:` the reason, or `none`.
 - `status:` footer.
 
-With fewer than four, read the ideas at depth 0 and write the rows yourself. A `needs_cut:`
-reason becomes the row's precursor: its Notes cell starts
-`` Before starting: cut it with `/sdd:roadmap <dir>` (<reason>). ``
+With fewer than four, read the ideas at depth 0 and write the bullets yourself. A `needs_cut:`
+reason becomes the bullet's precursor: `` Before starting: cut it with `/sdd:roadmap <dir>`
+(<reason>). ``
 
 ## S5: Confirm
 
-Print the diff: adds, drops, status corrections, retirements, precursors added, start-list
-corrections, unresolved dependencies, and any cycle in the depends-on graph. A drop whose
-directory is neither done nor in progress is called out on its own line. One `AskUserQuestion`:
-apply, or stop.
+Print the diff: adds (with their features), drops, blocker corrections, precursors added, format
+fixes and unresolved dependencies. A drop whose directory is neither done nor in progress is
+called out on its own line. One `AskUserQuestion`: apply, or stop.
 
-## S6: Rewrite the file
+## S6: Edit and run the script
 
-Rewrite the roadmap whole, per `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`:
+Edit the roadmap per `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`: add and drop bullets,
+correct blockers, add a `##` feature section (heading, one-line intro, bullets) for a new feature,
+and tighten any notes that break the format rules. Then run:
 
-- The header paragraph from the skeleton.
-- "Ready to start": every row with status `next` whose dependencies are all in `3. done/` and
-  whose Notes cell does not start with `Before starting:`.
-- "Needs work on main first": every row with status `next` whose dependencies are all in
-  `3. done/` and whose Notes cell starts with `Before starting:`, with the precursor text from
-  that cell. Existing `Before starting:` notes are kept word for word; a person may have written
-  them.
-- Every effort section: its `Parent:` line, its table, its graph, then its `####` subsections
-  **byte for byte as they were**. Sync never edits those.
-- The Standalone specs table and its graph.
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py "spec_dd/1. next/roadmap.md"
+```
 
-Every graph is drawn from the Depends on cells: ASCII, one block per effort and one for the
-standalone specs, parallel branches side by side as in the skeleton. Then validate: one row per
-directory, every dependency names a known directory or a done name, no cycles, and neither start
-list names an `in progress` row.
+Fix every `PROBLEM:` it prints and run it again until it prints `status: ok`. If it prints
+`effort retired: <parent>`, move that parent to `3. done/` as `/sdd:finish_worktree` Step 4.5
+does. Read `roadmap_diagrams/up-next.svg` and each feature SVG you changed as images, and check
+the names are readable and nothing overlaps.
 
 ## S7: Clean up
 
@@ -130,7 +126,8 @@ Delete this run's `.sdd-work/roadmap_entry_*.md` files by name.
 
 ## S8: Commit
 
-Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md` and commit with
+Delegate to `sdd:sdd-mechanic`: stage `spec_dd/1. next/roadmap.md` and
+`spec_dd/1. next/roadmap_diagrams/`, and commit with
 `git commit`, subject `roadmap: sync the spec roadmap`. Push only when the branch is not
 `main` or `master`. Roadmap bookkeeping normally happens on `main` with no worktree, as in
 `protected/move_spec_to_in_progress.md`, which commits there without pushing.
@@ -216,15 +213,16 @@ leaves it open, and offers concrete options with the recommended one first. Name
 Write `.sdd-work/roadmap_cut_<dir>.md`:
 
 - The effort name and the parent directory.
-- For each child: number, slug, one-line scope, dependencies (as the future directory names
-  `<dir>-N-<slug>`), and the `research_*.md` files that move into it.
+- For each child: its future directory name `<dir>-N-<slug>`, one-line scope, blockers (as
+  directory names, never numbers), and the `research_*.md` files that move into it.
 - Research that stays in the parent because more than one child uses it.
 - Superseded drafts in the parent that the cut replaces, listed for the owner to confirm.
-- The effort-level sections, in the words the roadmap will carry: ordering and parallelism (which
-  run alone, which in parallel, the shortest path to something usable, the cautions where two
-  children touch the same file), decisions already taken, assumptions the ideas make, unknowns
-  resolved inside a spec (owner child and the children it affects), out of scope for all, shared
-  references (mockups, shared research, done specs that shaped the data model, skills to consult).
+- The feature's **Notes**, in the words the roadmap will carry and within the format file's
+  limit of about ten one-line bullets: build order and which children run in parallel, collisions
+  where two children touch the same files, decisions taken, assumptions the ideas make, open
+  questions with the child that owns each, one line of out-of-scope and one line of references.
+  Every spec is named by directory name. Detail beyond that goes in the ideas, which are
+  decision-complete, or in a sibling file in the parent.
 
 Print it. `AskUserQuestion`: accept, adjust (loop back with the changes), or stop.
 
@@ -254,14 +252,13 @@ Delegate to `sdd:sdd-mechanic`, with the cut file's path:
 - `git mv` each research file into the child the cut file names.
 - Prepend the parent blockquote from the format file to `<dir>/idea.md`, filled in.
 - Delete only the superseded drafts the owner confirmed in C4. Nested directories the cut does not
-  cover stay where they are; sync lists them under the effort's "Not yet cut".
+  cover stay where they are; the feature's notes name each in one line as not yet cut.
 
 ## C7: Update the roadmap
 
 Run S1 to S6. The new children classify as effort children from their header lines, the parent
-as an effort parent from its blockquote. The parent's old row goes, and so does its bullet in
-"Needs work on main first": the cut was its precursor. Fold the cut file's effort-level sections in
-as the effort's `####` subsections.
+as an effort parent from its blockquote. The parent's old bullet goes: the cut was its precursor.
+The new feature section carries the children's bullets and the cut file's Notes.
 
 ## C8: Clean up
 

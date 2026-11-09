@@ -279,6 +279,8 @@ fixable = ["ALL"]
 "dev_db/*.py" = ["T20"]
 # sdd QA script — allow print() calls (it is a CLI tool)
 "claude_plugins/sdd/scripts/compress_screenshots.py" = ["T20"]
+# sdd roadmap script — allow print() calls (it is a CLI tool)
+"claude_plugins/sdd/scripts/roadmap.py" = ["T20"]
 # Conftest — allow unused imports (fixtures are imported for side effects)
 "conftest.py" = ["F401"]
 

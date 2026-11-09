@@ -32,9 +32,11 @@ key when the browser server, port finder or a dev-server command is blank. It ma
 own: it delegates to `sdd:qa-data-helper` or runs a `## QA Dev Data` command, and lists each change
 in the report.
 
-`/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
-file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
-adds the effort, its dependency graph and its shared decisions to the roadmap.
+`/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: what is up next, then one
+section per feature listing its specs (in progress, ready or blocked), an SVG dependency diagram
+and lean notes. With no argument it syncs the file with the spec directories; with a directory it
+cuts a big idea into ordered sibling specs and adds them as a feature. `scripts/roadmap.py` derives
+statuses, "Up next" and the diagrams.
 
 `/sdd:register_design [dir] <handoff prompt or claude-design-url>` records a design drawn in Claude
 Design on the spec the current branch is working on (on `main`, on the spec or cut effort's parent you
@@ -81,6 +83,6 @@ spec directory and the screenshot source directory, and refuses either unless it
 declare any word that really is new. The project points at its own sources via
 `## Vocabulary Sources` in `.claude/sdd/config.md`; `writing_standard` — the rules every SDD artifact
 obeys; `commit_and_push` — the commit-and-push steps every artifact command ends with;
-`roadmap_format` — the shape, classification rules and row grammar of the spec roadmap;
+`roadmap_format` — the shape, classification rules and bullet grammar of the spec roadmap;
 `spec_review_dimensions` — the five dimensions of the spec review wave; `plan_review_dimensions` — the
 ten built-in plan review dimensions; `idea_standard` — what an idea must contain before a spec is written from it.

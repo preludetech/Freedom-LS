@@ -20,14 +20,14 @@ These are the five sections of the `todo.md` checklist. Capturing the idea comes
 
 ## Step 0: The spec roadmap
 
-`spec_dd/1. next/roadmap.md` is the spec roadmap: one row per directory in `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it depends on and whether it is waiting or in flight. `docs/product/roadmap.md` is the product roadmap, a different file.
+`spec_dd/1. next/roadmap.md` is the spec roadmap: what is being built next. It opens with "Up next" (specs in progress, specs ready to start, specs that need work on main first, and a diagram of the next three levels of dependencies), then has one section per feature: every spec waiting or in flight with its state, an SVG dependency diagram and lean notes. Specs are always named by directory name, and finished work is left out. `docs/product/roadmap.md` is the product roadmap, a different file.
 
-- `/sdd:roadmap` with no argument syncs the file with the directories: adds rows for new directories, drops rows for finished ones, redraws the dependency graphs.
-- `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
-- "Ready to start" lists the waiting specs whose dependencies are done and that can go straight to `/sdd:start`. "Needs work on main first" lists the ones that can't yet, because something has to happen on main before a worktree branches off, such as a cut. The row's Notes cell says what, starting `Before starting:`.
-- `/sdd:start` warns when a spec has a precursor or its dependencies are not done, flags its row `in progress` and takes it off both start lists. `/sdd:finish_worktree` removes the row, lands the result on `main` and adds any spec it unblocks to the right start list; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
+- `/sdd:roadmap` with no argument syncs the file with the directories: adds bullets for new directories, drops finished ones, and runs `scripts/roadmap.py` to set statuses, regenerate "Up next" and redraw the diagrams.
+- `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds them to the roadmap as a feature with its diagram and notes. The cut goes by user-visible outcome, never by line count.
+- A spec whose bullet ends `Before starting:` has work to do on main first, such as a cut, and is listed under "Needs work on main first" instead of "Ready to start".
+- `/sdd:start` warns when a spec has a precursor or unmet blockers, and the script marks it `in progress`. `/sdd:finish_worktree` removes its bullet and reruns the script, which unblocks whatever waited on it; when the last spec of a cut effort finishes, the feature's section is archived into the parent directory and the parent moves to done.
 
-The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
+The format and the bullet grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
 
 ## Step 1: Capture the idea
 

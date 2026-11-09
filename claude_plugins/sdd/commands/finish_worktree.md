@@ -30,9 +30,10 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 Two notes for its conflict resolution:
 
-- A conflict in `spec_dd/1. next/roadmap.md` means two specs finished close together: it is one
-  row per spec, so keep both sides' removals and status changes, and both sides' bullet edits in
-  "Ready to start" and "Needs work on main first".
+- A conflict in `spec_dd/1. next/roadmap.md` or `spec_dd/1. next/roadmap_diagrams/` means two
+  specs started or finished close together: keep both sides' spec-bullet removals, take either
+  side of "Up next" and the SVGs, then run `python3 claude_plugins/sdd/scripts/roadmap.py
+  "spec_dd/1. next/roadmap.md"`, which regenerates both.
 - A PR that was squash-merged on GitHub replays as conflicts, because the replayed commits are not
   patch-identical to the squash. The rebase returns `blocked`; the human fix is to point the branch
   at `origin/main` (the content is already there) and re-run. Do not automate that.
@@ -119,7 +120,8 @@ Invoke the `update-claude-project-settings` skill to promote useful permissions 
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `close out the worktree`. Tell it to stage the moved spec directory, the
-`todo.md` inside it, `spec_dd/1. next/roadmap.md` and any retired parent directory from Step 4.5,
+`todo.md` inside it, `spec_dd/1. next/roadmap.md`, `spec_dd/1. next/roadmap_diagrams/` and any
+retired parent directory from Step 4.5,
 and any `.claude/settings.json` change from Step 5.
 
 # Step 7: Land on main

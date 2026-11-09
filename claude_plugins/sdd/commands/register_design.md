@@ -193,7 +193,8 @@ design brief), edit its `idea.md` and, if it exists, `1. spec.md`:
 
 Also, in the directory's design brief, replace an instruction to put the mockups beside it with a
 pointer to `design.md`. In `spec_dd/1. next/roadmap.md`, reword the effort's lines that wait on
-mockups landing so they point at `design.md` instead. Do not touch rows, statuses or the graph.
+mockups landing so they point at `design.md` instead. Do not touch spec bullets, "Up next" or the
+diagrams.
 
 Edit only those lines. Never add to a consumer anything the design draws.
 

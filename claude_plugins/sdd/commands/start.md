@@ -18,22 +18,22 @@ continues is `/sdd:start` itself, run again.
 
 This runs before anything is spawned because its answer can be "stop".
 
-If `spec_dd/1. next/roadmap.md` exists and has a row for this spec (the Directory cell is the spec's
-directory name), check its precursor first, then its dependencies.
+If `spec_dd/1. next/roadmap.md` exists and has a bullet for this spec (the line starting
+`` - `<spec directory name>` — ** ``), check its precursor first, then its blockers.
 
 **Precursor.** A worktree branches off main, so work that has to happen on main comes first. The
-spec has a precursor if its row's Notes cell starts with `Before starting:`, or if the directory
+spec has a precursor if its bullet ends with a `Before starting:` sentence, or if the directory
 needs a cut by the test in `claude_plugins/sdd/resources/roadmap_format.md` (more than one
 `idea*.md`, a nested idea or spec, or empty). Say what the precursor is and ask via
 `AskUserQuestion`: "Stop and do it on main first (Recommended)" or "Start anyway". If the answer
 is stop, stop here and name the command that does the precursor, e.g. `/sdd:roadmap <dir>` for a
 cut.
 
-**Dependencies.** Read the row's Depends on cell. A dependency is met when a directory named
-`spec_dd/3. done/*_<name>` exists. For each unmet one, say where it stands (`next` or `in progress`
-per its own row) and ask via `AskUserQuestion` whether to start anyway or stop. This is a warning,
-never a block: an effort's own ordering notes sometimes allow a spec to start before a dependency
-lands. No roadmap, or no row: carry on without comment.
+**Blockers.** Read the bullet's `blocked by` list. A blocker is met when a directory named
+`spec_dd/3. done/*_<name>` exists. For each unmet one, say where it stands (`ready`, `blocked` or
+`in progress` per its own bullet) and ask via `AskUserQuestion` whether to start anyway or stop.
+This is a warning, never a block: a feature's notes sometimes allow a spec to start before a
+blocker lands. No roadmap, or no bullet: carry on without comment.
 
 ## Step 1: Set up the todo list
 
