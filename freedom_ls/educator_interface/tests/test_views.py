@@ -448,15 +448,14 @@ def test_settings_tab_is_present_for_an_organisation_admin(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
-def test_settings_tab_answers_404_for_a_role_without_change_cohort(
-    mock_site_context, logged_in_client, role: str
+def test_settings_tab_answers_404_for_a_cohort_viewer(
+    mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
     grantor = LearnerFactory(user__superuser=True).user
     educator = LearnerFactory(user__staff=True, organisation=organisation).user
-    assign_role(grantor, educator, role, cohort)
+    assign_role(grantor, educator, "cohort_viewer", cohort)
 
     response = logged_in_client(educator).get(
         _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings")
@@ -1364,24 +1363,18 @@ def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     assert not any(url.endswith("/__actions/add_staff_member") for url in footer_urls)
 
 
-@pytest.mark.django_db
-def test_the_settings_tab_is_absent_for_a_cohort_admin(
-    mock_site_context, logged_in_client
-):
-    organisation = OrganisationFactory()
-    cohort = cast(Cohort, CohortFactory(organisation=organisation))
-    grantor = LearnerFactory(user__superuser=True).user
-    educator = LearnerFactory(user__staff=True, organisation=organisation).user
-    assign_role(grantor, educator, "cohort_admin", cohort)
-    client = logged_in_client(educator)
-
-    page = _get_document(
-        client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+def _staff_on(
+    organisation: Organisation, cohort: Cohort, role: str = "cohort_admin"
+) -> User:
+    holder = cast(
+        User, LearnerFactory(user__staff=True, organisation=organisation).user
     )
-    fragment = client.get(_settings_url(organisation, cohort), HTTP_HX_REQUEST="true")
+    assign_role(LearnerFactory(user__superuser=True).user, holder, role, cohort)
+    return holder
 
-    assert not page.cssselect("a[href$='/__tabs/settings']")
-    assert fragment.status_code == 404
+
+def _staff_triggers(section) -> list[str]:
+    return [button.get("hx-get") for button in section.cssselect("button[hx-get]")]
 
 
 def _register_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
@@ -1394,6 +1387,102 @@ def _register_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[
         for button in document.cssselect("button[hx-get]")
         if button.get("hx-get") == url
     ]
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_sees_the_staff_section_alone_on_the_settings_tab(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    me = _staff_on(organisation, cohort)
+    _staff_on(organisation, cohort, "cohort_viewer")
+
+    document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
+
+    page = _settings_url(organisation, cohort)
+    assert f"{page}/__actions/add_staff_member" in _staff_triggers(
+        _staff_section(document)
+    )
+    assert not document.cssselect("form[hx-post$='/__actions/edit']")
+    assert "Deactivating stops" not in document.text_content()
+    assert not document.cssselect("section[data-panel='settings'] footer button")
+
+
+@pytest.mark.django_db
+def test_each_cohort_role_row_offers_remove_from_cohort_except_the_viewers_own(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    me = _staff_on(organisation, cohort)
+    colleague = _staff_on(organisation, cohort, "cohort_viewer")
+
+    document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
+
+    actions = f"{_settings_url(organisation, cohort)}/__actions"
+    assert set(_staff_triggers(_staff_section(document))) == {
+        f"{actions}/remove_staff_from_cohort?user={colleague.pk}&role=cohort_viewer",
+        f"{actions}/add_staff_member",
+    }
+
+
+@pytest.mark.django_db
+def test_an_organisation_role_row_has_no_buttons_and_links_to_staff_for_a_viewer_who_can_open_it(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(
+        LearnerFactory(user__superuser=True).user,
+        admin,
+        "organisation_admin",
+        organisation,
+    )
+    other = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(
+        LearnerFactory(user__superuser=True).user,
+        other,
+        "organisation_admin",
+        organisation,
+    )
+
+    document = _get_document(
+        logged_in_client(admin), _settings_url(organisation, cohort)
+    )
+
+    section = _staff_section(document)
+    (row,) = [
+        li for li in section.cssselect("li") if other.display_name in li.text_content()
+    ]
+    assert "Whole organisation" in row.text_content()
+    assert "Set for the whole organisation." in row.text_content()
+    assert not row.cssselect("button")
+    (link,) = row.cssselect("a[href$='/staff']")
+    assert link.get("href") == _interface_url(organisation.slug, "staff")
+
+
+@pytest.mark.django_db
+def test_an_organisation_role_row_has_no_staff_link_for_a_cohort_admin(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(
+        LearnerFactory(user__superuser=True).user,
+        admin,
+        "organisation_admin",
+        organisation,
+    )
+    me = _staff_on(organisation, cohort)
+
+    document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
+
+    section = _staff_section(document)
+    assert "Set for the whole organisation." in section.text_content()
+    assert not section.cssselect("a[href$='/staff']")
 
 
 @pytest.mark.django_db

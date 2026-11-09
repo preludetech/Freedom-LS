@@ -2,9 +2,13 @@
 {% load panel_tags %}
 {% comment %}
 The cohort's Settings tab: the name field (absent on an inactive cohort),
-the Staff list with its Add button, and the state and delete actions in the
-footer. Context: cohort, rename (the edit action's form context, or None),
-educators (user, role display name pairs), add_staff (the action, or None),
+the Staff list with its Add button and a Remove from cohort button per cohort
+role, and the state and delete actions in the footer. A viewer who may not
+change the cohort sees the Staff section alone. Context: cohort, rename (the
+edit action's form context, or None), educators (CohortEducator rows),
+grantable (role keys the viewer may take off this cohort), edits_own_roles,
+remove_from_cohort_url (empty when unavailable), staff_url (empty when the
+viewer cannot open Staff), can_change, add_staff (the action, or None),
 not_empty_sentence, is_empty.
 {% endcomment %}
 
@@ -21,10 +25,26 @@ not_empty_sentence, is_empty.
             </div>
             {% if educators %}
                 <ul class="m-0 list-none divide-y divide-border p-0">
-                    {% for user, role in educators %}
-                        <li class="flex items-center justify-between gap-3 py-2">
-                            <c-panel-avatar-chip name="{{ user.display_name }}" user_id="{{ user.pk }}" secondary="{% if user.first_name or user.last_name %}{{ user.email }}{% endif %}" class="min-w-0" />
-                            <span class="shrink-0 text-sm text-muted">{{ role }}</span>
+                    {% for educator in educators %}
+                        <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+                            <c-panel-avatar-chip name="{{ educator.user.display_name }}" user_id="{{ educator.user.pk }}" secondary="{% if educator.user.first_name or educator.user.last_name %}{{ educator.user.email }}{% endif %}" class="min-w-0" />
+                            <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
+                                <span class="text-muted">
+                                    {{ educator.display_name }}{% if educator.target == "organisation" %}, Whole organisation{% endif %}
+                                </span>
+                                {% if educator.target == "cohort" %}
+                                    {% if remove_from_cohort_url and educator.role in grantable %}
+                                        {% if educator.user.pk != request.user.pk or edits_own_roles %}
+                                            <c-data-table-actions>
+                                                <c-modal-trigger url="{{ remove_from_cohort_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Remove from cohort" aria_label="Remove {{ educator.user.display_name }} from cohort" variant="secondary" size="small" />
+                                            </c-data-table-actions>
+                                        {% endif %}
+                                    {% endif %}
+                                {% else %}
+                                    <span>Set for the whole organisation.</span>
+                                    {% if staff_url %}<c-button variant="link" href="{{ staff_url }}">Change it in Staff</c-button>{% endif %}
+                                {% endif %}
+                            </div>
                         </li>
                     {% endfor %}
                 </ul>
@@ -33,6 +53,7 @@ not_empty_sentence, is_empty.
             {% endif %}
         </section>
 
+        {% if can_change %}
         <div class="space-y-3 text-sm">
             {% if cohort.is_active %}
                 <p>Deactivating stops this cohort's registrations from giving access to its courses. Learners keep their place and their progress.</p>
@@ -43,5 +64,6 @@ not_empty_sentence, is_empty.
                 <p>{{ not_empty_sentence }}</p>
             {% endif %}
         </div>
+        {% endif %}
     </div>
 {% endblock panel_body %}

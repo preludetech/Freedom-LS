@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, NamedTuple, cast
 
 from django.core.exceptions import ValidationError
@@ -1154,19 +1155,31 @@ def staff_of(organisation: Organisation) -> QuerySet[User]:
     ).order_by("first_name", "last_name", "email", "pk")
 
 
-def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
-    """Active users holding an active assignment on this cohort of any role
-    granting view_cohort, each with the role's display name, gated on an
-    active StaffMember the same way can() gates every cohort-level
-    grant. Ordered by name, then role.
+@dataclass(frozen=True)
+class CohortEducator:
+    """One person who reaches this cohort through a staff role: the role,
+    its display name, and whether it is held on the cohort or on the whole
+    organisation."""
+
+    user: User
+    role: str
+    display_name: str
+    target: RoleTarget
+
+
+def _educators_through(
+    model: type[Model], key: object, cohort: Cohort, target: RoleTarget
+) -> list[CohortEducator]:
+    """The active holders of roles granting view_cohort on one `model` row,
+    gated on an active StaffMember the same way can() gates every grant.
 
     The roles come from the site's config, as every other grant lookup
     reads them, so a downstream role that grants view_cohort is listed and
     an assignment of a role the config no longer names is left out."""
     roles = get_role_config(cohort.site.name)
     assignments = list(
-        _active_role_assignments(Cohort, roles_granting(VIEW_COHORT, cohort.site))
-        .filter(object_id=str(cohort.pk))
+        _active_role_assignments(model, roles_granting(VIEW_COHORT, cohort.site))
+        .filter(object_id=str(key))
         .select_related("user")
     )
     member_user_ids = set(
@@ -1176,19 +1189,38 @@ def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
             user_id__in=[assignment.user_id for assignment in assignments],
         ).values_list("user_id", flat=True)
     )
-    educators = [
-        (assignment.user, roles[assignment.role].display_name, assignment.role)
+    return [
+        CohortEducator(
+            user=assignment.user,
+            role=assignment.role,
+            display_name=roles[assignment.role].display_name,
+            target=target,
+        )
         for assignment in assignments
         if assignment.user.is_active and assignment.user_id in member_user_ids
     ]
+
+
+def cohort_educators(cohort: Cohort) -> list[CohortEducator]:
+    """Everyone who reaches this cohort through a staff role granting
+    view_cohort: assignments on the cohort and on its organisation. Ordered
+    by name, then the cohort's own roles before the organisation's, then
+    role. A site-level admin appears only through such a role."""
+    educators = [
+        *_educators_through(Cohort, cohort.pk, cohort, "cohort"),
+        *_educators_through(
+            Organisation, cohort.organisation_id, cohort, "organisation"
+        ),
+    ]
     educators.sort(
         key=lambda educator: (
-            educator[0].first_name,
-            educator[0].last_name,
-            educator[2],
+            educator.user.first_name,
+            educator.user.last_name,
+            educator.target != "cohort",
+            educator.role,
         )
     )
-    return [(user, display_name) for user, display_name, _ in educators]
+    return educators
 
 
 def _active_staff_user_ids(organisation: Organisation) -> QuerySet:

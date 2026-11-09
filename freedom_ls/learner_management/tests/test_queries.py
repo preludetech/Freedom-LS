@@ -762,18 +762,75 @@ class TestCohortEducators:
         assign_object_role(viewer, cohort, "cohort_viewer")
         roles = get_role_config(cohort.site.name)
 
-        assert cohort_educators(cohort) == [
-            (admin, roles["cohort_admin"].display_name),
-            (viewer, roles["cohort_viewer"].display_name),
+        assert [
+            (e.user, e.display_name, e.target) for e in cohort_educators(cohort)
+        ] == [
+            (admin, roles["cohort_admin"].display_name, "cohort"),
+            (viewer, roles["cohort_viewer"].display_name, "cohort"),
         ]
 
-    def test_an_inactive_staff_member_is_excluded(self, mock_site_context):
+    def test_an_organisation_admin_is_listed_with_an_organisation_target(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        admin = UserFactory()
+        assign_object_role(admin, cohort.organisation, "organisation_admin")
+
+        (educator,) = cohort_educators(cohort)
+
+        assert (educator.user, educator.role, educator.target) == (
+            admin,
+            "organisation_admin",
+            "organisation",
+        )
+
+    def test_the_cohort_role_is_listed_before_the_organisation_role_of_one_person(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        person = UserFactory()
+        assign_object_role(person, cohort.organisation, "organisation_admin")
+        assign_object_role(person, cohort, "cohort_viewer")
+
+        assert [e.target for e in cohort_educators(cohort)] == [
+            "cohort",
+            "organisation",
+        ]
+
+    def test_a_roles_viewer_is_absent_because_its_role_grants_no_view_cohort(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        assign_object_role(
+            UserFactory(), cohort.organisation, "organisation_staff_roles_viewer"
+        )
+
+        assert cohort_educators(cohort) == []
+
+    def test_a_site_admin_with_no_role_here_is_absent(self, mock_site_context):
+        cohort = _make_cohort()
+        UserFactory(staff=True, superuser=True)
+
+        assert cohort_educators(cohort) == []
+
+    @pytest.mark.parametrize("target", ["cohort", "organisation"])
+    def test_an_inactive_staff_member_is_excluded(self, mock_site_context, target):
         cohort = _make_cohort()
         educator = UserFactory()
-        assign_object_role(educator, cohort, "cohort_admin")
+        if target == "cohort":
+            assign_object_role(educator, cohort, "cohort_admin")
+        else:
+            assign_object_role(educator, cohort.organisation, "organisation_admin")
         StaffMember.objects.filter(
             user=educator, organisation=cohort.organisation
         ).update(is_active=False)
+
+        assert cohort_educators(cohort) == []
+
+    def test_an_inactive_account_is_excluded(self, mock_site_context):
+        cohort = _make_cohort()
+        educator = UserFactory(is_active=False)
+        assign_object_role(educator, cohort, "cohort_admin")
 
         assert cohort_educators(cohort) == []
 
@@ -811,7 +868,9 @@ class TestCohortEducators:
         educator = UserFactory()
         assign_object_role(educator, cohort, "cohort_tutor")
 
-        assert cohort_educators(cohort) == [(educator, "Cohort tutor")]
+        assert [(e.user, e.display_name) for e in cohort_educators(cohort)] == [
+            (educator, "Cohort tutor")
+        ]
 
     def test_an_assignment_of_a_role_the_config_lacks_is_left_out(
         self, mock_site_context, mocker: MockerFixture

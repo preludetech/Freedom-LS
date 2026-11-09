@@ -96,12 +96,14 @@ from freedom_ls.educator_interface.actions import (
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
+    RemoveStaffFromCohortAction,
     ResendSetupEmailAction,
     bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
     learner_state_actions,
+    roles_grantable_on,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -174,6 +176,8 @@ from freedom_ls.learner_management.models import (
     StaffMember,
 )
 from freedom_ls.learner_management.queries import (
+    ASSIGN_COHORT_VIEWER,
+    CHANGE_COHORT,
     DELETE_COHORTMEMBERSHIP,
     STAFF_ROLES,
     VIEW_COHORT,
@@ -1529,13 +1533,21 @@ class CohortCourseCompletionPanel(Panel):
 
 class CohortSettingsPanel(Panel):
     """The cohort's Settings tab: its name as a field, its staff with the
-    Add button, and the state and delete actions in the footer. Everything
-    that changes the cohort itself, in one place."""
+    Add button and a Remove from cohort button per cohort role, and the
+    state and delete actions in the footer. Everything that changes the
+    cohort itself, in one place. A cohort admin who cannot change the cohort
+    still gets the Staff section, since they may give cohort roles on it."""
 
     title = "Settings"
     capability = "freedom_ls_learner_management.change_cohort"
     template_name = "educator_interface/panels/cohort_settings.html"
     refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        cohort = cast(Cohort, self.instance)
+        return can(request.user, CHANGE_COHORT, cohort) or can(
+            request.user, ASSIGN_COHORT_VIEWER, cohort
+        )
 
     def get_actions(self) -> list[PanelAction]:
         cohort = cast(Cohort, self.instance)
@@ -1547,6 +1559,7 @@ class CohortSettingsPanel(Panel):
                 success_events=(COHORT_CHANGED,),
             ),
             AddStaffMemberToCohortAction(),
+            RemoveStaffFromCohortAction(),
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
                 success_url=interface_path(cohort.organisation, "cohorts"),
@@ -1555,13 +1568,27 @@ class CohortSettingsPanel(Panel):
 
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
+        user = cast("User", self.request.user)
+        organisation = cohort.organisation
         context = super().get_context_data()
         by_name = {action.action_name: action for action in self.available_actions}
         edit = by_name.get("edit")
+        remove = by_name.get("remove_staff_from_cohort")
         context["cohort"] = cohort
         context["rename"] = edit.get_context_data(self.ctx) if edit else None
         context["add_staff"] = by_name.get("add_staff_member")
+        context["remove_from_cohort_url"] = (
+            remove.get_action_url(self.ctx) if remove else ""
+        )
         context["educators"] = cohort_educators(cohort)
+        context["grantable"] = roles_grantable_on(self.request, cohort)
+        context["can_change"] = can(user, CHANGE_COHORT, cohort)
+        context["staff_url"] = (
+            interface_path(organisation, "staff")
+            if can(user, VIEW_ORGANISATION_STAFF, organisation)
+            else ""
+        )
+        context["edits_own_roles"] = may_edit_own_roles(user, organisation)
         context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
         context["is_empty"] = not context["not_empty_sentence"]
         return context

@@ -66,7 +66,7 @@ from freedom_ls.educator_interface.staff import (
     RoleEntry,
     current_role_entries,
 )
-from freedom_ls.learner_management.capabilities import can
+from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.learner_actions import (
     AddLearnerResult,
     AddOutcome,
@@ -122,6 +122,7 @@ from freedom_ls.learner_management.queries import (
     other_grants_for,
     pickable_staff,
     registerable_courses,
+    role_target,
     staff_assignments,
     staff_of,
 )
@@ -178,6 +179,7 @@ from freedom_ls.role_based_permissions.exceptions import (
     RoleChangeRefused,
 )
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
 
 if TYPE_CHECKING:
@@ -194,6 +196,15 @@ def grantable_roles_for(request: HttpRequest) -> list[GrantableRole]:
         cached = grantable_roles(cast("User", scoped.user), scoped.organisation)
         scoped.grantable_roles = cached
     return cached
+
+
+def roles_grantable_on(request: HttpRequest, cohort: Cohort) -> set[str]:
+    """The role keys the grantor may give or take on this cohort."""
+    return {
+        grantable.role
+        for grantable in grantable_roles_for(request)
+        if grantable.cohorts is not None and cohort in grantable.cohorts
+    }
 
 
 def has_grantable_roles(ctx: PanelContext) -> bool:
@@ -2251,6 +2262,83 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
 
     def _preset(self, ctx: PanelContext) -> Cohort | None:
         return cast(Cohort, ctx.instance)
+
+
+class CohortRoleAction(PanelAction):
+    """An action on one person's one cohort role on this cohort, named by the
+    `user` and `role` parameters. The assignment is re-read on every request;
+    one that is gone or inactive is a 404 that the action route answers with
+    its unavailable fragment."""
+
+    variant = "secondary"
+    renders_in_footer = False
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return ctx.instance
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return ctx.instance is not None and bool(self._grantable(ctx))
+
+    def _grantable(self, ctx: PanelContext) -> set[str]:
+        return roles_grantable_on(ctx.request, cast(Cohort, ctx.instance))
+
+    def _assignment(self, ctx: PanelContext) -> ObjectRoleAssignment:
+        cohort = cast(Cohort, ctx.instance)
+        user = _staff_member_param(ctx)
+        role = _action_params(ctx.request).get("role", "")
+        if role_target(role) != "cohort" or role not in STAFF_ROLES:
+            raise Http404("Not a cohort role")
+        return get_object_or_404(
+            _active_role_assignments(Cohort, frozenset({role})).select_related("user"),
+            user=user,
+            object_id=str(cohort.pk),
+        )
+
+
+class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):
+    """Takes one cohort role off a staff member on this cohort alone."""
+
+    label = "Remove from cohort"
+    action_name = "remove_staff_from_cohort"
+    template_name = (
+        "educator_interface/modal/remove_staff_from_cohort_confirmation.html"
+    )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        assignment = self._assignment(ctx)
+        cohort = cast(Cohort, ctx.instance)
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "staff_member": assignment.user,
+                "role": assignment.role,
+                "role_display_name": get_role_config(cohort.site.name)[
+                    assignment.role
+                ].display_name,
+                "cohort": cohort,
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        assignment = self._assignment(ctx)
+        if assignment.role not in self._grantable(ctx):
+            return denied_response(ctx, self)
+        user = assignment.user
+        try:
+            with transaction.atomic():
+                deactivate_role(
+                    cast("User", ctx.request.user),
+                    user,
+                    assignment.role,
+                    cast(Cohort, ctx.instance),
+                    reason=ctx.reason,
+                )
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
+        return staff_member_changed_response(user)
 
 
 class StaffRoleAction(PanelAction):

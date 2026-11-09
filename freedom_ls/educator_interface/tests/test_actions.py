@@ -5336,11 +5336,11 @@ def test_the_settings_tab_offers_add_member_to_an_organisation_admin(
 
 
 @pytest.mark.django_db
-def test_the_settings_tab_is_hidden_from_a_cohort_admin(
+def test_the_settings_tab_is_hidden_from_a_cohort_viewer(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
-    client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
+    client, _ = _holder_client(logged_in_client, cohort, "cohort_viewer")
 
     response = client.get(
         _cohort_url(organisation, cohort, "/__tabs/settings"), HTTP_HX_REQUEST="true"
@@ -8536,3 +8536,150 @@ def test_an_organisation_admin_adds_a_role_to_themselves(
 
     assert response.status_code == 204
     assert ("cohort_viewer", str(cohort.pk)) in _active_roles(me)
+
+
+def _remove_staff_from_cohort_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(
+        organisation, cohort, "/__tabs/settings/__actions/remove_staff_from_cohort"
+    )
+
+
+def _remove_staff_from_cohort(
+    client: Client, organisation: Organisation, cohort: Cohort, user: User, role: str
+):
+    return _post(
+        client,
+        _remove_staff_from_cohort_url(organisation, cohort),
+        {"user": str(user.pk), "role": role},
+    )
+
+
+@pytest.mark.django_db
+def test_removing_from_a_cohort_deactivates_that_cohorts_role_only(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    other = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", [cohort, other])
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, user, "cohort_viewer"
+    )
+
+    assert response.status_code == 204
+    assert _active_roles(user) == {("cohort_viewer", str(other.pk))}
+    assert AuditLogEntry.unscoped.filter(action="role.deactivated").count() == 1
+
+
+@pytest.mark.django_db
+def test_removing_from_a_cohort_announces_the_staff_change(admin_client, organisation):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, user, "cohort_viewer"
+    )
+
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
+
+
+@pytest.mark.django_db
+def test_the_remove_from_cohort_dialog_names_the_person_the_role_and_the_cohort(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _staff_member_holding(
+        "cohort_viewer", cohort, first_name="Ada", last_name="Lovelace"
+    )
+
+    response = admin_client.get(
+        _remove_staff_from_cohort_url(organisation, cohort),
+        {"user": str(user.pk), "role": "cohort_viewer"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    text = _text(response)
+    assert "Remove Ada Lovelace from Evening group?" in text
+    assert (
+        "Ada Lovelace will lose Cohort viewer on Evening group. "
+        "Their other roles are unchanged." in text
+    )
+
+
+@pytest.mark.django_db
+def test_removing_a_deactivated_cohort_role_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+    deactivate_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, user, "cohort_viewer"
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_removing_a_user_outside_the_staff_from_a_cohort_is_404(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, UserFactory(), "cohort_viewer"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_removing_an_organisation_role_from_a_cohort_is_404(admin_client, organisation):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("organisation_admin", organisation)
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, user, "organisation_admin"
+    )
+
+    assert response.status_code == 404
+    assert _active_roles(user) == {("organisation_admin", str(organisation.pk))}
+
+
+@pytest.mark.django_db
+def test_removing_a_role_the_actor_may_not_grant_from_a_cohort_is_403(
+    admin_client, organisation, monkeypatch
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_admin", cohort)
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles_for",
+        lambda request: [GrantableRole("cohort_viewer", (cohort,))],
+    )
+
+    response = _remove_staff_from_cohort(
+        admin_client, organisation, cohort, user, "cohort_admin"
+    )
+
+    assert response.status_code == 403
+    assert _active_roles(user) == {("cohort_admin", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_removing_themselves_from_a_cohort_is_refused_as_self(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, me = _holder_client(logged_in_client, cohort, "cohort_admin")
+
+    response = _remove_staff_from_cohort(
+        client, organisation, cohort, me, "cohort_admin"
+    )
+
+    assert response.status_code == 422
+    assert REFUSAL_MESSAGES[RefusalReason.SELF].format(name=me.display_name) in _text(
+        response
+    )
+    assert _active_roles(me) == {("cohort_admin", str(cohort.pk))}
