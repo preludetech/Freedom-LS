@@ -39,3 +39,27 @@ def educator_logged_in_page(
     """A Playwright Page logged in as educator_user."""
     _login_via_ui(page, live_server, str(educator_user.email), _LOGGED_IN_PASSWORD)
     return page
+
+
+@pytest.fixture
+def cohort_admin_user(db, live_server_site: Site, mock_site_context: Site) -> User:
+    """A fresh, email-verified staff user who holds no role until a test
+    grants one."""
+    user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)
+    EmailAddress.objects.get_or_create(
+        user=user,
+        email=user.email,
+        defaults={"verified": True, "primary": True},
+    )
+    return user
+
+
+@pytest.fixture
+def cohort_admin_logged_in_page(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    cohort_admin_user: User,
+) -> Page:
+    """A Playwright Page logged in as cohort_admin_user."""
+    _login_via_ui(page, live_server, str(cohort_admin_user.email), _LOGGED_IN_PASSWORD)
+    return page

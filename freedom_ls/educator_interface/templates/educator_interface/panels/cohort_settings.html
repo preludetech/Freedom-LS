@@ -7,7 +7,7 @@ role, and the state and delete actions in the footer. A viewer who may not
 change the cohort sees the Staff section alone. Context: cohort, rename (the
 edit action's form context, or None), educators (CohortEducator rows),
 grantable (role keys the viewer may take off this cohort), edits_own_roles,
-remove_from_cohort_url (empty when unavailable), staff_url (empty when the
+change_role_url and remove_from_cohort_url (empty when unavailable), staff_url (empty when the
 viewer cannot open Staff), can_change, add_staff (the action, or None),
 not_empty_sentence, is_empty.
 {% endcomment %}
@@ -36,6 +36,7 @@ not_empty_sentence, is_empty.
                                     {% if remove_from_cohort_url and educator.role in grantable %}
                                         {% if educator.user.pk != request.user.pk or edits_own_roles %}
                                             <c-data-table-actions>
+                                                {% if change_role_url %}<c-modal-trigger url="{{ change_role_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Change role" aria_label="Change role for {{ educator.user.display_name }}" variant="secondary" size="small" />{% endif %}
                                                 <c-modal-trigger url="{{ remove_from_cohort_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Remove from cohort" aria_label="Remove {{ educator.user.display_name }} from cohort" variant="secondary" size="small" />
                                             </c-data-table-actions>
                                         {% endif %}

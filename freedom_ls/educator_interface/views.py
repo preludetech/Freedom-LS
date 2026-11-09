@@ -82,6 +82,7 @@ from freedom_ls.educator_interface.actions import (
     AddStaffMemberToCohortAction,
     AddToCohortAction,
     ChangeCohortsAction,
+    ChangeRoleAction,
     DeactivateCohortRegistrationAction,
     DeactivateRegistrationAction,
     DeactivateRoleAction,
@@ -1559,6 +1560,7 @@ class CohortSettingsPanel(Panel):
                 success_events=(COHORT_CHANGED,),
             ),
             AddStaffMemberToCohortAction(),
+            ChangeRoleAction(),
             RemoveStaffFromCohortAction(),
             *cohort_state_actions(),
             DeleteEmptyCohortAction(
@@ -1574,12 +1576,14 @@ class CohortSettingsPanel(Panel):
         by_name = {action.action_name: action for action in self.available_actions}
         edit = by_name.get("edit")
         remove = by_name.get("remove_staff_from_cohort")
+        change = by_name.get("change_role")
         context["cohort"] = cohort
         context["rename"] = edit.get_context_data(self.ctx) if edit else None
         context["add_staff"] = by_name.get("add_staff_member")
         context["remove_from_cohort_url"] = (
             remove.get_action_url(self.ctx) if remove else ""
         )
+        context["change_role_url"] = change.get_action_url(self.ctx) if change else ""
         context["educators"] = cohort_educators(cohort)
         context["grantable"] = roles_grantable_on(self.request, cohort)
         context["can_change"] = can(user, CHANGE_COHORT, cohort)

@@ -270,6 +270,22 @@ class AddStaffMemberForm(forms.Form):
         return cleaned
 
 
+class ChangeRoleForm(forms.Form):
+    """The role a staff member should hold on a cohort instead of the one
+    they hold now, among the `roles` offered as (key, display name) pairs."""
+
+    new_role = forms.ChoiceField(widget=forms.RadioSelect, label="Role")
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        roles: list[tuple[str, str]],
+    ) -> None:
+        super().__init__(data)
+        cast(forms.ChoiceField, self.fields["new_role"]).choices = roles
+
+
 class CohortSetForm(forms.Form):
     """The cohorts a role should cover after the change, among the ones
     offered. An empty selection is valid: it means remove the role."""

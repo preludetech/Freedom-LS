@@ -8683,3 +8683,219 @@ def test_a_cohort_admin_removing_themselves_from_a_cohort_is_refused_as_self(
         response
     )
     assert _active_roles(me) == {("cohort_admin", str(cohort.pk))}
+
+
+def _change_role_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(organisation, cohort, "/__tabs/settings/__actions/change_role")
+
+
+def _change_role(
+    client: Client,
+    organisation: Organisation,
+    cohort: Cohort,
+    user: User,
+    role: str,
+    new_role: str,
+    **extra: str,
+):
+    return _post(
+        client,
+        _change_role_url(organisation, cohort),
+        {"user": str(user.pk), "role": role, "new_role": new_role, **extra},
+    )
+
+
+@pytest.mark.django_db
+def test_changing_a_role_writes_deactivation_then_assignment_by_the_same_actor(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, actor = _holder_client(logged_in_client, organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+    earlier = set(AuditLogEntry.unscoped.values_list("pk", flat=True))
+
+    response = _change_role(
+        client,
+        organisation,
+        cohort,
+        user,
+        "cohort_viewer",
+        "cohort_admin",
+        confirmed="1",
+    )
+
+    assert response.status_code == 204
+    assert _active_roles(user) == {("cohort_admin", str(cohort.pk))}
+    entries = list(
+        AuditLogEntry.unscoped.exclude(pk__in=earlier).order_by("created_at", "pk")
+    )
+    assert [entry.action for entry in entries] == ["role.deactivated", "role.assigned"]
+    assert {entry.actor for entry in entries} == {actor}
+
+
+@pytest.mark.django_db
+def test_changing_a_role_announces_the_staff_change(admin_client, organisation):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _change_role(
+        admin_client,
+        organisation,
+        cohort,
+        user,
+        "cohort_viewer",
+        "cohort_admin",
+        confirmed="1",
+    )
+
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
+
+
+@pytest.mark.django_db
+def test_changing_a_role_without_confirming_asks_first_and_changes_nothing(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _staff_member_holding(
+        "cohort_viewer", cohort, first_name="Ada", last_name="Lovelace"
+    )
+
+    response = _change_role(
+        admin_client, organisation, cohort, user, "cohort_viewer", "cohort_admin"
+    )
+
+    assert response.status_code == 200
+    assert "Ada Lovelace will become Cohort admin on Evening group only." in _text(
+        response
+    )
+    assert _active_roles(user) == {("cohort_viewer", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_choosing_the_held_role_answers_422(admin_client, organisation):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _staff_member_holding(
+        "cohort_viewer", cohort, first_name="Ada", last_name="Lovelace"
+    )
+
+    response = _change_role(
+        admin_client,
+        organisation,
+        cohort,
+        user,
+        "cohort_viewer",
+        "cohort_viewer",
+        confirmed="1",
+    )
+
+    assert response.status_code == 422
+    assert "Ada Lovelace already holds Cohort viewer on Evening group." in _text(
+        response
+    )
+
+
+@pytest.mark.django_db
+def test_choosing_a_role_outside_the_choices_answers_422(admin_client, organisation):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _change_role(
+        admin_client,
+        organisation,
+        cohort,
+        user,
+        "cohort_viewer",
+        "organisation_admin",
+        confirmed="1",
+    )
+
+    assert response.status_code == 422
+    assert _active_roles(user) == {("cohort_viewer", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_changing_to_a_role_outside_the_actors_reach_is_403_and_keeps_the_original(
+    admin_client, organisation, monkeypatch
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles_for",
+        lambda request: [GrantableRole("cohort_viewer", (cohort,))],
+    )
+
+    response = _change_role(
+        admin_client,
+        organisation,
+        cohort,
+        user,
+        "cohort_viewer",
+        "cohort_admin",
+        confirmed="1",
+    )
+
+    assert response.status_code == 403
+    assert _active_roles(user) == {("cohort_viewer", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_a_refusal_on_the_new_role_leaves_the_original_active(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, me = _holder_client(logged_in_client, cohort, "cohort_admin")
+
+    response = _change_role(
+        client, organisation, cohort, me, "cohort_admin", "cohort_viewer", confirmed="1"
+    )
+
+    assert response.status_code == 422
+    assert _active_roles(me) == {("cohort_admin", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_changing_a_deactivated_role_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+    deactivate_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
+
+    response = _change_role(
+        admin_client, organisation, cohort, user, "cohort_viewer", "cohort_admin"
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_change_role_dialog_offers_only_grantable_cohort_roles_with_the_held_one_checked(
+    admin_client, organisation, monkeypatch
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _staff_member_holding(
+        "cohort_viewer", cohort, first_name="Ada", last_name="Lovelace"
+    )
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles_for",
+        lambda request: [
+            GrantableRole("cohort_viewer", (cohort,)),
+            GrantableRole("cohort_admin", (cohort,)),
+            GrantableRole("organisation_admin", None),
+        ],
+    )
+
+    response = admin_client.get(
+        _change_role_url(organisation, cohort),
+        {"user": str(user.pk), "role": "cohort_viewer"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    radios = {
+        radio.get("value"): radio.get("checked") is not None
+        for radio in document.cssselect("input[type=radio][name=new_role]")
+    }
+    assert radios == {"cohort_viewer": True, "cohort_admin": False}
+    assert "Change Ada Lovelace's role on Evening group?" in _text(response)

@@ -1410,7 +1410,7 @@ def test_a_cohort_admin_sees_the_staff_section_alone_on_the_settings_tab(
 
 
 @pytest.mark.django_db
-def test_each_cohort_role_row_offers_remove_from_cohort_except_the_viewers_own(
+def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_except_the_viewers_own(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1422,6 +1422,7 @@ def test_each_cohort_role_row_offers_remove_from_cohort_except_the_viewers_own(
 
     actions = f"{_settings_url(organisation, cohort)}/__actions"
     assert set(_staff_triggers(_staff_section(document))) == {
+        f"{actions}/change_role?user={colleague.pk}&role=cohort_viewer",
         f"{actions}/remove_staff_from_cohort?user={colleague.pk}&role=cohort_viewer",
         f"{actions}/add_staff_member",
     }

@@ -11,6 +11,7 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
     AddStaffMemberForm,
+    ChangeRoleForm,
     CohortCourseRegistrationForm,
     CohortSetForm,
     LearnerPickerForm,
@@ -230,3 +231,12 @@ def test_an_empty_cohort_selection_is_valid():
 
     assert form.is_valid()
     assert list(form.cleaned_data["cohorts"]) == []
+
+
+def test_change_role_form_rejects_a_role_outside_its_choices():
+    form = ChangeRoleForm(
+        {"new_role": "organisation_admin"}, roles=[("cohort_admin", "Cohort admin")]
+    )
+
+    assert not form.is_valid()
+    assert "new_role" in form.errors

@@ -50,6 +50,7 @@ from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
     AddStaffMemberForm,
     BulkTargetPickerForm,
+    ChangeRoleForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
@@ -2294,6 +2295,107 @@ class CohortRoleAction(PanelAction):
             user=user,
             object_id=str(cohort.pk),
         )
+
+
+class ChangeRoleAction(CohortRoleAction):
+    """Swaps one cohort role of a staff member on this cohort for another,
+    after a confirm step. Both roles are checked before anything is written,
+    so a refusal leaves the original role active."""
+
+    label = "Change role"
+    action_name = "change_role"
+    template_name = "educator_interface/modal/change_role.html"
+
+    def _cohort_roles(self, ctx: PanelContext) -> list[str]:
+        """The cohort roles among the staff roles, in display order."""
+        return [role for role in STAFF_ROLES if role_target(role) == "cohort"]
+
+    def _role_cards(self, ctx: PanelContext, held: str) -> list[dict[str, object]]:
+        config = get_role_config(cast(Cohort, ctx.instance).site.name)
+        grantable = self._grantable(ctx)
+        return [
+            {
+                "value": role,
+                "display_name": config[role].display_name,
+                "description": config[role].description,
+                "checked": role == held,
+            }
+            for role in self._cohort_roles(ctx)
+            if role in grantable
+        ]
+
+    def _form(
+        self, ctx: PanelContext, data: Mapping[str, str] | None
+    ) -> ChangeRoleForm:
+        config = get_role_config(cast(Cohort, ctx.instance).site.name)
+        return ChangeRoleForm(
+            data,
+            roles=[
+                (role, config[role].display_name) for role in self._cohort_roles(ctx)
+            ],
+        )
+
+    def _dialog_context(
+        self, ctx: PanelContext, assignment: ObjectRoleAssignment
+    ) -> dict[str, object]:
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "step": "form",
+                "staff_member": assignment.user,
+                "role": assignment.role,
+                "cohort": ctx.instance,
+                "role_cards": self._role_cards(ctx, assignment.role),
+                "form_url": self.get_action_url(ctx),
+            }
+        )
+        return context
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return self._dialog_context(ctx, self._assignment(ctx))
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        assignment = self._assignment(ctx)
+        cohort = cast(Cohort, ctx.instance)
+        user = assignment.user
+        form = self._form(ctx, ctx.request.POST)
+        if not form.is_valid():
+            return render(
+                ctx.request,
+                self.template_name,
+                {**self._dialog_context(ctx, assignment), "form": form},
+                status=422,
+            )
+        new_role = str(form.cleaned_data["new_role"])
+        config = get_role_config(cohort.site.name)
+        if new_role == assignment.role:
+            return _refused(
+                ctx,
+                f"{user.display_name} already holds "
+                f"{config[new_role].display_name} on {cohort}.",
+            )
+        grantable = self._grantable(ctx)
+        if assignment.role not in grantable or new_role not in grantable:
+            return denied_response(ctx, self)
+        if ctx.request.POST.get("confirmed") != "1":
+            return render(
+                ctx.request,
+                self.template_name,
+                {
+                    **self._dialog_context(ctx, assignment),
+                    "step": "confirmation",
+                    "new_role": new_role,
+                    "new_role_display_name": config[new_role].display_name,
+                },
+            )
+        grantor = cast("User", ctx.request.user)
+        try:
+            with transaction.atomic():
+                deactivate_role(grantor, user, assignment.role, cohort)
+                assign_role(grantor, user, new_role, cohort)
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
+        return staff_member_changed_response(user)
 
 
 class RemoveStaffFromCohortAction(ReasonMixin, CohortRoleAction):

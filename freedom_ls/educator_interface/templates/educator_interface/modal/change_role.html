@@ -1,0 +1,56 @@
+{% comment %}
+The Change role dialog for one cohort role of one staff member. Context: step
+(form or confirmation), staff_member, role (the role held now), cohort,
+form_url; form adds role_cards (value, display_name, description, checked) and
+form (set again after a refused submit); confirmation adds new_role and
+new_role_display_name.
+{% endcomment %}
+{% if step == "form" %}
+<c-modal-header>Change {{ staff_member.display_name }}'s role on {{ cohort }}?</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button[type='submit']">
+    <input type="hidden" name="user" value="{{ staff_member.pk }}">
+    <input type="hidden" name="role" value="{{ role }}">
+    <div class="space-y-4 px-6 py-4 text-sm">
+        {% if form.errors %}
+        <div data-error-summary tabindex="-1" role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">
+            {{ form.new_role.errors }}
+        </div>
+        {% endif %}
+        <fieldset class="space-y-2">
+            <legend class="mb-2 font-semibold">Role</legend>
+            {% for card in role_cards %}
+            <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
+                <input type="radio" name="new_role" value="{{ card.value }}"{% if card.checked %} checked{% endif %} class="mr-2">
+                <span class="font-semibold">{{ card.display_name }}</span>
+                <span class="mt-1 block text-muted">{{ card.description }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+    </div>
+    <c-modal-footer>
+        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking…">Change role</c-button>
+    </c-modal-footer>
+</form>
+{% else %}
+<c-modal-header>Change {{ staff_member.display_name }}'s role on {{ cohort }}?</c-modal-header>
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button[type='submit']">
+    <input type="hidden" name="user" value="{{ staff_member.pk }}">
+    <input type="hidden" name="role" value="{{ role }}">
+    <input type="hidden" name="new_role" value="{{ new_role }}">
+    <input type="hidden" name="confirmed" value="1">
+    <div class="space-y-3 px-6 py-4 text-sm">
+        <p>{{ staff_member.display_name }} will become {{ new_role_display_name }} on {{ cohort }} only.</p>
+    </div>
+    <c-modal-footer>
+        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Changing…">Change role</c-button>
+    </c-modal-footer>
+</form>
+{% endif %}
