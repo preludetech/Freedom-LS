@@ -289,3 +289,36 @@ def test_the_change_cohorts_dialog_for_a_long_email_fits_a_phone(
     assert box["x"] >= 0
     assert box["x"] + box["width"] <= 375
     assert modal.evaluate("el => el.scrollWidth <= el.clientWidth")
+
+
+@pytest.mark.parametrize("width", [1280, 375])
+def test_staff_search_results_share_the_email_input_left_edge_and_width(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+    width: int,
+) -> None:
+    """The results listbox used to sit indented from the email input it drops
+    down from; it must share the input's left edge and width."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
+    page.set_viewport_size({"width": width, "height": 800})
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
+    modal = page.locator("#app-modal")
+
+    page.locator("#main-content").get_by_role(
+        "button", name="Add staff member", exact=True
+    ).first.click()
+    modal.get_by_label("Email address").fill("existing")
+    listbox = modal.locator("#staff-search-listbox")
+    expect(listbox).to_be_visible()
+
+    input_box = modal.locator("#staff-search-input").bounding_box()
+    list_box = listbox.bounding_box()
+    assert input_box is not None
+    assert list_box is not None
+    assert abs(list_box["x"] - input_box["x"]) <= 1
+    assert abs(list_box["width"] - input_box["width"]) <= 1
