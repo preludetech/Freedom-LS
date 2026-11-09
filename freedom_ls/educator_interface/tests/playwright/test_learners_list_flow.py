@@ -137,7 +137,8 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     header_checkbox.uncheck()
     header_checkbox.check()
     page.get_by_role("button", name=f"Select all {matching} matching").click()
-    main.get_by_role("button", name="Remove from cohort", exact=True).click()
+    main.get_by_role("button", name="More actions").click()
+    main.get_by_role("menuitem", name="Remove from cohort", exact=True).click()
     modal.get_by_label("Cohort").select_option(label="Evening group")
     expect(
         modal.get_by_text(f"Remove {matching} learners from Evening group.")
@@ -154,7 +155,9 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     header_checkbox.uncheck()
     header_checkbox.check()
     main.get_by_role("button", name="More actions").click()
-    expect(main.get_by_role("menuitem", name="Deactivate", exact=True)).to_be_visible()
+    expect(
+        main.get_by_role("menuitem", name="Resend setup email", exact=True)
+    ).to_be_visible()
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
@@ -194,8 +197,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     table = page.locator("#learners-table")
 
     table.locator("thead").get_by_label("Select all on this page").check()
-    main.get_by_role("button", name="More actions").click()
-    main.get_by_role("menuitem", name="Deactivate", exact=True).click()
+    main.get_by_role("button", name="Deactivate", exact=True).click()
     expect(
         modal.get_by_text("You'll get a notification when it finishes.")
     ).to_be_visible()

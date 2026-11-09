@@ -86,6 +86,13 @@ Usage Examples:
       <c-button dropdown="true">Delete</c-button>
   </c-dropdown-menu>
 
+  <!-- A rule between two groups of items -->
+  <c-dropdown-menu>
+      <c-button dropdown="true">Edit</c-button>
+      <c-dropdown-menu-separator />
+      <c-button dropdown="true" tone="error">Delete</c-button>
+  </c-dropdown-menu>
+
   <!-- Custom trigger with icon component -->
   <c-dropdown-menu trigger='<c-icon name="settings" class="size-5" />'>
       <c-button dropdown="true">Settings</c-button>

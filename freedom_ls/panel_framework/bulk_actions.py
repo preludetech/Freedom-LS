@@ -161,10 +161,17 @@ class BulkAction:
 
     label: str = ""
     action_name: str = ""
+    #: Whether the action is destructive: "error" is, any other value is not.
+    #: The selection bar never promotes a destructive action to a button; it
+    #: lists it last under More, in error text.
     variant: str = "secondary"
-    #: The variant of the confirm button in the dialog. `variant` keeps
-    #: driving the trigger in the selection bar.
+    #: The variant of the confirm button in the dialog.
     confirm_variant: str = "primary"
+
+    @property
+    def destructive(self) -> bool:
+        return self.variant == "error"
+
     #: The confirm button's label while the request is in flight.
     loading_text: str = ""
     #: The most rows one run inside the request handles. A selection the

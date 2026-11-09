@@ -4896,7 +4896,7 @@ def test_a_run_is_a_404_through_another_organisations_slug(
 
 
 @pytest.mark.django_db
-def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_under_more(
+def test_the_learners_bar_promotes_four_actions_and_lists_the_rest_with_the_destructive_one_last_under_more(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -4914,19 +4914,19 @@ def test_the_learners_bar_offers_the_cohort_actions_as_buttons_and_the_rest_unde
 
     assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
         "Add to cohort",
-        "Remove from cohort",
-    ]
-    assert labels("[role='menu'] button[formaction]") == [
         "Deactivate",
         "Reactivate",
         "Register for a course",
+    ]
+    assert labels("[role='menu'] button[formaction]") == [
         "Deactivate a course registration",
         "Resend setup email",
+        "Remove from cohort",
     ]
 
 
 @pytest.mark.django_db
-def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_state_actions_under_more(
+def test_the_cohorts_bar_promotes_all_four_actions_and_has_no_more_menu(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -4943,8 +4943,10 @@ def test_the_cohorts_bar_offers_the_registration_actions_as_buttons_and_the_stat
     assert labels("div[data-total-count] > div > fieldset > button[formaction]") == [
         "Register for a course",
         "Deactivate a course registration",
+        "Deactivate",
+        "Reactivate",
     ]
-    assert labels("[role='menu'] button[formaction]") == ["Deactivate", "Reactivate"]
+    assert labels("[role='menu'] button[formaction]") == []
 
 
 # learner import pages

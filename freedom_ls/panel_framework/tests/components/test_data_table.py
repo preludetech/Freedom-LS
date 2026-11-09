@@ -15,12 +15,19 @@ from freedom_ls.panel_framework.tables import ExportColumn
 
 from ..helpers import make_stub
 from ..stub_panels import (
+    StubArchiveBulkAction,
     StubBTablePanel,
     StubBulkAction,
     StubCardDataTable,
+    StubClassifyingBulkAction,
     StubDetailDataTable,
     StubDetailTablePanel,
+    StubDiscardBulkAction,
+    StubExportBulkAction,
+    StubForbiddenBulkAction,
     StubPlainDataTable,
+    StubPurgeBulkAction,
+    StubRecordedBulkAction,
 )
 from ..test_tables import _bind_table_panel
 
@@ -30,6 +37,35 @@ pytestmark = pytest.mark.django_db
 class _BulkDetailTablePanel(StubDetailTablePanel):
     def get_bulk_actions(self) -> list[BulkAction]:
         return [StubBulkAction()]
+
+
+def _bulk_panel(actions: list[BulkAction]) -> type[DataTablePanel]:
+    class _Panel(StubDetailTablePanel):
+        def get_bulk_actions(self) -> list[BulkAction]:
+            return actions
+
+    return _Panel
+
+
+_SEVEN_ACTIONS: list[BulkAction] = [
+    StubBulkAction(),
+    StubDiscardBulkAction(),
+    StubArchiveBulkAction(),
+    StubExportBulkAction(),
+    StubRecordedBulkAction(),
+    StubClassifyingBulkAction(),
+    StubPurgeBulkAction(),
+]
+_FOUR_ACTIONS: list[BulkAction] = [
+    StubBulkAction(),
+    StubArchiveBulkAction(),
+    StubExportBulkAction(),
+    StubRecordedBulkAction(),
+]
+
+
+def _bar_labels(elements: list[lxml.html.HtmlElement]) -> list[str]:
+    return [element.text_content().strip() for element in elements]
 
 
 class _CardDetailDataTable(StubCardDataTable):
@@ -260,3 +296,78 @@ def test_a_table_without_export_columns_renders_no_export_link(
     document = _render(_PlainNoExportTablePanel)
 
     assert "Export CSV" not in document.text_content()
+
+
+def test_the_bar_promotes_the_first_four_non_destructive_actions_as_buttons(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel(_SEVEN_ACTIONS))
+
+    buttons = document.cssselect("fieldset > button[type='submit']")
+    assert _bar_labels(buttons) == ["Mark processed", "Archive", "Export", "Deactivate"]
+
+
+def test_the_more_menu_lists_the_remaining_then_the_destructive_actions(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel(_SEVEN_ACTIONS))
+
+    (menu,) = document.cssselect("fieldset [role='menu']")
+    assert _bar_labels(menu.cssselect("[role='menuitem']")) == [
+        "Mark processed (classified)",
+        "Discard",
+        "Purge",
+    ]
+
+
+def test_the_more_menu_rule_sits_between_the_two_groups(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel(_SEVEN_ACTIONS))
+
+    (menu,) = document.cssselect("fieldset [role='menu']")
+    roles = [child.get("role") for child in menu]
+    assert roles == ["menuitem", "separator", "menuitem", "menuitem"]
+
+
+def test_only_destructive_menu_items_read_in_error_text(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel(_SEVEN_ACTIONS))
+
+    items = document.cssselect("fieldset [role='menuitem']")
+    red = [i.text_content().strip() for i in items if "text-error" in i.get("class")]
+    assert red == ["Discard", "Purge"]
+
+
+def test_four_non_destructive_actions_render_no_menu(mock_site_context: Site) -> None:
+    document = _render(_bulk_panel(_FOUR_ACTIONS))
+
+    assert document.cssselect("fieldset [role='menu']") == []
+
+
+def test_a_menu_of_destructive_actions_alone_has_no_rule(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel([*_FOUR_ACTIONS, StubDiscardBulkAction()]))
+
+    assert len(document.cssselect("fieldset [role='menu'] [role='menuitem']")) == 1
+    assert document.cssselect("fieldset [role='separator']") == []
+
+
+def test_an_action_the_user_may_not_run_is_in_neither_the_bar_nor_the_menu(
+    mock_site_context: Site,
+) -> None:
+    document = _render(_bulk_panel([*_FOUR_ACTIONS, StubForbiddenBulkAction()]))
+
+    assert (
+        "Forbidden bulk action" not in document.cssselect("fieldset")[0].text_content()
+    )
+
+
+def test_no_bar_button_takes_a_filled_variant(mock_site_context: Site) -> None:
+    document = _render(_bulk_panel(_SEVEN_ACTIONS))
+
+    for button in document.cssselect("fieldset .btn"):
+        classes = button.get("class").split()
+        assert not {"btn-secondary", "btn-error", "btn-primary"} & set(classes)

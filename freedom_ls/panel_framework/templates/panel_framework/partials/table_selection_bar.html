@@ -1,7 +1,8 @@
 {% comment %}
 The selection bar: the entry count, then, once a row is checked, the
-selection count and the first two permitted bulk actions as buttons with any
-others under a "More actions" menu, sharing its footer row with the
+selection count and the first four permitted non-destructive bulk actions as
+text buttons, with the others and every destructive action (last, in error
+text, under a rule) under a "More actions" menu, sharing its footer row with the
 pagination, which stays visible regardless of selection. Fixed to the
 bottom of the viewport below lg, where the sidebar is not docked and the bar
 would otherwise scroll out of reach below a long card list or table; the
@@ -34,11 +35,11 @@ list reserves the bar's measured height beneath itself while it is fixed.
             <span class="text-muted">Changing page, sort or filters clears the selection.</span>
         </span>
         <span x-ref="excluded" hidden></span>
-        <fieldset x-show="actionsVisible" class="m-0 flex min-w-0 flex-wrap items-center gap-2 rounded-none border-0 p-0 lg:gap-4">
+        <fieldset x-show="actionsVisible" class="m-0 flex min-w-0 flex-wrap items-center gap-2 rounded-none border-0 p-0">
             {% querystring request.GET as qs %}
-            {% for entry in bulk_actions|slice:":2" %}
+            {% for entry in promoted_bulk_actions %}
                 <c-button type="submit"
-                          variant="{{ entry.action.variant }}"
+                          variant="ghost"
                           size="small"
                           formaction="{{ entry.url }}{{ qs }}"
                           hx-post="{{ entry.url }}{{ qs }}"
@@ -47,36 +48,37 @@ list reserves the bar's measured height beneath itself while it is fixed.
                     {{ entry.action.label }}
                 </c-button>
             {% endfor %}
-            {% with more=bulk_actions|slice:"2:" %}
-                {% if more %}
-                    <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-secondary btn-sm" panel_class="fixed w-48">
-                        <c-slot name="trigger">
-                            More actions
-                        </c-slot>
-                        {% for entry in more %}
-                            <c-button dropdown="true"
-                                      type="submit"
-                                      formaction="{{ entry.url }}{{ qs }}"
-                                      hx-post="{{ entry.url }}{{ qs }}"
-                                      hx-target="#app-modal-body"
-                                      hx-swap="innerHTML">
-                                {{ entry.action.label }}
-                            </c-button>
-                        {% endfor %}
-                    </c-dropdown-menu>
-                    {% comment %}The menu opens through Alpine, so without JavaScript its actions are plain buttons.{% endcomment %}
-                    <noscript>
-                        {% for entry in more %}
-                            <c-button type="submit"
-                                      variant="{{ entry.action.variant }}"
-                                      size="small"
-                                      formaction="{{ entry.url }}{{ qs }}">
-                                {{ entry.action.label }}
-                            </c-button>
-                        {% endfor %}
-                    </noscript>
-                {% endif %}
-            {% endwith %}
+            {% if overflow_bulk_actions %}
+                <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-ghost btn-sm" panel_class="fixed w-64">
+                    <c-slot name="trigger">
+                        More
+                        <c-icon name="dropdown" class="size-4" />
+                    </c-slot>
+                    {% for entry in overflow_bulk_actions %}
+                        {% if entry.separator_before %}<c-dropdown-menu-separator />{% endif %}
+                        <c-button dropdown="true"
+                                  type="submit"
+                                  tone="{% if entry.action.destructive %}error{% endif %}"
+                                  formaction="{{ entry.url }}{{ qs }}"
+                                  hx-post="{{ entry.url }}{{ qs }}"
+                                  hx-target="#app-modal-body"
+                                  hx-swap="innerHTML">
+                            {{ entry.action.label }}
+                        </c-button>
+                    {% endfor %}
+                </c-dropdown-menu>
+                {% comment %}The menu opens through Alpine, so without JavaScript its actions are plain buttons.{% endcomment %}
+                <noscript>
+                    {% for entry in overflow_bulk_actions %}
+                        <c-button type="submit"
+                                  variant="ghost"
+                                  size="small"
+                                  formaction="{{ entry.url }}{{ qs }}">
+                            {{ entry.action.label }}
+                        </c-button>
+                    {% endfor %}
+                </noscript>
+            {% endif %}
         </fieldset>
     </div>
     <c-pagination :page_obj="page_obj"

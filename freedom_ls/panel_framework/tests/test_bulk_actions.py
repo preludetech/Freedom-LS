@@ -48,6 +48,7 @@ from .stub_panels import (
     RecordingCapabilityConfig,
     StubBulkAction,
     StubDataTablePanel,
+    StubDiscardBulkAction,
     StubRecordedBulkAction,
 )
 from .view_helpers import call_view, fetch, make_request
@@ -336,6 +337,11 @@ def test_selection_bar_renders_counts_and_a_live_region(
     assert document.cssselect("[role='status']")
     assert document.cssselect("input[name='mode'][x-ref='modeInput']")
     assert document.cssselect("[x-ref='excluded']")
+
+
+def test_only_an_error_variant_action_is_destructive() -> None:
+    assert not StubBulkAction().destructive
+    assert StubDiscardBulkAction().destructive
 
 
 # -- the confirm-then-act flow, through the resolved URL -------------------

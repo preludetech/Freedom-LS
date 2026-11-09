@@ -6056,7 +6056,7 @@ def test_bulk_deactivate_cancel_is_focused(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_bulk_deactivate_trigger_in_the_selection_bar_is_secondary(
+def test_bulk_deactivate_trigger_in_the_selection_bar_is_a_ghost_button(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -6073,7 +6073,7 @@ def test_bulk_deactivate_trigger_in_the_selection_bar_is_secondary(
         .endswith("/__actions/deactivate")
     ]
     assert triggers
-    assert {trigger.get("data-variant") for trigger in triggers} == {"secondary"}
+    assert {trigger.get("data-variant") for trigger in triggers} == {"ghost"}
 
 
 @pytest.mark.django_db

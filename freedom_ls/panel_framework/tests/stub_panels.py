@@ -259,6 +259,22 @@ class StubExportBulkAction(StubBulkAction):
     action_name = "stub_export_bulk"
 
 
+class StubDiscardBulkAction(StubBulkAction):
+    """A destructive action, so the selection bar lists it last under More."""
+
+    label = "Discard"
+    action_name = "stub_discard_bulk"
+    variant = "error"
+
+
+class StubPurgeBulkAction(StubBulkAction):
+    """A second destructive action, so More holds a destructive group."""
+
+    label = "Purge"
+    action_name = "stub_purge_bulk"
+    variant = "error"
+
+
 class StubRecordedBulkAction(RecordedBulkAction):
     """A recorded action over stub rows, with no host behind it: the hooks
     only note which runs reached them."""
@@ -514,6 +530,7 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
             StubArchiveBulkAction(),
             StubExportBulkAction(),
             StubRecordedBulkAction(),
+            StubDiscardBulkAction(),
         ]
 
     @classmethod

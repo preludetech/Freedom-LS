@@ -11,7 +11,7 @@ import re
 from collections.abc import Callable
 from dataclasses import replace
 from functools import cached_property
-from typing import cast
+from typing import TypedDict, cast
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured
@@ -29,6 +29,37 @@ from freedom_ls.panel_framework.field_display import (
     lookup_field,
 )
 from freedom_ls.panel_framework.tables import DataTable, TableQuery
+
+#: How many permitted, non-destructive bulk actions the selection bar shows
+#: as buttons. Every other action goes under More.
+PROMOTED_BULK_ACTION_COUNT = 4
+
+
+class BulkActionEntry(TypedDict):
+    action: BulkAction
+    url: str
+    #: True on the first destructive entry under More when a
+    #: non-destructive entry sits above it, so the menu draws its rule once.
+    separator_before: bool
+
+
+def promote_bulk_actions(
+    entries: list[BulkActionEntry],
+) -> tuple[list[BulkActionEntry], list[BulkActionEntry]]:
+    """The bar's buttons and the entries under More, from the permitted
+    actions in registration order. Non-destructive actions are promoted
+    first; a destructive action never takes a button, so it is always a
+    deliberate second step from the menu."""
+    non_destructive = [e for e in entries if not e["action"].destructive]
+    destructive = [e for e in entries if e["action"].destructive]
+    promoted = non_destructive[:PROMOTED_BULK_ACTION_COUNT]
+    rest = non_destructive[PROMOTED_BULK_ACTION_COUNT:]
+    # A rule only separates two groups; a menu of destructive actions alone
+    # starts with its first item, not a rule. The entry is copied so the
+    # full list the caller still holds is left as it was.
+    if rest and destructive:
+        destructive[0] = {**destructive[0], "separator_before": True}
+    return promoted, rest + destructive
 
 
 class Panel:
@@ -340,11 +371,19 @@ class DataTablePanel(Panel):
                 region_id=self.region_id,
             )
         )
-        context["bulk_actions"] = [
-            {"action": action, "url": action.get_action_url(self.ctx)}
+        entries: list[BulkActionEntry] = [
+            {
+                "action": action,
+                "url": action.get_action_url(self.ctx),
+                "separator_before": False,
+            }
             for action in self.get_bulk_actions()
             if action.has_permission(self.request)
         ]
+        context["bulk_actions"] = entries
+        context["promoted_bulk_actions"], context["overflow_bulk_actions"] = (
+            promote_bulk_actions(entries)
+        )
         # Every column a full-width cell must span: the data columns, the
         # toggle column when rows have a detail, and the selection column
         # when bulk actions render.

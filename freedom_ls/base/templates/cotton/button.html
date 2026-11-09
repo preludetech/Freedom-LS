@@ -11,6 +11,7 @@
     aria_label=""
     dropdown=""
     class=""
+    tone=""
     size=""
     icon_left=""
     icon_right=""
@@ -19,7 +20,7 @@
 />
 
 {% if dropdown %}
-{% with computed_class="block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors no-underline cursor-pointer "|add:class %}
+{% with computed_class="block w-full text-left px-4 py-2 text-sm hover:bg-surface-2 transition-colors no-underline cursor-pointer "|add:class %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}
@@ -30,7 +31,7 @@
 {% if autofocus %} autofocus{% endif %}
 {% if aria_label %} aria-label="{{ aria_label }}"{% endif %}
 role="menuitem"
-class="{{ computed_class }}"
+class="{{ computed_class }} {% if tone == 'error' %}text-error{% else %}text-muted{% endif %}"
 {{ attrs }}
 >
 {% if icon_left %}<span aria-hidden="true"><c-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}
@@ -98,6 +99,9 @@ Usage Examples:
        carries role="menuitem" — it is meant for the slot of
        <c-dropdown-menu />, whose panel is a role="menu". -->
   <c-button dropdown="true">Dropdown menu item</c-button>
+
+  <!-- A destructive menu item reads in error text. tone takes "" or "error". -->
+  <c-button dropdown="true" tone="error">Delete</c-button>
 
   <!-- With icons. The icon is decorative (aria-hidden): the slot text is the
        button's accessible name, so a screen reader hears "Next", not "next Next". -->

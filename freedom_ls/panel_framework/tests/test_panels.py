@@ -19,10 +19,13 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.actions import DeleteAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import (
+    PROMOTED_BULK_ACTION_COUNT,
+    BulkActionEntry,
     InstanceDetailsPanel,
     Panel,
     PanelStack,
     TabSet,
+    promote_bulk_actions,
 )
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -41,13 +44,20 @@ from .helpers import make_stub, make_stub_child
 from .stub_models import StubChild, StubModel
 from .stub_panels import (
     RecordingCapabilityConfig,
+    StubArchiveBulkAction,
     StubATablePanel,
     StubBaseConfig,
     StubBTablePanel,
+    StubBulkAction,
+    StubClassifyingBulkAction,
     StubDataTablePanel,
     StubDetailsPanel,
+    StubDiscardBulkAction,
+    StubExportBulkAction,
     StubHiddenPanel,
     StubPairStack,
+    StubPurgeBulkAction,
+    StubRecordedBulkAction,
     StubTabSet,
 )
 from .view_helpers import call_view, fetch, make_request
@@ -858,3 +868,84 @@ def test_an_instance_page_adds_nothing_about_the_instance_to_the_menu(
     )
 
     assert "Ada" not in str(groups)
+
+
+def _entry(action: StubBulkAction) -> BulkActionEntry:
+    return {
+        "action": action,
+        "url": f"/{action.action_name}",
+        "separator_before": False,
+    }
+
+
+def _labels(entries: list[BulkActionEntry]) -> list[str]:
+    return [entry["action"].label for entry in entries]
+
+
+def _five_non_destructive() -> list[BulkActionEntry]:
+    return [
+        _entry(StubBulkAction()),
+        _entry(StubArchiveBulkAction()),
+        _entry(StubExportBulkAction()),
+        _entry(StubRecordedBulkAction()),
+        _entry(StubClassifyingBulkAction()),
+    ]
+
+
+def test_promote_bulk_actions_splits_after_the_promoted_count() -> None:
+    promoted, overflow = promote_bulk_actions(_five_non_destructive())
+
+    assert len(promoted) == PROMOTED_BULK_ACTION_COUNT
+    assert _labels(overflow) == ["Mark processed (classified)"]
+
+
+def test_promote_bulk_actions_keeps_registration_order_within_each_list() -> None:
+    entries = [
+        _entry(StubDiscardBulkAction()),
+        *_five_non_destructive(),
+        _entry(StubPurgeBulkAction()),
+    ]
+
+    promoted, overflow = promote_bulk_actions(entries)
+
+    assert _labels(promoted) == ["Mark processed", "Archive", "Export", "Deactivate"]
+    assert _labels(overflow) == ["Mark processed (classified)", "Discard", "Purge"]
+
+
+def test_promote_bulk_actions_never_promotes_a_destructive_action() -> None:
+    promoted, overflow = promote_bulk_actions(
+        [_entry(StubDiscardBulkAction()), _entry(StubBulkAction())]
+    )
+
+    assert _labels(promoted) == ["Mark processed"]
+    assert _labels(overflow) == ["Discard"]
+
+
+def test_promote_bulk_actions_separates_destructive_actions_below_others() -> None:
+    _, overflow = promote_bulk_actions(
+        [
+            *_five_non_destructive(),
+            _entry(StubDiscardBulkAction()),
+            _entry(StubPurgeBulkAction()),
+        ]
+    )
+
+    assert [e["separator_before"] for e in overflow] == [False, True, False]
+
+
+def test_promote_bulk_actions_draws_no_separator_above_destructive_only_overflow() -> (
+    None
+):
+    _, overflow = promote_bulk_actions(
+        [*_five_non_destructive()[:4], _entry(StubDiscardBulkAction())]
+    )
+
+    assert [e["separator_before"] for e in overflow] == [False]
+
+
+def test_promote_bulk_actions_leaves_the_input_list_unchanged() -> None:
+    entries = [*_five_non_destructive(), _entry(StubDiscardBulkAction())]
+
+    promote_bulk_actions(entries)
+
+    assert [e["separator_before"] for e in entries] == [False] * 6
