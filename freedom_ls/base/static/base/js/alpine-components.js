@@ -180,15 +180,39 @@ document.addEventListener("alpine:init", () => {
                 const rect = this.$refs.menuButton.getBoundingClientRect();
                 const panel = this.$refs.menuPanel;
                 if (panel) {
+                    const gap = 8;
+                    panel.style.maxHeight = "";
+                    panel.style.overflowY = "";
+                    // A panel laid out in flow (the organisation switcher inside
+                    // the phone navigation sheet) is placed by the page, not here.
+                    if (getComputedStyle(panel).position !== "fixed") return;
                     const menuWidth = panel.offsetWidth || 160;
                     const menuHeight = panel.offsetHeight;
+                    const spaceBelow = window.innerHeight - rect.bottom - 2 * gap;
+                    const spaceAbove = rect.top - 2 * gap;
 
                     let x = rect.right - menuWidth;
-                    let y = rect.bottom + 8;
+                    if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - gap;
+                    if (x < gap) x = gap;
 
-                    if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
-                    if (x < 8) x = 8;
-                    if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight - 8;
+                    // Below when it fits, above when only that fits; when neither
+                    // does, the roomier side gets a capped, scrolling panel so no
+                    // item ends up off-screen.
+                    let y;
+                    if (menuHeight <= spaceBelow || spaceBelow >= spaceAbove) {
+                        y = rect.bottom + gap;
+                        if (menuHeight > spaceBelow) {
+                            panel.style.maxHeight = spaceBelow + "px";
+                            panel.style.overflowY = "auto";
+                        }
+                    } else {
+                        const height = Math.min(menuHeight, spaceAbove);
+                        if (menuHeight > spaceAbove) {
+                            panel.style.maxHeight = spaceAbove + "px";
+                            panel.style.overflowY = "auto";
+                        }
+                        y = rect.top - height - gap;
+                    }
 
                     panel.style.top = y + "px";
                     panel.style.left = x + "px";
