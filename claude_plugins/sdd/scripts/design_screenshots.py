@@ -4,9 +4,12 @@ Usage: design_screenshots.py <spec-dir>
 
 A Design Artifact's <spec-dir>/design_source/project/canvas.json names the artboards and their
 sizes, and each is rendered from <spec-dir>/design_source/project/<path>: one PNG per artboard, in
-the canvas's order, named `<path without .dc.html, with / as __>.png`. A fixed artboard is captured
-at its drawn width and height; an `expand: "fill"` artboard is captured full-page at its drawn
-width. design.md is not read.
+the canvas's `order` and then any board `order` omits, named `<path without .dc.html, with / as
+__>.png`. A fixed artboard is captured at its drawn width and height; an `expand: "fill"` artboard
+is captured full-page at its drawn width. Every artboard loads `./support.js` from its own folder,
+so `project/support.js` is served at that name in every folder. An artboard that renders blank gets
+no PNG and is named on stderr; the remaining artboards are still captured and the exit status is 1.
+design.md is not read.
 
 Without a canvas.json, the older shapes below apply. Every HTML page at the top level of
 <spec-dir>/design_source/ is rendered, the entry file named on the "Entry file" line of
@@ -74,10 +77,19 @@ SETTLED_JS = """
 }
 """
 
-# An unmounted <x-dc> template or a <dc-import>-only artboard draws nothing.
+# An unmounted <x-dc> template or a <dc-import>-only artboard draws nothing. A board drawn only
+# with CSS (swatches, wireframe boxes) has no text or image but does paint a background.
 BLANK_JS = """
-() => !document.body.innerText.trim()
-   && !document.body.querySelector('img, svg, canvas, video, picture')
+() => {
+  if (document.body.innerText.trim()) return false;
+  if (document.body.querySelector('img, svg, canvas, video, picture')) return false;
+  const painted = [...document.body.querySelectorAll('*')].some((el) => {
+    const style = getComputedStyle(el);
+    return style.backgroundImage !== 'none'
+      || (style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent');
+  });
+  return !painted;
+}
 """
 
 # Finds the frames of a .dc.html document, tags each with its index for the locator, and returns
@@ -118,6 +130,9 @@ FRAMES_JS = """
 # A saved image asset is requested at this root-absolute URL; its id is 32 hex characters.
 BLOB_URL = re.compile(r"^/_blob/([0-9a-f]{32})$")
 
+# Every artboard loads `./support.js` relative to its own folder; one copy serves them all.
+SUPPORT_JS_URL = re.compile(r"^/project/(?:.+/)?support\.js$")
+
 CANVAS_JSON = Path("project") / "canvas.json"
 
 # Chromium's viewport limit; also stops a corrupt size from exhausting memory.
@@ -150,6 +165,14 @@ class DesignScreenshotError(Exception):
     pass
 
 
+class BlankArtboardsError(DesignScreenshotError):
+    """Some artboards rendered blank; the others' PNGs were still written."""
+
+    def __init__(self, blank: list[str], written: list[Path]) -> None:
+        super().__init__(f"{len(blank)} artboard(s) rendered blank: {', '.join(blank)}")
+        self.written = written
+
+
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         return
@@ -157,10 +180,13 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 class SourceHandler(QuietHandler):
     def translate_path(self, path: str) -> str:
-        match = BLOB_URL.match(urlsplit(path).path)
+        url_path = urlsplit(path).path
+        if SUPPORT_JS_URL.match(url_path):
+            return str(Path(self.directory) / "project" / "support.js")
+        match = BLOB_URL.match(url_path)
         if match:
             blobs = Path(self.directory) / "_blob"
-            saved = next(iter(sorted(blobs.glob(f"{match.group(1)}.*"))), None)
+            saved = min(blobs.glob(f"{match.group(1)}.*"), default=None)
             if saved is not None:
                 return str(saved)
         return super().translate_path(path)
@@ -176,8 +202,7 @@ def read_entry_file(spec_dir: Path) -> str:
     return match.group(1)
 
 
-def load_canvas(source: Path) -> dict[str, object]:
-    canvas_json = source / CANVAS_JSON
+def load_canvas(canvas_json: Path) -> dict[str, object]:
     try:
         canvas = json.loads(canvas_json.read_text())
     except (OSError, json.JSONDecodeError) as error:
@@ -209,22 +234,37 @@ def parse_artboard(path: str, board: object, canvas_json: Path) -> Artboard:
     }
 
 
-def read_canvas(source: Path) -> list[Artboard]:
-    canvas_json = source / CANVAS_JSON
-    canvas = load_canvas(source)
-    boards = canvas.get("boards")
-    if not isinstance(boards, dict):
-        raise DesignScreenshotError(f"{canvas_json}: no boards")
+def board_paths(
+    canvas: dict[str, object], boards: dict[str, object], canvas_json: Path
+) -> list[str]:
     order = canvas.get("order")
     if not isinstance(order, list):
-        order = list(boards)
-    project = (source / "project").resolve()
-    artboards: list[Artboard] = []
+        order = []
+    paths: list[str] = []
     for path in order:
         if not isinstance(path, str) or path not in boards:
             raise DesignScreenshotError(
                 f"{canvas_json}: order names {path!r}, not a board"
             )
+        if path not in paths:
+            paths.append(path)
+    for path in boards:
+        if path not in paths:
+            sys.stderr.write(f"{path}: not in order, rendered last\n")
+            paths.append(path)
+    return paths
+
+
+def read_canvas(source: Path) -> list[Artboard]:
+    canvas_json = source / CANVAS_JSON
+    canvas = load_canvas(canvas_json)
+    boards = canvas.get("boards")
+    if not isinstance(boards, dict):
+        raise DesignScreenshotError(f"{canvas_json}: no boards")
+    project = (source / "project").resolve()
+    artboards: list[Artboard] = []
+    stems: dict[str, str] = {}
+    for path in board_paths(canvas, boards, canvas_json):
         file = (project / path).resolve()
         if not file.is_relative_to(project):
             raise DesignScreenshotError(
@@ -234,6 +274,13 @@ def read_canvas(source: Path) -> list[Artboard]:
             raise DesignScreenshotError(
                 f"artboard file not found: {source / 'project' / path}"
             )
+        stem = artboard_stem(path)
+        if stem in stems:
+            raise DesignScreenshotError(
+                f"{canvas_json}: boards {stems[stem]!r} and {path!r} "
+                f"both screenshot as {stem}.png"
+            )
+        stems[stem] = path
         artboards.append(parse_artboard(path, boards[path], canvas_json))
     return artboards
 
@@ -325,9 +372,8 @@ def missing_blob_id(response: Response) -> str | None:
     return match.group(1) if match else None
 
 
-def assert_not_blank(page: Page, artboard: Artboard) -> None:
-    if page.evaluate(BLANK_JS):
-        raise DesignScreenshotError(f"{artboard['path']}: rendered blank")
+def is_blank(page: Page) -> bool:
+    return bool(page.evaluate(BLANK_JS))
 
 
 def screenshot_page(page: Page, path: Path, full_page: bool = False) -> None:
@@ -335,8 +381,9 @@ def screenshot_page(page: Page, path: Path, full_page: bool = False) -> None:
 
 
 def screenshot_canvas_artboard(
-    page: Page, base_url: str, artboard: Artboard, out: Path, taken: set[Path]
-) -> Path:
+    page: Page, base_url: str, artboard: Artboard, out: Path
+) -> Path | None:
+    """Write the artboard's PNG and return its path, or None when the artboard rendered blank."""
     # Sized before loading so an expand: "fill" artboard lays out at its drawn width.
     page.set_viewport_size({"width": artboard["width"], "height": artboard["height"]})
     missing: list[str] = []
@@ -347,15 +394,18 @@ def screenshot_canvas_artboard(
         if blob_id is not None and blob_id not in missing:
             missing.append(blob_id)
 
+    # The listener stays on through the screenshot: a full-page capture can fetch lazy images.
     page.on("response", note_missing)
     try:
         load(page, f"{base_url}/project/{quote(artboard['path'])}")
+        if is_blank(page):
+            sys.stderr.write(f"{artboard['path']}: rendered blank\n")
+            return None
+        page.add_style_tag(content=PREVIEW_CSS)
+        path = out / f"{artboard_stem(artboard['path'])}.png"
+        screenshot_page(page, path, full_page=artboard["fill"])
     finally:
         page.remove_listener("response", note_missing)
-    assert_not_blank(page, artboard)
-    page.add_style_tag(content=PREVIEW_CSS)
-    path = unique_path(out, artboard_stem(artboard["path"]), taken)
-    screenshot_page(page, path, full_page=artboard["fill"])
     for blob_id in missing:
         sys.stderr.write(f"{artboard['path']}: missing blob {blob_id}\n")
     return path
@@ -461,16 +511,20 @@ def capture_canvas(source: Path, out: Path) -> list[Path]:
     # Read before anything is copied or launched, so a missing artboard file fails fast.
     artboards = read_canvas(source)
     written: list[Path] = []
-    taken: set[Path] = set()
+    blank: list[str] = []
     with served_page(source, out, needs_stand_in=False) as (page, base_url):
         for artboard in artboards:
-            written.append(
-                screenshot_canvas_artboard(page, base_url, artboard, out, taken)
-            )
+            path = screenshot_canvas_artboard(page, base_url, artboard, out)
+            if path is None:
+                blank.append(artboard["path"])
+                continue
+            written.append(path)
             fill = " fill" if artboard["fill"] else ""
             sys.stderr.write(
                 f"{artboard['path']}: artboard {artboard['width']}x{artboard['height']}{fill}\n"
             )
+    if blank:
+        raise BlankArtboardsError(blank, written)
     return written
 
 
@@ -500,12 +554,20 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     try:
         written = capture(args.spec_dir)
+    except BlankArtboardsError as error:
+        print_written(error.written)
+        sys.stderr.write(f"design_screenshots: {error}\n")
+        return 1
     except DesignScreenshotError as error:
         sys.stderr.write(f"design_screenshots: {error}\n")
         return 1
+    print_written(written)
+    return 0
+
+
+def print_written(written: list[Path]) -> None:
     for path in written:
         sys.stdout.write(f"{path}\n")
-    return 0
 
 
 if __name__ == "__main__":

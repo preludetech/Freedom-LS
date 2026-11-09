@@ -86,7 +86,7 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 
 Required when a `design.md` applies. It holds one transcription per design state the plan builds, then the token mapping.
 
-**Transcription.** One block per design state, headed by its id: the screenshot's name without `.png` and with `__` as `/` (`<section-id>/<artboard-id>` for a canvas artboard, `<page>/<screen>` for a `.dc.html` screen):
+**Transcription.** One block per design state, headed by its id: the screenshot's file name without `.png`, verbatim (`flows__Signup` for the Design Artifact artboard `project/flows/Signup.dc.html`, `s-1__a` for an older canvas artboard, `index__dashboard` for a `.dc.html` screen):
 
 - the design screenshot path;
 - the viewport width, which is the screenshot's width;

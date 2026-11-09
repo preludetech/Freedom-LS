@@ -131,6 +131,59 @@ def test_canvas_naming_a_missing_artboard_file_exits_1_before_the_browser_starts
     assert not (spec_dir / "design_screenshots").exists()
 
 
+def write_canvas(tmp_path: Path, boards: list[str], order: list[str] | None) -> Path:
+    source = tmp_path / "design_source"
+    project = source / "project"
+    project.mkdir(parents=True)
+    canvas: dict[str, object] = {
+        "boards": {path: {"w": 300, "h": 200} for path in boards}
+    }
+    if order is not None:
+        canvas["order"] = order
+    (project / "canvas.json").write_text(json.dumps(canvas))
+    for path in boards:
+        (project / path).parent.mkdir(parents=True, exist_ok=True)
+        (project / path).write_text("<html></html>")
+    return source
+
+
+def test_read_canvas_appends_boards_order_omits_and_drops_repeats(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange
+    module = load_script_module()
+    source = write_canvas(
+        tmp_path, ["A.dc.html", "B.dc.html", "C.dc.html"], ["B.dc.html", "B.dc.html"]
+    )
+
+    # Act
+    artboards = module.read_canvas(source)
+
+    # Assert
+    assert [artboard["path"] for artboard in artboards] == [
+        "B.dc.html",
+        "A.dc.html",
+        "C.dc.html",
+    ]
+    assert "A.dc.html: not in order, rendered last" in capsys.readouterr().err
+
+
+def test_boards_with_the_same_png_name_exit_1_naming_both(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = make_spec_dir(tmp_path)
+    write_canvas(spec_dir, ["a/b.dc.html", "a__b.dc.html"], None)
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 1
+    assert (
+        "'a/b.dc.html' and 'a__b.dc.html' both screenshot as a__b.png" in result.stderr
+    )
+    assert not (spec_dir / "design_screenshots").exists()
+
+
 @pytest.mark.parametrize(
     ("path", "stem"),
     [("Main.dc.html", "Main"), ("flows/Signup.dc.html", "flows__Signup")],

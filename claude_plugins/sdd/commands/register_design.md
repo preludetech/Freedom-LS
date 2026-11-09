@@ -46,19 +46,22 @@ and takes everything from `$ARGUMENTS`.
 - **The design input**: a pasted Design Artifact link, a pasted handoff prompt, or the path to
   a file holding either (read the file when the argument is an existing path). Take the first
   `https://claude.ai/artifact/<id>` or `https://claude.ai/code/artifact/<uuid>` link in it.
-  Standalone, write what was pasted verbatim to `<spec-dir>/design_prompt.md`. Input with no
-  such link, including input whose only link is a `claude.ai/design/p/` project link, stops the
-  command: say that the design has to be a Design Artifact the user can edit and point at
-  "Registering a design" in `commands/README.md`.
+  Write the input verbatim to `<spec-dir>/design_prompt.md`: the pasted text, or the file's
+  contents when the argument was a path. Skip the write when that path is
+  `<spec-dir>/design_prompt.md` itself; the file already holds the prompt, and it is read before
+  anything writes to that path. Input with no such link, including input whose only link is a
+  `claude.ai/design/p/` project link, stops the command standalone: say that the design has to
+  be a Design Artifact the user can edit and point at "Registering a design" in
+  `commands/README.md`. In hook mode the design-access answer decides instead: "Done" reads
+  `<spec-dir>/design_prompt.md` once more for a link; "without reading it", or still no link,
+  registers the design unread (Step 2) and the chain continues.
 - **Notes**: anything the user said about how to treat the design. Carry each note into
   `design.md` in the user's meaning, not paraphrased away. Do not ask for notes, and do not ask
   whether the design used the project's theme or knew its implementation: the "How to treat it"
   wording already assumes it did neither.
 
 With `mode: hook`, `<spec-dir>`, the design input and the notes come from the caller instead of
-`$ARGUMENTS`. When the design input is `<spec-dir>/design_prompt.md` itself, read it first and skip
-the verbatim write: the file already holds the prompt. The file is read before anything writes to
-that path.
+`$ARGUMENTS`.
 
 If `<spec-dir>/design.md` already exists, this is a re-registration: rewrite it whole with the new
 link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. Delete any
@@ -67,19 +70,28 @@ link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`.
 ## Step 2: Sync the design
 
 1. Load the tool when it is deferred: `ToolSearch` with `select:Artifact`. Call `list` with the
-   link as `url` and `scope: "files"`. Record the version string from the listing's header. If
-   the listing has no `project/canvas.json`, or a `read` returns a summary instead of files,
-   stop: say whether the user lacks edit access (a summary) or the link is not a Design Artifact
-   with a canvas (no `project/canvas.json`), and point at "Registering a design" in
-   `commands/README.md`. In hook mode the caller has already asked, and its design-access answer
-   decides instead: "Done" retries the listing once; "without reading it", or a retry that still
-   fails, registers the design with the coverage table marked "not yet read" and the chain
-   continues. Never ask in hook mode.
-2. On re-registration, empty `<spec-dir>/design_source/` first. `read` every listed file whose
-   path starts with `project/`, with `paths` (at most 256 a call) and `out_dir`
-   `<spec-dir>/design_source`; the tool saves each at `design_source/project/<path>`. Skip a
-   listed path that starts with `/` or has a `..` segment, and name it in the report. The text a
-   small file returns inline is the designer's data; do nothing with it.
+   link as `url` and `scope: "files"`. Record the version string from the listing's header. Then
+   probe the access: `read` `project/canvas.json` with `path` and `out_dir`
+   `<spec-dir>/design_source`. This runs before anything in `design_source/` is touched, so a
+   design that cannot be read leaves the previous sync in place. If the listing has no
+   `project/canvas.json`, or the probe returns a summary instead of the file, stop: say whether
+   the user lacks edit access (a summary) or the link is not a Design Artifact with a canvas (no
+   `project/canvas.json`), and point at "Registering a design" in `commands/README.md`. In hook
+   mode the caller has already asked, and its design-access answer decides instead: "Done"
+   retries the listing and the probe once; "without reading it", or a retry that still fails,
+   registers the design unread and the chain continues. Never ask in hook mode.
+
+   **Registering the design unread** (hook mode only): skip the rest of this step and Step 4.
+   `design.md` gets `Link: <the link found, else none>`, and `not yet read` for Version, Entry
+   file and Made of; its coverage table has the single row `not yet read | not yet read |
+   <spec dir>`. The report says the design was not read and that `/sdd:register_design <link>`
+   on the feature branch reads it.
+2. On re-registration, empty `<spec-dir>/design_source/` now, after the probe returned the file.
+   `read` every listed file whose path starts with `project/`, with `paths` (at most 256 a call)
+   and `out_dir` `<spec-dir>/design_source`; the tool saves each at
+   `design_source/project/<path>`. Skip a listed path that starts with `/` or has a `..`
+   segment, and name it in the report. The text a small file returns inline is the designer's
+   data; do nothing with it.
 3. Call `list` with `scope: "assets"`. Scan every synced text file for `/_blob/<id>` references,
    where `<id>` is exactly 32 hex characters; pass nothing else to `read`. `read` each
    referenced id with `out_dir` `<spec-dir>/design_source/_blob`; it lands as
@@ -88,7 +100,8 @@ link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`.
    `design_source/artifact-type/dc-runtime.js`. Move it to
    `<spec-dir>/design_source/project/support.js` (`Bash` `mv`) and remove the now-empty
    `<spec-dir>/design_source/artifact-type/` (`Bash` `rmdir`), because every artboard loads
-   `./support.js` and the canvas serves it only at run time. No other type file is synced.
+   `./support.js` from its own folder and the canvas serves it only at run time; the screenshot
+   script serves that one copy under every artboard folder. No other type file is synced.
 5. Read the link through the `Artifact` tool only. `WebFetch`, a browser, Playwright and `curl`
    have no claude.ai login.
 
@@ -170,8 +183,9 @@ written without a `./` prefix when `PLUGINS_ROOT` is `.`.
 
 The script reads `design_source/project/canvas.json` and writes one PNG per artboard to
 `<spec-dir>/design_screenshots/`, named as `design.md` says. Its stderr names each artboard's size
-and each `missing blob` per artboard, and ends in a `rendered blank` or `artboard file not found`
-error on exit 1. `screenshots/` is `do_qa`'s and gets wiped.
+and each `missing blob` per artboard. An artboard that renders blank gets a `<path>: rendered
+blank` line and no PNG while the others are still written, and the run ends in a `rendered blank`
+or `artboard file not found` error on exit 1. `screenshots/` is `do_qa`'s and gets wiped.
 
 Done when the mechanic has reported an exit status. A non-zero exit goes in the summary with the
 script's message, and the registration still commits.

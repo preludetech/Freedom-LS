@@ -155,11 +155,12 @@ def make_canvas_spec_dir(tmp_path: Path) -> Path:
     (project / "Fixed.dc.html").write_text(
         ARTBOARD.format(text="Fixed board", extra="", support="./support.js")
     )
+    # A nested artboard loads `./support.js` from its own folder, as the canvas writes it.
     (project / "flows" / "Fill.dc.html").write_text(
         ARTBOARD.format(
             text="Fill board",
             extra=f'<img src="/_blob/{BLOB_ID}">',
-            support="../support.js",
+            support="./support.js",
         )
     )
     (spec_dir / "design_source" / "_blob").mkdir()
@@ -236,23 +237,51 @@ def test_missing_blob_is_reported_once_and_screenshots_still_written(
 
 
 @pytest.mark.playwright
-def test_artboard_that_renders_nothing_exits_1_naming_it(tmp_path: Path) -> None:
+def test_blank_artboard_exits_1_naming_it_and_the_others_are_still_written(
+    tmp_path: Path,
+) -> None:
     # Arrange
-    spec_dir = tmp_path / "2026-09-29 my spec"
+    spec_dir = make_canvas_spec_dir(tmp_path)
     project = spec_dir / "design_source" / "project"
-    project.mkdir(parents=True)
     (project / "Empty.dc.html").write_text(
         '<!doctype html><html><body><x-dc><dc-import name="Other"></dc-import></x-dc>'
         "</body></html>"
     )
-    (project / "canvas.json").write_text(
-        json.dumps({"boards": {"Empty.dc.html": {"w": 300, "h": 200}}})
-    )
+    canvas = json.loads((project / "canvas.json").read_text())
+    canvas["boards"]["Empty.dc.html"] = {"w": 300, "h": 200}
+    canvas["order"] = ["Empty.dc.html", *canvas["order"]]
+    (project / "canvas.json").write_text(json.dumps(canvas))
 
     # Act
     result = run_script(spec_dir)
 
     # Assert
     assert result.returncode == 1
-    assert "Empty.dc.html" in result.stderr
-    assert "rendered blank" in result.stderr
+    assert "Empty.dc.html: rendered blank" in result.stderr
+    out = spec_dir / "design_screenshots"
+    assert sorted(path.name for path in out.iterdir()) == [
+        "Fixed.png",
+        "flows__Fill.png",
+    ]
+
+
+@pytest.mark.playwright
+def test_artboard_drawn_only_with_css_is_not_blank(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = make_canvas_spec_dir(tmp_path)
+    project = spec_dir / "design_source" / "project"
+    (project / "Swatch.dc.html").write_text(
+        "<!doctype html><html><body>"
+        '<div style="width:100px;height:100px;background:#c33"></div></body></html>'
+    )
+    canvas = json.loads((project / "canvas.json").read_text())
+    canvas["boards"]["Swatch.dc.html"] = {"w": 300, "h": 200}
+    (project / "canvas.json").write_text(json.dumps(canvas))
+
+    # Act
+    result = run_script(spec_dir)
+
+    # Assert
+    assert result.returncode == 0, result.stderr
+    assert (spec_dir / "design_screenshots" / "Swatch.png").is_file()
+    assert "Swatch.dc.html: not in order, rendered last" in result.stderr

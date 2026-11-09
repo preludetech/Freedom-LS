@@ -62,11 +62,14 @@ While the mechanic runs:
   Further calls follow while the mechanic runs. Nothing is held back for a question.
 - When `<spec-dir>/design_prompt.md` exists and `<spec-dir>/design.md` does not: load
   `Artifact` (`ToolSearch` with `select:Artifact`), take the link from the file the way
-  `register_design.md` Step 1 does, and call `list` with it as `url` and `scope: "files"`. Ask
-  one question when the file holds no Design Artifact link (only a `claude.ai/design/p/` link,
-  say), the listing has no `project/canvas.json`, or the tool returns a summary: "Get edit access
-  to the design (or move it into Claude), then choose Done (Recommended)" or "Register the design
-  without reading it". The answer is the design-access answer, passed to Step 6.
+  `register_design.md` Step 1 does, call `list` with it as `url` and `scope: "files"`, then
+  `read` `project/canvas.json` with `path` and an `out_dir` under the scratchpad directory, never
+  the spec directory. Ask one question when the file holds no Design Artifact link (only a
+  `claude.ai/design/p/` link, say), the listing has no `project/canvas.json`, or the `read`
+  returns a summary: "Replace the link in `<spec-dir>/design_prompt.md` with the Design
+  Artifact's link (get edit access, or move the design into Claude), then choose Done
+  (Recommended)" or "Register the design without reading it". The answer is the design-access
+  answer, passed to Step 6.
 - Answers stay in context until Step 5.
 
 Then collect the mechanic's return. A `blocked` return is handled as in Step 1 (ask, re-spawn), and the chain continues after it. Done when the mechanic has reported the worktree path.
