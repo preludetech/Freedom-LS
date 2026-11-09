@@ -82,11 +82,13 @@ from freedom_ls.learner_management.queries import (
     own_organisation_for_course,
     peers_of,
     peers_through,
+    pickable_staff,
     registerable_courses_for,
     registerable_courses_for_learner,
     registered_course_pairs,
     site_level_admins,
     staff_of,
+    visible_staff,
 )
 from freedom_ls.learner_management.tests.helpers import AUDIENCE_CASES
 from freedom_ls.learner_management.tests.scenario_world import (
@@ -2511,3 +2513,84 @@ class TestLearnersPermittedFor:
 
         assert can_on_any(nobody, o1, CHANGE_LEARNER) is False
         assert not learners_permitted_for(nobody, o1, CHANGE_LEARNER).exists()
+
+
+def _staff_member_on(
+    cohort: Cohort, role: str = "cohort_viewer", **kwargs: str
+) -> User:
+    user = cast(User, UserFactory(**kwargs))
+    assign_object_role(user, cohort, role)
+    return user
+
+
+@pytest.mark.django_db
+class TestVisibleAndPickableStaff:
+    def test_a_cohort_admin_sees_only_active_staff_on_their_cohorts(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        mine, other = (
+            _make_cohort(organisation=organisation),
+            _make_cohort(organisation=organisation),
+        )
+        actor = _staff_member_on(mine, "cohort_admin")
+        colleague = _staff_member_on(mine)
+        _staff_member_on(other)
+
+        assert list(visible_staff(actor, organisation)) == [colleague]
+        assert list(pickable_staff(actor, organisation)) == [colleague]
+
+    def test_a_cohort_admin_holding_a_viewer_role_on_a_cohort_sees_nobody_there(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        actor = _staff_member_on(cohort, "cohort_viewer")
+        _staff_member_on(cohort)
+
+        assert list(visible_staff(actor, cohort.organisation)) == []
+
+    def test_a_learner_is_pickable_by_an_organisation_admin_only(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        organisation = cohort.organisation
+        learner = LearnerFactory(organisation=organisation).user
+        cohort_admin = _staff_member_on(cohort, "cohort_admin")
+        organisation_admin = cast(User, UserFactory())
+        assign_object_role(organisation_admin, organisation, "organisation_admin")
+
+        assert learner not in pickable_staff(cohort_admin, organisation)
+        assert learner in pickable_staff(organisation_admin, organisation)
+        assert learner not in visible_staff(organisation_admin, organisation)
+
+    def test_a_viewer_role_holder_sees_the_whole_active_staff(self, mock_site_context):
+        cohort = _make_cohort()
+        organisation = cohort.organisation
+        viewer = cast(User, UserFactory())
+        assign_object_role(viewer, organisation, "organisation_staff_viewer")
+        member = _staff_member_on(cohort)
+        no_roles = cast(User, UserFactory())
+        ensure_staff_member(no_roles, organisation)
+
+        assert set(visible_staff(viewer, organisation)) == {member, no_roles}
+
+    def test_excludes_inactive_accounts_inactive_staff_the_actor_and_other_places(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        organisation = cohort.organisation
+        actor = _staff_member_on(cohort, "cohort_admin")
+        _staff_member_on(cohort, is_active=False)
+        lapsed = _staff_member_on(cohort)
+        StaffMember.objects.filter(user=lapsed, organisation=organisation).update(
+            is_active=False
+        )
+        elsewhere = _make_cohort()
+        _staff_member_on(elsewhere)
+        away = User._base_manager.create(
+            site=SiteFactory(), email="away@example.com", is_active=True
+        )
+        assign_object_role(away, cohort, "cohort_viewer")
+
+        assert list(visible_staff(actor, organisation)) == []
+        assert list(pickable_staff(actor, organisation)) == []

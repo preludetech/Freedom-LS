@@ -97,6 +97,7 @@ from freedom_ls.learner_management.queries import (
     ADD_LEARNER,
     ADD_LEARNERCOURSEREGISTRATION,
     ADD_STAFF_MEMBER,
+    ASSIGN_COHORT_VIEWER,
     CHANGE_COHORT,
     CHANGE_COHORTCOURSEREGISTRATION,
     CHANGE_LEARNER,
@@ -119,6 +120,7 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     members_keeping_access,
     other_grants_for,
+    pickable_staff,
     registerable_courses,
     staff_assignments,
     staff_of,
@@ -1628,6 +1630,10 @@ REFUSAL_MESSAGES: dict[RefusalReason, str] = {
     RefusalReason.INACTIVE_STAFF_MEMBER: (
         "{name} is an inactive staff member here. Use Reactivate staff member instead."
     ),
+    RefusalReason.NOT_VISIBLE: (
+        "No staff member you can add has this email. "
+        "Ask an organisation admin to add them."
+    ),
 }
 
 OTHER_SITE_MESSAGE = (
@@ -1790,9 +1796,21 @@ class AddStaffMemberAction(PanelAction):
 
     def _match(self, ctx: PanelContext, email: str) -> User | HttpResponse | None:
         """The account for `email`, None when there is none yet, or the
-        response that says why the address cannot be used."""
+        response that says why the address cannot be used. Someone who may
+        add staff looks up any address; anyone else matches only the people
+        they may pick, with one message for every miss so the answer never
+        reveals whether an account exists."""
+        organisation = _organisation(ctx)
+        actor = cast("User", ctx.request.user)
+        if not can(actor, ADD_STAFF_MEMBER, organisation):
+            user = (
+                pickable_staff(actor, organisation).filter(email__iexact=email).first()
+            )
+            if user is None:
+                return _refused(ctx, REFUSAL_MESSAGES[RefusalReason.NOT_VISIBLE])
+            return user
         try:
-            user = lookup_user(_organisation(ctx).site, email)
+            user = lookup_user(organisation.site, email)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
         return user
@@ -2117,13 +2135,21 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
     """Add a staff member on a cohort's page, with the cohort fixed. Rendered by
     the Settings panel beside its Staff heading, not in the footer."""
 
-    capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
+    capability = ASSIGN_COHORT_VIEWER
     renders_in_footer = False
     offerable_roles = ("cohort_admin", "cohort_viewer")
     offers_no_role = False
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return ctx.instance
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return (
+            super().is_offered(ctx)
+            and pickable_staff(
+                cast("User", ctx.request.user), _organisation(ctx)
+            ).exists()
+        )
 
     def _grantable(self, ctx: PanelContext) -> list[GrantableRole]:
         cohort = cast(Cohort, ctx.instance)

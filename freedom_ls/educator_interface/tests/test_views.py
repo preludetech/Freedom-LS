@@ -1345,6 +1345,7 @@ def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
+    LearnerFactory(organisation=organisation)
     cohort = cast(Cohort, CohortFactory(organisation=organisation))
 
     document = _get_document(staff_client, _settings_url(organisation, cohort))

@@ -92,6 +92,7 @@ VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 VIEW_CONVERSATION = "freedom_ls_comms.view_conversation"
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"
 ADD_STAFF_MEMBER = "freedom_ls_learner_management.add_staffmember"
+ASSIGN_COHORT_VIEWER = "freedom_ls_role_based_permissions.assign_cohort_viewer"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
@@ -1188,3 +1189,60 @@ def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
         )
     )
     return [(user, display_name) for user, display_name, _ in educators]
+
+
+def _active_staff_user_ids(organisation: Organisation) -> QuerySet:
+    """The ids of the organisation's active staff members. _base_manager,
+    because the organisation handled is not always the Site the current
+    request is for, and the site-aware manager would hide its rows."""
+    return StaffMember._base_manager.filter(
+        organisation=organisation, is_active=True
+    ).values("user_id")
+
+
+def _visible_staff_user_ids(actor: User, organisation: Organisation) -> QuerySet:
+    active = _active_staff_user_ids(organisation)
+    if can(actor, VIEW_ORGANISATION_STAFF, organisation):
+        return active
+    cohorts = cohorts_visible_to(actor, organisation, capability=ASSIGN_COHORT_VIEWER)
+    cohort_keys = cohorts.annotate(key=Cast("pk", output_field=CharField())).values(
+        "key"
+    )
+    cohort_roles = frozenset(STAFF_ROLES) - frozenset(ORGANISATION_ROLES)
+    return (
+        _active_role_assignments(Cohort, cohort_roles)
+        .filter(object_id__in=cohort_keys, user_id__in=active)
+        .values("user_id")
+    )
+
+
+def _people(actor: User, organisation: Organisation, user_ids: Q) -> QuerySet[User]:
+    """Active accounts on the organisation's site matching `user_ids`,
+    without the actor, by name. `site` is filtered by hand: the user
+    model's manager does not narrow by the request's site."""
+    from freedom_ls.accounts.models import User
+
+    return (
+        User.objects.filter(user_ids, site=organisation.site, is_active=True)
+        .exclude(pk=actor.pk)
+        .order_by("first_name", "last_name", "email", "pk")
+    )
+
+
+def visible_staff(actor: User, organisation: Organisation) -> QuerySet[User]:
+    """The staff whose names `actor` may see here: everyone active on the
+    staff for a holder of view_organisation_staff, otherwise the active staff
+    holding a role on a cohort the actor may give cohort_viewer on."""
+    return _people(
+        actor, organisation, Q(pk__in=_visible_staff_user_ids(actor, organisation))
+    )
+
+
+def pickable_staff(actor: User, organisation: Organisation) -> QuerySet[User]:
+    """Who `actor` may pick when adding staff: their visible staff, plus
+    the organisation's active learners for someone who may add staff."""
+    user_ids = Q(pk__in=_visible_staff_user_ids(actor, organisation))
+    if can(actor, ADD_STAFF_MEMBER, organisation):
+        learners = Learner.objects.filter(organisation=organisation, is_active=True)
+        user_ids |= Q(pk__in=learners.values("user_id"))
+    return _people(actor, organisation, user_ids)

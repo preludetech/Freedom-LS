@@ -31,6 +31,8 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.educator_interface import actions as actions_module
 from freedom_ls.educator_interface.actions import (
+    REFUSAL_MESSAGES,
+    AddStaffMemberToCohortAction,
     AddToCohortBulkAction,
     CohortCourseBulkAction,
     DeactivateCohortRegistrationBulkAction,
@@ -50,7 +52,7 @@ from freedom_ls.educator_interface.events import (
     STAFF_CHANGED,
 )
 from freedom_ls.educator_interface.staff import current_role_entries
-from freedom_ls.educator_interface.views import OrganisationScopedRequest
+from freedom_ls.educator_interface.views import CohortConfig, OrganisationScopedRequest
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -96,6 +98,7 @@ from freedom_ls.panel_framework.bulk_runs import (
     run_bulk_action,
     run_summary,
 )
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.panel_framework.tasks import _run_bulk_action_task
 from freedom_ls.role_based_permissions.exceptions import (
@@ -5299,6 +5302,7 @@ def test_the_settings_tab_offers_add_member_to_an_organisation_admin(
     admin_client, organisation
 ):
     cohort = _cohort(organisation)
+    LearnerFactory(organisation=organisation)
 
     html = admin_client.get(
         _cohort_url(organisation, cohort, "/__tabs/settings")
@@ -8147,3 +8151,122 @@ def test_a_bulk_action_that_does_not_exist_answers_the_dialog(staff_client: Clie
 
     assert response.status_code == 404
     assert "This is no longer available" in _bulk_text(response)
+
+
+# who a cohort admin may add
+#
+# The cohort Settings tab does not open for a cohort admin yet, so these call
+# the action directly with the admin's request.
+
+
+@pytest.fixture
+def cohort_admin_setup(
+    organisation: Organisation,
+) -> tuple[Cohort, User]:
+    cohort = _cohort(organisation)
+    admin = cast(User, UserFactory(staff=True))
+    assign_role(UserFactory(superuser=True), admin, "cohort_admin", cohort)
+    return cohort, admin
+
+
+def _cohort_admin_ctx(
+    organisation: Organisation,
+    cohort: Cohort,
+    admin: User,
+    data: dict[str, str] | None = None,
+) -> PanelContext:
+    request = RequestFactory().post("/", data or {}, HTTP_HX_REQUEST="true")
+    request.user = admin
+    request.organisation = organisation
+    return PanelContext(
+        request=request,
+        instance=cohort,
+        base_url="/",
+        name="",
+        config=CohortConfig,
+    )
+
+
+def _lookup_in_cohort(
+    organisation: Organisation, cohort: Cohort, admin: User, email: str
+):
+    ctx = _cohort_admin_ctx(
+        organisation, cohort, admin, {"step": "lookup", "email": email}
+    )
+    return AddStaffMemberToCohortAction().handle_submit(ctx)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_misses_answer_422_with_one_identical_body(
+    cohort_admin_setup, organisation
+):
+    cohort, admin = cohort_admin_setup
+    learner = LearnerFactory(organisation=organisation).user
+    unseen = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    users_before = User._base_manager.count()
+
+    responses = [
+        _lookup_in_cohort(organisation, cohort, admin, email)
+        for email in (learner.email, "nobody@example.com", unseen.email)
+    ]
+
+    assert {response.status_code for response in responses} == {422}
+    assert len({response.content for response in responses}) == 1
+    assert REFUSAL_MESSAGES[RefusalReason.NOT_VISIBLE] in _text(responses[0])
+    assert User._base_manager.count() == users_before
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_can_pick_staff_on_their_own_cohort(
+    cohort_admin_setup, organisation
+):
+    cohort, admin = cohort_admin_setup
+    colleague = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _lookup_in_cohort(organisation, cohort, admin, colleague.email)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_forged_submit_naming_someone_unpickable_answers_422(
+    cohort_admin_setup, organisation
+):
+    cohort, admin = cohort_admin_setup
+    learner = LearnerFactory(organisation=organisation).user
+    ctx = _cohort_admin_ctx(
+        organisation,
+        cohort,
+        admin,
+        {
+            "step": "submit",
+            "email": learner.email,
+            "role": "cohort_viewer",
+            "cohorts": str(cohort.pk),
+            "confirmed": "1",
+        },
+    )
+
+    response = AddStaffMemberToCohortAction().handle_submit(ctx)
+
+    assert response.status_code == 422
+    assert not ObjectRoleAssignment.objects.filter(
+        user=learner, role="cohort_viewer"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_add_staff_to_a_cohort_is_offered_only_when_there_is_someone_to_pick(
+    cohort_admin_setup, organisation
+):
+    cohort, admin = cohort_admin_setup
+
+    def offered() -> bool:
+        ctx = _cohort_admin_ctx(organisation, cohort, admin)
+        return AddStaffMemberToCohortAction().is_offered(ctx)
+
+    assert not offered()
+
+    _staff_member_holding("cohort_viewer", cohort)
+
+    assert offered()

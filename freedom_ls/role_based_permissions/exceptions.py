@@ -13,6 +13,7 @@ class RefusalReason(StrEnum):
     LAST_ORGANISATION_ADMIN = "last_organisation_admin"
     ALREADY_STAFF = "already_staff"
     INACTIVE_STAFF_MEMBER = "inactive_staff_member"
+    NOT_VISIBLE = "not_visible"
 
 
 class RoleChangeRefused(Exception):  # noqa: N818 - callers catch this name, so it is public API
