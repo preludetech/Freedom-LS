@@ -121,7 +121,9 @@ def test_an_organisation_admin_assigning_in_another_organisation_is_refused(
 
 
 @pytest.mark.django_db
-def test_a_cohort_admin_assigning_anything_is_refused(mock_site_context: Site) -> None:
+def test_a_cohort_admin_assigning_an_organisation_role_is_refused(
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory()
@@ -129,9 +131,82 @@ def test_a_cohort_admin_assigning_anything_is_refused(mock_site_context: Site) -
     user = UserFactory()
 
     with pytest.raises(RoleChangeRefused) as exc_info:
-        assign_role(grantor, user, "cohort_viewer", cohort)
+        assign_role(grantor, user, "organisation_admin", organisation)
 
     assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
+
+
+@pytest.mark.django_db
+def test_an_organisation_role_on_a_cohort_is_refused(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory(superuser=True)
+
+    with pytest.raises(RoleChangeRefused) as exc_info:
+        assign_role(grantor, UserFactory(), "organisation_staff_viewer", cohort)
+
+    assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
+
+
+@pytest.mark.django_db
+def test_a_cohort_role_on_an_organisation_is_refused(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    grantor = UserFactory(superuser=True)
+
+    with pytest.raises(RoleChangeRefused) as exc_info:
+        assign_role(grantor, UserFactory(), "cohort_viewer", organisation)
+
+    assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_may_grant_the_viewer_roles_on_the_whole_organisation(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    grantor = UserFactory()
+    assign_object_role(grantor, organisation, "organisation_admin")
+
+    grantable = {
+        g.role: g.cohorts
+        for g in grantable_roles(grantor, organisation)
+        if g.role.startswith("organisation_staff")
+    }
+
+    assert grantable == {
+        "organisation_staff_viewer": None,
+        "organisation_staff_roles_viewer": None,
+    }
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_may_not_grant_the_viewer_roles(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, cohort, "cohort_admin")
+
+    roles = [g.role for g in grantable_roles(grantor, organisation)]
+
+    assert not [role for role in roles if role.startswith("organisation_")]
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_may_grant_cohort_admin_on_their_own_cohorts(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Own")
+    CohortFactory(organisation=organisation, name="Other")
+    grantor = UserFactory()
+    assign_object_role(grantor, cohort, "cohort_admin")
+
+    assert _grantable(grantor, organisation) == [
+        ("cohort_admin", ["Own"]),
+        ("cohort_viewer", ["Own"]),
+    ]
 
 
 @pytest.mark.django_db
@@ -336,6 +411,8 @@ def test_a_superuser_may_grant_every_role_on_every_active_cohort(
 
     assert result == [
         ("organisation_admin", None),
+        ("organisation_staff_viewer", None),
+        ("organisation_staff_roles_viewer", None),
         ("cohort_admin", [cohort_a.name, cohort_b.name]),
         ("cohort_viewer", [cohort_a.name, cohort_b.name]),
     ]
@@ -354,6 +431,8 @@ def test_a_site_admin_may_grant_every_role_on_every_active_cohort(
 
     assert result == [
         ("organisation_admin", None),
+        ("organisation_staff_viewer", None),
+        ("organisation_staff_roles_viewer", None),
         ("cohort_admin", [cohort.name]),
         ("cohort_viewer", [cohort.name]),
     ]
@@ -372,20 +451,19 @@ def test_an_organisation_admin_may_grant_every_role_on_every_active_cohort(
 
     assert result == [
         ("organisation_admin", None),
+        ("organisation_staff_viewer", None),
+        ("organisation_staff_roles_viewer", None),
         ("cohort_admin", [cohort.name]),
         ("cohort_viewer", [cohort.name]),
     ]
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
-def test_a_cohort_level_role_holder_may_grant_nothing(
-    mock_site_context: Site, role: str
-) -> None:
+def test_a_cohort_viewer_may_grant_nothing(mock_site_context: Site) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory()
-    assign_object_role(grantor, cohort, role)
+    assign_object_role(grantor, cohort, "cohort_viewer")
 
     assert grantable_roles(grantor, organisation) == []
 
@@ -408,7 +486,7 @@ def test_an_inactive_cohort_is_not_grantable(mock_site_context: Site) -> None:
 
     result = _grantable(grantor, organisation)
 
-    assert result[1:] == [
+    assert result[3:] == [
         ("cohort_admin", [active.name]),
         ("cohort_viewer", [active.name]),
     ]

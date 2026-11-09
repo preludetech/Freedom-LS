@@ -48,6 +48,10 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_role_based_permissions.assign_organisation_admin",
                     "freedom_ls_role_based_permissions.assign_cohort_admin",
                     "freedom_ls_role_based_permissions.assign_cohort_viewer",
+                    "freedom_ls_learner_management.view_organisation_staff",
+                    "freedom_ls_learner_management.view_organisation_staff_roles",
+                    "freedom_ls_role_based_permissions.assign_organisation_staff_viewer",
+                    "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer",
                     # FUTURE: add freedom_ls_role_based_permissions.* custom permissions as site admin features are built
                 }
             ),
@@ -70,6 +74,8 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.change_learnercourseregistration",
                     # Custom permissions
                     "freedom_ls_learner_management.download_cohort_report",
+                    "freedom_ls_role_based_permissions.assign_cohort_admin",
+                    "freedom_ls_role_based_permissions.assign_cohort_viewer",
                     # FUTURE: add course-level permissions as features are built
                 }
             ),
@@ -122,6 +128,31 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_role_based_permissions.assign_organisation_admin",
                     "freedom_ls_role_based_permissions.assign_cohort_admin",
                     "freedom_ls_role_based_permissions.assign_cohort_viewer",
+                    "freedom_ls_learner_management.view_organisation_staff",
+                    "freedom_ls_learner_management.view_organisation_staff_roles",
+                    "freedom_ls_role_based_permissions.assign_organisation_staff_viewer",
+                    "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer",
+                }
+            ),
+        ),
+        "organisation_staff_viewer": Role(
+            display_name="Organisation staff viewer",
+            assignment_scope=SCOPE_OBJECT,
+            lti_role=None,
+            description="Sees who is on the organisation's staff, and changes nothing.",
+            permissions=frozenset(
+                {"freedom_ls_learner_management.view_organisation_staff"}
+            ),
+        ),
+        "organisation_staff_roles_viewer": Role(
+            display_name="Organisation staff and roles viewer",
+            assignment_scope=SCOPE_OBJECT,
+            lti_role=None,
+            description="Sees who is on the organisation's staff and the roles they hold, and changes nothing.",
+            permissions=frozenset(
+                {
+                    "freedom_ls_learner_management.view_organisation_staff",
+                    "freedom_ls_learner_management.view_organisation_staff_roles",
                 }
             ),
         ),

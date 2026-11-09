@@ -22,6 +22,8 @@ class TestBaseRoles:
             "cohort_admin",
             "cohort_viewer",
             "organisation_admin",
+            "organisation_staff_viewer",
+            "organisation_staff_roles_viewer",
             "system_admin",
             "learner",
             "observer",
@@ -99,9 +101,49 @@ class TestBaseRoles:
         )
 
 
+def test_the_staff_viewer_roles_exist_with_their_display_names() -> None:
+    assert BASE_ROLES["organisation_staff_viewer"].display_name == (
+        "Organisation staff viewer"
+    )
+    assert BASE_ROLES["organisation_staff_roles_viewer"].display_name == (
+        "Organisation staff and roles viewer"
+    )
+
+
+def test_the_roles_viewer_holds_everything_the_staff_viewer_holds() -> None:
+    staff_viewer = BASE_ROLES["organisation_staff_viewer"].permissions
+    roles_viewer = BASE_ROLES["organisation_staff_roles_viewer"].permissions
+
+    assert staff_viewer < roles_viewer
+
+
+@pytest.mark.parametrize(
+    "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
+)
+def test_a_staff_viewer_role_holds_no_assign_permission(role: str) -> None:
+    held = BASE_ROLES[role].permissions
+
+    assert not [permission for permission in held if ".assign_" in permission]
+
+
+@pytest.mark.parametrize("codename", ["assign_cohort_admin", "assign_cohort_viewer"])
+def test_a_cohort_admin_may_grant_both_cohort_roles(codename: str) -> None:
+    held = BASE_ROLES["cohort_admin"].permissions
+
+    assert f"freedom_ls_role_based_permissions.{codename}" in held
+
+
 @pytest.mark.parametrize(
     ("role", "description"),
     [
+        (
+            "organisation_staff_viewer",
+            "Sees who is on the organisation's staff, and changes nothing.",
+        ),
+        (
+            "organisation_staff_roles_viewer",
+            "Sees who is on the organisation's staff and the roles they hold, and changes nothing.",
+        ),
         ("site_admin", "Full access to every organisation on this site."),
         (
             "organisation_admin",

@@ -66,6 +66,17 @@ class TestRoleEntryScope:
         assert _entry("organisation_admin").scope == "Whole organisation"
 
     @pytest.mark.parametrize(
+        "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
+    )
+    def test_a_viewer_role_targets_the_organisation_and_reads_whole_organisation(
+        self, mock_site_context: Site, role: str
+    ) -> None:
+        entry = _entry(role)
+
+        assert entry.target == "organisation"
+        assert entry.scope == "Whole organisation"
+
+    @pytest.mark.parametrize(
         ("names", "expected"),
         [
             (["Alpha"], "Alpha"),
@@ -106,6 +117,26 @@ class TestMemberRoleEntries:
         entries = staff_role_entries(_loaded(user, organisation), mock_site_context)
 
         assert [e.role for e in entries] == ["organisation_admin", "cohort_viewer"]
+
+    def test_an_organisation_assignment_of_a_viewer_role_becomes_an_entry(
+        self, mock_site_context: Site
+    ) -> None:
+        organisation = OrganisationFactory()
+        user = UserFactory()
+        assign_role(
+            UserFactory(superuser=True),
+            user,
+            "organisation_staff_roles_viewer",
+            organisation,
+        )
+
+        (entry,) = staff_role_entries(_loaded(user, organisation), mock_site_context)
+
+        assert (entry.role, entry.target, entry.cohorts) == (
+            "organisation_staff_roles_viewer",
+            "organisation",
+            (),
+        )
 
     def test_the_display_name_comes_from_the_role_config(
         self, mock_site_context: Site

@@ -7,8 +7,8 @@ action asks about.
 
 The world: site A has organisation O1 (cohorts C1 granted and C2, learners L1
 in C1 and L2 in C2) and O2 (C3, L3). Site B has O3 (C4, L4). Grants:
-site_admin on site A, organisation_admin on O1, cohort_admin and
-cohort_viewer on C1.
+site_admin on site A, organisation_admin, organisation_staff_viewer and
+organisation_staff_roles_viewer on O1, cohort_admin and cohort_viewer on C1.
 """
 
 from __future__ import annotations
@@ -50,9 +50,22 @@ from freedom_ls.tests.factories import SiteFactory
 
 #: Roles whose grants are gated on an active StaffMember. site_admin's
 #: grant is a SiteRoleAssignment, which _site_grants never gates.
-GATED_ROLES = ("organisation_admin", "cohort_admin", "cohort_viewer")
+GATED_ROLES = (
+    "organisation_admin",
+    "organisation_staff_viewer",
+    "organisation_staff_roles_viewer",
+    "cohort_admin",
+    "cohort_viewer",
+)
 
-ROLES = ("site_admin", "organisation_admin", "cohort_admin", "cohort_viewer")
+ROLES = (
+    "site_admin",
+    "organisation_admin",
+    "organisation_staff_viewer",
+    "organisation_staff_roles_viewer",
+    "cohort_admin",
+    "cohort_viewer",
+)
 
 OWN = "own"
 OTHER_COHORT = "other_cohort"
@@ -105,12 +118,24 @@ ASSIGN_ORGANISATION_ADMIN = (
 )
 ASSIGN_SITE_ADMIN = "freedom_ls_role_based_permissions.assign_site_admin"
 DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
+VIEW_ORGANISATION_STAFF = "freedom_ls_learner_management.view_organisation_staff"
+VIEW_ORGANISATION_STAFF_ROLES = (
+    "freedom_ls_learner_management.view_organisation_staff_roles"
+)
+ASSIGN_ORGANISATION_STAFF_VIEWER = (
+    "freedom_ls_role_based_permissions.assign_organisation_staff_viewer"
+)
+ASSIGN_ORGANISATION_STAFF_ROLES_VIEWER = (
+    "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer"
+)
 
 # capability -> role -> the (scope kind, relation) pairs where can() is True.
 MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
     VIEW_ORGANISATION: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -121,6 +146,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": {("cohort", OWN)},
     },
@@ -131,6 +158,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": {("learner", OWN)},
     },
@@ -141,6 +170,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -162,12 +193,16 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OWN),
             ("learner", OTHER_COHORT),
         },
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     ADD_COHORT: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -178,6 +213,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -188,12 +225,16 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     ADD_LEARNER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -204,6 +245,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -214,6 +257,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": set(),
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -224,6 +269,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -234,6 +281,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -244,6 +293,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -254,6 +305,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -264,6 +317,8 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": set(),
     },
@@ -274,12 +329,16 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": set(),
     },
     BULK_MANAGE_LEARNERS: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -290,7 +349,9 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
-        "cohort_admin": set(),
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
     ASSIGN_COHORT_VIEWER: {
@@ -300,36 +361,48 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_ORGANISATION),
         },
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
-        "cohort_admin": set(),
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
     VIEW_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     ADD_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     CHANGE_STAFFMEMBER: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     ASSIGN_ORGANISATION_ADMIN: {
         "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
         "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
     ASSIGN_SITE_ADMIN: {
         "site_admin": {("site", OWN)},
         "organisation_admin": set(),
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -346,8 +419,42 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("cohort", OTHER_COHORT),
             ("organisation", OWN),
         },
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": {("cohort", OWN)},
+    },
+    VIEW_ORGANISATION_STAFF: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": {("organisation", OWN)},
+        "organisation_staff_roles_viewer": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    VIEW_ORGANISATION_STAFF_ROLES: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_ORGANISATION_STAFF_VIEWER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_ORGANISATION_STAFF_ROLES_VIEWER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
     },
 }
 
@@ -379,6 +486,10 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     ASSIGN_ORGANISATION_ADMIN: ("organisation",),
     ASSIGN_SITE_ADMIN: ("site",),
     DOWNLOAD_COHORT_REPORT: ("cohort", "organisation"),
+    VIEW_ORGANISATION_STAFF: ("organisation",),
+    VIEW_ORGANISATION_STAFF_ROLES: ("organisation",),
+    ASSIGN_ORGANISATION_STAFF_VIEWER: ("organisation",),
+    ASSIGN_ORGANISATION_STAFF_ROLES_VIEWER: ("organisation",),
 }
 
 
@@ -417,6 +528,14 @@ def _build_world(site_a: Site) -> World:
     organisation_admin_user = UserFactory()
     assign_object_role(organisation_admin_user, o1, "organisation_admin")
 
+    organisation_staff_viewer_user = UserFactory()
+    assign_object_role(organisation_staff_viewer_user, o1, "organisation_staff_viewer")
+
+    organisation_staff_roles_viewer_user = UserFactory()
+    assign_object_role(
+        organisation_staff_roles_viewer_user, o1, "organisation_staff_roles_viewer"
+    )
+
     cohort_admin_user = UserFactory()
     assign_object_role(cohort_admin_user, c1, "cohort_admin")
 
@@ -431,6 +550,12 @@ def _build_world(site_a: Site) -> World:
         users={
             "site_admin": cast(AbstractBaseUser, site_admin_user),
             "organisation_admin": cast(AbstractBaseUser, organisation_admin_user),
+            "organisation_staff_viewer": cast(
+                AbstractBaseUser, organisation_staff_viewer_user
+            ),
+            "organisation_staff_roles_viewer": cast(
+                AbstractBaseUser, organisation_staff_roles_viewer_user
+            ),
             "cohort_admin": cast(AbstractBaseUser, cohort_admin_user),
             "cohort_viewer": cast(AbstractBaseUser, cohort_viewer_user),
         },
@@ -487,7 +612,7 @@ def test_every_capability_a_role_holds_has_a_matrix_entry() -> None:
         assert capability in MATRIX, f"{capability!r} has no MATRIX entry"
 
 
-def test_every_matrix_entry_names_all_four_roles() -> None:
+def test_every_matrix_entry_names_every_role() -> None:
     for capability, by_role in MATRIX.items():
         assert set(by_role) == set(ROLES), (
             f"{capability!r}'s MATRIX entry does not cover every role"

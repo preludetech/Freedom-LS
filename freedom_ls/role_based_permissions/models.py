@@ -124,6 +124,14 @@ class ObjectRoleAssignment(SiteAwareModel):
             ),
             ("assign_cohort_admin", "Can grant or remove the cohort_admin role"),
             ("assign_cohort_viewer", "Can grant or remove the cohort_viewer role"),
+            (
+                "assign_organisation_staff_viewer",
+                "Can grant or remove the organisation_staff_viewer role",
+            ),
+            (
+                "assign_organisation_staff_roles_viewer",
+                "Can grant or remove the organisation_staff_roles_viewer role",
+            ),
         ]
 
     def __str__(self) -> str:

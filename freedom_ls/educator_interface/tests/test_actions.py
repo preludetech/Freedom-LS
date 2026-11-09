@@ -3384,7 +3384,7 @@ def test_the_lookup_of_an_invalid_address_is_422(admin_client, organisation):
 
 
 @pytest.mark.django_db
-def test_the_role_step_offers_the_three_staff_roles_with_their_descriptions(
+def test_the_role_step_offers_every_staff_role_with_its_description(
     admin_client, organisation
 ):
     UserFactory(email="ada@example.com")
@@ -3395,13 +3395,19 @@ def test_the_role_step_offers_the_three_staff_roles_with_their_descriptions(
     document = lxml.html.fromstring(response.content.decode())
     offered = [r.get("value") for r in document.cssselect("input[name='role']")]
     text = _text(response)
-    assert offered == ["organisation_admin", "cohort_admin", "cohort_viewer"]
+    assert offered == [
+        "organisation_admin",
+        "organisation_staff_viewer",
+        "organisation_staff_roles_viewer",
+        "cohort_admin",
+        "cohort_viewer",
+    ]
     assert all(config[role].description in text for role in offered)
     assert not document.cssselect("input[name='role'][checked]")
 
 
 @pytest.mark.django_db
-def test_a_site_admin_is_offered_three_roles(
+def test_a_site_admin_is_offered_five_roles(
     mock_site_context, logged_in_client, organisation
 ):
     CohortFactory(organisation=organisation)
@@ -3414,11 +3420,11 @@ def test_a_site_admin_is_offered_three_roles(
     response = _lookup(logged_in_client(site_admin), organisation, "ada@example.com")
 
     document = lxml.html.fromstring(response.content.decode())
-    assert len(document.cssselect("input[name='role']")) == 3
+    assert len(document.cssselect("input[name='role']")) == 5
 
 
 @pytest.mark.django_db
-def test_with_no_active_cohort_only_organisation_admin_is_offered(
+def test_with_no_active_cohort_only_the_organisation_roles_are_offered(
     mock_site_context, logged_in_client, organisation
 ):
     client, _ = _holder_client(logged_in_client, organisation)
@@ -3428,7 +3434,9 @@ def test_with_no_active_cohort_only_organisation_admin_is_offered(
 
     document = lxml.html.fromstring(response.content.decode())
     assert [r.get("value") for r in document.cssselect("input[name='role']")] == [
-        "organisation_admin"
+        "organisation_admin",
+        "organisation_staff_viewer",
+        "organisation_staff_roles_viewer",
     ]
     assert "This organisation has no active cohorts yet." in _text(response)
 
@@ -3522,7 +3530,7 @@ def test_granting_organisation_admin_to_a_holder_is_422_with_the_message(
     )
 
     assert response.status_code == 422
-    assert "Ada L is already an organisation admin here." in _text(response)
+    assert "Ada L is already Organisation admin here." in _text(response)
 
 
 @pytest.mark.django_db
@@ -3544,7 +3552,7 @@ def test_a_confirmed_grant_of_organisation_admin_to_a_holder_is_422_and_restamps
     )
 
     assert response.status_code == 422
-    assert "Ada L is already an organisation admin here." in _text(response)
+    assert "Ada L is already Organisation admin here." in _text(response)
     assignment.refresh_from_db()
     assert assignment.assigned_by == original_grantor
     assert assignment.assigned_at == stamped_at
@@ -4033,6 +4041,54 @@ def test_a_cohort_of_another_organisation_is_a_form_error_and_writes_nothing(
 
     assert response.status_code == 422
     assert not ObjectRoleAssignment.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+def test_the_add_dialog_gives_a_viewer_role_on_the_organisation(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_staff_roles_viewer"
+    )
+
+    assert response.status_code == 204
+    assert _active_roles(user) == {
+        ("organisation_staff_roles_viewer", str(organisation.pk))
+    }
+
+
+@pytest.mark.django_db
+def test_giving_a_viewer_role_twice_is_422_and_names_the_role(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+    assign_role(
+        UserFactory(superuser=True),
+        user,
+        "organisation_staff_roles_viewer",
+        organisation,
+    )
+
+    response = _submit_role(
+        admin_client, organisation, "ada@example.com", "organisation_staff_roles_viewer"
+    )
+
+    assert response.status_code == 422
+    assert "is already Organisation staff and roles viewer here." in _text(response)
+
+
+@pytest.mark.django_db
+def test_deactivating_a_viewer_role_deactivates_the_organisation_assignment(
+    admin_client, organisation
+):
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    response = _remove(admin_client, organisation, user, "organisation_staff_viewer")
+
+    assert response.status_code == 204
+    assert _active_roles(user) == set()
 
 
 def _remove_role_url(organisation: Organisation) -> str:

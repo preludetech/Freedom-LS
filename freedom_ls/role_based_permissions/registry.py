@@ -74,6 +74,8 @@ PERMISSIONS: dict[str, str] = {
     "freedom_ls_learner_management.add_staffmember": "Can add staff member",
     "freedom_ls_learner_management.change_staffmember": "Can change staff member",
     # "freedom_ls_learner_management.delete_staffmember": "Can delete staff member",
+    "freedom_ls_learner_management.view_organisation_staff": "Can view the organisation's staff",
+    "freedom_ls_learner_management.view_organisation_staff_roles": "Can view the organisation's staff and their roles",
     "freedom_ls_learner_management.bulk_manage_learners": "Can bulk manage learners",
     "freedom_ls_learner_management.download_cohort_report": "Can download cohort report",
     # --- comms app (label: freedom_ls_comms) ---
@@ -84,6 +86,8 @@ PERMISSIONS: dict[str, str] = {
     "freedom_ls_role_based_permissions.assign_organisation_admin": "Can grant or remove the organisation_admin role",
     "freedom_ls_role_based_permissions.assign_cohort_admin": "Can grant or remove the cohort_admin role",
     "freedom_ls_role_based_permissions.assign_cohort_viewer": "Can grant or remove the cohort_viewer role",
+    "freedom_ls_role_based_permissions.assign_organisation_staff_viewer": "Can grant or remove the organisation_staff_viewer role",
+    "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer": "Can grant or remove the organisation_staff_roles_viewer role",
     # --- course_recommendations app (label: freedom_ls_course_recommendations) ---
     # "freedom_ls_course_recommendations.view_recommendedcourse": "Can view recommended course",
     # "freedom_ls_course_recommendations.add_recommendedcourse": "Can add recommended course",

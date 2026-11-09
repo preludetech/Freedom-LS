@@ -101,6 +101,7 @@ from freedom_ls.learner_management.queries import (
     CHANGE_LEARNER,
     CHANGE_LEARNERCOURSEREGISTRATION,
     DELETE_COHORTMEMBERSHIP,
+    ORGANISATION_ROLES,
     STAFF_ROLES,
     CourseNotOpenError,
     can_on_any,
@@ -1912,10 +1913,11 @@ class AddStaffMemberAction(PanelAction):
         before = (
             [] if matched is None else current_role_entries(matched, _organisation(ctx))
         )
-        if role == "organisation_admin" and any(e.role == role for e in before):
+        if role in ORGANISATION_ROLES and any(e.role == role for e in before):
+            held_name = get_role_config(_organisation(ctx).site.name)[role].display_name
             return _refused(
                 ctx,
-                f"{_staff_member_name(matched, email)} is already an organisation admin here.",
+                f"{_staff_member_name(matched, email)} is already {held_name} here.",
             )
         held = self._already_held(ctx, matched, role, cohorts)
         names = (
@@ -2006,7 +2008,7 @@ class AddStaffMemberAction(PanelAction):
                 "description": role_config.description,
                 "scope": (
                     ORGANISATION_SCOPE
-                    if role == "organisation_admin"
+                    if role in ORGANISATION_ROLES
                     else join_prose([cohort.name for cohort in cohorts])
                 ),
                 "current_entries": before,
@@ -2158,7 +2160,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
         removed, staying = self._split(ctx, entry)
-        if entry.role != "organisation_admin" and not removed:
+        if entry.target == "cohort" and not removed:
             raise Http404("No cohort of this role is within the grantor's reach")
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
         context = super().get_context_data(ctx)
@@ -2169,7 +2171,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
                 "description": description,
                 "full_scope": (
                     entry.full_scope
-                    if entry.role == "organisation_admin"
+                    if entry.target == "organisation"
                     else join_prose([cohort.name for cohort in removed])
                 ),
                 "stays": join_prose([cohort.name for cohort in staying]),
@@ -2189,7 +2191,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
         entry = self._entry(ctx, self._entries(ctx, user))
         removed, _ = self._split(ctx, entry)
         targets: list[Organisation | Cohort] = (
-            [organisation] if entry.role == "organisation_admin" else [*removed]
+            [organisation] if entry.target == "organisation" else [*removed]
         )
         if not targets:
             return denied_response(ctx, self)

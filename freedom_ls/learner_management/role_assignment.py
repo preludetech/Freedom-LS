@@ -21,6 +21,7 @@ from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.learner_management.capabilities import _active_role_assignments, can
 from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import (
+    ORGANISATION_ROLES,
     STAFF_ROLES,
     active_organisation_admins,
     cohorts_visible_to,
@@ -115,10 +116,22 @@ def _lock_and_refuse_last_organisation_admin(
         raise RoleChangeRefused(RefusalReason.LAST_ORGANISATION_ADMIN)
 
 
+def _target_suits_role(role: str, target: Site | Organisation | Cohort) -> bool:
+    """A site role goes on a Site, an organisation role on an Organisation
+    and a cohort role on a Cohort; anything else is a caller's mistake."""
+    if isinstance(target, Site):
+        return role not in STAFF_ROLES
+    if isinstance(target, Organisation):
+        return role in ORGANISATION_ROLES
+    return role in STAFF_ROLES and role not in ORGANISATION_ROLES
+
+
 def assign_role(
     grantor: User, user: User, role: str, target: Site | Organisation | Cohort
 ) -> None:
     """Grant `role` to `user` on `target`, on the grantor's behalf."""
+    if not _target_suits_role(role, target):
+        raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
     _refuse_unless(grantor, user, ASSIGN.format(role=role), target, assigning=True)
     if isinstance(target, Site):
         assign_site_role(user, role, site=target, assigned_by=grantor)
@@ -218,7 +231,7 @@ def grantable_roles(grantor: User, organisation: Organisation) -> list[Grantable
     result: list[GrantableRole] = []
     for role in STAFF_ROLES:
         capability = ASSIGN.format(role=role)
-        if role == "organisation_admin":
+        if role in ORGANISATION_ROLES:
             if can(grantor, capability, organisation):
                 result.append(GrantableRole(role, None))
             continue

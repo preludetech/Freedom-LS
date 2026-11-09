@@ -15,6 +15,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    ORGANISATION_ROLES,
     registerable_courses_for,
     registerable_courses_for_learner,
 )
@@ -253,7 +254,7 @@ class AddStaffMemberForm(forms.Form):
 
     def clean(self) -> dict[str, object]:
         cleaned = super().clean() or {}
-        if cleaned.get("role") == "organisation_admin":
+        if cleaned.get("role") in ORGANISATION_ROLES:
             cleaned["cohorts"] = Cohort.objects.none()
         elif cleaned.get("role") and not cleaned.get("cohorts"):
             self.add_error("cohorts", "Choose at least one cohort.")

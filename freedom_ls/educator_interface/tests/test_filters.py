@@ -437,6 +437,8 @@ def test_the_role_choices_carry_the_display_names(staff_request):
     assert choices == [
         ("all", "All roles"),
         ("organisation_admin", "Organisation admin"),
+        ("organisation_staff_viewer", "Organisation staff viewer"),
+        ("organisation_staff_roles_viewer", "Organisation staff and roles viewer"),
         ("cohort_admin", "Cohort admin"),
         ("cohort_viewer", "Cohort viewer"),
     ]

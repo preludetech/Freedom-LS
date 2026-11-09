@@ -2730,7 +2730,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 56
+QUERY_BOUND = 60
 
 
 MARKERS = {"You", "Inactive", "Account inactive", "Also a learner"}
@@ -3229,6 +3229,23 @@ def test_an_organisation_admin_entry_offers_no_change_cohorts(role_holder_client
     client = role_holder_client(organisation, "organisation_admin")
 
     row = _staff_member_row(_staff_document(client, organisation), "boss@example.com")
+
+    assert _change_cohorts_triggers(row) == []
+
+
+@pytest.mark.django_db
+def test_a_viewer_role_entry_offers_no_change_cohorts(role_holder_client):
+    organisation = OrganisationFactory()
+    _hold(
+        UserFactory(email="watcher@example.com"),
+        "organisation_staff_roles_viewer",
+        organisation,
+    )
+    client = role_holder_client(organisation, "organisation_admin")
+
+    row = _staff_member_row(
+        _staff_document(client, organisation), "watcher@example.com"
+    )
 
     assert _change_cohorts_triggers(row) == []
 

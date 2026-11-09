@@ -7,7 +7,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import STAFF_ROLES, staff_assignments
+from freedom_ls.learner_management.queries import (
+    STAFF_ROLES,
+    RoleTarget,
+    role_target,
+    staff_assignments,
+)
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 
@@ -28,13 +33,17 @@ class RoleEntry:
 
     role: str
     display_name: str
-    cohorts: tuple[Cohort, ...]  # empty for organisation_admin
+    cohorts: tuple[Cohort, ...]  # empty for a role on the organisation
     assigned_by: User | None
     assigned_at: datetime
 
     @property
+    def target(self) -> RoleTarget:
+        return role_target(self.role)
+
+    @property
     def scope(self) -> str:
-        if self.role == "organisation_admin":
+        if self.target == "organisation":
             return ORGANISATION_SCOPE
         names = [
             c.name if c.is_active else f"{c.name} (inactive)" for c in self.cohorts
@@ -47,7 +56,7 @@ class RoleEntry:
     @property
     def full_scope(self) -> str:
         """Every cohort name, for a tooltip beside the shortened scope."""
-        if self.role == "organisation_admin":
+        if self.target == "organisation":
             return ORGANISATION_SCOPE
         return ", ".join(c.name for c in self.cohorts)
 
@@ -67,7 +76,7 @@ def staff_role_entries(user: User, site: Site) -> list[RoleEntry]:
             continue
         newest = max(assignments, key=lambda a: a.assigned_at)
         cohorts: tuple[Cohort, ...] = ()
-        if role != "organisation_admin":
+        if role_target(role) == "cohort":
             targets = [a.target for a in assignments if isinstance(a.target, Cohort)]
             if len(targets) != len(assignments):
                 raise ValueError(

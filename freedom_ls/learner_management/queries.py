@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, Literal, NamedTuple, cast
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -58,12 +58,36 @@ if TYPE_CHECKING:
 #: The roles the educator interface grants and lists. A fixed tuple: a
 #: downstream site may add roles to its config, but none of them has an
 #: assign_ capability, so none can be offered or shown here.
-STAFF_ROLES: tuple[str, ...] = ("organisation_admin", "cohort_admin", "cohort_viewer")
+STAFF_ROLES: tuple[str, ...] = (
+    "organisation_admin",
+    "organisation_staff_viewer",
+    "organisation_staff_roles_viewer",
+    "cohort_admin",
+    "cohort_viewer",
+)
+#: The staff roles given on the organisation itself rather than on a cohort.
+ORGANISATION_ROLES: tuple[str, ...] = (
+    "organisation_admin",
+    "organisation_staff_viewer",
+    "organisation_staff_roles_viewer",
+)
+
+type RoleTarget = Literal["organisation", "cohort"]
+
+
+def role_target(role: str) -> RoleTarget:
+    """Where a staff role is held: on the organisation or on a cohort."""
+    return "organisation" if role in ORGANISATION_ROLES else "cohort"
+
 
 COURSE_NOT_OPEN_MESSAGE = "This course is not open to the organisation."
 
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
+VIEW_ORGANISATION_STAFF = "freedom_ls_learner_management.view_organisation_staff"
+VIEW_ORGANISATION_STAFF_ROLES = (
+    "freedom_ls_learner_management.view_organisation_staff_roles"
+)
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 VIEW_CONVERSATION = "freedom_ls_comms.view_conversation"
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"

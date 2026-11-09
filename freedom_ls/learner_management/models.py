@@ -233,6 +233,13 @@ class StaffMember(SiteAwareModel):
                 name="unique_staff_member_per_organisation",
             )
         ]
+        permissions = [
+            ("view_organisation_staff", "Can view the organisation's staff"),
+            (
+                "view_organisation_staff_roles",
+                "Can view the organisation's staff and their roles",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user} - {self.organisation}"
