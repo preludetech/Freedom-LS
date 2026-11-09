@@ -22,6 +22,8 @@
 <text x="694.0" y="234.0" fill="#111827">cookie-banner</text>
 <rect x="24.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="34.0" y="302.0" fill="#111827">failed-login-follow-up</text>
+<rect x="354.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="364.0" y="302.0" fill="#111827">landing-page-component-kit</text>
 <rect x="24.0" y="339" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="349" fill="#374151">in progress</text>
 <rect x="154.3" y="339" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
