@@ -8272,9 +8272,6 @@ def test_add_staff_to_a_cohort_is_offered_only_when_there_is_someone_to_pick(
     assert offered()
 
 
-# add role from a staff row
-
-
 def _add_role_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "staff/__actions/add_role")
 
