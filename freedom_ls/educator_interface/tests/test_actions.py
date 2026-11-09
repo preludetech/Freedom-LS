@@ -8491,6 +8491,33 @@ def test_the_add_role_dialog_opens_at_the_role_step_with_the_person_and_their_ro
 
 
 @pytest.mark.django_db
+def test_the_add_role_dialog_names_its_primary_button_for_the_action_on_both_steps(
+    admin_client, organisation
+):
+    """The add role dialog's primary button used to read "Add staff member",
+    though the person is already on the staff."""
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    def submit_labels(response) -> list[str]:
+        document = lxml.html.fromstring(response.content.decode())
+        return [
+            b.text_content().strip().splitlines()[0]
+            for b in document.cssselect("button[type='submit']")
+        ]
+
+    role_step = _add_role_dialog(admin_client, organisation, user)
+    confirmation = _add_role(
+        admin_client, organisation, user, "cohort_viewer", [cohort], confirmed="0"
+    )
+    ordinary = _lookup(admin_client, organisation, "new.person@example.com")
+
+    assert submit_labels(role_step) == ["Add role"]
+    assert submit_labels(confirmation) == ["Add role"]
+    assert submit_labels(ordinary) == ["Add staff member"]
+
+
+@pytest.mark.django_db
 def test_add_role_disables_a_role_held_on_every_cohort_the_grantor_can_give(
     admin_client, organisation
 ):
