@@ -4,7 +4,9 @@ Builds four organisations on the target site (Northside with Cohorts A, B, C
 and the inactive Cohort Old; Southside with Cohort S; Westside with no
 cohorts; Eastside with Cohort E and no members) and the educator personas of
 the staff-administration frontend QA plan: site admins, organisation admins
-(one with an inactive StaffMember row), cohort admins and viewers
+(one with an inactive StaffMember row), a staff member with no role, a cohort
+admin holding the organisation staff viewer role, an organisation staff roles
+viewer with no other role, cohort admins and viewers
 (one with no StaffMember row, one inactive user, one with a null
 grantor, twelve filler viewers so Northside's staff list pages), a learner
 who is also a cohort admin, a learner with no role, a role-less user, and a
@@ -39,6 +41,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     StaffMember,
 )
+from freedom_ls.learner_management.utils import ensure_staff_member
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
     _ensure_cohort,
@@ -186,6 +189,17 @@ def _seed(site: Site, away_site: Site) -> None:
     grant(cohort_admin, cohort_a, "cohort_admin")
     grant(cohort_admin, cohort_b, "cohort_admin")
 
+    viewing_admin = _ensure_user(site, "viewing.admin@qa.test", "Vince", "Viewingadmin")
+    grant(viewing_admin, cohort_a, "cohort_admin")
+    grant(viewing_admin, north, "organisation_staff_viewer")
+
+    roles_viewer = _ensure_user(site, "roles.viewer@qa.test", "Rhea", "Rolesviewer")
+    grant(roles_viewer, north, "organisation_staff_roles_viewer")
+
+    norole_staff = _ensure_user(site, "norole.staff@qa.test", "Nora", "Norole")
+    ensure_staff_member(norole_staff, north)
+    _set_staff_member_state(norole_staff, north, is_active=True)
+
     cohort_viewer = _ensure_user(site, "cohort.viewer@qa.test", "Vera", "Viewer")
     grant(cohort_viewer, cohort_a, "cohort_viewer")
 
@@ -249,6 +263,9 @@ def _seed(site: Site, away_site: Site) -> None:
         org_admin,
         org_admin2,
         cohort_viewer,
+        norole_staff,
+        viewing_admin,
+        roles_viewer,
         south_admin,
         existing,
         away,
