@@ -1901,7 +1901,24 @@ def test_access_ends_sits_under_the_deadline_in_the_deadline_line(access_ending_
 
     line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert line == "Deadline Course 31 Mar Access ends 31 Mar 2026, 23:59 UTC."
+    assert line == "Deadline Course 31 Mar Access ends 31 Mar"
+
+
+@pytest.mark.django_db
+@time_machine.travel(datetime.datetime(2026, 3, 10, 10, 0, tzinfo=UTC), tick=False)
+def test_access_ends_is_drawn_as_the_same_stacked_label_as_the_deadline(
+    access_ending_card,
+):
+    _course, _user, client = access_ending_card
+
+    [line] = _first_card(_dashboard_html(client)).cssselect(
+        '[data-testid="course-deadline-line"]'
+    )
+    labels = line.cssselect('[data-testid="deadline-label"]')
+
+    assert [label.get("data-layout") for label in labels] == ["stacked", "stacked"]
+    assert _node_text(labels[1]) == "Access ends 31 Mar"
+    assert not line.cssselect("p.text-muted")
 
 
 @pytest.mark.django_db
@@ -2518,7 +2535,7 @@ def test_card_and_row_say_when_access_will_end(access_ending_card):
 
     html = _dashboard_html(client)
 
-    assert "Access ends 31 Mar 2026, 23:59 UTC ." in " ".join(
+    assert "Access ends 31 Mar" in " ".join(
         re.sub(r"<[^>]+>", " ", _first_card_grid(html)).split()
     )
     assert "Access ends" in _row_lists(html)

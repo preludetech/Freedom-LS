@@ -22,5 +22,5 @@ no leading or trailing whitespace, so callers can follow it with punctuation.{% 
 {% endpartialdef %}
 
 {% partialdef access-ends-line %}
-    {% if course.access_ends_at %}<p class="text-xs text-muted">Access ends {% local_time course.access_ends_at %}.</p>{% endif %}
+    {% if course.access_ends_at %}<c-deadline-label tier="UPCOMING" word="Access ends" layout="stacked"><span class="whitespace-nowrap">{% local_time course.access_ends_at format="short" %}</span></c-deadline-label>{% endif %}
 {% endpartialdef %}

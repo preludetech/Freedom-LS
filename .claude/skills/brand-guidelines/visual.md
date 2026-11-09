@@ -84,6 +84,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
+| A learner deadline, time limit or access date ("Deadline", "Missed deadline", "Closed", "Access ends", "Access ended") | `<c-deadline-label tier="…" layout="inline\|stacked\|minimal">`, the one style for any deadline a learner sees. Lines in the same block share one layout; none falls back to plain or muted text |
 | A progress bar | `<c-course-progress-bar>`, tinted to the course's own accent |
 | A modal | `#app-modal` (the shared native `<dialog>`) opened by `<c-modal-trigger>`; it gets its scrim from `.modal-backdrop-host` |
 
@@ -118,6 +119,7 @@ What QA checks in a screenshot of any FLS page.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.
+- Every deadline, time-limit or access-date line a learner sees has the same icon, bold tier word and date as the lines beside it; none is plain or muted text.
 
 ## Example page
 

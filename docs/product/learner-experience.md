@@ -295,7 +295,7 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 A course author can give a topic or form a due date, and a course a time limit; an administrator can change either for a cohort's registration or for a single learner, or remove it. A registered learner sees their deadlines in the course player, against each incomplete item and as the course's next or earliest missed deadline, and on the course's dashboard card, which also covers the time limit. A deadline reads as upcoming, due today, missed (**Missed deadline**) or closed (**Closed**). A completed item shows none.
 
-The **course detail page** shows no deadline dates. Where the course has a time limit, the page shows its length, such as "90 days", the same for everyone. Its course outline marks a closed item **Closed**, as the player does.
+The **course detail page** shows no deadline dates. Where the course has a time limit, the page shows its length, such as "90 days", the same for everyone. Its course outline shows no deadline information.
 
 ![Course player showing deadlines](screenshots/learner_course_detail_due_dates.png)
 
