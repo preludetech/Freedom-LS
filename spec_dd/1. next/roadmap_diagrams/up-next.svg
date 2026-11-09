@@ -66,7 +66,7 @@
 <text x="364.0" y="526.0" fill="#111827">referer-first-touch</text>
 <rect x="24.0" y="466.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="34.0" y="488.0" fill="#111827">referral-attribution-over-time</text>
-<rect x="24.0" y="519.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="519.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="34.0" y="541.0" fill="#111827">phone-number-form-field</text>
 <rect x="24.0" y="572.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="34.0" y="594.0" fill="#111827">file-scanning</text>
