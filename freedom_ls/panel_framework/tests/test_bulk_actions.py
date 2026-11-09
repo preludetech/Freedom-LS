@@ -322,21 +322,77 @@ def test_all_matching_expected_count_mismatch_is_422(mock_site_context: Site) ->
     assert StubModel.objects.filter(is_active=True).count() == 3
 
 
-def test_selection_bar_renders_counts_and_a_live_region(
-    mock_site_context: Site,
-) -> None:
+def _bulk_document(mock_site_context: Site) -> lxml.html.HtmlElement:
     for i in range(3):
         make_stub(name=f"row-{i}")
-
     html = fetch(_panel_path(StubModel.objects.first().pk)).content.decode()
+    return lxml.html.fromstring(html)
 
-    document = lxml.html.fromstring(html)
+
+def test_selection_bar_precedes_the_table(mock_site_context: Site) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (bar,) = document.cssselect("[data-total-count]")
+    order = list(document.iter())
+    assert order.index(bar) < order.index(document.cssselect("table")[0])
+
+
+def test_selection_bar_carries_the_counts(mock_site_context: Site) -> None:
+    document = _bulk_document(mock_site_context)
+
     (bar,) = document.cssselect("[data-total-count]")
     assert bar.get("data-total-count") == "3"
     assert bar.get("data-page-count") == "3"
-    assert document.cssselect("[role='status']")
-    assert document.cssselect("input[name='mode'][x-ref='modeInput']")
-    assert document.cssselect("[x-ref='excluded']")
+
+
+def test_selection_bar_is_pending_and_shown_by_alpine(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (bar,) = document.cssselect("[data-total-count]")
+    assert bar.get("data-selection-bar-pending") is not None
+    assert bar.get("x-show") == "barVisible"
+
+
+def test_selection_bar_holds_no_pagination(mock_site_context: Site) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (bar,) = document.cssselect("[data-total-count]")
+    assert not bar.cssselect("nav")
+    assert not bar.cssselect("a[href*='page=']")
+
+
+def test_the_live_region_is_one_and_outside_the_bar(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (status,) = document.cssselect("[data-table-region] [role='status']")
+    (bar,) = document.cssselect("[data-total-count]")
+    assert bar not in status.iterancestors()
+
+
+def test_the_bulk_form_holds_the_mode_input_and_excluded_slot(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (mode_input,) = document.cssselect("input[name='mode'][x-ref='modeInput']")
+    (excluded,) = document.cssselect("[x-ref='excluded']")
+    assert mode_input.getparent().tag == "form"
+    assert "form" in [a.tag for a in excluded.iterancestors()]
+
+
+def test_the_region_is_the_alpine_root_and_the_form_is_not(
+    mock_site_context: Site,
+) -> None:
+    document = _bulk_document(mock_site_context)
+
+    (region,) = document.cssselect("[data-table-region]")
+    assert region.get("x-data") == "tableSelection"
+    (mode_input,) = document.cssselect("input[name='mode']")
+    assert mode_input.getparent().get("x-data") is None
 
 
 def test_only_an_error_variant_action_is_destructive() -> None:

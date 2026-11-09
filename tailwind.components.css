@@ -4,6 +4,17 @@
         display: none !important;
     }
 
+    /* The selection bar is server-rendered visible so it works without
+     * JavaScript. With scripting on it stays hidden until tableSelection takes
+     * over, which removes the attribute; x-show decides from then on. The same
+     * no-flash mechanism as [x-cloak] above, and !important for the same
+     * reason: the bar's own `flex` utility would otherwise win the cascade. */
+    @media (scripting: enabled) {
+        [data-selection-bar-pending] {
+            display: none !important;
+        }
+    }
+
     /* Anchor links and `:focus-visible` autoscroll should land below the
      * sticky header rather than behind it, and above the selection bar
      * pinned to the bottom edge. ~80px clears `p-3` (≈56px tall) and `sm:p-4`

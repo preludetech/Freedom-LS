@@ -371,3 +371,58 @@ def test_no_bar_button_takes_a_filled_variant(mock_site_context: Site) -> None:
     for button in document.cssselect("fieldset .btn"):
         classes = button.get("class").split()
         assert not {"btn-secondary", "btn-error", "btn-primary"} & set(classes)
+
+
+def _positions(document: lxml.html.HtmlElement) -> dict[str, int]:
+    order = list(document.iter())
+    return {
+        name: order.index(found[0])
+        for name, selector in {
+            "table": "table",
+            "footer": "[data-entry-count]",
+            "space": "[data-selection-bar-space]",
+        }.items()
+        if (found := document.cssselect(selector))
+    }
+
+
+def test_a_bulk_table_renders_its_entry_count_after_the_table(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(_bulk_panel([StubBulkAction()]))
+
+    (count,) = document.cssselect("[data-entry-count]")
+    assert count.text_content().strip()
+    assert _positions(document)["footer"] > _positions(document)["table"]
+
+
+def test_a_table_without_bulk_actions_renders_its_entry_count(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubBTablePanel)
+
+    assert len(document.cssselect("[data-entry-count]")) == 1
+
+
+def test_a_bulk_table_renders_the_bar_space_after_the_footer(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    positions = _positions(_render(_bulk_panel([StubBulkAction()])))
+
+    assert positions["space"] > positions["footer"]
+
+
+def test_a_table_without_bulk_actions_renders_no_bar_space(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a", kind="a")
+
+    document = _render(StubBTablePanel)
+
+    assert document.cssselect("[data-selection-bar-space]") == []

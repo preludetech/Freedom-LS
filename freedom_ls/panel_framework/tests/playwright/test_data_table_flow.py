@@ -177,9 +177,12 @@ def test_data_table_interaction(
         expect(row_checkboxes.nth(i)).to_be_checked()
 
     # Sorting clears the selection.
-    expect(page.get_by_text(f"{PAGE_SIZE} selected", exact=False)).to_be_visible()
+    expect(
+        page.locator("[data-total-count]").get_by_text(f"{PAGE_SIZE} selected")
+    ).to_be_visible()
     page.get_by_role("link", name="Name").click()
-    expect(page.get_by_text(" selected · showing", exact=False)).to_be_hidden()
+    expect(page.locator("#stubs-table").get_by_role("status")).to_have_text("")
+    expect(page.locator("#stubs-table").get_by_role("searchbox")).to_be_visible()
     expect(page.locator("#stubs-table tbody input[name='keys']:checked")).to_have_count(
         0
     )
@@ -282,7 +285,9 @@ def test_data_table_interaction(
             card_checkboxes = page.locator("#stubs-table ul li input[name='keys']")
             expect(card_checkboxes).to_have_count(PAGE_SIZE)
             card_checkboxes.first.check()
-            expect(page.get_by_text("1 selected", exact=False)).to_be_visible()
+            expect(
+                page.locator("[data-total-count]").get_by_text("1 selected")
+            ).to_be_visible()
 
             # The phone toolbar buttons and the pager meet the 44px touch target.
             for control in (
@@ -340,7 +345,9 @@ def test_more_actions_menu_stays_inside_the_viewport(
         page.goto(list_url)
         page.locator("#stubs-table input[name='keys']:visible").first.check()
         page.get_by_role("button", name="More actions").click()
-        last_item = page.get_by_role("menuitem").last
+        last_item = (
+            page.get_by_role("menu", name="More actions").get_by_role("menuitem").last
+        )
         expect(last_item).to_be_visible()
         box = last_item.bounding_box()
         assert box is not None
@@ -360,7 +367,7 @@ def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
     long page, so a ticked row's actions could not be reached without
     scrolling to the end. It stays fixed until the sidebar docks at lg, and
     never covers the last row while fixed."""
-    for i in range(PAGE_SIZE):
+    for i in range(PAGE_SIZE + 1):
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
     bar = page.locator("[data-total-count]")
@@ -393,19 +400,27 @@ def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
         )
         assert last_is_topmost, f"bar covers the last row at {viewport}"
 
+        next_is_topmost = page.get_by_role("link", name="Next", exact=True).evaluate(
+            """el => {
+                const box = el.getBoundingClientRect();
+                return document.elementFromPoint(
+                    box.x + box.width / 2, box.y + box.height / 2) === el;
+            }"""
+        )
+        assert next_is_topmost, f"bar covers the pager at {viewport}"
 
-def _wait_for_space_under(page: Page, listing: str, matches_bar: bool) -> None:
-    """Wait until the listing's bottom padding is the fixed bar's height, or
-    nothing at all when the bar is in the flow."""
+
+def _wait_for_space_under(page: Page, matches_bar: bool) -> None:
+    """Wait until the space after the footer is the fixed bar's height, or
+    nothing at all when the bar is hidden or in the flow."""
     page.wait_for_function(
-        """([listing, matchesBar]) => {
-            const padding = parseFloat(
-                getComputedStyle(document.querySelector(listing)).paddingBottom);
+        """matchesBar => {
+            const space = document.querySelector("[data-selection-bar-space]");
             const bar = document.querySelector("[data-total-count]");
             const expected = matchesBar ? bar.offsetHeight : 0;
-            return Math.abs(padding - expected) <= 2;
+            return Math.abs(space.offsetHeight - expected) <= 2;
         }""",
-        arg=[listing, matches_bar],
+        arg=matches_bar,
         timeout=3000,
     )
 
@@ -416,28 +431,71 @@ def test_the_space_under_the_list_follows_the_fixed_bars_height(
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """The list reserved a fixed 160px (256px on a phone) beneath itself for
-    the selection bar, sized for a bar full of actions, so with nothing
-    selected a tablet showed an empty band under the last row. The space now
-    follows the bar's own height, growing as a selection fills the bar."""
+    """The region reserves space after its footer for the fixed selection
+    bar, sized to the bar's own height: nothing while no row is selected, so
+    no empty band sits under the last row, and the bar's height once a
+    selection fills it."""
     for i in range(PAGE_SIZE):
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
 
-    for viewport, listing, matches_bar in (
-        (QA_VIEWPORTS[0], "#stubs-table ul", True),
-        (QA_VIEWPORTS[1], "#stubs-table [role='region']", True),
-        (QA_VIEWPORTS[2], "#stubs-table [role='region']", False),
+    for viewport, matches_bar in (
+        (QA_VIEWPORTS[0], True),
+        (QA_VIEWPORTS[1], True),
+        (QA_VIEWPORTS[2], False),
     ):
         page.set_viewport_size(viewport)
         page.goto(list_url)
-        _wait_for_space_under(page, listing, matches_bar)
+        space = page.locator("[data-selection-bar-space]")
+        expect(space).to_have_js_property("offsetHeight", 0)
 
         page.locator("#stubs-table input[name='keys']:visible").first.check()
-        expect(
-            page.locator("[data-total-count]").get_by_role("status")
-        ).to_contain_text("1 selected")
-        _wait_for_space_under(page, listing, matches_bar)
+        expect(page.locator("#stubs-table").get_by_role("status")).to_contain_text(
+            "1 selected"
+        )
+        _wait_for_space_under(page, matches_bar)
+
+
+def test_the_bar_takes_the_toolbars_place_from_lg_up(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """From lg the selection bar replaces the toolbar in its row without
+    moving the table; Clear brings the toolbar back. Below lg the toolbar
+    stays while the fixed bar shows."""
+    for i in range(PAGE_SIZE):
+        make_stub(name=f"row-{i:02d}")
+    list_url = f"{live_server.url}{_LIST_PATH}"
+    table = page.locator("#stubs-table")
+    bar = page.locator("[data-total-count]")
+    search = table.get_by_role("searchbox")
+    row_checkboxes = table.locator("tbody input[name='keys']")
+    top_of_table = "el => el.querySelector('table').getBoundingClientRect().top"
+
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(list_url)
+    expect(bar).to_be_hidden()
+    expect(search).to_be_visible()
+    top_before = table.evaluate(top_of_table)
+
+    row_checkboxes.first.check()
+    expect(bar).to_be_visible()
+    expect(search).to_be_hidden()
+    assert table.evaluate(top_of_table) == top_before
+
+    bar.get_by_role("button", name="Clear", exact=True).click()
+    expect(bar).to_be_hidden()
+    expect(search).to_be_visible()
+    expect(table.locator("tbody input[name='keys']:checked")).to_have_count(0)
+    assert table.evaluate(top_of_table) == top_before
+
+    page.set_viewport_size(QA_VIEWPORTS[1])
+    page.goto(list_url)
+    page.locator("#stubs-table input[name='keys']:visible").first.check()
+    expect(bar).to_be_visible()
+    expect(search).to_be_visible()
 
 
 def test_selection_bar_actions_fieldset_draws_no_box(
@@ -541,7 +599,7 @@ def test_select_all_matching_spans_every_page(
     # Clear selection returns to ticking rows one by one.
     page.locator("#stubs-table thead").get_by_label("Select all on this page").check()
     select_all_matching.click()
-    page.get_by_role("button", name="Clear selection").click()
+    page.get_by_role("button", name="Clear selection", exact=True).click()
     expect(status.get_by_text("selected")).to_be_hidden()
 
     for viewport in QA_VIEWPORTS:

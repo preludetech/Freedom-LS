@@ -13,6 +13,7 @@ from playwright.sync_api import Browser, Page, Response, Route, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.educator_interface.views import LearnerDataTable
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import CohortMembership, Learner
 from freedom_ls.learner_management.role_assignment import assign_role
@@ -205,10 +206,11 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
 
     expect(modal).to_be_hidden()
     expect(page).to_have_url(learners_url)
-    expect(main.get_by_text("Deactivate is running…")).to_be_visible()
+    bar = main.locator("[data-total-count]")
+    expect(bar.get_by_text("Deactivate is running…").first).to_be_visible()
     expect(main.get_by_role("button", name="More actions")).to_be_hidden()
     expect(main.get_by_role("button", name="Add to cohort", exact=True)).to_be_hidden()
-    expect(main.get_by_role("status").locator("svg.animate-spin")).to_be_visible()
+    expect(bar.locator("svg.animate-spin")).to_be_visible()
     page.set_viewport_size({"width": 375, "height": 812})
     bar_height = main.locator("[data-total-count]").evaluate(
         "el => el.getBoundingClientRect().height"
@@ -230,7 +232,7 @@ def test_a_background_bulk_run_keeps_the_reader_on_the_table_until_it_finishes(
     expect(table.locator("input[name='keys']")).to_have_count(0)
     modal.get_by_text("Close", exact=True).click()
     expect(modal).to_be_hidden()
-    expect(main.get_by_text("Deactivate is running…")).to_be_hidden()
+    expect(bar).to_be_hidden()
     for checkbox in checkboxes.all():
         expect(checkbox).to_be_enabled()
     assert not Learner.objects.filter(
@@ -321,7 +323,7 @@ def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    for _ in range(3):
+    for _ in range(LearnerDataTable.page_size + 1):
         LearnerFactory(organisation=organisation)
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(interface_url(live_server, organisation.slug, "learners"))
@@ -340,6 +342,17 @@ def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
         }"""
     )
     assert topmost_is_checkbox
+
+    next_link = page.get_by_role("link", name="Next", exact=True)
+    next_is_topmost = next_link.evaluate(
+        """el => {
+            const box = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                box.x + box.width / 2, box.y + box.height / 2);
+            return hit === el;
+        }"""
+    )
+    assert next_is_topmost
 
 
 def test_more_actions_menu_stays_open_after_one_click(
@@ -368,5 +381,5 @@ def test_more_actions_menu_stays_open_after_one_click(
     expect(trigger).to_have_attribute("aria-expanded", "true")
     expect(main.get_by_role("menuitem").last).to_be_visible()
 
-    page.mouse.wheel(0, -300)
+    page.mouse.wheel(0, 300)
     expect(trigger).to_have_attribute("aria-expanded", "false")

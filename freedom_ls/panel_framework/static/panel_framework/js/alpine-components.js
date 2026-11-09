@@ -677,16 +677,17 @@ document.addEventListener("alpine:init", () => {
     }));
 
     // Row selection for a table's bulk-action bar (cotton/data-table.html).
-    // Lives on the wrapping <form>, so every row and header checkbox reaches
-    // it, including the mobile "select all" control and every card checkbox,
-    // which render inside the same form. There is no persisted state: every
-    // region swap re-renders the form from scratch, which is how a sort,
-    // search or filter change clears the selection.
+    // Lives on the table region so one scope covers the toolbar, the bar and
+    // the table. The toolbar's search form is outside the bulk form, which is
+    // why the handlers find the bulk form from the hidden mode input rather
+    // than from the region. There is no persisted state: every region swap
+    // re-renders the region from scratch, which is how a sort, search or
+    // filter change clears the selection.
     //
-    // Both handlers find the form from the triggering event's target rather
-    // than `this.$el`: a shared Alpine.data() method's `$el` is the element
-    // the firing x-on directive is declared on, not the component's x-data
-    // root, so `this.$el` inside update() would be the checkbox itself.
+    // The checkbox handlers find the form from the triggering event's target
+    // rather than `this.$el`: a shared Alpine.data() method's `$el` is the
+    // element the firing x-on directive is declared on, not the component's
+    // x-data root, so `this.$el` inside update() would be the checkbox itself.
     Alpine.data("tableSelection", () => ({
         count: 0,
         // "keys" submits the ticked rows; "all_matching" submits every row
@@ -705,7 +706,9 @@ document.addEventListener("alpine:init", () => {
             const bar = this.$el.querySelector("[data-total-count]");
             this.total = Number(bar.dataset.totalCount);
             this.page = Number(bar.dataset.pageCount);
-            this.regionId = this.$el.closest("[data-table-region]").id;
+            this.regionId = this.$el.id;
+            // The stylesheet hides a pending bar; from here on x-show decides.
+            bar.removeAttribute("data-selection-bar-pending");
             this._barObserver = new ResizeObserver(() => this.measureBar());
             this._barObserver.observe(bar);
             this.measureBar();
@@ -715,6 +718,14 @@ document.addEventListener("alpine:init", () => {
             this._barObserver.disconnect();
         },
 
+        // The bulk form, which the search form in the toolbar must never be
+        // mistaken for: the hidden mode input belongs to the bulk form alone.
+        _form() {
+            return this.$refs.modeInput.form;
+        },
+
+        // A hidden bar has offsetHeight 0, and the ResizeObserver fires as it
+        // goes between 0 and its height.
         measureBar() {
             const bar = this.$root.querySelector("[data-total-count]");
             this.barHeight =
@@ -723,6 +734,26 @@ document.addEventListener("alpine:init", () => {
 
         get hasSelection() {
             return this.count > 0;
+        },
+
+        get barVisible() {
+            return this.hasSelection || this.running;
+        },
+
+        // The toolbar gives its row to the bar from lg up; below lg the bar
+        // is fixed to the bottom and the toolbar stays.
+        toolbarClass() {
+            return this.barVisible ? "lg:hidden" : "";
+        },
+
+        barSpaceStyle() {
+            return { height: this.barHeight + "px" };
+        },
+
+        get countSentence() {
+            if (this.running) return this.runLabel + " is running…";
+            if (this.hasSelection) return this.count + " selected";
+            return "";
         },
 
         // A background run started from this table, kept in the bulkRuns
@@ -741,11 +772,6 @@ document.addEventListener("alpine:init", () => {
 
         get showSelectionCount() {
             return this.hasSelection && !this.running;
-        },
-
-        // The plain entry count gives way to the selection count.
-        get showEntryCount() {
-            return !this.hasSelection && !this.running;
         },
 
         // The action buttons give way to the status line while a run is going,
@@ -836,12 +862,13 @@ document.addEventListener("alpine:init", () => {
             this._setMode("keys");
             this.excluded = [];
             this._syncExcludedInputs();
-            this._visibleRowBoxes(this.$el).forEach((box) => {
+            const form = this._form();
+            this._visibleRowBoxes(form).forEach((box) => {
                 box.checked = false;
             });
             this.count = 0;
             this.allChecked = false;
-            this.$el.querySelectorAll("[data-select-all]").forEach((box) => {
+            form.querySelectorAll("[data-select-all]").forEach((box) => {
                 box.checked = false;
                 box.indeterminate = false;
             });

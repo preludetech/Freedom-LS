@@ -33,18 +33,25 @@
         reset_changes=""
         entry_count="" />
 
-<div id="{{ region_id }}" data-table-region class="panel-data-table">
+<div id="{{ region_id }}" data-table-region class="panel-data-table"{% if bulk_actions %} x-data="tableSelection" x-on:resize.window="measureBar"{% endif %}>
     <div tabindex="-1" data-table-anchor></div>
     {% include "panel_framework/partials/table_toolbar.html" %}
 
-    {% if bulk_actions %}<form method="post" x-data="tableSelection" x-on:resize.window="measureBar">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">{% endif %}
-
     {% if bulk_actions %}
+    {% comment %}
+    One live region for the whole table, outside the bar: the bar is hidden
+    until a row is ticked, and a live region that appears with its first
+    message is not announced.
+    {% endcomment %}
+    <span role="status" class="sr-only" x-text="countSentence"></span>
+    {% comment %}space-y-0: the base form rule spaces children apart, and a margin on the bar would lift it off the viewport's bottom edge and move the table under it.{% endcomment %}
+    <form method="post" class="space-y-0">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">
+        {% include "panel_framework/partials/table_selection_bar.html" %}
         {% comment %}
         The header checkbox lives in the desktop <table>, which is hidden
         below md, so cards need their own "select all" control. It has to be
-        a descendant of this form (not the toolbar above, which is outside
-        it) for tableSelection's event.target.closest("form") to find it.
+        inside the bulk form, not the search form in the toolbar above:
+        the checkboxes' closest("form") is how the handlers find the bulk form.
         {% endcomment %}
         <div class="px-4 py-2 sm:px-6 md:hidden">
             <label class="inline-flex items-center gap-2 text-sm">
@@ -58,12 +65,7 @@
         </div>
     {% endif %}
 
-    {% comment %}
-    With bulk actions the selection bar is fixed over the list below lg, so
-    the list reserves the bar's measured height beneath itself; the padding
-    classes are the fallback before Alpine measures or without JavaScript.
-    {% endcomment %}
-    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {% if bulk_actions %}md:pb-40 lg:pb-0{% endif %} {{ class }}"{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
+    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
@@ -171,7 +173,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden {% if bulk_actions %}pb-64{% endif %}"{% if row_detail_template %} x-data="rowDetail"{% endif %}{% if bulk_actions %} x-bind:style="{ paddingBottom: barHeight + 'px' }"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden"{% if row_detail_template %} x-data="rowDetail"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
@@ -187,10 +189,14 @@
         {% endif %}
     </ul>
 
+    {% if bulk_actions %}</form>{% endif %}
+    {% if entry_count %}{% include "panel_framework/partials/table_footer.html" %}{% endif %}
     {% if bulk_actions %}
-        {% include "panel_framework/partials/table_selection_bar.html" %}
-    </form>
-    {% elif entry_count %}
-        {% include "panel_framework/partials/table_footer.html" %}
+    {% comment %}
+    Below lg the bar is fixed over the end of the page, so the region keeps
+    the bar's height free after the footer while the bar shows; from lg up,
+    and with nothing selected, the space is zero.
+    {% endcomment %}
+    <div aria-hidden="true" data-selection-bar-space x-bind:style="barSpaceStyle"></div>
     {% endif %}
 </div>
