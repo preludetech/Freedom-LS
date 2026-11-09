@@ -195,6 +195,13 @@ def grantable_roles_for(request: HttpRequest) -> list[GrantableRole]:
     return cached
 
 
+def has_grantable_roles(ctx: PanelContext) -> bool:
+    """Whether the viewer may give any staff role here. The organisation-level
+    can() is false for a cohort admin, so the per-entry actions ask this
+    instead and assign_role / deactivate_role re-check each target."""
+    return bool(grantable_roles_for(ctx.request))
+
+
 def _uuid_from(params: Mapping[str, str], name: str) -> UUID:
     try:
         return UUID(params.get(name, ""))
@@ -1815,7 +1822,31 @@ class AddStaffMemberAction(PanelAction):
             return self._other_site_response(ctx)
         return user
 
-    def _role_cards(self, ctx: PanelContext) -> list[dict[str, str | bool]]:
+    def _fixed_person(self, ctx: PanelContext) -> User | None:
+        """The staff member the page fixes, or None when the dialog looks the
+        person up by address."""
+        return None
+
+    def _posted(self, ctx: PanelContext) -> QueryDict:
+        """The submitted fields."""
+        return ctx.request.POST
+
+    @staticmethod
+    def _unavailable_reason(grantable: GrantableRole, entries: list[RoleEntry]) -> str:
+        """Why the role cannot be given again, or "" when it can: the person
+        already holds it on the organisation or on every cohort offered."""
+        held = next((e for e in entries if e.role == grantable.role), None)
+        if held is None:
+            return ""
+        if grantable.cohorts is None:
+            return "Already held"
+        if grantable.cohorts and set(grantable.cohorts) <= set(held.cohorts):
+            return "Already held on every cohort you can give"
+        return ""
+
+    def _role_cards(
+        self, ctx: PanelContext, entries: list[RoleEntry]
+    ) -> list[dict[str, str | bool]]:
         config = get_role_config(_organisation(ctx).site.name)
         return [
             {
@@ -1823,6 +1854,7 @@ class AddStaffMemberAction(PanelAction):
                 "display_name": config[grantable.role].display_name,
                 "description": config[grantable.role].description,
                 "needs_cohorts": grantable.cohorts is not None,
+                "unavailable_reason": self._unavailable_reason(grantable, entries),
             }
             for grantable in self._grantable(ctx)
         ]
@@ -1858,6 +1890,31 @@ class AddStaffMemberAction(PanelAction):
             return "You can only give roles at or below your own."
         return ""
 
+    def _role_step_context(
+        self, ctx: PanelContext, user: User | None, form: AddStaffMemberForm
+    ) -> dict[str, object]:
+        chosen = [str(pk) for pk in form["cohorts"].value() or []]
+        person = self._fixed_person(ctx)
+        entries = (
+            [] if person is None else current_role_entries(person, _organisation(ctx))
+        )
+        return {
+            "step": "role",
+            "dialog_title": self._dialog_title(ctx),
+            "match": user,
+            "new_account": user is None,
+            "person": person,
+            "current_entries": entries,
+            "form": form,
+            "form_url": self.get_action_url(ctx),
+            "role_cards": self._role_cards(ctx, entries),
+            "preset_cohort": self._preset(ctx),
+            "cohort_rows": self._cohort_rows(ctx, chosen),
+            "selected_role": form["role"].value() or "",
+            "offers_no_role": self._adds_staff(ctx),
+            "role_note": self._role_note(ctx),
+        }
+
     def _role_step(
         self,
         ctx: PanelContext,
@@ -1865,24 +1922,10 @@ class AddStaffMemberAction(PanelAction):
         form: AddStaffMemberForm,
         status: int = 200,
     ) -> HttpResponse:
-        chosen = [str(pk) for pk in form["cohorts"].value() or []]
         return render(
             ctx.request,
             self.template_name,
-            {
-                "step": "role",
-                "dialog_title": self._dialog_title(ctx),
-                "match": user,
-                "new_account": user is None,
-                "form": form,
-                "form_url": self.get_action_url(ctx),
-                "role_cards": self._role_cards(ctx),
-                "preset_cohort": self._preset(ctx),
-                "cohort_rows": self._cohort_rows(ctx, chosen),
-                "selected_role": form["role"].value() or "",
-                "offers_no_role": self._adds_staff(ctx),
-                "role_note": self._role_note(ctx),
-            },
+            self._role_step_context(ctx, user, form),
             status=status,
         )
 
@@ -1926,11 +1969,12 @@ class AddStaffMemberAction(PanelAction):
         return list(cohorts)
 
     def _submit(self, ctx: PanelContext) -> HttpResponse:
-        matched = self._match(ctx, ctx.request.POST.get("email", ""))
+        posted = self._posted(ctx)
+        matched = self._match(ctx, posted.get("email", ""))
         if isinstance(matched, HttpResponse):
             return matched
         form = AddStaffMemberForm(
-            ctx.request.POST,
+            posted,
             roles=[(role, role) for role in STAFF_ROLES],
             cohorts=self._cohort_choices(ctx),
             preset=self._preset(ctx),
@@ -2084,6 +2128,7 @@ class AddStaffMemberAction(PanelAction):
                 "first_name": names[0],
                 "last_name": names[1],
                 "form_url": self.get_action_url(ctx),
+                "person": self._fixed_person(ctx),
                 "email": email,
                 "role": role,
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
@@ -2131,6 +2176,50 @@ class AddStaffMemberAction(PanelAction):
         return staff_member_changed_response(user)
 
 
+class AddRoleAction(AddStaffMemberAction):
+    """Gives one staff member another role, from their row. The person is
+    fixed by the `user` parameter, so the dialog opens at the role step and
+    the posted email is never read."""
+
+    label = "Add role"
+    action_name = "add_role"
+    variant = "secondary"
+    renders_in_footer = False
+    offers_no_role = False
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return has_grantable_roles(ctx)
+
+    def _dialog_title(self, ctx: PanelContext) -> str:
+        return f"Add a role for {_staff_member_param(ctx).display_name}"
+
+    def _fixed_person(self, ctx: PanelContext) -> User | None:
+        return _staff_member_param(ctx)
+
+    def _posted(self, ctx: PanelContext) -> QueryDict:
+        posted = ctx.request.POST.copy()
+        posted["email"] = _staff_member_param(ctx).email
+        return posted
+
+    def _match(self, ctx: PanelContext, email: str) -> User:
+        return _staff_member_param(ctx)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        person = _staff_member_param(ctx)
+        form = AddStaffMemberForm(
+            None,
+            roles=[(g.role, g.role) for g in self._grantable(ctx)],
+            cohorts=self._cohort_choices(ctx),
+        )
+        form.fields["email"].initial = person.email
+        return self._role_step_context(ctx, person, form)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        if not self._grantable(ctx):
+            return denied_response(ctx, self)
+        return self._submit(ctx)
+
+
 class AddStaffMemberToCohortAction(AddStaffMemberAction):
     """Add a staff member on a cohort's page, with the cohort fixed. Rendered by
     the Settings panel beside its Staff heading, not in the footer."""
@@ -2173,6 +2262,9 @@ class StaffRoleAction(PanelAction):
     variant = "secondary"
     renders_in_footer = False
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return has_grantable_roles(ctx)
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         role = _action_params(ctx.request).get("role", "")

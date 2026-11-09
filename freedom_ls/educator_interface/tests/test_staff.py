@@ -23,9 +23,12 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     delete_cohort_leaving_role_rows,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import staff_assignments
-from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_management.role_assignment import (
+    assign_role,
+    set_staff_member_active,
+)
 from freedom_ls.learner_management.utils import ensure_staff_member
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -307,7 +310,11 @@ def test_a_staff_member_with_no_roles_says_so_and_offers_deactivate(
         if "No roles yet" in cell.text_content()
     ]
     assert not cell.cssselect("li")
-    (button,) = cell.cssselect("button[hx-get]")
+    (button,) = [
+        button
+        for button in cell.cssselect("button[hx-get]")
+        if button.text_content().strip() == "Deactivate staff member"
+    ]
     assert f"deactivate?user={member.pk}" in button.get("hx-get")
 
 
@@ -422,3 +429,60 @@ def test_row_action_buttons_are_small_and_sit_in_an_actions_wrapper(
     assert all(
         "gap-2" in button.getparent().get("class", "").split() for button in buttons
     )
+
+
+def _row_triggers(document: lxml.html.HtmlElement, user: User) -> list[str]:
+    """The labels of the row-level triggers for `user`, in page order. Role
+    entries' own buttons carry a `role=` parameter and are left out."""
+    return [
+        button.text_content().strip()
+        for button in document.cssselect("td button[hx-get]")
+        if f"user={user.pk}" in button.get("hx-get")
+        and "role=" not in button.get("hx-get")
+    ]
+
+
+@pytest.mark.django_db
+def test_add_role_is_the_first_row_trigger(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    member = UserFactory()
+    assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
+
+    document = _staff_page(staff_client, organisation)
+
+    assert _row_triggers(document, member) == ["Add role", "Deactivate staff member"]
+
+
+@pytest.mark.django_db
+def test_an_inactive_staff_members_row_offers_add_role(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    member = UserFactory()
+    assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
+    assign_role(
+        UserFactory(superuser=True), UserFactory(), "organisation_admin", organisation
+    )
+    set_staff_member_active(
+        UserFactory(superuser=True),
+        StaffMember.objects.get(user=member, organisation=organisation),
+        False,
+    )
+
+    document = _staff_page(staff_client, organisation)
+
+    assert _row_triggers(document, member) == ["Add role", "Reactivate staff member"]
+
+
+@pytest.mark.django_db
+def test_a_site_level_admins_row_offers_add_role_and_no_state_trigger(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    site_admin = UserFactory()
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+    ensure_staff_member(site_admin, organisation)
+
+    document = _staff_page(staff_client, organisation)
+
+    assert _row_triggers(document, site_admin) == ["Add role"]

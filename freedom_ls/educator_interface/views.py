@@ -77,6 +77,7 @@ from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
     AddLearnerAction,
     AddLearnerToCohortAction,
+    AddRoleAction,
     AddStaffMemberAction,
     AddStaffMemberToCohortAction,
     AddToCohortAction,
@@ -2378,6 +2379,7 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [
             AddStaffMemberAction(),
+            AddRoleAction(),
             DeactivateRoleAction(),
             ChangeCohortsAction(),
             DeactivateStaffMemberAction(),

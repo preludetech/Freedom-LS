@@ -8270,3 +8270,216 @@ def test_add_staff_to_a_cohort_is_offered_only_when_there_is_someone_to_pick(
     _staff_member_holding("cohort_viewer", cohort)
 
     assert offered()
+
+
+# add role from a staff row
+
+
+def _add_role_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "staff/__actions/add_role")
+
+
+def _add_role_dialog(client: Client, organisation: Organisation, user: User):
+    return client.get(
+        _add_role_url(organisation), {"user": str(user.pk)}, HTTP_HX_REQUEST="true"
+    )
+
+
+def _add_role(
+    client: Client,
+    organisation: Organisation,
+    user: User,
+    role: str,
+    cohorts: list[Cohort] | None = None,
+    **extra: str,
+):
+    return client.post(
+        _add_role_url(organisation),
+        {
+            "step": "submit",
+            "user": str(user.pk),
+            "role": role,
+            "cohorts": [str(cohort.pk) for cohort in cohorts or []],
+            "confirmed": "1",
+            **extra,
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+
+@pytest.mark.django_db
+def test_the_add_role_dialog_opens_at_the_role_step_with_the_person_and_their_roles(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _staff_member_holding(
+        "cohort_viewer", cohort, first_name="Ada", last_name="Lovelace"
+    )
+
+    response = _add_role_dialog(admin_client, organisation, user)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("input[name='role']")
+    assert not document.cssselect("input[name='email']")
+    assert [i.get("value") for i in document.cssselect("input[name='user']")] == [
+        str(user.pk)
+    ]
+    text = _text(response)
+    assert "Add a role for Ada Lovelace" in text
+    assert "Now Cohort viewer: Evening group" in text
+    assert "Existing account" not in text
+
+
+@pytest.mark.django_db
+def test_add_role_disables_a_role_held_on_every_cohort_the_grantor_can_give(
+    admin_client, organisation
+):
+    cohorts = list(Cohort.objects.filter(organisation=organisation))
+    user = _staff_member_holding("cohort_viewer", cohorts)
+
+    response = _add_role_dialog(admin_client, organisation, user)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (held,) = document.cssselect("input[name='role'][value='cohort_viewer']")
+    (other,) = document.cssselect("input[name='role'][value='cohort_admin']")
+    assert held.get("disabled") is not None
+    assert other.get("disabled") is None
+    (reason,) = document.cssselect(f"#{held.get('aria-describedby')}")
+    assert reason.text_content().strip() == "Already held on every cohort you can give"
+
+
+@pytest.mark.django_db
+def test_add_role_disables_an_organisation_role_the_person_holds(
+    admin_client, organisation
+):
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    response = _add_role_dialog(admin_client, organisation, user)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (held,) = document.cssselect(
+        "input[name='role'][value='organisation_staff_viewer']"
+    )
+    assert held.get("disabled") is not None
+    (reason,) = document.cssselect(f"#{held.get('aria-describedby')}")
+    assert reason.text_content().strip() == "Already held"
+
+
+@pytest.mark.django_db
+def test_add_role_submit_grants_the_role_and_fires_staff_changed(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    response = _add_role(admin_client, organisation, user, "cohort_viewer", [cohort])
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"])[STAFF_CHANGED] == {"ids": [str(user.pk)]}
+    assert ("cohort_viewer", str(cohort.pk)) in _active_roles(user)
+
+
+@pytest.mark.django_db
+def test_add_role_submit_of_a_held_role_answers_422(admin_client, organisation):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _add_role(admin_client, organisation, user, "cohort_viewer", [cohort])
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_add_role_grants_to_the_person_named_by_user_not_the_posted_email(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+    bystander = UserFactory(email="bystander@example.com")
+
+    response = _add_role(
+        admin_client,
+        organisation,
+        user,
+        "cohort_viewer",
+        [cohort],
+        email=bystander.email,
+    )
+
+    assert response.status_code == 204
+    assert ("cohort_viewer", str(cohort.pk)) in _active_roles(user)
+    assert not ObjectRoleAssignment.objects.filter(user=bystander).exists()
+
+
+@pytest.fixture
+def viewing_cohort_admin(
+    organisation: Organisation, cohort_admin_setup: tuple[Cohort, User]
+) -> User:
+    """A cohort admin of one cohort who also holds a staff viewer role."""
+    _, admin = cohort_admin_setup
+    assign_role(
+        UserFactory(superuser=True), admin, "organisation_staff_viewer", organisation
+    )
+    return admin
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_without_a_viewer_role_is_refused_the_staff_page(
+    logged_in_client, organisation, cohort_admin_setup
+):
+    _, admin = cohort_admin_setup
+
+    response = logged_in_client(admin).get(
+        _interface_url(organisation.slug, "staff"), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("action_name", "extra"),
+    [
+        ("add_role", {}),
+        ("deactivate_role", {"role": "cohort_viewer"}),
+        ("change_cohorts", {"role": "cohort_viewer"}),
+    ],
+)
+def test_a_cohort_admin_with_a_viewer_role_opens_the_row_actions_for_their_cohort(
+    logged_in_client,
+    organisation,
+    cohort_admin_setup,
+    viewing_cohort_admin,
+    action_name,
+    extra,
+):
+    cohort, _ = cohort_admin_setup
+    colleague = _staff_member_holding("cohort_viewer", cohort)
+
+    response = logged_in_client(viewing_cohort_admin).get(
+        _interface_url(organisation.slug, f"staff/__actions/{action_name}"),
+        {"user": str(colleague.pk), **extra},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_add_role_answers_403_for_a_cohort_the_cohort_admin_cannot_give(
+    logged_in_client, organisation, cohort_admin_setup, viewing_cohort_admin
+):
+    own, _ = cohort_admin_setup
+    foreign = _cohort(organisation)
+    colleague = _staff_member_holding("cohort_viewer", own)
+
+    response = _add_role(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague,
+        "cohort_admin",
+        [foreign],
+    )
+
+    assert response.status_code == 403
+    assert ("cohort_admin", str(foreign.pk)) not in _active_roles(colleague)
