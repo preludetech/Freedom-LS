@@ -456,6 +456,25 @@ def test_the_space_under_the_list_follows_the_fixed_bars_height(
         _wait_for_space_under(page, matches_bar)
 
 
+def _tops_after_click(control: Locator) -> list[float]:
+    """Click a control inside the table region and read the table's top
+    over the next six frames."""
+    tops: list[float] = control.evaluate(
+        """async control => {
+            const table = control.closest('[data-table-region]').querySelector('table');
+            const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+            control.click();
+            const tops = [];
+            for (let i = 0; i < 6; i++) {
+                await frame();
+                tops.push(table.getBoundingClientRect().top);
+            }
+            return tops;
+        }"""
+    )
+    return tops
+
+
 def test_the_bar_takes_the_toolbars_place_from_lg_up(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
@@ -480,12 +499,16 @@ def test_the_bar_takes_the_toolbars_place_from_lg_up(
     expect(search).to_be_visible()
     top_before = table.evaluate(top_of_table)
 
-    row_checkboxes.first.check()
+    # The toolbar and the bar swap in one frame: sampled frame by frame, a
+    # swap a frame apart leaves the table a row higher or lower for that frame.
+    assert _tops_after_click(row_checkboxes.first) == [top_before] * 6
     expect(bar).to_be_visible()
     expect(search).to_be_hidden()
-    assert table.evaluate(top_of_table) == top_before
 
-    bar.get_by_role("button", name="Clear", exact=True).click()
+    assert (
+        _tops_after_click(bar.get_by_role("button", name="Clear", exact=True))
+        == [top_before] * 6
+    )
     expect(bar).to_be_hidden()
     expect(search).to_be_visible()
     expect(table.locator("tbody input[name='keys']:checked")).to_have_count(0)
@@ -764,6 +787,43 @@ def test_bulk_action_posts_with_javascript_off(
     assert active_by_name["row-00"] is False
     assert active_by_name["row-01"] is False
     assert active_by_name["row-02"] is True
+
+
+def test_the_fixed_bar_covers_nothing_with_javascript_off(
+    browser: Browser,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """Below lg the bar is fixed to the bottom and, with JavaScript off,
+    always shown, so the region reserves a fixed height after the footer:
+    scrolled to the end, the pager's Next link is not under the bar."""
+    for i in range(PAGE_SIZE + 1):
+        make_stub(name=f"row-{i:02d}")
+
+    with _no_js_page(browser) as no_js_page:
+        for viewport in QA_VIEWPORTS[:2]:
+            no_js_page.set_viewport_size(viewport)
+            no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
+
+            bar = no_js_page.locator("[data-total-count]")
+            assert bar.evaluate("el => getComputedStyle(el).position") == "fixed"
+            space = no_js_page.locator("[data-selection-bar-space]")
+            assert space.evaluate("el => el.offsetHeight") > 0, (
+                f"no space under the list at {viewport}"
+            )
+
+            no_js_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            next_is_topmost = no_js_page.get_by_role(
+                "link", name="Next", exact=True
+            ).evaluate(
+                """el => {
+                    const box = el.getBoundingClientRect();
+                    return document.elementFromPoint(
+                        box.x + box.width / 2, box.y + box.height / 2) === el;
+                }"""
+            )
+            assert next_is_topmost, f"bar covers the pager at {viewport}"
 
 
 def test_more_actions_trigger_is_hidden_with_javascript_off(

@@ -736,9 +736,15 @@ document.addEventListener("alpine:init", () => {
         },
 
         // The toolbar gives its row to the bar from lg up; below lg the bar
-        // is fixed to the bottom and the toolbar stays.
+        // is fixed to the bottom and the toolbar stays. The bar's display is
+        // bound the same way, so both change in the same frame: x-show would
+        // apply a frame later and leave the table a row lower or higher.
         toolbarClass() {
             return this.barVisible ? "lg:hidden" : "";
+        },
+
+        barStyle() {
+            return { display: this.barVisible ? "" : "none" };
         },
 
         barSpaceStyle() {
@@ -783,14 +789,10 @@ document.addEventListener("alpine:init", () => {
             );
         },
 
-        update() {
-            this._recount();
-        },
-
         // Recount the visible row boxes and sync every page checkbox:
         // unchecked when none are ticked, indeterminate when some are,
         // checked when all are.
-        _recount() {
+        update() {
             const form = this._form();
             const rowBoxes = this._visibleRowBoxes(form);
             const checkedBoxes = rowBoxes.filter((box) => box.checked);
@@ -874,7 +876,7 @@ document.addEventListener("alpine:init", () => {
             this._visibleRowBoxes(this._form()).forEach((box) => {
                 box.checked = checked;
             });
-            this._recount();
+            this.update();
             if (!this.hasSelection) this._returnFocus(event);
         },
 
@@ -908,7 +910,7 @@ document.addEventListener("alpine:init", () => {
             this._visibleRowBoxes(this._form()).forEach((box) => {
                 box.checked = true;
             });
-            this._recount();
+            this.update();
             if (this.total > this.page) this.selectAllMatching();
         },
     }));

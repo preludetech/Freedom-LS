@@ -67,8 +67,10 @@ shows, so the bar takes the toolbar's row from lg up. The literal class name
 has to appear in this file for Tailwind to emit it. lg:min-h-16.75 is the
 one-row height at lg (12px of padding twice around the 42px search input, plus the 1px rule) and
 matches the bar, so the table's top does not move when one replaces the other.
+A bulk table with no controls keeps that row height from lg for the same
+reason, and is nothing below lg.
 {% endcomment %}
-<div class="{% if searchable or toolbar or sortable_columns or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3 lg:min-h-16.75{% endif %}"{% if bulk_actions %} x-bind:class="toolbarClass"{% endif %}>
+<div class="{% if searchable or toolbar or sortable_columns or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3 lg:min-h-16.75{% elif bulk_actions %}lg:min-h-16.75 lg:border-b lg:border-border{% endif %}"{% if bulk_actions %} x-bind:class="toolbarClass"{% endif %}>
     {% if searchable %}
         <form id="{{ query.key }}-search"
               method="get"

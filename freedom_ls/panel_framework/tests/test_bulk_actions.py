@@ -352,7 +352,8 @@ def test_selection_bar_is_pending_and_shown_by_alpine(
 
     (bar,) = document.cssselect("[data-total-count]")
     assert bar.get("data-selection-bar-pending") is not None
-    assert bar.get("x-show") == "barVisible"
+    assert bar.get("x-bind:style") == "barStyle"
+    assert bar.get("x-show") is None
 
 
 def test_selection_bar_holds_no_pagination(mock_site_context: Site) -> None:

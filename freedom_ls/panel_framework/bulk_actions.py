@@ -167,11 +167,6 @@ class BulkAction:
     variant: str = "secondary"
     #: The variant of the confirm button in the dialog.
     confirm_variant: str = "primary"
-
-    @property
-    def destructive(self) -> bool:
-        return self.variant == "error"
-
     #: The confirm button's label while the request is in flight.
     loading_text: str = ""
     #: The most rows one run inside the request handles. A selection the
@@ -186,6 +181,10 @@ class BulkAction:
     #: A form the educator fills in before the action can run, such as a
     #: target picker. Its cleaned data becomes `cleaned_data` everywhere else.
     form_class: type[forms.Form] | None = None
+
+    @property
+    def destructive(self) -> bool:
+        return self.variant == "error"
 
     def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
         """The dialog's heading: a question naming what will change."""

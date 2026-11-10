@@ -50,8 +50,8 @@
         {% comment %}
         The header checkbox lives in the desktop <table>, which is hidden
         below md, so cards need their own "select all" control. It has to be
-        inside the bulk form, not the search form in the toolbar above:
-        the checkboxes' closest("form") is how the handlers find the bulk form.
+        inside the bulk form, not the search form in the toolbar above: the
+        handlers sync every page checkbox they find through the bulk form.
         {% endcomment %}
         <div class="px-4 py-2 sm:px-6 md:hidden">
             <label class="inline-flex items-center gap-2 text-sm">
@@ -195,7 +195,8 @@
     {% comment %}
     Below lg the bar is fixed over the end of the page, so the region keeps
     the bar's height free after the footer while the bar shows; from lg up,
-    and with nothing selected, the space is zero.
+    and with nothing selected, the space is zero. With JavaScript off the
+    stylesheet gives it a fixed height instead.
     {% endcomment %}
     <div aria-hidden="true" data-selection-bar-space x-bind:style="barSpaceStyle"></div>
     {% endif %}

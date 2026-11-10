@@ -373,6 +373,17 @@ def test_no_bar_button_takes_a_filled_variant(mock_site_context: Site) -> None:
         assert not {"btn-secondary", "btn-error", "btn-primary"} & set(classes)
 
 
+def test_a_bulk_table_without_controls_keeps_the_toolbars_row_height(
+    mock_site_context: Site,
+) -> None:
+    """The bar takes the toolbar's row from lg, so a toolbar with nothing in
+    it still holds that row's height, or the table would move under it."""
+    document = _render(_bulk_panel([StubBulkAction()]))
+
+    (toolbar,) = document.xpath('//*[@*[name()="x-bind:class"]="toolbarClass"]')
+    assert "lg:min-h-16.75" in toolbar.get("class").split()
+
+
 def _positions(document: lxml.html.HtmlElement) -> dict[str, int]:
     order = list(document.iter())
     return {
