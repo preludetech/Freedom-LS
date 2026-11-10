@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import lxml.html
+import pytest
+
 from ..cotton_helpers import render_cotton
 
 
@@ -113,3 +116,14 @@ def test_flush_card_still_renders_header_body_and_footer() -> None:
     assert "Body content" in html
     assert "<footer" in html
     assert "<button>Save</button>" in html
+
+
+@pytest.mark.parametrize("flush", ["true", ""])
+def test_the_card_header_draws_no_rule_flush_or_not(flush: str) -> None:
+    html = render_cotton(
+        f'<c-panel-card title="Overview" flush="{flush}">Body content</c-panel-card>'
+    )
+
+    header = lxml.html.fromstring(html).find(".//header")
+
+    assert "border-b" not in header.get("class", "").split()

@@ -11,10 +11,10 @@ Attributes:
   description    One line under the heading, muted.
   heading_level  1-6 (default 2). Falls back to the default on anything else.
   flush          On, the body drops its padding so content such as a table can
-                 run edge to edge; the header and footer keep theirs, and the
-                 header draws a rule above the content. Off, the header runs
-                 straight into the padded body with no rule between them.
-                 Read through the `flag` filter.
+                 run edge to edge; the header and footer keep theirs. The
+                 header is the same either way and draws no rule: space
+                 separates it from the content. Read through the `flag`
+                 filter.
   landmark       On, with a title: the root is a <section aria-labelledby>
                  pointing at the heading's id, so assistive tech can jump
                  straight to this card. Without a title there is no heading
@@ -38,7 +38,7 @@ classes live in tailwind.components.css so a theme can retune both at once.
 
 {% partialdef card_body %}
     {% if title %}
-        <header class="flex items-start justify-between gap-4 px-4 sm:px-6 {% if flush|flag %}border-b border-border py-3 sm:py-4{% else %}pt-4 pb-2 sm:pt-6{% endif %}">
+        <header class="flex items-start justify-between gap-4 px-4 pt-4 pb-2 sm:px-6 sm:pt-6">
             <div class="min-w-0">
                 <h{{ level }} class="text-lg font-semibold font-display"{% if landmark|flag %} id="{{ title_base }}-title"{% endif %}>{{ title }}</h{{ level }}>
                 {% if description %}<p class="text-sm text-muted">{{ description }}</p>{% endif %}
