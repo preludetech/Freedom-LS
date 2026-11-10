@@ -18,7 +18,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/learner_interface/tests/views/test_dashboard.py::test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines (71 queries vs a limit of 70; it fails the same way on main, so it is pre-existing and likely date-dependent)
+- [x] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/learner_interface/tests/views/test_dashboard.py::test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines (71 queries vs a limit of 70; it fails the same way on main, so it is pre-existing and likely date-dependent)
 
 ## 4. Documentation and pull request
 

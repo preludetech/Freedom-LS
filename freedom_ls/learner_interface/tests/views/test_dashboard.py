@@ -1994,6 +1994,9 @@ def test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines(
         set_due_date(course, topic, due_date=datetime.date(2020, 1, 1))
         course_progress_record(course, user)
     client = logged_in_client(user)
+    # Warm Django's process-wide ContentType cache so the count does not
+    # depend on whether an earlier test in the run already filled it.
+    client.get(dashboard_url)
 
     with django_assert_max_num_queries(IN_PROGRESS_MAX_QUERIES):
         response = client.get(dashboard_url)
