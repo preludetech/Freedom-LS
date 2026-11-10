@@ -1,81 +1,94 @@
 {% extends "panel_framework/panels/panel.html" %}
 
 {% comment %}
-One outline row for a topic or form. The caller sets `item` and either
-`number` (a top-level row) or `part_number` and `child_number` (a row in a part).
+The course outline as a data table: the course details row, then one row
+per item, with a form's pages as rows under it. The markup and classes are
+the data-table component's, hand-rolled because the rows come from
+Course.collection_items(), not a queryset. A group row's chevron controls
+its child rows; a child row hides with any group above it.
 {% endcomment %}
-{% partialdef outline_row %}
-    <div class="flex items-center gap-2">
-        <span class="text-sm text-muted tabular-nums">{% if part_number %}{{ part_number }}.{{ child_number }}{% else %}{{ number }}.{% endif %}</span>
-        <span class="shrink-0 text-muted">
-            {% if item.child.content_type == "FORM" %}
-                <c-icon name="form" class="size-4" />
-                <span class="sr-only">Form</span>
-            {% else %}
-                <c-icon name="topic" class="size-4" />
-                <span class="sr-only">Topic</span>
-            {% endif %}
-        </span>
-        <span class="min-w-0 flex-1 font-medium">{{ item.child.title }}</span>
-        <c-modal-trigger size="small" variant="secondary"
-                         url="{{ row_action_urls.preview_content }}?item={{ item.pk }}"
-                         label="Preview"
-                         aria_label="Preview {{ item.child.title }}" />
-    </div>
-{% endpartialdef %}
-
-{% block panel_header_action %}
-    <c-modal-trigger size="small" variant="secondary"
-                     url="{{ row_action_urls.preview_course_details }}"
-                     label="Preview course details page"
-                     aria_label="Preview course details page" />
-{% endblock panel_header_action %}
-
 {% block panel_body %}
     {% if course.table_of_contents_in_development %}
-        <c-callout level="info">Learners can't see this outline yet. The course is marked as still in development.</c-callout>
+        <div class="px-4 pt-4 sm:px-6">
+            <c-callout level="info" class="my-0">Learners can't see this outline yet. The course is marked as still in development.</c-callout>
+        </div>
     {% endif %}
-    {% if outline %}
-        <nav aria-label="Course outline">
-            <ol class="list-none ml-0 flex flex-col gap-2">
-                {% for item in outline %}
-                    {% if item.child.content_type == "COURSE_PART" %}
-                        <li x-data="courseOutlinePart" class="flex flex-col gap-1">
-                            <button type="button" x-on:click="toggle" x-bind:aria-expanded="expanded" aria-controls="outline-part-{{ item.pk }}" class="flex w-full items-center gap-2 text-left cursor-pointer">
-                                <span class="text-sm text-muted tabular-nums">{{ forloop.counter }}.</span>
-                                <span class="shrink-0 text-muted">
-                                    <c-icon name="folder" class="size-4" />
-                                    <span class="sr-only">Part</span>
-                                </span>
-                                <span class="min-w-0 flex-1 font-medium">{{ item.child.title }}</span>
-                                <span x-show="expanded" class="shrink-0 text-muted" aria-hidden="true"><c-icon name="collapse" class="size-4" /></span>
-                                <span x-show="collapsed" x-cloak class="shrink-0 text-muted" aria-hidden="true"><c-icon name="expand" class="size-4" /></span>
-                            </button>
-                            <ol id="outline-part-{{ item.pk }}" x-show="expanded" x-collapse class="ps-6 list-none flex flex-col gap-1">
-                                {% with part_number=forloop.counter %}
-                                    {% for child_item in item.child.collection_items %}
-                                        <li>
-                                            {% with item=child_item child_number=forloop.counter %}
-                                                {% partial outline_row %}
-                                            {% endwith %}
-                                        </li>
-                                    {% empty %}
-                                        <li class="text-sm text-muted">No items in this part.</li>
-                                    {% endfor %}
-                                {% endwith %}
-                            </ol>
-                        </li>
-                    {% else %}
-                        <li>
-                            {% with number=forloop.counter %}
-                                {% partial outline_row %}
-                            {% endwith %}
-                        </li>
+    <div class="panel-data-table">
+        <div role="region" aria-label="Course outline" tabindex="0" class="overflow-x-auto">
+            <table x-data="courseOutline" aria-labelledby="course-outline-caption">
+                <caption id="course-outline-caption" class="sr-only">Course outline</caption>
+                <thead class="border-b border-border bg-transparent">
+                    <tr>
+                        <th scope="col" class="w-0 font-mono text-xs font-bold uppercase tracking-wide">#</th>
+                        <th scope="col" class="font-mono text-xs font-bold uppercase tracking-wide">Title</th>
+                        <th scope="col" class="hidden font-mono text-xs font-bold uppercase tracking-wide md:table-cell">Type</th>
+                        <th scope="col" class="w-0"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr id="{{ row.row_id }}"
+                            {% if row.parent_ids %}x-show="shown" data-parents="{{ row.parent_ids|join:' ' }}"{% endif %}
+                            {% if row.note %}class="hover:bg-transparent"{% endif %}>
+                            <td class="w-0 py-2 text-sm text-muted tabular-nums">{{ row.number }}</td>
+                            {% if row.note %}
+                                <td colspan="3" class="py-2 text-sm text-muted {% if row.depth == 1 %}ps-8{% elif row.depth == 2 %}ps-12{% elif row.depth == 3 %}ps-16{% endif %}">{{ row.note }}</td>
+                            {% else %}
+                                <td class="py-2 {% if row.depth == 1 %}ps-8{% elif row.depth == 2 %}ps-12{% elif row.depth == 3 %}ps-16{% endif %}">
+                                    <div class="flex items-center gap-2">
+                                        {% if row.child_row_ids %}
+                                            <button type="button"
+                                                    class="group -my-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
+                                                    aria-expanded="true"
+                                                    aria-controls="{{ row.child_row_ids|join:' ' }}"
+                                                    aria-label="Collapse {{ row.title }}"
+                                                    data-row="{{ row.row_id }}"
+                                                    x-bind:aria-expanded="expandedAttr"
+                                                    x-on:click="toggle">
+                                                <span aria-hidden="true" class="inline-flex motion-safe:transition-[rotate] group-aria-expanded:rotate-180">
+                                                    <c-icon name="dropdown" class="size-4" />
+                                                </span>
+                                            </button>
+                                        {% endif %}
+                                        {% if row.kind != "course" %}
+                                            <span class="shrink-0 text-muted">
+                                                <c-icon name="{{ row.icon }}" class="size-4" />
+                                                <span class="sr-only">{{ row.kind_label }}</span>
+                                            </span>
+                                        {% endif %}
+                                        <span class="min-w-0 font-medium">{{ row.title }}</span>
+                                    </div>
+                                </td>
+                                <td class="hidden py-2 text-sm text-muted md:table-cell">{{ row.kind_label }}</td>
+                                <td class="w-0 py-2">
+                                    {% if row.kind == "course" %}
+                                        <c-data-table-actions>
+                                            <c-modal-trigger size="small" variant="secondary"
+                                                             url="{{ row_action_urls.preview_course_details }}"
+                                                             label="Preview"
+                                                             aria_label="Preview course details page" />
+                                        </c-data-table-actions>
+                                    {% elif row.preview_query %}
+                                        <c-data-table-actions>
+                                            <c-modal-trigger size="small" variant="secondary"
+                                                             url="{{ row_action_urls.preview_content }}?{{ row.preview_query }}"
+                                                             label="Preview"
+                                                             aria_label="{% if row.kind == 'page' %}Preview {{ row.form_title }}: {{ row.title }}{% else %}Preview {{ row.title }}{% endif %}" />
+                                        </c-data-table-actions>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                    {% if rows|length == 1 %}
+                        <tr class="hover:bg-transparent">
+                            <td colspan="4" class="py-8 text-center text-muted">
+                                <c-panel-empty-state message="No content in this course yet." />
+                            </td>
+                        </tr>
                     {% endif %}
-                {% endfor %}
-            </ol>
-        </nav>
-    {% else %}
-        <c-panel-empty-state message="No content in this course yet." />
-    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% endblock panel_body %}

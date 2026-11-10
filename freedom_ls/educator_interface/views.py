@@ -70,7 +70,7 @@ from freedom_ls.comms.messaging_views import (
 )
 from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.course_details import course_details_context
-from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
     AddLearnerAction,
@@ -1855,17 +1855,169 @@ class CourseDetailsPanel(InstanceDetailsPanel):
         return rows
 
 
+@dataclass(frozen=True)
+class OutlineRow:
+    """One row of the course outline table: the course details, a part, a
+    topic, a form or one page of a multi-page form. A group row (a part, a
+    multi-page form) names its child rows so its toggle can control them,
+    and a child row names every group above it so it hides with any of
+    them. `preview_query` is the Preview trigger's query string, empty for
+    a part, which has nothing to show."""
+
+    row_id: str
+    number: str
+    title: str
+    kind: Literal["course", "part", "topic", "form", "page"]
+    preview_query: str = ""
+    parent_ids: tuple[str, ...] = ()
+    child_row_ids: tuple[str, ...] = ()
+    note: str = ""
+    # The form a page row belongs to, so its Preview names both.
+    form_title: str = ""
+
+    @property
+    def kind_label(self) -> str:
+        return {
+            "course": "Course",
+            "part": "Part",
+            "topic": "Topic",
+            "form": "Form",
+            "page": "Page",
+        }[self.kind]
+
+    @property
+    def icon(self) -> str:
+        return {"part": "folder", "form": "form", "page": "form"}.get(
+            self.kind, "topic"
+        )
+
+    @property
+    def depth(self) -> int:
+        return len(self.parent_ids)
+
+
+def _form_page_rows(
+    item: ContentCollectionItem, form: Form, number: str, parent_ids: tuple[str, ...]
+) -> list[OutlineRow]:
+    """One row per page of a form, each previewing that page alone."""
+    rows: list[OutlineRow] = []
+    for position, page in enumerate(form.pages.all(), start=1):
+        title = page.title or f"Page {position}"
+        rows.append(
+            OutlineRow(
+                row_id=f"outline-page-{page.pk}",
+                number=f"{number}.{position}",
+                title=title,
+                kind="page",
+                preview_query=f"item={item.pk}&page={page.pk}",
+                parent_ids=parent_ids,
+                form_title=form.title,
+            )
+        )
+    return rows
+
+
+def _outline_item_rows(
+    item: ContentCollectionItem, number: str, parent_ids: tuple[str, ...]
+) -> list[OutlineRow]:
+    """The rows for one collection item: itself, then its children. A part
+    expands into its items and a form with more than one page into its pages;
+    a form with one page is a single row that previews intro and page together."""
+    child = item.child
+    row_id = f"outline-item-{item.pk}"
+    child_parents = (*parent_ids, row_id)
+    label = f"{number}." if not parent_ids else number
+    if isinstance(child, CoursePart):
+        children: list[OutlineRow] = []
+        for position, part_item in enumerate(child.collection_items(), start=1):
+            children.extend(
+                _outline_item_rows(part_item, f"{number}.{position}", child_parents)
+            )
+        if not children:
+            children.append(
+                OutlineRow(
+                    row_id=f"{row_id}-empty",
+                    number="",
+                    title="",
+                    kind="part",
+                    parent_ids=child_parents,
+                    note="No items in this part.",
+                )
+            )
+        direct = tuple(r.row_id for r in children if r.parent_ids == child_parents)
+        return [
+            OutlineRow(
+                row_id=row_id,
+                number=label,
+                title=child.title,
+                kind="part",
+                parent_ids=parent_ids,
+                child_row_ids=direct,
+            ),
+            *children,
+        ]
+    if isinstance(child, Form):
+        pages = _form_page_rows(item, child, number, child_parents)
+        if len(pages) > 1:
+            return [
+                OutlineRow(
+                    row_id=row_id,
+                    number=label,
+                    title=child.title,
+                    kind="form",
+                    preview_query=f"item={item.pk}",
+                    parent_ids=parent_ids,
+                    child_row_ids=tuple(r.row_id for r in pages),
+                ),
+                *pages,
+            ]
+        kind: Literal["form", "topic"] = "form"
+    else:
+        kind = "topic"
+    return [
+        OutlineRow(
+            row_id=row_id,
+            number=label,
+            title=str(getattr(child, "title", "")),
+            kind=kind,
+            preview_query=f"item={item.pk}",
+            parent_ids=parent_ids,
+        )
+    ]
+
+
+def outline_rows(course: Course) -> list[OutlineRow]:
+    """The course outline as table rows: the course details first, then every
+    collection item in order, numbered as the learner outline numbers them.
+    One pages query covers every form, so the count stays flat as forms grow."""
+    forms = [
+        item.child
+        for item in course.collection_items_flat()
+        if isinstance(item.child, Form)
+    ]
+    prefetch_related_objects(forms, "pages")
+    rows = [
+        OutlineRow(
+            row_id="outline-course", number="", title="Course details", kind="course"
+        )
+    ]
+    for position, item in enumerate(course.collection_items(), start=1):
+        rows.extend(_outline_item_rows(item, str(position), ()))
+    return rows
+
+
 class CourseContentPanel(Panel):
     model = Course
     title = "Course content"
     template_name = "educator_interface/panels/course_content.html"
+    card_flush = True
 
     def get_context_data(self) -> dict[str, object]:
         course = cast(Course, self.instance)
         return {
             **super().get_context_data(),
             "course": course,
-            "outline": course.collection_items(),
+            "rows": outline_rows(course),
         }
 
     def get_actions(self) -> list[PanelAction]:

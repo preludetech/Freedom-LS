@@ -1,10 +1,23 @@
 document.addEventListener("alpine:init", () => {
-    // A part of the course outline. Open by default and never remembered:
-    // an educator reads the whole outline, so there is no state worth keeping.
-    Alpine.data("courseOutlinePart", () => ({
-        expanded: true,
-        get collapsed() { return !this.expanded; },
-        toggle() { this.expanded = !this.expanded; },
+    // The course outline table. A group row (a part, a multi-page form)
+    // toggles its child rows, and a child row hides with any group above
+    // it. Every group is open by default and never remembered: an educator
+    // reads the whole outline, so there is no state worth keeping.
+    // The CSP build passes no arguments, so a toggle names its row and a
+    // child row its groups through data attributes.
+    Alpine.data("courseOutline", () => ({
+        collapsed: {},
+        toggle(event) {
+            const rowId = event.currentTarget.dataset.row;
+            this.collapsed[rowId] = !this.collapsed[rowId];
+        },
+        expandedAttr() {
+            return this.collapsed[this.$el.dataset.row] ? "false" : "true";
+        },
+        shown() {
+            const parents = (this.$el.dataset.parents || "").split(" ");
+            return parents.every((rowId) => !this.collapsed[rowId]);
+        },
     }));
 
     // The role radios of the Add member dialog. The cohorts block shows only

@@ -7255,11 +7255,17 @@ def _course_content_panel(client: Client, course: CourseModel) -> lxml.html.Html
     return panel
 
 
+def _outline_rows(panel: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
+    return list(panel.cssselect("[aria-label='Course outline'] tbody tr"))
+
+
 def _outline_numbers(panel: lxml.html.HtmlElement) -> list[str]:
-    return [
-        node.text_content().strip()
-        for node in panel.cssselect("nav[aria-label='Course outline'] .tabular-nums")
+    numbers = [
+        cell.text_content().strip()
+        for row in _outline_rows(panel)
+        for cell in row.cssselect("td.tabular-nums")[:1]
     ]
+    return [number for number in numbers if number]
 
 
 @pytest.mark.django_db
@@ -7285,11 +7291,18 @@ def test_course_content_numbers_rows_in_collection_order(staff_client: Client):
 
     panel = _course_content_panel(staff_client, course)
 
+    assert panel.cssselect(".panel-data-table table")
     assert _outline_numbers(panel) == ["1.", "2.", "3.", "3.1", "3.2", "4."]
-    form_row = panel.cssselect("nav[aria-label='Course outline'] li")[-1]
+    rows = _outline_rows(panel)
+    first_cells = [cell.text_content().strip() for cell in rows[0].cssselect("td")]
+    assert first_cells[:3] == ["", "Course details", "Course"]
+    assert rows[0].cssselect("button[hx-get]")[0].text_content().strip() == "Preview"
+    form_row = rows[-1]
     assert form_row.cssselect("svg")
     assert form_row.cssselect(".sr-only")[0].text_content().strip() == "Form"
+    assert form_row.cssselect("td")[2].text_content().strip() == "Form"
     assert form_row.cssselect("button[hx-get]")[0].text_content().strip() == "Preview"
+    assert panel.cssselect("header button") == []
 
 
 @pytest.mark.django_db
@@ -7298,15 +7311,64 @@ def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
     part = CoursePartFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
     ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=1
+    )
+    ContentCollectionItemFactory(
         collection_object=part, child_object=TopicFactory(), order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=1
     )
 
     panel = _course_content_panel(staff_client, course)
 
     (button,) = panel.cssselect("button[aria-controls]")
-    assert button.get("aria-controls") in {
-        node.get("id") for node in panel.cssselect("ol[id]")
+    assert button.get("aria-expanded") == "true"
+    row_ids = {node.get("id") for node in panel.cssselect("tbody tr[id]")}
+    controlled = set(str(button.get("aria-controls")).split())
+    assert len(controlled) == 2
+    assert controlled <= row_ids
+    assert button.xpath("ancestor::tr")[0].cssselect("button[hx-get]") == []
+
+
+@pytest.mark.django_db
+def test_a_multi_page_form_expands_into_one_row_per_page(staff_client: Client):
+    course = CourseFactory()
+    survey = FormFactory(title="Survey")
+    first = FormPageFactory(form=survey, title="About you", order=0)
+    FormPageFactory(form=survey, title="", order=1)
+    quiz = FormFactory(title="Quiz")
+    FormPageFactory(form=quiz, title="Only page", order=0)
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    survey_item = ContentCollectionItemFactory(
+        collection_object=course, child_object=survey, order=1
+    )
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=2)
+
+    panel = _course_content_panel(staff_client, course)
+
+    assert _outline_numbers(panel) == ["1.", "2.", "2.1", "2.2", "3."]
+    rows = _outline_rows(panel)
+    survey_row, page_one, page_two, quiz_row = rows[2], rows[3], rows[4], rows[5]
+    (toggle,) = survey_row.cssselect("button[aria-controls]")
+    assert set(str(toggle.get("aria-controls")).split()) == {
+        page_one.get("id"),
+        page_two.get("id"),
     }
+    (survey_trigger,) = survey_row.cssselect("button[hx-get]")
+    assert survey_trigger.get("hx-get").endswith(f"?item={survey_item.pk}")
+    (page_trigger,) = page_one.cssselect("button[hx-get]")
+    assert page_trigger.get("hx-get").endswith(
+        f"?item={survey_item.pk}&page={first.pk}"
+    )
+    assert page_trigger.get("aria-label") == "Preview Survey: About you"
+    assert page_one.cssselect("td")[2].text_content().strip() == "Page"
+    assert page_two.cssselect("td .font-medium")[0].text_content().strip() == "Page 2"
+    assert quiz_row.cssselect("button[aria-controls]") == []
+    (quiz_trigger,) = quiz_row.cssselect("button[hx-get]")
+    assert "page=" not in str(quiz_trigger.get("hx-get"))
 
 
 @pytest.mark.django_db
@@ -7314,7 +7376,8 @@ def test_course_content_empty_course_shows_empty_state(staff_client: Client):
     panel = _course_content_panel(staff_client, CourseFactory())
 
     assert "No content in this course yet." in panel.text_content()
-    assert panel.cssselect("nav[aria-label='Course outline']") == []
+    assert _outline_numbers(panel) == []
+    assert len(_outline_rows(panel)) == 2
 
 
 @pytest.mark.django_db
@@ -7377,7 +7440,9 @@ def _preview_url(
     document = _get_document(
         client, _interface_url(organisation.slug, f"courses/{course.pk}")
     )
-    (trigger,) = document.cssselect("section[data-panel='content'] nav button[hx-get]")
+    trigger = document.cssselect(
+        "section[data-panel='content'] table button[hx-get*='preview_content']"
+    )[0]
     return str(trigger.get("hx-get")).split("?")[0]
 
 
@@ -7401,7 +7466,7 @@ def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
     ).content.decode()
     panel = lxml.html.fromstring(html).cssselect("section[data-panel='content']")[0]
 
-    (trigger,) = panel.cssselect("nav button[hx-get]")
+    (trigger,) = panel.cssselect("table button[aria-label='Preview Intro']")
     assert trigger.get("hx-get").endswith(f"/__actions/preview_content?item={item.pk}")
     assert trigger.text_content().strip() == "Preview"
     assert trigger.get("aria-label") == "Preview Intro"
@@ -7799,7 +7864,7 @@ def _course_details_preview_url(organisation: Organisation, course: CourseModel)
 
 
 @pytest.mark.django_db
-def test_the_course_content_card_header_carries_the_course_details_trigger(
+def test_the_course_content_table_opens_with_the_course_details_row(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -7810,9 +7875,12 @@ def test_the_course_content_card_header_carries_the_course_details_trigger(
     )
 
     (panel,) = document.cssselect("section[data-panel='content']")
-    (trigger,) = panel.cssselect("header button[hx-get]")
+    assert panel.cssselect("header button") == []
+    first_row = _outline_rows(panel)[0]
+    assert "Course details" in first_row.text_content()
+    (trigger,) = first_row.cssselect("button[hx-get]")
     assert trigger.get("hx-get") == _course_details_preview_url(organisation, course)
-    assert trigger.text_content().strip() == "Preview course details page"
+    assert trigger.text_content().strip() == "Preview"
     assert trigger.get("aria-label") == "Preview course details page"
 
 
