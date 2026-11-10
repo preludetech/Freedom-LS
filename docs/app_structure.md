@@ -133,6 +133,7 @@ flowchart TB
     educator_interface --> base
     educator_interface --> comms
     educator_interface --> content_engine
+    educator_interface --> form_engine
     educator_interface --> learner_management
     educator_interface --> learner_progress
     educator_interface --> organisations
@@ -316,7 +317,7 @@ flowchart TB
 | deadlines | accounts, base, content_engine, learner_management, learner_progress, organisations, site_aware_models | — |
 | deployment | base, content_engine, learner_management, organisations, panel_framework, reports | accounts |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications, registration_rules |
-| educator_interface | accounts, audit_log, base, comms, content_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
+| educator_interface | accounts, audit_log, base, comms, content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
 | form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |

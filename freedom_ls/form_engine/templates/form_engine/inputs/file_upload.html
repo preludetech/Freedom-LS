@@ -32,6 +32,9 @@ which happen without a page load.
     </label>
 {% endpartialdef %}
 
+{% if read_only and not answer_file %}
+<p class="text-sm text-muted">File upload question</p>
+{% else %}
 <div id="question-{{ question.id }}-file"
      class="space-y-2"
      aria-live="polite"
@@ -85,3 +88,4 @@ which happen without a page load.
         <p class="text-sm text-muted">No file attached.</p>
     {% endif %}
 </div>
+{% endif %}

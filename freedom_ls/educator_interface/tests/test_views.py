@@ -18,7 +18,6 @@ import lxml.html
 import pytest
 import time_machine
 
-from django.apps import apps
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -78,6 +77,13 @@ from freedom_ls.educator_interface.views import (
     active_status_badge,
     learner_status_badge,
 )
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -7258,12 +7264,16 @@ def test_course_content_numbers_rows_in_collection_order(staff_client: Client):
         collection_object=part, child_object=TopicFactory(), order=1
     )
     ContentCollectionItemFactory(
-        collection_object=course, child_object=TopicFactory(), order=3
+        collection_object=course, child_object=FormFactory(), order=3
     )
 
     panel = _course_content_panel(staff_client, course)
 
     assert _outline_numbers(panel) == ["1.", "2.", "3.", "3.1", "3.2", "4."]
+    form_row = panel.cssselect("nav[aria-label='Course outline'] li")[-1]
+    assert form_row.cssselect("svg")
+    assert form_row.cssselect(".sr-only")[0].text_content().strip() == "Form"
+    assert form_row.cssselect("button[hx-get]")[0].text_content().strip() == "Preview"
 
 
 @pytest.mark.django_db
@@ -7417,8 +7427,8 @@ def test_opening_a_topic_preview_writes_nothing(staff_client: Client):
         CourseProgress,
         LearnerCourseRegistration,
         AuditLogEntry,
-        apps.get_model("freedom_ls_form_engine", "FormProgress"),
-        apps.get_model("freedom_ls_form_engine", "QuestionAnswer"),
+        FormProgress,
+        QuestionAnswer,
     ]
     before = [model.objects.count() for model in counted]
 
@@ -7520,6 +7530,187 @@ def test_a_user_with_no_role_in_the_organisation_cannot_preview(
 ):
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
+    action_url = _interface_url(
+        organisation.slug,
+        f"courses/{course.pk}/content/__actions/preview_content",
+    )
+
+    response = logged_in_client(UserFactory()).get(
+        f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+QUESTION_TYPES = [
+    "multiple_choice",
+    "checkboxes",
+    "short_text",
+    "long_text",
+    "number",
+    "date",
+    "time",
+    "email",
+    "url",
+    "phone",
+    "dropdown",
+    "file_upload",
+]
+
+
+def _course_with_form(form: Model | None = None) -> tuple[CourseModel, Model]:
+    course = cast(CourseModel, CourseFactory())
+    item = ContentCollectionItemFactory(
+        collection_object=course, child_object=form or FormFactory(), order=0
+    )
+    return course, cast(Model, item)
+
+
+@pytest.mark.django_db
+def test_opening_a_form_preview_renders_every_question_type_disabled(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    form = FormFactory(title="Intake", content="Tell us **more**")
+    page = FormPageFactory(form=form, title="About you")
+    for order, question_type in enumerate(QUESTION_TYPES):
+        question = FormQuestionFactory(
+            form_page=page, type=question_type, order=order, question=f"Q {order}"
+        )
+        if question_type in {"multiple_choice", "checkboxes", "dropdown"}:
+            QuestionOptionFactory(question=question, text="Yes", order=0)
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    html = response.content.decode()
+    document = lxml.html.fromstring(html)
+    assert response.status_code == 200
+    assert "<strong>more</strong>" in html
+    assert "About you" in html
+    (heading,) = document.cssselect("h2")
+    assert heading.text_content().split() == ["Intake", "Form"]
+    controls = document.cssselect("input, textarea, select")
+    assert controls
+    assert all(control.get("disabled") is not None for control in controls)
+    assert "File upload question" in html
+    assert "questionFileUpload" not in html
+    assert "hx-post" not in html
+    assert "<form" not in html
+    assert document.cssselect("button[type='submit']") == []
+
+
+@pytest.mark.django_db
+def test_a_conditional_page_is_headed_by_its_condition_and_pages_keep_their_order(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    form = FormFactory()
+    first = FormPageFactory(form=form, title="First page", order=0)
+    gate = FormQuestionFactory(form_page=first, question="Do you smoke?", order=0)
+    option = QuestionOptionFactory(question=gate, text="Yes", order=0)
+    FormPageFactory(form=form, title="Second page", order=1, condition_option=option)
+    FormPageFactory(form=form, title="Third page", order=2)
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    html = response.content.decode()
+    assert "Shown only if Do you smoke? is answered Yes" in html
+    assert (
+        html.index("First page") < html.index("Second page") < html.index("Third page")
+    )
+
+
+@pytest.mark.django_db
+def test_opening_a_form_preview_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    FormQuestionFactory(form_page=page, type="file_upload")
+    FormQuestionFactory(form_page=page, type="short_text")
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+    counted = [
+        TopicProgress,
+        CourseProgress,
+        LearnerCourseRegistration,
+        AuditLogEntry,
+        FormProgress,
+        QuestionAnswer,
+    ]
+    before = [model.objects.count() for model in counted]
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert [model.objects.count() for model in counted] == before
+
+
+@pytest.mark.django_db
+def test_a_preview_of_another_courses_form_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_form()
+    _other_course, other_item = _course_with_form()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={other_item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_preview_of_a_form_on_another_site_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_form()
+    with site_context(SiteFactory()):
+        _other_course, other_item = _course_with_form()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={other_item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_form_of_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_form()
+    course.organisations.add(OrganisationFactory())
+    action_url = _interface_url(
+        organisation.slug,
+        f"courses/{course.pk}/content/__actions/preview_content",
+    )
+
+    action = staff_client.get(f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert action.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_form_preview_without_the_htmx_header_or_by_post_is_a_404(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_form()
+    url = _preview_url(staff_client, organisation, course)
+
+    plain_get = staff_client.get(f"{url}?item={item.pk}")
+    post = staff_client.post(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert (plain_get.status_code, post.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+def test_a_user_with_no_role_cannot_preview_a_form(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_form()
     action_url = _interface_url(
         organisation.slug,
         f"courses/{course.pk}/content/__actions/preview_content",

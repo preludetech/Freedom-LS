@@ -8,7 +8,18 @@ a backdrop click and never asks about unsaved changes.
     <div class="px-6 py-4 flex flex-col gap-6">
         <c-callout level="info" class="my-0">Preview. This is how learners see it. Nothing here is saved.</c-callout>
         {% if child.content_type == "FORM" %}
-            {% comment %}Filled in by the form preview.{% endcomment %}
+            {% if child.content %}<c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>{% endif %}
+            {% for entry in preview_pages %}
+                <section class="flex flex-col gap-4">
+                    <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
+                    {% if entry.page.condition_option %}
+                        <p class="text-sm text-muted">Shown only if {{ entry.page.condition_option.question.question }} is answered {{ entry.page.condition_option.text }}</p>
+                    {% endif %}
+                    {% with page_children=entry.page_children %}
+                        {% include "form_engine/partials/page_children.html" %}
+                    {% endwith %}
+                </section>
+            {% endfor %}
         {% else %}
             <c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>
         {% endif %}

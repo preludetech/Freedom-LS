@@ -25,6 +25,7 @@ from django.db.models import (
     QuerySet,
     Subquery,
     Window,
+    prefetch_related_objects,
 )
 from django.db.models.functions import RowNumber
 from django.http import (
@@ -151,6 +152,8 @@ from freedom_ls.educator_interface.reporting import (
 )
 from freedom_ls.educator_interface.staff import staff_role_entries
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
+from freedom_ls.form_engine.conditions import full_path
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import (
@@ -1867,6 +1870,25 @@ class CourseContentPanel(Panel):
         return [PreviewContentAction()]
 
 
+def _form_preview_context(form: Form) -> dict[str, object]:
+    """Every page of the form, on or off any condition, laid out the way
+    the form page partial expects, with no sitting behind it."""
+    # A conditional page's heading names the question its condition is on.
+    prefetch_related_objects([form], "pages__condition_option__question")
+    path = full_path(form)
+    return {
+        "form": form,
+        "preview_pages": [
+            {"page": page, "page_children": path.children_of(page)}
+            for page in path.pages
+        ],
+        "question_positions": path.question_positions(),
+        "existing_answers": {},
+        "rejected_answers": {},
+        "read_only": True,
+    }
+
+
 class PreviewContentAction(PanelAction):
     """Shows one child of the course read-only in the app modal. The
     target is found among the authorised course's own collection items,
@@ -1891,6 +1913,8 @@ class PreviewContentAction(PanelAction):
             "collection_item": collection_item,
             "child": collection_item.child,
         }
+        if isinstance(collection_item.child, Form):
+            context.update(_form_preview_context(collection_item.child))
         return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
