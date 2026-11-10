@@ -4246,6 +4246,19 @@ def test_the_remove_confirmation_names_the_person_the_role_and_the_scope(
 
 
 @pytest.mark.django_db
+def test_the_remove_confirmation_reads_an_organisation_role_as_the_whole_organisation(
+    admin_client, organisation
+):
+    """The scope label "Whole organisation" used to be pasted mid-sentence,
+    giving "They lose Organisation admin on Whole organisation"."""
+    user = _staff_member_holding("organisation_admin", organisation)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "organisation_admin"))
+
+    assert "They lose Organisation admin on the whole organisation: " in text
+
+
+@pytest.mark.django_db
 def test_the_remove_confirmation_names_every_cohort_without_truncating(
     admin_client, organisation
 ):

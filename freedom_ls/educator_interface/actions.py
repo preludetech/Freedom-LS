@@ -2578,7 +2578,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
                 "entry": entry,
                 "description": description,
                 "full_scope": (
-                    entry.full_scope
+                    "the whole organisation"
                     if entry.target == "organisation"
                     else join_prose([cohort.name for cohort in removed])
                 ),
