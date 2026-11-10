@@ -86,7 +86,7 @@ def count_outcomes(outcomes: dict[str, BulkOutcome]) -> list[BulkCount]:
 
 @dataclass(frozen=True)
 class BulkResultEntry:
-    """One skipped or failed object, named so the reader can find it."""
+    """One failed object, named so the reader can follow it up."""
 
     key: str
     row_label: str
@@ -99,8 +99,8 @@ class BulkResult:
     """What a bulk run did, in a form that survives a JSON round trip.
 
     `counts` has one item per distinct (status, reason), in the order the
-    pairs first appeared. `entries` names at most RESULT_ENTRY_LIMIT skipped
-    or failed objects; `left_out` counts those beyond the limit, so the
+    pairs first appeared. `entries` names at most RESULT_ENTRY_LIMIT failed
+    objects (a skip is only counted); `left_out` counts those beyond the limit, so the
     stored result stays a bounded size however large the run was.
     """
 
@@ -390,7 +390,7 @@ def run_apply(
                 outcome = BulkOutcome("failed", FAILED_REASON)
             pair = (outcome.status, outcome.reason)
             tallies[pair] = tallies.get(pair, 0) + 1
-            if outcome.status != "changed":
+            if outcome.status == "failed":
                 if len(entries) < RESULT_ENTRY_LIMIT:
                     entries.append(
                         BulkResultEntry(

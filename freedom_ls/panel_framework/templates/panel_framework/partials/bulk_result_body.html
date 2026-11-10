@@ -1,18 +1,22 @@
+{% comment %}
+A result states counts: the headline, then one line per skip or failure
+reason. Only failed rows are named, since each one needs following up.
+{% endcomment %}
 <p id="bulk-result-headline">{{ headline }}</p>
 {% if result_lines %}
-    <ul class="mt-2 list-disc pl-5 text-sm">
+    <ul class="mt-2 list-disc pl-5">
         {% for line in result_lines %}
             <li>{{ line }}</li>
         {% endfor %}
     </ul>
 {% endif %}
 {% if result.entries %}
-    <ul class="mt-2 text-sm">
+    <ul class="mt-2 list-disc pl-5">
         {% for entry in result.entries %}
             <li>{{ entry.row_label }}: {{ entry.reason }}</li>
         {% endfor %}
     </ul>
     {% if result.left_out %}
-        <p class="mt-1 text-sm">and {{ result.left_out }} more</p>
+        <p class="mt-1">and {{ result.left_out }} more</p>
     {% endif %}
 {% endif %}

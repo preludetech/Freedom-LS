@@ -83,9 +83,7 @@ def test_a_stale_key_is_reported_as_not_found(mock_site_context: Site):
     result = run_bulk_action(str(run.pk), mock_site_context.pk)
 
     assert BulkCount("skipped", NOT_FOUND, 1) in result.counts
-    assert [(entry.key, entry.reason) for entry in result.entries] == [
-        (GONE, NOT_FOUND)
-    ]
+    assert result.entries == []
     assert StubRecordedBulkAction().result_line(result.counts[-1]) == "1 was not found."
 
 

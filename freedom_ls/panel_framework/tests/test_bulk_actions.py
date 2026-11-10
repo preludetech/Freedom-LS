@@ -602,7 +602,9 @@ def test_confirmed_plain_post_returns_to_the_table_with_the_result_as_a_flash(
     ]
 
 
-def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> None:
+def test_result_counts_skipped_objects_without_naming_them(
+    mock_site_context: Site,
+) -> None:
     class _SkippingBulkAction(StubBulkAction):
         def apply(
             self,
@@ -643,7 +645,8 @@ def test_result_lists_skipped_objects_with_reasons(mock_site_context: Site) -> N
     content = response.content.decode()
     assert "0 stub models changed." in content
     assert "2 were already processed." in content
-    assert "row-0: already processed" in content
+    assert "row-0" not in content
+    assert "row-1" not in content
 
 
 class _PartlyFailingBulkAction(StubBulkAction):
@@ -695,6 +698,42 @@ def test_declared_failure_exception_becomes_failed_entry(
         ("boom", "failed", FAILED_REASON)
     ]
     assert "secret detail" not in str(result.to_json())
+
+
+def test_result_names_the_rows_that_failed(mock_site_context: Site) -> None:
+    class _Action(_PartlyFailingBulkAction):
+        failure_exceptions = (ValueError,)
+
+    stubs = [make_stub(name="ok"), make_stub(name="boom")]
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_bulk",
+        {
+            "mode": "keys",
+            "keys": [str(stub.pk) for stub in stubs],
+            "confirmed": "1",
+            "expected_count": "2",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+    request.user = make_staff_user()
+    panel = StubDataTablePanel(
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+            page_url="/stubs",
+        )
+    )
+
+    response = _handle_action(request, _ResolvedAction(_Action(), panel.ctx), panel)
+
+    assert isinstance(response, HttpResponse)
+    content = response.content.decode()
+    assert "1 could not be changed." in content
+    assert f"boom: {FAILED_REASON}" in content
+    assert "ok:" not in content
 
 
 @pytest.mark.parametrize(

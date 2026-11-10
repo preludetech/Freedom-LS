@@ -6257,8 +6257,8 @@ def test_a_run_skips_a_learner_outside_the_cohort_the_user_may_change(
     )
 
     learner.refresh_from_db()
-    assert [(e.status, e.reason) for e in result.entries] == [
-        ("skipped", "learners you don't have permission to change")
+    assert result.counts == [
+        BulkCount("skipped", "learners you don't have permission to change", 1)
     ]
     assert learner.is_active is True
 
@@ -7049,7 +7049,7 @@ def test_bulk_resend_confirmation_skips_learners_who_set_up_their_account(
 
     text = _bulk_text(response)
     assert "Resend the setup email to 1 learner." in text
-    assert "1 account is already set up and will be skipped." in text
+    assert "1 learner is already set up and will be skipped." in text
 
 
 @pytest.mark.django_db
@@ -7064,7 +7064,7 @@ def test_bulk_resend_confirmation_counts_set_up_accounts_in_the_plural(
         staff_client, organisation, "resend_setup_email", [pending, *done]
     )
 
-    assert "2 accounts are already set up and will be skipped." in _bulk_text(response)
+    assert "2 learners are already set up and will be skipped." in _bulk_text(response)
 
 
 @pytest.mark.django_db
@@ -7088,9 +7088,9 @@ def test_bulk_resend_sends_one_email_per_pending_learner(
 @pytest.mark.usefixtures("_clear_resend_guard")
 @pytest.mark.parametrize(
     ("set_up", "line"),
-    [(1, "1 account was already set up."), (2, "2 accounts were already set up.")],
+    [(1, "1 learner already set up."), (2, "2 learners already set up.")],
 )
-def test_bulk_resend_result_counts_the_accounts_already_set_up(
+def test_bulk_resend_result_counts_the_learners_already_set_up(
     staff_client: Client, django_capture_on_commit_callbacks, set_up: int, line: str
 ):
     organisation = OrganisationFactory()
@@ -7446,9 +7446,7 @@ def test_an_inactive_cohort_the_educator_cannot_change_is_skipped_for_permission
 
     not_permitted = "cohorts you don't have permission to change"
     assert previewed == {str(theirs.pk): BulkOutcome("skipped", not_permitted)}
-    assert [(e.status, e.reason) for e in result.entries] == [
-        ("skipped", not_permitted)
-    ]
+    assert result.counts == [BulkCount("skipped", not_permitted, 1)]
 
 
 @pytest.mark.django_db
@@ -7473,7 +7471,8 @@ def test_run_skips_a_cohort_that_was_already_inactive_rather_than_failing_it(
         {"course": CourseFactory()},
     )
 
-    assert [(e.status, e.reason) for e in result.entries] == [("skipped", "inactive")]
+    assert result.counts == [BulkCount("skipped", "inactive", 1)]
+    assert result.entries == []
 
 
 @pytest.mark.django_db

@@ -9,10 +9,8 @@ from django.utils.module_loading import import_string
 
 from freedom_ls.panel_framework.actions import count_noun, count_phrase
 from freedom_ls.panel_framework.bulk_actions import (
-    RESULT_ENTRY_LIMIT,
     BulkCount,
     BulkResult,
-    BulkResultEntry,
     RecordedBulkAction,
     run_apply,
 )
@@ -50,22 +48,17 @@ def save_processed(run: BulkActionRun) -> Callable[[int], None]:
 def with_missing_keys(
     result: BulkResult, keys: list[str], queryset: QuerySet, reason: str
 ) -> BulkResult:
-    """`result` plus one skipped entry for every snapshot key `queryset` no
-    longer holds, so a row deleted since the confirmation is reported rather
+    """`result` plus a skipped count for the snapshot keys `queryset` no
+    longer holds, so rows deleted since the confirmation are reported rather
     than silently dropped."""
     found = {str(pk) for pk in queryset.values_list("pk", flat=True)}
     missing = [key for key in keys if key not in found]
     if not missing:
         return result
-    room = max(RESULT_ENTRY_LIMIT - len(result.entries), 0)
-    entries = result.entries + [
-        BulkResultEntry(key=key, row_label=key, status="skipped", reason=reason)
-        for key in missing[:room]
-    ]
     return BulkResult(
         counts=[*result.counts, BulkCount("skipped", reason, len(missing))],
-        entries=entries,
-        left_out=result.left_out + max(len(missing) - room, 0),
+        entries=result.entries,
+        left_out=result.left_out,
     )
 
 

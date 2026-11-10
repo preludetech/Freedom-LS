@@ -2996,8 +2996,7 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
 
     def result_line(self, item: BulkCount) -> str:
         if item.reason == self.unchanged_reason:
-            accounts = count_phrase(item.count, "account was", "accounts were")
-            return f"{accounts} already set up."
+            return f"{count_noun(Learner, item.count)} already set up."
         if item.reason == self.recently_sent_reason:
             emails = count_phrase(item.count, "setup email was", "setup emails were")
             return f"{emails} sent recently."
@@ -3026,7 +3025,8 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             ],
             consequences=(
                 [
-                    f"{count_phrase(set_up, 'account is', 'accounts are')} "
+                    f"{count_noun(Learner, set_up)} "
+                    f"{'is' if set_up == 1 else 'are'} "
                     "already set up and will be skipped."
                 ]
                 if set_up
