@@ -329,8 +329,8 @@ def test_mobile_selection_bar_does_not_cover_the_last_card_checkbox(
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
 ) -> None:
-    """Below md the fixed selection bar sat over the last cards, so their
-    checkboxes could not be tapped once a row was ticked."""
+    """Below md the selection bar once sat fixed over the last cards, so
+    their checkboxes could not be tapped once a row was ticked."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
@@ -395,3 +395,32 @@ def test_more_actions_menu_stays_open_after_one_click(
 
     page.mouse.wheel(0, 300)
     expect(trigger).to_have_attribute("aria-expanded", "false")
+
+
+def test_the_toolbar_is_one_row_at_tablet_and_desktop_widths(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """At 768 the search, filter chips, Add filter and Export CSV took two
+    rows; the search field gives up width instead."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    LearnerFactory(organisation=organisation)
+
+    for viewport in QA_VIEWPORTS[1:]:
+        page.set_viewport_size(viewport)
+        page.goto(interface_url(live_server, organisation.slug, "learners"))
+        controls = [
+            page.get_by_role("searchbox"),
+            page.get_by_text("Add filter"),
+            page.get_by_role("link", name="Export CSV"),
+        ]
+        middles = []
+        for control in controls:
+            box = control.bounding_box()
+            assert box is not None
+            middles.append(box["y"] + box["height"] / 2)
+        assert max(middles) - min(middles) < 8, f"toolbar wraps at {viewport}"

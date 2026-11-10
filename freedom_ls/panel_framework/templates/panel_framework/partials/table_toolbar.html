@@ -1,6 +1,8 @@
 {% comment %}
 Desktop table toolbar: search, a pill or chip per declared filter, "Add
-filter", "Clear all" and an Export button, all in one row from md up. The
+filter", "Clear all" and an Export button, all in one row from md up: the
+search field gives up width first (flex-1 from a 10rem minimum to an 18rem
+maximum), so the row wraps only when even that minimum leaves no room. The
 sorted column shows itself in the table header, so the toolbar does not
 repeat it. Below md that row collapses to the search box, the applied-filter
 chips, a "Filter" button that opens the sheet in table_sheet.html and a
@@ -81,7 +83,7 @@ reason, and is nothing below lg.
               hx-sync="this:replace"
               hx-target="#{{ region_id }}"
               hx-swap="outerHTML"
-              class="w-full px-4 pt-3 sm:px-6 md:w-72 md:p-0 {% if toolbar or sortable_columns %}pb-0{% else %}border-b border-border pb-3 md:border-0{% endif %}">
+              class="w-full px-4 pt-3 sm:px-6 md:w-auto md:min-w-40 md:max-w-72 md:flex-1 md:p-0 {% if toolbar or sortable_columns %}pb-0{% else %}border-b border-border pb-3 md:border-0{% endif %}">
             {% for name, value in hidden_inputs %}
                 <input type="hidden" name="{{ name }}" value="{{ value }}">
             {% endfor %}
@@ -99,7 +101,7 @@ reason, and is nothing below lg.
     <div class="hidden md:contents">
         {% for entry in toolbar %}
             {% if entry.shown %}
-                <details class="group relative">
+                <details class="group relative shrink-0">
                     <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
                         {% if entry.values %}
                             <c-chip variant="secondary" class="cursor-pointer">
@@ -136,7 +138,7 @@ reason, and is nothing below lg.
         {% endfor %}
 
         {% if add_filter %}
-            <details class="group/add relative">
+            <details class="group/add relative shrink-0">
                 <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
                     <c-chip variant="secondary" class="cursor-pointer">
                         Add filter
@@ -171,7 +173,7 @@ reason, and is nothing below lg.
 
         {% if any_filter_set %}
             {% querystring request.GET clear_changes as clear_qs %}
-            <c-button variant="link" size="small"
+            <c-button variant="link" size="small" class="shrink-0 whitespace-nowrap"
                       href="{{ page_url }}{{ clear_qs }}"
                       hx-get="{{ base_url }}{{ clear_qs }}"
                       hx-target="#{{ region_id }}"
@@ -180,7 +182,7 @@ reason, and is nothing below lg.
 
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
-            <c-button variant="secondary" size="small" icon_left="download" class="ml-auto" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
+            <c-button variant="secondary" size="small" icon_left="download" class="ml-auto shrink-0 whitespace-nowrap" href="{{ base_url }}{{ export_qs }}">Export CSV</c-button>
         {% endif %}
     </div>
 
