@@ -68,7 +68,7 @@ from freedom_ls.comms.messaging_views import (
     thread_context,
 )
 from freedom_ls.comms.views import login_required_htmx_to
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
     AddLearnerAction,
@@ -1862,6 +1862,40 @@ class CourseContentPanel(Panel):
             "course": course,
             "outline": course.collection_items(),
         }
+
+    def get_actions(self) -> list[PanelAction]:
+        return [PreviewContentAction()]
+
+
+class PreviewContentAction(PanelAction):
+    """Shows one child of the course read-only in the app modal. The
+    target is found among the authorised course's own collection items,
+    so an id from any other course is as missing as a made-up one."""
+
+    action_name = "preview_content"
+    capability = None
+    renders_in_footer = False
+    template_name = "educator_interface/modal/content_preview.html"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        if ctx.request.headers.get("HX-Request") != "true":
+            raise Http404
+        course = cast(Course, ctx.instance)
+        pk = uuid_or_404(ctx.request.GET.get("item"))
+        collection_item = next(
+            (item for item in course.collection_items_flat() if item.pk == pk), None
+        )
+        if collection_item is None or isinstance(collection_item.child, CoursePart):
+            raise Http404
+        context: dict[str, object] = {
+            "collection_item": collection_item,
+            "child": collection_item.child,
+        }
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # Opening is a read; there is nothing to submit.
+        raise Http404
 
 
 class CourseCohortRegistrationDataTable(DataTable):

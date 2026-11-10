@@ -326,6 +326,28 @@ def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:
         assert "max-width: none" not in text, host.name
 
 
+WIDE_FRAGMENTS = frozenset({"content_preview.html"})
+DIALOG_WIDTHS = ("min(92vw, 32rem)", "100%")
+
+
+def test_only_a_fragment_declaring_the_wide_size_widens_the_dialog() -> None:
+    """Any width other than the standard dialog's and the sheet's is set
+    only by a rule keyed on data-modal-size="wide", and only the content
+    preview fragments declare it."""
+    css = re.sub(r"/\*.*?\*/", "", MODAL_HOST.read_text(), flags=re.DOTALL)
+    for match in re.finditer(r"(?<![-\w])width:\s*([^;]+);", css):
+        if match.group(1).strip() in DIALOG_WIDTHS:
+            continue
+        selector = css[: css.rfind("{", 0, match.start())].rsplit("}", 1)[-1]
+        assert 'data-modal-size="wide"' in selector, selector
+    declaring = {
+        path.name
+        for path in DIALOG_TEMPLATES
+        if 'data-modal-size="wide"' in path.read_text() and path != MODAL_HOST
+    }
+    assert declaring == WIDE_FRAGMENTS
+
+
 def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     """A dialog's buttons sit in <c-modal-footer>, Cancel at the left and the
     actions at the right; <c-button-group> is for buttons outside a dialog."""

@@ -17,6 +17,10 @@ One outline row for a topic or form. The caller sets `item` and either
             {% endif %}
         </span>
         <span class="min-w-0 flex-1 font-medium">{{ item.child.title }}</span>
+        <c-modal-trigger size="small" variant="secondary"
+                         url="{{ row_action_urls.preview_content }}?item={{ item.pk }}"
+                         label="Preview"
+                         aria_label="Preview {{ item.child.title }}" />
     </div>
 {% endpartialdef %}
 

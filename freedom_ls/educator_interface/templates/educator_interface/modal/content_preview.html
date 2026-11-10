@@ -1,0 +1,16 @@
+{% comment %}
+A course child as a learner sees it, with none of the player's chrome and
+nothing that can be submitted. No <form> element: the modal then closes on
+a backdrop click and never asks about unsaved changes.
+{% endcomment %}
+<div data-modal-size="wide">
+    <c-modal-header focus_title="true">{{ child.title }} <c-chip size="xs">{% if child.content_type == "FORM" %}Form{% else %}Topic{% endif %}</c-chip></c-modal-header>
+    <div class="px-6 py-4 flex flex-col gap-6">
+        <c-callout level="info" class="my-0">Preview. This is how learners see it. Nothing here is saved.</c-callout>
+        {% if child.content_type == "FORM" %}
+            {% comment %}Filled in by the form preview.{% endcomment %}
+        {% else %}
+            <c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>
+        {% endif %}
+    </div>
+</div>

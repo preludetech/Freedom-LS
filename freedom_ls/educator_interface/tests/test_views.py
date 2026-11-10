@@ -18,6 +18,7 @@ import lxml.html
 import pytest
 import time_machine
 
+from django.apps import apps
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -55,6 +56,7 @@ from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
+    FileFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
@@ -96,6 +98,7 @@ from freedom_ls.learner_management.models import (
     ImportLabel,
     ImportStatus,
     Learner,
+    LearnerCourseRegistration,
     LearnerImport,
     StaffMember,
 )
@@ -110,6 +113,7 @@ from freedom_ls.learner_management.role_assignment import GrantableRole, assign_
 from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -641,9 +645,12 @@ def test_the_learner_header_refreshes_on_learner_changed(staff_client: Client):
 
 
 @pytest.mark.django_db
-def test_course_page_renders_no_action_buttons(staff_client: Client):
+def test_course_page_buttons_are_only_preview_triggers(staff_client: Client):
     organisation = OrganisationFactory()
     course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(title="Intro"), order=0
+    )
 
     document = _get_document(
         staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
@@ -652,7 +659,9 @@ def test_course_page_renders_no_action_buttons(staff_client: Client):
     (heading,) = document.cssselect("#instance-title")
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     assert header.cssselect("button[hx-get]") == []
-    assert document.cssselect("section[data-panel] button[hx-get]") == []
+    buttons = document.cssselect("section[data-panel] button[hx-get]")
+    assert [button.get("aria-label") for button in buttons] == ["Preview Intro"]
+    assert document.cssselect("section[data-panel] footer button") == []
 
 
 def _course_details_text(client: Client, course: CourseModel) -> str:
@@ -7324,3 +7333,200 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
 
     with django_assert_max_num_queries(60):
         assert staff_client.get(url).status_code == 200
+
+
+def _preview_url(
+    client: Client, organisation: Organisation, course: CourseModel
+) -> str:
+    """The Preview action's URL as the course page publishes it, without
+    the item parameter."""
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+    (trigger,) = document.cssselect("section[data-panel='content'] button[hx-get]")
+    return str(trigger.get("hx-get")).split("?")[0]
+
+
+def _course_with_topic(topic: Model | None = None) -> tuple[CourseModel, Model]:
+    course = cast(CourseModel, CourseFactory())
+    item = ContentCollectionItemFactory(
+        collection_object=course, child_object=topic or TopicFactory(), order=0
+    )
+    return course, cast(Model, item)
+
+
+@pytest.mark.django_db
+def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic(TopicFactory(title="Intro"))
+
+    html = staff_client.get(
+        _interface_url(organisation.slug, f"courses/{course.pk}")
+    ).content.decode()
+    panel = lxml.html.fromstring(html).cssselect("section[data-panel='content']")[0]
+
+    (trigger,) = panel.cssselect("button[hx-get]")
+    assert trigger.get("hx-get").endswith(f"/__actions/preview_content?item={item.pk}")
+    assert trigger.text_content().strip() == "Preview"
+    assert trigger.get("aria-label") == "Preview Intro"
+    assert "view_course_item" not in html
+    assert reverse("learner_interface:course_detail", args=[course.slug]) not in html
+
+
+@pytest.mark.django_db
+def test_opening_a_topic_preview_renders_it_read_only_in_the_wide_dialog(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic(
+        TopicFactory(title="Intro", content="Hello **learners**")
+    )
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert 'data-modal-size="wide"' in html
+    assert "Intro" in html
+    assert "Topic" in html
+    assert "Nothing here is saved." in html
+    assert "<strong>learners</strong>" in html
+    assert "<form" not in html
+    assert "Mark complete" not in html
+    assert "<nav" not in html
+
+
+@pytest.mark.django_db
+def test_opening_a_topic_preview_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    FileFactory(file_path="pic.png", mime_type="image/png")
+    FileFactory(file_path="notes.txt")
+    topic = TopicFactory(
+        content=(
+            '<c-picture src="pic.png" alt="A picture"></c-picture>\n\n'
+            '<c-file-download src="notes.txt" text="Get notes"></c-file-download>\n'
+        )
+    )
+    course, item = _course_with_topic(topic)
+    url = _preview_url(staff_client, organisation, course)
+    counted = [
+        TopicProgress,
+        CourseProgress,
+        LearnerCourseRegistration,
+        AuditLogEntry,
+        apps.get_model("freedom_ls_form_engine", "FormProgress"),
+        apps.get_model("freedom_ls_form_engine", "QuestionAnswer"),
+    ]
+    before = [model.objects.count() for model in counted]
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert "Get notes" in response.content.decode()
+    assert [model.objects.count() for model in counted] == before
+
+
+@pytest.mark.django_db
+def test_a_preview_of_another_courses_item_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    _other_course, other_item = _course_with_topic()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={other_item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_preview_of_an_item_on_another_site_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    with site_context(SiteFactory()):
+        _other_course, other_item = _course_with_topic()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={other_item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_preview_of_a_part_row_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    part_item = ContentCollectionItemFactory(
+        collection_object=course, child_object=CoursePartFactory(), order=1
+    )
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={part_item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "item", ["", "not-a-uuid", "6f1c2f0e-3c1b-4a5e-9a57-0d1f6d3a9b11"]
+)
+def test_a_preview_with_a_missing_or_malformed_item_is_a_404(
+    staff_client: Client, item: str
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_preview_without_the_htmx_header_or_by_post_is_a_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic()
+    url = _preview_url(staff_client, organisation, course)
+
+    plain_get = staff_client.get(f"{url}?item={item.pk}")
+    post = staff_client.post(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert (plain_get.status_code, post.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic()
+    course.organisations.add(OrganisationFactory())
+    action_url = _interface_url(
+        organisation.slug,
+        f"courses/{course.pk}/content/__actions/preview_content",
+    )
+
+    page = staff_client.get(_interface_url(organisation.slug, f"courses/{course.pk}"))
+    action = staff_client.get(f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert (page.status_code, action.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+def test_a_user_with_no_role_in_the_organisation_cannot_preview(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic()
+    action_url = _interface_url(
+        organisation.slug,
+        f"courses/{course.pk}/content/__actions/preview_content",
+    )
+
+    response = logged_in_client(UserFactory()).get(
+        f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
