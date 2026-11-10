@@ -7348,6 +7348,14 @@ def test_course_content_query_count_stays_bounded_as_children_grow(
         assert staff_client.get(url).status_code == 200
 
 
+def _content_action_url(
+    organisation: Organisation, course: CourseModel, action: str
+) -> str:
+    return _interface_url(
+        organisation.slug, f"courses/{course.pk}/__panels/content/__actions/{action}"
+    )
+
+
 def _preview_url(
     client: Client, organisation: Organisation, course: CourseModel
 ) -> str:
@@ -7510,16 +7518,28 @@ def test_a_preview_without_the_htmx_header_or_by_post_is_a_404(staff_client: Cli
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["topic", "form"])
+def test_the_preview_url_built_for_the_denial_tests_is_the_published_one(
+    staff_client: Client, kind: str
+):
+    organisation = OrganisationFactory()
+    course, item = _course_with_topic() if kind == "topic" else _course_with_form()
+
+    url = _content_action_url(organisation, course, "preview_content")
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert url == _preview_url(staff_client, organisation, course)
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
 def test_a_course_belonging_only_to_another_organisation_cannot_be_previewed(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
     course.organisations.add(OrganisationFactory())
-    action_url = _interface_url(
-        organisation.slug,
-        f"courses/{course.pk}/content/__actions/preview_content",
-    )
+    action_url = _content_action_url(organisation, course, "preview_content")
 
     page = staff_client.get(_interface_url(organisation.slug, f"courses/{course.pk}"))
     action = staff_client.get(f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true")
@@ -7533,10 +7553,7 @@ def test_a_user_with_no_role_in_the_organisation_cannot_preview(
 ):
     organisation = OrganisationFactory()
     course, item = _course_with_topic()
-    action_url = _interface_url(
-        organisation.slug,
-        f"courses/{course.pk}/content/__actions/preview_content",
-    )
+    action_url = _content_action_url(organisation, course, "preview_content")
 
     response = logged_in_client(UserFactory()).get(
         f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true"
@@ -7684,10 +7701,7 @@ def test_a_form_of_a_course_belonging_only_to_another_organisation_cannot_be_pre
     organisation = OrganisationFactory()
     course, item = _course_with_form()
     course.organisations.add(OrganisationFactory())
-    action_url = _interface_url(
-        organisation.slug,
-        f"courses/{course.pk}/content/__actions/preview_content",
-    )
+    action_url = _content_action_url(organisation, course, "preview_content")
 
     action = staff_client.get(f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true")
 
@@ -7714,10 +7728,7 @@ def test_a_user_with_no_role_cannot_preview_a_form(
 ):
     organisation = OrganisationFactory()
     course, item = _course_with_form()
-    action_url = _interface_url(
-        organisation.slug,
-        f"courses/{course.pk}/content/__actions/preview_content",
-    )
+    action_url = _content_action_url(organisation, course, "preview_content")
 
     response = logged_in_client(UserFactory()).get(
         f"{action_url}?item={item.pk}", HTTP_HX_REQUEST="true"
@@ -7771,10 +7782,7 @@ def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client):
 
 
 def _course_details_preview_url(organisation: Organisation, course: CourseModel) -> str:
-    return _interface_url(
-        organisation.slug,
-        f"courses/{course.pk}/__panels/content/__actions/preview_course_details",
-    )
+    return _content_action_url(organisation, course, "preview_course_details")
 
 
 @pytest.mark.django_db
