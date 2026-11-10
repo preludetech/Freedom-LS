@@ -500,6 +500,21 @@ def _survey(site: Site, prefix: str) -> Form:
     page2.condition_option = no
     page2.save(update_fields=["condition_option"])
     _question(site, page2, "What did you not enjoy?", QuestionType.LONG_TEXT, 0)
+    # A third, unconditional page, so the outline shows a multi-page form
+    # with a page after the conditional one.
+    page3 = cast(
+        FormPage,
+        FormPageFactory(
+            form=form,
+            title="Anything else",
+            slug=f"{prefix}-feedback-survey-p3",
+            order=2,
+            site=site,
+        ),
+    )
+    _question(
+        site, page3, "Anything else you want to tell us?", QuestionType.LONG_TEXT, 0
+    )
     return form
 
 
