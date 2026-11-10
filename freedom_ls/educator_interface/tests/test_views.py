@@ -53,6 +53,7 @@ from freedom_ls.comms.messaging_policy import MessagingRefusal
 from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
+    CourseCategoryFactory,
     CourseFactory,
     CoursePartFactory,
     FileFactory,
@@ -712,6 +713,18 @@ def test_course_details_show_each_set_field_with_the_learner_label(
         "Lessons 1",
     ):
         assert expected in text
+
+
+@pytest.mark.django_db
+def test_course_details_label_the_category_row_category(staff_client: Client):
+    """The category row read "Dashboard category" (the model field's verbose
+    name) instead of the learner page's word, "Category"."""
+    course = CourseFactory(dashboard_category=CourseCategoryFactory(title="Maths"))
+
+    text = _course_details_text(staff_client, course)
+
+    assert "Category Maths" in text
+    assert "Dashboard category" not in text
 
 
 @pytest.mark.django_db

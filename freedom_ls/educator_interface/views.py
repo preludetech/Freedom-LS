@@ -1838,6 +1838,7 @@ class CourseDetailsPanel(InstanceDetailsPanel):
     # The learner details page's words, so an educator and a learner
     # read the same label for the same fact.
     labels: ClassVar[dict[str, str]] = {
+        "dashboard_category": "Category",
         "get_visibility_display": "Visibility",
         "get_difficulty_display": "Level",
         "display_estimated_duration": "Duration",
