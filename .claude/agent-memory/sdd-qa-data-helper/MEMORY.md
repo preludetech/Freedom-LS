@@ -1,5 +1,6 @@
 # Memory Index
 
+- [reference_course_content_preview_command.md](reference_course_content_preview_command.md) — qa_create_course_content_preview: educator content-preview seed; delete-and-recreate (pks change per run); Course has organisations m2m; c-content-link 500s (Topic.preview_url)
 - [reference_verified_learner_setup.md](reference_verified_learner_setup.md) — Three records needed for a login-ready QA learner (User, verified EmailAddress, UserCourseRegistration); "right password but lands on Verify Your Email Address" = missing/unverified EmailAddress; use update_or_create
 - [reference_completing_a_course.md](reference_completing_a_course.md) — How to mark a course Completed for a user; the save-hook and missing-site gotchas to avoid
 - [reference_course_player_learner_command.md](reference_course_player_learner_command.md) — qa_create_course_player_learner command: login-ready learner for the 3 course-player redirect/resume cases
