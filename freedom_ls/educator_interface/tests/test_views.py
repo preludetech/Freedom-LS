@@ -4918,7 +4918,7 @@ def test_the_learners_bar_promotes_four_actions_and_lists_the_rest_with_the_dest
         "Reactivate",
         "Register for a course",
     ]
-    assert labels("[role='menu'] button[formaction]") == [
+    assert labels("fieldset > span [role='menu'] button[formaction]") == [
         "Deactivate a course registration",
         "Resend setup email",
         "Remove from cohort",
