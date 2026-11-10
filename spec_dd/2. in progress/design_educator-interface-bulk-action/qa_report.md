@@ -1,114 +1,104 @@
-# Frontend QA report: the bulk-action selection bar, above the table
-
-Test plan: `3. frontend_qa.md`. All tests passed; no bugs were found.
+# Frontend QA report: educator interface bulk action
 
 ## Methodology
 
-- Tool: Playwright MCP.
-- Viewports: 1920x1080 (desktop), 768x1024 (tablet), 375x812 (mobile).
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists in that directory (checked with Glob). Design screenshots are under `design_screenshots/`.
-- Compression ran. No PNG was over 1024KB, so nothing changed.
+- Playwright MCP run against a fresh dev server on port 8243 (branch badge confirmed), logged in as the QA admin.
+- Viewports: 1920x1080 (desktop), 375x812 (mobile), 768x1024 (tablet), plus a JavaScript-disabled browser context for Test 7.
+- Screenshots were collected into `screenshots/` beside this report. Every referenced image exists there.
+- Compression ran and found no PNG over 1024KB.
+- Test plan: `3. frontend_qa.md` in this directory.
 
 ## Diff scoping
 
-The `scoping` record classes the diff as FULL. Templates, static JS and CSS all changed: the panel_framework templates, `alpine-components.js`, the cotton templates, `tailwind.components.css` and the panel_framework Python. Desktop, tablet and mobile all ran. Nothing was skipped.
+Class: FULL. Triggered by template, static, CSS and JS changes (panel_framework templates and `alpine-components.js`, the `dropdown-menu.html` and `button.html` cotton components, `tailwind.components.css`, plus `views.py`, `bulk_actions.py` and `educator_interface/actions.py`). Everything ran; nothing was skipped.
 
 ## Smoke gate
 
-Pass. Both pages loaded: `/` and `/educator/organisations/demodev/learners/`.
+Status: pass. Pages checked: `/`, `/educator/organisations/demodev/learners/`, `/educator/organisations/demodev/cohorts/`. No failure URL or reason.
 
 ## Results by test
 
-Plan groups: Test 1 (bar replaces the toolbar), Test 2 (More menu), Test 3 (select all, deselect all, clear), Test 4 (an action and its result), Test 5 (background run), Test 6 (tablet and phone), Test 7 (JavaScript off), Test 8 (what else the change touches).
-
-| Test | Viewport | Status | Screenshot | Notes |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 1.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-13-33-634Z.png) | Toolbar (search, Status chip, Add filter, Export CSV) above the table, no bar. Footer "Showing 1–10 of 258 learners" on the left, pager on the right. Table pages at 10 here, not 25. |
-| 1.3 | desktop | pass | ![](screenshots/page-2026-11-10T07-13-48-581Z.png) | Ticking a row hides the toolbar and the bar takes its row, reading "1 selected". Thead top stays at 245px. Order: checkbox (indeterminate), count, Select all 258, Add to cohort, Deactivate, Reactivate, Register for a course, More with chevron. Clear sits alone at the right. Bar buttons are transparent with 0px border. |
-| 1.6 | desktop | pass | — | Clicking the Learner sort header re-sorts, clears the selection and brings the toolbar back. |
-| 1.7 | desktop | pass | — | With 2 ticked, the header and bar checkboxes are both indeterminate. Header checkbox ticks all 10 on the page and both show checked. Unticking one returns both to indeterminate. |
-| 1.8 | desktop | pass | — | Clear removes the bar and the toolbar returns. Thead top is unchanged at 245. Focus lands on the "Select all on this page" header checkbox. Space ticks the page, Space again clears. |
-| 2.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-14-37-170Z.png) | Menu opens below More: Deactivate a course registration, Resend setup email, separator, Remove from cohort in error red rgb(210,51,25). No icons, no helper lines. |
-| 2.2 | desktop | pass | — | ArrowDown moves through the three items and skips the separator. A fourth press wraps to the first. Escape closes and returns focus to More. Enter on More opens with focus on the first item. |
-| 2.3 | desktop | pass | ![](screenshots/page-2026-11-10T07-14-40-623Z.png) | Remove from cohort opens a "Remove from cohort?" modal with a cohort picker and "1 learner selected." Cancel closes it. |
-| 2.5 | desktop | pass | ![](screenshots/page-2026-11-10T07-14-51-431Z.png) | Cohorts bar shows Register for a course, Deactivate a course registration, Deactivate and Reactivate as text buttons. No More. |
-| 3.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-15-17-380Z.png) | Select all 258 gives "258 selected", a "Deselect all" link and the muted note "Changing page, sort or filters clears the selection." Both page checkboxes are checked. |
-| 3.2 | desktop | pass | — | Unticking one gives "257 selected" and a "Select all 258" link. Both checkboxes are indeterminate and the note stays. Select all again re-ticks the row and returns to 258. |
-| 3.3 | desktop | pass | — | Deselect all removes the bar, brings the toolbar back, leaves no rows ticked and puts focus on the header checkbox. |
-| 3.4 | desktop | pass | — | After Select all and Clear, ticking one row shows "1 selected" and "Select all 258". Nothing carries over. |
-| 3.5 | desktop | pass | — | Search "demodev_s1" returns 9 learners on one page. Select all 9 ticks every row and shows "9 selected" and "Deselect all", with no "Changing page" note (page mode). |
-| 3.6 | desktop | pass | — | With Select all 258 active, clicking pager 2 clears the selection and the toolbar returns. The page scrolls 2px on the htmx swap; that is not a layout shift. |
-| 4.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-16-23-342Z.png) | Ticked qa_bulk_210 and qa_bulk_209 (no cohort). Add to cohort opens the modal with a cohort picker. Choosing QA bulk cohort re-renders the title "Add 2 learners to QA bulk cohort?". |
-| 4.2 | desktop | pass | ![](screenshots/page-2026-11-10T07-16-31-452Z.png) | Result modal reads "2 learners changed." |
-| 4.3 | desktop | pass | ![](screenshots/page-2026-11-10T07-16-36-995Z.png) | After Close the table is refreshed, no row is ticked, no bar shows and the toolbar is back. Footer "Showing 1–10 of 258 learners" and the pager are present. Thead top is 245, as while the bar showed. |
-| 4.4 | desktop | pass | ![](screenshots/page-2026-11-10T07-16-36-995Z.png) | Both learners' Cohorts column now reads "QA bulk cohort". |
-| 5.1 | desktop | pass | — | 258 learners is over the 250 threshold. Select all 258, then More > Resend setup email. The confirmation says it runs in the background. |
-| 5.2 | desktop | pass | — | Sampled every 250ms while running: the bar reads "Resend setup email is running…" with a spinner. No action buttons or More. Bar checkbox, Deselect all, Clear, header checkbox and every row checkbox are disabled. The run finished in about 1s, before a screenshot could catch it. |
-| 5.3 | desktop | pass | ![](screenshots/page-2026-11-10T07-16-57-725Z.png) | Result modal appeared: "0 learners changed. 258 accounts were already set up." After Close the bar is gone and all checkboxes are enabled. |
-| 8.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-18-01-000Z.png) | Audit log has no checkbox column and no bar. Footer reads "7 entries" with no reserved space under it. Toolbar (Add filter, Export CSV) is unchanged. |
-| 8.2 | desktop | pass | ![](screenshots/page-2026-11-10T07-18-30-000Z.png) | Learner rows have no row menu, only a Quick view link. With 2 rows selected, quick view opens (demodev_s1). After Escape the selection is unchanged ("2 selected"). |
-| 8.3 | desktop | pass | — | Sorting with rows selected clears the selection (see 1.6). At lg the search field and filter chips are hidden while the bar shows, so search was typed after Clear and filters the table (qa_bulk_20 gives 10 rows). Search and filter with a live selection are checked at tablet. |
-| 8.4 | desktop | pass | — | Tab order from the heading: Add learner, Import learners, Search, Status chip, Add filter, Export CSV, table region, header checkbox, sort headers, row checkbox. After Space ticks a row, Shift+Tab runs header checkbox, table region, Clear, More actions, Register for a course, Reactivate, Deactivate, Add to cohort, Select all 258, Select page, Import learners. Bar controls sit between the toolbar's place and the table in visual order. |
-| 8.5 | desktop | pass | — | Exactly one `role=status` (sr-only) inside `#learners-table`, reading "1 selected". The visible count is a plain span outside any live region. |
-| 8.6 | desktop | pass | ![](screenshots/page-2026-11-10T07-19-26-636Z.png) | The app has no dark theme: no prefers-color-scheme rules, and emulating dark changes nothing. Bar, menu separator and destructive item use theme tokens only (bg-surface, border-border, error tone). No hard-coded white or red in the changed templates. |
-| 7.1 | desktop | pass | ![](screenshots/page-2026-11-10T07-21-01-000Z.png) | JS off: the bar sits under the toolbar and holds only the action submit buttons (Add to cohort, Deactivate, Reactivate, Register for a course, Deactivate a course registration, Resend setup email, Remove from cohort). No checkbox, count, Select all or Clear. A first shot caught the bar mid fade-in at reduced opacity; after the animation it is full strength. |
-| 7.2 | desktop | pass | ![](screenshots/page-2026-11-10T07-20-02-000Z.png) | Ticked demodev_s15 and demodev_s16, Deactivate gives a full-page confirmation "Deactivate 2 learners." Confirming returns to the list with a toast "2 learners changed." and the count drops to 256. The plan says "naming the two changed learners", but the message gives a count. The spec only requires reaching the confirmation page, and the wording matches the JS result modal. |
-| 7.3 | mobile | pass | ![](screenshots/page-2026-11-10T07-21-02-000Z.png) | JS off at 375: the fixed bar holds the seven action buttons wrapped over four lines and covers the bottom of the page. Accepted per plan, recorded without a bug. No sideways scroll (scrollWidth 375). |
-| 6.1 | tablet | pass | ![](screenshots/page-2026-11-10T07-20-55-537Z.png) | At 768 the table stays a table. Ticking a row keeps the toolbar visible and shows the bar fixed to the viewport bottom. Row one: checkbox, "1 selected", Select all 256, Clear at right. Row two: Add to cohort, Deactivate, Reactivate, Register for a course, More. The dev branch badge covers the left end of row two in this shot (dev tooling only). |
-| 2.4 | tablet | pass | ![](screenshots/page-2026-11-10T07-21-07-231Z.png) | More at 768 opens above the trigger (menu 834–971 in a 1024 viewport). All three items and the rule are inside the viewport. Remove from cohort is red. |
-| 6.2 | tablet | pass | ![](screenshots/page-2026-11-10T07-22-01-000Z.png) | Scrolled to the end: last row checkbox bottom 776, Next 815–849, bar top 927. Both are above the bar and clickable (trial clicks not intercepted). |
-| 6.3 | tablet | pass | ![](screenshots/page-2026-11-10T07-22-02-000Z.png) | After Clear: bar gone, region padding-bottom 0, document height and the 66px gap under the region match a fresh load. No empty band. Focus on "Select all on this page". |
-| 8.3 | tablet | pass | ![](screenshots/page-2026-11-10T07-21-35-853Z.png) | At 768 the toolbar stays visible with a selection. Typing a search with a row ticked clears the selection and bar. Adding the Inactive status filter with a row ticked clears it too. |
-| 6.4 | mobile | pass | ![](screenshots/page-2026-11-10T07-22-02-073Z.png) | Ticking the first card shows the bar fixed at the bottom (587–812). Row one: checkbox, "1 selected", Select all 256, Clear at the end. The left group wraps to three more rows. Every control is within 16–359px and scrollWidth 375 equals innerWidth. Buttons are 44px tall. |
-| 6.5 | mobile | pass | ![](screenshots/page-2026-11-10T07-23-01-000Z.png) | More at 375 opens above the trigger, menu 9–263px wide and 610–747px tall in a 375x812 viewport. Remove from cohort is last, red, under a rule. Escape closes it. Also covers 2.4 at 375. |
-| 6.6 | mobile | pass | ![](screenshots/page-2026-11-10T07-23-02-000Z.png) | Scrolled to the end: last card checkbox 242–258, Next 441–485, bar top 587. Both reachable above the bar (trial clicks not intercepted). |
-| 6.7 | mobile | pass | — | Clear moves focus to the visible "Select all on this page" checkbox above the cards. |
-| 6.8 | mobile | pass | ![](screenshots/page-2026-11-10T07-23-03-000Z.png) | Tick a card, Select all 256 (bar shows "256 selected", Deselect all, note wraps below), then Deselect all. Focus lands on the visible "Select all on this page" checkbox. |
-| 6.9 | mobile | pass | ![](screenshots/page-2026-11-10T07-22-02-073Z.png) | With a card ticked, every bar control lies inside 0–375. Document scrollWidth 375 is no more than innerWidth 375, in page mode and in all-matching mode. |
+| 1.1 | desktop | pass | Toolbar (search, Status chip, Add filter, Export CSV) on one row, no bar, footer "Showing 1–10 of 256 learners" with pager at right. Table pages at 10 here, not 25; counts adapted. | [shot](screenshots/page-2026-11-10T12-43-42-229Z.png) |
+| 1.3-1.5 | desktop | pass | Ticking a row hides the toolbar; bar reads "1 selected"; thead top stays at 245px. Order: indeterminate checkbox, count, Select all 256 (btn-link), Add to cohort, Deactivate, Reactivate, Register for a course (btn-ghost), More + chevron, Clear alone at right edge. No outline or fill on actions. | [shot](screenshots/page-2026-11-10T12-43-56-056Z.png) |
+| 1.6-1.8 | desktop | pass | Sort clears selection and returns toolbar. Two rows: "2 selected", header and bar checkbox both indeterminate. Header checkbox selects 10 (page size), both checked; untick one: both indeterminate. Clear: toolbar back, thead top unchanged, focus on header checkbox; Space ticks the page and brings the bar back, Space again clears. | none |
+| 2.1-2.3 | desktop | pass | More opens a menu below the trigger: Deactivate a course registration, Resend setup email, role=separator rule, Remove from cohort in red (rgb 210,51,25). No icons or helper lines. Chevron rotated 180deg while open. ArrowDown cycles the three items skipping the rule; Escape closes and returns focus to More. Remove from cohort opens the modal with a cohort picker; Cancel closes it. | [shot](screenshots/page-2026-11-10T12-44-15-372Z.png) |
+| 2.3-dialog | desktop | pass | Remove from cohort confirmation in #app-modal with Cohort select, "1 learner selected.", Cancel left, Remove from cohort right. | [shot](screenshots/page-2026-11-10T12-44-32-148Z.png) |
+| 2.5 | desktop | pass | Cohorts page: four text buttons (Register for a course, Deactivate a course registration, Deactivate, Reactivate); no More. | [shot](screenshots/page-2026-11-10T12-47-50-215Z.png) |
+| 3.1-3.4,3.6 | desktop | pass | Select all 256 gives "256 selected", "Deselect all", muted note "Changing page, sort or filters clears the selection.", both page checkboxes checked. Untick one: 255 selected, "Select all 256", both indeterminate, note still shown; Select all re-ticks the row. Deselect all: bar gone, toolbar back, focus on header checkbox. Select all, Clear, tick one: "1 selected", "Select all 256", no note. Select all then page 2 clears selection. | [shot](screenshots/page-2026-11-10T12-46-37-323Z.png) |
+| 3.5 | desktop | pass | Search "demodev_s5" (2 matches, one page): tick one, "Select all 2" ticks both, "2 selected", "Deselect all", no "Changing page..." note. | none |
+| 4.1-4.4 | desktop | pass | Ticked demodev_s14 and demodev_s17, Add to cohort, chose QA bulk cohort, confirmed. Result modal "2 learners changed." in one text size (16px). After Close: no bar, toolbar back, no checkbox ticked, thead top unchanged (245), footer with count and pager; both learners list QA bulk cohort. | [shot](screenshots/page-2026-11-10T12-48-20-162Z.png) |
+| 5.1-5.3 | desktop | pass | 256 learners > threshold 250. Select all, More > Resend setup email, confirm ("It runs in the background"). During the run the bar read "Resend setup email is running…" with a spinner, no action buttons or More, Deselect all and Clear disabled, every row and header checkbox disabled. Result: "0 learners changed." and "256 learners already set up.", no names, one text size. After Close: bar gone, toolbar back, nothing disabled. | [shot](screenshots/page-running-state.png) |
+| 5.3-result | desktop | pass | Background run result modal, counts only. | [shot](screenshots/page-2026-11-10T12-48-55-084Z.png) |
+| 8.1 | desktop | pass | Audit log (no bulk actions): no checkbox column, no bar, toolbar unchanged, footer "11 entries" directly under the table, no reserved space. | [shot](screenshots/page-2026-11-10T12-49-20-192Z.png) |
+| 8.2 | desktop | pass | Learners rows have no row menu; Quick view used. With two rows selected, opening demodev_s11's quick view works and the selection stays at "2 selected" during and after. | [shot](screenshots/page-quickview-with-selection.png) |
+| 8.3 | desktop | pass | Sorting (Last active) with rows selected clears selection and brings the toolbar back. Search and filter chips are hidden while rows are selected (by design); after Clear, typing a search reloads with no selection and the toolbar shown. | none |
+| 8.4 | desktop | pass | With a row ticked, Shift+Tab from the table goes header checkbox, table scroll region, Clear, More actions, Register for a course, Reactivate, Deactivate, Add to cohort, Select all 256, Select page: the bar sits between the toolbar's place and the table, in visual order. | none |
+| 8.5 | desktop | pass | Exactly one role=status in the table region, outside the bar, reading "1 selected"; the bar's visible count has no role or aria-live. | none |
+| 8.6 | desktop | skip | The theme defines no dark mode (no prefers-color-scheme rules), so emulating dark leaves the light theme. Token use checked instead: separator border is the border token (rgb 209,213,219), destructive item is the error token (rgb 210,51,25), bar is bg-surface. | [shot](screenshots/page-2026-11-10T12-50-14-926Z.png) |
+| 7.1-7.2 | desktop (JS off) | pass | Bar shows under the toolbar with only Add to cohort, Deactivate, Reactivate, Register for a course and More (no checkbox, count, Select all or Clear). More is a `<details>` panel with border and shadow, items Deactivate a course registration, Resend setup email, a rule, Remove from cohort in error red; chevron rotated 180deg while open. | [shot](screenshots/page-nojs-more-open.png) |
+| 7.3 | desktop (JS off) | pass | Ticked demodev_s18 and demodev_s19, pressed Deactivate: confirmation at `/__actions/deactivate` renders the list with an open `<dialog>`: header "Deactivate 2 learners?" with close, body, footer Cancel left and Deactivate right. Confirming returned to the list with flash "2 learners changed." | [shot](screenshots/page-nojs-confirm.png) |
+| 7.4 | mobile (JS off) | FAIL | Closed, the bar's buttons wrap tidily with scrollWidth 375. Opening More, the `<details>` panel opens left-aligned (left 194px) and runs to 448px: "Deactivate a course registration" is cut off and document scrollWidth grows to 449 > 375. See Bug B1. | [shot](screenshots/page-nojs-mobile-more.png) |
+| 6.5,6.9 | mobile | pass | Ticking the first card: toolbar hidden, bar above the cards. Left group wraps (checkbox + "1 selected", Select all 254, Add to cohort/Deactivate, Reactivate, Register for a course, More) while Clear stays at the end of the first row. Every control within 0-375, 44px touch targets, scrollWidth 375. Wrapped bar is 305px tall. | [shot](screenshots/page-2026-11-10T12-51-42-238Z.png) |
+| 2.4,6.6 | mobile | pass | More menu opens below the trigger at x 9-263, all three items and the rule inside the viewport; scrollWidth 375. Scrolled to the end, More opens at y 369-506, inside the viewport. | [shot](screenshots/page-mobile-more-open.png) |
+| 6.6-scroll | mobile | pass | Scrolled to bottom: bar stuck at top 68 = site header bottom; pager Next at y 666-710 clickable. | [shot](screenshots/page-mobile-scrolled.png) |
+| 6.7-6.8 | mobile | pass | Clear moves focus to the visible "Select all on this page" checkbox; Select all 254 then Deselect all moves focus to the same checkbox. | none |
+| 6.1 | tablet | pass | Before selection the toolbar is one row: Search (234px), Status chip, Add filter, Export CSV. | [shot](screenshots/page-tablet-toolbar.png) |
+| 6.2 | tablet | pass | Ticking a row: toolbar hidden, bar in its place with the same contents; Clear at the right of the first row. Bar contents need two rows at 768 (97px vs toolbar 67px), so table top moves down 30px; the no-move rule holds from lg. | [shot](screenshots/page-2026-11-10T12-52-37-307Z.png) |
+| 6.3-6.4 | tablet | pass | Scrolled to end: bar stuck at top 76 = header bottom; pager Next clickable. More: chevron rotate 180deg while open, none once closed; menu at x 328-582, y 169-306, inside 768x1024. Clear: bar gone, toolbar back, focus on header checkbox, space under the table is the same 66px footer as before (no empty band). | [shot](screenshots/page-tablet-more.png) |
 
 ## Design check
 
 | Test | Viewport | This run | Design | Result |
 |---|---|---|---|---|
-| 1-design | desktop | ![](screenshots/page-2026-11-10T07-14-37-170Z.png) | ![](design_screenshots/educator-learners__02b-bulk-selection.png) | pass, no misses |
-| 4-design | desktop | ![](screenshots/page-2026-11-10T07-16-36-995Z.png) | ![](design_screenshots/educator-learners__02d-bulk-result.png) | pass, no misses |
+| 4.2-design | desktop | [shot](screenshots/page-2026-11-10T12-48-31-945Z.png) | [educator-learners__02d-bulk-result.png](design_screenshots/educator-learners__02d-bulk-result.png) | pass |
+| 1.2-design | mobile | [shot](screenshots/page-mobile-more-open.png) | [educator-learners__02b-bulk-selection.png](design_screenshots/educator-learners__02b-bulk-selection.png) | pass |
+| 1.2-design | tablet | [shot](screenshots/page-tablet-more.png) | [educator-learners__02b-bulk-selection.png](design_screenshots/educator-learners__02b-bulk-selection.png) | pass |
+| 1.2-design | desktop | [shot](screenshots/page-2026-11-10T12-44-15-372Z.png) | [educator-learners__02b-bulk-selection.png](design_screenshots/educator-learners__02b-bulk-selection.png) | pass |
 
-## Bugs
+## Bug B1: No-JS More menu overflows the viewport at 375px
 
-No bugs were found this run, so there are no per-bug sections.
+Manifestations: Test 7.4, mobile (JavaScript off).
+
+![](screenshots/page-nojs-mobile-more.png)
+
+- Expected: With JavaScript off at 375px, the bar's More `<details>` panel opens inside the viewport (every item fully visible) and the document never scrolls sideways (scrollWidth <= innerWidth), per requirement 10 and Test 7.4.
+- Actual: The panel opens left-aligned under the More trigger (left 194px) and is about 254px wide, so it runs to 448px. "Deactivate a course registration" is cut off at the right edge and `document.documentElement.scrollWidth` becomes 449 > 375.
 
 ## Layout probe
 
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | `/educator/organisations/demodev/learners/` | ![](screenshots/page-2026-11-10T07-13-33-634Z.png) | clean |
-| 1.3 | desktop | `/educator/organisations/demodev/learners/` | ![](screenshots/page-2026-11-10T07-13-48-581Z.png) | clean |
-| 2.1 | desktop | `/educator/organisations/demodev/learners?learners-sort=-user__first_name` | ![](screenshots/page-2026-11-10T07-14-37-170Z.png) | clean |
-| 2.5 | desktop | `/educator/organisations/demodev/cohorts/` | ![](screenshots/page-2026-11-10T07-14-51-431Z.png) | clean |
-| 4.3 | desktop | `/educator/organisations/demodev/learners?learners-sort=-user__first_name` | ![](screenshots/page-2026-11-10T07-16-36-995Z.png) | clean |
-| 7.1 | desktop | `/educator/organisations/demodev/learners/` (JS off) | ![](screenshots/page-2026-11-10T07-21-01-000Z.png) | clean |
-| 6.1 | tablet | `/educator/organisations/demodev/learners/` | ![](screenshots/page-2026-11-10T07-20-55-537Z.png) | clean |
-| 6.4 | mobile | `/educator/organisations/demodev/learners/` | ![](screenshots/page-2026-11-10T07-22-02-073Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/demodev/learners/ | [shot](screenshots/page-2026-11-10T12-43-42-229Z.png) | clean |
+| 1.3 | desktop | /educator/organisations/demodev/learners/ | [shot](screenshots/page-2026-11-10T12-43-56-056Z.png) | clean |
+| 2.5 | desktop | /educator/organisations/demodev/cohorts/ | [shot](screenshots/page-2026-11-10T12-47-50-215Z.png) | clean |
+| 4.3 | desktop | /educator/organisations/demodev/learners/ | [shot](screenshots/page-2026-11-10T12-48-31-945Z.png) | clean |
+| 8.1 | desktop | /educator/organisations/demodev/audit-log/ | [shot](screenshots/page-2026-11-10T12-49-20-192Z.png) | clean |
+| 7.4 | mobile | /educator/organisations/demodev/learners/ (JS off, More open) | [shot](screenshots/page-nojs-mobile-more.png) | document scrollWidth 449 > viewport 375 with the no-JS More panel open; panel right edge 448px |
+| 6.5 | mobile | /educator/organisations/demodev/learners/ | [shot](screenshots/page-2026-11-10T12-51-42-238Z.png) | clean |
+| 6.2 | tablet | /educator/organisations/demodev/learners/ | [shot](screenshots/page-2026-11-10T12-52-37-307Z.png) | clean |
 
 ## Data changes
 
-No data changes were made by the data helper or reset commands. The tests themselves changed data:
-
-- qa_bulk_210 and qa_bulk_209 were added to QA bulk cohort (Test 4).
-- demodev_s15 and demodev_s16 were deactivated (Test 7).
+| Via | What |
+|---|---|
+| The QA run itself (bulk actions under test) | Added demodev_s14 and demodev_s17 to QA bulk cohort (Test 4); deactivated demodev_s18 and demodev_s19 (Test 7.3); Resend setup email run over 256 learners changed nothing (all already set up). |
 
 ## Bug status
 
-No bugs filed this run.
+- **UNRESOLVED** — No-JS More menu overflows the viewport at 375px (reason: the fix attempt, commit d2e8e9991, kept the panel inside 375px but crushed it to about 42px wide from `md` up, because its `max-w-[calc(100%-2rem)]` resolves against the narrow `<details>` there; re-verification failed and the commit was reverted in ab80c5092)
 
 ## General notes
 
-- No console errors or warnings appeared in the JS-on browser context across the whole run. Errors from the CSP-build Alpine would have shown there.
-- The environment pages the learners table at 10 rows, not the 25 the plan assumes. Counts in the results scale accordingly.
-- The dev branch badge (fixed bottom-left, dev only) overlaps the left end of the fixed bar on tablet. It is dev tooling, not a product defect, and it was hidden for later shots.
-- Test 5's run finished in about 1s, so there is no screenshot of the running bar. The running state was verified by sampling the DOM every 250ms.
-- With JS off, the deactivate flash gives a count ("2 learners changed.") rather than learner names.
-- The app has no dark theme, so Test 8.6 had nothing visual to compare. The changed templates use theme tokens only.
-- The 7.3 layout (JS off at 375, seven wrapped buttons covering the page bottom) is accepted by the plan and was not filed as a bug.
+- The learners table pages at 10 rows in this environment, not 25 as the plan's setup assumed; tests were adapted (a full page is 10 selected).
+- Learners rows have no row menu; Test 8.2 used the Quick view link instead.
+- The search field and filter chips are hidden while rows are selected (by design), so "filtering with rows selected" can only be reached by sort or page change; sort and page change both clear the selection.
+- Dark mode (8.6) not run: the theme defines no dark mode.
+- At 375px the wrapped selection bar is about 305px tall and, being sticky, covers roughly 40% of an 812px viewport while scrolling; this matches the spec (left group wraps, sticky at every width) but is worth a look.
+- At 768px the bar's contents need two rows, so the table top moves down 30px when the bar replaces the toolbar; the no-move rule is drawn at lg and holds there.
+- With JavaScript off at 375, the filter panel renders expanded above the bar (pre-existing no-JS behaviour, not part of this change). With JS off the educator sidebar is not shown at desktop (pre-existing).
+- Some screenshots have descriptive names (page-nojs-*.png, page-tablet-*.png, page-mobile-*.png, page-running-state.png, page-quickview-with-selection.png) because they were taken from a Playwright code snippet in a second browser context or mid-flow.
+- Two stale console-*.log files from earlier sessions were moved into screenshots/ along with the screenshots.
 
-status: ok · reason: report rendered, 0 bugs documented
+status: ok · reason: 1 bug — 0 fixed, 1 unresolved (fix attempt reverted after re-verification failed); report rendered, screenshots verified

@@ -19,6 +19,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 - [x] (user) Fix the tests the full run after the QA fixes left failing: freedom_ls/learner_interface/tests/views/test_dashboard.py::test_in_progress_query_count_does_not_grow_with_cards_carrying_deadlines (71 queries vs a limit of 70; it fails the same way on main, so it is pre-existing and likely date-dependent)
+- [ ] (user) Decide what to do about QA bug: No-JS More menu overflows the viewport at 375px (the attempted fix crushed the panel to ~42px from md up and was reverted; see qa_report.md) (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
