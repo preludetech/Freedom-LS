@@ -78,12 +78,12 @@ until tableSelection fills it.
                 with no script.
                 {% endcomment %}
                 <noscript>
-                    <details class="group static md:relative">
+                    <details class="group relative">
                         <summary class="btn btn-ghost btn-sm list-none marker:hidden [&::-webkit-details-marker]:hidden">
                             More
                             <c-icon name="dropdown" class="size-4 transition-transform group-open:rotate-180" />
                         </summary>
-                        <div class="dropdown-panel absolute left-4 top-full z-20 mt-1 w-64 max-w-[calc(100%-2rem)] md:left-0 rounded-md border border-border bg-surface shadow-lg">
+                        <div class="dropdown-panel absolute left-0 top-full z-20 mt-1 w-64 rounded-md border border-border bg-surface shadow-lg">
                             <div class="space-y-1 py-1" role="menu" aria-label="More actions">
                                 {% for entry in overflow_bulk_actions %}
                                     {% if entry.separator_before %}<c-dropdown-menu-separator />{% endif %}

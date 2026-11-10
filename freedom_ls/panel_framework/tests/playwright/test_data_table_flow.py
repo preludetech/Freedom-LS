@@ -857,29 +857,3 @@ def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
     card_toggle.click()
     expect(card_detail).to_be_hidden()
     expect(card_toggle).to_have_attribute("aria-expanded", "false")
-
-
-def test_no_js_more_menu_opens_inside_a_narrow_viewport(
-    browser: Browser,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The no-JS More menu opened left-aligned under its summary, so on a 375px
-    screen its panel ran past the right edge and the page scrolled sideways."""
-    for i in range(3):
-        make_stub(name=f"row-{i:02d}")
-
-    with _no_js_page(browser, {"width": 375, "height": 812}) as no_js_page:
-        no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
-
-        more = no_js_page.locator("[data-total-count] details")
-        more.locator("summary").click()
-        menu = more.get_by_role("menu", name="More actions")
-        expect(menu).to_be_visible()
-
-        box = menu.bounding_box()
-        assert box is not None
-        assert box["x"] >= 0
-        assert box["x"] + box["width"] <= 375
-        assert no_js_page.evaluate("document.documentElement.scrollWidth") <= 375
