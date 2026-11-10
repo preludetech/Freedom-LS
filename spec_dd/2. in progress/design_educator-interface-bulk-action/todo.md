@@ -25,7 +25,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, rewrite the "Selection bar" section, the partial list line that names `table_selection_bar` and the visual-checklist line that names the selection bar to match the spec's Decisions (bar above the table from `lg`, fixed to the bottom below `lg`, ghost text-only buttons, More menu, Select all / Deselect all / Clear), from spec section "Documentation and downstream"
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, update the `tableSelection` row to say the component lives on the table region and covers the toolbar, the bar and the table, from spec section "Documentation and downstream"
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
