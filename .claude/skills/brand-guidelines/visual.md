@@ -99,6 +99,8 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
+**An expand chevron shows whether its control is open.** A menu button, a `<details>` disclosure, a filter chip and an accordion end in `<c-icon name="dropdown">`, which points down while closed and turns up (`rotate-180`) while open: `group-open:rotate-180` under a `<details class="group">`, `group-aria-expanded:rotate-180` under a trigger with `aria-expanded`. `<c-dropdown-menu>` flips its trigger's chevron itself.
+
 **Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both.
 
 ## Placement
@@ -121,6 +123,7 @@ What QA checks in a screenshot of any FLS page.
 - What succeeded and what failed sit in separate panels, not one card.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.
 - Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
+- Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
 
 ## Example page
 

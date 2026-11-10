@@ -100,12 +100,19 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   direction.
 - Controls that belong together sit together: Filter next to Sort, the search field next to its
   filters, each sized to its content.
+- From `md` up the toolbar is one row: search, filters, "Add filter", "Clear all" and Export. The
+  search field shrinks (`md:flex-1 md:min-w-40 md:max-w-72`) before anything wraps.
 
 ### Dialogs, sheets and the quick view
 
 - A dialog ends in `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the
   default slot at the right, the primary last; three or more group at the right.
   `<c-button-group>` is for buttons outside a dialog.
+- A confirmation is a modal in `#app-modal`, never a page of its own. Without JavaScript the
+  confirmation URL renders the page it came from with the same modal chrome open over it, its
+  Cancel a link back to that page.
+- Body text in a dialog is one size, the base size; only the title in `<c-modal-header>` differs.
+  Lists, consequences, notices and errors in the body take no `text-sm`.
 - A confirm dialog states what is true now and what the action changes, naming the records it
   touches. A disabled action shows its reason beside the control, and
   the control names it with `aria-describedby`.
@@ -120,11 +127,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 
 ### Selection bar
 
-The selection bar shows only while rows are selected or a bulk run is going. From `lg` up it
-replaces the whole toolbar above the table, at the toolbar's height, so search, filters and export
-are out of reach until the selection clears. Below `lg` the toolbar stays and the bar is fixed to
-the bottom of the viewport, keeps every control inside it at 375px, and the page reserves its
-height after the footer.
+The selection bar shows only while rows are selected or a bulk run is going. It has one position
+at every width: it replaces the whole toolbar above the table, at the toolbar's height, and sticks
+under the site header while the page scrolls. Search, filters and export are out of reach until
+the selection clears. Every control stays inside the bar at 375px.
 
 - Actions are ghost, text-only, `size="small"` buttons. `promote_bulk_actions` gives the first
   `PROMOTED_BULK_ACTION_COUNT` (4) permitted non-destructive actions a button each.
@@ -134,6 +140,10 @@ height after the footer.
 - The count reads "N selected". "Select all N" (a `variant="link"` button) selects every row the
   filters match, and reads "Deselect all" once it has. "Clear" empties the selection and sits alone at the right edge.
 - Changing page, sort or filters clears the selection.
+- More is a `<c-dropdown-menu>`. Without JavaScript it is a `<details>` with the same panel, rule
+  and error tone, never a row of loose buttons.
+- A bulk result states counts: the headline "N learners changed", then one line per skip reason
+  ("N learners already set up"). It names only the rows that failed, never the skipped ones.
 
 ### Adding and editing records
 
@@ -187,8 +197,16 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A list of records in a panel has the same fields in the same places on every row, never
   dash-joined sentences; a row of figures lines its labels up in columns at every width; a person
   in a list row has a small name and a small avatar centred on the name's first line.
-- A disclosure shows the icon chevron, never the browser's triangle; a group opened inside a
-  popover draws no second box.
+- A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
+  and the chevron turns up while open; a group opened inside a popover draws no second box.
+- A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
+  dialog is one size.
+- A bulk result shows counts ("N learners changed", "N learners already set up") and names only
+  failed rows.
+- The selection bar sits above the table, in the toolbar's place, at every viewport, and stays in
+  view while the page scrolls.
+- The table toolbar is one row at tablet and desktop widths; the search field is the part that
+  shrinks.
 - A sheet on a phone has rounded top corners and a header with a close control; a quick view
   leaves the page behind it undimmed and tappable, a modal dims it.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
