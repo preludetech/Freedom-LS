@@ -54,6 +54,7 @@ from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
@@ -7212,3 +7213,114 @@ def test_the_audit_log_export_omits_its_own_entry_and_a_second_export_holds_it(
         [row[4] for row in first_rows if "exported" in row[4]],
         len([row for row in second_rows if "exported" in row[4]]),
     ) == ([], 1)
+
+
+def _course_content_panel(client: Client, course: CourseModel) -> lxml.html.HtmlElement:
+    organisation = OrganisationFactory()
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+    (panel,) = document.cssselect("section[data-panel='content']")
+    return panel
+
+
+def _outline_numbers(panel: lxml.html.HtmlElement) -> list[str]:
+    return [
+        node.text_content().strip()
+        for node in panel.cssselect("nav[aria-label='Course outline'] .tabular-nums")
+    ]
+
+
+@pytest.mark.django_db
+def test_course_content_numbers_rows_in_collection_order(staff_client: Client):
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=1
+    )
+    part = CoursePartFactory(title="Warm up")
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=2)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=1
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=3
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    assert _outline_numbers(panel) == ["1.", "2.", "3.", "3.1", "3.2", "4."]
+
+
+@pytest.mark.django_db
+def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(), order=0
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    (button,) = panel.cssselect("button[aria-controls]")
+    assert button.get("aria-controls") in {
+        node.get("id") for node in panel.cssselect("ol[id]")
+    }
+
+
+@pytest.mark.django_db
+def test_course_content_empty_course_shows_empty_state(staff_client: Client):
+    panel = _course_content_panel(staff_client, CourseFactory())
+
+    assert "No content in this course yet." in panel.text_content()
+    assert panel.cssselect("nav[aria-label='Course outline']") == []
+
+
+@pytest.mark.django_db
+def test_course_content_empty_part_shows_empty_message(staff_client: Client):
+    course = CourseFactory()
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=CoursePartFactory(), order=0
+    )
+
+    panel = _course_content_panel(staff_client, course)
+
+    assert "No items in this part." in panel.text_content()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("in_development", [True, False])
+def test_course_content_callout_shows_only_while_in_development(
+    staff_client: Client, in_development: bool
+):
+    course = CourseFactory(table_of_contents_in_development=in_development)
+
+    panel = _course_content_panel(staff_client, course)
+
+    assert ("Learners can't see this outline yet." in panel.text_content()) is (
+        in_development
+    )
+
+
+@pytest.mark.django_db
+def test_course_content_query_count_stays_bounded_as_children_grow(
+    staff_client: Client, django_assert_max_num_queries
+):
+    course = CourseFactory()
+    part = CoursePartFactory()
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    for order in range(12):
+        ContentCollectionItemFactory(
+            collection_object=part, child_object=TopicFactory(), order=order
+        )
+    organisation = OrganisationFactory()
+    url = _interface_url(organisation.slug, f"courses/{course.pk}")
+
+    with django_assert_max_num_queries(60):
+        assert staff_client.get(url).status_code == 200

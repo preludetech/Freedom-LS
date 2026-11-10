@@ -1,0 +1,70 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% comment %}
+One outline row for a topic or form. The caller sets `item` and either
+`number` (a top-level row) or `part_number` and `child_number` (a row in a part).
+{% endcomment %}
+{% partialdef outline_row %}
+    <div class="flex items-center gap-2">
+        <span class="text-sm text-muted tabular-nums">{% if part_number %}{{ part_number }}.{{ child_number }}{% else %}{{ number }}.{% endif %}</span>
+        <span class="shrink-0 text-muted">
+            {% if item.child.content_type == "FORM" %}
+                <c-icon name="form" class="size-4" />
+                <span class="sr-only">Form</span>
+            {% else %}
+                <c-icon name="topic" class="size-4" />
+                <span class="sr-only">Topic</span>
+            {% endif %}
+        </span>
+        <span class="min-w-0 flex-1 font-medium">{{ item.child.title }}</span>
+    </div>
+{% endpartialdef %}
+
+{% block panel_body %}
+    {% if course.table_of_contents_in_development %}
+        <c-callout level="info">Learners can't see this outline yet. The course is marked as still in development.</c-callout>
+    {% endif %}
+    {% if outline %}
+        <nav aria-label="Course outline">
+            <ol class="list-none ml-0 flex flex-col gap-2">
+                {% for item in outline %}
+                    {% if item.child.content_type == "COURSE_PART" %}
+                        <li x-data="courseOutlinePart" class="flex flex-col gap-1">
+                            <button type="button" x-on:click="toggle" x-bind:aria-expanded="expanded" aria-controls="outline-part-{{ item.pk }}" class="flex w-full items-center gap-2 text-left cursor-pointer">
+                                <span class="text-sm text-muted tabular-nums">{{ forloop.counter }}.</span>
+                                <span class="shrink-0 text-muted">
+                                    <c-icon name="folder" class="size-4" />
+                                    <span class="sr-only">Part</span>
+                                </span>
+                                <span class="min-w-0 flex-1 font-medium">{{ item.child.title }}</span>
+                                <span x-show="expanded" class="shrink-0 text-muted" aria-hidden="true"><c-icon name="collapse" class="size-4" /></span>
+                                <span x-show="collapsed" x-cloak class="shrink-0 text-muted" aria-hidden="true"><c-icon name="expand" class="size-4" /></span>
+                            </button>
+                            <ol id="outline-part-{{ item.pk }}" x-show="expanded" x-collapse class="ps-6 list-none flex flex-col gap-1">
+                                {% with part_number=forloop.counter %}
+                                    {% for child_item in item.child.collection_items %}
+                                        <li>
+                                            {% with item=child_item child_number=forloop.counter %}
+                                                {% partial outline_row %}
+                                            {% endwith %}
+                                        </li>
+                                    {% empty %}
+                                        <li class="text-sm text-muted">No items in this part.</li>
+                                    {% endfor %}
+                                {% endwith %}
+                            </ol>
+                        </li>
+                    {% else %}
+                        <li>
+                            {% with number=forloop.counter %}
+                                {% partial outline_row %}
+                            {% endwith %}
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ol>
+        </nav>
+    {% else %}
+        <c-panel-empty-state message="No content in this course yet." />
+    {% endif %}
+{% endblock panel_body %}

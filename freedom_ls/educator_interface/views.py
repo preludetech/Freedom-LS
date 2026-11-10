@@ -1850,6 +1850,20 @@ class CourseDetailsPanel(InstanceDetailsPanel):
         return rows
 
 
+class CourseContentPanel(Panel):
+    model = Course
+    title = "Course content"
+    template_name = "educator_interface/panels/course_content.html"
+
+    def get_context_data(self) -> dict[str, object]:
+        course = cast(Course, self.instance)
+        return {
+            **super().get_context_data(),
+            "course": course,
+            "outline": course.collection_items(),
+        }
+
+
 class CourseCohortRegistrationDataTable(DataTable):
     empty_message = "No cohorts are registered for this course yet. Cohort registrations will appear here."
     empty_no_results = "No cohort registrations match these filters."
@@ -1922,6 +1936,7 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
 class CoursePanelStack(PanelStack):
     children = {
         "details": CourseDetailsPanel,
+        "content": CourseContentPanel,
         "cohorts": CourseCohortRegistrationsPanel,
         "learners": CourseLearnerRegistrationsPanel,
     }

@@ -1,4 +1,12 @@
 document.addEventListener("alpine:init", () => {
+    // A part of the course outline. Open by default and never remembered:
+    // an educator reads the whole outline, so there is no state worth keeping.
+    Alpine.data("courseOutlinePart", () => ({
+        expanded: true,
+        get collapsed() { return !this.expanded; },
+        toggle() { this.expanded = !this.expanded; },
+    }));
+
     // The role radios of the Add member dialog. The cohorts block shows only
     // for a role that is given on cohorts, which each radio announces with
     // its data-needs-cohorts attribute. Choosing a role tells the checklist,
