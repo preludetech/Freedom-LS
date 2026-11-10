@@ -38,8 +38,7 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 `panel-attention-list`, `panel-attention-row`, `panel-stat-row`, `panel-stat-tile`,
 `panel-status-badge`, `panel-definition-list`, `panel-definition-row`, `panel-card`,
 `panel-progress-bar`, `panel-skeleton`). The page chrome is in
-`templates/panel_framework/partials/`: `table_toolbar`, `table_footer`, `table_selection_bar`,
-`table_sheet`, `table_empty`, `quick_view_host`, `modal_host`, `sidebar_nav`, `breadcrumbs`.
+`templates/panel_framework/partials/`: `table_toolbar`, `table_footer`, `table_selection_bar` (the bulk-action bar), `table_sheet`, `table_empty`, `quick_view_host`, `modal_host`, `sidebar_nav`, `breadcrumbs`.
 `ls freedom_ls/panel_framework/templates/cotton/` is the current list.
 
 ## How it looks and behaves
@@ -121,8 +120,18 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 
 ### Selection bar
 
-The selection bar is fixed to the bottom of the viewport below `lg` and keeps every control inside
-the viewport at 375px; the list reserves its height beneath itself while it is fixed.
+The selection bar shows only while rows are selected or a bulk run is going. From `lg` up it takes
+the toolbar's row above the table; below `lg` it is fixed to the bottom of the viewport, keeps every
+control inside it at 375px, and the list reserves its height beneath itself.
+
+- Actions are ghost, text-only, `size="small"` buttons. `promote_bulk_actions` gives the first
+  `PROMOTED_BULK_ACTION_COUNT` (4) permitted non-destructive actions a button each.
+- Every other action sits under a "More" menu. A destructive action (`BulkAction.destructive`, a
+  `variant` of `"error"`) never takes a button: it is last in the menu, in error text, under a rule
+  when a non-destructive entry sits above it.
+- The count reads "N selected". "Select all N" selects every row the filters match, and reads
+  "Deselect all" once it has. "Clear" empties the selection and sits alone at the right edge.
+- Changing page, sort or filters clears the selection.
 
 ### Adding and editing records
 
@@ -180,8 +189,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   popover draws no second box.
 - A sheet on a phone has rounded top corners and a header with a close control; a quick view
   leaves the page behind it undimmed and tappable, a modal dims it.
-- A dialog, sheet, table or selection bar stays inside the viewport at every width, title and
-  every button included.
+- A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
+  width, title and every button included.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
