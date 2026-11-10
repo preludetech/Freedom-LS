@@ -1,7 +1,7 @@
 {% comment %}Course description and learning outcomes shared by the learner details
 page and the educator preview. Reads course only.{% endcomment %}
 
-{% comment %}About this course — omit when content is empty{% endcomment %}
+{% comment %}About this course{% endcomment %}
 {% with content=course.rendered_content %}
     {% if content %}
         <section>
@@ -15,7 +15,7 @@ page and the educator preview. Reads course only.{% endcomment %}
     {% endif %}
 {% endwith %}
 
-{% comment %}What you'll learn — omit whole section when learning_outcomes is empty{% endcomment %}
+{% comment %}What you'll learn{% endcomment %}
 {% if course.learning_outcomes %}
     <section>
         <h2>
