@@ -1,0 +1,33 @@
+{% extends "panel_framework/panels/panel.html" %}
+{% load comms_tags %}
+{% comment %}
+The learner's conversations with their other educators, one row each, the
+rows separated by space; a row opens the conversation read-only in the app
+modal. Context: oversight_rows ((conversation, educator) pairs).
+{% endcomment %}
+{% block panel_body %}
+    {% if oversight_rows %}
+        <ul class="m-0 list-none space-y-1 p-0">
+            {% for conversation, educator in oversight_rows %}
+                <li>
+                    <button type="button"
+                            hx-get="{{ row_action_urls.view_conversation }}?conversation={{ conversation.pk }}"
+                            hx-target="#app-modal-body"
+                            hx-swap="innerHTML"
+                            hx-disabled-elt="this"
+                            aria-haspopup="dialog"
+                            class="-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-surface-2">
+                        {% include "comms/partials/participant_avatar.html" with other=educator %}
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate">{% if educator %}{{ educator.display_name }}{% else %}Deleted user{% endif %}</span>
+                            {% if conversation.last_message_body %}<span class="block truncate text-sm text-muted">{{ conversation.last_message_body }}</span>{% endif %}
+                        </span>
+                        {% if conversation.last_message_at %}<time datetime="{{ conversation.last_message_at|date:'c' }}" class="shrink-0 text-sm text-muted">{{ conversation.last_message_at|relative_time }}</time>{% endif %}
+                    </button>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-sm text-muted">No other educator conversations.</p>
+    {% endif %}
+{% endblock panel_body %}

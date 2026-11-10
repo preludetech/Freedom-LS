@@ -60,19 +60,34 @@ def _clear_role_caches():
 
 
 @pytest.mark.django_db
-def test_a_cohort_admin_cannot_change_their_own_role(mock_site_context: Site) -> None:
+def test_a_cohort_admin_may_give_themselves_a_cohort_role_on_their_cohort(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory()
+    assign_object_role(grantor, cohort, "cohort_admin")
+
+    assign_role(grantor, grantor, "cohort_viewer", cohort)
+
+    assert ObjectRoleAssignment.objects.filter(
+        user=grantor, role="cohort_viewer", is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_may_not_give_themselves_a_role_they_cannot_give(
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     grantor = UserFactory()
     assign_object_role(grantor, cohort, "cohort_admin")
 
     with pytest.raises(RoleChangeRefused) as exc_info:
-        assign_role(grantor, grantor, "cohort_viewer", cohort)
+        assign_role(grantor, grantor, "organisation_admin", organisation)
 
-    assert exc_info.value.reason == RefusalReason.SELF
-    assert not ObjectRoleAssignment.objects.filter(
-        user=grantor, role="cohort_viewer", is_active=True
-    ).exists()
+    assert exc_info.value.reason == RefusalReason.NOT_PERMITTED
 
 
 @pytest.mark.django_db

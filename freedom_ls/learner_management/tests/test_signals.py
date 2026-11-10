@@ -172,7 +172,7 @@ def test_deleting_a_cohort_from_the_interface_removes_its_rows(
         "educator_interface:interface",
         kwargs={
             "organisation_slug": cohort.organisation.slug,
-            "path_string": f"cohorts/{cohort_pk}/__tabs/settings/__actions/delete",
+            "path_string": f"cohorts/{cohort_pk}/__tabs/settings/__panels/status/__actions/delete",
         },
     )
 

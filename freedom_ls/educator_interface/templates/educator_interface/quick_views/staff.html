@@ -1,0 +1,21 @@
+{% comment %}
+The staff quick view. The staff member's name and email are the drawer's
+heading and subtitle, so the rows start at their roles: each role, where it
+applies and who added it and when, in the same row shape as the learner
+quick view's registrations. Context: entries (RoleEntry list).
+{% endcomment %}
+<c-panel-definition-list columns="2">
+    <c-panel-definition-row label="Roles" class="col-span-2">
+        <ul class="list-none ml-0 space-y-2">
+            {% for entry in entries %}
+                <li data-testid="quick-view-role">
+                    <span class="block font-medium">{{ entry.display_name }}</span>
+                    <span class="block text-sm text-muted">{{ entry.full_scope }}</span>
+                    <span class="block text-sm text-muted">Added {{ entry.assigned_at|date:"j M Y" }}{% if entry.assigned_by %} by {{ entry.assigned_by.display_name }}{% endif %}</span>
+                </li>
+            {% empty %}
+                <li>No roles yet</li>
+            {% endfor %}
+        </ul>
+    </c-panel-definition-row>
+</c-panel-definition-list>

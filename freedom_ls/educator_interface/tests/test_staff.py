@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import lxml.html
 import pytest
@@ -32,6 +33,9 @@ from freedom_ls.learner_management.role_assignment import (
 from freedom_ls.learner_management.utils import ensure_staff_member
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 
 def _entry(role: str, *cohorts: Cohort) -> RoleEntry:
@@ -287,11 +291,11 @@ def test_a_member_rows_deactivate_trigger_names_the_member(
     ]
     assert button.get("aria-label") == "Deactivate Thandi Nkosi"
     assert button.text_content().strip() == "Deactivate staff member"
-    # It sits last in the Roles cell, under the role entries.
+    # It sits in the last column, which holds the buttons for the whole person.
     cell = button.xpath("ancestor::td")[0]
-    assert cell.cssselect("ul")
-    assert cell.cssselect("ul")[0].getnext() is not None
-    assert len(document.cssselect("thead th")) == 2
+    assert cell.getnext() is None
+    headers = [th.text_content().strip() for th in document.cssselect("thead th")]
+    assert headers[-3:] == ["Roles", "Role actions", "Staff member actions"]
 
 
 @pytest.mark.django_db
@@ -310,29 +314,75 @@ def test_a_staff_member_with_no_roles_says_so_and_offers_deactivate(
         if "No roles yet" in cell.text_content()
     ]
     assert not cell.cssselect("li")
+    row = cell.xpath("ancestor::tr")[0]
     (button,) = [
         button
-        for button in cell.cssselect("button[hx-get]")
+        for button in row.cssselect("td:last-child button[hx-get]")
         if button.text_content().strip() == "Deactivate staff member"
     ]
     assert f"deactivate?user={member.pk}" in button.get("hx-get")
 
 
+def _staff_quick_view(
+    client: Client, organisation: Organisation, user: User
+) -> _MonkeyPatchedWSGIResponse:
+    return client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"staff/{user.pk}/__quick-view",
+            },
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+
 @pytest.mark.django_db
-def test_a_members_added_date_reads_day_month_year(staff_client: Client) -> None:
+def test_the_staff_quick_view_says_when_and_by_whom_each_role_was_added(
+    staff_client: Client,
+) -> None:
     organisation = OrganisationFactory()
+    member = UserFactory()
+    grantor = UserFactory(superuser=True, first_name="Ada", last_name="Admin")
     with time_machine.travel(datetime(2026, 11, 3, 7, 37, tzinfo=UTC), tick=False):
-        assign_role(
-            UserFactory(superuser=True),
-            UserFactory(),
-            "organisation_admin",
-            organisation,
-        )
+        assign_role(grantor, member, "organisation_admin", organisation)
+
+    response = _staff_quick_view(staff_client, organisation, member)
+    table = _staff_page(staff_client, organisation)
+
+    text = " ".join(response.content.decode().split())
+    assert response.status_code == 200
+    assert "Added 3 Nov 2026 by Ada Admin" in text
+    assert (
+        "Added 3 Nov 2026"
+        not in table.cssselect("[data-table-region]")[0].text_content()
+    )
+
+
+@pytest.mark.django_db
+def test_each_staff_row_opens_its_quick_view(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    member = UserFactory()
+    assign_role(UserFactory(superuser=True), member, "organisation_admin", organisation)
 
     document = _staff_page(staff_client, organisation)
 
-    text = " ".join(document.cssselect("[data-table-region]")[0].text_content().split())
-    assert "Added 3 Nov 2026 by" in text
+    assert document.cssselect(f"[hx-get$='/staff/{member.pk}/__quick-view']")
+
+
+@pytest.mark.django_db
+def test_the_staff_quick_view_is_a_404_for_someone_not_on_the_staff(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    assign_role(
+        UserFactory(superuser=True), UserFactory(), "organisation_admin", organisation
+    )
+
+    response = _staff_quick_view(staff_client, organisation, UserFactory())
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

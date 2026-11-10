@@ -9,7 +9,7 @@ drawer's state is never in the URL. No title either: the drawer takes its
 title only from the frame it loads, so it cannot flip between the text of
 whichever cell opened it and the frame's own title.
 {% endcomment %}
-<a href="{{ href }}"
+<a href="{% firstof href url %}"
    hx-get="{{ url }}"
    hx-target="#quick-view-body"
    hx-swap="innerHTML"

@@ -85,11 +85,12 @@ def is_site_level_admin(user: User, site: Site) -> bool:
     return site_level_admins(site).filter(pk=user.pk).exists()
 
 
-def _may_act_on_self(grantor: User, target: Site | Organisation | Cohort) -> bool:
-    """Whether `grantor` may change their own role on `target`: only on an
-    organisation or a cohort in it, never on the site."""
-    organisation = _organisation_of(target)
-    return organisation is not None and may_edit_own_roles(grantor, organisation)
+def _may_act_on_self(target: Site | Organisation | Cohort) -> bool:
+    """Whether a grantor may change their own role on `target`: on an
+    organisation or a cohort in it, never on the site. The capability check
+    that follows still decides, so a person changes their own role exactly
+    when they may assign that role there."""
+    return _organisation_of(target) is not None
 
 
 def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
@@ -99,15 +100,6 @@ def _holds_organisation_admin(user: User, organisation: Organisation) -> bool:
         _active_role_assignments(Organisation, frozenset({"organisation_admin"}))
         .filter(user=user, object_id=str(organisation.pk))
         .exists()
-    )
-
-
-def may_edit_own_roles(user: User, organisation: Organisation) -> bool:
-    """Whether `user` may change their own roles here: an organisation admin
-    or a site-level admin always has another way back in, so the only
-    protection they need is the last-organisation-admin lock."""
-    return _holds_organisation_admin(user, organisation) or is_site_level_admin(
-        user, organisation.site
     )
 
 
@@ -161,7 +153,7 @@ def assign_role(
         ASSIGN.format(role=role),
         target,
         assigning=True,
-        may_act_on_self=_may_act_on_self(grantor, target),
+        may_act_on_self=_may_act_on_self(target),
     )
     if isinstance(target, Site):
         assign_site_role(user, role, site=target, assigned_by=grantor)
@@ -190,7 +182,7 @@ def deactivate_role(
         ASSIGN.format(role=role),
         target,
         assigning=False,
-        may_act_on_self=_may_act_on_self(grantor, target),
+        may_act_on_self=_may_act_on_self(target),
     )
     if isinstance(target, Site):
         deactivate_site_role(

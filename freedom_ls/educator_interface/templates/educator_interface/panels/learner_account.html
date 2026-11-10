@@ -1,20 +1,19 @@
 {% extends "panel_framework/panels/panel.html" %}
 {% comment %}
-The learner's Settings tab. Context: learner and status (a LearnerStatus).
-The actions render in the card footer from the panel base.
+The learner's account: whether it is set up and active. Context: learner and
+status (a LearnerStatus). Resend setup email and Deactivate or Reactivate
+render in the card footer from the panel base.
 {% endcomment %}
 
 {% block panel_body %}
     <div class="space-y-3 text-sm">
         {% if status == "inactive" %}
-            <p>Change {{ learner.user.display_name }}'s name or reactivate them.</p>
-            <p>This learner is inactive. Reactivating restores their access to this organisation's courses.</p>
+            <p>{{ learner.user.display_name }} is inactive. Reactivating restores their access to this organisation's courses.</p>
         {% else %}
-            <p>Change {{ learner.user.display_name }}'s name or deactivate them.</p>
+            <p>Deactivating {{ learner.user.display_name }} stops their access to this organisation's courses. Their progress is kept.</p>
             {% if status == "pending" %}
                 <p>They have not set up their account yet. The setup email can be sent again.</p>
             {% endif %}
         {% endif %}
-        <p>Cohorts and course registrations are changed where they are shown: on the Overview and Courses tabs.</p>
     </div>
 {% endblock panel_body %}

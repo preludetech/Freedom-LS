@@ -1,0 +1,20 @@
+{% comment %}
+The Staff member actions column, the table's last: the buttons that act on
+the whole person. Add role comes first and needs only a grantable role, so
+it shows even when roles are hidden from a viewer who may see names only,
+and on the viewer's own row. Deactivate or Reactivate staff member follows,
+never on the viewer's own row or a site-level admin's (deactivating would
+not change what they can do); a turned-off account's row has neither.
+{% endcomment %}
+<c-data-table-actions class="flex-col items-start">
+    {% if object.is_active and grantable_role_keys and row_action_urls.add_role %}
+        <c-modal-trigger url="{{ row_action_urls.add_role }}?user={{ object.pk }}" label="Add role" aria_label="Add role for {{ object.display_name }}" variant="secondary" size="small" />
+    {% endif %}
+    {% if object.pk != viewer.pk and object.is_active and not object.is_site_level %}
+        {% if not object.is_inactive and row_action_urls.deactivate %}
+            <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate staff member" aria_label="Deactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% elif object.is_inactive and row_action_urls.reactivate %}
+            <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate staff member" aria_label="Reactivate {{ object.display_name }}" variant="secondary" size="small" />
+        {% endif %}
+    {% endif %}
+</c-data-table-actions>

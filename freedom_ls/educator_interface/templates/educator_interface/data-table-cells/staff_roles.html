@@ -1,56 +1,19 @@
 {% comment %}
-The roles a staff member holds, one item each: the role name, where it applies, and
-who added it and when, then the item's small buttons: Deactivate role when
-the viewer may deactivate that role on someone else, and Change cohorts on a
-cohort role of an active account. The full list of cohorts is in the scope line's title,
-because the visible text names only the first two. Last, at the bottom of
-the cell, the staff member's own action: Deactivate or Reactivate staff
-member, named so it reads apart from Deactivate role. Add role comes first
-in that row-level block and needs only a grantable role, so it shows even
-when the role list is hidden from a viewer who may not see roles. The viewer's
-own row has only a note that their roles are changed by someone else; a
-site-level admin's row has Add role and no state trigger, since deactivating
-would not change what they can do; a turned-off account's row has nothing.
+The Roles column: one line per role a staff member holds, the role name over
+where it applies. The full list of cohorts is in the scope line's title,
+because the visible text names only the first two. Each line is the same
+height as its line in the Role actions column (staff_role_actions.html), so
+a role's buttons sit beside it. Who added a role and when is in the staff
+quick view. Empty for a viewer who may see names only.
 {% endcomment %}
 {% if shows_roles %}
-{% if not object.role_entries %}<span class="text-sm text-muted">No roles yet</span>{% endif %}
+{% if not object.role_entries %}<span class="text-muted">No roles yet</span>{% endif %}
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
     {% for entry in object.role_entries %}
-        <li>
-            <span class="block font-bold text-on-surface">{{ entry.display_name }}</span>
-            <span class="block text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
-            <span class="block text-xs text-muted">Added <c-date :value="entry.assigned_at" />{% if entry.assigned_by %} by {{ entry.assigned_by.display_name }}{% endif %}</span>
-            {% if object.pk != viewer.pk or edits_own_roles %}
-            <c-data-table-actions class="mt-2 empty:hidden">
-                {% if entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
-                    <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />
-                {% endif %}
-                {% if object.is_active and entry.target == "cohort" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
-                    <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" size="small" />
-                {% endif %}
-            </c-data-table-actions>
-            {% endif %}
+        <li class="flex min-h-12 min-w-0 flex-col justify-center">
+            <span class="block truncate font-semibold text-on-surface">{{ entry.display_name }}</span>
+            <span class="block truncate text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
         </li>
     {% endfor %}
 </ul>
-{% if object.pk == viewer.pk and not edits_own_roles %}
-    <span class="mt-3 flex items-center gap-2 text-sm text-muted">
-        <c-icon name="locked" class="size-4" aria_label="Locked" />
-        You can't change your own roles. Ask another organisation admin.
-    </span>
-{% endif %}
-{% endif %}
-{% if object.pk != viewer.pk or edits_own_roles %}
-    <c-data-table-actions class="mt-3 empty:hidden">
-        {% if object.is_active and grantable_role_keys and row_action_urls.add_role %}
-            <c-modal-trigger url="{{ row_action_urls.add_role }}?user={{ object.pk }}" label="Add role" aria_label="Add role for {{ object.display_name }}" variant="secondary" size="small" />
-        {% endif %}
-        {% if object.pk != viewer.pk and object.is_active and not object.is_site_level %}
-            {% if not object.is_inactive and row_action_urls.deactivate %}
-                <c-modal-trigger url="{{ row_action_urls.deactivate }}?user={{ object.pk }}" label="Deactivate staff member" aria_label="Deactivate {{ object.display_name }}" variant="secondary" size="small" />
-            {% elif object.is_inactive and row_action_urls.reactivate %}
-                <c-modal-trigger url="{{ row_action_urls.reactivate }}?user={{ object.pk }}" label="Reactivate staff member" aria_label="Reactivate {{ object.display_name }}" variant="secondary" size="small" />
-            {% endif %}
-        {% endif %}
-    </c-data-table-actions>
 {% endif %}

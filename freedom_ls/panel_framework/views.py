@@ -317,10 +317,17 @@ class ListViewConfig(SectionConfigBase):
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
-        if cls.model is None:
-            raise ValueError(f"{cls.__name__} must define model")
         if cls.instance_view is None:
             raise Http404(f"{cls.__name__} has no instance pages")
+        return cls.instance_view(cls.get_instance(request, pk))
+
+    @classmethod
+    def get_instance(cls, request: HttpRequest, pk: str) -> Model:
+        """The row `pk` names, once check_access has passed it. The instance
+        page and, for a section with no instance pages, the quick view both
+        reach a row through here."""
+        if cls.model is None:
+            raise ValueError(f"{cls.__name__} must define model")
         # pk is a raw, visitor-supplied URL segment and these models have UUID
         # primary keys, so anything that isn't a well-formed UUID fails in the
         # field rather than the query: get_object_or_404 only turns
@@ -331,7 +338,7 @@ class ListViewConfig(SectionConfigBase):
         except ValidationError as err:
             raise Http404(f"'{pk}' is not a valid identifier") from err
         cls.check_access(request, instance)
-        return cls.instance_view(instance)
+        return instance
 
 
 class ObjectViewConfig(SectionConfigBase):
@@ -600,6 +607,25 @@ def _resolve_path(
         raise Http404(f"Unknown path segment '{parts[0]}'") from err
     if not (section.is_visible(request) and section.is_available(request)):
         raise Http404("Section not shown")
+
+    if (
+        issubclass(section, ListViewConfig)
+        and section.instance_view is None
+        and section.quick_view is not None
+        and len(parts) == 3
+        and parts[2] == "__quick-view"
+    ):
+        # A row with no page of its own still opens in the drawer. The list
+        # root stands in as the root, so a non-htmx request goes back to the
+        # list; get_instance runs check_access on the row.
+        list_root, _, _ = _bind_root(request, section, parts[:1], section_url)
+        return _Resolved(
+            section=section,
+            root=list_root,
+            panel=list_root,
+            instance=section.get_instance(request, parts[1]),
+            quick_view=True,
+        )
 
     root, instance_view, i = _bind_root(request, section, parts, section_url)
     if not root.is_shown():

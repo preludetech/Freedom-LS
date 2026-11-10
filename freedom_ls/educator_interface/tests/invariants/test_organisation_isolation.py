@@ -346,7 +346,7 @@ class TestCrossOrganisationIsolation:
             "__tabs/settings",
             "__actions/deactivate",
             "__actions/reactivate",
-            "__tabs/settings/__actions/delete",
+            "__tabs/settings/__panels/status/__actions/delete",
         ],
     )
     def test_cohort_settings_surfaces_404_for_a_cohort_outside_organisation_a(

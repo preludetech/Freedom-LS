@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections.abc import Callable
 from typing import cast
@@ -1085,12 +1086,17 @@ def _settings_triggers(
         _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/settings")
     )
     document = lxml.html.fromstring(response.content.decode())
-    return {
-        button.get("hx-get").replace("/__tabs/settings", "")
-        for button in document.cssselect(
-            "section[data-panel='settings'] button[hx-get]"
-        )
-    }
+    controls = [
+        *(
+            b.get("hx-get")
+            for b in document.cssselect("section[data-panel] button[hx-get]")
+        ),
+        *(
+            f.get("hx-post")
+            for f in document.cssselect("section[data-panel] form[hx-post]")
+        ),
+    ]
+    return {re.sub(r"/__tabs/settings(/__panels/[\w-]+)?", "", url) for url in controls}
 
 
 @pytest.mark.django_db
@@ -4446,7 +4452,7 @@ def test_the_warning_is_absent_when_another_organisation_admin_remains(
 
 
 @pytest.mark.django_db
-def test_removing_your_own_role_is_422_with_the_self_message(
+def test_a_cohort_admin_may_remove_their_own_cohort_role(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
@@ -4457,9 +4463,8 @@ def test_removing_your_own_role_is_422_with_the_self_message(
 
     response = _remove(client, organisation, me, "cohort_admin")
 
-    assert response.status_code == 422
-    assert "You can't change your own roles." in _text(response)
-    assert ("cohort_admin", str(cohort.pk)) in _active_roles(me)
+    assert response.status_code == 204
+    assert ("cohort_admin", str(cohort.pk)) not in _active_roles(me)
 
 
 @pytest.mark.django_db
@@ -4831,22 +4836,22 @@ def test_a_cohort_outside_the_offered_set_answers_the_unavailable_fragment(
 
 
 @pytest.mark.django_db
-def test_a_change_naming_the_viewer_is_422_with_the_self_message(
+def test_a_cohort_admin_may_change_the_cohorts_of_their_own_role(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
+    other = _cohort(organisation)
     client, me = _holder_client(logged_in_client, cohort, "cohort_admin")
+    assign_role(UserFactory(superuser=True), me, "cohort_admin", other)
     assign_role(UserFactory(superuser=True), me, "cohort_viewer", cohort)
     assign_role(
         UserFactory(superuser=True), me, "organisation_staff_viewer", organisation
     )
-    before = _active_roles(me)
 
-    response = _change(client, organisation, me, [cohort])
+    response = _change(client, organisation, me, [cohort, other])
 
-    assert response.status_code == 422
-    assert "You can't change your own roles." in _text(response)
-    assert _active_roles(me) == before
+    assert response.status_code == 204
+    assert ("cohort_viewer", str(other.pk)) in _active_roles(me)
 
 
 @pytest.mark.django_db
@@ -5331,7 +5336,7 @@ def _cohort_add_staff_member_url(organisation: Organisation, cohort: Cohort) -> 
     return _cohort_url(
         organisation,
         cohort,
-        "/__tabs/settings/__actions/add_staff_member",
+        "/__tabs/settings/__panels/staff/__actions/add_staff_member",
     )
 
 
@@ -5461,7 +5466,7 @@ def test_the_settings_tab_offers_add_member_to_an_organisation_admin(
         _cohort_url(organisation, cohort, "/__tabs/settings")
     ).content.decode()
 
-    assert "/__tabs/settings/__actions/add_staff_member" in html
+    assert "/__tabs/settings/__panels/staff/__actions/add_staff_member" in html
 
 
 @pytest.mark.django_db
@@ -8148,7 +8153,9 @@ def _single_row_dialog_url(name: str, organisation: Organisation) -> str:
         return _cohort_url(organisation, cohort, "/__actions/reactivate")
     if name == "delete_cohort":
         empty = cast(Cohort, CohortFactory(organisation=organisation))
-        return _cohort_url(organisation, empty, "/__tabs/settings/__actions/delete")
+        return _cohort_url(
+            organisation, empty, "/__tabs/settings/__panels/status/__actions/delete"
+        )
     if name == "deactivate_learner":
         return _learner_state_url(organisation, learner, "deactivate")
     if name == "reactivate_learner":
@@ -8666,7 +8673,7 @@ def test_add_role_answers_403_for_a_cohort_the_cohort_admin_cannot_give(
 
 
 @pytest.mark.django_db
-def test_a_cohort_admins_forged_add_role_on_themselves_is_422_with_the_self_message(
+def test_a_cohort_admin_may_add_a_cohort_role_to_themselves_on_their_cohort(
     logged_in_client, organisation, cohort_admin_setup, viewing_cohort_admin
 ):
     cohort, _ = cohort_admin_setup
@@ -8679,9 +8686,8 @@ def test_a_cohort_admins_forged_add_role_on_themselves_is_422_with_the_self_mess
         [cohort],
     )
 
-    assert response.status_code == 422
-    assert REFUSAL_MESSAGES[RefusalReason.SELF] in _text(response)
-    assert ("cohort_viewer", str(cohort.pk)) not in _active_roles(viewing_cohort_admin)
+    assert response.status_code == 204
+    assert ("cohort_viewer", str(cohort.pk)) in _active_roles(viewing_cohort_admin)
 
 
 @pytest.mark.django_db
@@ -8699,7 +8705,9 @@ def test_an_organisation_admin_adds_a_role_to_themselves(
 
 def _remove_staff_from_cohort_url(organisation: Organisation, cohort: Cohort) -> str:
     return _cohort_url(
-        organisation, cohort, "/__tabs/settings/__actions/remove_staff_from_cohort"
+        organisation,
+        cohort,
+        "/__tabs/settings/__panels/staff/__actions/remove_staff_from_cohort",
     )
 
 
@@ -8827,7 +8835,7 @@ def test_removing_a_role_the_actor_may_not_grant_from_a_cohort_is_403(
 
 
 @pytest.mark.django_db
-def test_a_cohort_admin_removing_themselves_from_a_cohort_is_refused_as_self(
+def test_a_cohort_admin_may_remove_themselves_from_their_cohort(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
@@ -8837,15 +8845,14 @@ def test_a_cohort_admin_removing_themselves_from_a_cohort_is_refused_as_self(
         client, organisation, cohort, me, "cohort_admin"
     )
 
-    assert response.status_code == 422
-    assert REFUSAL_MESSAGES[RefusalReason.SELF].format(name=me.display_name) in _text(
-        response
-    )
-    assert _active_roles(me) == {("cohort_admin", str(cohort.pk))}
+    assert response.status_code == 204
+    assert _active_roles(me) == set()
 
 
 def _change_role_url(organisation: Organisation, cohort: Cohort) -> str:
-    return _cohort_url(organisation, cohort, "/__tabs/settings/__actions/change_role")
+    return _cohort_url(
+        organisation, cohort, "/__tabs/settings/__panels/staff/__actions/change_role"
+    )
 
 
 def _change_role(
@@ -8888,7 +8895,7 @@ def test_changing_a_role_writes_deactivation_then_assignment_by_the_same_actor(
     entries = list(
         AuditLogEntry.unscoped.exclude(pk__in=earlier).order_by("created_at", "pk")
     )
-    assert [entry.action for entry in entries] == ["role.deactivated", "role.assigned"]
+    assert [entry.action for entry in entries] == ["role.assigned", "role.deactivated"]
     assert {entry.actor for entry in entries} == {actor}
 
 
@@ -8998,7 +9005,7 @@ def test_changing_to_a_role_outside_the_actors_reach_is_403_and_keeps_the_origin
 
 
 @pytest.mark.django_db
-def test_a_refusal_on_the_new_role_leaves_the_original_active(
+def test_a_cohort_admin_may_change_their_own_role_on_their_cohort(
     mock_site_context, logged_in_client, organisation
 ):
     cohort = _cohort(organisation)
@@ -9008,8 +9015,8 @@ def test_a_refusal_on_the_new_role_leaves_the_original_active(
         client, organisation, cohort, me, "cohort_admin", "cohort_viewer", confirmed="1"
     )
 
-    assert response.status_code == 422
-    assert _active_roles(me) == {("cohort_admin", str(cohort.pk))}
+    assert response.status_code == 204
+    assert _active_roles(me) == {("cohort_viewer", str(cohort.pk))}
 
 
 @pytest.mark.django_db

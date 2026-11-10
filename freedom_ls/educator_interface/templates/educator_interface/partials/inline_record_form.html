@@ -1,0 +1,38 @@
+{% comment %}
+A record's own fields with one Save button, posted inline to its edit action
+from a Settings panel rather than a dialog. Returned by the action's GET and
+its 422 too. Context: form, form_url, form_id. The form targets itself, so a
+422 swaps the errors in place; a save answers 204 and the panel's own refresh
+re-renders it with the saved values, with focus returned to the first field
+by id. The fields sit in one row with Save at its end, lined up on the inputs.
+{% endcomment %}
+<form id="{{ form_id }}"
+      hx-post="{{ form_url }}"
+      hx-target="#{{ form_id }}"
+      hx-swap="outerHTML"
+      hx-disabled-elt="find button[type='submit']"
+      x-data="refocusAfterRequest"
+      data-refocus-id="{{ form.visible_fields.0.id_for_label }}"
+      x-on:htmx:after-request="refocus"
+      class="space-y-3">
+    {% if form.non_field_errors %}
+        <div data-error-summary
+             tabindex="-1"
+             role="alert"
+             class="rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+    <div class="flex flex-wrap items-end gap-3">
+        {% for field in form.visible_fields %}
+            <div class="form-field min-w-48 grow">
+                {{ field.label_tag }}
+                {{ field }}
+            </div>
+        {% endfor %}
+        <c-button type="submit" variant="primary" size="small" loading="true" loading_text="Saving...">Save</c-button>
+    </div>
+    {% for field in form.visible_fields %}
+        {% if field.errors %}<p class="text-sm text-error">{{ field.label }}: {{ field.errors|join:" " }}</p>{% endif %}
+    {% endfor %}
+</form>

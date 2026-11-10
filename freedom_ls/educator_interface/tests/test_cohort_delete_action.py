@@ -86,7 +86,7 @@ def _panel_url(cohort) -> str:
 
 def _delete_url(client: Client, cohort: Cohort) -> str:
     """The delete action's URL, on the settings tab."""
-    return f"{_panel_url(cohort)}/__tabs/settings/__actions/delete"
+    return f"{_panel_url(cohort)}/__tabs/settings/__panels/status/__actions/delete"
 
 
 @pytest.mark.django_db

@@ -1,4 +1,4 @@
-"""Quick views for the Learners and Cohorts sections.
+"""Quick views for the Learners, Cohorts and Staff sections.
 
 Each drawer reads only what its own template needs -- the learner's cohort
 memberships and course registrations, or the cohort's learner count and
@@ -14,9 +14,14 @@ from django.db.models import Max
 
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging_views import message_box_context
-from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    STAFF_CHANGED,
+)
 from freedom_ls.educator_interface.messaging import own_conversation_with
 from freedom_ls.educator_interface.paths import interface_path
+from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.queries import (
     cohort_learner_count,
@@ -30,6 +35,7 @@ from freedom_ls.learner_progress.queries import (
 from freedom_ls.panel_framework.quick_view import QuickView
 
 if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
@@ -124,4 +130,26 @@ class CohortQuickView(QuickView):
                     is_active=True
                 ).select_related("course")
             ],
+        }
+
+
+class StaffQuickView(QuickView):
+    """A staff member's roles, with who added each and when: detail the Staff
+    table leaves out so its rows stay easy to scan."""
+
+    template_name = "educator_interface/quick_views/staff.html"
+    refresh_events = (STAFF_CHANGED,)
+
+    def get_title(self) -> str:
+        return cast("User", self.instance).display_name
+
+    def get_subtitle(self) -> str:
+        return cast("User", self.instance).email
+
+    def get_context_data(self) -> dict[str, object]:
+        request = cast("OrganisationScopedRequest", self.request)
+        return {
+            "entries": current_role_entries(
+                cast("User", self.instance), request.organisation
+            )
         }

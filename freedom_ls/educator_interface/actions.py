@@ -138,7 +138,6 @@ from freedom_ls.learner_management.role_assignment import (
     grantable_roles,
     is_last_organisation_admin,
     is_site_level_admin,
-    may_edit_own_roles,
     set_staff_member_active,
 )
 from freedom_ls.learner_management.utils import (
@@ -349,7 +348,7 @@ class ReasonMixin(PanelAction):
 
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
-    """The cohort's name, a field on the Settings panel rather than a
+    """The cohort's name, a field on the Settings tab's Name panel rather than a
     dialog, offered only while the cohort is active. The panel includes the
     form on first render; a 422 re-renders the form in place, and a save
     answers 204 so the panel's own cohortChanged refresh shows the new name.
@@ -384,10 +383,16 @@ class EditCohortAction(RequiresActiveCohortMixin, EditAction):
 
 
 class EditLearnerNameAction(EditAction):
-    """Edit the learner's first and last name, which live on their user."""
+    """Edit the learner's first and last name, which live on their user, as
+    fields on the Settings tab's Name panel rather than a dialog. A 422
+    re-renders the form in place; a save answers 204 so the panel's own
+    learnerChanged refresh shows the new name."""
 
     label = "Edit name"
     action_name = "edit_name"
+    renders_in_footer = False
+    template_name = "educator_interface/partials/learner_name_form.html"
+    autofocus_first_field = False
 
     def __init__(self, learner: Learner) -> None:
         super().__init__(
@@ -2411,9 +2416,11 @@ class ChangeRoleAction(CohortRoleAction):
             )
         grantor = cast("User", ctx.request.user)
         try:
+            # The new role first: a grantor changing their own role still
+            # holds the old one while the new one is checked.
             with transaction.atomic():
-                deactivate_role(grantor, user, assignment.role, cohort)
                 assign_role(grantor, user, new_role, cohort)
+                deactivate_role(grantor, user, assignment.role, cohort)
         except RoleChangeRefused as refused:
             return refusal_response(ctx, self, refused, user.display_name)
         return staff_member_changed_response(user)
@@ -2697,8 +2704,6 @@ class ChangeCohortsAction(StaffRoleAction):
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
-        if user == grantor and not may_edit_own_roles(grantor, _organisation(ctx)):
-            return _refused(ctx, REFUSAL_MESSAGES[RefusalReason.SELF])
         plan = self._plan(ctx, entry, chosen)
         if not plan.added and not plan.removed:
             return _refused(ctx, "Nothing changed. Tick or untick a cohort first.")

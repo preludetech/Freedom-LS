@@ -4,6 +4,7 @@ import html
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cached_property
 from typing import ClassVar, Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
@@ -150,6 +151,7 @@ from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.quick_views import (
     CohortQuickView,
     LearnerQuickView,
+    StaffQuickView,
 )
 from freedom_ls.educator_interface.reporting import (
     DOWNLOAD_COHORT_REPORT,
@@ -200,7 +202,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_management.role_assignment import (
     GrantableRole,
-    may_edit_own_roles,
 )
 from freedom_ls.learner_management.utils import record_cohort_entry
 from freedom_ls.organisations.models import Organisation
@@ -1086,7 +1087,8 @@ class LearnerHistoryPanel(HistoryPanel):
 
 
 class LearnerMessagesPanel(Panel):
-    """The learner's Messages tab: the educator's own conversation with them.
+    """The educator's own conversation with the learner. The thread pane runs
+    edge to edge, so the card is flush.
 
     It declares no refresh events: a re-fetch would mark the thread read again
     for nothing, and the thread polls for new messages itself.
@@ -1100,8 +1102,12 @@ class LearnerMessagesPanel(Panel):
     def has_permission(self, request: HttpRequest) -> bool:
         return comms_config.MESSAGING_ENABLED and super().has_permission(request)
 
+    @cached_property
+    def _own(self) -> OwnConversation:
+        return own_conversation_with(self.request, cast(Learner, self.instance))
+
     def get_actions(self) -> list[PanelAction]:
-        return [SendToLearnerAction(), ViewConversationAction()]
+        return [SendToLearnerAction()]
 
     def get_context_data(
         self,
@@ -1118,10 +1124,9 @@ class LearnerMessagesPanel(Panel):
         context = super().get_context_data()
         learner = cast(Learner, self.instance)
         if own is None:
-            own = own_conversation_with(self.request, learner)
+            own = self._own
         may_write = own.allowed or bool(alert)
         context["learner"] = learner
-        context["own_shown"] = own.conversation is not None or may_write
         if own.conversation is not None:
             context.update(thread_context(self.request, own.conversation))
             context.pop("back_url")
@@ -1137,13 +1142,48 @@ class LearnerMessagesPanel(Panel):
                 action_url=SendToLearnerAction().get_action_url(self.ctx),
                 swap_target=self.region_id,
             )
-        row_action_urls = cast(dict[str, str], context["row_action_urls"])
-        if ViewConversationAction.action_name in row_action_urls:
-            rows = other_educator_conversations(cast(User, self.request.user), learner)
-            context["oversight_rows"] = [
-                (c, other_participant(c, learner.user)) for c in rows
-            ]
         return context
+
+
+class LearnerOtherConversationsPanel(Panel):
+    """The learner's conversations with their other educators, for someone
+    with oversight of the learner: one row each, opening the conversation
+    read-only in the app modal."""
+
+    model = Learner
+    title = "Other educator conversations"
+    template_name = "educator_interface/panels/learner_other_conversations.html"
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return (
+            comms_config.MESSAGING_ENABLED
+            and super().has_permission(request)
+            and bool(self.available_actions)
+        )
+
+    def get_actions(self) -> list[PanelAction]:
+        return [ViewConversationAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        learner = cast(Learner, self.instance)
+        rows = other_educator_conversations(cast(User, self.request.user), learner)
+        context["oversight_rows"] = [
+            (c, other_participant(c, learner.user)) for c in rows
+        ]
+        return context
+
+
+class LearnerMessagesStack(PanelStack):
+    """The learner's Messages tab: the educator's own conversation, then the
+    learner's other educator conversations, each its own panel."""
+
+    model = Learner
+    title = "Messages"
+    children = {
+        "conversation": LearnerMessagesPanel,
+        "others": LearnerOtherConversationsPanel,
+    }
 
 
 class SendToLearnerAction(PanelAction):
@@ -1267,22 +1307,43 @@ def _oversight_role_label(viewer: User, learner: Learner) -> str:
     return "an organisation admin"
 
 
-class LearnerSettingsPanel(Panel):
-    """The learner's Settings tab: the actions with no home of their own
-    (name, setup email, active state). Add to cohort lives on the Cohorts
-    panel and Register for a course on the Courses tab, beside what they
-    change. Shown to anyone who may take at least one action."""
+class LearnerNamePanel(Panel):
+    """The learner's first and last name as fields with Save, posted inline
+    to the edit action, as the cohort's Name panel is. Shown only to someone
+    who may change the name."""
 
     model = Learner
-    title = "Settings"
-    template_name = "educator_interface/panels/learner_settings.html"
+    title = "Name"
+    template_name = "educator_interface/panels/learner_name.html"
     refresh_events = (LEARNER_CHANGED,)
 
     def has_permission(self, request: HttpRequest) -> bool:
         return super().has_permission(request) and bool(self.available_actions)
 
     def get_actions(self) -> list[PanelAction]:
-        return settings_actions(cast(Learner, self.instance))
+        return [EditLearnerNameAction(cast(Learner, self.instance))]
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["rename"] = self.available_actions[0].get_context_data(self.ctx)
+        return context
+
+
+class LearnerAccountPanel(Panel):
+    """The learner's account: whether it is set up and active, with Resend
+    setup email and Deactivate or Reactivate in the footer. Shown to anyone
+    who may take one of those actions."""
+
+    model = Learner
+    title = "Account"
+    template_name = "educator_interface/panels/learner_account.html"
+    refresh_events = (LEARNER_CHANGED,)
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return super().has_permission(request) and bool(self.available_actions)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [ResendSetupEmailAction(), *learner_state_actions()]
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
@@ -1290,6 +1351,16 @@ class LearnerSettingsPanel(Panel):
         context["learner"] = learner
         context["status"] = learner_status(learner)
         return context
+
+
+class LearnerSettingsStack(PanelStack):
+    """The learner's Settings tab: the actions with no home of their own,
+    one panel per job. Add to cohort lives on the Cohorts panel and Register
+    for a course on the Courses tab, beside what they change."""
+
+    model = Learner
+    title = "Settings"
+    children = {"name": LearnerNamePanel, "account": LearnerAccountPanel}
 
 
 def settings_actions(learner: Learner) -> list[PanelAction]:
@@ -1318,8 +1389,8 @@ class LearnerTabSet(TabSet):
     children = {
         "overview": LearnerOverviewStack,
         "courses": LearnerCoursesStack,
-        "messages": LearnerMessagesPanel,
-        "settings": LearnerSettingsPanel,
+        "messages": LearnerMessagesStack,
+        "settings": LearnerSettingsStack,
         "history": LearnerHistoryPanel,
     }
 
@@ -1532,23 +1603,15 @@ class CohortCourseCompletionPanel(Panel):
         return context
 
 
-class CohortSettingsPanel(Panel):
-    """The cohort's Settings tab: its name as a field, its staff with the
-    Add button and a Remove from cohort button per cohort role, and the
-    state and delete actions in the footer. Everything that changes the
-    cohort itself, in one place. A cohort admin who cannot change the cohort
-    still gets the Staff section, since they may give cohort roles on it."""
+class CohortNamePanel(Panel):
+    """The cohort's name as a field with Save, posted inline to the edit
+    action. Hidden when the edit action is not available, as on an inactive
+    cohort."""
 
-    title = "Settings"
-    capability = "freedom_ls_learner_management.change_cohort"
-    template_name = "educator_interface/panels/cohort_settings.html"
-    refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
-
-    def has_permission(self, request: HttpRequest) -> bool:
-        cohort = cast(Cohort, self.instance)
-        return can(request.user, CHANGE_COHORT, cohort) or can(
-            request.user, ASSIGN_COHORT_VIEWER, cohort
-        )
+    title = "Name"
+    capability = CHANGE_COHORT
+    template_name = "educator_interface/panels/cohort_name.html"
+    refresh_events = (COHORT_CHANGED,)
 
     def get_actions(self) -> list[PanelAction]:
         cohort = cast(Cohort, self.instance)
@@ -1558,14 +1621,39 @@ class CohortSettingsPanel(Panel):
                 form_title=f"Edit {cohort}",
                 instance=cohort,
                 success_events=(COHORT_CHANGED,),
-            ),
+            )
+        ]
+
+    def is_shown(self) -> bool:
+        return super().is_shown() and bool(self.available_actions)
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["rename"] = self.available_actions[0].get_context_data(self.ctx)
+        return context
+
+
+class CohortStaffPanel(Panel):
+    """The cohort's staff: Add staff member in the header, then one row per
+    person with their role and Change role and Remove from cohort for each
+    cohort role the viewer may give. A cohort admin who cannot change the
+    cohort still gets this panel, since they may give cohort roles on it."""
+
+    title = "Staff"
+    template_name = "educator_interface/panels/cohort_staff.html"
+    refresh_events = (COHORT_CHANGED, STAFF_CHANGED)
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        cohort = cast(Cohort, self.instance)
+        return can(request.user, CHANGE_COHORT, cohort) or can(
+            request.user, ASSIGN_COHORT_VIEWER, cohort
+        )
+
+    def get_actions(self) -> list[PanelAction]:
+        return [
             AddStaffMemberToCohortAction(),
             ChangeRoleAction(),
             RemoveStaffFromCohortAction(),
-            *cohort_state_actions(),
-            DeleteEmptyCohortAction(
-                success_url=interface_path(cohort.organisation, "cohorts"),
-            ),
         ]
 
     def get_context_data(self) -> dict[str, object]:
@@ -1574,11 +1662,8 @@ class CohortSettingsPanel(Panel):
         organisation = cohort.organisation
         context = super().get_context_data()
         by_name = {action.action_name: action for action in self.available_actions}
-        edit = by_name.get("edit")
         remove = by_name.get("remove_staff_from_cohort")
         change = by_name.get("change_role")
-        context["cohort"] = cohort
-        context["rename"] = edit.get_context_data(self.ctx) if edit else None
         context["add_staff"] = by_name.get("add_staff_member")
         context["remove_from_cohort_url"] = (
             remove.get_action_url(self.ctx) if remove else ""
@@ -1586,16 +1671,51 @@ class CohortSettingsPanel(Panel):
         context["change_role_url"] = change.get_action_url(self.ctx) if change else ""
         context["educators"] = cohort_educators(cohort)
         context["grantable"] = roles_grantable_on(self.request, cohort)
-        context["can_change"] = can(user, CHANGE_COHORT, cohort)
         context["staff_url"] = (
             interface_path(organisation, "staff")
             if can(user, VIEW_ORGANISATION_STAFF, organisation)
             else ""
         )
-        context["edits_own_roles"] = may_edit_own_roles(user, organisation)
-        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
-        context["is_empty"] = not context["not_empty_sentence"]
         return context
+
+
+class CohortStatusPanel(Panel):
+    """Whether the cohort is active, with Deactivate or Reactivate and
+    Delete in the footer."""
+
+    title = "Status"
+    capability = CHANGE_COHORT
+    template_name = "educator_interface/panels/cohort_status.html"
+    refresh_events = (COHORT_CHANGED,)
+
+    def get_actions(self) -> list[PanelAction]:
+        cohort = cast(Cohort, self.instance)
+        return [
+            *cohort_state_actions(),
+            DeleteEmptyCohortAction(
+                success_url=interface_path(cohort.organisation, "cohorts"),
+            ),
+        ]
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        context = super().get_context_data()
+        context["cohort"] = cohort
+        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
+        return context
+
+
+class CohortSettingsStack(PanelStack):
+    """The cohort's Settings tab: one panel per job, so the name, the staff
+    and the cohort's status each have their own card."""
+
+    title = "Settings"
+    refresh_events = (COHORT_CHANGED,)
+    children = {
+        "name": CohortNamePanel,
+        "staff": CohortStaffPanel,
+        "status": CohortStatusPanel,
+    }
 
 
 class CohortOverviewStack(PanelStack):
@@ -1628,7 +1748,7 @@ class CohortTabSet(TabSet):
         "learners": CohortLearnersPanel,
         "courses": CohortCoursesPanel,
         "report": CohortReportStack,
-        "settings": CohortSettingsPanel,
+        "settings": CohortSettingsStack,
         "history": CohortHistoryPanel,
     }
 
@@ -2388,6 +2508,16 @@ class StaffDataTable(DataTable):
                 template="educator_interface/data-table-cells/staff_roles.html",
                 card="secondary",
             ),
+            Column(
+                header="Role actions",
+                template="educator_interface/data-table-cells/staff_role_actions.html",
+                card="secondary",
+            ),
+            Column(
+                header="Staff member actions",
+                template="educator_interface/data-table-cells/staff_member_actions.html",
+                card="secondary",
+            ),
         ]
 
     @staticmethod
@@ -2403,8 +2533,7 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
     list_view = StaffDataTable
     table_key = "staff"
     view_capability = VIEW_ORGANISATION_STAFF
-    # Rows have no page of their own, so there is nothing to authorise.
-    check_access_exempt_reason = "staff members have no instance pages"
+    quick_view = StaffQuickView
 
     intro_template_name = "educator_interface/partials/staff_only_admin_callout.html"
     refresh_events = (STAFF_CHANGED,)
@@ -2421,13 +2550,23 @@ class StaffConfig(OrganisationSectionConfig, ListViewConfig):
         ]
 
     @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        """A staff member opens in the quick view, which lists their roles, so
+        it serves only people on this organisation's staff, to a viewer who
+        may see roles."""
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        if (
+            not may_see_staff_roles(request)
+            or not staff_of(organisation).filter(pk=instance.pk).exists()
+        ):
+            raise OrganisationScopeDenied
+
+    @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
-        scoped = cast(OrganisationScopedRequest, request)
+        organisation = cast(OrganisationScopedRequest, request).organisation
         return {
             "viewer": request.user,
-            "edits_own_roles": may_edit_own_roles(
-                cast("User", scoped.user), scoped.organisation
-            ),
+            "staff_url": interface_path(organisation, "staff"),
             "grantable_role_keys": {g.role for g in grantable_roles_for(request)},
             "shows_roles": may_see_staff_roles(request),
         }

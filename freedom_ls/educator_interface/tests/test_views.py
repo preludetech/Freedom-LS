@@ -254,16 +254,21 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     settings = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
     triggers = {button.get("hx-get") for button in settings.cssselect("button[hx-get]")}
-    assert f"{page_url}/__tabs/settings/__actions/deactivate" in triggers
-    assert f"{page_url}/__tabs/settings/__actions/edit" not in triggers
+    assert (
+        f"{page_url}/__tabs/settings/__panels/status/__actions/deactivate" in triggers
+    )
+    assert f"{page_url}/__tabs/settings/__panels/name/__actions/edit" not in triggers
     (form,) = settings.cssselect("form#cohort-name-form")
-    assert form.get("hx-post") == f"{page_url}/__tabs/settings/__actions/edit"
+    assert (
+        form.get("hx-post")
+        == f"{page_url}/__tabs/settings/__panels/name/__actions/edit"
+    )
     (name,) = form.cssselect("input[name=name]")
     assert name.get("value") == "Evening group"
     assert name.get("autofocus") is None
     assert all(
         "btn-sm" in button.get("class").split()
-        for button in settings.cssselect("section[data-panel='settings'] footer .btn")
+        for button in settings.cssselect("section[data-panel='status'] footer .btn")
     )
 
 
@@ -473,8 +478,13 @@ def test_settings_offers_deactivate_on_an_active_cohort(staff_client: Client):
     document = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
     triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
-    assert f"{page_url}/__tabs/settings/__actions/deactivate" in triggers
-    assert f"{page_url}/__tabs/settings/__actions/reactivate" not in triggers
+    assert (
+        f"{page_url}/__tabs/settings/__panels/status/__actions/deactivate" in triggers
+    )
+    assert (
+        f"{page_url}/__tabs/settings/__panels/status/__actions/reactivate"
+        not in triggers
+    )
 
 
 @pytest.mark.django_db
@@ -486,8 +496,13 @@ def test_settings_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
     document = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
     triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
-    assert f"{page_url}/__tabs/settings/__actions/reactivate" in triggers
-    assert f"{page_url}/__tabs/settings/__actions/deactivate" not in triggers
+    assert (
+        f"{page_url}/__tabs/settings/__panels/status/__actions/reactivate" in triggers
+    )
+    assert (
+        f"{page_url}/__tabs/settings/__panels/status/__actions/deactivate"
+        not in triggers
+    )
 
 
 def _header_of(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
@@ -551,13 +566,16 @@ def test_the_learner_settings_tab_offers_every_learner_action_to_an_org_admin(
 
     document = _get_document(staff_client, f"{page_url}/__tabs/settings")
 
-    (panel,) = document.cssselect("section[data-panel='settings']")
+    (name,) = document.cssselect("section[data-panel='name']")
+    (account,) = document.cssselect("section[data-panel='account']")
     labels = [
-        button.text_content().strip() for button in panel.cssselect("footer .btn")
+        button.text_content().strip() for button in account.cssselect("footer .btn")
     ]
-    # Resend setup email is offered only while the learner is pending. Add to
-    # cohort and Register for a course sit with the cohorts and the courses.
-    assert labels == ["Edit name", "Deactivate"]
+    # The name is a field with Save on its own panel. Resend setup email is
+    # offered only while the learner is pending. Add to cohort and Register
+    # for a course sit with the cohorts and the courses.
+    assert name.cssselect("form#learner-name-form")
+    assert labels == ["Deactivate"]
 
 
 @pytest.mark.django_db
@@ -1255,7 +1273,7 @@ def _settings_url(organisation: Organisation, cohort: Cohort) -> str:
 
 
 def _staff_section(document):
-    (section,) = document.cssselect("section[aria-labelledby='cohort-staff-title']")
+    (section,) = document.cssselect("section[data-panel='staff']")
     return section
 
 
@@ -1324,7 +1342,8 @@ def test_the_settings_tab_lists_a_person_added_from_the_cohort_page(
     client = logged_in_client(admin)
 
     client.post(
-        _settings_url(organisation, cohort) + "/__actions/add_staff_member",
+        _settings_url(organisation, cohort)
+        + "/__panels/staff/__actions/add_staff_member",
         {
             "step": "submit",
             "email": "ada@example.com",
@@ -1353,12 +1372,12 @@ def test_the_settings_tab_offers_add_staff_member_beside_its_staff_heading(
     assert "No staff assigned to this cohort." in section.text_content()
     (trigger,) = section.cssselect("button[hx-get]")
     assert trigger.get("hx-get") == (
-        _settings_url(organisation, cohort) + "/__actions/add_staff_member"
+        _settings_url(organisation, cohort)
+        + "/__panels/staff/__actions/add_staff_member"
     )
     assert "btn-sm" in trigger.get("class").split()
     footer_urls = {
-        b.get("hx-get")
-        for b in document.cssselect("section[data-panel='settings'] footer button")
+        b.get("hx-get") for b in document.cssselect("section[data-panel] footer button")
     }
     assert not any(url.endswith("/__actions/add_staff_member") for url in footer_urls)
 
@@ -1401,16 +1420,17 @@ def test_a_cohort_admin_sees_the_staff_section_alone_on_the_settings_tab(
     document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
 
     page = _settings_url(organisation, cohort)
-    assert f"{page}/__actions/add_staff_member" in _staff_triggers(
+    assert f"{page}/__panels/staff/__actions/add_staff_member" in _staff_triggers(
         _staff_section(document)
     )
     assert not document.cssselect("form[hx-post$='/__actions/edit']")
     assert "Deactivating stops" not in document.text_content()
-    assert not document.cssselect("section[data-panel='settings'] footer button")
+    assert not document.cssselect("section[data-panel='status']")
+    assert not document.cssselect("section[data-panel='name']")
 
 
 @pytest.mark.django_db
-def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_except_the_viewers_own(
+def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_the_viewers_own_included(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1420,10 +1440,12 @@ def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_except_t
 
     document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
 
-    actions = f"{_settings_url(organisation, cohort)}/__actions"
+    actions = f"{_settings_url(organisation, cohort)}/__panels/staff/__actions"
     assert set(_staff_triggers(_staff_section(document))) == {
         f"{actions}/change_role?user={colleague.pk}&role=cohort_viewer",
         f"{actions}/remove_staff_from_cohort?user={colleague.pk}&role=cohort_viewer",
+        f"{actions}/change_role?user={me.pk}&role=cohort_admin",
+        f"{actions}/remove_staff_from_cohort?user={me.pk}&role=cohort_admin",
         f"{actions}/add_staff_member",
     }
 
@@ -2889,6 +2911,23 @@ def test_an_inactive_cohort_carries_the_inactive_marker(role_holder_client):
     assert _scope_lines(row) == ["Old (inactive)"]
 
 
+def _staff_quick_view_text(client: Client, organisation, email: str) -> str:
+    user = User.objects.get(email=email)
+    response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"staff/{user.pk}/__quick-view",
+            },
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+    assert response.status_code == 200
+    body = lxml.html.fromstring(response.content.decode())
+    return " ".join(body.text_content().split())
+
+
 @pytest.mark.django_db
 def test_a_role_names_who_added_it(role_holder_client):
     organisation = OrganisationFactory()
@@ -2902,8 +2941,10 @@ def test_a_role_names_who_added_it(role_holder_client):
     client = role_holder_client(organisation, "organisation_admin")
 
     row = _staff_member_row(_staff_document(client, organisation), "added@example.com")
+    quick_view = _staff_quick_view_text(client, organisation, "added@example.com")
 
-    assert "by Grace Hopper" in row.text_content()
+    assert "by Grace Hopper" not in row.text_content()
+    assert "by Grace Hopper" in quick_view
 
 
 @pytest.mark.django_db
@@ -2921,9 +2962,8 @@ def test_a_role_with_no_recorded_grantor_reads_added_without_a_by_clause(
     grantor.delete()
     client = role_holder_client(organisation, "organisation_admin")
 
-    row = _staff_member_row(_staff_document(client, organisation), "orphan@example.com")
+    text = _staff_quick_view_text(client, organisation, "orphan@example.com")
 
-    text = " ".join(row.text_content().split())
     assert "Added" in text
     assert " by " not in text
     assert "Not recorded" not in text
@@ -3102,8 +3142,9 @@ def test_a_superuser_holding_one_cohort_role_shows_that_role_only(role_holder_cl
 
     row = _staff_member_row(_staff_document(client, organisation), "super@example.com")
 
-    assert len(row.cssselect("ul li")) == 1
-    assert "Cohort viewer" in row.text_content()
+    roles = row.cssselect("ul")[0]
+    assert len(roles.cssselect("li")) == 1
+    assert "Cohort viewer" in roles.text_content()
 
 
 @pytest.mark.django_db
@@ -3318,7 +3359,7 @@ def test_the_cohort_settings_panel_refreshes_on_member_changes(staff_client: Cli
 
     document = _get_document(staff_client, _settings_url(organisation, cohort))
 
-    (card,) = document.cssselect("section[data-panel='settings']")
+    (card,) = document.cssselect("section[data-panel='staff']")
     assert "staffChanged from:body" in card.get("hx-trigger")
 
 
@@ -3368,7 +3409,7 @@ def _remove_triggers(row) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_a_cohort_admins_own_row_has_no_trigger_and_says_why(role_holder_client):
+def test_a_cohort_admins_own_row_offers_the_roles_they_may_give(role_holder_client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation)
     viewer = UserFactory(staff=True, email="me@example.com")
@@ -3380,11 +3421,10 @@ def test_a_cohort_admins_own_row_has_no_trigger_and_says_why(role_holder_client)
 
     row = _staff_member_row(_staff_document(client, organisation), "me@example.com")
 
-    assert row.cssselect("button[hx-get]") == []
-    assert row.cssselect("[aria-label='Locked']")
-    assert "You can't change your own roles. Ask another organisation admin." in (
-        " ".join(row.text_content().split())
-    )
+    labels = {b.text_content().strip() for b in row.cssselect("button[hx-get]")}
+    assert {"Add role", "Deactivate role"} <= labels
+    assert "Deactivate staff member" not in labels
+    assert "You can't change your own roles" not in row.text_content()
 
 
 @pytest.mark.django_db
@@ -4468,7 +4508,7 @@ def _tab_url(learner: Learner) -> str:
 
 
 def _send_url(learner: Learner) -> str:
-    return f"{_tab_url(learner)}/__actions/send"
+    return f"{_tab_url(learner)}/__panels/conversation/__actions/send"
 
 
 def _tab_document(client: Client, learner: Learner) -> lxml.html.HtmlElement:
@@ -4515,9 +4555,7 @@ class TestLearnerMessagesTab:
 
         document = _tab_document(msg_client_for(educator), learner)
 
-        for section in document.xpath(
-            "//section[@aria-labelledby='oversight-heading']"
-        ):
+        for section in document.xpath("//section[@data-panel='others']"):
             section.getparent().remove(section)
         text = document.text_content()
         assert "for me" in text
@@ -4535,7 +4573,7 @@ class TestLearnerMessagesTab:
         assert "No messages with Ada Lovelace yet." in document.text_content()
         composer = document.xpath("//form[@id='composer']")[0]
         assert composer.get("hx-post") == _send_url(learner)
-        region_id = document.xpath("//section[@data-panel='messages']")[0].get("id")
+        region_id = document.xpath("//section[@data-panel='conversation']")[0].get("id")
         assert composer.get("hx-target") == f"#{region_id}"
         assert composer.get("hx-swap") == "outerHTML"
 
@@ -4577,7 +4615,7 @@ class TestLearnerMessagesTab:
 
         document = _tab_document(msg_client_for(admin), learner)
 
-        (section,) = document.xpath("//section[@aria-labelledby='oversight-heading']")
+        (section,) = document.xpath("//section[@data-panel='others']")
         text = section.text_content()
         assert "Other educator conversations" in text
         assert colleague.display_name in text
@@ -4597,7 +4635,7 @@ class TestLearnerMessagesTab:
         document = _tab_document(msg_client_for(site_admin), learner)
 
         assert colleague.display_name in document.text_content()
-        assert document.xpath("//h3[@id='oversight-heading']")
+        assert document.xpath("//section[@data-panel='others']//h2")
 
     @pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
     def test_a_cohort_role_sees_no_list(self, msg_client_for, role):
@@ -4747,7 +4785,7 @@ class TestLearnerMessagesTab:
 
 
 def _view_conversation_url(learner: Learner) -> str:
-    return f"{_tab_url(learner)}/__actions/view_conversation"
+    return f"{_tab_url(learner)}/__panels/others/__actions/view_conversation"
 
 
 def _older_url(
@@ -4928,7 +4966,9 @@ class TestOversight:
             msg_client_for(cohort_admin), learner, conversation.pk
         )
 
-        assert response.status_code == 403
+        # The panel that holds the action is not shown to them, so its
+        # address is a 404 like any other out-of-scope path.
+        assert response.status_code == 404
         assert _viewed_entries() == []
 
     def test_the_action_is_denied_when_messaging_is_off(
@@ -5100,9 +5140,7 @@ class TestOversight:
 
         document = _tab_document(msg_client_for(admin), learner)
 
-        (row,) = document.xpath(
-            "//section[@aria-labelledby='oversight-heading']//li/button"
-        )
+        (row,) = document.xpath("//section[@data-panel='others']//li/button")
         assert row.get("hx-get") == (
             f"{_view_conversation_url(learner)}?conversation={conversation.pk}"
         )
