@@ -921,7 +921,6 @@ def test_card_deadline_line_keeps_a_row_deadlines_tier():
 
     assert line.next is not None
     assert line.next.deadline_tier == DeadlineTier.UPCOMING
-    assert line.next.is_past is False
 
 
 def test_card_deadline_line_gives_a_time_limit_due_later_today_the_today_tier():
@@ -943,7 +942,7 @@ def test_next_deadline_card_prefers_the_missed_deadline_to_the_next_one():
     )
 
     assert picked is not None
-    assert picked.is_past is True
+    assert picked.deadline_tier == DeadlineTier.MISSED
     assert picked.due_at == missed["due_at"]
 
 
@@ -951,12 +950,11 @@ def test_next_deadline_card_is_none_without_an_open_deadline():
     assert next_deadline_card([], _line_deadlines(), _policy(), TIER_NOW) is None
 
 
-def test_card_deadline_line_marks_a_past_time_limit_as_past_and_missed():
+def test_card_deadline_line_marks_a_past_time_limit_as_missed():
     line = card_deadline_line(
         [], _line_deadlines(TIER_NOW - timedelta(days=2)), _policy(), TIER_NOW
     )
 
     assert line.missed is not None
-    assert line.missed.is_past is True
     assert line.missed.deadline_tier == DeadlineTier.MISSED
     assert line.next is None

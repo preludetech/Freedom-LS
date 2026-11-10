@@ -68,7 +68,8 @@ their title in item_page_title so the line can sit above it. A page whose title 
 body (the form pages) renders an empty title here, and the line then stands alone under the
 breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% endcomment %}
 {% block page_title %}
-    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
+    {% comment %}deadline_tier is set exactly when the item has a deadline and is not complete.{% endcomment %}
+    {% if current_entry.deadline_tier %}
         {% with child=current_entry %}
             <div class="mt-6 space-y-1" data-testid="player-item-deadline">
                 <c-deadline-label tier="{{ child.deadline_tier }}" today_word="true" layout="inline">{% include "learner_interface/partials/deadline_labels.html#date-text" %}</c-deadline-label>
@@ -76,7 +77,7 @@ breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% e
             </div>
         {% endwith %}
     {% endif %}
-    <div class="{% if current_entry.due_at and current_entry.status != "COMPLETE" %}[&_h1]:mt-3{% endif %}">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
+    <div class="{% if current_entry.deadline_tier %}[&_h1]:mt-3{% endif %}">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
 {% endblock page_title %}
 
 {% block sidebar_content %}

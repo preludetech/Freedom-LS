@@ -1204,22 +1204,17 @@ class CardDeadline:
 
     title: str
     due_at: datetime
-    is_overdue: bool
-    status: str
     deadline_tier: DeadlineTier
     closes_at: datetime | None = None
     is_closed: bool = False
-    # True for a deadline already behind the learner, whether or not it carries the
-    # overdue mark; the eyebrow reads "Deadline" rather than "Next deadline" for it.
-    is_past: bool = False
 
 
 @dataclass(frozen=True)
 class CardDeadlineLine:
     """The card's one deadline line: the earliest past deadline wins over the next one.
 
-    ``missed`` is the earliest past, unfinished deadline; its ``is_overdue`` says whether
-    it carries the "Missed deadline" chip, which ``mark_overdue`` off withholds.
+    ``missed`` is the earliest past, unfinished deadline; its ``deadline_tier`` says whether
+    it reads "Missed deadline", which ``mark_overdue`` off withholds.
     """
 
     missed: CardDeadline | None
@@ -1228,17 +1223,14 @@ class CardDeadlineLine:
 
 
 def _row_deadline(row: dict, *, is_past: bool) -> CardDeadline:
-    """A card deadline read off one item row. A past row keeps its overdue mark and its
-    closed state; a coming one has neither."""
+    """A card deadline read off one item row. A past row keeps its closed state; a coming
+    one is never closed."""
     return CardDeadline(
         title=row["title"],
         due_at=row["due_at"],
-        is_overdue=row["is_overdue"] if is_past else False,
-        status=row["status"],
         deadline_tier=row["deadline_tier"],
         closes_at=row["closes_at"],
         is_closed=row["is_closed"] if is_past else False,
-        is_past=is_past,
     )
 
 
@@ -1279,14 +1271,7 @@ def _missed_and_next(
             zone=course_deadlines.zone,
         )
         (missed if is_past else upcoming).append(
-            CardDeadline(
-                COURSE_DEADLINE_TITLE,
-                time_limit.due_at,
-                overdue,
-                IN_PROGRESS,
-                tier,
-                is_past=is_past,
-            )
+            CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at, tier)
         )
 
     def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
