@@ -16,10 +16,11 @@
     <style>
     @layer components {
         /* Grid columns are owned here (not via a Tailwind grid-cols-* utility) so
-         * the desktop two-column / closed single-column rules below win cleanly —
-         * a utility-layer grid-cols-* would otherwise override this components
-         * layer regardless of specificity. Mobile is a single column (the panel is
-         * a modal overlay, not an in-flow column). */
+         * the desktop two-column rule below wins cleanly: a utility-layer
+         * grid-cols-* would otherwise override this components layer regardless
+         * of specificity. Mobile is a single column (the panel is a modal
+         * overlay, not an in-flow column), and so is a desktop with its panel
+         * closed. */
         .side-panel-grid {
             grid-template-columns: minmax(0, 1fr);
         }
@@ -115,15 +116,14 @@
 
         /* Desktop (lg+): docked, sticky, full-height column with its own scroll. */
         @media (min-width: 1024px) {
-            /* Sidebar + content columns. data-panel-open is maintained by the
-             * sidePanel controller: when the docked panel is closed (display:none),
-             * it leaves grid flow, so collapse to a single column and let the
-             * content fill the width instead of squashing into the 16rem track. */
-            .side-panel-grid {
+            /* Sidebar + content columns, keyed on the dialog's own open state.
+             * A closed dialog is display:none and leaves grid flow, so the
+             * single column above stays and the content fills the width. An
+             * open one always gets its track: a JS-maintained attribute could
+             * go stale and leave an open, full-width panel stacked above the
+             * content, which is how the sidebar once rendered as a band. */
+            .side-panel-grid:has(> .side-panel-dialog[open]) {
                 grid-template-columns: var(--sidebar-width, 16rem) minmax(0, 1fr);
-            }
-            .side-panel-grid[data-panel-open="false"] {
-                grid-template-columns: minmax(0, 1fr);
             }
             .side-panel-dialog {
                 position: sticky;
@@ -166,9 +166,7 @@
         truth for sidebar/content distance. minmax(0, 1fr) keeps wide content
         from blowing out the grid.
         {% endcomment %}
-        <div x-ref="panelGrid"
-             data-panel-open="false"
-             class="side-panel-grid grid relative {% block grid_class %}lg:gap-12{% endblock grid_class %} {% block sidebar_class %}{% endblock sidebar_class %}">
+        <div class="side-panel-grid grid relative {% block grid_class %}lg:gap-12{% endblock grid_class %} {% block sidebar_class %}{% endblock sidebar_class %}">
 
             {% comment %} Sidebar panel: one <dialog>, docked on desktop, overlay on mobile. {% endcomment %}
             {% comment %}

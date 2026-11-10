@@ -197,6 +197,41 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     )
 
 
+def test_the_docked_sidebar_is_a_column_whenever_its_dialog_is_open(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """The grid's columns follow the dialog's own open state, so a sidebar
+    re-shown by any path, not only the controller's, is a column beside the
+    content and never a band above it."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(interface_url(live_server, organisation.slug, "cohorts"))
+    sidebar = page.locator("dialog[aria-label='Navigation']")
+    expect(sidebar).to_be_visible()
+
+    docked_beside_content = """() => {
+        const sidebar = document.querySelector("dialog[aria-label='Navigation']");
+        const main = document.getElementById("interface-main");
+        const s = sidebar.getBoundingClientRect();
+        const m = main.getBoundingClientRect();
+        return s.width > 0 && s.width < window.innerWidth / 2 && m.x >= s.x + s.width - 1;
+    }"""
+    page.wait_for_function(docked_beside_content)
+
+    # Closing and re-showing the dialog directly, without the controller,
+    # still lays it out as a column: the columns are keyed on [open].
+    page.evaluate("document.querySelector(\"dialog[aria-label='Navigation']\").close()")
+    page.wait_for_function(
+        "() => document.getElementById('interface-main').getBoundingClientRect().x === 0"
+    )
+    page.evaluate("document.querySelector(\"dialog[aria-label='Navigation']\").show()")
+    page.wait_for_function(docked_beside_content)
+
+
 def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
     live_server,
     educator_logged_in_page: Page,

@@ -450,7 +450,6 @@ document.addEventListener("alpine:init", () => {
         // instance (which initialises first) had already created that
         // property on itself.
         dialog: null,
-        grid: null,
         _storageKey: "sidebar",
         _desktopLock: false,
         _mobileOnly: false,
@@ -468,10 +467,8 @@ document.addEventListener("alpine:init", () => {
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
             // Player TOC locks the panel open on desktop (no close control).
             this._desktopLock = this.$el.dataset.desktopLock === "true";
-            // A mobile-only panel owns no grid column. $refs also resolves an
-            // enclosing sidePanel's panelGrid, which it must leave alone.
+            // A mobile-only panel (a table's filter & sort sheet) never docks.
             this._mobileOnly = this.$el.dataset.mobileOnly === "true";
-            this.grid = this._mobileOnly ? null : this.$refs.panelGrid;
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
@@ -492,7 +489,6 @@ document.addEventListener("alpine:init", () => {
             // focus goes to the new content once the swap lands instead.
             this.dialog.addEventListener("close", () => {
                 this.open = this.dialog.open;
-                this._syncGrid();
                 if (this._closingForHtmxNav) {
                     this._refocusAfterHtmxNav = true;
                 } else if (this.triggerEl) {
@@ -597,7 +593,6 @@ document.addEventListener("alpine:init", () => {
             // On mobile, always start collapsed. A mobile-only panel (a
             // table's filter & sort sheet) never opens as a docked panel.
             if (!this.isMobile) this._restoreDesktopState();
-            this._syncGrid();
 
             this._mqHandler = (e) => {
                 const wasMobile = this.isMobile;
@@ -615,7 +610,6 @@ document.addEventListener("alpine:init", () => {
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
                 if (!this.isMobile) this._dockOnceNoModalIsOpen();
-                this._syncGrid();
             };
             this._mq.addEventListener("change", this._mqHandler);
         },
@@ -668,7 +662,6 @@ document.addEventListener("alpine:init", () => {
             } else if (!value && this.dialog.open) {
                 this.dialog.close();
             }
-            this._syncGrid();
         },
         // show() runs the dialog focusing steps, which focus the panel's
         // first control, so a page load would otherwise start keyboard
@@ -690,16 +683,6 @@ document.addEventListener("alpine:init", () => {
             if (!hadTabindex) body.setAttribute("tabindex", "-1");
             body.focus({ preventScroll: true });
             if (!hadTabindex) body.removeAttribute("tabindex");
-        },
-        // Reflect whether the docked panel occupies a grid column so the CSS can
-        // collapse the content area to full width when the desktop panel is
-        // closed. On mobile the panel is a modal overlay (no column), so the
-        // grid is always single-column; report "true" to keep the attribute
-        // coherent (the column rules are desktop-only anyway).
-        _syncGrid() {
-            if (!this.grid) return;
-            const panelInColumn = this.isMobile ? true : this.open;
-            this.grid.dataset.panelOpen = panelInColumn ? "true" : "false";
         },
         toggle(event) {
             this.triggerEl = (event && event.currentTarget) || null;
@@ -726,7 +709,6 @@ document.addEventListener("alpine:init", () => {
             if (!this.isMobile) {
                 localStorage.setItem(this._storageKey, false);
             }
-            this._syncGrid();
         },
     }));
 

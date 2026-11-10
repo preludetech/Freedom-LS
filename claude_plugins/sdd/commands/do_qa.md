@@ -342,12 +342,34 @@ the `Screenshot directory` and break Step 10. Therefore:
 - A timestamp as the on-disk name is fine: the meaning of each shot lives in `test_id` and `notes`,
   and the report titles images from those.
 
+### Layout probe
+
+The probe measures what a glance at a screenshot misses: a header that does not line up with the
+content under it, a sidebar that has lost its column and sits above the content or across the
+page, a region spilling past the viewport, two regions drawn over each other. It
+measures **ink**, meaning text and anything with a border, background or replaced content, so an
+intentionally centred narrow column inside a wide wrapper is not flagged. Ink is measured at what
+shows: whatever an ancestor's `overflow` (hidden, auto or scroll), `clip` or `clip-path` cuts off
+does not count, so an ellipsis-truncated label, a screen-reader-only span or a table inside a
+horizontal scroll region is not overflow. The document `scrollWidth` check is separate and unchanged.
+
+**Load it once**, before this step's first screenshot, as a solo call. Call
+`<prefix>browser_run_code_unsafe` with:
+
+`async (page) => { await page.context().addInitScript({ path: '<PROJECT_ROOT>/claude_plugins/sdd/resources/qa_layout_probe.js' }); }`
+
+Every page the browser opens from then on defines `window.__qaLayoutProbe`, so navigate to the
+first page under test **after** this call. When `PLUGINS_ROOT` is not `.`, the path takes the
+`<PLUGINS_ROOT>/` prefix as in Rule 3b.
+
 **Per-run capture check (mandatory):** the Playwright MCP server is unpinned (`@latest`), so its
-behaviour can change between runs. Early in this step, take one no-`filename` screenshot and confirm
-that a default-named file lands in the `Screenshot directory` **and** that no image bytes come back in the
-tool response. If bytes are returned, or no file is written, stop and report it; do not trust the
-rest of the run. If the file lands somewhere else entirely, find the actual write location and pass
-that to Step 10.
+behaviour can change between runs. Right after loading the probe, take one no-`filename` screenshot
+of the first page under test and confirm that a default-named file lands in the `Screenshot
+directory` **and** that no image bytes come back in the tool response. If bytes are returned, or no
+file is written, stop and report it; do not trust the rest of the run. If the file lands somewhere
+else entirely, find the actual write location and pass that to Step 10. That shot is a screenshot
+of a page like any other: it gets the screenshot prep, the probe, the visual review and its own
+`layout` record, and a fault it shows is a bug.
 
 ### Before every screenshot: clear dev tooling
 
@@ -355,25 +377,7 @@ Carry out the `Screenshot prep` instruction before each screenshot, and check it
 shot: dev tooling covering the page is a broken screenshot, and judging layout from it is how a
 lopsided page gets passed or a sound one failed. A blank value means no prep.
 
-### Layout probe
-
-The probe measures what a glance at a screenshot misses: a header that does not line up with the
-content under it, a region spilling past the viewport, two regions drawn over each other. It
-measures **ink**, meaning text and anything with a border, background or replaced content, so an
-intentionally centred narrow column inside a wide wrapper is not flagged. Ink is measured at what
-shows: whatever an ancestor's `overflow` (hidden, auto or scroll), `clip` or `clip-path` cuts off
-does not count, so an ellipsis-truncated label, a screen-reader-only span or a table inside a
-horizontal scroll region is not overflow. The document `scrollWidth` check is separate and unchanged.
-
-**Load it once**, right after this step's capture check, as a solo call. Call
-`<prefix>browser_run_code_unsafe` with:
-
-`async (page) => { await page.context().addInitScript({ path: '<PROJECT_ROOT>/claude_plugins/sdd/resources/qa_layout_probe.js' }); }`
-
-Every page the browser opens from then on defines `window.__qaLayoutProbe`. When `PLUGINS_ROOT` is
-not `.`, the path takes the `<PLUGINS_ROOT>/` prefix as in Rule 3b.
-
-**Run it after every screenshot of a page**, at every viewport, with `<prefix>browser_evaluate`:
+**Run the probe after every screenshot of a page**, at every viewport, with `<prefix>browser_evaluate`:
 
 `() => window.__qaLayoutProbe(<Layout regions>)`
 
@@ -393,6 +397,10 @@ whether or not this branch introduced it.
 The probe does not replace looking. For every screenshot, check each of these and record any
 concern as a failing `test` record, never only in its notes:
 
+- **Shell**: the navigation, the header and the content sit where the shell puts them at this
+  viewport: a navigation column stays a column beside the content, a navigation bar stays a bar.
+  Navigation drawn above the content, across the page's width or missing is a bug, never the
+  page's look.
 - **Alignment**: the page header, the content under it and the footer actions share a left edge,
   or are deliberately centred together.
 - **Consistency with siblings**: pages in the same shell (every page of one player, one panel, one

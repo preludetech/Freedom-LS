@@ -1,7 +1,9 @@
 // Loaded as a browser init script, so every page the QA run opens can call
 // window.__qaLayoutProbe(regions). `regions` maps a region name to a CSS selector:
-// "header" and "content" are compared for alignment, and every region is checked for
-// overlap with the others. It returns the ink bounds of each region and any flags.
+// "header" and "content" are compared for alignment, "sidebar" and "content" for
+// placement (a sidebar sits beside the content, sharing its vertical span and
+// taking less than half the viewport), and every region is checked for overlap
+// with the others. It returns the ink bounds of each region and any flags.
 window.__qaLayoutProbe = (REGIONS = {}) => {
   const ALIGN_TOLERANCE = 8;
 
@@ -114,6 +116,21 @@ window.__qaLayoutProbe = (REGIONS = {}) => {
   }
 
   const viewportWidth = document.documentElement.clientWidth;
+
+  // A sidebar that is drawn at all is a column beside the content: its ink shares
+  // the content's vertical span and stays narrower than half the viewport. A
+  // sidebar stacked above or below the content, or spanning the page, has lost
+  // its column, which a glance at a screenshot passes as "a menu at the top".
+  if (regions.sidebar && regions.content) {
+    const s = regions.sidebar, c = regions.content;
+    if (s.bottom <= c.top || s.top >= c.bottom) {
+      flags.push(`stacked: sidebar ink spans y=${s.top}..${s.bottom}, outside the content's y=${c.top}..${c.bottom}`);
+    }
+    if (s.right - s.left > viewportWidth / 2) {
+      flags.push(`stacked: sidebar ink spans x=${s.left}..${s.right}, more than half of the ${viewportWidth}px viewport`);
+    }
+  }
+
   if (document.documentElement.scrollWidth > viewportWidth) {
     flags.push(`overflow: document is ${document.documentElement.scrollWidth}px wide in a ${viewportWidth}px viewport`);
   }
