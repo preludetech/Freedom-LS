@@ -24,6 +24,13 @@ One outline row for a topic or form. The caller sets `item` and either
     </div>
 {% endpartialdef %}
 
+{% block panel_header_action %}
+    <c-modal-trigger size="small" variant="secondary"
+                     url="{{ row_action_urls.preview_course_details }}"
+                     label="Preview course details page"
+                     aria_label="Preview course details page" />
+{% endblock panel_header_action %}
+
 {% block panel_body %}
     {% if course.table_of_contents_in_development %}
         <c-callout level="info">Learners can't see this outline yet. The course is marked as still in development.</c-callout>

@@ -666,7 +666,10 @@ def test_course_page_buttons_are_only_preview_triggers(staff_client: Client):
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     assert header.cssselect("button[hx-get]") == []
     buttons = document.cssselect("section[data-panel] button[hx-get]")
-    assert [button.get("aria-label") for button in buttons] == ["Preview Intro"]
+    assert [button.get("aria-label") for button in buttons] == [
+        "Preview course details page",
+        "Preview Intro",
+    ]
     assert document.cssselect("section[data-panel] footer button") == []
 
 
@@ -7353,7 +7356,7 @@ def _preview_url(
     document = _get_document(
         client, _interface_url(organisation.slug, f"courses/{course.pk}")
     )
-    (trigger,) = document.cssselect("section[data-panel='content'] button[hx-get]")
+    (trigger,) = document.cssselect("section[data-panel='content'] nav button[hx-get]")
     return str(trigger.get("hx-get")).split("?")[0]
 
 
@@ -7377,7 +7380,7 @@ def test_a_topic_row_carries_a_preview_trigger_for_its_collection_item(
     ).content.decode()
     panel = lxml.html.fromstring(html).cssselect("section[data-panel='content']")[0]
 
-    (trigger,) = panel.cssselect("button[hx-get]")
+    (trigger,) = panel.cssselect("nav button[hx-get]")
     assert trigger.get("hx-get").endswith(f"/__actions/preview_content?item={item.pk}")
     assert trigger.text_content().strip() == "Preview"
     assert trigger.get("aria-label") == "Preview Intro"
@@ -7765,3 +7768,130 @@ def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client):
     assert all("wrong" not in text for text in labelled)
     (dropdown_list,) = document.cssselect("ul")
     assert dropdown_list.text_content().split(":")[1].strip() == "Pick right"
+
+
+def _course_details_preview_url(organisation: Organisation, course: CourseModel) -> str:
+    return _interface_url(
+        organisation.slug,
+        f"courses/{course.pk}/__panels/content/__actions/preview_course_details",
+    )
+
+
+@pytest.mark.django_db
+def test_the_course_content_card_header_carries_the_course_details_trigger(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+
+    (panel,) = document.cssselect("section[data-panel='content']")
+    (trigger,) = panel.cssselect("header button[hx-get]")
+    assert trigger.get("hx-get") == _course_details_preview_url(organisation, course)
+    assert trigger.text_content().strip() == "Preview course details page"
+    assert trigger.get("aria-label") == "Preview course details page"
+
+
+@pytest.mark.django_db
+def test_opening_the_course_details_preview_renders_the_learner_facing_page(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    course.title = "Intro to Rust"
+    course.content = "Learn **ownership**"
+    course.learning_outcomes = ["Borrow safely"]
+    course.save()
+
+    response = staff_client.get(
+        _course_details_preview_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert 'data-modal-size="wide"' in html
+    assert "Intro to Rust" in html
+    assert "Course details" in html
+    assert "Nothing here is saved." in html
+    assert "About this course" in html
+    assert "learn" in html
+    assert "Borrow safely" in html
+    assert "<strong>ownership</strong>" in html
+    assert "1 lesson" in html
+    for absent in (
+        "Course content",
+        "Enrolment",
+        "signup-panel",
+        "express_interest",
+        "<form",
+        reverse("learner_interface:course_detail", args=[course.slug]) + "start",
+    ):
+        assert absent not in html
+
+
+@pytest.mark.django_db
+def test_opening_the_course_details_preview_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    counted = [
+        TopicProgress,
+        CourseProgress,
+        LearnerCourseRegistration,
+        AuditLogEntry,
+        FormProgress,
+        QuestionAnswer,
+    ]
+    before = [model.objects.count() for model in counted]
+
+    response = staff_client.get(
+        _course_details_preview_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 200
+    assert [model.objects.count() for model in counted] == before
+
+
+@pytest.mark.django_db
+def test_the_course_details_preview_without_the_htmx_header_or_by_post_is_a_404(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    url = _course_details_preview_url(organisation, course)
+
+    plain_get = staff_client.get(url)
+    post = staff_client.post(url, HTTP_HX_REQUEST="true")
+
+    assert (plain_get.status_code, post.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+def test_a_course_belonging_only_to_another_organisation_has_no_details_preview(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+    course.organisations.add(OrganisationFactory())
+
+    response = staff_client.get(
+        _course_details_preview_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_user_with_no_role_cannot_open_the_course_details_preview(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+
+    response = logged_in_client(UserFactory()).get(
+        _course_details_preview_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404

@@ -1,0 +1,13 @@
+{% comment %}
+The course details page as a learner sees it, without the sign-up elements
+or the content outline. No <form> element: the modal then closes on a
+backdrop click and never asks about unsaved changes.
+{% endcomment %}
+<div data-modal-size="wide">
+    <c-modal-header focus_title="true">{{ course.title }} <c-chip size="xs">Course details</c-chip></c-modal-header>
+    <div class="px-6 py-4 flex flex-col gap-6">
+        <c-callout level="info" class="my-0">Preview. This is how learners see it. Nothing here is saved.</c-callout>
+        {% include "content_engine/partials/course_details_hero.html" %}
+        {% include "content_engine/partials/course_details_body.html" %}
+    </div>
+</div>

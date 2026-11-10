@@ -69,6 +69,7 @@ from freedom_ls.comms.messaging_views import (
     thread_context,
 )
 from freedom_ls.comms.views import login_required_htmx_to
+from freedom_ls.content_engine.course_details import course_details_context
 from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -1867,7 +1868,7 @@ class CourseContentPanel(Panel):
         }
 
     def get_actions(self) -> list[PanelAction]:
-        return [PreviewContentAction()]
+        return [PreviewContentAction(), PreviewCourseDetailsAction()]
 
 
 def _form_preview_context(form: Form) -> dict[str, object]:
@@ -1917,6 +1918,31 @@ class PreviewContentAction(PanelAction):
         if isinstance(collection_item.child, Form):
             context.update(_form_preview_context(collection_item.child))
         return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # Opening is a read; there is nothing to submit.
+        raise Http404
+
+
+class PreviewCourseDetailsAction(PanelAction):
+    """Shows the course's learner-facing details page, without its sign-up
+    elements or content outline, in the app modal."""
+
+    action_name = "preview_course_details"
+    capability = None
+    renders_in_footer = False
+    template_name = "educator_interface/modal/course_details_preview.html"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        if ctx.request.headers.get("HX-Request") != "true":
+            raise Http404
+        course = cast(Course, ctx.instance)
+        return {
+            **course_details_context(course),
+            "course": course,
+            "in_modal": True,
+            "extra_stats": [],
+        }
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         # Opening is a read; there is nothing to submit.

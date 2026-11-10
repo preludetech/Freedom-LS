@@ -326,7 +326,7 @@ def test_the_modal_host_and_the_side_panel_clip_horizontal_overflow() -> None:
         assert "max-width: none" not in text, host.name
 
 
-WIDE_FRAGMENTS = frozenset({"content_preview.html"})
+WIDE_FRAGMENTS = frozenset({"content_preview.html", "course_details_preview.html"})
 DIALOG_WIDTHS = ("min(92vw, 32rem)", "100%")
 
 
