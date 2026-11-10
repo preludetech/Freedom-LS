@@ -55,7 +55,7 @@ until tableSelection fills it.
                 <c-dropdown-menu aria_label="More actions" trigger_class="btn btn-ghost btn-sm" panel_class="fixed w-64">
                     <c-slot name="trigger">
                         More
-                        <c-icon name="dropdown" class="size-4" />
+                        <c-icon name="dropdown" class="size-4 transition-transform group-aria-expanded/menu:rotate-180" />
                     </c-slot>
                     {% for entry in overflow_bulk_actions %}
                         {% if entry.separator_before %}<c-dropdown-menu-separator />{% endif %}

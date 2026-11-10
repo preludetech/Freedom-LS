@@ -26,7 +26,7 @@ the trigger, inside the navigation sheet; from lg it is a popover.
                 <c-slot name="trigger">
                     {% with organisation=current_organisation %}{% partial organisation_tile %}{% endwith %}
                     <span class="min-w-0 flex-1 truncate text-left" title="{{ current_organisation.name }}">{{ current_organisation.name }}</span>
-                    <c-icon name="dropdown" class="size-4 shrink-0 text-muted" />
+                    <c-icon name="dropdown" class="size-4 shrink-0 text-muted transition-transform group-aria-expanded/menu:rotate-180" />
                 </c-slot>
                 {% for organisation in accessible_organisations %}
                     <button type="button"

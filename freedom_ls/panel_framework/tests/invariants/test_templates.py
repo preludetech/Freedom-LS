@@ -434,3 +434,28 @@ def test_every_anchor_with_visible_text_carries_its_own_classes() -> None:
                 offenders.append(f"{relative}: {match.group(0)[:80]}")
 
     assert offenders == []
+
+
+DROPDOWN_CHEVRON = re.compile(r'<c-icon name="dropdown"[^>]*>')
+
+
+def test_every_expand_chevron_turns_when_its_control_opens() -> None:
+    """A chevron on a menu button, disclosure or filter chip points down while
+    closed and up while open, so each one carries a rotate-180 variant, on
+    itself or on the span that wraps it."""
+    offenders: list[str] = []
+    roots = (
+        TEMPLATES_DIR,
+        EDUCATOR_TEMPLATES_DIR,
+        FREEDOM_LS_PACKAGE_DIR / "base" / "templates",
+    )
+    for root in roots:
+        for path in sorted(root.rglob("*.html")):
+            text = path.read_text()
+            for match in DROPDOWN_CHEVRON.finditer(text):
+                wrapper = text[max(0, match.start() - 200) : match.start()]
+                last_tag = wrapper[wrapper.rfind("<") :]
+                if "rotate-180" not in match.group(0) and "rotate-180" not in last_tag:
+                    offenders.append(f"{path.relative_to(root)}: {match.group(0)}")
+
+    assert offenders == []

@@ -98,7 +98,7 @@ reason, and is nothing below lg.
     <div class="hidden md:contents">
         {% for entry in toolbar %}
             {% if entry.shown %}
-                <details class="relative">
+                <details class="group relative">
                     <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
                         {% if entry.values %}
                             <c-chip variant="secondary" class="cursor-pointer">
@@ -114,12 +114,12 @@ reason, and is nothing below lg.
                                         <c-icon name="close" class="size-3" />
                                     </a>
                                 {% endif %}
-                                <c-icon name="dropdown" class="size-3" />
+                                <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
                             </c-chip>
                         {% else %}
                             <c-chip variant="secondary" class="cursor-pointer">
                                 {{ entry.filter.label }}
-                                <c-icon name="dropdown" class="size-3" />
+                                <c-icon name="dropdown" class="size-3 transition-transform group-open:rotate-180" />
                             </c-chip>
                         {% endif %}
                     </summary>
@@ -135,11 +135,11 @@ reason, and is nothing below lg.
         {% endfor %}
 
         {% if add_filter %}
-            <details class="relative">
+            <details class="group/add relative">
                 <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden">
                     <c-chip variant="secondary" class="cursor-pointer">
                         Add filter
-                        <c-icon name="dropdown" class="size-3" />
+                        <c-icon name="dropdown" class="size-3 transition-transform group-open/add:rotate-180" />
                     </c-chip>
                 </summary>
                 <div class="surface bg-surface absolute z-10 mt-1 min-w-40 space-y-2 p-2">
@@ -151,7 +151,7 @@ reason, and is nothing below lg.
                         <details class="group">
                             <summary class="list-none marker:hidden [&::-webkit-details-marker]:hidden flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
                                 {{ entry.filter.label }}
-                                <c-icon name="dropdown" class="size-3 text-muted group-open:rotate-180" />
+                                <c-icon name="dropdown" class="size-3 text-muted transition-transform group-open:rotate-180" />
                             </summary>
                             {% with nested=True %}
                                 {% if entry.filter.widget == "grouped_checklist" %}

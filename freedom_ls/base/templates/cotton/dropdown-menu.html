@@ -12,7 +12,7 @@
             x-on:click="toggle"
             x-on:keydown.arrow-down.prevent="openFromTrigger"
             x-on:keydown.arrow-up.prevent="openFromTrigger"
-            class="{{ trigger_class }}"
+            class="group/menu {{ trigger_class }}"
             aria-label="{{ aria_label }}"
             aria-haspopup="menu"
             x-bind:aria-expanded="open"
@@ -62,6 +62,9 @@
 {# djlint:on H037 H026 H021 #}
 
 {% comment %}
+The trigger is a `group/menu`, so a chevron in a custom trigger turns up
+while the menu is open with `group-aria-expanded/menu:rotate-180`.
+
 `panel_class` sizes and positions the panel: the default is a fixed popover
 160px wide, placed by dropdownMenu's positionMenu(); a caller that wants the
 panel in flow below md (the organisation switcher inside the navigation
