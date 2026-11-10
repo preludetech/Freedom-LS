@@ -1,14 +1,14 @@
 {% load course_storage_keys deadline_tags %}
 
 {% partialdef due-date %}
-    {% comment %}At the right of the row line: a minimal <c-deadline-label> (the coloured icon and date), then when the
-    item closes, so a row in its grace window says how long it has. hide_deadlines keeps all
+    {% comment %}At the right of the row line: a minimal <c-deadline-label> (the coloured icon and date), then a minimal
+    "Closes" label for when the item closes, so a row in its grace window says how long it has. hide_deadlines keeps all
     deadline information off an outline that shows only status: no date, no "Closed", no tier
     icon.{% endcomment %}
     {% if child.due_at and child.status != "COMPLETE" and not hide_deadlines %}
-        <span class="shrink-0 inline-flex items-center gap-1 text-xs" data-testid="outline-row-date">
+        <span class="shrink-0 inline-flex items-center gap-2 text-xs" data-testid="outline-row-date">
             <c-deadline-label tier="{{ child.deadline_tier }}" layout="minimal"><span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#tier-date" with date_format="short" %}</span></c-deadline-label>
-            {% if child.closes_at and not child.is_closed %}<span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#closes-line" with date_format="short" %}</span>{% endif %}
+            {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="minimal" date_format="short" %}
         </span>
     {% endif %}
 {% endpartialdef %}

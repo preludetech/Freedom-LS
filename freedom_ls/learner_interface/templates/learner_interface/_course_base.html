@@ -70,8 +70,9 @@ breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% e
 {% block page_title %}
     {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
         {% with child=current_entry %}
-            <div class="mt-6" data-testid="player-item-deadline">
+            <div class="mt-6 space-y-1" data-testid="player-item-deadline">
                 <c-deadline-label tier="{{ child.deadline_tier }}" today_word="true" layout="inline">{% include "learner_interface/partials/deadline_labels.html#date-text" %}</c-deadline-label>
+                {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="inline" %}
             </div>
         {% endwith %}
     {% endif %}

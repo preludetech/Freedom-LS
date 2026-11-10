@@ -19,6 +19,7 @@ attributes, which {% if %} tolerates.
         {% elif course.missed_deadline or course.next_deadline %}
             {% with child=course.missed_deadline|default:course.next_deadline %}
                 <c-deadline-label tier="{{ child.deadline_tier }}" detail="{{ child.title }}" layout="stacked">{% include "learner_interface/partials/deadline_labels.html#date-text" with date_format="short" %}</c-deadline-label>
+                {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="stacked" date_format="short" %}
             {% endwith %}
         {% endif %}
         {% include "learner_interface/partials/deadline_labels.html#access-ends-line" %}

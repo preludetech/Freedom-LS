@@ -4818,7 +4818,11 @@ def test_a_missed_row_in_its_grace_window_says_when_it_closes(titled_due_course)
 
     row = _outline_row(_player_html(client, course, 1), "Dated Topic")
 
-    assert _visible_row_text(row).endswith("1 Jan Closes 4 Jan.")
+    labels = row.cssselect('[data-testid="deadline-label"]')
+
+    assert _visible_row_text(row).endswith("1 Jan 4 Jan")
+    assert len(labels) == 2
+    assert labels[1].cssselect(".sr-only")[0].text_content().strip() == "Closes"
 
 
 @pytest.mark.django_db
@@ -5014,7 +5018,7 @@ def test_outline_deadline_says_when_a_deadline_in_its_grace_window_closes(
 
     assert deadline is not None
     assert deadline.startswith("Missed deadline")
-    assert re.search(r"Closes 4 Jan 2020, 23:59 UTC\s?\.", deadline)
+    assert "Closes 4 Jan 2020, 23:59 UTC" in deadline
 
 
 @pytest.mark.django_db

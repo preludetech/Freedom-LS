@@ -1849,7 +1849,7 @@ def test_the_deadline_line_says_when_a_missed_deadline_closes(deadline_card):
 
     line = _first_card_deadline_line(_dashboard_html(client))
 
-    assert line.endswith("Closes 6 Sep.")
+    assert line.endswith("Closes 6 Sep")
 
 
 @pytest.mark.django_db
@@ -2431,7 +2431,7 @@ def test_card_says_when_the_next_deadline_closes(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Deadline Second Topic 1 Oct Closes 4 Oct ." in text
+    assert "Deadline Second Topic 1 Oct Closes 4 Oct" in text
 
 
 @pytest.mark.django_db
@@ -2473,7 +2473,7 @@ def test_card_says_when_a_missed_deadline_closes(deadline_card):
 
     text = _dashboard_text(client)
 
-    assert "Missed deadline Second Topic 30 Aug Closes 6 Sep ." in text
+    assert "Missed deadline Second Topic 30 Aug Closes 6 Sep" in text
 
 
 @pytest.fixture

@@ -22,9 +22,10 @@ or ended access.
     </div>
     {% if next_deadline_card %}
         {% comment %}Plain text: no border, no tint, no chip.{% endcomment %}
-        <div class="mt-3" data-testid="outline-deadline">
+        <div class="mt-3 space-y-2" data-testid="outline-deadline">
             {% with child=next_deadline_card %}
                 <c-deadline-label tier="{{ child.deadline_tier }}" today_word="true" detail="{{ child.title }}" layout="stacked">{% include "learner_interface/partials/deadline_labels.html#date-text" %}</c-deadline-label>
+                {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="stacked" %}
             {% endwith %}
         </div>
     {% endif %}

@@ -11,14 +11,17 @@ outline rows). The top level is empty, so include a named partial.{% endcomment 
 no leading or trailing whitespace, so callers can follow it with punctuation.{% endcomment %}
 {% partialdef tier-date %}{% if child.deadline_tier == "CLOSED" %}{% local_time child.closes_at format=date_format %}{% else %}{% local_time child.due_at format=date_format %}{% endif %}{% endpartialdef %}
 
-{% partialdef closes-line %}
-    {% if child.closes_at and not child.is_closed %}Closes {% local_time child.closes_at format=date_format %}.{% endif %}
+{% partialdef date-text %}
+    {% comment %}The slot for <c-deadline-label>: the date, kept on one line so the label wraps
+    around it, never inside it.{% endcomment %}
+    <span class="whitespace-nowrap">{% partial tier-date %}</span>
 {% endpartialdef %}
 
-{% partialdef date-text %}
-    {% comment %}The slot for <c-deadline-label>: the date, then when it closes. Each keeps itself on
-    one line, so the label wraps between them, never inside a date.{% endcomment %}
-    <span class="whitespace-nowrap">{% partial tier-date %}</span>{% if child.closes_at and not child.is_closed %} <span class="whitespace-nowrap">{% partial closes-line %}</span>{% endif %}
+{% partialdef closes-label %}
+    {% comment %}When an item that can still close closes: its own <c-deadline-label>, drawn
+    directly after the deadline's label in the same layout and the due tier's colour. Needs
+    layout as well as child.{% endcomment %}
+    {% if child.closes_at and not child.is_closed %}<c-deadline-label tier="{{ child.deadline_tier }}" closes="true" layout="{{ layout }}"><span class="whitespace-nowrap">{% local_time child.closes_at format=date_format %}</span></c-deadline-label>{% endif %}
 {% endpartialdef %}
 
 {% partialdef access-ends-line %}
