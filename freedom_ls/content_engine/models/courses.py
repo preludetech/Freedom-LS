@@ -17,6 +17,13 @@ from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from ..course_accent import PALETTE
 
+
+def _is_form(child: object) -> bool:
+    # Compares content_type rather than isinstance: form_engine depends on
+    # content_engine, so this module cannot import Form.
+    return getattr(child, "content_type", None) == SchemaContentTypes.FORM
+
+
 if TYPE_CHECKING:
     from freedom_ls.content_engine.prices import CoursePrice
     from freedom_ls.organisations.models import Organisation
@@ -502,6 +509,14 @@ class Course(MarkdownContent, TitledContent):
     def viewable_items(self) -> list:
         """Return ordered list of all viewable child content items (no CoursePart sentinels)."""
         return [item.child for item in self.viewable_collection_items()]
+
+    def lesson_count(self) -> int:
+        """Viewable children that are lessons: every child except a form,
+        which is an assessment and is counted by includes_assessments()."""
+        return sum(1 for child in self.viewable_items() if not _is_form(child))
+
+    def includes_assessments(self) -> bool:
+        return any(_is_form(child) for child in self.viewable_items())
 
     def __str__(self):
         return self.title

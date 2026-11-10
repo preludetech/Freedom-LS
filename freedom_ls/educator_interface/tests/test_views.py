@@ -56,6 +56,7 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import Course as CourseModel
 from freedom_ls.educator_interface import views as educator_views
 from freedom_ls.educator_interface.actions import DeactivateLearnersBulkAction
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
@@ -651,6 +652,76 @@ def test_course_page_renders_no_action_buttons(staff_client: Client):
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     assert header.cssselect("button[hx-get]") == []
     assert document.cssselect("section[data-panel] button[hx-get]") == []
+
+
+def _course_details_text(client: Client, course: CourseModel) -> str:
+    organisation = OrganisationFactory()
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+    (panel,) = document.cssselect("section[data-panel='details']")
+    return " ".join(panel.text_content().split())
+
+
+@pytest.mark.django_db
+def test_course_details_show_each_set_field_with_the_learner_label(
+    staff_client: Client,
+):
+    course = CourseFactory(
+        title="Algebra",
+        subtitle="Start here",
+        difficulty="beginner",
+        estimated_duration=timedelta(hours=2),
+        time_limit_days=90,
+        learning_outcomes=["Solve equations", "Plot graphs"],
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(), order=0
+    )
+
+    text = _course_details_text(staff_client, course)
+
+    for expected in (
+        "Subtitle",
+        "Start here",
+        "Visibility",
+        "Level",
+        "Beginner",
+        "Duration ~2 hours",
+        "Time limit 90 days",
+        "Solve equations, Plot graphs",
+        "Lessons 1",
+    ):
+        assert expected in text
+
+
+@pytest.mark.django_db
+def test_course_details_leave_out_rows_without_a_value(staff_client: Client):
+    course = CourseFactory(
+        subtitle="",
+        estimated_duration=None,
+        time_limit_days=None,
+        learning_outcomes=[],
+    )
+
+    text = _course_details_text(staff_client, course)
+
+    for label in ("Subtitle", "Duration", "Time limit", "Learning outcomes"):
+        assert label not in text
+    assert "Lessons 0" in text
+
+
+@pytest.mark.django_db
+def test_course_details_lesson_count_reads_the_number_of_topics(
+    staff_client: Client,
+):
+    course = CourseFactory()
+    for order in range(3):
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=TopicFactory(), order=order
+        )
+
+    assert "Lessons 3" in _course_details_text(staff_client, course)
 
 
 def _cohort_table_request(

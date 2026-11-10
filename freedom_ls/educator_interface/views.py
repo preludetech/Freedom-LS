@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, NamedTuple, cast
+from typing import ClassVar, Literal, NamedTuple, cast
 from uuid import UUID, uuid4
 
 from django import forms
@@ -1820,7 +1820,34 @@ class CourseDataTable(DataTable):
 
 class CourseDetailsPanel(InstanceDetailsPanel):
     model = Course
-    fields = ["title", "dashboard_category"]
+    fields = [
+        "title",
+        "subtitle",
+        "dashboard_category",
+        "get_visibility_display",
+        "get_difficulty_display",
+        "display_estimated_duration",
+        "display_time_limit",
+        "learning_outcomes",
+        "lesson_count",
+    ]
+    # The learner details page's words, so an educator and a learner
+    # read the same label for the same fact.
+    labels: ClassVar[dict[str, str]] = {
+        "get_visibility_display": "Visibility",
+        "get_difficulty_display": "Level",
+        "display_estimated_duration": "Duration",
+        "display_time_limit": "Time limit",
+        "lesson_count": "Lessons",
+    }
+
+    def get_rows(self) -> list[dict[str, object]]:
+        rows: list[dict[str, object]] = []
+        for name, row in zip(self.fields, super().get_rows(), strict=True):
+            if row["value"] in ("", self.empty_value_display):
+                continue
+            rows.append({**row, "label": self.labels.get(name, row["label"])})
+        return rows
 
 
 class CourseCohortRegistrationDataTable(DataTable):

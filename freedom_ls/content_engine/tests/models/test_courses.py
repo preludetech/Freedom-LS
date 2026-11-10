@@ -115,6 +115,29 @@ def test_viewable_collection_items_names_same_content_as_viewable_items(
 
 
 @pytest.mark.django_db
+def test_lesson_count_excludes_forms_and_parts(mock_site_context):
+    course: Course = CourseFactory(title="C", slug="c")
+    part: CoursePart = CoursePartFactory(title="P", slug="p")
+    course.items.create(child=part, order=0)
+    part.items.create(child=TopicFactory(title="T1", slug="t1"), order=0)
+    part.items.create(child=FormFactory(title="F1", slug="f1"), order=1)
+    course.items.create(child=TopicFactory(title="T2", slug="t2"), order=1)
+
+    assert course.lesson_count() == 2
+
+
+@pytest.mark.django_db
+def test_includes_assessments_is_true_only_with_a_form_child(mock_site_context):
+    with_form: Course = CourseFactory(title="A", slug="a")
+    with_form.items.create(child=FormFactory(title="F", slug="f"), order=0)
+    topics_only: Course = CourseFactory(title="B", slug="b")
+    topics_only.items.create(child=TopicFactory(title="T", slug="t"), order=0)
+
+    assert with_form.includes_assessments() is True
+    assert topics_only.includes_assessments() is False
+
+
+@pytest.mark.django_db
 def test_children_unchanged_for_course_without_course_parts(mock_site_context):
     """children() still returns exactly the resolved children, with no CoursePart."""
     course: Course = CourseFactory(title="C", slug="c")
