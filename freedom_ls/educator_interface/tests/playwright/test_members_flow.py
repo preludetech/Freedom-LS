@@ -304,7 +304,12 @@ def test_staff_search_results_share_the_email_input_left_edge_and_width(
     organisation = OrganisationFactory(name="Org A")
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    UserFactory(email="existing@example.com", first_name="Erin", last_name="Existing")
+    LearnerFactory(
+        organisation=organisation,
+        user__email="existing@example.com",
+        user__first_name="Erin",
+        user__last_name="Existing",
+    )
     page.set_viewport_size({"width": width, "height": 800})
     page.goto(interface_url(live_server, organisation.slug, "staff"))
     modal = page.locator("#app-modal")

@@ -78,7 +78,7 @@ def test_a_cohort_admin_changes_then_removes_a_viewer_and_reads_it_in_history(
         .order_by("created_at", "pk")
         .values_list("action", flat=True)
     )
-    assert actions == ["role.deactivated", "role.assigned", "role.deactivated"]
+    assert actions == ["role.assigned", "role.deactivated", "role.deactivated"]
 
     page.goto(interface_url(live_server, organisation.slug, settings_path))
     for viewport in QA_VIEWPORTS:

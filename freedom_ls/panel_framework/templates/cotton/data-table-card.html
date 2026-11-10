@@ -7,7 +7,8 @@ markup for a denser layout; the selection checkbox around it is unchanged
 either way. When the primary column links to the row's page, a decorative
 open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
-column header, since the table headings aren't on screen to explain it.
+column header, since the table headings aren't on screen to explain it; a
+long header wraps at 7rem so the value beside it keeps the room it needs.
 Cards only exist below md, so every button in one is a 44px touch target.
 
 A table with a row detail gives each card the same leading chevron toggle as
@@ -59,7 +60,7 @@ keeps an empty slot the toggle's width so every card's first line aligns.
                 <dl class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm">
                     {% for column in secondary_columns %}
                         <div class="contents">
-                            <dt class="text-muted">{{ column.header }}</dt>
+                            <dt class="max-w-28 text-muted">{{ column.header }}</dt>
                             <dd class="min-w-0 break-words">{% include column.template with object=row.object column=column in_secondary_line=True %}</dd>
                         </div>
                     {% endfor %}

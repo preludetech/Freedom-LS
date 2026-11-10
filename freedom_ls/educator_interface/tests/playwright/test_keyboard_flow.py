@@ -250,7 +250,7 @@ def test_saving_a_cohort_edit_keeps_focus_on_the_page(
             live_server, organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings"
         )
     )
-    settings = page.locator("section[data-panel='settings']")
+    settings = page.locator("section[data-panel='name']")
 
     settings.get_by_label("Name").fill("New Name")
     settings.get_by_role("button", name="Save", exact=True).click()

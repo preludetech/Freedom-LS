@@ -12,10 +12,10 @@ so the lines below stay level with their roles.
         <li class="flex min-h-12 items-center">
             <c-data-table-actions layout="line">
                 {% if entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
-                    <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" aria_label="Deactivate {{ entry.display_name }} for {{ object.display_name }}" variant="secondary" size="small" />
+                    <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />
                 {% endif %}
                 {% if object.is_active and entry.target == "cohort" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
-                    <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" aria_label="Change cohorts of {{ entry.display_name }} for {{ object.display_name }}" variant="secondary" size="small" />
+                    <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" size="small" />
                 {% endif %}
             </c-data-table-actions>
         </li>

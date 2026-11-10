@@ -148,7 +148,7 @@ def test_educator_manages_cohorts_and_learners(
             live_server, organisation_a.slug, f"cohorts/{created.pk}/__tabs/settings"
         )
     )
-    settings = page.locator("section[data-panel='settings']")
+    settings = page.locator("section[data-panel='name']")
     settings.get_by_label("Name").fill("New Name")
     settings.get_by_role("button", name="Save", exact=True).click()
     expect(page.locator("#instance-title")).to_have_text("New Name")
