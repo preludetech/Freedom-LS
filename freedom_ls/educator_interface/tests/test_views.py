@@ -9,6 +9,7 @@ import json
 import uuid
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
@@ -7721,3 +7722,66 @@ def test_a_user_with_no_role_cannot_preview_a_form(
     )
 
     assert response.status_code == 404
+
+
+def _marks(document: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
+    return [
+        mark
+        for mark in document.cssselect("span")
+        if mark.text_content().strip().startswith("Correct answer")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client):
+    organisation = OrganisationFactory()
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    single = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    QuestionOptionFactory(question=single, text="Single right", correct=True, order=0)
+    QuestionOptionFactory(question=single, text="Single wrong", order=1)
+    several = FormQuestionFactory(form_page=page, type="checkboxes", order=1)
+    QuestionOptionFactory(question=several, text="Box right 1", correct=True, order=0)
+    QuestionOptionFactory(question=several, text="Box right 2", correct=True, order=1)
+    QuestionOptionFactory(question=several, text="Box wrong", order=2)
+    pick = FormQuestionFactory(form_page=page, type="dropdown", order=2)
+    QuestionOptionFactory(question=pick, text="Pick right", correct=True, order=0)
+    QuestionOptionFactory(question=pick, text="Pick wrong", order=1)
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content.decode())
+    marks = _marks(document)
+    assert response.status_code == 200
+    assert len(marks) == 4
+    assert all(mark.cssselect("svg") for mark in marks)
+    labelled = [
+        label.text_content()
+        for label in document.cssselect("label")
+        if label.cssselect("span") and _marks(label)
+    ]
+    assert len(labelled) == 3
+    assert all("wrong" not in text for text in labelled)
+    (dropdown_list,) = document.cssselect("ul")
+    assert dropdown_list.text_content().split(":")[1].strip() == "Pick right"
+
+
+def test_show_answer_key_is_set_only_by_the_educator_preview():
+    root = Path(educator_views.__file__).resolve().parents[1]
+    allowed_templates = {
+        "form_engine/templates/form_engine/inputs/multiple_choice.html",
+        "form_engine/templates/form_engine/inputs/checkboxes.html",
+        "form_engine/templates/form_engine/inputs/dropdown.html",
+    }
+    guard = Path(__file__).resolve()
+    mentions = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.suffix in {".py", ".html"}
+        and path.resolve() != guard
+        and "show_answer_key" in path.read_text()
+    }
+
+    assert mentions == allowed_templates | {"educator_interface/views.py"}

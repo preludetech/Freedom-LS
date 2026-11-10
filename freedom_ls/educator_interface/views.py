@@ -1886,6 +1886,7 @@ def _form_preview_context(form: Form) -> dict[str, object]:
         "existing_answers": {},
         "rejected_answers": {},
         "read_only": True,
+        "show_answer_key": True,
     }
 
 

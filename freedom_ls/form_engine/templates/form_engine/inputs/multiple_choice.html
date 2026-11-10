@@ -31,5 +31,6 @@ source of truth and keyboard/AT behaviour is untouched.
                          group-has-[:checked]:opacity-100"></span>
         </span>
         <span class="text-on-surface">{{ option.text }}</span>
+        {% if show_answer_key and option.correct %}<c-correct-answer-mark class="ms-auto" />{% endif %}
     </label>
 {% endfor %}

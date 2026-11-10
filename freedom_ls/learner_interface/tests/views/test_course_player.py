@@ -311,6 +311,30 @@ def test_form_complete_inside_course_part_should_work(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_a_learner_form_page_never_shows_the_answer_key(
+    course_with_nested_structure, authenticated_client
+):
+    form = course_with_nested_structure["first_item"]
+    for question_type in ("multiple_choice", "checkboxes", "dropdown"):
+        question = FormQuestionFactory(
+            form_page=form.pages.get(), type=question_type, order=0
+        )
+        QuestionOptionFactory(question=question, text="Right", correct=True, order=0)
+        QuestionOptionFactory(question=question, text="Wrong", order=1)
+    kwargs = {"course_slug": "test-course", "index": 1}
+    authenticated_client.get(reverse("learner_interface:form_start", kwargs=kwargs))
+
+    response = authenticated_client.get(
+        reverse("learner_interface:form_fill_page", kwargs=kwargs | {"page_number": 1})
+    )
+
+    assert response.status_code == 200
+    assert "Right" in response.content.decode()
+    assert "Correct answer" not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_view_course_item_out_of_range_index_returns_404(
     course_with_nested_structure, authenticated_client
 ):

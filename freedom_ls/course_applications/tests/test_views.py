@@ -706,6 +706,29 @@ class TestApplicationFormPage:
 
         assert response.status_code == 200
 
+    @pytest.mark.parametrize("submitted", [False, True])
+    def test_a_form_page_never_shows_the_answer_key(
+        self, client, mock_site_context, submitted
+    ):
+        course, form = gated_course_with_form()
+        page = form.pages.get(order=0)
+        for question_type in ("checkboxes", "dropdown"):
+            question = FormQuestionFactory(form_page=page, type=question_type, order=10)
+            QuestionOptionFactory(question=question, text="Right", correct=True)
+        form.pages.get(order=0).questions.get(type="multiple_choice").options.filter(
+            text="Search"
+        ).update(correct=True)
+        app = _applied(client, course)
+        if submitted:
+            app.form_progress.completed_time = timezone.now()
+            app.form_progress.save(update_fields=["completed_time"])
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 200
+        assert "Search" in response.content.decode()
+        assert "Correct answer" not in response.content.decode()
+
     def test_a_form_page_is_never_cached(self, client, mock_site_context):
         """A back-nav must re-read the answers, or it shows work that has since
         changed."""

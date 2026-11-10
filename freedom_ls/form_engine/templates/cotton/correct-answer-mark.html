@@ -1,0 +1,6 @@
+<c-vars option_text="" class="" />
+{% comment %}
+Marks a correct option for a reviewer. The words carry the meaning, so the
+mark reads without colour.
+{% endcomment %}
+<span class="flex shrink-0 items-center gap-1 text-sm text-success {{ class }}"><c-icon name="check" class="size-4" />Correct answer{% if option_text %}: {{ option_text }}{% endif %}</span>
