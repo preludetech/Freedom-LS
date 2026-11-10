@@ -1,7 +1,6 @@
 {% extends "_base.html" %}
 
 {% load static %}
-{% load course_icon_tags %}
 {% load fls_base_filters %}
 {% load deadline_tags %}
 
@@ -20,34 +19,6 @@
 {% endblock extra_head %}
 
 {% block content %}
-    {% comment %}One stat inside the hero's glass stats strip. The dividers and
-    glass surface live on the container; this is just the icon + label + value.
-    Reads stat_icon / stat_label / stat_value from the surrounding context —
-    call it inside a {% templatetag openblock %} with … {% templatetag closeblock %}.
-    Pass stat_price instead of stat_value to render a <c-course-price> in the
-    value slot rather than plain text.{% endcomment %}
-    {% partialdef stat-card %}
-        {% comment %}Below md the cells stack, and each spans the strip so the dividers
-        line up. From md the cells sit side by side at w-48, except the price
-        cell, which grows past w-48 because a discounted price (struck original
-        + sale amount) is wider than the other stats.{% endcomment %}
-        <div class="flex w-full {% if stat_price %} md:w-auto md:min-w-48 {% else %} md:w-48 {% endif %} items-center gap-3 border-l border-t border-white/20 px-5 py-4"{% if stat_price %} data-testid="price-stat"{% endif %}>
-            <c-icon :name="stat_icon" class="size-5 shrink-0 opacity-80" />
-            <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wider opacity-70 text-white">
-                    {{ stat_label }}
-                </p>
-                <p class="font-semibold leading-tight text-white">
-                    {% if stat_price %}
-                        <c-course-price :price="stat_price" variant="compact" />
-                    {% else %}
-                        {{ stat_value }}
-                    {% endif %}
-                </p>
-            </div>
-        </div>
-    {% endpartialdef %}
-
     {% comment %}Trim c-page's default top padding (py-8 lg:py-12) — the Back link
     sits just under the site header and directly above the full-bleed hero, so the
     standard well rhythm leaves an oversized white band here.{% endcomment %}
@@ -64,94 +35,7 @@
                          x-on:click="goBack"
                          data-forward-path="{{ start_url|default:'' }}">Back</c-back-link>
 
-            {% comment %}Hero: accent gradient bg + large semi-transparent course icon.
-            Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
-            <section class="course-accent-{{ course.accent_slot_key }} relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden py-6 sm:py-8 lg:py-10">
-                {% comment %}Spotlight: a solid accent "to" base with a "from"-coloured radial
-                overlay that's transparent at the centre, so the "to" colour glows through the
-                spotlight at 80%/35% and fades into the "from" colour around it. The theme's
-                course-accent pattern (var --fls-course-accent-overlay; "none" when unset) is
-                layered on top so the texture survives the opaque base.{% endcomment %}
-                <div class="absolute inset-0 pointer-events-none bg-(--fls-course-accent-to) [background-image:var(--fls-course-accent-overlay),radial-gradient(circle_28rem_at_80%_35%,transparent_0%,transparent_35%,var(--fls-course-accent-from)_70%)]"
-                     aria-hidden="true">
-                </div>
-                {% comment %}Semi-transparent icon anchored bottom-right of the full-bleed section{% endcomment %}
-                <span class="absolute bottom-0 right-90 text-white opacity-20 pointer-events-none"
-                      aria-hidden="true">
-                    {% course_icon course.icon course.icon_fallback css_class="size-60" %}
-                </span>
-
-                {% comment %}Inner well — matches c-page's max-width + horizontal padding so the
-                hero content lines up with the Back link and the content below.{% endcomment %}
-                <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-white">
-                    {% if organisation %}
-                        <c-organisation-byline :organisation="organisation" size="md" class="text-white" />
-                        <div class="mt-3 mb-4 border-b border-white/20" aria-hidden="true"></div>
-                    {% endif %}
-                    {% if course.dashboard_category %}
-                        <span data-testid="course-category-chip" class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
-                            {{ course.dashboard_category.title }}
-                        </span>
-                    {% endif %}
-                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-white">
-                        {{ course.title }}
-                    </h1>
-                    {% if course.subtitle %}
-                        <p class="mt-2 text-base sm:text-lg text-white">
-                            {{ course.subtitle }}
-                        </p>
-                    {% endif %}
-
-                    {% comment %}Stats strip — one glass surface over the hero gradient,
-                    full width below md where the cells stack, sized to its content
-                    from md up. From md each cell is a fixed equal width, except
-                    Price, which grows to fit; the max-width leaves room for
-                    3 cells including a wider Price cell, so a 4th wraps. Internal
-                    dividers come from each cell's top/left border; the inner row is
-                    nudged -1px so the outer edges tuck under the rounded border.
-                    Render each stat only when present.{% endcomment %}
-                    <div class="mt-6 w-full md:w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
-                        <div class="flex max-w-[41rem] flex-wrap -mt-px -ml-px">
-                            {% if not course.table_of_contents_in_development %}
-                                {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count_label %}
-                                    {% partial stat-card %}
-                                {% endwith %}
-                            {% endif %}
-                            {% if course.get_difficulty_display %}
-                                {% with stat_icon="achievement" stat_label="Level" stat_value=course.get_difficulty_display %}
-                                    {% partial stat-card %}
-                                {% endwith %}
-                            {% endif %}
-                            {% with dur=course.display_estimated_duration %}
-                                {% if dur %}
-                                    {% with stat_icon="deadline" stat_label="Duration" stat_value=dur %}
-                                        {% partial stat-card %}
-                                    {% endwith %}
-                                {% endif %}
-                            {% endwith %}
-                            {% with time_limit=course.display_time_limit %}
-                                {% if time_limit %}
-                                    {% with stat_icon="deadline" stat_label="Time limit" stat_value=time_limit %}
-                                        {% partial stat-card %}
-                                    {% endwith %}
-                                {% endif %}
-                            {% endwith %}
-                            {% with stat_price=course.current_price %}
-                                {% if stat_price %}
-                                    {% with stat_icon="price" stat_label="Price" %}
-                                        {% partial stat-card %}
-                                    {% endwith %}
-                                {% endif %}
-                            {% endwith %}
-                            {% if enrolment_summary %}
-                                {% with stat_icon="check" stat_label="Enrolment" stat_value=enrolment_summary %}
-                                    {% partial stat-card %}
-                                {% endwith %}
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {% include "content_engine/partials/course_details_hero.html" with extra_stats=extra_stats in_modal=False %}
 
             {% comment %}Two-column grid: sign-up panel first on mobile (order-first),
             then main content. On lg the panel is in the right column.{% endcomment %}
@@ -245,38 +129,7 @@
                 {% comment %}Main content column{% endcomment %}
                 <div class="lg:col-span-2 space-y-8 pt-6">
 
-                    {% comment %}About this course — omit when content is empty{% endcomment %}
-                    {% with content=course.rendered_content %}
-                        {% if content %}
-                            <section>
-                                <h2 class="mb-3">
-                                    About this course
-                                </h2>
-                                <c-markdown-container width="full">
-                                    {{ content }}
-                                </c-markdown-container>
-                            </section>
-                        {% endif %}
-                    {% endwith %}
-
-                    {% comment %}What you'll learn — omit whole section when learning_outcomes is empty{% endcomment %}
-                    {% if course.learning_outcomes %}
-                        <section>
-                            <h2>
-                                What you'll learn
-                            </h2>
-                            <ul class="mt-3 space-y-2 list-none p-0">
-                                {% for outcome in course.learning_outcomes %}
-                                    <li class="flex items-start gap-2">
-                                        <span class="shrink-0 text-success mt-0.5">
-                                            <c-icon name="complete" class="size-4" />
-                                        </span>
-                                        <span>{{ outcome }}</span>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </section>
-                    {% endif %}
+                    {% include "content_engine/partials/course_details_body.html" %}
 
                     {% comment %}Course content ToC — reuse the existing course-children partialdef.
                     The partialdef requires children, course, is_registered — all supplied by the view.

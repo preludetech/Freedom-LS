@@ -26,6 +26,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
 
 from freedom_ls.accounts.decorators import acquisition_login_required
+from freedom_ls.content_engine.course_details import course_details_context
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -932,13 +933,6 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     is_coming_soon = is_coming_soon_for_display(course)
     if is_coming_soon and not is_registered:
         stamp_interest(request.user, [course])
-    viewable = course.viewable_items()
-    # "Lessons" counts content items only — assessments (Form children) are
-    # surfaced separately via ``includes_assessments``, so exclude them here.
-    lesson_count = sum(1 for c in viewable if not isinstance(c, Form))
-    lesson_count_label = f"{lesson_count} lesson{'' if lesson_count == 1 else 's'}"
-    includes_assessments = any(isinstance(c, Form) for c in viewable)
-
     # meta_description: derived once here; reused by JSON-LD (never re-derived there).
     meta_description: str = (
         course.description
@@ -975,7 +969,18 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         "learner_interface/course_detail.html",
         {
             "course": course,
-            "organisation": course.single_organisation(),
+            **course_details_context(course),
+            "extra_stats": (
+                [
+                    {
+                        "icon": "check",
+                        "label": "Enrolment",
+                        "value": decision.enrolment_summary,
+                    }
+                ]
+                if decision.enrolment_summary
+                else []
+            ),
             "children": children,
             "is_registered": is_registered,
             "is_coming_soon": is_coming_soon,
@@ -986,12 +991,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             # Acquisition-funnel copy is access-type-specific and comes from the
             # backend decision (not the CTA-state helpers above), so it is correct
             # for gated courses as well as free ones.
-            "enrolment_summary": decision.enrolment_summary,
             "acquisition_heading": decision.acquisition_heading,
             "acquisition_subtext": decision.acquisition_subtext,
-            "lesson_count": lesson_count,
-            "lesson_count_label": lesson_count_label,
-            "includes_assessments": includes_assessments,
             "meta_description": meta_description,
             "json_ld": json_ld,
         },
