@@ -76,10 +76,10 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     modal.get_by_label("Alpha Cohort").check()
     modal.get_by_label("Beta Cohort").check()
     expect(modal.get_by_text("2 selected")).to_be_visible()
-    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    modal.get_by_role("button", name="Next", exact=True).click()
 
     expect(modal.get_by_text("Scope: Alpha Cohort and Beta Cohort")).to_be_visible()
-    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    modal.get_by_role("button", name="Confirm", exact=True).click()
 
     expect(modal).to_be_hidden()
     row = main.get_by_role("row").filter(has_text="Erin Existing")
@@ -107,10 +107,10 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
 
     main.get_by_role("button", name="Add staff member", exact=True).first.click()
     modal.get_by_role("combobox", name="Email address").fill("second@example.com")
-    modal.get_by_role("button", name="Look up", exact=True).click()
+    modal.get_by_role("button", name="Next", exact=True).click()
     modal.get_by_text("No roles yet", exact=True).click()
-    modal.get_by_role("button", name="Add staff member", exact=True).click()
-    modal.get_by_role("button", name="Add staff member", exact=True).click()
+    modal.get_by_role("button", name="Next", exact=True).click()
+    modal.get_by_role("button", name="Confirm", exact=True).click()
     expect(modal).to_be_hidden()
     second_row = main.get_by_role("row").filter(has_text="Sam Second")
     expect(second_row.get_by_text("No roles yet")).to_be_visible()
@@ -120,8 +120,8 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     ).first.click()
     modal.get_by_text("Cohort viewer", exact=True).click()
     modal.get_by_label("Alpha Cohort").check()
-    modal.get_by_role("button", name="Add role", exact=True).click()
-    modal.get_by_role("button", name="Add role", exact=True).click()
+    modal.get_by_role("button", name="Next", exact=True).click()
+    modal.get_by_role("button", name="Confirm", exact=True).click()
     expect(modal).to_be_hidden()
     expect(second_row.get_by_text("Cohort viewer")).to_be_visible()
     page.wait_for_load_state("networkidle")
@@ -213,12 +213,12 @@ def test_the_add_member_button_stays_in_view_on_the_role_step_at_375(
         "button", name="Add staff member", exact=True
     ).first.click()
     modal.get_by_label("Email address").fill("existing@example.com")
-    modal.get_by_role("button", name="Look up", exact=True).click()
+    modal.get_by_role("button", name="Next", exact=True).click()
     modal.get_by_text("Cohort admin", exact=True).click()
 
-    expect(
-        modal.get_by_role("button", name="Add staff member", exact=True)
-    ).to_be_in_viewport(ratio=1)
+    expect(modal.get_by_role("button", name="Next", exact=True)).to_be_in_viewport(
+        ratio=1
+    )
 
 
 def test_long_email_of_a_nameless_member_does_not_scroll_a_phone_sideways(

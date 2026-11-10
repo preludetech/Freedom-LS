@@ -5,8 +5,7 @@ member", or "Add a staff member to {cohort}" when the page fixes the cohort); em
 match (None for an address with no account), new_account, person (the staff member fixed by their row, or None), current_entries (the roles person holds), form, role_cards (key, display_name, description, needs_cohorts, unavailable_reason),
 preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role, offers_no_role (offer "No roles yet" first) and role_note;
 confirmation adds person, no_role (true for a staff member added with no role, which uses only the fields up to cohort_ids), match, staff_member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
-scope, current_entries, after_entries, already_held, widening, staff_member_state and
-site_level.
+scope, current_entries, after_entries, already_held and staff_member_state.
 {% endcomment %}
 {% if step == "search" %}
 {% partial search-results %}
@@ -23,6 +22,7 @@ site_level.
          x-on:htmx:after-swap="afterSwap"
          x-on:htmx:before-request="beforeRequest">
         <input type="hidden" name="email" value="{{ form.email.value|default:'' }}">
+        <div>
         <label for="staff-search-input" class="mb-1 block font-semibold">Email address</label>
         <input type="text"
                id="staff-search-input"
@@ -32,6 +32,7 @@ site_level.
                role="combobox"
                aria-autocomplete="list"
                aria-controls="{{ listbox_id }}"
+               {% if searches_pickable_only %}aria-describedby="staff-search-help"{% endif %}
                x-bind:aria-expanded="expanded"
                x-bind:aria-activedescendant="activeId"
                x-on:input="syncEmail"
@@ -42,9 +43,13 @@ site_level.
                hx-target="#staff-search-results"
                hx-swap="outerHTML"
                class="w-full rounded-md border border-border-input bg-surface px-3 py-2">
-        {% if form.email.errors %}
-        <div class="mt-1 text-sm text-error">{{ form.email.errors }}</div>
+        {% if searches_pickable_only %}
+        <p id="staff-search-help" class="mt-1 text-muted">Searching staff you can add</p>
         {% endif %}
+        {% if form.email.errors %}
+        <div class="mt-1 text-error">{{ form.email.errors }}</div>
+        {% endif %}
+        </div>
         <p role="status" aria-live="polite" id="staff-search-status" class="sr-only" x-ref="status"></p>
         {% partialdef search-results inline %}
         <div id="staff-search-results"
@@ -52,10 +57,7 @@ site_level.
              data-state="{% if needs_term %}prompt{% elif results %}results{% else %}empty{% endif %}"
              class="relative">
             {% if needs_term %}
-            <p class="mt-1 text-sm text-muted">Type at least 2 characters to search, or enter a full email.</p>
-            {% endif %}
-            {% if searches_pickable_only %}
-            <p class="mt-1 text-sm text-muted">Searching staff you can add</p>
+            <p class="text-muted">Type at least 2 characters to search, or enter a full email.</p>
             {% endif %}
             <ul role="listbox"
                 id="{{ listbox_id }}"
@@ -63,29 +65,30 @@ site_level.
                 x-show="expanded"
                 x-cloak
                 x-transition
-                class="ml-0 mt-1 list-none divide-y divide-border overflow-hidden rounded-md border border-border bg-surface p-0">
+                {% if not results %}hidden{% endif %}
+                class="ml-0 list-none space-y-1 overflow-hidden rounded-md border border-border bg-surface p-1">
                 {% for user in results %}
                 <li role="option"
                     id="staff-option-{{ user.pk }}"
                     data-email="{{ user.email }}"
                     x-on:click="pick"
-                    class="min-h-11 cursor-pointer px-3 py-2 hover:bg-surface-2 aria-selected:bg-surface-2">
+                    class="min-h-11 cursor-pointer rounded-md px-3 py-2 hover:bg-surface-2 aria-selected:bg-surface-2">
                     <c-panel-avatar-chip :name="user.display_name" :user_id="user.pk" :secondary="user.email" size="sm" />
                 </li>
                 {% endfor %}
                 {% if truncated %}
-                <li aria-disabled="true" class="px-3 py-2 text-sm text-muted">Showing the first 8. Keep typing to narrow.</li>
+                <li aria-disabled="true" class="px-3 py-2 text-muted">Showing the first 8. Keep typing to narrow.</li>
                 {% endif %}
             </ul>
             {% if not needs_term and not results %}
-            <p class="mt-1 text-sm text-muted">No one matches '{{ term }}'.{% if not searches_pickable_only %} Type their full email to add someone else.{% endif %}</p>
+            <p class="text-muted">No one matches '{{ term }}'.{% if not searches_pickable_only %} Type their full email to add someone else.{% endif %}</p>
             {% endif %}
         </div>
         {% endpartialdef %}
     </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Looking up...">Look up</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Next</c-button>
     </c-modal-footer>
 </form>
 {% elif step == "role" %}
@@ -129,21 +132,25 @@ site_level.
         <p>Existing account: {{ match.display_name }}, {{ match.email }}</p>
         {% endif %}
         <div x-data="memberRoleChooser" class="space-y-4">
-            <fieldset class="space-y-2">
+            <fieldset class="space-y-3">
                 <legend class="mb-2 font-semibold">Role</legend>
                 {% if offers_no_role %}
-                <label class="block cursor-pointer rounded-md border border-border p-3 has-[:checked]:border-primary">
-                    <input type="radio" name="role" value="" data-needs-cohorts="false" x-on:change="chooseRole"{% if not selected_role %} checked{% endif %} class="mr-2">
-                    <span class="font-semibold">No roles yet</span>
-                    <span class="mt-1 block text-muted">They'll appear in Staff but can't see any cohort until you add a role.</span>
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="radio" name="role" value="" data-needs-cohorts="false" x-on:change="chooseRole"{% if not selected_role %} checked{% endif %} class="mt-1 shrink-0">
+                    <span>
+                        <span class="block font-semibold">No roles yet</span>
+                        <span class="block text-muted">They'll appear in Staff but can't see any cohort until you add a role.</span>
+                    </span>
                 </label>
                 {% endif %}
                 {% for card in role_cards %}
-                <label class="block rounded-md border border-border p-3 has-[:checked]:border-primary {% if card.unavailable_reason %}opacity-60{% else %}cursor-pointer{% endif %}">
-                    <input type="radio" name="role" value="{{ card.key }}" data-needs-cohorts="{{ card.needs_cohorts|yesno:'true,false' }}" x-on:change="chooseRole"{% if card.key == selected_role %} checked{% endif %}{% if card.unavailable_reason %} disabled aria-describedby="role-unavailable-{{ card.key }}"{% endif %} class="mr-2">
-                    <span class="font-semibold">{{ card.display_name }}</span>
-                    <span class="mt-1 block text-muted">{{ card.description }}</span>
-                    {% if card.unavailable_reason %}<span id="role-unavailable-{{ card.key }}" class="mt-1 block text-muted">{{ card.unavailable_reason }}</span>{% endif %}
+                <label class="flex items-start gap-3 {% if card.unavailable_reason %}opacity-60{% else %}cursor-pointer{% endif %}">
+                    <input type="radio" name="role" value="{{ card.key }}" data-needs-cohorts="{{ card.needs_cohorts|yesno:'true,false' }}" x-on:change="chooseRole"{% if card.key == selected_role %} checked{% endif %}{% if card.unavailable_reason %} disabled aria-describedby="role-unavailable-{{ card.key }}"{% endif %} class="mt-1 shrink-0">
+                    <span>
+                        <span class="block font-semibold">{{ card.display_name }}</span>
+                        <span class="block text-muted">{{ card.description }}</span>
+                        {% if card.unavailable_reason %}<span id="role-unavailable-{{ card.key }}" class="block text-muted">{{ card.unavailable_reason }}</span>{% endif %}
+                    </span>
                 </label>
                 {% endfor %}
             </fieldset>
@@ -174,7 +181,7 @@ site_level.
     </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">{% if person %}Add role{% else %}Add staff member{% endif %}</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Next</c-button>
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
@@ -194,19 +201,13 @@ site_level.
     {% endif %}
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
     <c-modal-body>
-        {% if creates_account %}
-        <p>An account will be created for {{ email }} and a setup email sent.</p>
-        {% endif %}
         {% if no_role %}
-        <p>They'll appear in Staff with no roles. Give them a role whenever you're ready.</p>
+        <p>They'll appear in Staff with no roles.</p>
         {% else %}
         <p>{{ description }}</p>
         <p>Scope: {{ scope }}.</p>
         {% if already_held %}
         <p>{{ staff_member_name }} already holds this role on {{ already_held }}, so those stay as they are.</p>
-        {% endif %}
-        {% if widening %}
-        <p>{{ staff_member_name }} will be able to do more than they can now: {{ display_name }} on {{ scope }}.</p>
         {% endif %}
         {% if current_entries %}
         <div>
@@ -220,17 +221,12 @@ site_level.
         {% endif %}
         {% if staff_member_state == "inactive" %}
         <p>{{ staff_member_name }} is inactive here, so the role takes effect only once they are reactivated.</p>
-        {% elif staff_member_state == "missing" %}
-        <p>{{ staff_member_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
-        {% endif %}
-        {% if site_level %}
-        <p>{{ staff_member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
         {% endif %}
         {% endif %}
     </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Adding...">{% if person %}Add role{% else %}Add staff member{% endif %}</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Confirming...">Confirm</c-button>
     </c-modal-footer>
 </form>
 {% endif %}

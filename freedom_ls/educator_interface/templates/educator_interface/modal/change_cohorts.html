@@ -54,16 +54,11 @@ widening, removes_role and staff_member_state (missing, inactive or active).
     <c-modal-body>
         {% if added %}<p>Adds: {{ added }}</p>{% endif %}
         {% if removed %}<p>Deactivates on: {{ removed }}</p>{% endif %}
-        {% if widening %}
-        <p>{{ staff_member.display_name }} will be able to do more than they can now: {{ entry.display_name }} on {{ added }}.</p>
-        {% endif %}
         {% if removed %}
         <p>{{ staff_member.display_name }} loses {{ entry.display_name }} on {{ removed }}.</p>
         {% endif %}
         {% if added and staff_member_state == "inactive" %}
         <p>{{ staff_member.display_name }} is inactive here, so the added cohorts take effect only once they are reactivated.</p>
-        {% elif added and staff_member_state == "missing" %}
-        <p>{{ staff_member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
     </c-modal-body>
     <c-modal-footer>

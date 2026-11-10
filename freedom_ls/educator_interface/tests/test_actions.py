@@ -3309,7 +3309,7 @@ def test_the_lookup_of_an_unknown_address_creates_nothing(admin_client, organisa
 
 
 @pytest.mark.django_db
-def test_the_confirmation_for_an_unknown_address_says_an_account_will_be_created(
+def test_the_confirmation_for_an_unknown_address_states_the_role_and_carries_the_names(
     admin_client, organisation
 ):
     response = _submit_role(
@@ -3321,10 +3321,9 @@ def test_the_confirmation_for_an_unknown_address_says_an_account_will_be_created
     )
 
     document = lxml.html.fromstring(response.content.decode())
-    assert (
-        "An account will be created for nobody@example.com and a setup email sent."
-        in _text(response)
-    )
+    text = _text(response)
+    assert "Scope: Whole organisation." in text
+    assert "An account will be created" not in text
     assert document.cssselect("input[type='hidden'][name='first_name'][value='Ada']")
     assert not User._base_manager.filter(email="nobody@example.com").exists()
 
@@ -3808,7 +3807,7 @@ def test_a_confirmed_post_for_another_sites_address_is_422_and_writes_nothing(
 
 
 @pytest.mark.django_db
-def test_the_confirmation_for_a_site_level_admin_says_they_already_have_access(
+def test_the_confirmation_for_a_site_level_admin_states_only_the_role(
     admin_client, organisation
 ):
     site_admin = UserFactory(email="boss@example.com")
@@ -3822,7 +3821,8 @@ def test_the_confirmation_for_a_site_level_admin_says_they_already_have_access(
         )
     )
 
-    assert "already has access to every organisation" in text
+    assert "Scope: Whole organisation." in text
+    assert "already has access to every organisation" not in text
 
 
 @pytest.mark.django_db
@@ -3860,7 +3860,7 @@ def test_a_grant_to_someone_with_no_member_row_creates_an_active_one(
     )
     _confirm(admin_client, organisation, "ada@example.com", "organisation_admin")
 
-    assert "Adding this role creates one" in text
+    assert "Adding this role creates one" not in text
     assert StaffMember.objects.get(user=user, organisation=organisation).is_active
 
 
@@ -4012,22 +4012,7 @@ def test_the_confirmation_names_the_cohorts_escaped(admin_client, organisation):
 
 
 @pytest.mark.django_db
-def test_a_weaker_role_on_a_cohort_already_held_with_a_stronger_one_is_no_widening(
-    admin_client, organisation
-):
-    cohort = _cohort(organisation, name="Spring")
-    holder = UserFactory(email="ada@example.com")
-    assign_role(UserFactory(superuser=True), holder, "cohort_admin", cohort)
-
-    response = _cohort_post(admin_client, organisation, "cohort_viewer", [cohort])
-
-    text = _text(response)
-    assert "Cohort viewer" in text
-    assert "will be able to do more than they can now" not in text
-
-
-@pytest.mark.django_db
-def test_the_confirmation_for_new_cohorts_says_what_the_person_gains(
+def test_the_confirmation_states_the_role_description_and_scope_and_nothing_more(
     admin_client, organisation
 ):
     cohort = _cohort(organisation, name="Spring")
@@ -4035,7 +4020,10 @@ def test_the_confirmation_for_new_cohorts_says_what_the_person_gains(
 
     response = _cohort_post(admin_client, organisation, "cohort_admin", [cohort])
 
-    assert "will be able to do more than they can now" in _text(response)
+    text = _text(response)
+    assert "Scope: Spring." in text
+    assert "will be able to do more than they can now" not in text
+    assert "has no active membership here" not in text
 
 
 @pytest.mark.django_db
@@ -4679,9 +4667,7 @@ def test_a_held_cohort_outside_the_grantors_reach_is_untouched_by_a_change(
 
 
 @pytest.mark.django_db
-def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
-    admin_client, organisation
-):
+def test_the_confirmation_for_an_added_cohort_names_it(admin_client, organisation):
     held = _cohort(organisation)
     added = _cohort(organisation, name="Newly given")
     user = _staff_member_holding("cohort_viewer", held)
@@ -4690,26 +4676,8 @@ def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
 
     text = _text(response)
     assert "Adds: Newly given" in text
-    assert "will be able to do more than they can now" in text
-    assert "Deactivates on:" not in text
-
-
-@pytest.mark.django_db
-def test_adding_a_cohort_held_with_a_stronger_role_is_no_widening(
-    admin_client, organisation
-):
-    held = _cohort(organisation)
-    administered = _cohort(organisation, name="Already run")
-    user = _staff_member_holding("cohort_viewer", held)
-    assign_role(UserFactory(superuser=True), user, "cohort_admin", administered)
-
-    response = _change(
-        admin_client, organisation, user, [held, administered], confirmed=False
-    )
-
-    text = _text(response)
-    assert "Adds: Already run" in text
     assert "will be able to do more than they can now" not in text
+    assert "Deactivates on:" not in text
 
 
 @pytest.mark.django_db
@@ -4882,7 +4850,7 @@ def test_a_change_naming_the_viewer_is_422_with_the_self_message(
 
 
 @pytest.mark.django_db
-def test_the_confirmation_for_a_person_with_no_member_row_says_the_grant_creates_one(
+def test_the_confirmation_for_a_person_with_no_member_row_names_only_the_change(
     admin_client, organisation
 ):
     held = _cohort(organisation)
@@ -4892,7 +4860,9 @@ def test_the_confirmation_for_a_person_with_no_member_row_says_the_grant_creates
 
     response = _change(admin_client, organisation, user, [held, added], confirmed=False)
 
-    assert "Adding this role creates one" in _text(response)
+    text = _text(response)
+    assert "Adds:" in text
+    assert "Adding this role creates one" not in text
 
 
 @pytest.mark.django_db
@@ -5257,9 +5227,29 @@ def test_a_cohort_admin_search_lists_only_people_they_may_pick(
     assert [option.get("id") for option in _options(response)] == [
         f"staff-option-{peer.pk}"
     ]
-    assert "Searching staff you can add" in _text(response)
     assert "Type their full email" not in _text(
         _search(client, organisation, "zzz", cohort)
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_email_field_says_it_searches_staff_they_can_add(
+    logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
+
+    response = client.get(
+        _cohort_add_staff_member_url(organisation, cohort), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    help_text = document.get_element_by_id("staff-search-help")
+    combobox = document.cssselect("[role='combobox']")[0]
+    assert help_text.text_content().strip() == "Searching staff you can add"
+    assert combobox.get("aria-describedby") == "staff-search-help"
+    assert not document.cssselect(
+        "#staff-search-results [role='listbox']:not([hidden])"
     )
 
 
@@ -8491,11 +8481,11 @@ def test_the_add_role_dialog_opens_at_the_role_step_with_the_person_and_their_ro
 
 
 @pytest.mark.django_db
-def test_the_add_role_dialog_names_its_primary_button_for_the_action_on_both_steps(
+def test_the_add_staff_dialog_steps_read_next_and_the_confirm_step_confirm(
     admin_client, organisation
 ):
-    """The add role dialog's primary button used to read "Add staff member",
-    though the person is already on the staff."""
+    """A step button says where the person goes, and the last says Confirm,
+    never a noun that may be untrue for someone already on the staff."""
     cohort = _cohort(organisation)
     user = _staff_member_holding("organisation_staff_viewer", organisation)
 
@@ -8512,9 +8502,12 @@ def test_the_add_role_dialog_names_its_primary_button_for_the_action_on_both_ste
     )
     ordinary = _lookup(admin_client, organisation, "new.person@example.com")
 
-    assert submit_labels(role_step) == ["Add role"]
-    assert submit_labels(confirmation) == ["Add role"]
-    assert submit_labels(ordinary) == ["Add staff member"]
+    email_step = admin_client.get(_add_staff_member_url(organisation))
+
+    assert submit_labels(email_step) == ["Next"]
+    assert submit_labels(role_step) == ["Next"]
+    assert submit_labels(ordinary) == ["Next"]
+    assert submit_labels(confirmation) == ["Confirm"]
 
 
 @pytest.mark.django_db

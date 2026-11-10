@@ -292,29 +292,6 @@ def _permissions_by_target(
     return held
 
 
-def is_widening(
-    before: set[tuple[str, str]],
-    after: set[tuple[str, str]],
-    roles: Mapping[str, Role],
-    organisation_key: str,
-) -> bool:
-    """Whether `after` lets the person do anything `before` did not. Each
-    pair is a role and the key of its target (the organisation's pk or a
-    cohort's pk). Roles are compared by the permissions they carry, not by
-    name, so a weaker role on a cohort already held with a stronger one is
-    no widening, and a role on the organisation covers every cohort in it."""
-    none: frozenset[str] = frozenset()
-    before_held = _permissions_by_target(before, roles)
-    after_held = _permissions_by_target(after, roles)
-    before_organisation = before_held.get(organisation_key, none)
-    after_organisation = after_held.get(organisation_key, none)
-    for key, permissions in after_held.items():
-        had = before_held.get(key, none) | before_organisation
-        if not (permissions | after_organisation) <= had:
-            return True
-    return False
-
-
 def add_staff_member(
     actor: User, user: User, organisation: Organisation
 ) -> StaffMember:

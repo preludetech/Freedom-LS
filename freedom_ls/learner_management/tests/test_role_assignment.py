@@ -31,7 +31,6 @@ from freedom_ls.learner_management.role_assignment import (
     grantable_roles,
     is_last_organisation_admin,
     is_site_level_admin,
-    is_widening,
     set_staff_member_active,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -618,55 +617,6 @@ def test_grantable_roles_query_count_does_not_grow_with_cohorts(
 
     with django_assert_max_num_queries(len(one_cohort)):
         grantable_roles(grantor, organisation)
-
-
-@pytest.mark.parametrize(
-    ("before", "after", "expected"),
-    [
-        (set(), {("cohort_viewer", "c1")}, True),
-        ({("cohort_viewer", "c1")}, set(), False),
-        (
-            {("cohort_viewer", "c1")},
-            {("cohort_viewer", "c1"), ("cohort_admin", "c2")},
-            True,
-        ),
-        ({("cohort_viewer", "c1")}, {("cohort_viewer", "c1")}, False),
-        (
-            {("cohort_admin", "c1")},
-            {("cohort_admin", "c1"), ("cohort_viewer", "c1")},
-            False,
-        ),
-        (
-            {("cohort_viewer", "c1")},
-            {("cohort_viewer", "c1"), ("cohort_admin", "c1")},
-            True,
-        ),
-        (
-            {("organisation_admin", "org")},
-            {("organisation_admin", "org"), ("cohort_admin", "c1")},
-            False,
-        ),
-        (
-            {("cohort_admin", "c1")},
-            {("cohort_admin", "c1"), ("organisation_admin", "org")},
-            True,
-        ),
-    ],
-    ids=[
-        "add",
-        "remove",
-        "mixed",
-        "unchanged",
-        "weaker-role-on-a-held-cohort",
-        "stronger-role-on-a-held-cohort",
-        "cohort-role-for-an-organisation-admin",
-        "organisation-admin-for-a-cohort-admin",
-    ],
-)
-def test_is_widening(
-    before: set[tuple[str, str]], after: set[tuple[str, str]], expected: bool
-) -> None:
-    assert is_widening(before, after, BASE_ROLES, "org") is expected
 
 
 @pytest.mark.django_db
