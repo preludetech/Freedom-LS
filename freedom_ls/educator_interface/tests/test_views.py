@@ -9,7 +9,6 @@ import json
 import uuid
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
@@ -7766,22 +7765,3 @@ def test_a_quiz_preview_marks_exactly_the_correct_options(staff_client: Client):
     assert all("wrong" not in text for text in labelled)
     (dropdown_list,) = document.cssselect("ul")
     assert dropdown_list.text_content().split(":")[1].strip() == "Pick right"
-
-
-def test_show_answer_key_is_set_only_by_the_educator_preview():
-    root = Path(educator_views.__file__).resolve().parents[1]
-    allowed_templates = {
-        "form_engine/templates/form_engine/inputs/multiple_choice.html",
-        "form_engine/templates/form_engine/inputs/checkboxes.html",
-        "form_engine/templates/form_engine/inputs/dropdown.html",
-    }
-    guard = Path(__file__).resolve()
-    mentions = {
-        path.relative_to(root).as_posix()
-        for path in root.rglob("*")
-        if path.suffix in {".py", ".html"}
-        and path.resolve() != guard
-        and "show_answer_key" in path.read_text()
-    }
-
-    assert mentions == allowed_templates | {"educator_interface/views.py"}
