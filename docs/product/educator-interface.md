@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-06_
+_Last updated: 2026-11-10_
 
 ## Summary
 
@@ -83,7 +83,7 @@ The preview labels every row (new account, joined, reactivated, added to cohort,
 
 ![Bulk add to cohort confirmation, with the cohort picker above a sentence saying what will change](screenshots/educator_bulk_add_to_cohort.png)
 
-Tick rows in the Learners or Cohorts list and an action bar appears. When every row on the page is ticked and the filter matches more, **Select all N matching** extends the selection to every match. Changing page, sort or filters clears the selection.
+Tick rows in the Learners or Cohorts list and a selection bar takes the place of the search and filters above the table; on a small screen it sits at the bottom of the screen. It shows how many rows are selected and up to four actions, with the rest under **More**, where a destructive action such as removing learners from a cohort is always listed last. **Select all N** extends the selection to every row the filter matches, across pages, and **Clear** empties it. Changing page, sort or filters clears the selection.
 
 - **Learners**: add to a cohort, remove from a cohort, register for a course, deactivate a course registration, deactivate, reactivate, and resend the account setup email.
 - **Cohorts**: register for a course, deactivate a course registration, deactivate and reactivate.
