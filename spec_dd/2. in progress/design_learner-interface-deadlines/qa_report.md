@@ -1,170 +1,156 @@
-# Frontend QA report: learner-interface-deadlines
+# Frontend QA report: learner interface deadlines
 
-65 tests ran: 64 passed, 1 failed (3.1.2). Two bugs are documented. B1 is the squeezed outline row title (the failing test 3.1.2). B2 is the layout probe flagging the open modal outline sheet on mobile (2.4.2 layout). Both bugs are already open todo decisions from earlier work: B1 is the todo "outline row title squeezed to a few characters by a wide deadline treatment", and B2 is the previous run's decision on whether the probe should ignore open modals. All 8 design checks passed. 11 of 12 layout probes were clean; the one flagged probe is B2.
+I ran the full test plan (`3. frontend_qa.md`) at FULL scope. Every test passed and I found no bugs. The smoke gate passed. Where the plan text disagreed with the spec or the voice rule, I judged against the spec and the rule file. Those cases are listed under General notes. Nothing in the diff was skipped.
 
 ## Methodology
 
-- Driven with the Playwright MCP.
-- Desktop at 1920x1080, with extra checks at 1280x800 and 1024x768. Mobile at 375x812. Tablet at 880x1240 (the plan's tablet width).
-- Browser time zone: Africa/Johannesburg. One test (3.4.1) also ran in an America/Los_Angeles context, and 3.4.2 ran with JavaScript disabled.
-- Screenshots were collected into `screenshots/`. Every image referenced below exists beside this report.
-- The pre-step rebase was skipped at the user's request (see the note record under General notes). QA ran against the branch as it stands, including the other process's uncommitted changes.
-- Data was seeded and reset through `sdd:qa-data-helper` (see Data changes).
+- Playwright MCP at desktop 1920x1080, tablet 880x1240 and mobile 375x812. I also checked 1280x800 and 1024x768 for the dashboard card and the docked panel.
+- The browser zone was Africa/Johannesburg. Two extra contexts were an America/Los_Angeles context (tests 3.4.1) and a JavaScript-disabled context (3.4.2). I also ran a forced-colours check (5.4.3) and an accessibility snapshot check (5.4.1, 5.4.2).
+- Screenshots are collected in `screenshots/`. Every image referenced below exists beside this report.
+- Seed data came from `qa_create_deadlines_seed` and `qa_create_deadlines_seed_extras`. Later data changes went through `sdd:qa-data-helper` (see Data Changes).
 
 ## Diff scoping
 
-Class: FULL. Nothing was skipped; every test in the plan ran.
+Class: FULL. The changed front-end files that triggered it:
 
-Changed files considered: learner_interface templates, `freedom_ls/base/static/base/js/alpine-components.js`, `freedom_ls/learner_interface/views.py`, `freedom_ls/learner_interface/utils.py`, `freedom_ls/deadlines/resolver.py`, `freedom_ls/base/templatetags/time_tags.py`, `freedom_ls/site_aware_models/time_zones.py`.
+- The shared date components: `cotton/date.html`, `cotton/datetime.html` and the panel framework datetime cells.
+- The learner interface: the new `deadline-label` component and the deadline partials (`deadline_labels`, `course_deadline_line`, `course_footer_line`, `course_status_label`, `course_status_eyebrow`). Also `course_card`, `course_row`, `course_minimal_toc`, `course_toc_header`, `_course_base`, `course_topic`, `course_finish`, `course_item_closed` and `exam_previous_attempts`.
+- Educator interface panels and cells that now use the date components.
+- Report partials: `course_summary_table` and `learner_detail`.
+- Alpine components JS and the design source CSS.
+
+In total there were 175 changed files, many of them design sources. Nothing was skipped.
 
 ## Smoke gate
 
-Status: pass. Pages checked: `/` and `/courses/functionality-demo-course-parts/1/`. No failure URL or reason.
+Outcome: pass. Pages checked: `/` and `/courses/functionality-demo-course-parts/1/`.
 
-## Results
+## Test results
 
-| Test | Viewport | Status | Notes | Screenshot |
+| Test | Viewport | Result | Screenshot | Notes |
 |---|---|---|---|---|
-| 1.1 | desktop | pass | Parts card: hero holds only the icon, org byline straddles the hero edge; stacked "Missed deadline / Welcome / 31 Jan 2024" at the bottom, Details at right. Dates print day-first per the brand voice rule. | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) |
-| 1.2.1 | desktop | pass | Long Deadline Titles card: long title wraps in full, no ellipsis, "1 Jan 2020" whole on its own line. | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) |
-| 1.4.1 | desktop | pass | Org byline overlaps the hero bottom edge; hero has no deadline text; deadline at the bottom. | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) |
-| 1.4.2 | desktop-1280/1024 | pass | Deadline stays the card's last line, title wraps, date whole; at 1024 Details drops to its own line at the right. No overflow. | ![](screenshots/page-2026-11-09T14-34-48-402Z.png) |
-| 2.1.1 | desktop | pass | Outline deadline under the progress bar: warning icon, bold "Missed deadline", "Welcome", "31 Jan 2024, 23:59". No border, background or chip. | ![](screenshots/page-2026-11-09T14-35-03-484Z.png) |
-| 3.1.1 | desktop | pass | Row dates sit on the row line at right in the right tier colour; no chip; rows without a deadline show no date. | ![](screenshots/page-2026-11-09T14-35-17-577Z.png) |
-| 4.1.1 | desktop | pass | Header line above "Welcome": icon, bold "Missed deadline", date; 24px above, 12px below. | ![](screenshots/page-2026-11-09T14-35-03-484Z.png) |
-| 3.3.2 | desktop | pass | Fresh learner course detail outline: no deadline elements, dates, "Closed" or tier icons. | ![](screenshots/page-2026-11-09T14-35-46-813Z.png) |
-| 3.2.2 | desktop-1024 | pass | Docked panel: long title truncates with ellipsis, "1 Jan 2020" whole with warning icon; no overflow. | ![](screenshots/page-long-1024.png) |
-| 4.3.4 | desktop | pass | Long-title topic: header line above the title, title wraps below, no overlap. | ![](screenshots/page-long-1024.png) |
-| 3.4.1 | desktop | pass | America/Los_Angeles: Key Ideas "23 Nov, 07:00", today item "Today, 13:59" keeps warning colour, header "31 Jan 2024, 13:59". | none |
-| 3.4.2 | desktop | pass | JS disabled: server text with "SAST" on rows, outline deadline and header; page reads correctly. | ![](screenshots/page-nojs-player.png) |
-| 5.3.1 | desktop | pass | Fresh learner: no "Due", "Overdue", "was due", "Next deadline:" or "Expired" on dashboard, player, course detail, finish. | none |
-| 5.4.1 | desktop | pass | No accessibility node named warning/deadline/locked/clock; "Missed deadline" plus the time are exposed on row, outline deadline and header. | none |
-| 5.4.2 | desktop | pass | Dashboard card deadline text is exposed; hero icon is not. | none |
-| 5.4.3 | desktop | pass | Forced colours: each tier identifiable by icon and word. | ![](screenshots/page-2026-11-09T14-36-54-703Z.png) |
-| 2.2.6 | desktop | pass | Course finish page: outline rows show dates, no outline deadline. | none |
-| 2.3.1 | desktop | pass | Next moved to /2/ without a full reload; outline deadline became "Deadline today What to Expect"; Previous kept it. | none |
-| 2.3.2 | desktop | pass | Previous then Next both show "Deadline today, What to Expect" via HTMX swaps; deadline moves on completion. | none |
-| 1.2.3 | desktop | pass | Welcome complete: clock icon, bold "Deadline" in warning colour, "What to Expect", "Today, 23:59". | none |
-| 2.1.3 | desktop | pass | Outline deadline "Deadline today / What to Expect / 9 Nov 2026, 23:59" in warning colour. | none |
-| 3.1.3 | desktop | pass | Completed rows show the completed icon and no date. | ![](screenshots/page-form-start.png) |
-| 4.1.2-3 | desktop | pass | /2/ header "Deadline today" in warning; /3/ "Deadline 23 Nov 2026, 17:00" in primary. | none |
-| 4.1.5-6 | desktop | pass | Completed item and item without a due date show no header line. | none |
-| 4.3.1 | desktop | pass | Knowledge Check form page: header line stands alone under breadcrumbs; exam runner shows none. | ![](screenshots/page-form-start.png) |
-| 3.3.3 | desktop | pass | Parts course unlocks sequentially; locked later rows still show tier icon and date at right. | ![](screenshots/page-2026-11-09T14-35-17-577Z.png) |
-| 1.2.4 | desktop | pass | Late learner card: lock, bold "Closed" error, "Welcome", "3 Feb 2024". | ![](screenshots/page-2026-11-09T14-38-18-840Z.png) |
-| 1.3.1a | desktop | pass | Closed deadline shows the date only, no "Closes". | ![](screenshots/page-2026-11-09T14-38-18-840Z.png) |
-| 1.3.4 | desktop | pass | Plain ended card: lock, bold "Access ended", "30 Oct", Details at right, no deadline text. | ![](screenshots/page-2026-11-09T14-38-18-840Z.png) |
-| 2.1.2 | desktop | pass | Late outline deadline: lock, bold "Closed", "Welcome", "3 Feb 2024, 23:59". | ![](screenshots/page-2026-11-09T14-38-42-630Z.png) |
-| 3.1.2 | desktop | FAIL | Welcome, Knowledge Check and sequentially locked rows are correct, but the Course Feedback row title is squeezed to "Cours..." by the "date + Closes" treatment at 1920 desktop. See B1. | ![](screenshots/page-2026-11-09T14-38-42-630Z.png) |
-| 4.2.1-2 | desktop | pass | Closed-item page: header line, large centred lock, "Closed on 3 Feb 2024, 23:59.", muted "Ask your educator if you need more time."; no callout box. | ![](screenshots/page-2026-11-09T14-38-42-630Z.png) |
-| 4.2.3 | desktop | pass | Late Knowledge Check: header "Closed 25 Aug 2026, 23:59", same centred icon and text, submit still offered. | none |
-| 3.3.1 | desktop | pass | Late learner course detail outline: no dates, deadline elements or tier icons. | ![](screenshots/page-late-detail.png) |
-| 2.2.5 | desktop | pass | Late learner plain course goes to course detail: no outline rows or outline deadline. | none |
-| 1.3.3 | desktop | pass | Cohort learner card: stacked "Access ended / 30 May", Details at right, not in the eyebrow. | ![](screenshots/page-cohort-dash.png) |
-| 2.2.4 | desktop | pass | Cohort learner player (outline_and_results): outline shows, no outline deadline. | none |
-| 1.2.5a | desktop | pass | Restored learner: "Missed deadline / Welcome / 31 Jan 2024". | ![](screenshots/page-restored-dash.png) |
-| 1.3.2 | desktop | pass | "Access ends 9 Dec" stacked under the deadline, same x and width, primary colour, not muted. | ![](screenshots/page-restored-dash.png) |
-| 5.5.2 | desktop | pass | Educator cohort overview shows no deadline-label or tier words. | ![](screenshots/page-2026-11-09T14-40-44-948Z.png) |
-| 1.2.5b | desktop | pass | All items complete: "Deadline / Course / 9 Dec" primary; "Access ends 9 Dec" below. | none |
-| 2.1.4 | desktop | pass | Outline deadline "Deadline / Course / 9 Dec 2026, 23:59" primary. | none |
-| 2.1.5 | desktop | pass | Outline deadline names the same deadline as the card in every case checked. | none |
-| 1.3.5a | desktop | pass | Plain course with no due dates: Details alone, no deadline line. | none |
-| 2.2.3 | desktop | pass | Plain course player: nothing under the progress bar. | none |
-| 1.3.1b | desktop | pass | Late learner: "Missed deadline / Course Feedback / 8 Nov Closes 11 Nov." Needed a course-wide override (see notes). | none |
-| 2.2.2 | desktop | pass | Outline deadline "Missed deadline / Course Feedback / 8 Nov 2026, 23:59 Closes 11 Nov 2026, 23:59." | ![](screenshots/page-m-late-sheet.png) |
-| 4.1.4 | mobile | pass | /7/ header "Missed deadline 8 Nov 2026, 23:59" then "Closes 11 Nov 2026, 23:59." wrapping between parts. | ![](screenshots/page-m-late-cf.png) |
-| 1.4.3 | mobile | pass | 375x812 rows: divider, stacked label, Details on its own line at right; no chip; no overflow. | ![](screenshots/page-2026-11-09T14-42-42-457Z.png) |
-| 4.3.2 | mobile | pass | Header line above the title, left-aligned (x=16), 12px gap; date one unbroken span. | ![](screenshots/page-m-player.png) |
-| 2.4.2 | mobile | pass | 375 outline sheet: header, outline deadline, rows; deadline wraps inside the sheet; no horizontal overflow. (The layout probe for this view is flagged; see B2.) | ![](screenshots/page-m-sheet.png) |
-| 3.2.1 | mobile | pass | Sheet: long title ends in ellipsis, "1 Jan 2020" whole with warning icon; no overflow. | ![](screenshots/page-m-long-sheet.png) |
-| 1.4.4 | tablet | pass | 880x1240: same row layout, divider, stacked label, Details at right; no overflow. | ![](screenshots/page-t-dash.png) |
-| 2.4.1 | tablet | pass | "Open course outline" sheet: header, outline deadline, rows; dates right-aligned; header deadline line above the title. | ![](screenshots/page-t-sheet.png) |
-| 4.3.3 | tablet | pass | Header deadline line sits above the title. | ![](screenshots/page-t-player.png) |
-| 5.2 | desktop | pass | Every surface is a deadline-label; icon and bold text share one colour per tier on every surface; no muted dates, dots or chips. | ![](screenshots/page-2026-11-09T14-35-17-577Z.png) |
-| 4.2.4 | mobile | pass | Closed-item page lock and text centred, header line above title, no callout, no overflow. Same at 880. | ![](screenshots/page-m-closed.png) |
-| 1.4.3-late | mobile | pass | Late learner baseline at 375: parts row "Closed / Welcome / 3 Feb 2024"; plain row "Access ended 30 Oct". | none |
-| 5.5.1 | desktop | pass | All-courses page: no deadline-label elements or deadline text. | none |
-| 5.5.3 | desktop | pass | No blog/article cards on the dashboard; unregistered course cards carry no deadline text. | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) |
-| 5.1 | desktop | pass | mark_overdue=off: card, row, outline deadline and header show "Deadline" in primary with the clock icon; no "Missed deadline" on the player. | ![](screenshots/page-overdue-off.png) |
-| 1.2.2 | desktop | pass | Covered by 5.1: card line clock icon and bold "Deadline" primary, "Welcome", "31 Jan 2024". | none |
-| 2.2.1 | desktop | pass | Covered by 5.1: outline deadline clock, bold "Deadline" primary, "Welcome", full date. | ![](screenshots/page-overdue-off.png) |
-| 1.3.5 | desktop | pass | Completed plain course moved to Learning history with no deadline text. | none |
-| 5.4.4 | all | pass | Regressions checklist against this run's screenshots; the only exception is the squeezed outline row title (B1). | none |
+| 1.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-18-831Z.png) | Parts card: hero icon only, byline straddles hero edge, last line has warning icon, bold "Missed deadline", "Welcome", "31 Jan 2024" muted mono, Details at right. Date format follows voice.md. |
+| 1.2.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-18-831Z.png) | Long-title card: title wraps in full, "1 Jan 2020" whole on its own line. |
+| 2.1.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-38-616Z.png) | Outline deadline: warning icon, "Missed deadline", "Welcome", "31 Jan 2024, 23:59"; no border, background or chip. |
+| 4.1.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-38-616Z.png) | Header line above the h1, left-aligned, no dot or chip, 12px below to title. |
+| 3.1.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-52-317Z.png) | Row dates and tier icons/colours correct; sr-only tier word present; no chip. |
+| 5.4.1 | desktop | pass | none | A11y snapshot: no icon nodes named; "Missed deadline" and date exposed. |
+| 3.3.2 | desktop | pass | none | Fresh learner course detail outline: no deadline-label, no dates. |
+| 3.3.3 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-52-317Z.png) | Sequentially locked rows carry sr-only "Locked" and keep tier icon and date. |
+| 2.2.6 | desktop | pass | none | Finish page (fresh): outline rows show dates, no outline-deadline. |
+| 5.5.1 | desktop | pass | none | All-courses page: no deadline-label; "Due" only in a course title. |
+| 3.4.1 | desktop (LA zone) | pass | none | "Today, 13:59" keeps warning colour; Key Ideas "24 Nov, 07:00"; outline "31 Jan 2024, 13:59". |
+| 3.4.2 | desktop (JS off) | pass | none | Dates render with zone: "Today, 23:59 SAST", "31 Jan 2024, 23:59 SAST". |
+| 2.3.1 | desktop | pass | none | Next/Previous swap without full reload; outline deadline follows the current item. |
+| 4.1.5 | desktop | pass | none | Completed Welcome has no header deadline line. |
+| 2.1.3 | desktop | pass | ![](screenshots/page-2026-11-10T11-58-29-400Z.png) | Clock icon, "Deadline today" warning colour, "What to Expect", "10 Nov 2026, 23:59". |
+| 4.1.2 | desktop | pass | ![](screenshots/page-2026-11-10T11-58-29-400Z.png) | Header: clock, "Deadline today" warning, date muted mono. |
+| 3.1.3 | desktop | pass | ![](screenshots/page-2026-11-10T11-58-45-442Z.png) | Completed rows show no date. |
+| 1.2.3 | desktop | pass | none | Card line: clock, "Deadline" warning, "What to Expect", "Today, 23:59". |
+| 4.1.3 | desktop | pass | none | Key Ideas header: clock, "Deadline" primary, "24 Nov 2026, 17:00". |
+| 4.1.6 | desktop | pass | none | Going Deeper: no header deadline line. |
+| 4.3.1 | desktop | pass | ![](screenshots/page-2026-11-10T11-58-45-442Z.png) | Form page shows header line only; exam runner has none. |
+| 1.2.4 | desktop | pass | ![](screenshots/page-2026-11-10T12-05-41-473Z.png) | Late card: lock, "Closed" error, "Welcome", "3 Feb 2024". |
+| 1.3.4 | desktop | pass | ![](screenshots/page-2026-11-10T12-05-41-473Z.png) | Ended plain card: stacked "Access ended" lock, "31 Oct", no deadline text or eyebrow. |
+| 1.3.1a | desktop | pass | ![](screenshots/page-2026-11-10T12-05-41-473Z.png) | Closed deadline shows no "Closes" label. |
+| 2.1.2 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-08-681Z.png) | Late outline deadline: lock, "Closed", "Welcome", "3 Feb 2024, 23:59". |
+| 3.1.2 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-08-681Z.png) | Closed rows show lock plus date. Sequentially locked rows show "Missed deadline" and no "Closed", as the spec requires (plan step 2 is out of date). |
+| 4.2.1 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-08-681Z.png) | Closed-item header: lock, "Closed", "3 Feb 2024, 23:59". |
+| 4.2.2 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-08-681Z.png) | Centred size-12 lock, "Closed on ..." text, no callout. |
+| 4.2.3 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-24-195Z.png) | Closed form with open attempt: same closed treatment, "Submit your answers" still offered. |
+| 3.3.1 | desktop | pass | ![](screenshots/page-2026-11-10T12-06-44-391Z.png) | Late course detail outline: no dates, no visible "Closed". |
+| 2.2.5 | desktop | pass | none | Ended plain course lands on course detail with access-ended notice. |
+| 5.3 | desktop | pass | none | No "Due", "Overdue", "was due", "Next deadline:" or "Expired" on any checked page. |
+| 1.2.5a | desktop | pass | none | Restored card: "Missed deadline", "Welcome", "31 Jan 2024". |
+| 1.3.2 | desktop | pass | none | "Access ends" stacked under the deadline, same column, weight and icon size. |
+| 1.3.3 | desktop | pass | ![](screenshots/page-2026-11-10T12-07-07-666Z.png) | Cohort card: stacked "Access ended" lock, "30 May", Details at right. |
+| 2.2.4 | desktop | pass | none | Cohort learner player: outline shown, no outline deadline or header line. |
+| 1.4.3 | mobile | pass | ![](screenshots/page-2026-11-10T12-08-55-017Z.png) | Row stacked after divider, Details on its own line, scrollWidth 375. |
+| 1.4.3-late | mobile | pass | ![](screenshots/page-2026-11-10T12-07-59-078Z.png) | Late row: "Closed", "Welcome", "3 Feb 2024". DjDT tab overlaps pagination arrow (dev tooling). |
+| 4.2.4 | mobile | pass | ![](screenshots/page-2026-11-10T12-08-05-380Z.png) | Closed page: lock and text centred, no overflow. |
+| 2.4.2-late | mobile | pass | ![](screenshots/page-2026-11-10T12-08-15-817Z.png) | Late learner sheet: outline deadline above rows, row dates whole, no overflow. |
+| 1.4.4 | tablet | pass | ![](screenshots/page-2026-11-10T12-08-46-990Z.png) | Rows at 880 (also ![](screenshots/page-2026-11-10T12-08-23-689Z.png)): deadline below divider, Details right, no overflow. |
+| 1.3.5a | tablet | pass | ![](screenshots/page-2026-11-10T12-08-46-990Z.png) | Plain registered course: bottom line holds Details alone. |
+| 2.4.1 | tablet | pass | ![](screenshots/page-2026-11-10T12-08-37-730Z.png) | Sheet at 880: header, outline deadline, rows; scrollWidth 880. |
+| 4.3.3 | tablet | pass | ![](screenshots/page-2026-11-10T12-08-37-730Z.png) | Header line above title, same left edge. |
+| 3.2.1 | mobile | pass | ![](screenshots/page-2026-11-10T12-09-04-702Z.png) | Long row title truncates; "1 Jan 2020" whole; no overflow. |
+| 4.3.2 | mobile | pass | ![](screenshots/page-2026-11-10T12-09-13-554Z.png) | Header line one line, left-aligned with title. |
+| 1.4.2 | 1280x800 and 1024x768 | pass | ![](screenshots/page-2026-11-10T12-09-44-296Z.png) | 1280: Details beside the deadline. 1024: Details drops below at right; dates one line. |
+| 3.2.2 | 1024x768 | pass | none | Docked panel: long title truncated, date one line. |
+| 4.3.4 | desktop | pass | ![](screenshots/page-2026-11-10T12-09-53-878Z.png) | Long-title topic: header line and title do not overlap. |
+| 5.4.3 | desktop (forced colours) | pass | ![](screenshots/page-2026-11-10T12-09-58-262Z.png) | Tiers still identifiable by icon and word. |
+| 5.4.2 | desktop | pass | none | Card aria snapshot exposes "Missed deadline Welcome" and time; hero icon not exposed. |
+| 5.5.2 | desktop | pass | none | Educator learner page: no deadline-label or tier words. |
+| 5.2 | desktop | pass | ![](screenshots/page-2026-11-10T11-56-52-317Z.png) | Same tier colours on all surfaces; main text 600; dates muted mono. |
+| 1.2.2 | desktop | pass | none | mark_overdue off: card "Deadline" primary, "Welcome", "31 Jan 2024". |
+| 2.2.1 | desktop | pass | none | mark_overdue off: outline deadline primary. |
+| 5.1 | desktop | pass | none | mark_overdue off: all surfaces "Deadline"; no "Missed deadline". |
+| 1.2.5b | desktop | pass | none | Restored, all items done: "Deadline", "Course", "10 Dec"; "Access ends 10 Dec" under it. |
+| 2.1.4 | desktop | pass | ![](screenshots/page-2026-11-10T12-11-39-325Z.png) | Restored outline deadline: "Deadline", "Course", "10 Dec 2026, 23:59". |
+| 2.1.5 | desktop | pass | none | Outline deadline names the same deadline as the card in every case checked. |
+| 4.1.4 | desktop | pass | ![](screenshots/page-2026-11-10T12-14-25-181Z.png) | "Missed deadline 9 Nov 2026" then a separate "Closes 12 Nov 2026, 23:59" label, not nested. |
+| 1.3.5b | desktop | pass | none | Completed plain course: status COMPLETED, no deadline-label. |
+| 2.2.3 | desktop | pass | none | Plain course player: outline present, no deadline surfaces. |
+| 1.3.1b | desktop | pass | ![](screenshots/page-2026-11-10T12-16-00-000Z.png) | "Missed deadline Course Feedback 9 Nov" then separate stacked "Closes 12 Nov". Needed a time-limit override (see Data Changes). |
+| 2.2.2 | desktop | pass | ![](screenshots/page-2026-11-10T12-16-05-000Z.png) | Outline: "Missed deadline Course Feedback 9 Nov 2026, 23:59", then separate "Closes 12 Nov 2026, 23:59". |
+| regressions | desktop | pass | none | Regression checklist held on every screenshot (hero icon only, no chip, no dot, Access ends stacked, one deadline per row, and the rest of the checklist). |
 
 ## Design check
 
 | Test | Viewport | This run | Design | Result |
 |---|---|---|---|---|
-| 1.1-design | desktop | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) | ![](design_screenshots/cards__card-b.png) | pass |
-| 2.1-design | desktop | ![](screenshots/page-2026-11-09T14-35-03-484Z.png) | ![](design_screenshots/mobile__m-toc.png) | pass |
-| 3.1-design | desktop | ![](screenshots/page-2026-11-09T14-35-17-577Z.png) | ![](design_screenshots/p-outline__ol-a.png) | pass |
-| 4.1-design | desktop | ![](screenshots/page-2026-11-09T14-35-03-484Z.png) | ![](design_screenshots/p-banner__bn-a.png) | pass |
-| 4.2-design | desktop | ![](screenshots/page-2026-11-09T14-38-42-630Z.png) | ![](design_screenshots/mobile__m-player.png) | pass |
-| 1.4-design | mobile | ![](screenshots/page-2026-11-09T14-42-42-457Z.png) | ![](design_screenshots/hero__hero-c.png) | pass |
-| 2.4-design | mobile | ![](screenshots/page-m-sheet.png) | ![](design_screenshots/mobile__m-toc.png) | pass |
-| 2.4-design | tablet | ![](screenshots/page-t-sheet.png) | ![](design_screenshots/tablet__tb-player.png) | pass |
+| 1.1-design | desktop | ![](screenshots/page-2026-11-10T11-56-18-831Z.png) | [cards__card-b.png](design_screenshots/cards__card-b.png) | pass |
+| 3.1-design | desktop | ![](screenshots/page-2026-11-10T11-56-52-317Z.png) | [p-outline__ol-a.png](design_screenshots/p-outline__ol-a.png) | pass |
+| 4.2-design | desktop | ![](screenshots/page-2026-11-10T12-06-08-681Z.png) | [mobile__m-player.png](design_screenshots/mobile__m-player.png) | pass |
+| 1.4-design | mobile | ![](screenshots/page-2026-11-10T12-08-55-017Z.png) | [hero__hero-c.png](design_screenshots/hero__hero-c.png) | pass |
+| 2.4-design | tablet | ![](screenshots/page-2026-11-10T12-08-37-730Z.png) | [tablet__tb-player.png](design_screenshots/tablet__tb-player.png) | pass |
+| 2.4-design-mtoc | mobile | ![](screenshots/page-2026-11-10T12-09-04-702Z.png) | [mobile__m-toc.png](design_screenshots/mobile__m-toc.png) | pass |
+| 4.1-design | mobile | ![](screenshots/page-2026-11-10T12-09-13-554Z.png) | [p-banner__bn-a.png](design_screenshots/p-banner__bn-a.png) | pass |
+| 2.1-design | desktop | ![](screenshots/page-2026-11-10T12-16-05-000Z.png) | [mobile__m-toc.png](design_screenshots/mobile__m-toc.png) | pass |
 
-## B1: Outline row title squeezed to a few characters by the "date + Closes" treatment in the docked panel
-
-Manifestations: 3.1.2 (desktop, 1920).
-
-![](screenshots/page-2026-11-09T14-38-42-630Z.png)
-
-- Expected: design checklist ol-a says the title truncates before the date wraps or clips, but stays readable. The row's minimal label should not crowd the title down to a stub.
-- Actual: late learner, docked outline at 1920. The Course Feedback row reads "Cours..." beside "8 Nov Closes 11 Nov."; the minimal label plus the Closes text take nearly the whole 272px row. In the full-width mobile and tablet sheet the title fits. Same defect as the open todo item already awaiting a decision.
-
-## B2: Layout probe flags the open modal outline sheet as overlapping the header and content
-
-Manifestations: 2.4.2 layout probe (mobile, 375).
-
-![](screenshots/page-m-sheet.png)
-
-- Expected: no layout flags.
-- Actual: with the bottom-sheet dialog open, the probe reports "header and sidebar ink intersect" and "content and sidebar ink intersect". The sheet is a modal drawn over a blurred backdrop, so the overlap is by design. Whether the probe should ignore open modals is the open todo decision from the previous run.
+No misses were recorded in any design comparison.
 
 ## Layout probe
 
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | / | ![](screenshots/page-2026-11-09T14-34-03-476Z.png) | clean |
-| 1.4.2 | desktop-1024 | / | ![](screenshots/page-2026-11-09T14-34-48-402Z.png) | clean |
-| 2.1.1 | desktop | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-2026-11-09T14-35-03-484Z.png) | clean |
-| 3.3.2 | desktop | /courses/functionality-demo-course-parts/detail/ | ![](screenshots/page-2026-11-09T14-35-46-813Z.png) | clean |
-| 3.2.2 | desktop-1024 | /courses/qa-long-deadline-titles/1/ | ![](screenshots/page-long-1024.png) | clean |
-| 1.2.4 | desktop | / | ![](screenshots/page-2026-11-09T14-38-18-840Z.png) | clean |
-| 4.2.1 | desktop | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-2026-11-09T14-38-42-630Z.png) | clean |
-| 1.4.3 | mobile | / | ![](screenshots/page-2026-11-09T14-42-42-457Z.png) | clean |
-| 2.4.2 | mobile | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-m-sheet.png) | FLAGGED (B2): overlap: header and sidebar ink intersect; overlap: content and sidebar ink intersect |
-| 1.4.4 | tablet | / | ![](screenshots/page-t-dash.png) | clean |
-| 4.2.4 | mobile | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-m-closed.png) | clean |
-| 4.2.4 | tablet | /courses/functionality-demo-course-parts/1/ | ![](screenshots/page-t-closed.png) | clean |
+| 1.1 | desktop | `/` | ![](screenshots/page-2026-11-10T11-56-18-831Z.png) | clean |
+| 2.1.1 | desktop | `/courses/functionality-demo-course-parts/1/` | ![](screenshots/page-2026-11-10T11-56-38-616Z.png) | clean |
+| 4.3.1 | desktop | `/courses/functionality-demo-course-parts/5/` | ![](screenshots/page-2026-11-10T11-58-45-442Z.png) | clean |
+| 4.2.3 | desktop | `/courses/functionality-demo-course-parts/5/` | ![](screenshots/page-2026-11-10T12-06-24-195Z.png) | clean |
+| 1.4.3 | mobile | `/` | ![](screenshots/page-2026-11-10T12-07-51-472Z.png) | clean |
+| 4.2.4 | mobile | `/courses/functionality-demo-course-parts/1/` | ![](screenshots/page-2026-11-10T12-08-05-380Z.png) | clean |
+| 1.4.4 | tablet | `/` | ![](screenshots/page-2026-11-10T12-08-46-990Z.png) | clean |
 
 ## Data changes
 
-| # | Via | Change |
-|---|---|---|
-| 1 | sdd:qa-data-helper | Section 0.3 seed: content_save demo_content, qa_create_deadlines_seed, qa_create_deadlines_seed_extras (today override on fresh learner What to Expect, QA Long Deadline Titles course, no deadline config rows). |
-| 2 | sdd:qa-data-helper | Reset fresh learner parts-course progress (deleted 4 TopicProgress and the open Knowledge Check attempt made while browsing); registered fresh learner on functionality-demo-show-end-with-topic; completed all 7 parts items for the restored learner (no course finish); completed Welcome, What to Expect, Key Ideas, Going Deeper, Summary and submitted Knowledge Check for the late learner. |
-| 3 | sdd:qa-data-helper | Added a course-wide fixed deadline override (today+30d, pk a96ab69f) on the late learner's parts record so the missed 30 Oct course time limit does not mask Course Feedback. |
-| 4 | sdd:qa-data-helper | Restored the section 0.3 baseline (re-ran qa_create_deadlines_seed and extras, removing the late learner's override and every completion) and re-registered the fresh learner on the plain course. |
-| 5 | sdd:qa-data-helper | Added CourseDeadlineConfig mark_overdue=off on the parts course (pk 5b8a81bd). |
-| 6 | sdd:qa-data-helper | Deleted the mark_overdue=off CourseDeadlineConfig (5b8a81bd); completed every item of the plain course for the fresh learner and stamped the course completed. |
-| 7 | sdd:qa-data-helper | Section 5.6 cleanup: deleted the fresh learner's today override (f24b886a) and the QA Long Deadline Titles course with its topics, placements, registration and record; no deadline config rows remained. |
+| What changed | Via |
+|---|---|
+| Ran `qa_create_deadlines_seed` and `qa_create_deadlines_seed_extras`. Fresh, late, restored and cohort learners were rebuilt. Added a today-item override 825593ee on What to Expect (2026-11-10 23:59) and the QA Long Deadline Titles course 15509035 under QA Deadlines Org. No config rows. | sdd:qa-data-helper |
+| The fresh learner completed Welcome, What to Expect, Key Ideas and Going Deeper through the player and started a Knowledge Check attempt (tests 2.3, 4.1, 4.3). | browser (learner action) |
+| Undid the fresh learner's parts-course progress (4 TopicProgress, 1 open form attempt) and registered fresh on `functionality-demo-show-end-with-topic`. | sdd:qa-data-helper |
+| Added CourseDeadlineConfig 9c589e70 (mark_overdue off) on the parts course. Completed every item for the restored learner without stamping the course complete. | sdd:qa-data-helper |
+| Deleted CourseDeadlineConfig 9c589e70. Undid the restored learner's completions (back to 0%). Completed the late learner's Welcome, What to Expect, Key Ideas, Going Deeper and Summary, and submitted its open Knowledge Check. Completed and stamped the fresh learner's plain course. | sdd:qa-data-helper |
+| Added LearnerDeadlineOverride e6466d67 moving the late learner's parts-course time limit to 2026-12-10. The plan's 1.3.1/2.2.2 scenario assumed the 90-day time limit was not already past. The registration is 100 days old, so the time-limit end (31 Oct) was the earliest missed deadline and correctly beat Course Feedback. | sdd:qa-data-helper |
+| Cleanup (§5.6): re-ran `qa_create_deadlines_seed` without extras to restore seed state. This removed the today-item override, the late learner time-limit override, all QA completions and the fresh learner's plain and long-title registrations. Deleted the QA Long Deadline Titles course, placements and topics. Confirmed no deadline config rows remain. | sdd:qa-data-helper |
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Outline row title squeezed to a few characters by the "date + Closes" treatment in the docked panel | **UNRESOLVED** (reason: how a minimal row fits "Closes …" is a design decision already awaiting the user in todo.md; not auto-fixed) |
-| B2 | Layout probe flags the open modal outline sheet as overlapping the header and content | **UNRESOLVED** (reason: whether the probe should ignore an open modal is a decision already awaiting the user in todo.md; not auto-fixed) |
+No bugs were found this run. Every test passed.
 
 ## General notes
 
-- Pre-step rebase skipped at the user's request: the worktree held another process's in-flight staged date-display refactor (`freedom_ls/base/date_display.py`, cotton date/datetime components, about 25 templates; `time_zones.py` still being edited). QA ran against the branch as it stands, including those uncommitted changes.
-- Date format: the QA plan's examples ("Jan 31, 2024, 11:59 PM") are outdated. The brand voice rule file sets "3 Nov 2026" / "3 Nov 2026, 07:37" (day-first, 24-hour) and localTime renders that. Every date was judged against the rule file (Rule 5).
-- Plan wording superseded by the spec: late learner What to Expect and Key Ideas are sequentially locked, so their rows show the "Locked" status with the missed tier and no "Closed" (spec line 285), not a lock icon plus close date as 3.1.2 says.
-- Plan 1.3.1 and 2.2.2 scenario does not arise from the seed alone: the late learner's 90-day course time limit (30 Oct) is itself a missed deadline earlier than Course Feedback's, so the band shows "Missed deadline Course 30 Oct" until a course-wide override moves the time limit. The seed (or the plan) should carry that override.
-- Tangential, not from this branch: "Next up" on the parts course card names the part "Getting Started" rather than the first item "Welcome"; outline part rows show a right chevron when expanded and a down chevron when collapsed (`course_minimal_toc.html` uses icon `collapse` when expanded; unchanged by this branch); the outline progress bar track disappears under forced colours; the debug branch badge overlays page content in screenshots (dev tooling only).
-- Compression: status ok, no PNG over 1024KB; nothing compressed.
+- **Pre-step rebase.** 46 commits were replayed onto origin/main (33 of them new). One import conflict in `learner_interface/tests/views/test_course_player.py` was resolved by keeping both imports. The lost-change check exited 2. I verified all four REVIEW paths as the branch's own changes with main's additions intact. The upstream-change review found the direction unchanged. The working tree held another process's staged, uncommitted date-display work (the c-date and c-datetime components and the voice.md date rule). I committed it as "wip before rebase onto main". The targeted test run then had 3 failures from that work: c-datetime rendered newlines into its text, and the finish-page test still expected the old "November 10, 2026" format. I fixed both in c7a09f8ce (component whitespace, and the test now uses display_date). The affected modules then passed (820 tests). The branch was pushed with `--force-with-lease`.
+- **Date format.** voice.md is the newest rule file. It sets one format: "31 Jan 2024" and "31 Jan 2024, 23:59" (24-hour). The plan's examples ("Jan 31, 2024, 11:59 PM") predate that rule, so I judged dates against voice.md. The plan text should be updated through capture-feedback when convenient.
+- **Plan text out of date versus the spec** (judged by the spec):
+  - 3.1 step 2 expects What to Expect and Key Ideas to show a lock and close date for the late learner. They are sequentially locked, and the spec says such rows show "Locked" and no "Closed". They show "Missed deadline".
+  - 1.3.1 and 2.2.2 assume the late learner's time limit is not past. With a 100-day-old registration and a 90-day limit, the time-limit end (31 Oct) is the earliest missed deadline and correctly wins. I added a time-limit override to reach the Closes scenario.
+  - 1.1 expects "Next up: Welcome". The card reads "Next up: Getting Started", which is the part.
+- **Out-of-scope observations.** None of these are deadline surfaces, and they are likely pre-existing:
+  - Outline part chevrons point down when collapsed and right when expanded, on both the player outline and the course detail outline.
+  - The course detail page offers "Start course" and "One click. No credit card." to an already-registered learner.
+  - In forced-colours mode the outline progress bar and the current-row highlight disappear.
+  - The closed topic page (Welcome, first item) shows no footer Next/Previous, only a divider.
+  - The collapsed DjDT tab overlaps the dashboard pagination arrow at 375 and 880 (dev tooling only).
 
-status: ok · reason: 2 bugs — 0 fixed, 2 unresolved (both already open decisions in todo.md); report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented, screenshots verified
