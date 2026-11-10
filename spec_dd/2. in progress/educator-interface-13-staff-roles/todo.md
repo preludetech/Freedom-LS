@@ -22,6 +22,10 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Decide what to do about QA bug: a names-only staff viewer sees people's roles in the Add role dialog's 'Now' list (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: Deactivate role and Change cohorts are offered on role items held only on cohorts the viewer cannot give (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: a cohort admin cannot open the cohort's History tab, so cannot see the role changes they made (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: a names-only staff viewer is still offered a Role filter on Staff (an empty Role chip and Clear all; hiding the chip leaves Role under Add filter) (TDD: failing test first, then fix)
+- [ ] (user) Decide how the Staff table fits at 768 and with the quick view open (cards at 768 as the QA plan says, or a narrower table), then fix it so every button stays in view
+- [ ] (user) Decide whether a cohort viewer's forged Change role POST on a cohort Settings tab should answer 403 (QA plan) or 404 (current, tab hidden), then align the spec, QA plan and tests
+- [ ] (user) Decide what to do about QA bug: on a phone the cohort tab strip opens scrolled away from the active Settings tab (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
