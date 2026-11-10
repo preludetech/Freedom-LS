@@ -120,17 +120,19 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 
 ### Selection bar
 
-The selection bar shows only while rows are selected or a bulk run is going. From `lg` up it takes
-the toolbar's row above the table; below `lg` it is fixed to the bottom of the viewport, keeps every
-control inside it at 375px, and the list reserves its height beneath itself.
+The selection bar shows only while rows are selected or a bulk run is going. From `lg` up it
+replaces the whole toolbar above the table, at the toolbar's height, so search, filters and export
+are out of reach until the selection clears. Below `lg` the toolbar stays and the bar is fixed to
+the bottom of the viewport, keeps every control inside it at 375px, and the page reserves its
+height after the footer.
 
 - Actions are ghost, text-only, `size="small"` buttons. `promote_bulk_actions` gives the first
   `PROMOTED_BULK_ACTION_COUNT` (4) permitted non-destructive actions a button each.
 - Every other action sits under a "More" menu. A destructive action (`BulkAction.destructive`, a
   `variant` of `"error"`) never takes a button: it is last in the menu, in error text, under a rule
   when a non-destructive entry sits above it.
-- The count reads "N selected". "Select all N" selects every row the filters match, and reads
-  "Deselect all" once it has. "Clear" empties the selection and sits alone at the right edge.
+- The count reads "N selected". "Select all N" (a `variant="link"` button) selects every row the
+  filters match, and reads "Deselect all" once it has. "Clear" empties the selection and sits alone at the right edge.
 - Changing page, sort or filters clears the selection.
 
 ### Adding and editing records
