@@ -2,8 +2,15 @@
 The modal fragment a bulk action's htmx POST returns, loaded into the shared
 #app-modal. Context: title, action, action_url, selection, count, noun, error, notice,
 wording, expected_count, confirm_disabled, form (the action's own form, if any).
+With JavaScript off the server renders it into #app-modal, open over the page,
+and passes page_url: Cancel and the close control are then links back to it.
 {% endcomment %}
+{% querystring request.GET as qs %}
+{% if page_url %}
+<c-modal-header close_href="{{ page_url }}{{ qs }}">{{ title }}</c-modal-header>
+{% else %}
 <c-modal-header>{{ title }}</c-modal-header>
+{% endif %}
 
 <div class="px-6 py-4">
 {% if form %}{% include "panel_framework/partials/bulk_picker.html" %}{% endif %}
@@ -11,6 +18,12 @@ wording, expected_count, confirm_disabled, form (the action's own form, if any).
 </div>
 
 <c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+    <c-slot name="cancel">
+        {% if page_url %}
+            <c-button variant="secondary" href="{{ page_url }}{{ qs }}">Cancel</c-button>
+        {% else %}
+            <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+        {% endif %}
+    </c-slot>
     {% include "panel_framework/partials/bulk_confirmation_form.html" %}
 </c-modal-footer>

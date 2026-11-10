@@ -891,7 +891,9 @@ def test_confirm_form_carries_table_state(mock_site_context: Site, htmx: bool) -
         assert cancel.get("href") == expected_cancel
 
 
-def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> None:
+def test_plain_post_renders_the_confirmation_in_the_open_modal_over_the_page(
+    mock_site_context: Site,
+) -> None:
     stub = make_stub(name="row-x")
 
     response = fetch(
@@ -900,10 +902,21 @@ def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> N
         data={"mode": "keys", "keys": [str(stub.pk)]},
     )
 
-    content = response.content.decode()
     assert response.status_code == 200
-    assert "This will affect 1 stub models." in content
-    assert "<html" in content.lower()
+    document = lxml.html.fromstring(response.content.decode())
+    (modal,) = document.cssselect("dialog#app-modal")
+    assert modal.get("open") is not None
+    (body,) = modal.cssselect("#app-modal-body")
+    assert "This will affect 1 stub models." in body.text_content()
+    assert body.cssselect("header #app-modal-title")
+    (close,) = body.cssselect("header a[aria-label='Close']")
+    assert (
+        close.get("href").rstrip("?") == f"/test-panel/framework/{_panel_path(stub.pk)}"
+    )
+    # The page the action came from renders behind the modal.
+    main = document.cssselect("#main-content")[0]
+    assert main.cssselect("[data-table-region]")
+    assert "This will affect" not in main.text_content()
 
 
 def test_plain_post_error_is_full_page_422(mock_site_context: Site) -> None:

@@ -1517,15 +1517,17 @@ def panel_framework_view(
         if result is not None:
             if not isinstance(result, _BulkConfirmation):
                 return _vary_on_htmx(result)
-            # A JavaScript-off bulk-action POST: render its message and
-            # confirm form as this page's main content, with the page's own
-            # chrome (menu, breadcrumbs) built the same way as any other
-            # request below, rather than as a bare fragment.
-            heading = result.action.label
-            main_template_name = "panel_framework/views/bulk_confirmation.html"
+            # A JavaScript-off bulk-action POST: the page the action came
+            # from, with the confirmation rendered into #app-modal, open over
+            # it, so it reads as the same modal JavaScript would open.
+            main_template_name, main, heading = _main_for(request, resolved)
             main = {
-                **result.context(),
-                "page_url": resolved.panel.ctx.page_url,
+                **main,
+                "server_modal_html": render_to_string(
+                    result.action.confirm_template_name,
+                    {**result.context(), "page_url": resolved.panel.ctx.page_url},
+                    request=request,
+                ),
             }
             bulk_status = result.status
         else:

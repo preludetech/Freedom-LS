@@ -28,6 +28,15 @@ editing" brings the form back with everything typed into it.
         overflow-y: auto;
         overflow-x: hidden;
     }
+    /* Opened by the server (a bulk confirmation with JavaScript off), the
+     * dialog is not modal, so it gets no ::backdrop and no fixed position
+     * from the UA: both are drawn here, the scrim as a spread shadow. */
+    #app-modal[data-server-open] {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        box-shadow: 0 0 0 100vmax color-mix(in srgb, black 50%, transparent);
+    }
     html:has(#app-modal:modal) {
         /* No `scrollbar-gutter: stable` here (unlike #quick-view, which
          * isn't centred): reserving gutter space on one side only would
@@ -70,6 +79,7 @@ editing" brings the form back with everything typed into it.
 }
 </style>
 <dialog id="app-modal"
+        {% if main.server_modal_html %}open data-server-open{% endif %}
         x-data="appModal"
         aria-labelledby="app-modal-title"
         class="modal-backdrop-host panel-surface rounded-t-2xl border border-border text-on-surface shadow-xl max-sm:border-b-0 sm:rounded-lg">
@@ -91,5 +101,5 @@ editing" brings the form back with everything typed into it.
     rebuilding it, which some screen readers never announce.
     {% endcomment %}
     <div id="app-modal-status" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-    <div id="app-modal-body"></div>
+    <div id="app-modal-body">{% if main.server_modal_html %}{{ main.server_modal_html }}{% endif %}</div>
 </dialog>

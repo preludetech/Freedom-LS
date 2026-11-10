@@ -775,11 +775,14 @@ def test_bulk_action_posts_with_javascript_off(
         ).to_have_count(0)
         expect(no_js_page.get_by_text(" selected")).to_have_count(0)
         no_js_page.get_by_role("button", name="Mark processed").click()
-        expect(
-            no_js_page.get_by_text("This will affect 2 stub models.")
-        ).to_be_visible()
+        # The confirmation is the same modal JavaScript opens, over the list.
+        modal = no_js_page.locator("#app-modal")
+        expect(modal).to_be_visible()
+        expect(modal.get_by_text("This will affect 2 stub models.")).to_be_visible()
+        expect(modal.get_by_role("link", name="Cancel")).to_be_visible()
+        expect(no_js_page.locator("#stubs-table")).to_be_attached()
 
-        no_js_page.get_by_role("button", name="Mark processed").click()
+        modal.get_by_role("button", name="Mark processed").click()
         expect(no_js_page).to_have_url(f"{live_server.url}{_FRAMEWORK_PATH}/stubs")
         expect(no_js_page.get_by_text("2 stub models changed.")).to_be_visible()
 
@@ -842,6 +845,14 @@ def test_more_actions_trigger_is_hidden_with_javascript_off(
 
         expect(no_js_page.get_by_role("button", name="Mark processed")).to_be_visible()
         expect(no_js_page.get_by_role("button", name="More actions")).to_be_hidden()
+
+        # In its place a <details> menu opens without script, never loose buttons.
+        more = no_js_page.locator("[data-total-count] details")
+        menu = more.get_by_role("menu", name="More actions")
+        expect(menu).to_be_hidden()
+        more.locator("summary").click()
+        expect(menu).to_be_visible()
+        expect(menu.get_by_role("menuitem").first).to_be_visible()
 
 
 def test_a_row_detail_opens_and_closes_by_mouse_and_keyboard(
