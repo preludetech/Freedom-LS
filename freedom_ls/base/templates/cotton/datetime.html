@@ -1,5 +1,4 @@
-<c-vars value="" />
-{% comment %}
+<c-vars value="" />{% comment %}
 A date-time as FLS writes one: "3 Nov 2026, 07:37", in the current time zone. The date and the
 time are separate spans so a narrow cell wraps between them rather than inside either, except
 from md up, where the table scrolls instead. Renders "-" without a value. The format lives in
@@ -7,6 +6,4 @@ freedom_ls/base/date_display.py; for a deadline shown in the viewer's own zone, 
 {% local_time %} instead.
 
 Usage: <c-datetime :value="object.created_at" />
-{% endcomment %}
-{% load fls_base_filters %}{% if value %}<time datetime="{{ value|date:'c' }}" class="inline-flex flex-wrap gap-x-1.5 md:flex-nowrap"><span class="whitespace-nowrap">{{ value|display_date }},</span>
-<span class="whitespace-nowrap">{{ value|display_time }}</span></time>{% else %}-{% endif %}
+{% endcomment %}{% load fls_base_filters %}{% if value %}<time datetime="{{ value|date:'c' }}" class="inline-flex flex-wrap gap-x-1.5 md:flex-nowrap"><span class="whitespace-nowrap">{{ value|display_date }},</span> <span class="whitespace-nowrap">{{ value|display_time }}</span></time>{% else %}-{% endif %}

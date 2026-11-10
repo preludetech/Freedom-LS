@@ -22,6 +22,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.base.date_display import display_date
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -3747,8 +3748,10 @@ def test_course_finish_dates_the_start_from_content_access_not_registration(
     ).content.decode()
 
     summary = re.sub(r"\s+", " ", body)
-    assert f"Started:</span> <span>{began_at.strftime('%B %-d, %Y')}</span>" in summary
-    assert registered_at.strftime("%B %-d, %Y") not in summary
+    started = re.search(r"Started:</span> <span>(.*?)</span>", summary)
+    assert started is not None
+    assert display_date(began_at) in started.group(1)
+    assert display_date(registered_at) not in summary
 
 
 @pytest.mark.django_db
