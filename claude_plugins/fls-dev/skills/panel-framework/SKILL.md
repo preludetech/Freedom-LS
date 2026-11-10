@@ -50,8 +50,12 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
   row, a card. The one full-size pair is `<c-modal-footer>`'s Cancel and confirm, because that is
   the decision the dialog asks for.
 - Buttons in a table cell or a card sit inside `<c-data-table-actions>`, which owns the gap; the
-  buttons carry no margins. Per-item buttons come first and the row's own action last, at the bottom of
-  the cell.
+  buttons carry no margins.
+- A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
+  in its own column, on the same line as its item; the buttons that act on the whole row take the
+  last column. One cell never stacks both kinds.
+- A row's own record is opened in the quick view; detail a row does not need to be scanned (who
+  made an entry, and when) lives there, not in the row.
 - Two buttons in one row each name their object, so no two share a bare verb.
 
 ### Controls are components
@@ -71,6 +75,17 @@ or `text-muted` for a secondary one). An anchor whose class list names neither `
 from the default (Inactive, Pending); stats stay out when the tabs already count them; no action
 sits in the header, each lives with the thing it changes. A list page opens with its heading and
 its toolbar, so the list starts at the top; help lives in a dialog the page opens, or in the docs.
+
+### Panels
+
+- Each panel does one job. A tab that does several jobs is a `PanelStack` of panels, one per job
+  (a cohort's Settings tab: Name, Staff, Status), never one card with sub-headings.
+- A panel's title is the only heading for its job; nothing inside the panel repeats or nests a
+  heading for a different job.
+- `<c-panel-card>` looks the same flush or not: the header draws no rule. Flush only drops the
+  body padding. A panel never adds its own rule, border or uppercase sub-heading inside the card.
+- Inside a panel, space separates items. A list of people or records is rows in a grid with a gap,
+  one column per kind of content (person, role, buttons), so the columns line up.
 
 ### Tables
 
@@ -112,6 +127,11 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 
 ### Dialogs, sheets and the quick view
 
+- Every dialog is three sibling components and nothing else at the top level:
+  `<c-modal-header>`, `<c-modal-body>`, `<c-modal-footer>`. The body owns the padding and the gap
+  between its blocks; the footer is never inside the body or another padded element. A read-only
+  dialog (`panel_framework/modal/read_only.html`) ends in a Close footer like every other. The
+  discard prompt in the modal host uses the same three components.
 - A dialog ends in `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the
   default slot at the right, the primary last; three or more group at the right.
   `<c-button-group>` is for buttons outside a dialog.
@@ -123,6 +143,11 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A confirm dialog states what is true now and what the action changes, naming the records it
   touches. A disabled action shows its reason beside the control, and
   the control names it with `aria-describedby`.
+- A list of options in a dialog (radio choices, search results) is separated by space. An option
+  draws no border of its own and options have no dividers between them; the group's own container
+  is the one box.
+- A field's hint sits directly under the field as its help text, and a search's empty message
+  takes the results' place below it. An empty result list renders nothing.
 - The modal host and the side panel clip horizontal overflow and the title wraps, so a dialog
   stays inside the viewport at every width, 375px included, title and every button included.
 - Every sheet and dialog shares one chrome: on a phone it rises from the bottom with rounded top
@@ -241,3 +266,12 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   items sit close together, with less gap than between two rows.
 - A control sits beside the thing it changes; a Settings panel holds only actions that have no
   home beside the thing they change.
+- Each panel does one job: no panel holds a second heading for a different job, and no panel
+  header has a rule under it.
+- Every dialog has a header, a body and a footer, with the header and footer rules running the
+  full width of the dialog and the footer buttons lined up with the body text and the close
+  control.
+- Options in a dialog (radio choices, search results) are separated by space, with no box around
+  each option and no line between them; an empty result list draws nothing.
+- A table row's per-item buttons sit on their item's line in their own column, and the
+  whole-row buttons sit in the last column.

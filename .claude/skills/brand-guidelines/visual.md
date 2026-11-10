@@ -60,9 +60,10 @@ Sizes and weights for headings, prose, tables and form inputs live in the `@laye
 
 1. **Content first, chrome second**: foreground the learning content (rendered Markdown). Every pixel of navigation, toolbar and chrome earns its place.
 2. **Obvious over clever**: navigation, progress and actions read at a glance. If it's clickable, it looks clickable. Clarity beats minimalism.
-3. **Whitespace is the structure**: build hierarchy from generous, consistent spacing on Tailwind's scale. Surfaces stay flat; a shadow or border appears only where a component already carries one.
-4. **Progressive disclosure**: essentials by default, detail on demand.
-5. **Respect the content author**: content is authored in Markdown, and default rendering must look excellent with zero custom CSS. Honour the author's structure.
+3. **Whitespace is the structure**: build hierarchy from generous, consistent spacing on Tailwind's scale. Space separates things. Surfaces stay flat; a shadow, border or rule appears only where it does a job (the edge of a card or dialog, a sticky dialog header or footer, a table's header row) and where a component already carries it. Siblings that space can separate get space: no box around each item in a group, no rule between list items, no box inside a box.
+4. **Things line up**: content shares edges. Blocks start and stop on their container's padding, a button lines up with the text above it, and items of one kind sit in one column so they read down the page.
+5. **Progressive disclosure**: essentials by default, detail on demand.
+6. **Respect the content author**: content is authored in Markdown, and default rendering must look excellent with zero custom CSS. Honour the author's structure.
 
 Icons are single-colour outline icons, placed through `<c-icon>`: see `Skill(fls-dev:icon-usage)`.
 
@@ -127,6 +128,8 @@ What QA checks in a screenshot of any FLS page.
 - A page a person cannot use shows a large centred icon with text under it, not a callout.
 - Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
 - Every expand chevron (menu button, disclosure, filter chip, accordion) points down while closed and up while open.
+- Items are separated by space: no box around each option, no rule between list items, no box inside a box; a rule appears only at a card or dialog edge, a sticky dialog header or footer, or a table header.
+- Content lines up: blocks start and stop on their container's padding, buttons line up with the text above them, items of one kind share a column.
 
 ## Example page
 

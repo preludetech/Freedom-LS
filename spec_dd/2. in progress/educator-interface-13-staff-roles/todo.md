@@ -18,7 +18,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
-- [ ] (user) Decide what to do about QA bug: when the 'You can't change your own roles' note shows — the QA plan and spec R8 disagree (TDD: failing test first, then fix)
+- [x] (user) Decide what to do about QA bug: when the 'You can't change your own roles' note shows — resolved: anyone may change their own role of a type they may assign, so the note is gone
 - [ ] (user) Decide what to do about QA bug: a names-only staff viewer sees people's roles in the Add role dialog's 'Now' list (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: Deactivate role and Change cohorts are offered on role items held only on cohorts the viewer cannot give (TDD: failing test first, then fix)
 - [ ] (user) Decide what to do about QA bug: a cohort admin cannot open the cohort's History tab, so cannot see the role changes they made (TDD: failing test first, then fix)
@@ -27,7 +27,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
 - [ ] (cmd) Run `/sdd:document`: add glossary rows to `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md` for `StaffMember`, `organisation_staff_viewer`, `organisation_staff_roles_viewer`, `staff_member.added`, visible staff, pickable staff, `target` of a role and may edit own roles, and the "Remove from cohort" exception in the "removed" row (spec: Documentation and downstream, Terminology)
-- [ ] (cmd) Run `/sdd:document`: in `.claude/skills/brand-guidelines/visual.md` "Placement", note that the cohort Settings row names Change role and Remove from cohort per person, and the Staff row names Add role (spec: Documentation and downstream)
+- [ ] (cmd) Run `/sdd:document`: in `.claude/skills/brand-guidelines/visual.md` "Placement", note that the cohort Settings tab is the Name, Staff and Status panels, the learner Settings tab the Name and Account panels, and the Staff row puts Add role in the Staff member actions column (spec: Documentation and downstream)
 - [ ] (cmd) Run `/sdd:document`: add `staff_member.added` to the action table in `freedom_ls/audit_log/README.md` (spec: Documentation and downstream)
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in

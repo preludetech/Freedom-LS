@@ -71,7 +71,12 @@ Name the specific problem, suggest a specific fix, in plain language. Explain an
 - A list page opens with its heading and its toolbar, so the list starts at the top. Help for the
   page lives in a dialog the page opens, or in the docs.
 - A confirm dialog states what is true now and what the action changes. The person confirming
-  reads the before and the after.
+  reads the before and the after. A role confirm states the role's description and scope and
+  nothing else: no paragraph of help.
+- A button in the middle of a multi-step dialog says "Next". The final button of a confirm step
+  says "Confirm", or names the change when the noun is always true. A button names what the
+  person does, never the system's step ("Look up"), and never a noun that may be untrue for this
+  person ("Add staff member" for someone already on the staff).
 - A disabled action shows its reason beside the control, and the control names it with
   `aria-describedby`.
 - Two buttons in one row never share a bare verb. Each names its noun.
@@ -91,8 +96,11 @@ This is how it sounds in FLS.
 ✅ A Staff page that opens with its heading, search and filters
 ❌ A Staff page that opens with a paragraph explaining what staff are
 
-✅ "Deactivate role" and, at the bottom of the cell, "Deactivate staff member"
+✅ "Deactivate role" beside its role, and "Deactivate staff member" in the row's last column
 ❌ "Deactivate role" and "Deactivate" in the same row
+
+✅ An email field with "Next", then a role step, then a confirm with "Confirm"
+❌ An email field with "Look up", then a confirm with "Add staff member" for someone already on the staff
 
 ✅ "Course Pub" over "via Cohort A", with "40%" at the end, in the quick view and the Registrations list alike
 ❌ "Course Pub — through Cohort A — 40%"
@@ -102,7 +110,8 @@ This is how it sounds in FLS.
 ```
 
 The glossary's "staff member" is the noun on every button and dialog about an `StaffMember`:
-"Deactivate staff member", "Reactivate staff member", "Add staff member".
+"Deactivate staff member", "Reactivate staff member", and "Add staff member" on the button that
+opens the add dialog.
 
 ## Naming
 

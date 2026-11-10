@@ -20,9 +20,17 @@ instance pages that puts each action here:
 | A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
 | A learner's Courses tab | Register for a course |
 | A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration: the list is the only place an inactive registration is shown, so Reactivate has no other home |
-| A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
+| A cohort's Settings tab | Three panels: Name (the name field with Save), Staff (Add staff member; Change role and Remove from cohort on each person's row), Status (Deactivate / Reactivate, Delete) |
 | A cohort's Learners tab | Add learners, Remove, Move |
-| A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
+| A learner's Settings tab | Two panels: Name (first and last name fields with Save), Account (Resend setup email, Deactivate / Reactivate): the actions with no home of their own |
+
+## Staff roles
+
+- On the Staff table, Deactivate role and Change cohorts sit on their role's line in their own
+  column; Add role and Deactivate staff member take the last column. "Deactivate role" and
+  "Deactivate staff member" each name their object.
+- Who added a role, and when, is in the staff member's quick view, not the row.
+- A role confirm dialog states the role's description and its scope, and nothing more.
 
 ## Audit log and History tables
 

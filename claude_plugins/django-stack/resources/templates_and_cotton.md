@@ -99,6 +99,15 @@ where there is no component.
 3. Use `{{ slot }}` for content
 4. Include usage examples in comments
 5. Don't reimplement existing components
+6. **Two templates building the same structure get one component.** When a second template needs
+   a structure another already builds (a dialog's header, body and footer; a card's header), extract
+   a component and move every copy onto it, so the structure looks the same everywhere.
+7. **A component's parts are siblings.** A layout made of parts (header, body, footer) gives each
+   part its own component and places them side by side. A part is never put inside another part's
+   slot or inside a padded wrapper, because the wrapper's padding and width then leak into it.
+8. **Fix the component, not the call site.** When a component looks wrong in one place, change the
+   component (or add a documented variable) rather than overriding its classes where it is used. A
+   call site carries no classes that restyle a component's own spacing, borders or alignment.
 
 ## Template Partials
 
