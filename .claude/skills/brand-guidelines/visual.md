@@ -101,7 +101,9 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **An expand chevron shows whether its control is open.** A menu button, a `<details>` disclosure, a filter chip and an accordion end in `<c-icon name="dropdown">`, which points down while closed and turns up (`rotate-180`) while open: `group-open:rotate-180` under a `<details class="group">`, `group-aria-expanded:rotate-180` under a trigger with `aria-expanded`, and `group-aria-expanded/menu:rotate-180` in a `<c-dropdown-menu>` trigger, which is a `group/menu`.
 
-**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both.
+**The navigation is a left column from 1024px up.** The interface shells (`_base_interface.html`) dock the navigation `<dialog>` beside the content as the grid's first column at `lg` and wider; below `lg` it is a sheet opened from the page heading's toggle. A page where the navigation is drawn above the content, spans the page width or is missing at a desktop width is a broken shell. It is never the page's look, whatever a sibling page or an earlier screenshot shows.
+
+**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
 
 ## Placement
 
@@ -113,6 +115,7 @@ Settings tab is the last resort, for actions with no home of their own.
 
 What QA checks in a screenshot of any FLS page.
 
+- At 1024px and wider the navigation is a left column beside the content, never a band above it, never the page's width, never missing.
 - A person is linked with the avatar-and-name person link, never a bare name.
 - A link that acts as a control carries no prose underline; a link inside prose does.
 - A control that changes a thing sits beside the thing it changes; a Settings tab holds only the

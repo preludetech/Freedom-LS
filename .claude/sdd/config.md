@@ -78,6 +78,7 @@
 ## Rule Files
 
 - Brand visual system: .claude/skills/brand-guidelines/visual.md
+- Panel-framework pages (tables, actions, dialogs, the quick view): claude_plugins/fls-dev/skills/panel-framework/SKILL.md
 - Brand voice and copy: .claude/skills/brand-guidelines/voice.md
 - Panel framework pages: claude_plugins/fls-dev/skills/panel-framework/SKILL.md
 - Educator interface pages: claude_plugins/fls-dev/skills/educator-interface/SKILL.md
