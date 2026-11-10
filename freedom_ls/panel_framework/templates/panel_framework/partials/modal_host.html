@@ -30,12 +30,13 @@ editing" brings the form back with everything typed into it.
     }
     /* Opened by the server (a bulk confirmation with JavaScript off), the
      * dialog is not modal, so it gets no ::backdrop and no fixed position
-     * from the UA: both are drawn here, the scrim as a spread shadow. */
+     * from the UA: both are drawn here, the scrim as an outline, since the
+     * shadow-xl utility owns box-shadow. */
     #app-modal[data-server-open] {
         position: fixed;
         inset: 0;
         z-index: 50;
-        box-shadow: 0 0 0 100vmax color-mix(in srgb, black 50%, transparent);
+        outline: 100vmax solid color-mix(in srgb, black 50%, transparent);
     }
     html:has(#app-modal:modal) {
         /* No `scrollbar-gutter: stable` here (unlike #quick-view, which
