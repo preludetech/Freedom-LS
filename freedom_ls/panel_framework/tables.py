@@ -544,9 +544,11 @@ def _toolbar_entry(
         "values": values,
         "labels": labels,
         "chip_text": chip_text,
-        "shown": table_filter.always_shown or bool(values),
+        # A filter with no choices has nothing to offer, so it stays off the
+        # toolbar and never counts as a change for "Clear all".
+        "shown": bool(choices) and (table_filter.always_shown or bool(values)),
         # Whether "Clear all" would change this filter's selection.
-        "changed": set(values) != set(table_filter.default),
+        "changed": bool(choices) and set(values) != set(table_filter.default),
         "choices": [_choice(value, label) for value, label in choices],
         "remove_changes": query.filter_changes(table_filter.key, []),
     }

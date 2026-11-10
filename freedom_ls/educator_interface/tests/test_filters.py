@@ -468,6 +468,35 @@ def test_the_role_filter_offers_the_usual_five_to_a_roles_viewer(
 
 
 @pytest.mark.django_db
+def test_a_names_only_viewer_gets_no_role_chip_and_no_clear_all(
+    site_aware_request: RequestFactory,
+):
+    """The Role chip opened onto no options and "Clear all" showed on a fresh
+    page, though the viewer may not filter by role at all."""
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), viewer, "organisation_staff_viewer", organisation
+    )
+    request = site_aware_request.get("/")
+    request.user = viewer
+    request.organisation = organisation
+    query = StaffDataTable.parse_query(request, "staff")
+
+    context = StaffDataTable.get_context(
+        request,
+        query,
+        StaffDataTable.get_queryset(request),
+        base_url="/",
+        page_url="/",
+        region_id="staff",
+    )
+
+    assert [entry["shown"] for entry in context["toolbar"]] == [False]
+    assert context["any_filter_set"] is False
+
+
+@pytest.mark.django_db
 def test_a_role_parameter_from_a_names_only_viewer_narrows_nothing(
     site_aware_request: RequestFactory,
 ):
