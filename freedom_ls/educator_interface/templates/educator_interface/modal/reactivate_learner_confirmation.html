@@ -4,10 +4,10 @@ action_url.
 {% endcomment %}
 <c-modal-header>Reactivate {{ learner.user.display_name }}?</c-modal-header>
 
-<div class="space-y-3 px-6 py-4 text-sm">
+<c-modal-body>
     <p>{{ learner.user.display_name }}'s access returns through their existing cohorts and registrations.</p>
     <p>Their progress was kept. You can deactivate them again at any time.</p>
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>

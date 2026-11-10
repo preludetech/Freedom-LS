@@ -1,0 +1,11 @@
+<c-vars class="" />
+
+{% comment %}
+The body every dialog and bottom sheet has between <c-modal-header> and
+<c-modal-footer>. It owns the padding, the text size and the gap between its
+blocks, so a dialog's content lines up with the header's title and the
+footer's buttons. The three parts are siblings: the footer never goes inside
+this body. Put a form around the body and the footer together when the footer
+submits it.
+{% endcomment %}
+<div class="space-y-4 px-6 py-5 text-sm {{ class }}" {{ attrs }}>{{ slot }}</div>

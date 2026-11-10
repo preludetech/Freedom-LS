@@ -9,13 +9,13 @@ on_default_organisation, action_url.
       hx-swap="innerHTML"
       hx-disabled-elt="find button[type='submit']">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         <p>{{ learner.user.display_name }} loses access to this organisation's courses.</p>
         <p>Their cohorts, registrations and progress are kept and return when you reactivate them.</p>
         {% if on_default_organisation %}
             <p>If they self-register for an open course, they are reactivated.</p>
         {% endif %}
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

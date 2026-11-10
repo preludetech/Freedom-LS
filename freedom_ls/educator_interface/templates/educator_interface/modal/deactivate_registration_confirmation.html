@@ -13,7 +13,7 @@ on_default_organisation, confirm_url.
       hx-disabled-elt="find button[type='submit']">
     <input type="hidden" name="registration" value="{{ registration.pk }}">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         {% if keeping_cohorts %}
             <p>They keep access through {{ keeping_cohorts }}.</p>
         {% elif keeps_access %}
@@ -26,7 +26,7 @@ on_default_organisation, confirm_url.
         {% if on_default_organisation %}
             <p>If they self-register for this course, the registration is reactivated.</p>
         {% endif %}
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

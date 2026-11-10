@@ -4,10 +4,10 @@ action_url.
 {% endcomment %}
 <c-modal-header>Resend the setup email to {{ learner.user.display_name }}?</c-modal-header>
 
-<div class="space-y-3 px-6 py-4 text-sm">
+<c-modal-body>
     <p>{{ learner.user.display_name }} gets a new link at {{ learner.user.email }} to set a password and sign in.</p>
     <p>Any earlier setup link stops working.</p>
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>

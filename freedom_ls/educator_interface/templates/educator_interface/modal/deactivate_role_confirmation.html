@@ -14,7 +14,7 @@ target_is_site_level, confirm_url.
     <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         {% if target_is_site_level %}
             <p>Their site-level access is unaffected; this only takes them off this organisation's staff list.</p>
         {% else %}
@@ -30,7 +30,7 @@ target_is_site_level, confirm_url.
                 {{ staff_member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
             </c-callout>
         {% endif %}
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

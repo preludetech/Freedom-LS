@@ -6,10 +6,10 @@ form_url (the action's URL, for Add another).
 {% endcomment %}
 <c-modal-header focus_title="true">{% if not added %}Not added{% elif cohort %}Added to {{ cohort }}{% else %}Learner added{% endif %}</c-modal-header>
 
-<div class="space-y-1 px-6 py-4 text-sm" data-testid="add-learner-result">
+<c-modal-body data-testid="add-learner-result">
     <p class="font-medium wrap-anywhere">{{ result.email }}</p>
     <p class="text-muted">{{ result.outcome.label }}.{% if result.cohort_outcome %} {{ result.cohort_outcome.label }}.{% endif %}</p>
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose">Close</c-button></c-slot>

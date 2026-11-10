@@ -13,7 +13,7 @@ widening, removes_role and staff_member_state (missing, inactive or active).
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
-    <div class="space-y-4 px-6 py-4 text-sm">
+    <c-modal-body>
         <p>{{ entry.display_name }} on these cohorts.</p>
         <div x-data="cohortChecklist" class="space-y-2">
             <div class="flex items-center gap-3">
@@ -35,7 +35,7 @@ widening, removes_role and staff_member_state (missing, inactive or active).
             <ul class="text-muted">{% for item in read_only %}<li class="break-words">{{ item }}</li>{% endfor %}</ul>
         </div>
         {% endif %}
-    </div>
+    </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Change cohorts</c-button>
@@ -51,7 +51,7 @@ widening, removes_role and staff_member_state (missing, inactive or active).
     <input type="hidden" name="role" value="{{ entry.role }}">
     <input type="hidden" name="confirmed" value="1">
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         {% if added %}<p>Adds: {{ added }}</p>{% endif %}
         {% if removed %}<p>Deactivates on: {{ removed }}</p>{% endif %}
         {% if widening %}
@@ -65,7 +65,7 @@ widening, removes_role and staff_member_state (missing, inactive or active).
         {% elif added and staff_member_state == "missing" %}
         <p>{{ staff_member.display_name }} has no active membership here. Adding this role creates one, and any roles they already hold here take effect with it.</p>
         {% endif %}
-    </div>
+    </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Saving...">{% if removes_role %}Deactivate{% else %}Change cohorts{% endif %}</c-button>

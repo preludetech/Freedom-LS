@@ -9,7 +9,7 @@ cohort_course_count, is_empty, not_empty_sentence, action_url.
       hx-swap="innerHTML"
       hx-disabled-elt="find button[type='submit']">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         <p>Learners stay in the cohort and keep their progress.</p>
         <p>
             While the cohort is inactive, its registrations stop giving access to its
@@ -20,7 +20,7 @@ cohort_course_count, is_empty, not_empty_sentence, action_url.
         {% if not is_empty %}
             <p>{{ not_empty_sentence }}</p>
         {% endif %}
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

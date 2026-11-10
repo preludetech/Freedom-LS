@@ -4,7 +4,7 @@ cascade_summary, blocked_reason, delete_url.
 {% endcomment %}
 <c-modal-header>Delete {{ instance }}</c-modal-header>
 
-<div class="space-y-3 px-6 py-4">
+<c-modal-body>
 {% if blocked_reason %}
     <div class="rounded-md border border-error/20 bg-error/10 p-3">
         <p class="text-sm text-on-surface">{{ blocked_reason }}</p>
@@ -22,7 +22,7 @@ cascade_summary, blocked_reason, delete_url.
     </div>
     {% endif %}
 {% endif %}
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>

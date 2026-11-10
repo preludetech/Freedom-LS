@@ -12,10 +12,10 @@ and passes page_url: Cancel and the close control are then links back to it.
 <c-modal-header>{{ title }}</c-modal-header>
 {% endif %}
 
-<div class="px-6 py-4">
+<c-modal-body>
 {% if form %}{% include "panel_framework/partials/bulk_picker.html" %}{% endif %}
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel">

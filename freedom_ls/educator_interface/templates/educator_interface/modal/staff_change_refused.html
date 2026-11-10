@@ -7,8 +7,5 @@ The 422 fragment for a role change that was refused. Context: message.
 {% block title %}This change wasn't made{% endblock title %}
 
 {% block content %}
-    <p class="text-sm">{{ message }}</p>
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-    </c-modal-footer>
+    <p>{{ message }}</p>
 {% endblock content %}

@@ -11,9 +11,9 @@ staff_member, role, role_display_name, cohort, confirm_url.
     <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ role }}">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         <p>{{ staff_member.display_name }} will lose {{ role_display_name }} on {{ cohort }}. Their other roles are unchanged.</p>
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

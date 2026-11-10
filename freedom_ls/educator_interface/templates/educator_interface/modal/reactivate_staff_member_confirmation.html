@@ -4,10 +4,10 @@ roles (a prose list of the roles that take effect again), confirm_url.
 {% endcomment %}
 <c-modal-header>Reactivate {{ staff_member.display_name }}?</c-modal-header>
 
-<div class="space-y-3 px-6 py-4 text-sm">
+<c-modal-body>
     <p>These roles take effect again: {{ roles }}.</p>
     <p>You can deactivate them again at any time.</p>
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>

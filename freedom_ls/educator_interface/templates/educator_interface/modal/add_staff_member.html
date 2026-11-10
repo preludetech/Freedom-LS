@@ -17,7 +17,7 @@ site_level.
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <input type="hidden" name="step" value="lookup">
-    <div class="px-6 py-4 text-left"
+    <c-modal-body
          x-data="staffSearchCombobox"
          x-on:click.away="close"
          x-on:htmx:after-swap="afterSwap"
@@ -82,7 +82,7 @@ site_level.
             {% endif %}
         </div>
         {% endpartialdef %}
-    </div>
+    </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Looking up...">Look up</c-button>
@@ -96,7 +96,7 @@ site_level.
       hx-disabled-elt="#app-modal-body button[type='submit']">
     <input type="hidden" name="step" value="submit">
     {% if person %}<input type="hidden" name="user" value="{{ person.pk }}">{% else %}{{ form.email }}{% endif %}
-    <div class="space-y-4 px-6 py-4 text-sm">
+    <c-modal-body>
         {% if form.errors %}
         <div data-error-summary
              tabindex="-1"
@@ -171,7 +171,7 @@ site_level.
             {% endif %}
         </div>
         {% if role_note %}<p class="text-muted">{{ role_note }}</p>{% endif %}
-    </div>
+    </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">{% if person %}Add role{% else %}Add staff member{% endif %}</c-button>
@@ -193,7 +193,7 @@ site_level.
     <input type="hidden" name="last_name" value="{{ last_name }}">
     {% endif %}
     {% for cohort_id in cohort_ids %}<input type="hidden" name="cohorts" value="{{ cohort_id }}">{% endfor %}
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         {% if creates_account %}
         <p>An account will be created for {{ email }} and a setup email sent.</p>
         {% endif %}
@@ -227,7 +227,7 @@ site_level.
         <p>{{ staff_member_name }} already has access to every organisation. This role lists them among this organisation's staff.</p>
         {% endif %}
         {% endif %}
-    </div>
+    </c-modal-body>
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>
         <c-button type="submit" variant="primary" loading="true" loading_text="Adding...">{% if person %}Add role{% else %}Add staff member{% endif %}</c-button>

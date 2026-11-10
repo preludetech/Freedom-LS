@@ -11,14 +11,14 @@ confirm_url. keeping_names is empty when nobody keeps access.
       hx-disabled-elt="find button[type='submit']">
     <input type="hidden" name="registration" value="{{ registration.pk }}">
 
-    <div class="space-y-3 px-6 py-4 text-sm">
+    <c-modal-body>
         <p>{{ losing_phrase }} lose{{ losing_count|pluralize:"s," }} access to {{ course }}.</p>
         {% if keeping_names %}
             <p>These learners keep access through another registration: {{ keeping_names }}.</p>
         {% endif %}
         <p>Everyone keeps their progress.</p>
         <p>You can reactivate the registration later.</p>
-    </div>
+    </c-modal-body>
     {% include "educator_interface/partials/reason_field.html" %}
 
     <c-modal-footer>

@@ -1,27 +1,30 @@
 {% comment %}
-The header row every #app-modal fragment starts with: the fragment's title
-(the default slot, which #app-modal's aria-labelledby points at) and the close
-control. Sticky so it stays in view while the dialog, which is the scroll
-container, scrolls. focus_title makes the heading take focus itself, for
-fragments with no form field to autofocus instead. close_href makes the
-close control a link back to that page, for a dialog the server renders open
-because JavaScript is off.
+The header row every dialog starts with: the title (the default slot) and the
+close control. Sticky so it stays in view while the dialog, which is the
+scroll container, scrolls. focus_title makes the heading take focus itself,
+for fragments with no form field to autofocus instead. title_id is the id
+the dialog's aria-labelledby points at. closable="" drops the close control,
+for a prompt that must be answered with one of its footer buttons. close_href
+makes the close control a link back to that page, for a dialog the server
+renders open because JavaScript is off.
 {% endcomment %}
-<c-vars focus_title="" close_href="" />
+<c-vars focus_title="" title_id="app-modal-title" closable="true" close_href="" />
 <header class="panel-surface sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4">
-    <h2 id="app-modal-title" class="min-w-0 wrap-anywhere text-lg font-semibold"{% if focus_title %} tabindex="-1" autofocus{% endif %}>{{ slot }}</h2>
-    {% if close_href %}
-        <a href="{{ close_href }}"
-           aria-label="Close"
-           class="-my-2 -mr-3 shrink-0 rounded-md p-3 text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
-            <c-icon name="close" class="size-5" />
-        </a>
-    {% else %}
-        <button type="button"
-                x-on:click="requestClose"
-                aria-label="Close"
-                class="-my-2 -mr-3 shrink-0 cursor-pointer rounded-md p-3 text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
-            <c-icon name="close" class="size-5" />
-        </button>
+    <h2 id="{{ title_id }}" class="min-w-0 wrap-anywhere text-lg font-semibold"{% if focus_title %} tabindex="-1" autofocus{% endif %}>{{ slot }}</h2>
+    {% if closable %}
+        {% if close_href %}
+            <a href="{{ close_href }}"
+               aria-label="Close"
+               class="-my-2 -mr-3 shrink-0 rounded-md p-3 text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
+                <c-icon name="close" class="size-5" />
+            </a>
+        {% else %}
+            <button type="button"
+                    x-on:click="requestClose"
+                    aria-label="Close"
+                    class="-my-2 -mr-3 shrink-0 cursor-pointer rounded-md p-3 text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
+                <c-icon name="close" class="size-5" />
+            </button>
+        {% endif %}
     {% endif %}
 </header>

@@ -7,9 +7,9 @@ replaces the form with that sentence and a Close button.
 {% endcomment %}
 {% if empty_message %}
 <c-modal-header focus_title="true">{{ form_title }}</c-modal-header>
-<div class="max-w-prose px-6 py-4 text-sm">
+<c-modal-body>
     <p>{{ empty_message }}</p>
-</div>
+</c-modal-body>
 <c-modal-footer>
     <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
 </c-modal-footer>
@@ -20,7 +20,7 @@ replaces the form with that sentence and a Close button.
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">
-    <div class="px-6 py-4">
+    <c-modal-body>
 {% if status_message %}
     <p role="status" class="mb-4 rounded-md border border-success/20 bg-success/10 p-3 text-sm text-on-surface" data-status-message>{{ status_message }}</p>
 {% endif %}
@@ -37,7 +37,7 @@ replaces the form with that sentence and a Close button.
 {% endif %}
 
     {% include "partials/form.html" %}
-    </div>
+    </c-modal-body>
 
     <c-modal-footer>
         <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Cancel</c-button></c-slot>

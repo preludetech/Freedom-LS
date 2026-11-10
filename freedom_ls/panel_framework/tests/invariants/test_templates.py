@@ -359,6 +359,78 @@ def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     assert offenders == []
 
 
+# Dialogs that do not take the header, body and footer parts, each with its reason.
+DIALOG_PART_EXEMPTIONS: dict[str, str] = {
+    "modal_host.html": "the host holds the parts only inside its discard prompt",
+    "table_sheet.html": "the filter sheet is a bottom sheet with its own grouped body",
+    "conversation_oversight.html": "the thread pane brings its own edge-to-edge layout",
+}
+MODAL_BODY_BLOCK = re.compile(r"<c-modal-body\b.*?</c-modal-body>", re.DOTALL)
+HAND_PADDED_BODY = re.compile(r'<div class="[^"]*\bpx-6\b[^"]*"')
+
+
+def _dialog_parts_source(path: Path) -> str:
+    """The template's text, with read_only.html's parts counted for its children."""
+    text = path.read_text()
+    if '{% extends "panel_framework/modal/read_only.html" %}' in text:
+        text += (
+            TEMPLATES_DIR / "panel_framework" / "modal" / "read_only.html"
+        ).read_text()
+    return text
+
+
+def test_every_dialog_is_a_header_a_body_and_a_footer() -> None:
+    """Every dialog is built from the same three sibling parts, so the header
+    and footer rules run the full width and the content lines up with the
+    title and the buttons."""
+    templates = [
+        *DIALOG_TEMPLATES,
+        *sorted(
+            path
+            for path in EDUCATOR_MODAL_DIR.glob("*.html")
+            if path not in DIALOG_TEMPLATES
+        ),
+        TEMPLATES_DIR / "panel_framework" / "partials" / "bulk_run_stopped.html",
+    ]
+    offenders = []
+    for path in templates:
+        if path.name in DIALOG_PART_EXEMPTIONS:
+            continue
+        text = _dialog_parts_source(path)
+        if "<c-modal-header" not in text and "{% include" in text:
+            continue
+        for part in ("<c-modal-header", "<c-modal-body", "<c-modal-footer"):
+            if part not in text:
+                offenders.append(f"{path.name}: no {part}>")
+    assert offenders == []
+
+
+def test_no_dialog_footer_sits_inside_the_body() -> None:
+    """The footer is the body's sibling: inside the body it picks up the
+    body's padding, so its rule stops short and its buttons sit out of line."""
+    offenders = [
+        path.name
+        for path in (*DIALOG_TEMPLATES, *EDUCATOR_MODAL_DIR.glob("*.html"))
+        if any(
+            "<c-modal-footer" in block
+            for block in MODAL_BODY_BLOCK.findall(_dialog_parts_source(path))
+        )
+    ]
+    assert offenders == []
+
+
+def test_no_dialog_pads_its_own_body() -> None:
+    """<c-modal-body> owns a dialog body's padding and spacing; a hand-padded
+    div is a second, slightly different body."""
+    offenders = [
+        path.name
+        for path in (*DIALOG_TEMPLATES, *EDUCATOR_MODAL_DIR.glob("*.html"))
+        if path.name not in DIALOG_PART_EXEMPTIONS
+        and HAND_PADDED_BODY.search(path.read_text())
+    ]
+    assert offenders == []
+
+
 CONTROL_TAG = re.compile(r"<(a|button)\b([^>]*)>", re.DOTALL)
 CLASS_ATTR = re.compile(r'class="([^"]*)"', re.DOTALL)
 # Templates whose anchors are allowed the prose style, each with its reason.

@@ -125,10 +125,8 @@ editing" brings the form back with everything typed into it.
         aria-labelledby="app-modal-title"
         class="modal-backdrop-host panel-surface rounded-t-2xl border border-border text-on-surface shadow-xl max-sm:border-b-0 sm:rounded-lg">
     <div data-modal-discard-prompt hidden>
-        <header class="border-b border-border px-6 py-4">
-            <h2 id="app-modal-discard-title" class="text-lg font-semibold">Discard changes?</h2>
-        </header>
-        <p class="px-6 py-5">The changes you made haven't been saved.</p>
+        <c-modal-header title_id="app-modal-discard-title" closable="">Discard changes?</c-modal-header>
+        <c-modal-body><p>The changes you made haven't been saved.</p></c-modal-body>
         <c-modal-footer>
             <c-slot name="cancel"><c-button variant="secondary" x-on:click="keepEditing" autofocus>Keep editing</c-button></c-slot>
             <c-button variant="error" x-on:click="discard">Discard</c-button>

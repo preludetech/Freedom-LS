@@ -5,9 +5,9 @@ result_lines.
 {% endcomment %}
 <c-modal-header>{{ action.label }}</c-modal-header>
 
-<div class="px-6 py-4">
+<c-modal-body>
 {% include "panel_framework/partials/bulk_result_body.html" %}
-</div>
+</c-modal-body>
 
 <c-modal-footer>
     <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" aria-describedby="bulk-result-headline" autofocus>Close</c-button></c-slot>
