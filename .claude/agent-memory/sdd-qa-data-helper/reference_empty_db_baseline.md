@@ -17,3 +17,12 @@ Recipe (Nov 2026, educator-interface-design-learner-csv-upload-design-fix):
    WARNING: qa_create_member_administration_scenario deliberately STRIPS the superuser's org roles + OrganisationMember rows.
 Learners list: /educator/organisations/demodev/learners ; CSV import: /educator/organisations/demodev/learners/import/
 If asked a third time, wrap step 3 as a qa_helpers command.
+
+Third ask (Nov 2026, design_educator-interface-bulk-action): `OrganisationMember` and
+`learner_management.utils.ensure_organisation_member` do NOT exist on some branches -> the grant
+script dies with ImportError. Drop those two lines (and the "org members" print) and the rest works.
+Caller forbade code changes that time, so the qa_helpers command wrap is still owed; when allowed,
+make it tolerate the missing model. Also asked for cohort "QA bulk cohort" (demodev_s1 only) via
+Cohort/CohortMembership.objects.get_or_create(site=site) under _site_context.
+Headless render check: test Client(HTTP_HOST="testserver") after setup_test_environment (ALLOWED_HOSTS
+becomes ['testserver']; any other host gives 400).
