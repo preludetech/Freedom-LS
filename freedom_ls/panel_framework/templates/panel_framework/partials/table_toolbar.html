@@ -187,8 +187,9 @@ reason, and is nothing below lg.
     </div>
 
     {% if toolbar or sortable_columns or exports %}
+        {# The sidePanel controller drives the filter sheet, which only a table with filters renders; Sort is a dropdown menu. #}
         <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden"
-             {% if toolbar or sortable_columns %}x-data="sidePanel"
+             {% if toolbar %}x-data="sidePanel"
              data-storage-key="{{ query.key }}-sheet"
              data-mobile-only="true"{% endif %}>
             {% for entry in toolbar %}

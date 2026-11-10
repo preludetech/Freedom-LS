@@ -231,6 +231,60 @@ def test_the_docked_sidebar_is_a_column_whenever_its_dialog_is_open(
     page.evaluate("document.querySelector(\"dialog[aria-label='Navigation']\").show()")
     page.wait_for_function(docked_beside_content)
 
+    # Widening past the breakpoint while the sheet is open, with its closing
+    # transition running (no reduced motion here), still docks it: the sheet
+    # stays in the top layer until the transition ends, and a dock attempted
+    # before then is refused by the browser.
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    expect(sidebar).to_be_hidden()
+    page.get_by_role("button", name="Open navigation panel").click()
+    expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(1)
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(0)
+    expect(sidebar).to_be_visible()
+    page.wait_for_function(docked_beside_content)
+
+
+def test_a_page_with_a_sortable_table_keeps_its_sidebar_across_the_breakpoint(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """A table with sort options and no filters renders no filter sheet. Its
+    toolbar must not run a side panel of its own: one that did adopted the
+    navigation dialog, closed it when the viewport widened past the sidebar
+    breakpoint and, being mobile-only, never docked it again."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    course = CourseFactory(title="Algebra")
+    CohortCourseRegistrationFactory(
+        cohort=CohortFactory(organisation=organisation), course=course
+    )
+    course_url = interface_url(live_server, organisation.slug, f"courses/{course.pk}")
+    sidebar = page.locator("dialog[aria-label='Navigation']")
+
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(course_url)
+    expect(page.get_by_role("button", name="Sort")).to_be_visible()
+    expect(sidebar).to_be_hidden()
+    page.get_by_role("button", name="Open navigation panel").click()
+    expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(1)
+    # Let the sheet's opening transition finish, as a reader's would have.
+    page.wait_for_timeout(400)
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(0)
+    expect(sidebar).to_be_visible()
+    page.wait_for_function(
+        """() => {
+            const sidebar = document.querySelector("dialog[aria-label='Navigation']");
+            const main = document.getElementById("interface-main");
+            const s = sidebar.getBoundingClientRect();
+            const m = main.getBoundingClientRect();
+            return s.width > 0 && s.width < window.innerWidth / 2 && m.x >= s.x + s.width - 1;
+        }"""
+    )
+
 
 def test_dashboard_fills_its_lazy_figures_without_overflow_at_every_width(
     live_server,

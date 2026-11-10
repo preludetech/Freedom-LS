@@ -463,7 +463,17 @@ document.addEventListener("alpine:init", () => {
         _afterSwapHandler: null,
         triggerEl: null,
         init() {
-            this.dialog = this.$refs.panelDialog;
+            // Only this panel's own dialog, never an enclosing panel's. $refs
+            // resolves up through ancestor scopes, so a nested panel whose
+            // sheet is not rendered (a table toolbar with sort options and no
+            // filters) would otherwise adopt the navigation dialog, close it
+            // at a breakpoint flip and, being mobile-only, never dock it back.
+            // A panel with no dialog of its own has nothing to control.
+            this.dialog =
+                [...this.$el.querySelectorAll("dialog.side-panel-dialog")].find(
+                    (dialog) => dialog.closest("[x-data='sidePanel']") === this.$el,
+                ) || null;
+            if (!this.dialog) return;
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
             // Player TOC locks the panel open on desktop (no close control).
             this._desktopLock = this.$el.dataset.desktopLock === "true";
@@ -685,6 +695,7 @@ document.addEventListener("alpine:init", () => {
             if (!hadTabindex) body.removeAttribute("tabindex");
         },
         toggle(event) {
+            if (!this.dialog) return;
             this.triggerEl = (event && event.currentTarget) || null;
             if (this.isMobile) {
                 if (this.dialog.open) {
@@ -704,6 +715,7 @@ document.addEventListener("alpine:init", () => {
             }
         },
         close() {
+            if (!this.dialog) return;
             if (this.dialog.open) this.dialog.close();
             this.open = false;
             if (!this.isMobile) {
