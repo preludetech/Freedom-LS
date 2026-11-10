@@ -19,8 +19,8 @@ no leading or trailing whitespace, so callers can follow it with punctuation.{% 
 
 {% partialdef closes-label %}
     {% comment %}When an item that can still close closes: its own <c-deadline-label>, drawn
-    directly after the deadline's label in the same layout and the due tier's colour. Needs
-    layout as well as child.{% endcomment %}
+    directly after the deadline's label in the same layout and the due tier's colour. Outline
+    rows leave it out, since a row shows one deadline. Needs layout as well as child.{% endcomment %}
     {% if child.closes_at and not child.is_closed %}<c-deadline-label tier="{{ child.deadline_tier }}" closes="true" layout="{{ layout }}"><span class="whitespace-nowrap">{% local_time child.closes_at format=date_format %}</span></c-deadline-label>{% endif %}
 {% endpartialdef %}
 

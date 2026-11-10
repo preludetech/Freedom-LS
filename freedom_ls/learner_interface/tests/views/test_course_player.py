@@ -4809,7 +4809,7 @@ def test_a_row_due_today_names_the_deadline_for_assistive_technology(
 
 @pytest.mark.django_db
 @time_machine.travel(BEFORE_CLOSE, tick=False)
-def test_a_missed_row_in_its_grace_window_says_when_it_closes(titled_due_course):
+def test_a_missed_row_in_its_grace_window_shows_only_its_due_date(titled_due_course):
     course, topics, _user, client = titled_due_course
     set_due_date(course, topics[1], due_date=date(2020, 1, 1))
     CourseDeadlineConfigFactory(
@@ -4820,9 +4820,9 @@ def test_a_missed_row_in_its_grace_window_says_when_it_closes(titled_due_course)
 
     labels = row.cssselect('[data-testid="deadline-label"]')
 
-    assert _visible_row_text(row).endswith("1 Jan 4 Jan")
-    assert len(labels) == 2
-    assert labels[1].cssselect(".sr-only")[0].text_content().strip() == "Closes"
+    assert _visible_row_text(row).endswith("1 Jan")
+    assert len(labels) == 1
+    assert "Closes" not in row.text_content()
 
 
 @pytest.mark.django_db
