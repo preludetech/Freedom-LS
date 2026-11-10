@@ -10,7 +10,7 @@ Every value is user-derived text, so nothing here is marked safe.
 <p class="font-bold break-words">{{ object.label }}</p>
 <dl class="mt-1 grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-sm">
     <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">When</dt>
-    <dd class="min-w-0">{% include "panel_framework/partials/datetime.html" with value=object.created_at %}</dd>
+    <dd class="min-w-0"><c-datetime :value="object.created_at" /></dd>
     <dt class="font-mono text-xs font-bold uppercase tracking-wide text-muted">Who</dt>
     <dd class="min-w-0 break-words">{% include "educator_interface/data-table-cells/audit_who.html" %}</dd>
     {% block card_target %}{% endblock %}

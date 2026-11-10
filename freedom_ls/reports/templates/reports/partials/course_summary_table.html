@@ -47,7 +47,7 @@ and the column budget is the constraint that decides whether a table splits.
         {% if not table.continued %}
         <td class="cell-completion">{% include "reports/partials/completion_bar.html" with percentage=row.completion_percentage completed=row.completed_item_count total=row.total_item_count only %}</td>
         <td class="cell-last-item">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
-        <td class="cell-when">{% if row.last_completed_at %}{{ row.last_completed_at|date:"j M Y" }}{% else %}—{% endif %}</td>
+        <td class="cell-when">{% if row.last_completed_at %}<c-date :value="row.last_completed_at" />{% else %}—{% endif %}</td>
         {% endif %}
         {% for result in row.cells %}
         <td class="cell-quiz {% if result is None %}status-na-cell{% elif result.passed is True %}status-pass-cell{% elif result.passed is False %}status-fail-cell{% else %}status-no-verdict-cell{% endif %}">{% include "reports/partials/quiz_result_cell.html" with result=result only %}</td>

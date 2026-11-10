@@ -69,8 +69,8 @@ def test_another_sites_row_does_not_apply(mock_site_context: Site) -> None:
 def test_a_request_reads_the_row_once(
     mock_site_context: Site, django_assert_num_queries
 ) -> None:
-    """One page resolves deadlines, labels dates and renders admin rows, each asking for the
-    zone; the row is read once per request rather than once per asker."""
+    """One page can ask for the zone many times; the row is read once per request rather
+    than once per asker."""
     SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
     request = RequestFactory().get("/")
     with ambient_request(request), django_assert_num_queries(1):
@@ -115,11 +115,11 @@ JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 
 
 def _end_of_day(day: date) -> datetime:
-    """A deadline given as a date alone, as the resolver builds it."""
+    """An instant that stands for a date alone."""
     return datetime.combine(day, time.max, tzinfo=JOHANNESBURG)
 
 
-def test_a_date_only_deadline_has_no_set_time() -> None:
+def test_a_date_only_instant_has_no_set_time() -> None:
     assert has_set_time(_end_of_day(date(2026, 1, 1))) is False
     assert has_set_time(datetime(2026, 1, 1, 23, 59, tzinfo=JOHANNESBURG)) is True
 
@@ -147,7 +147,7 @@ def test_short_site_zone_text_reads_today_on_the_instants_own_date() -> None:
 
 @time_machine.travel(datetime(2026, 3, 15, 22, 30, tzinfo=UTC), tick=False)
 def test_short_site_zone_text_judges_today_in_the_instants_own_zone() -> None:
-    """It is already 16 Mar in Johannesburg, so a 15 Mar deadline there is not today."""
+    """It is already 16 Mar in Johannesburg, so a 15 Mar instant there is not today."""
     assert site_zone_text(_end_of_day(date(2026, 3, 15)), short=True) == "15 Mar"
 
 

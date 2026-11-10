@@ -4,7 +4,7 @@
 ``view_form_start`` (``learner_interface/views.py``) hands the template
 ``completed_attempts(course_progress, collection_item)[:5]`` -- newest first,
 sliced to five -- and ``partials/exam_previous_attempts.html`` renders one row
-per attempt with ``completed_time|date:"j M Y"`` and, for a QUIZ, the stored
+per attempt with ``<c-date :value="progress.completed_time" />`` and, for a QUIZ, the stored
 ``scores`` as a percentage and a raw ``score / max_score`` pair.
 
 Every other fixture command seeds at most one sitting per learner per form, so

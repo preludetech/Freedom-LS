@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from django import template
 from django.core.serializers.json import DjangoJSONEncoder
@@ -8,6 +8,8 @@ from django.utils.html import avoid_wrapping, format_html
 from django.utils.safestring import SafeString, mark_safe
 from django.utils.timesince import timesince
 from django.utils.translation import ngettext
+
+from freedom_ls.base.date_display import display_date, display_datetime, display_time
 
 register = template.Library()
 
@@ -97,3 +99,31 @@ def inline_script_json(value: object) -> SafeString:
     # mark_safe is sound here: json.dumps quotes every string, and the three
     # characters that could leave the script context are escaped.
     return mark_safe(json.dumps(value).translate(_SCRIPT_JSON_ESCAPES))  # noqa: S308  # nosec B308 B703
+
+
+@register.filter(name="display_date")
+def display_date_filter(value: date | None) -> str:
+    """
+    A date as FLS writes one: "3 Nov 2026". Use <c-date> in markup; this filter is for
+    the places a component cannot go, such as inside an attribute.
+
+    Usage: aria-label="Generated {{ report.finished_at|display_date }}"
+    """
+    return display_date(value) if value else ""
+
+
+@register.filter(name="display_datetime")
+def display_datetime_filter(value: datetime | None) -> str:
+    """
+    A date-time as FLS writes one: "3 Nov 2026, 07:37". Use <c-datetime> in markup; this
+    filter is for the places a component cannot go, such as inside an attribute.
+
+    Usage: aria-label="Download the report generated {{ report.finished_at|display_datetime }}"
+    """
+    return display_datetime(value) if value else ""
+
+
+@register.filter(name="display_time")
+def display_time_filter(value: datetime | None) -> str:
+    """The time part of a date-time, on a 24-hour clock: "07:37"."""
+    return display_time(value) if value else ""

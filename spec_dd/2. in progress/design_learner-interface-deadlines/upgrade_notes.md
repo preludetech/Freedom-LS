@@ -13,6 +13,23 @@ changed_template_paths:
   - freedom_ls/learner_interface/templates/learner_interface/partials/course_row.html
   - freedom_ls/learner_interface/templates/learner_interface/partials/course_toc_header.html
   - freedom_ls/learner_interface/templates/learner_interface/partials/deadline_labels.html
+  - freedom_ls/base/templates/cotton/date.html
+  - freedom_ls/base/templates/cotton/datetime.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_last_active.html
+  - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/staff_roles.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_details.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_body_region.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/cohort_report_downloads_region.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/dashboard_region.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/learner_courses.html
+  - freedom_ls/educator_interface/templates/educator_interface/panels/learner_details.html
+  - freedom_ls/educator_interface/templates/educator_interface/partials/audit_log_card.html
+  - freedom_ls/learner_interface/templates/learner_interface/course_finish.html
+  - freedom_ls/learner_interface/templates/learner_interface/partials/exam_previous_attempts.html
+  - freedom_ls/panel_framework/templates/cotton/data-table-cells/datetime.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/datetime.html
+  - freedom_ls/reports/templates/reports/partials/course_summary_table.html
+  - freedom_ls/reports/templates/reports/partials/learner_detail.html
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -61,6 +78,14 @@ requires_tailwind_rebuild: true
   deadline line is an inline `<c-deadline-label>`.
 - `learner_interface/course_item_closed.html` no longer uses a callout: it shows a large centred
   lock icon with its text under it. Overrides need re-applying.
+- Dates have one home. `<c-date :value="…" />` renders "3 Nov 2026" and `<c-datetime :value="…" />`
+  renders "3 Nov 2026, 07:37"; the filters `display_date`, `display_datetime` and `display_time` in
+  `fls_base_filters` are for attributes, where a component cannot go. Every FLS template that wrote
+  `|date:"j M Y"` or `|date:"j M Y, H:i"` now uses them, and the course finish page's dates now
+  read "3 Nov 2026" rather than "November 3, 2026". `panel_framework/partials/datetime.html` is
+  deleted; an include of it fails to render, so use `<c-datetime>`. `DATE_DISPLAY_FORMAT` and
+  `DATETIME_DISPLAY_FORMAT` moved from `freedom_ls.panel_framework.field_display` to
+  `freedom_ls.base.date_display`; update any import of them.
 - `freedom_ls.deadlines.resolver.CourseDeadlines` has a new required `zone` field. Code that builds
   `CourseDeadlines` directly must pass the site zone.
 

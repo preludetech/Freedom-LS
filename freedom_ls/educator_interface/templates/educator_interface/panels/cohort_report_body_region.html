@@ -11,7 +11,7 @@ with incorrect answers), refresh_url.
 {% block loaded_body %}
     <div class="space-y-8">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-muted">Figures as of {{ data.generated_at|date:"j M Y, H:i" }}</p>
+            <p class="text-sm text-muted">Figures as of <c-datetime :value="data.generated_at" /></p>
             <c-button type="button" variant="ghost" size="small" hx-get="{{ refresh_url }}" hx-target="#{{ region_id }}" hx-swap="outerHTML">Refresh</c-button>
         </div>
 
@@ -84,7 +84,7 @@ with incorrect answers), refresh_url.
                                                         <span class="text-xs text-muted">{{ row.completed_item_count }} of {{ row.total_item_count }} item{{ row.total_item_count|pluralize }}</span>
                                                     </td>
                                                     <td class="px-2 py-2">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
-                                                    <td class="px-2 py-2 whitespace-nowrap">{% if row.last_completed_at %}{{ row.last_completed_at|date:"j M Y" }}{% else %}—{% endif %}</td>
+                                                    <td class="px-2 py-2 whitespace-nowrap">{% if row.last_completed_at %}<c-date :value="row.last_completed_at" />{% else %}—{% endif %}</td>
                                                 {% endif %}
                                                 {% for result in row.cells %}
                                                     <td class="px-2 py-2 whitespace-nowrap">

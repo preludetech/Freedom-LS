@@ -13,7 +13,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   {% comment %}The floated last-activity note precedes the heading for the same
   reason the at-a-glance count does: a float needs an open line box.{% endcomment %}
   <div class="learner-head">
-    {% if learner.last_completed_at %}<span class="learner-last-active">Last activity {{ learner.last_completed_at|date:"j M Y" }}</span>{% endif %}
+    {% if learner.last_completed_at %}<span class="learner-last-active">Last activity <c-date :value="learner.last_completed_at" /></span>{% endif %}
     <h3 class="learner-heading">{{ learner.full_name }}</h3>
   </div>
 
@@ -46,7 +46,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
     {% for item in learner.completed_items %}
     <li>
       <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}</span>
-      <span class="item-date">{{ item.completed_at|date:"j M Y" }}</span>
+      <span class="item-date"><c-date :value="item.completed_at" /></span>
     </li>
     {% endfor %}
   </ul>
@@ -69,7 +69,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
       <tr>
         <td class="attempt-quiz">{{ result.title }}</td>
         <td class="numeric">{{ attempt.attempt_number }}</td>
-        <td class="attempt-date">{{ attempt.completed_at|date:"j M Y" }}</td>
+        <td class="attempt-date"><c-date :value="attempt.completed_at" /></td>
         <td class="numeric {% if attempt.passed is True %}status-pass-cell{% elif attempt.passed is False %}status-fail-cell{% else %}status-no-verdict-cell{% endif %}">
           {% if attempt.passed is True %}<span class="status-glyph status-pass">✓</span>{% elif attempt.passed is False %}<span class="status-glyph status-fail">✗</span>{% else %}<span class="status-glyph status-no-verdict">○</span>{% endif %}
           {% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}

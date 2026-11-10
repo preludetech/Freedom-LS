@@ -90,14 +90,14 @@
                     {% if course_progress.started_at %}
                         <div class="flex justify-between">
                             <span class="font-medium">Started:</span>
-                            <span>{{ course_progress.started_at|date:"F j, Y" }}</span>
+                            <span><c-date :value="course_progress.started_at" /></span>
                         </div>
                     {% endif %}
                     {% comment %}No Completed row while the completion is withheld — it would render blank.{% endcomment %}
                     {% if course_progress.completed_time %}
                         <div class="flex justify-between">
                             <span class="font-medium">Completed:</span>
-                            <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
+                            <span><c-date :value="course_progress.completed_time" /></span>
                         </div>
                     {% endif %}
                 </div>
