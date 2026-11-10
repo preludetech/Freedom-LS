@@ -154,7 +154,7 @@ from freedom_ls.educator_interface.reporting import (
 from freedom_ls.educator_interface.staff import staff_role_entries
 from freedom_ls.educator_interface.tasks import _run_learner_import_task
 from freedom_ls.form_engine.conditions import full_path
-from freedom_ls.form_engine.models import Form
+from freedom_ls.form_engine.models import Form, FormPage
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import (
@@ -2024,18 +2024,36 @@ class CourseContentPanel(Panel):
         return [PreviewContentAction(), PreviewCourseDetailsAction()]
 
 
-def _form_preview_context(form: Form) -> dict[str, object]:
-    """Every page of the form, on or off any condition, laid out the way
-    the form page partial expects, with no sitting behind it."""
+def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]:
+    """One page of the form, on or off any condition, laid out the way the
+    form page partial expects, with no sitting behind it. Without a page, a
+    one-page form shows its page and a longer form its start page."""
     # A conditional page's heading names the question its condition is on.
     prefetch_related_objects([form], "pages__condition_option__question")
     path = full_path(form)
+    preview_page: FormPage | None = None
+    if page_pk is not None:
+        preview_page = next((page for page in path.pages if page.pk == page_pk), None)
+        if preview_page is None:
+            raise Http404
+    pages = (
+        [preview_page]
+        if preview_page
+        else path.pages[: 1 if path.page_count == 1 else 0]
+    )
+    position = path.pages.index(preview_page) + 1 if preview_page else None
     return {
         "form": form,
+        "preview_page": preview_page,
+        "preview_title": (preview_page.title or f"Page {position}")
+        if preview_page
+        else "",
         "preview_pages": [
-            {"page": page, "page_children": path.children_of(page)}
-            for page in path.pages
+            {"page": page, "page_children": path.children_of(page)} for page in pages
         ],
+        "page_position": position,
+        "total_pages": path.page_count,
+        "question_count": len(path.question_positions()),
         "question_positions": path.question_positions(),
         "existing_answers": {},
         "rejected_answers": {},
@@ -2068,8 +2086,13 @@ class PreviewContentAction(PanelAction):
             "collection_item": collection_item,
             "child": collection_item.child,
         }
+        page_param = ctx.request.GET.get("page")
+        page_pk = uuid_or_404(page_param) if page_param is not None else None
         if isinstance(collection_item.child, Form):
-            context.update(_form_preview_context(collection_item.child))
+            context.update(_form_preview_context(collection_item.child, page_pk))
+        elif page_pk is not None:
+            # Only a form has pages.
+            raise Http404
         return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:

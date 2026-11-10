@@ -7489,9 +7489,10 @@ def test_opening_a_topic_preview_renders_it_read_only_in_the_wide_dialog(
     html = response.content.decode()
     assert response.status_code == 200
     assert 'data-modal-size="wide"' in html
-    assert "Intro" in html
+    assert "Intro (Preview)" in html
     assert "Topic" in html
-    assert "Nothing here is saved." in html
+    assert "Nothing here is saved." not in html
+    assert "max-w-reading" in html
     assert "<strong>learners</strong>" in html
     assert "<form" not in html
     assert "Mark complete" not in html
@@ -7688,7 +7689,7 @@ def test_opening_a_form_preview_renders_every_question_type_disabled(
     assert "<strong>more</strong>" in html
     assert "About you" in html
     (heading,) = document.cssselect("h2")
-    assert heading.text_content().split() == ["Intake", "Form"]
+    assert heading.text_content().split() == ["Intake", "(Preview)", "Form"]
     controls = document.cssselect("input, textarea, select")
     assert controls
     assert all(control.get("disabled") is not None for control in controls)
@@ -7699,27 +7700,100 @@ def test_opening_a_form_preview_renders_every_question_type_disabled(
     assert document.cssselect("button[type='submit']") == []
 
 
-@pytest.mark.django_db
-def test_a_conditional_page_is_headed_by_its_condition_and_pages_keep_their_order(
-    staff_client: Client,
-):
-    organisation = OrganisationFactory()
-    form = FormFactory()
+def _three_page_form(title: str = "Survey") -> tuple[Model, Model]:
+    """A survey whose second page is shown only on one answer; returns the
+    form and that second page."""
+    form = FormFactory(title=title, content="Tell us **everything**")
     first = FormPageFactory(form=form, title="First page", order=0)
     gate = FormQuestionFactory(form_page=first, question="Do you smoke?", order=0)
     option = QuestionOptionFactory(question=gate, text="Yes", order=0)
-    FormPageFactory(form=form, title="Second page", order=1, condition_option=option)
+    second = FormPageFactory(
+        form=form, title="Second page", order=1, condition_option=option
+    )
+    FormQuestionFactory(form_page=second, question="How many a day?", order=0)
     FormPageFactory(form=form, title="Third page", order=2)
+    return cast(Model, form), cast(Model, second)
+
+
+@pytest.mark.django_db
+def test_a_page_previews_alone_headed_by_its_place_and_its_condition(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    form, second = _three_page_form()
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(
+        f"{url}?item={item.pk}&page={second.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    html = response.content.decode()
+    document = lxml.html.fromstring(html)
+    assert response.status_code == 200
+    (heading,) = document.cssselect("h2")
+    assert heading.text_content().split() == [
+        "Second",
+        "page",
+        "(Preview)",
+        "Form",
+        "page",
+    ]
+    assert "Page 2 of 3: Second page" in html
+    assert "Shown only if Do you smoke? is answered Yes" in html
+    assert "How many a day?" in html
+    assert "Do you smoke?" not in html.split("Shown only if")[0]
+    assert "Third page" not in html
+    assert "<strong>everything</strong>" not in html
+    assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_multi_page_form_previews_its_start_page(staff_client: Client):
+    organisation = OrganisationFactory()
+    form, _second = _three_page_form()
     course, item = _course_with_form(form)
     url = _preview_url(staff_client, organisation, course)
 
     response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
 
     html = response.content.decode()
-    assert "Shown only if Do you smoke? is answered Yes" in html
-    assert (
-        html.index("First page") < html.index("Second page") < html.index("Third page")
+    assert response.status_code == 200
+    assert "Survey (Preview)" in html
+    assert "<strong>everything</strong>" in html
+    assert "3 pages" in html
+    assert "2 questions" in html
+    for absent in ("Do you smoke?", "First page", "Shown only if", "<form", "Start"):
+        assert absent not in html
+
+
+@pytest.mark.django_db
+def test_a_page_of_another_form_is_not_found(staff_client: Client):
+    organisation = OrganisationFactory()
+    form, _second = _three_page_form()
+    _other, other_page = _three_page_form(title="Other survey")
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(
+        f"{url}?item={item.pk}&page={other_page.pk}", HTTP_HX_REQUEST="true"
     )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_page_on_a_topic_is_not_found(staff_client: Client):
+    organisation = OrganisationFactory()
+    _form, page = _three_page_form()
+    course, item = _course_with_topic()
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(
+        f"{url}?item={item.pk}&page={page.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
@@ -7902,9 +7976,9 @@ def test_opening_the_course_details_preview_renders_the_learner_facing_page(
     html = response.content.decode()
     assert response.status_code == 200
     assert 'data-modal-size="wide"' in html
-    assert "Intro to Rust" in html
+    assert "Intro to Rust (Preview)" in html
     assert "Course details" in html
-    assert "Nothing here is saved." in html
+    assert "Nothing here is saved." not in html
     assert "About this course" in html
     assert "learn" in html
     assert "Borrow safely" in html

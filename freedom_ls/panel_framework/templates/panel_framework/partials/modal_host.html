@@ -25,7 +25,11 @@ editing" brings the form back with everything typed into it.
         max-width: 100vw;
         /* dvh so the cap follows the on-screen keyboard. */
         max-height: min(90dvh, 100%);
-        overflow-y: auto;
+        /* `scroll`, not `auto`, so the track shows wherever the platform
+         * draws classic scrollbars, and the gutter stays put as content
+         * loads: the dialog says that it scrolls before anyone tries. */
+        overflow-y: scroll;
+        scrollbar-gutter: stable;
         overflow-x: hidden;
     }
     /* Opened by the server (a bulk confirmation with JavaScript off), the
@@ -37,6 +41,26 @@ editing" brings the form back with everything typed into it.
         inset: 0;
         z-index: 50;
         outline: 100vmax solid color-mix(in srgb, black 50%, transparent);
+    }
+    /* A fade over the dialog's bottom edge while content lies below the
+     * fold, gone once the end is reached. The pseudo-element is the last
+     * flow child of the scroll container, so sticky pins it to the visible
+     * bottom; the negative margin keeps it from adding to the scroll
+     * height. appModal keeps data-more-below current. */
+    #app-modal::after {
+        content: "";
+        position: sticky;
+        bottom: 0;
+        display: block;
+        height: 3rem;
+        margin-top: -3rem;
+        pointer-events: none;
+        background: linear-gradient(to bottom, transparent, var(--color-surface));
+        opacity: 0;
+        transition: opacity 150ms ease;
+    }
+    #app-modal[data-more-below="true"]::after {
+        opacity: 1;
     }
     /* A content preview needs reading width for tables, code and images.
      * The fragment opts in with data-modal-size="wide" on its root; the

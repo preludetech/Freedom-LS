@@ -56,7 +56,7 @@ FLASHCARD = (
 
 def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     """An organisation `user` administers, holding a course with a flashcard
-    topic, a part with a second topic, and a quiz."""
+    topic, a part with a second topic, a quiz and a two-page survey."""
     organisation = cast(Organisation, OrganisationFactory(name="Org A"))
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, user, "organisation_admin", organisation)
@@ -73,6 +73,15 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     question = FormQuestionFactory(form_page=page, question="Pick one")
     QuestionOptionFactory(question=question, text="Option A")
     QuestionOptionFactory(question=question, text="Option B", correct=True)
+    survey = FormFactory(title="Survey")
+    FormQuestionFactory(
+        form_page=FormPageFactory(form=survey, title="About you", order=0),
+        question="Your name",
+    )
+    FormQuestionFactory(
+        form_page=FormPageFactory(form=survey, title="Your thoughts", order=1),
+        question="Anything else",
+    )
 
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=1)
@@ -80,6 +89,7 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
         collection_object=part, child_object=part_topic, order=0
     )
     ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=2)
+    ContentCollectionItemFactory(collection_object=course, child_object=survey, order=3)
     return organisation, course
 
 
@@ -124,8 +134,16 @@ def test_educator_previews_course_content(
         with no_console_errors(page):
             page.set_viewport_size(viewport)
             page.goto(course_url)
-            outline = page.get_by_role("navigation", name="Course outline")
-            for title in ("Cards", "Chapter One", "Inside the part", "Check yourself"):
+            outline = page.get_by_role("region", name="Course outline")
+            for title in (
+                "Course details",
+                "Cards",
+                "Chapter One",
+                "Inside the part",
+                "Check yourself",
+                "Survey",
+                "Your thoughts",
+            ):
                 expect(outline.get_by_text(title, exact=True)).to_be_visible()
             assert_no_horizontal_overflow(page)
 
@@ -134,7 +152,7 @@ def test_educator_previews_course_content(
             _tab_to_focus(page, "[aria-label='Preview Cards']")
             page.keyboard.press("Enter")
             expect(modal).to_be_visible()
-            expect(modal.get_by_role("heading", name="Cards")).to_be_visible()
+            expect(modal.get_by_role("heading", name="Cards (Preview)")).to_be_visible()
             assert page.evaluate("document.activeElement.id") == "app-modal-title"
             assert_no_horizontal_overflow(page)
 
@@ -158,12 +176,28 @@ def test_educator_previews_course_content(
             assert_no_horizontal_overflow(page)
             _press_escape_and_expect_closed(page)
 
+            # A multi-page form's page row previews that page alone.
+            survey_toggle = page.get_by_role("button", name="Collapse Survey")
+            page_row = page.locator("tr", has_text="Your thoughts")
+            expect(page_row).to_be_visible()
+            survey_toggle.click()
+            expect(page_row).to_be_hidden()
+            survey_toggle.click()
+            expect(page_row).to_be_visible()
+            page.get_by_role("button", name="Preview Survey: Your thoughts").click()
+            expect(
+                modal.get_by_role("heading", name="Your thoughts (Preview)")
+            ).to_be_visible()
+            expect(modal.get_by_text("Page 2 of 2: Your thoughts")).to_be_visible()
+            expect(modal.get_by_text("Your name")).to_have_count(0)
+            _press_escape_and_expect_closed(page)
+
             # Back restores the course page with working Preview buttons.
             _open_courses_from_sidebar(page)
             expect(page).to_have_url(courses_url)
             page.go_back()
             expect(page).to_have_url(course_url)
             topic_preview.click()
-            expect(modal.get_by_role("heading", name="Cards")).to_be_visible()
+            expect(modal.get_by_role("heading", name="Cards (Preview)")).to_be_visible()
             expect(modal.get_by_role("button", name="Flip card")).to_be_visible()
             _press_escape_and_expect_closed(page)

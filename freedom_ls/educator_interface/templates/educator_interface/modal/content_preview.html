@@ -1,27 +1,57 @@
 {% comment %}
 A course child as a learner sees it, with none of the player's chrome and
 nothing that can be submitted. No <form> element: the modal then closes on
-a backdrop click and never asks about unsaved changes.
+a backdrop click and never asks about unsaved changes. The content sits in
+the learner's reading column, as the learner pages place it.
+
+A form previews one page at a time: `preview_page` from its own outline
+row, or, with no page named, its single page, or the start page a learner
+meets first when it has several.
 {% endcomment %}
-<div data-modal-size="wide">
-    <c-modal-header focus_title="true">{{ child.title }} <c-chip size="xs">{% if child.content_type == "FORM" %}Form{% else %}Topic{% endif %}</c-chip></c-modal-header>
-    <div class="px-6 py-4 flex flex-col gap-6">
-        <c-callout level="info" class="my-0">Preview. This is how learners see it. Nothing here is saved.</c-callout>
-        {% if child.content_type == "FORM" %}
-            {% if child.content %}<c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>{% endif %}
-            {% for entry in preview_pages %}
-                <section class="flex flex-col gap-4">
-                    <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
-                    {% if entry.page.condition_option %}
-                        <p class="text-sm text-muted">Shown only if {{ entry.page.condition_option.question.question }} is answered {{ entry.page.condition_option.text }}</p>
-                    {% endif %}
-                    {% with page_children=entry.page_children %}
-                        {% include "form_engine/partials/page_children.html" %}
-                    {% endwith %}
-                </section>
-            {% endfor %}
+{% partialdef form_page %}
+    <section class="flex flex-col gap-4">
+        {% if page_position %}
+            <h3 class="text-lg font-semibold">Page {{ page_position }} of {{ total_pages }}: {{ entry.page.title }}</h3>
         {% else %}
-            <c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>
+            <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
         {% endif %}
+        {% if entry.page.condition_option %}
+            <p class="text-sm text-muted">Shown only if {{ entry.page.condition_option.question.question }} is answered {{ entry.page.condition_option.text }}</p>
+        {% endif %}
+        {% with page_children=entry.page_children %}
+            {% include "form_engine/partials/page_children.html" %}
+        {% endwith %}
+    </section>
+{% endpartialdef %}
+
+<div data-modal-size="wide">
+    <c-modal-header focus_title="true">{% if preview_page %}{{ preview_title }} (Preview) <c-chip size="xs">Form page</c-chip>{% else %}{{ child.title }} (Preview) <c-chip size="xs">{% if child.content_type == "FORM" %}Form{% else %}Topic{% endif %}</c-chip>{% endif %}</c-modal-header>
+    <div class="px-6 py-4">
+        <div class="mx-auto flex w-full max-w-reading flex-col gap-6">
+            {% if child.content_type == "FORM" %}
+                {% if preview_page %}
+                    {% for entry in preview_pages %}{% partial form_page %}{% endfor %}
+                {% else %}
+                    {% if child.content %}<c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>{% endif %}
+                    {% if total_pages > 1 %}
+                        {% comment %}The learner's start page: the counts, and no way to start.{% endcomment %}
+                        <div class="flex flex-wrap gap-2">
+                            <c-chip variant="muted" class="text-on-surface">
+                                <c-icon name="notes" class="size-4 text-secondary" />
+                                {{ question_count }} question{{ question_count|pluralize }}
+                            </c-chip>
+                            <c-chip variant="muted" class="text-on-surface">
+                                <c-icon name="folder" class="size-4 text-secondary" />
+                                {{ total_pages }} page{{ total_pages|pluralize }}
+                            </c-chip>
+                        </div>
+                    {% else %}
+                        {% for entry in preview_pages %}{% partial form_page %}{% endfor %}
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                <c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>
+            {% endif %}
+        </div>
     </div>
 </div>

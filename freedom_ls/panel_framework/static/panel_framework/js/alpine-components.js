@@ -239,11 +239,26 @@ document.addEventListener("alpine:init", () => {
             trackListener(this._handlers, document, "htmx:beforeHistorySave", () => {
                 if (this._dialog.open) this._dialog.close();
             });
+
+            // The bottom fade (modal_host.html) shows while content lies
+            // below the fold: re-measured on scroll, when the body changes
+            // size (a fragment landing, an image loading, a section
+            // expanding) and when the dialog opens.
+            trackListener(this._handlers, this._dialog, "scroll", () => this._syncMoreBelow());
+            trackListener(this._handlers, this._dialog, "toggle", () => this._syncMoreBelow());
+            this._resizeObserver = new ResizeObserver(() => this._syncMoreBelow());
+            this._resizeObserver.observe(this._body);
         },
         destroy() {
             this._handlers.forEach(([target, type, handler, options]) => {
                 target.removeEventListener(type, handler, options);
             });
+            if (this._resizeObserver) this._resizeObserver.disconnect();
+        },
+        _syncMoreBelow() {
+            const dialog = this._dialog;
+            const more = dialog.open && dialog.scrollHeight - dialog.scrollTop - dialog.clientHeight > 8;
+            dialog.dataset.moreBelow = more ? "true" : "false";
         },
         requestClose() {
             if (typeof this._dialog.requestClose === "function") {
