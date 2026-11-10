@@ -1,10 +1,18 @@
-<c-vars class="" />
+<c-vars class="" layout="wrap" />
 
 {% comment %}
 The wrapper around the buttons in a data-table cell or phone card. It owns
-the gap between them, so the buttons carry no margins, and it wraps when the
-cell is narrow. Every button inside takes size="small"; the
-`.panel-data-table` rule in tailwind.components.css makes the size hold even
-for a button that forgot to say so.
+the gap between them, so the buttons carry no margins. Every button inside
+takes size="small"; the `.panel-data-table` rule in tailwind.components.css
+makes the size hold even for a button that forgot to say so. Every label
+stays on one line.
+
+layout:
+  wrap   (default) a row that wraps when the cell is narrow.
+  line   one row that does not wrap from md up, for buttons that sit on the
+         same line as the item they act on, so the lines of a list stay
+         level. On a phone card the row wraps, since the card stacks anyway.
+  stack  one button per line, left-aligned, for a column of whole-row
+         buttons.
 {% endcomment %}
-<div class="flex flex-wrap items-center gap-2 {{ class }}" {{ attrs }}>{{ slot }}</div>
+<div class="flex gap-2 [&_.btn]:whitespace-nowrap {% if layout == 'stack' %}flex-col items-start{% elif layout == 'line' %}flex-wrap items-center md:flex-nowrap{% else %}flex-wrap items-center{% endif %} {{ class }}" {{ attrs }}>{{ slot }}</div>

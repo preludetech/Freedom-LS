@@ -10,7 +10,7 @@ for a missing or inactive organisation membership, "Account inactive" for an
 inactive user, and "Also a learner" for an active Learner row in the same
 organisation.
 {% endcomment %}
-<span class="flex flex-wrap items-center gap-2">
+<span class="flex flex-wrap items-center gap-2 md:max-w-56">
     <c-panel-person-link name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" quick_view_url="{% if shows_roles %}{{ staff_url }}/{{ object.pk }}/__quick-view{% endif %}" class="min-w-0 max-w-full" />
     {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}
     {% if object.is_inactive %}<c-panel-status-badge tone="muted" label="Inactive" />{% endif %}

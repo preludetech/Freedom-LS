@@ -1479,7 +1479,7 @@ def test_an_organisation_role_row_has_no_buttons_and_links_to_staff_for_a_viewer
     (row,) = [
         li for li in section.cssselect("li") if other.display_name in li.text_content()
     ]
-    assert "Whole organisation" in row.text_content()
+    assert "Whole organisation" not in row.text_content()
     assert "Set for the whole organisation." in row.text_content()
     assert not row.cssselect("button")
     (link,) = row.cssselect("a[href$='/staff']")

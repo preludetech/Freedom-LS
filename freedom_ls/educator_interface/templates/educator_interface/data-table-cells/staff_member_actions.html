@@ -6,7 +6,7 @@ and on the viewer's own row. Deactivate or Reactivate staff member follows,
 never on the viewer's own row or a site-level admin's (deactivating would
 not change what they can do); a turned-off account's row has neither.
 {% endcomment %}
-<c-data-table-actions class="flex-col items-start">
+<c-data-table-actions layout="stack">
     {% if object.is_active and grantable_role_keys and row_action_urls.add_role %}
         <c-modal-trigger url="{{ row_action_urls.add_role }}?user={{ object.pk }}" label="Add role" aria_label="Add role for {{ object.display_name }}" variant="secondary" size="small" />
     {% endif %}

@@ -10,7 +10,7 @@ so the lines below stay level with their roles.
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
     {% for entry in object.role_entries %}
         <li class="flex min-h-12 items-center">
-            <c-data-table-actions class="flex-nowrap">
+            <c-data-table-actions layout="line">
                 {% if entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
                     <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" aria_label="Deactivate {{ entry.display_name }} for {{ object.display_name }}" variant="secondary" size="small" />
                 {% endif %}
