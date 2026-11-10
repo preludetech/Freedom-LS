@@ -3245,6 +3245,19 @@ def test_the_lookup_shows_an_existing_accounts_name_and_email(
 
 
 @pytest.mark.django_db
+def test_the_lookup_shows_the_email_once_for_an_account_with_no_name(
+    admin_client, organisation
+):
+    """An account without a name used to show its email twice."""
+    UserFactory(first_name="", last_name="", email="nameless@example.com")
+
+    text = _text(_lookup(admin_client, organisation, "nameless@example.com"))
+
+    assert "Existing account: nameless@example.com" in text
+    assert text.count("nameless@example.com") == 1
+
+
+@pytest.mark.django_db
 def test_the_lookup_creates_no_user(admin_client, organisation):
     UserFactory(email="ada@example.com")
     before = User._base_manager.count()

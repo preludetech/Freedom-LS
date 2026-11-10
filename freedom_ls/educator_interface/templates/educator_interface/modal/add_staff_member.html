@@ -129,7 +129,7 @@ scope, current_entries, after_entries, already_held and staff_member_state.
             <label class="block"><span class="mb-1 block font-semibold">Last name (optional)</span>{{ form.last_name }}</label>
         </div>
         {% else %}
-        <p>Existing account: {{ match.display_name }}, {{ match.email }}</p>
+        <p>Existing account: {% if match.first_name or match.last_name %}{{ match.display_name }}, {% endif %}{{ match.email }}</p>
         {% endif %}
         <div x-data="memberRoleChooser" class="space-y-4">
             <fieldset class="space-y-3">
