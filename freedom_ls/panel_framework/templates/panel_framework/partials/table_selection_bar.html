@@ -1,8 +1,8 @@
 {% comment %}
-The selection bar: shown only while rows are selected or a run is going. From
-lg up it takes the toolbar's row above the table; below lg it is fixed to the
-bottom of the viewport, where it would otherwise scroll out of reach below a
-long card list, and the region reserves its measured height after the footer.
+The selection bar: shown only while rows are selected or a run is going. At
+every width it takes the toolbar's row above the table and sticks under the
+site header (--sidebar-top, the header's height), so it stays in reach while a
+long list scrolls.
 The first four permitted non-destructive bulk actions are text buttons; the
 others and every destructive action (last, in error text, under a rule) sit
 under a "More actions" menu. Server-rendered visible so the actions work
@@ -10,8 +10,8 @@ without JavaScript; the stylesheet hides it until tableSelection takes over.
 barStyle sets the bar's display rather than x-show, and the stylesheet's
 panel-table-selection-bar animation fades it in rather than x-transition:
 x-show applies its change a frame after the toolbar's class binding, and
-x-transition holds the bar a frame longer still, so from lg the toolbar and
-the bar would both have a row for that frame and the table would move. The
+x-transition holds the bar a frame longer still, so the toolbar and the bar
+would both have a row for that frame and the table would move. The
 count and link swaps inside it take no transition: a fade on an element that
 changes width would shift its neighbours.
 The left group holds the page checkbox, the count, the select-all link and the
@@ -20,7 +20,7 @@ right edge however the group wraps. Without JavaScript only the action buttons
 show: the checkbox, count, link and Clear are x-cloak, and the count is empty
 until tableSelection fills it.
 {% endcomment %}
-<div class="panel-table-selection-bar fixed inset-x-0 bottom-0 z-10 flex items-start gap-x-4 gap-y-2 border-t border-border bg-surface px-4 py-3 md:px-6 lg:static lg:min-h-16.75 lg:border-t-0 lg:border-b lg:px-6"
+<div class="panel-table-selection-bar sticky top-[var(--sidebar-top,0px)] z-10 flex min-h-16.75 items-start gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-3 md:px-6"
      data-selection-bar-pending
      x-bind:style="barStyle"
      data-page-count="{{ page_obj|length }}"

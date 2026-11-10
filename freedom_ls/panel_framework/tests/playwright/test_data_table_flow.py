@@ -288,6 +288,10 @@ def test_data_table_interaction(
             expect(
                 page.locator("[data-total-count]").get_by_text("1 selected")
             ).to_be_visible()
+            # The bar takes the toolbar's place; Clear brings the toolbar back.
+            page.locator("[data-total-count]").get_by_role(
+                "button", name="Clear", exact=True
+            ).click()
 
             # The phone toolbar buttons and the pager meet the 44px touch target.
             for control in (
@@ -334,8 +338,8 @@ def test_more_actions_menu_stays_inside_the_viewport(
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """The selection bar sits at the bottom, and its "More actions" menu used
-    to open downward, off the screen, leaving its last item out of reach."""
+    """The "More actions" menu once opened off the screen, leaving its last
+    item out of reach."""
     for i in range(PAGE_SIZE):
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
@@ -344,7 +348,12 @@ def test_more_actions_menu_stays_inside_the_viewport(
         page.set_viewport_size(viewport)
         page.goto(list_url)
         page.locator("#stubs-table input[name='keys']:visible").first.check()
-        page.get_by_role("button", name="More actions").click()
+        more = page.get_by_role("button", name="More actions")
+        chevron = more.locator("svg")
+        expect(chevron).to_have_css("rotate", "none")
+        more.click()
+        # The chevron turns up while the menu is open.
+        expect(chevron).to_have_css("rotate", "180deg")
         last_item = (
             page.get_by_role("menu", name="More actions").get_by_role("menuitem").last
         )
@@ -357,103 +366,50 @@ def test_more_actions_menu_stays_inside_the_viewport(
         )
 
 
-def test_selection_bar_is_fixed_to_the_bottom_until_the_sidebar_docks(
+_IS_TOPMOST = """el => {
+    const box = el.getBoundingClientRect();
+    return document.elementFromPoint(
+        box.x + box.width / 2, box.y + box.height / 2) === el;
+}"""
+
+
+def test_selection_bar_sticks_above_the_table_at_every_width(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """At tablet width the bar sat under the table, out of view below a
-    long page, so a ticked row's actions could not be reached without
-    scrolling to the end. It stays fixed until the sidebar docks at lg, and
-    never covers the last row while fixed."""
+    """The bar sat above the table on the desktop and at the bottom of the
+    viewport below lg. It has one place at every width: above the table, in
+    the toolbar's row, sticking under the header while the page scrolls."""
     for i in range(PAGE_SIZE + 1):
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
     bar = page.locator("[data-total-count]")
 
-    for viewport, position in (
-        (QA_VIEWPORTS[0], "fixed"),
-        (QA_VIEWPORTS[1], "fixed"),
-        (QA_VIEWPORTS[2], "static"),
-    ):
+    for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(list_url)
         checkboxes = page.locator("#stubs-table input[name='keys']:visible")
         checkboxes.first.check()
+        expect(bar).to_be_visible()
 
-        assert bar.evaluate("el => getComputedStyle(el).position") == position, (
+        assert bar.evaluate("el => getComputedStyle(el).position") == "sticky", (
             f"bar position at {viewport}"
         )
-        if position != "fixed":
-            continue
-        bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
-        assert bottom == viewport["height"], f"bar bottom at {viewport}"
+        bar_bottom = bar.evaluate("el => el.getBoundingClientRect().bottom")
+        first_top = checkboxes.first.evaluate("el => el.getBoundingClientRect().top")
+        assert bar_bottom <= first_top, f"bar below the first row at {viewport}"
 
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        last_is_topmost = checkboxes.last.evaluate(
-            """el => {
-                const box = el.getBoundingClientRect();
-                return document.elementFromPoint(
-                    box.x + box.width / 2, box.y + box.height / 2) === el;
-            }"""
+        box = bar.bounding_box()
+        assert box is not None
+        assert 0 <= box["y"] < viewport["height"] / 2, (
+            f"bar scrolled out of view at {viewport}"
         )
-        assert last_is_topmost, f"bar covers the last row at {viewport}"
-
-        next_is_topmost = page.get_by_role("link", name="Next", exact=True).evaluate(
-            """el => {
-                const box = el.getBoundingClientRect();
-                return document.elementFromPoint(
-                    box.x + box.width / 2, box.y + box.height / 2) === el;
-            }"""
-        )
-        assert next_is_topmost, f"bar covers the pager at {viewport}"
-
-
-def _wait_for_space_under(page: Page, matches_bar: bool) -> None:
-    """Wait until the space after the footer is the fixed bar's height, or
-    nothing at all when the bar is hidden or in the flow."""
-    page.wait_for_function(
-        """matchesBar => {
-            const space = document.querySelector("[data-selection-bar-space]");
-            const bar = document.querySelector("[data-total-count]");
-            const expected = matchesBar ? bar.offsetHeight : 0;
-            return Math.abs(space.offsetHeight - expected) <= 2;
-        }""",
-        arg=matches_bar,
-        timeout=3000,
-    )
-
-
-def test_the_space_under_the_list_follows_the_fixed_bars_height(
-    page: Page,
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    mock_site_context: None,
-) -> None:
-    """The region reserves space after its footer for the fixed selection
-    bar, sized to the bar's own height: nothing while no row is selected, so
-    no empty band sits under the last row, and the bar's height once a
-    selection fills it."""
-    for i in range(PAGE_SIZE):
-        make_stub(name=f"row-{i:02d}")
-    list_url = f"{live_server.url}{_LIST_PATH}"
-
-    for viewport, matches_bar in (
-        (QA_VIEWPORTS[0], True),
-        (QA_VIEWPORTS[1], True),
-        (QA_VIEWPORTS[2], False),
-    ):
-        page.set_viewport_size(viewport)
-        page.goto(list_url)
-        space = page.locator("[data-selection-bar-space]")
-        expect(space).to_have_js_property("offsetHeight", 0)
-
-        page.locator("#stubs-table input[name='keys']:visible").first.check()
-        expect(page.locator("#stubs-table").get_by_role("status")).to_contain_text(
-            "1 selected"
-        )
-        _wait_for_space_under(page, matches_bar)
+        assert page.get_by_role("link", name="Next", exact=True).evaluate(
+            _IS_TOPMOST
+        ), f"bar covers the pager at {viewport}"
 
 
 def _tops_after_click(control: Locator) -> list[float]:
@@ -475,15 +431,14 @@ def _tops_after_click(control: Locator) -> list[float]:
     return tops
 
 
-def test_the_bar_takes_the_toolbars_place_from_lg_up(
+def test_the_bar_takes_the_toolbars_place_at_every_width(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """From lg the selection bar replaces the toolbar in its row without
-    moving the table; Clear brings the toolbar back. Below lg the toolbar
-    stays while the fixed bar shows."""
+    """The selection bar replaces the toolbar in its row without moving the
+    table; Clear brings the toolbar back. Below lg it does the same."""
     for i in range(PAGE_SIZE):
         make_stub(name=f"row-{i:02d}")
     list_url = f"{live_server.url}{_LIST_PATH}"
@@ -518,7 +473,7 @@ def test_the_bar_takes_the_toolbars_place_from_lg_up(
     page.goto(list_url)
     page.locator("#stubs-table input[name='keys']:visible").first.check()
     expect(bar).to_be_visible()
-    expect(search).to_be_visible()
+    expect(search).to_be_hidden()
 
 
 def test_selection_bar_actions_fieldset_draws_no_box(
@@ -792,41 +747,29 @@ def test_bulk_action_posts_with_javascript_off(
     assert active_by_name["row-02"] is True
 
 
-def test_the_fixed_bar_covers_nothing_with_javascript_off(
+def test_the_bar_covers_nothing_with_javascript_off(
     browser: Browser,
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
-    """Below lg the bar is fixed to the bottom and, with JavaScript off,
-    always shown, so the region reserves a fixed height after the footer:
-    scrolled to the end, the pager's Next link is not under the bar."""
+    """With JavaScript off the bar always shows, under the toolbar, and
+    sticks there: scrolled to the end, the pager's Next link is not under it."""
     for i in range(PAGE_SIZE + 1):
         make_stub(name=f"row-{i:02d}")
 
     with _no_js_page(browser) as no_js_page:
-        for viewport in QA_VIEWPORTS[:2]:
+        for viewport in QA_VIEWPORTS:
             no_js_page.set_viewport_size(viewport)
             no_js_page.goto(f"{live_server.url}{_LIST_PATH}")
 
             bar = no_js_page.locator("[data-total-count]")
-            assert bar.evaluate("el => getComputedStyle(el).position") == "fixed"
-            space = no_js_page.locator("[data-selection-bar-space]")
-            assert space.evaluate("el => el.offsetHeight") > 0, (
-                f"no space under the list at {viewport}"
-            )
+            assert bar.evaluate("el => getComputedStyle(el).position") == "sticky"
 
             no_js_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            next_is_topmost = no_js_page.get_by_role(
-                "link", name="Next", exact=True
-            ).evaluate(
-                """el => {
-                    const box = el.getBoundingClientRect();
-                    return document.elementFromPoint(
-                        box.x + box.width / 2, box.y + box.height / 2) === el;
-                }"""
-            )
-            assert next_is_topmost, f"bar covers the pager at {viewport}"
+            assert no_js_page.get_by_role("link", name="Next", exact=True).evaluate(
+                _IS_TOPMOST
+            ), f"bar covers the pager at {viewport}"
 
 
 def test_more_actions_trigger_is_hidden_with_javascript_off(

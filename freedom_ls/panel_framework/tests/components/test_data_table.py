@@ -312,7 +312,7 @@ def test_the_more_menu_lists_the_remaining_then_the_destructive_actions(
 ) -> None:
     document = _render(_bulk_panel(_SEVEN_ACTIONS))
 
-    (menu,) = document.cssselect("fieldset [role='menu']")
+    (menu,) = document.cssselect("fieldset > span [role='menu']")
     assert _bar_labels(menu.cssselect("[role='menuitem']")) == [
         "Mark processed (classified)",
         "Discard",
@@ -325,7 +325,7 @@ def test_the_more_menu_rule_sits_between_the_two_groups(
 ) -> None:
     document = _render(_bulk_panel(_SEVEN_ACTIONS))
 
-    (menu,) = document.cssselect("fieldset [role='menu']")
+    (menu,) = document.cssselect("fieldset > span [role='menu']")
     roles = [child.get("role") for child in menu]
     assert roles == ["menuitem", "separator", "menuitem", "menuitem"]
 
@@ -335,7 +335,7 @@ def test_only_destructive_menu_items_read_in_error_text(
 ) -> None:
     document = _render(_bulk_panel(_SEVEN_ACTIONS))
 
-    items = document.cssselect("fieldset [role='menuitem']")
+    items = document.cssselect("fieldset > span [role='menuitem']")
     red = [i.text_content().strip() for i in items if "text-error" in i.get("class")]
     assert red == ["Discard", "Purge"]
 
@@ -351,7 +351,9 @@ def test_a_menu_of_destructive_actions_alone_has_no_rule(
 ) -> None:
     document = _render(_bulk_panel([*_FOUR_ACTIONS, StubDiscardBulkAction()]))
 
-    assert len(document.cssselect("fieldset [role='menu'] [role='menuitem']")) == 1
+    assert (
+        len(document.cssselect("fieldset > span [role='menu'] [role='menuitem']")) == 1
+    )
     assert document.cssselect("fieldset [role='separator']") == []
 
 
@@ -391,7 +393,6 @@ def _positions(document: lxml.html.HtmlElement) -> dict[str, int]:
         for name, selector in {
             "table": "table",
             "footer": "[data-entry-count]",
-            "space": "[data-selection-bar-space]",
         }.items()
         if (found := document.cssselect(selector))
     }
@@ -419,21 +420,17 @@ def test_a_table_without_bulk_actions_renders_its_entry_count(
     assert len(document.cssselect("[data-entry-count]")) == 1
 
 
-def test_a_bulk_table_renders_the_bar_space_after_the_footer(
+def test_the_bar_sticks_above_the_table_at_every_width(
     mock_site_context: Site,
 ) -> None:
+    """One position at every width: sticky in the toolbar's place, never
+    fixed to the bottom of the viewport."""
     make_stub(name="row-a", kind="a")
 
-    positions = _positions(_render(_bulk_panel([StubBulkAction()])))
+    document = _render(_bulk_panel([StubBulkAction()]))
 
-    assert positions["space"] > positions["footer"]
-
-
-def test_a_table_without_bulk_actions_renders_no_bar_space(
-    mock_site_context: Site,
-) -> None:
-    make_stub(name="row-a", kind="a")
-
-    document = _render(StubBTablePanel)
-
+    (bar,) = document.cssselect("[data-total-count]")
+    classes = bar.get("class").split()
+    assert "sticky" in classes
+    assert not {"fixed", "bottom-0", "lg:static"} & set(classes)
     assert document.cssselect("[data-selection-bar-space]") == []

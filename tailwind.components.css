@@ -15,22 +15,11 @@
         }
     }
 
-    /* With JavaScript off nothing measures the bar fixed over the end of the
-     * table below lg, so the space after the footer takes a fixed height
-     * instead. With scripting on tableSelection sets it inline from the
-     * measured bar. */
-    @media (scripting: none) {
-        [data-selection-bar-space] {
-            @apply h-64 md:h-40 lg:h-0;
-        }
-    }
-
     /* Anchor links and `:focus-visible` autoscroll should land below the
-     * sticky header rather than behind it, and above the selection bar
-     * pinned to the bottom edge. ~80px clears `p-3` (≈56px tall) and `sm:p-4`
-     * (≈64px) on both themes with comfortable margin; 6rem clears the bar. */
+     * sticky header rather than behind it. ~80px clears `p-3` (≈56px tall)
+     * and `sm:p-4` (≈64px) on both themes with comfortable margin. */
     html {
-        scroll-padding-block: max(5rem, var(--sidebar-top, 0px)) 6rem;
+        scroll-padding-block-start: max(5rem, var(--sidebar-top, 0px));
     }
 
     /* Prevent horizontal scrolling on mobile */

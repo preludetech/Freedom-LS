@@ -83,12 +83,12 @@ The preview labels every row (new account, joined, reactivated, added to cohort,
 
 ![Bulk add to cohort confirmation, with the cohort picker above a sentence saying what will change](screenshots/educator_bulk_add_to_cohort.png)
 
-Tick rows in the Learners or Cohorts list and a selection bar takes the place of the search and filters above the table; on a small screen it sits at the bottom of the screen. It shows how many rows are selected and up to four actions, with the rest under **More**, where a destructive action such as removing learners from a cohort is always listed last. **Select all N** extends the selection to every row the filter matches, across pages, and **Clear** empties it. Changing page, sort or filters clears the selection.
+Tick rows in the Learners or Cohorts list and a selection bar takes the place of the search and filters above the table, at every screen size, and stays in view while the list scrolls. It shows how many rows are selected and up to four actions, with the rest under **More**, where a destructive action such as removing learners from a cohort is always listed last. **Select all N** extends the selection to every row the filter matches, across pages, and **Clear** empties it. Changing page, sort or filters clears the selection.
 
 - **Learners**: add to a cohort, remove from a cohort, register for a course, deactivate a course registration, deactivate, reactivate, and resend the account setup email.
 - **Cohorts**: register for a course, deactivate a course registration, deactivate and reactivate.
 
-Each action offers only what the educator could do to a single learner or cohort, and each row is checked on its own. Rows the educator may not change are skipped rather than blocking the rest. Nothing runs before a confirmation that says what will change and how many rows will be skipped, and why. Afterwards a result names the skipped and failed rows. Each row is handled as if done by hand, so [webhook](./webhooks.md) events and emails fire once per learner or cohort changed.
+Each action offers only what the educator could do to a single learner or cohort, and each row is checked on its own. Rows the educator may not change are skipped rather than blocking the rest. Nothing runs before a confirmation that says what will change and how many rows will be skipped, and why. Afterwards a result gives the counts (how many changed, how many were skipped and why) and names only the rows that failed. Each row is handled as if done by hand, so [webhook](./webhooks.md) events and emails fire once per learner or cohort changed.
 
 Runs over `BULK_BACKGROUND_THRESHOLD` rows (default 250) continue in the background: the educator can leave the list, and an in-app notification says when the run is done.
 

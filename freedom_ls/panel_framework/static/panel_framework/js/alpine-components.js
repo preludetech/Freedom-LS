@@ -693,9 +693,6 @@ document.addEventListener("alpine:init", () => {
         page: 0,
         allChecked: false,
         regionId: "",
-        // What the list reserves beneath itself while the bar is fixed over
-        // it (below lg): the bar's own height, which grows with a selection.
-        barHeight: 0,
 
         init() {
             const bar = this.$el.querySelector("[data-total-count]");
@@ -704,27 +701,12 @@ document.addEventListener("alpine:init", () => {
             this.regionId = this.$el.id;
             // The stylesheet hides a pending bar; from here on x-show decides.
             bar.removeAttribute("data-selection-bar-pending");
-            this._barObserver = new ResizeObserver(() => this.measureBar());
-            this._barObserver.observe(bar);
-            this.measureBar();
-        },
-
-        destroy() {
-            this._barObserver.disconnect();
         },
 
         // The bulk form, which the search form in the toolbar must never be
         // mistaken for: the hidden mode input belongs to the bulk form alone.
         _form() {
             return this.$refs.modeInput.form;
-        },
-
-        // A hidden bar has offsetHeight 0, and the ResizeObserver fires as it
-        // goes between 0 and its height.
-        measureBar() {
-            const bar = this.$root.querySelector("[data-total-count]");
-            this.barHeight =
-                getComputedStyle(bar).position === "fixed" ? bar.offsetHeight : 0;
         },
 
         get hasSelection() {
@@ -735,20 +717,16 @@ document.addEventListener("alpine:init", () => {
             return this.hasSelection || this.running;
         },
 
-        // The toolbar gives its row to the bar from lg up; below lg the bar
-        // is fixed to the bottom and the toolbar stays. The bar's display is
-        // bound the same way, so both change in the same frame: x-show would
-        // apply a frame later and leave the table a row lower or higher.
+        // The toolbar gives its row to the bar at every width. The bar's
+        // display is bound the same way, so both change in the same frame:
+        // x-show would apply a frame later and leave the table a row lower or
+        // higher. Important, so it beats the toolbar's md:flex.
         toolbarClass() {
-            return this.barVisible ? "lg:hidden" : "";
+            return this.barVisible ? "hidden!" : "";
         },
 
         barStyle() {
             return { display: this.barVisible ? "" : "none" };
-        },
-
-        barSpaceStyle() {
-            return { height: this.barHeight + "px" };
         },
 
         get countSentence() {

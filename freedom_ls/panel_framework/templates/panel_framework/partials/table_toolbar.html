@@ -62,9 +62,10 @@ work with JavaScript off.
     </div>
 {% endpartialdef %}
 {% comment %}
-With bulk actions, toolbarClass returns lg:hidden while the selection bar
-shows, so the bar takes the toolbar's row from lg up. The literal class name
-has to appear in this file for Tailwind to emit it. lg:min-h-16.75 is the
+With bulk actions, toolbarClass returns hidden! while the selection bar
+shows, so the bar takes the toolbar's row at every width; important, so it
+beats md:flex. The literal class name has to appear in this file for Tailwind
+to emit it. lg:min-h-16.75 is the
 one-row height at lg (12px of padding twice around the 42px search input, plus the 1px rule) and
 matches the bar, so the table's top does not move when one replaces the other.
 A bulk table with no controls keeps that row height from lg for the same
