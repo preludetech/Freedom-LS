@@ -8678,6 +8678,81 @@ def test_a_cohort_admin_with_a_viewer_role_opens_the_row_actions_for_their_cohor
     assert response.status_code == 200
 
 
+@pytest.fixture
+def colleague_with_roles_elsewhere(
+    organisation: Organisation, cohort_admin_setup: tuple[Cohort, User]
+) -> User:
+    """A cohort viewer on the cohort admin's cohort ("Own group") who also
+    holds roles the cohort admin has no say over."""
+    own, _ = cohort_admin_setup
+    own.name = "Own group"
+    own.save()
+    colleague = _staff_member_holding(
+        "cohort_viewer", [own, _cohort(organisation, name="Far group")]
+    )
+    assign_role(
+        UserFactory(superuser=True),
+        colleague,
+        "organisation_staff_viewer",
+        organisation,
+    )
+    return colleague
+
+
+@pytest.mark.django_db
+def test_the_add_role_dialog_shows_a_names_only_viewer_the_roles_on_their_cohorts_alone(
+    logged_in_client, organisation, viewing_cohort_admin, colleague_with_roles_elsewhere
+):
+    response = _add_role_dialog(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+    )
+
+    text = _text(response)
+    assert "Now Cohort viewer: Own group Role" in text
+    assert "Far group" not in text
+    assert "Organisation staff viewer" not in text
+
+
+@pytest.mark.django_db
+def test_the_add_role_confirm_step_shows_a_names_only_viewer_the_roles_on_their_cohorts_alone(
+    logged_in_client,
+    organisation,
+    cohort_admin_setup,
+    viewing_cohort_admin,
+    colleague_with_roles_elsewhere,
+):
+    own, _ = cohort_admin_setup
+
+    response = _add_role(
+        logged_in_client(viewing_cohort_admin),
+        organisation,
+        colleague_with_roles_elsewhere,
+        "cohort_admin",
+        [own],
+        confirmed="",
+    )
+
+    text = _text(response)
+    assert "After Cohort admin: Own groupCohort viewer: Own group" in text
+    assert "Far group" not in text
+    assert "Organisation staff viewer" not in text
+
+
+@pytest.mark.django_db
+def test_the_add_role_dialog_shows_a_roles_viewer_every_role(
+    admin_client, organisation, cohort_admin_setup, colleague_with_roles_elsewhere
+):
+    response = _add_role_dialog(
+        admin_client, organisation, colleague_with_roles_elsewhere
+    )
+
+    text = _text(response)
+    assert "Organisation staff viewer: Whole organisation" in text
+    assert "Cohort viewer: Far group, Own group" in text
+
+
 @pytest.mark.django_db
 def test_add_role_answers_403_for_a_cohort_the_cohort_admin_cannot_give(
     logged_in_client, organisation, cohort_admin_setup, viewing_cohort_admin

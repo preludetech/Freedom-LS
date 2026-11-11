@@ -47,6 +47,7 @@ from freedom_ls.educator_interface.events import (
     REGISTRATION_CHANGED,
     STAFF_CHANGED,
 )
+from freedom_ls.educator_interface.filters import may_see_staff_roles
 from freedom_ls.educator_interface.forms import (
     AddLearnerForm,
     AddStaffMemberForm,
@@ -205,6 +206,30 @@ def roles_grantable_on(request: HttpRequest, cohort: Cohort) -> set[str]:
         for grantable in grantable_roles_for(request)
         if grantable.cohorts is not None and cohort in grantable.cohorts
     }
+
+
+def role_entries_shown_to(
+    request: HttpRequest, entries: list[RoleEntry]
+) -> list[RoleEntry]:
+    """The part of a person's roles the viewer may read. A viewer who may see
+    staff roles reads them all. Anyone else reads a cohort role on the cohorts
+    they may give it on, which that cohort's own Staff list already shows
+    them, and no organisation role."""
+    if may_see_staff_roles(request):
+        return entries
+    reach = {
+        grantable.role: set(grantable.cohorts)
+        for grantable in grantable_roles_for(request)
+        if grantable.cohorts is not None
+    }
+    trimmed = (
+        replace(
+            entry,
+            cohorts=tuple(c for c in entry.cohorts if c in reach.get(entry.role, ())),
+        )
+        for entry in entries
+    )
+    return [entry for entry in trimmed if entry.cohorts]
 
 
 def has_grantable_roles(ctx: PanelContext) -> bool:
@@ -1951,7 +1976,7 @@ class AddStaffMemberAction(PanelAction):
             "match": user,
             "new_account": user is None,
             "person": person,
-            "current_entries": entries,
+            "current_entries": role_entries_shown_to(ctx.request, entries),
             "form": form,
             "form_url": self.get_action_url(ctx),
             "role_cards": self._role_cards(ctx, entries),
@@ -2147,6 +2172,7 @@ class AddStaffMemberAction(PanelAction):
         site = organisation.site
         role_config = get_role_config(site.name)[role]
         name = _staff_member_name(user, email)
+        before = role_entries_shown_to(ctx.request, before)
         after = (
             _entries_after(
                 before,
