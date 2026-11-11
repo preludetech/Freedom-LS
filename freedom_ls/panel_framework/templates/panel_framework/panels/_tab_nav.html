@@ -5,10 +5,10 @@ region_id (the region the links swap) and in_band. In the page header band
 the row sits on the band's own bottom rule, overlapping it by the width of
 the active tab's underline; on its own it draws that rule itself and keeps
 a gap below. Labels stay on one line and the row scrolls sideways on a
-narrow screen.
+narrow screen, where tabStrip keeps the active tab in view.
 {% endcomment %}
 <nav aria-label="{{ title }}" class="{% if in_band %}-mb-px -ms-3 mt-1{% else %}mb-6{% endif %}">
-    <ul class="flex list-none ml-0 gap-1 overflow-x-auto {% if not in_band %}shadow-[inset_0_-1px_0_var(--color-border)]{% endif %}">
+    <ul x-data="tabStrip" class="flex list-none ml-0 gap-1 overflow-x-auto {% if not in_band %}shadow-[inset_0_-1px_0_var(--color-border)]{% endif %}">
         {% for tab in tabs %}
             <li class="py-0">
                 <a href="{{ tab.url }}"

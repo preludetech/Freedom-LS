@@ -89,3 +89,31 @@ def test_cohort_page_header_and_tabs_fit_a_phone(
         mobile_educator_page.evaluate("document.documentElement.scrollWidth")
         <= _PHONE_WIDTH
     )
+
+
+def test_the_tab_strip_opens_with_the_active_tab_in_view_on_a_phone(
+    live_server,
+    mobile_educator_page: Page,
+    mobile_educator: AbstractBaseUser,
+) -> None:
+    """The strip scrolls sideways on a phone, and the last tabs start off
+    screen."""
+    organisation = OrganisationFactory()
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, mobile_educator, "organisation_admin", organisation)
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+    path = reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"cohorts/{cohort.pk}/__tabs/history",
+        },
+    )
+
+    mobile_educator_page.goto(f"{live_server.url}{path}")
+
+    tabs = mobile_educator_page.get_by_role("navigation", name="Cohort sections")
+    active = tabs.locator("a[aria-current='page']")
+    expect(active).to_have_text("History")
+    # Short of 1 only by the sub-pixel rounding of the strip's own edge.
+    expect(active).to_be_in_viewport(ratio=0.99)

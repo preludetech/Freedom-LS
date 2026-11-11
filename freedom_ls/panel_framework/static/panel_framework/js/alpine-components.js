@@ -1036,6 +1036,15 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Tab strip (panel_framework/panels/_tab_nav.html). The strip scrolls
+    // sideways on a narrow screen and opens at its left end, so a page that
+    // loads on one of the last tabs would hide the tab it is on.
+    Alpine.data("tabStrip", () => ({
+        init() {
+            this.$nextTick(() => showActiveTab(this.$el));
+        },
+    }));
+
     // Row detail toggle (cotton/data-table.html). x-data sits on the <table>
     // and on the card list below md; each toggle button names its detail (a
     // <tr> in the table, a <div> in a card) through aria-controls, so rows
@@ -1056,9 +1065,24 @@ document.addEventListener("alpine:init", () => {
     }));
 });
 
+// Scroll a tab strip sideways just far enough to show its active tab whole.
+// The strip's own scroll offset is set, so the page itself never moves.
+function showActiveTab(strip) {
+    const active = strip.querySelector('a[aria-current="page"]');
+    if (!active) return;
+    const stripBox = strip.getBoundingClientRect();
+    const tabBox = active.getBoundingClientRect();
+    if (tabBox.left < stripBox.left) {
+        strip.scrollLeft -= stripBox.left - tabBox.left;
+    } else if (tabBox.right > stripBox.right) {
+        strip.scrollLeft += tabBox.right - stripBox.right;
+    }
+}
+
 // A tab link lives outside the region it swaps, so the server-rendered
 // aria-current on the nav goes stale after a tab switch. Move it to the link
-// that made the request. Focus stays where the reader put it.
+// that made the request, and bring it into view when it was only part
+// showing. Focus stays where the reader put it.
 document.addEventListener("htmx:afterSwap", (event) => {
     if (!event.target.hasAttribute("data-tab-set")) return;
     const link = event.detail.requestConfig && event.detail.requestConfig.elt;
@@ -1067,6 +1091,7 @@ document.addEventListener("htmx:afterSwap", (event) => {
         .querySelectorAll("a[aria-current]")
         .forEach((a) => a.removeAttribute("aria-current"));
     link.setAttribute("aria-current", "page");
+    showActiveTab(link.closest("ul"));
 });
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
