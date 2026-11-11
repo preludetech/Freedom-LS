@@ -20,6 +20,7 @@ from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.sweeps import requeue_due_outbound_email
 
 NOW = "2026-01-01T12:00:00+00:00"
+GRACE_SECONDS = 300
 
 
 def hours_ago(hours: int) -> datetime:
@@ -30,6 +31,12 @@ def hours_ago(hours: int) -> datetime:
 def frozen_now() -> Iterator[None]:
     with time_machine.travel(NOW, tick=False):
         yield
+
+
+@pytest.fixture(autouse=True)
+def pinned_sweep_settings(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    settings.HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS = GRACE_SECONDS
+    settings.HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE = 500
 
 
 @pytest.mark.django_db
@@ -66,7 +73,9 @@ class TestRequeueDueOutboundEmail:
     def test_row_inside_the_grace_period_is_left_alone(
         self, database_task_backend: None
     ) -> None:
-        OutboundEmailFactory(next_attempt_at=timezone.now() - timedelta(seconds=60))
+        OutboundEmailFactory(
+            next_attempt_at=timezone.now() - timedelta(seconds=GRACE_SECONDS - 1)
+        )
 
         requeued = requeue_due_outbound_email()
 
