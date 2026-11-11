@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from django import template
+from django.template import Context
 
+from freedom_ls.form_engine.phone_numbers import country_choices
 from freedom_ls.form_engine.typed_answers import format_answer
 from freedom_ls.form_engine.uploads import (
     ACCEPT_ATTRIBUTE,
@@ -22,6 +24,26 @@ def upload_limits() -> dict[str, object]:
         "accept": ACCEPT_ATTRIBUTE,
         "max_label": MAX_UPLOAD_LABEL,
     }
+
+
+@register.simple_tag(takes_context=True)
+def phone_field_state(context: Context) -> dict[str, object]:
+    """What the phone question's two controls show: the selected country, the
+    number, and the countries on offer.
+
+    Reads `question`, `rejected` and `existing_answers` from the context the
+    question template already holds, so no view computes anything for it.
+    """
+    question = context["question"]
+    rejected = context.get("rejected")
+    if rejected:
+        # An empty choice stays empty: someone who cleared the picker and
+        # was refused must not find a country chosen for them.
+        country, number = rejected.country, rejected.text
+    else:
+        answer = (context.get("existing_answers") or {}).get(question.id)
+        country, number = "", answer.text_answer if answer else ""
+    return {"country": country, "number": number, "choices": country_choices()}
 
 
 @register.filter

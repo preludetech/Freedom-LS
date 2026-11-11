@@ -19,11 +19,13 @@ from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
+from .phone_numbers import e164_phone_answer
 from .scoring import is_quiz_answer_correct
 from .signals import form_attempt_completed
 from .submissions import (
     has_submitted_answer,
     submitted_option_ids,
+    submitted_phone_country,
     submitted_text_answer,
 )
 from .typed_answers import RejectedAnswer, answer_error, question_bounds_error
@@ -420,10 +422,16 @@ class FormProgress(SiteAwareModel):
             text: str | None = None
             if question.type in FREE_TEXT_QUESTION_TYPES:
                 text = submitted_text_answer(question, post_data)
-                message = answer_error(question, text)
+                # "" for every type but phone, which is the only one that posts a country.
+                country = submitted_phone_country(question, post_data)
+                message = answer_error(question, text, country)
                 if message is not None:
-                    rejected[question.id] = RejectedAnswer(text=text, message=message)
+                    rejected[question.id] = RejectedAnswer(
+                        text=text, message=message, country=country
+                    )
                     continue
+                if question.type == QuestionType.PHONE:
+                    text = e164_phone_answer(text, country)
 
             answer, _created = QuestionAnswer.objects.get_or_create(
                 form_progress=self, question=question, site=self.site

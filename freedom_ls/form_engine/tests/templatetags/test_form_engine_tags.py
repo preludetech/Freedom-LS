@@ -9,10 +9,14 @@ from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormQuestion
-from freedom_ls.form_engine.templatetags.form_engine_tags import answer_display
+from freedom_ls.form_engine.templatetags.form_engine_tags import (
+    answer_display,
+    phone_field_state,
+)
 from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 # The `answer_display` filter: a stored answer rendered for a reader.
@@ -166,6 +170,124 @@ def test_phone_question_renders_a_tel_input(mock_site_context):
     markup = _render(question)
 
     assert 'type="tel"' in markup
+
+
+def _phone_context(question: FormQuestion, **extra: object) -> Context:
+    return Context({"question": question, "existing_answers": {}, **extra})
+
+
+@pytest.mark.django_db
+def test_phone_field_state_returns_the_rejected_country_and_text(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+    rejected = RejectedAnswer(text="hello", message="m", country="ZA")
+
+    state = phone_field_state(_phone_context(question, rejected=rejected))
+
+    assert (state["country"], state["number"]) == ("ZA", "hello")
+
+
+@pytest.mark.django_db
+def test_phone_field_state_keeps_a_rejected_empty_country_empty(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+    rejected = RejectedAnswer(text="082 123 4567", message="m", country="")
+
+    state = phone_field_state(_phone_context(question, rejected=rejected))
+
+    assert state["country"] == ""
+
+
+@pytest.mark.django_db
+def test_phone_field_state_shows_a_stored_legacy_answer_as_typed(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+    answer = QuestionAnswerFactory(question=question, text_answer="082 123 4567")
+
+    state = phone_field_state(
+        _phone_context(question, existing_answers={question.id: answer})
+    )
+
+    assert (state["country"], state["number"]) == ("", "082 123 4567")
+
+
+@pytest.mark.django_db
+def test_phone_question_renders_a_labelled_country_select(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    markup = _render(question)
+
+    assert f'<label for="phone_country_{question.id}">Country</label>' in markup
+    assert f'<select id="phone_country_{question.id}"' in markup
+    assert f'name="phone_country_{question.id}"' in markup
+
+
+@pytest.mark.django_db
+def test_phone_country_select_name_is_outside_the_question_prefix(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    markup = _render(question)
+
+    assert f'name="question_{question.id}"' in markup
+    assert 'name="question_phone_country' not in markup
+
+
+@pytest.mark.django_db
+def test_phone_question_renders_a_labelled_number_input(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    markup = _render(question)
+
+    assert f'<label for="question_{question.id}">Phone number</label>' in markup
+    assert 'autocomplete="tel"' in markup
+
+
+@pytest.mark.django_db
+def test_phone_country_select_starts_on_an_empty_choose_a_country_option(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+
+    markup = _render(question)
+
+    assert '<option value="">Choose a country</option>' in markup
+
+
+@pytest.mark.django_db
+def test_read_only_phone_question_disables_both_controls(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    markup = render_to_string(
+        "form_engine/question.html",
+        {
+            "question": question,
+            "existing_answers": {},
+            "rejected_answers": {},
+            "read_only": True,
+        },
+    )
+
+    assert markup.count("disabled") == 2
+
+
+@pytest.mark.django_db
+def test_rejected_phone_answer_points_the_number_input_at_the_error(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+    rejected = RejectedAnswer(text="hello", message="Bad number", country="ZA")
+
+    markup = _render(question, rejected_answers={question.id: rejected})
+
+    assert f'aria-describedby="question_{question.id}_error"' in markup
+    assert f'id="question_{question.id}_error"' in markup
+
+
+@pytest.mark.django_db
+def test_phone_question_needs_no_javascript(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    markup = _render(question)
+
+    assert "x-data" not in markup
+    assert "<script" not in markup
 
 
 @pytest.mark.django_db
