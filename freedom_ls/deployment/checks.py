@@ -32,6 +32,9 @@ E006 — ALLAUTH_TRUSTED_CLIENT_IP_HEADER and TRUSTED_PROXY_IP_HEADER name
 E007 — Retired. It moved to the mail app as freedom_ls_mail.E001 along with the
        queueing email backend. Do not reuse the number: a downstream silencing
        freedom_ls_deployment.E007 would end up silencing something else.
+E008 — HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS is below the longest a worker can
+       hold a send, so housekeeping would re-drive an email whose worker is still
+       sending it. Runs only under ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 W002 — Retired. It moved to the google_tag app as freedom_ls_google_tag.W001
@@ -417,5 +420,43 @@ def check_client_ip_headers_agree(
                 "variable."
             ),
             id="freedom_ls_deployment.E006",
+        )
+    ]
+
+
+@register(deploy=True)
+def check_stuck_email_window_covers_task_ceiling(
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """E008: Error when the stuck-email window is shorter than a send can run.
+
+    A worker holds a send for at most WORKER_MAX_TASK_SECONDS, and a dead one is
+    only noticed after the heartbeat goes stale and the watchdog next polls. A
+    window below that sum recovers a row whose worker is still alive, and the
+    message is delivered twice.
+    """
+    from freedom_ls.deployment.config import config
+    from freedom_ls.deployment.worker import WATCHDOG_POLL_SECONDS
+    from freedom_ls.mail.config import config as mail_config
+
+    ceiling = (
+        config.WORKER_MAX_TASK_SECONDS
+        + config.WORKER_HEARTBEAT_MAX_AGE_SECONDS
+        + WATCHDOG_POLL_SECONDS
+    )
+    window = mail_config.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS
+    if window >= ceiling:
+        return []
+    return [
+        Error(
+            f"HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS ({window}s) is below the "
+            f"worker task ceiling ({ceiling}s), so housekeeping would re-send an "
+            f"email whose worker is still sending it and the message would go out "
+            f"twice.",
+            hint=(
+                f"Raise HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS to at least "
+                f"{ceiling}, or lower WORKER_MAX_TASK_SECONDS."
+            ),
+            id="freedom_ls_deployment.E008",
         )
     ]

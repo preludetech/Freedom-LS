@@ -24,7 +24,10 @@ from django.utils import timezone
 from freedom_ls.deployment.config import config
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import ImportStatus, LearnerImport
-from freedom_ls.mail.sweeps import requeue_due_outbound_email
+from freedom_ls.mail.sweeps import (
+    recover_stuck_outbound_email,
+    requeue_due_outbound_email,
+)
 from freedom_ls.panel_framework.bulk_runs import report_finished
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.reports.models import GeneratedReport
@@ -351,7 +354,8 @@ SWEEP_FAILURES = (CommandError, DatabaseError)
 def run_housekeeping_sweeps() -> HousekeepingOutcome:
     """Run both sweeps, the late-task check, the orphan reap and the mail sweeps.
 
-    The mail sweep enqueues outgoing email that is past due.
+    The mail sweeps enqueue outgoing email that is past due and re-drive email a
+    dead worker left in sending.
 
     Each step gets its own try/except so no failure stops a later step: a prune that
     dies must still leave expired sessions cleared, and both must still leave the
@@ -491,6 +495,18 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
     else:
         if requeued:
             notes.append(f"Requeued {requeued} outbound email(s) past due.")
+
+    try:
+        dead_lettered = recover_stuck_outbound_email()
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"stuck outbound email sweep failed: {exc}")
+    else:
+        if dead_lettered:
+            findings.append(
+                f"{len(dead_lettered)} outbound email(s) stuck in sending were "
+                f"dead-lettered."
+            )
 
     return HousekeepingOutcome(
         sweep_failures=sweep_failures, findings=findings, notes=notes

@@ -10,6 +10,7 @@ class MailSettings(AppSettings):
     EMAIL_RETRY_JITTER_RATIO: float
     HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS: int
     HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE: int
+    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS: int
 
     declared_settings = {
         # The backend the worker actually sends through, once QueuedEmailBackend has
@@ -39,6 +40,12 @@ class MailSettings(AppSettings):
         # Most rows one housekeeping run enqueues, oldest first, so a long
         # outage cannot flood the queue in one run.
         "HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE": Setting(default=500),
+        # How long a row may stay in sending before housekeeping decides its
+        # worker died and sends it again. Keep it at or above
+        # WORKER_MAX_TASK_SECONDS plus WORKER_HEARTBEAT_MAX_AGE_SECONDS plus one
+        # watchdog poll, or a send still in flight is recovered out from under
+        # its worker and the message goes out twice.
+        "HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS": Setting(default=3600),
     }
 
 

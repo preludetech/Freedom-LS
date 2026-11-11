@@ -1287,3 +1287,54 @@ class TestDueOutboundEmailSweep:
         outcome = run_housekeeping_sweeps()
 
         assert outcome.sweep_failures == ["due outbound email sweep failed: down"]
+
+
+@pytest.mark.django_db
+class TestStuckOutboundEmailSweep:
+    @pytest.fixture(autouse=True)
+    def _pinned_settings(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS = 3600
+        settings.EMAIL_MAX_ATTEMPTS = 6
+
+    def test_dead_lettered_stuck_email_is_a_finding(
+        self, database_task_backend: None
+    ) -> None:
+        OutboundEmailFactory(
+            sending=True,
+            attempt_count=6,
+            last_attempt_at=timezone.now() - timedelta(hours=2),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.findings == [
+            "1 outbound email(s) stuck in sending were dead-lettered."
+        ]
+
+    def test_recovered_stuck_email_is_not_a_finding(
+        self, database_task_backend: None
+    ) -> None:
+        OutboundEmailFactory(
+            sending=True,
+            attempt_count=1,
+            last_attempt_at=timezone.now() - timedelta(hours=2),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.findings == []
+
+    def test_database_error_from_the_sweep_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.recover_stuck_outbound_email",
+            side_effect=DatabaseError("down"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == ["stuck outbound email sweep failed: down"]

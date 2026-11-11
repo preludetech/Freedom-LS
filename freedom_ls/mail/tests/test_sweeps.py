@@ -17,10 +17,18 @@ from django.utils import timezone
 
 from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.mail.models import OutboundEmail
-from freedom_ls.mail.sweeps import requeue_due_outbound_email
+from freedom_ls.mail.sweeps import (
+    STUCK_LAST_ERROR,
+    STUCK_MESSAGE,
+    recover_stuck_outbound_email,
+    requeue_due_outbound_email,
+)
+from freedom_ls.mail.tasks import send_outbound_email
 
 NOW = "2026-01-01T12:00:00+00:00"
 GRACE_SECONDS = 300
+STUCK_WINDOW_SECONDS = 3600
+MAX_ATTEMPTS = 6
 
 
 def hours_ago(hours: int) -> datetime:
@@ -37,6 +45,8 @@ def frozen_now() -> Iterator[None]:
 def pinned_sweep_settings(settings: pytest_django.fixtures.SettingsWrapper) -> None:
     settings.HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS = GRACE_SECONDS
     settings.HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE = 500
+    settings.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS = STUCK_WINDOW_SECONDS
+    settings.EMAIL_MAX_ATTEMPTS = MAX_ATTEMPTS
 
 
 @pytest.mark.django_db
@@ -156,3 +166,132 @@ class TestRequeueDueOutboundEmail:
             requeue_due_outbound_email()
 
         assert OutboundEmail.objects.get(pk=email.pk).next_attempt_at == original
+
+
+def stuck_since(seconds_past_window: int) -> datetime:
+    return timezone.now() - timedelta(
+        seconds=STUCK_WINDOW_SECONDS + seconds_past_window
+    )
+
+
+@pytest.mark.django_db
+class TestRecoverStuckOutboundEmail:
+    def test_stuck_row_below_the_cap_becomes_failed_and_due_now(
+        self, database_task_backend: None
+    ) -> None:
+        email = OutboundEmailFactory(
+            sending=True, attempt_count=2, last_attempt_at=stuck_since(1)
+        )
+
+        dead_lettered = recover_stuck_outbound_email()
+
+        email.refresh_from_db()
+        assert dead_lettered == []
+        assert email.status == OutboundEmail.Status.FAILED
+        assert email.next_attempt_at == timezone.now()
+
+    def test_recovered_row_gets_one_undeferred_task(
+        self, database_task_backend: None
+    ) -> None:
+        email = OutboundEmailFactory(sending=True, last_attempt_at=stuck_since(1))
+
+        recover_stuck_outbound_email()
+
+        queued = DBTaskResult.objects.get()
+        assert queued.args_kwargs == {"args": [str(email.pk)], "kwargs": {}}
+        assert queued.run_after.year == 9999
+
+    def test_recovered_row_raises_one_sentry_message(
+        self, database_task_backend: None, sentry_events: list[dict]
+    ) -> None:
+        OutboundEmailFactory(sending=True, last_attempt_at=stuck_since(1))
+
+        recover_stuck_outbound_email()
+
+        assert [event["message"] for event in sentry_events] == [STUCK_MESSAGE]
+
+    def test_empty_last_error_becomes_the_stuck_note(
+        self, database_task_backend: None
+    ) -> None:
+        email = OutboundEmailFactory(
+            sending=True, last_attempt_at=stuck_since(1), last_error=""
+        )
+
+        recover_stuck_outbound_email()
+
+        email.refresh_from_db()
+        assert email.last_error == STUCK_LAST_ERROR
+
+    def test_existing_last_error_is_kept(self, database_task_backend: None) -> None:
+        email = OutboundEmailFactory(
+            sending=True,
+            last_attempt_at=stuck_since(1),
+            last_error="builtins.TimeoutError: upstream timed out",
+        )
+
+        recover_stuck_outbound_email()
+
+        email.refresh_from_db()
+        assert email.last_error == "builtins.TimeoutError: upstream timed out"
+
+    def test_stuck_row_at_the_cap_is_dead_lettered_and_returned(
+        self, database_task_backend: None
+    ) -> None:
+        email = OutboundEmailFactory(
+            sending=True, attempt_count=MAX_ATTEMPTS, last_attempt_at=stuck_since(1)
+        )
+
+        dead_lettered = recover_stuck_outbound_email()
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.DEAD_LETTER
+        assert [row.pk for row in dead_lettered] == [email.pk]
+
+    def test_dead_lettered_row_is_not_enqueued(
+        self, database_task_backend: None
+    ) -> None:
+        OutboundEmailFactory(
+            sending=True, attempt_count=MAX_ATTEMPTS, last_attempt_at=stuck_since(1)
+        )
+
+        recover_stuck_outbound_email()
+
+        assert DBTaskResult.objects.count() == 0
+
+    def test_dead_lettered_row_raises_one_sentry_message(
+        self, database_task_backend: None, sentry_events: list[dict]
+    ) -> None:
+        OutboundEmailFactory(
+            sending=True, attempt_count=MAX_ATTEMPTS, last_attempt_at=stuck_since(1)
+        )
+
+        recover_stuck_outbound_email()
+
+        assert [event["message"] for event in sentry_events] == [STUCK_MESSAGE]
+
+    def test_row_sending_for_less_than_the_window_is_left_alone(
+        self, database_task_backend: None
+    ) -> None:
+        email = OutboundEmailFactory(sending=True, last_attempt_at=stuck_since(-1))
+
+        dead_lettered = recover_stuck_outbound_email()
+
+        email.refresh_from_db()
+        assert dead_lettered == []
+        assert email.status == OutboundEmail.Status.SENDING
+        assert DBTaskResult.objects.count() == 0
+
+    def test_recovered_row_is_sent_when_its_task_runs_against_a_working_upstream(
+        self,
+        database_task_backend: None,
+        upstream_locmem: None,
+        mailoutbox: list[EmailMessage],
+    ) -> None:
+        email = OutboundEmailFactory(sending=True, last_attempt_at=stuck_since(1))
+        recover_stuck_outbound_email()
+
+        send_outbound_email(str(email.pk))
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.SENT
+        assert len(mailoutbox) == 1

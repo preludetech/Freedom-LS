@@ -13,6 +13,7 @@ from freedom_ls.deployment.checks import (
     check_media_aliases_not_shared_with_default,
     check_private_media_aliases_sign_their_urls,
     check_sentry_release_set_when_dsn_set,
+    check_stuck_email_window_covers_task_ceiling,
 )
 from freedom_ls.deployment.storage import build_storages
 from freedom_ls.deployment.tests.helpers import LEGACY_SHARED_BUCKET_ENV, set_env
@@ -630,3 +631,43 @@ def test_neither_client_ip_header_set_returns_no_errors() -> None:
         errors = check_client_ip_headers_agree()
 
     assert errors == []
+
+
+def test_stuck_email_window_check_is_registered_via_app_ready() -> None:
+    assert (
+        check_stuck_email_window_covers_task_ceiling
+        in registry.registry.deployment_checks
+    )
+
+
+@override_settings(
+    WORKER_MAX_TASK_SECONDS=1800,
+    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
+    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=3600,
+)
+def test_stuck_email_window_above_the_task_ceiling_returns_no_errors() -> None:
+    assert check_stuck_email_window_covers_task_ceiling() == []
+
+
+@override_settings(
+    WORKER_MAX_TASK_SECONDS=1800,
+    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
+    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=1800,
+)
+def test_stuck_email_window_below_the_task_ceiling_returns_one_e008() -> None:
+    errors = check_stuck_email_window_covers_task_ceiling()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E008"]
+
+
+@override_settings(
+    WORKER_MAX_TASK_SECONDS=7200,
+    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
+    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=3600,
+)
+def test_raising_the_task_ceiling_past_the_stuck_email_window_returns_one_e008() -> (
+    None
+):
+    errors = check_stuck_email_window_covers_task_ceiling()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E008"]
