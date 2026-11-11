@@ -325,18 +325,28 @@ def test_invalid_url_is_rejected_naming_value():
 # phone
 
 
-def test_any_phone_text_is_accepted():
+def test_phone_answer_with_a_country_is_accepted():
     question = _StubQuestion(type="phone")
 
-    assert answer_error(question, "+1 555 0100") is None
+    assert answer_error(question, "082 123 4567", "ZA") is None
 
 
-def test_phone_text_with_letters_is_still_accepted():
-    """Real phone validation needs `libphonenumber` and a country; this
-    type checks only that something is present, which is enforced elsewhere."""
+def test_phone_answer_without_a_country_is_rejected():
     question = _StubQuestion(type="phone")
 
-    assert answer_error(question, "call me maybe") is None
+    assert answer_error(question, "082 123 4567") == (
+        'You entered "082 123 4567". Choose a country, or start the number '
+        "with + and its country code."
+    )
+
+
+def test_phone_answer_is_checked_against_the_country_passed_through():
+    question = _StubQuestion(type="phone")
+
+    message = answer_error(question, "call me maybe", "ZA")
+
+    assert message is not None
+    assert "South Africa" in message
 
 
 # min/max on a real FormQuestion
