@@ -1,87 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="958" height="792" viewBox="0 0 958 792" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" width="958" height="860" viewBox="0 0 958 860" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
-<rect width="958" height="792" fill="#ffffff"/>
+<rect width="958" height="860" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Up next</text>
-<path d="M274.0,151.0 C314.0,151.0 314.0,83.0 354.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,83.0 C644.0,83.0 644.0,359.0 684.0,359.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,83.0 C644.0,83.0 644.0,427.0 684.0,427.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,642.5 C314.0,642.5 314.0,703.0 354.0,703.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,219.0 C314.0,219.0 314.0,143.5 354.0,143.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,287.0 C314.0,287.0 314.0,196.5 354.0,196.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,287.0 C314.0,287.0 314.0,249.5 354.0,249.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,287.0 C314.0,287.0 314.0,310.0 354.0,310.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,483.5 C314.0,483.5 314.0,582.0 354.0,582.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,355.0 C314.0,355.0 314.0,378.0 354.0,378.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,423.0 C314.0,423.0 314.0,446.0 354.0,446.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,423.0 C314.0,423.0 314.0,514.0 354.0,514.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,536.5 C314.0,536.5 314.0,642.5 354.0,642.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,589.5 C314.0,589.5 314.0,642.5 354.0,642.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<rect x="24.0" y="126.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="34.0" y="148.0" fill="#111827">design_educator-interface-</text>
-<text x="34.0" y="163.0" fill="#111827">bulk-action</text>
+<path d="M274.0,185.0 C314.0,185.0 314.0,83.0 354.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,185.0 C314.0,185.0 314.0,151.0 354.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,83.0 C644.0,83.0 644.0,393.0 684.0,393.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,151.0 C644.0,151.0 644.0,461.0 684.0,461.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M934.0,393.0 C964.0,393.0 654.0,461.0 684.0,461.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,676.5 C314.0,676.5 314.0,771.0 354.0,771.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,253.0 C314.0,253.0 314.0,211.5 354.0,211.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,321.0 C314.0,321.0 314.0,264.5 354.0,264.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,321.0 C314.0,321.0 314.0,317.5 354.0,317.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,321.0 C314.0,321.0 314.0,378.0 354.0,378.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,517.5 C314.0,517.5 314.0,650.0 354.0,650.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,389.0 C314.0,389.0 314.0,446.0 354.0,446.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,457.0 C314.0,457.0 314.0,514.0 354.0,514.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,457.0 C314.0,457.0 314.0,582.0 354.0,582.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,570.5 C314.0,570.5 314.0,710.5 354.0,710.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,623.5 C314.0,623.5 314.0,710.5 354.0,710.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="24.0" y="160.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="182.0" fill="#111827">extract_panels_framework-1-</text>
+<text x="34.0" y="197.0" fill="#111827">gather-generic-code</text>
 <rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="80.0" fill="#111827">extract_panels_framework-1-</text>
-<text x="364.0" y="95.0" fill="#111827">gather-generic-code</text>
-<rect x="684.0" y="334.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="694.0" y="356.0" fill="#111827">extract_panels_framework-2-</text>
-<text x="694.0" y="371.0" fill="#111827">new-capabilities</text>
-<rect x="684.0" y="402.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="694.0" y="424.0" fill="#111827">extract_panels_framework-3-</text>
-<text x="694.0" y="439.0" fill="#111827">standalone-backend</text>
-<rect x="354.0" y="678.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="700.0" fill="#111827">user-communication-2-</text>
-<text x="364.0" y="715.0" fill="#111827">notification-email</text>
-<rect x="24.0" y="194.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="34.0" y="216.0" fill="#111827">user-communication-6-</text>
-<text x="34.0" y="231.0" fill="#111827">moderation</text>
-<rect x="354.0" y="126.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="148.0" fill="#111827">user-communication-8-realtime</text>
-<rect x="24.0" y="262.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="34.0" y="284.0" fill="#111827">deadlines-3-extensions-and-</text>
-<text x="34.0" y="299.0" fill="#111827">pause</text>
-<rect x="354.0" y="179.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="201.0" fill="#111827">deadlines-4-learner-self-pause</text>
-<rect x="354.0" y="232.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="254.0" fill="#111827">deadlines-5-reminders</text>
-<rect x="354.0" y="285.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="307.0" fill="#111827">deadlines-6-educator-</text>
-<text x="364.0" y="322.0" fill="#111827">management</text>
-<rect x="354.0" y="557.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="579.0" fill="#111827">apis-for-lead-monitoring-6-</text>
-<text x="364.0" y="594.0" fill="#111827">conversions</text>
-<rect x="24.0" y="330.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="34.0" y="352.0" fill="#111827">test-organisation-and-hygene-</text>
-<text x="34.0" y="367.0" fill="#111827">13-learner-interface-part-1</text>
+<text x="364.0" y="80.0" fill="#111827">extract_panels_framework-2-</text>
+<text x="364.0" y="95.0" fill="#111827">new-capabilities</text>
+<rect x="354.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="148.0" fill="#111827">extract_panels_framework-3-</text>
+<text x="364.0" y="163.0" fill="#111827">standalone-backend</text>
+<rect x="684.0" y="368.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="390.0" fill="#111827">extract_panels_framework-4-</text>
+<text x="694.0" y="405.0" fill="#111827">template-contract</text>
+<rect x="684.0" y="436.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="694.0" y="458.0" fill="#111827">extract_panels_framework-5-</text>
+<text x="694.0" y="473.0" fill="#111827">package-and-install</text>
+<rect x="354.0" y="746.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="768.0" fill="#111827">user-communication-2-</text>
+<text x="364.0" y="783.0" fill="#111827">notification-email</text>
+<rect x="24.0" y="228.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="250.0" fill="#111827">user-communication-6-</text>
+<text x="34.0" y="265.0" fill="#111827">moderation</text>
+<rect x="354.0" y="194.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="216.0" fill="#111827">user-communication-8-realtime</text>
+<rect x="24.0" y="296.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="34.0" y="318.0" fill="#111827">deadlines-3-extensions-and-</text>
+<text x="34.0" y="333.0" fill="#111827">pause</text>
+<rect x="354.0" y="247.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="269.0" fill="#111827">deadlines-4-learner-self-pause</text>
+<rect x="354.0" y="300.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="322.0" fill="#111827">deadlines-5-reminders</text>
 <rect x="354.0" y="353.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="375.0" fill="#111827">test-organisation-and-hygene-</text>
-<text x="364.0" y="390.0" fill="#111827">14-learner-interface-part-2</text>
-<rect x="24.0" y="398.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="34.0" y="420.0" fill="#111827">referral-tracking-referer-</text>
-<text x="34.0" y="435.0" fill="#111827">host-normalisation</text>
+<text x="364.0" y="375.0" fill="#111827">deadlines-6-educator-</text>
+<text x="364.0" y="390.0" fill="#111827">management</text>
+<rect x="354.0" y="625.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="647.0" fill="#111827">apis-for-lead-monitoring-6-</text>
+<text x="364.0" y="662.0" fill="#111827">conversions</text>
+<rect x="24.0" y="364.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="386.0" fill="#111827">test-organisation-and-hygene-</text>
+<text x="34.0" y="401.0" fill="#111827">13-learner-interface-part-1</text>
 <rect x="354.0" y="421.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="443.0" fill="#111827">referral-tracking-marketing-</text>
-<text x="364.0" y="458.0" fill="#111827">channels</text>
+<text x="364.0" y="443.0" fill="#111827">test-organisation-and-hygene-</text>
+<text x="364.0" y="458.0" fill="#111827">14-learner-interface-part-2</text>
+<rect x="24.0" y="432.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="454.0" fill="#111827">referral-tracking-referer-</text>
+<text x="34.0" y="469.0" fill="#111827">host-normalisation</text>
 <rect x="354.0" y="489.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="511.0" fill="#111827">referral-tracking-external-</text>
-<text x="364.0" y="526.0" fill="#111827">referer-first-touch</text>
-<rect x="24.0" y="466.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="34.0" y="488.0" fill="#111827">referral-attribution-over-time</text>
-<rect x="24.0" y="519.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="34.0" y="541.0" fill="#111827">phone-number-form-field</text>
-<rect x="24.0" y="572.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="34.0" y="594.0" fill="#111827">file-scanning</text>
-<rect x="354.0" y="625.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="364.0" y="647.0" fill="#111827">multi-step-course-applications</text>
-<rect x="24.0" y="625.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="34.0" y="647.0" fill="#111827">retry-sent-emails</text>
-<rect x="24.0" y="752" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-<text x="46.0" y="762" fill="#374151">in progress</text>
-<rect x="154.3" y="752" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="176.3" y="762" fill="#374151">ready</text>
-<rect x="240.8" y="752" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
-<text x="262.8" y="762" fill="#374151">needs work on main first</text>
-<rect x="466.0" y="752" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<text x="488.0" y="762" fill="#374151">blocked</text>
-<rect x="567.1" y="752" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
-<text x="589.1" y="762" fill="#374151">other feature</text>
+<text x="364.0" y="511.0" fill="#111827">referral-tracking-marketing-</text>
+<text x="364.0" y="526.0" fill="#111827">channels</text>
+<rect x="354.0" y="557.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="579.0" fill="#111827">referral-tracking-external-</text>
+<text x="364.0" y="594.0" fill="#111827">referer-first-touch</text>
+<rect x="24.0" y="500.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="522.0" fill="#111827">referral-attribution-over-time</text>
+<rect x="24.0" y="553.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="34.0" y="575.0" fill="#111827">phone-number-form-field</text>
+<rect x="24.0" y="606.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="34.0" y="628.0" fill="#111827">file-scanning</text>
+<rect x="354.0" y="693.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="364.0" y="715.0" fill="#111827">multi-step-course-applications</text>
+<rect x="24.0" y="659.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="34.0" y="681.0" fill="#111827">retry-sent-emails</text>
+<rect x="24.0" y="820" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<text x="46.0" y="830" fill="#374151">in progress</text>
+<rect x="154.3" y="820" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="176.3" y="830" fill="#374151">ready</text>
+<rect x="240.8" y="820" width="16" height="12" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="262.8" y="830" fill="#374151">needs work on main first</text>
+<rect x="466.0" y="820" width="16" height="12" rx="3" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="488.0" y="830" fill="#374151">blocked</text>
+<rect x="567.1" y="820" width="16" height="12" rx="3" fill="#ffffff" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="589.1" y="830" fill="#374151">other feature</text>
 </svg>
