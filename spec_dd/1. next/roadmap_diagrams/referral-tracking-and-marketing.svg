@@ -13,7 +13,7 @@
 <rect x="354.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <text x="364.0" y="148.0" fill="#111827">referral-tracking-external-</text>
 <text x="364.0" y="163.0" fill="#111827">referer-first-touch</text>
-<rect x="24.0" y="212.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="212.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="34.0" y="234.0" fill="#111827">referral-attribution-over-time</text>
 <rect x="354.0" y="212.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="364.0" y="234.0" fill="#111827">server-side-conversion-</text>
