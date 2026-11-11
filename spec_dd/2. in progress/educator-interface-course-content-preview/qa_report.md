@@ -89,7 +89,7 @@ no design states tested
 | Bug | Status |
 |---|---|
 | B1 | **FIXED** (commit: a40c81dc9) — Course Details panel labels the category row "Dashboard category". Re-verified in the browser: the row reads "Category" ![](screenshots/page-b1-fixed.png) |
-| B2 | **UNRESOLVED** — Previewing a topic that contains a content-link fails with a 500 and nothing is shown (reason: pre-existing; fixing needs a product decision on where a content-link should point now that `content_engine:topic_detail` is commented out, in the learner player and in the educator preview) |
+| B2 | **FIXED** (commit: 5e49b0019) — Previewing a topic that contains a content-link fails with a 500 and nothing is shown. A content-link now renders its text without a link until a topic has a page of its own to point at; covered by `test_a_topic_holding_a_content_link_previews` and `TestContentLinkComponent`. Not re-verified in the browser |
 
 ## General notes
 
