@@ -413,6 +413,19 @@ def test_resend_confirmation_page_names_row_and_changes_nothing(
     assert not LogEntry.objects.exists()
 
 
+def test_resend_confirmation_page_describes_the_action_without_claiming_it_happened(
+    superuser_client: Client,
+) -> None:
+    """Before the admin confirms, the page must not say the email is already queued."""
+    dead = OutboundEmailFactory(dead_letter=True)
+
+    response = superuser_client.get(resend_confirm_url(dead))
+
+    content = response.content.decode()
+    assert "Resend queues this email again from the start" in content
+    assert "is queued to send again" not in content
+
+
 def test_resend_confirmation_page_does_not_show_body(
     superuser_client: Client,
 ) -> None:
