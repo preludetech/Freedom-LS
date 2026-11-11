@@ -54,6 +54,8 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
   in its own column, on the same line as its item; the buttons that act on the whole row take the
   last column. One cell never stacks both kinds.
+- A row the viewer cannot act on states its fields and leaves its buttons column empty: no note
+  saying why, no link to the page where it can be changed.
 - A row's own record is opened in the quick view; detail a row does not need to be scanned (who
   made an entry, and when) lives there, not in the row.
 - Two buttons in one row each name their object, so no two share a bare verb.
@@ -275,3 +277,5 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   each option and no line between them; an empty result list draws nothing.
 - A table row's per-item buttons sit on their item's line in their own column, and the
   whole-row buttons sit in the last column.
+- A row the viewer cannot act on shows its fields and an empty buttons column, with no
+  explanatory note or link in its place.

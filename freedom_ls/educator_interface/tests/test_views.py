@@ -1451,7 +1451,7 @@ def test_each_cohort_role_row_offers_change_role_and_remove_from_cohort_the_view
 
 
 @pytest.mark.django_db
-def test_an_organisation_role_row_has_no_buttons_and_links_to_staff_for_a_viewer_who_can_open_it(
+def test_an_organisation_role_row_shows_only_its_role_to_a_viewer_who_can_open_staff(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1479,15 +1479,15 @@ def test_an_organisation_role_row_has_no_buttons_and_links_to_staff_for_a_viewer
     (row,) = [
         li for li in section.cssselect("li") if other.display_name in li.text_content()
     ]
-    assert "Whole organisation" not in row.text_content()
-    assert "Set for the whole organisation." in row.text_content()
+    assert "Organisation admin" in row.text_content()
+    assert "whole organisation" not in row.text_content().lower()
+    assert "Change it in Staff" not in row.text_content()
     assert not row.cssselect("button")
-    (link,) = row.cssselect("a[href$='/staff']")
-    assert link.get("href") == _interface_url(organisation.slug, "staff")
+    assert not row.cssselect("a[href$='/staff']")
 
 
 @pytest.mark.django_db
-def test_an_organisation_role_row_has_no_staff_link_for_a_cohort_admin(
+def test_an_organisation_role_row_shows_only_its_role_to_a_cohort_admin(
     mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
@@ -1504,7 +1504,8 @@ def test_an_organisation_role_row_has_no_staff_link_for_a_cohort_admin(
     document = _get_document(logged_in_client(me), _settings_url(organisation, cohort))
 
     section = _staff_section(document)
-    assert "Set for the whole organisation." in section.text_content()
+    assert "Organisation admin" in section.text_content()
+    assert "Set for the whole organisation." not in section.text_content()
     assert not section.cssselect("a[href$='/staff']")
 
 

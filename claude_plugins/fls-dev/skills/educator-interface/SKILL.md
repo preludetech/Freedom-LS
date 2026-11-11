@@ -30,6 +30,8 @@ instance pages that puts each action here:
   column; Add role and Deactivate staff member take the last column. "Deactivate role" and
   "Deactivate staff member" each name their object.
 - Who added a role, and when, is in the staff member's quick view, not the row.
+- An organisation role in a cohort's Staff list reads "Organisation admin" and nothing more: no
+  note saying it is set for the whole organisation, no link to Staff.
 - A role confirm dialog states the role's description and its scope, and nothing more.
 
 ## Audit log and History tables

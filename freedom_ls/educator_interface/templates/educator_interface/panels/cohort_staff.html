@@ -3,13 +3,11 @@
 {% comment %}
 The cohort's staff, one row per person in three columns: the person, their
 role, and the buttons for that role (Change role, Remove from cohort) when
-the viewer may give it, the viewer's own row included. An organisation role
-is set for the whole organisation, so its buttons column says so and links
-to Staff when the viewer can open it. Rows are separated by space. Context:
+the viewer may give it, the viewer's own row included. An organisation role is not changed here,
+so its buttons column is empty. Rows are separated by space. Context:
 educators (CohortEducator rows), grantable (role keys the viewer may give
 on this cohort), change_role_url and remove_from_cohort_url (empty when
-unavailable), staff_url (empty when the viewer cannot open Staff), add_staff
-(the action, or None).
+unavailable), add_staff (the action, or None).
 {% endcomment %}
 
 {% block panel_header_action %}{% if add_staff %}{% render_action add_staff panel.ctx %}{% endif %}{% endblock panel_header_action %}
@@ -22,16 +20,11 @@ unavailable), staff_url (empty when the viewer cannot open Staff), add_staff
                     <c-panel-avatar-chip name="{{ educator.user.display_name }}" user_id="{{ educator.user.pk }}" secondary="{% if educator.user.first_name or educator.user.last_name %}{{ educator.user.email }}{% endif %}" class="min-w-0" />
                     <span class="text-sm text-muted">{{ educator.display_name }}</span>
                     <div class="text-sm">
-                        {% if educator.target == "cohort" %}
-                            {% if remove_from_cohort_url and educator.role in grantable %}
-                                <c-data-table-actions>
-                                    {% if change_role_url %}<c-modal-trigger url="{{ change_role_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Change role" aria_label="Change role for {{ educator.user.display_name }}" variant="secondary" size="small" />{% endif %}
-                                    <c-modal-trigger url="{{ remove_from_cohort_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Remove from cohort" aria_label="Remove {{ educator.user.display_name }} from cohort" variant="secondary" size="small" />
-                                </c-data-table-actions>
-                            {% endif %}
-                        {% else %}
-                            <span>Set for the whole organisation.</span>
-                            {% if staff_url %}<c-button variant="link" size="small" href="{{ staff_url }}">Change it in Staff</c-button>{% endif %}
+                        {% if educator.target == "cohort" and remove_from_cohort_url and educator.role in grantable %}
+                            <c-data-table-actions>
+                                {% if change_role_url %}<c-modal-trigger url="{{ change_role_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Change role" aria_label="Change role for {{ educator.user.display_name }}" variant="secondary" size="small" />{% endif %}
+                                <c-modal-trigger url="{{ remove_from_cohort_url }}?user={{ educator.user.pk }}&role={{ educator.role }}" label="Remove from cohort" aria_label="Remove {{ educator.user.display_name }} from cohort" variant="secondary" size="small" />
+                            </c-data-table-actions>
                         {% endif %}
                     </div>
                 </li>

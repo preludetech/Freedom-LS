@@ -1658,8 +1658,6 @@ class CohortStaffPanel(Panel):
 
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
-        user = cast("User", self.request.user)
-        organisation = cohort.organisation
         context = super().get_context_data()
         by_name = {action.action_name: action for action in self.available_actions}
         remove = by_name.get("remove_staff_from_cohort")
@@ -1671,11 +1669,6 @@ class CohortStaffPanel(Panel):
         context["change_role_url"] = change.get_action_url(self.ctx) if change else ""
         context["educators"] = cohort_educators(cohort)
         context["grantable"] = roles_grantable_on(self.request, cohort)
-        context["staff_url"] = (
-            interface_path(organisation, "staff")
-            if can(user, VIEW_ORGANISATION_STAFF, organisation)
-            else ""
-        )
         return context
 
 
