@@ -22,8 +22,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Add the wide modal size (`data-modal-size="wide"`, for content previews only) to `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, from the spec's Documentation and downstream section
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Add the wide modal size (`data-modal-size="wide"`, for content previews only) to `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, from the spec's Documentation and downstream section
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
