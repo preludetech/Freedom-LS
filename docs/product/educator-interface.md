@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-10_
+_Last updated: 2026-11-11_
 
 ## Summary
 
@@ -9,7 +9,7 @@ _Last updated: 2026-11-10_
 - Educators add learners by email or CSV file, see whether each is active, pending or inactive, manage their cohorts and course registrations, and deactivate or reactivate them. A quick view previews a learner or cohort without leaving the list. See [Learners](#learners).
 - Educators can act on many learners or cohorts at once, including everything matching the current filter. See [Bulk actions](#bulk-actions).
 - Educators create, rename, deactivate and delete cohorts, and register a cohort for courses. See [Cohorts](#cohorts).
-- The Courses list shows each course's visibility and interest count. Visibility is read-only here. See [Courses](#courses).
+- The Courses list shows each course's visibility and interest count. A course's page shows its details and an outline of its content, and any topic or form can be previewed as a learner would see it, without recording progress. Visibility is read-only here. See [Courses](#courses).
 - Organisation admins add staff, assign and deactivate their roles, and deactivate or reactivate them. See [Staff and roles](#staff-and-roles).
 - Site and organisation admins see who changed what and when, on learner and cohort pages and in an Audit log. See [History](#history).
 - A cohort's progress report shows on screen, with a PDF to download. See [Reports](#reports).
@@ -112,7 +112,11 @@ Renaming, deactivating, reactivating and deleting need an organisation admin or 
 
 The Courses section is read-only and scoped to the current organisation. It lists every published course, plus any course registered to a cohort or learner the educator can see, so a hidden or coming-soon course appears only where this organisation uses it. A course that belongs to other organisations and is not public is not listed; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). Cohorts are registered for courses from the cohort page.
 
-Each course shows its **visibility** (published, coming soon or hidden), its active learner and cohort counts, and the cohorts registered for it. Counts and links include only what the educator can see, and inactive cohorts are not counted. A course's page shows the title and category, the cohorts registered with each cohort's status, and any direct registrations.
+Each course shows its **visibility** (published, coming soon or hidden), its active learner and cohort counts, and the cohorts registered for it. Counts and links include only what the educator can see, and inactive cohorts are not counted. A course's page shows the title and category, the course's details (subtitle, level, duration, time limit, learning outcomes and lesson count), the cohorts registered with each cohort's status, and any direct registrations.
+
+The page also has a **Course content** outline of the course's parts, topics, forms and form pages. **Preview** beside a topic, form or form page, and beside the course details, shows it as a learner would see it, in a wide dialog. A preview is read-only: forms show the answer key, nothing can be submitted, and opening one records no learner progress. There is no previous or next inside a preview, and parts cannot be previewed. The outline and previews are shown even while the course's outline is still marked in development for learners, with a notice saying learners cannot see it yet. Anyone who can open the course page can preview its content. The quick view on the Learners and Cohorts lists is a side summary of a person or group; a course's Preview shows its content.
+
+![A topic preview open over a course page: the topic's title marked Preview and its content in a reading column](screenshots/educator_course_content_preview.png)
 
 Each course also shows an **interest count**: the learners who have expressed interest through the coming-soon waitlist, counted site-wide rather than per organisation and shown for every course, so a launched course still shows the demand it attracted. Who expressed interest, and when, is read in the Django admin; see [admin interface](./admin-interface.md).
 
