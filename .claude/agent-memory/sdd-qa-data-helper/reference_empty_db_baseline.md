@@ -26,3 +26,15 @@ make it tolerate the missing model. Also asked for cohort "QA bulk cohort" (demo
 Cohort/CohortMembership.objects.get_or_create(site=site) under _site_context.
 Headless render check: test Client(HTTP_HOST="testserver") after setup_test_environment (ALLOWED_HOSTS
 becomes ['testserver']; any other host gives 400).
+
+Nov 2026 (educator-interface-13-staff-roles): `create_demo_data --yes` alone is enough for
+`qa_create_staff_administration_scenario` (needs only DemoDev + Bloom sites and demodev@ superuser; no content_save).
+Its "Deleted StaffMember nomember@qa.test / northside" line is by design (persona with no StaffMember row).
+
+Nov 2026 (same branch): "lone cohort admin" ask — Westside (no cohorts in the staff scenario) gets
+active "Cohort W" + lone.admin@qa.test (Lou Lone) as its ONLY cohort_admin, via
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_lone_cohort_admin_script.py`
+(idempotent; reuses _ensure_cohort + staff-scenario _ensure_user + assign_object_role, which creates
+the Westside StaffMember). west.admin@qa.test stays organisation_admin on Westside (org-level, not a
+Cohort W grant). Cohort page: /educator/organisations/westside/cohorts/<pk>?tab=settings.
+If asked again, fold Cohort W + Lou into qa_create_staff_administration_scenario.

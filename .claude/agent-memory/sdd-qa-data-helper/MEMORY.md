@@ -488,3 +488,4 @@ files it as a bug. Verify it by diffing `values("id","progress_percentage","comp
 - [reference_direct_messaging_scenario.md](reference_direct_messaging_scenario.md) — qa_create_direct_messaging_scenario personas, the s1-zero-conversations delete, CohortMembership uses learner FK
 - [reference_in_progress_learner_import.md](reference_in_progress_learner_import.md) — Frozen RUNNING LearnerImport (300/120) for the import result page polling/progress bar; no factory; requester-only lookup; script qa_running_learner_import_script.py
 - [reference_bulk_threshold_learners.md](reference_bulk_threshold_learners.md) — 210 extra active demodev learners qa_bulk_001..210 to exceed BULK_BACKGROUND_THRESHOLD; script + footer check
+- [reference_staff_admin_scenario_leftovers.md](reference_staff_admin_scenario_leftovers.md) — staff-admin seed leaves browser-added grants/staff rows behind; reset diff recipe; Cohort W sole-admin script (Wanda)
