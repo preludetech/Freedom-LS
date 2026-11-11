@@ -373,7 +373,7 @@ def test_rejected_phone_answer_comes_back_with_its_country_and_keeps_the_old_row
         text="hello",
         message=(
             'You entered "hello". Enter a valid phone number for South Africa, '
-            "like 010 123 4567."
+            "like 71 123 4567."
         ),
         country="ZA",
     )
