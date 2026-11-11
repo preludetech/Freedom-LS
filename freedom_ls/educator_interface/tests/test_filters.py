@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 import time_machine
 
+from django.http import HttpRequest
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
@@ -465,6 +466,47 @@ def test_the_role_filter_offers_the_usual_five_to_a_roles_viewer(
         "cohort_admin",
         "cohort_viewer",
     ]
+
+
+def _staff_toolbar(request: HttpRequest) -> tuple[list[str], list[str], bool]:
+    """The filters on the Staff toolbar, those under Add filter, and whether
+    Clear all shows."""
+    context = StaffDataTable.get_context(
+        request,
+        StaffDataTable.parse_query(request, "staff"),
+        StaffDataTable.get_queryset(request),
+        base_url="/",
+        page_url="/",
+        region_id="staff",
+    )
+    return (
+        [entry["filter"].label for entry in context["toolbar"]],
+        [entry["filter"].label for entry in context["add_filter"]],
+        bool(context["any_filter_set"]),
+    )
+
+
+@pytest.mark.django_db
+def test_a_names_only_viewer_is_offered_no_role_filter_anywhere(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), viewer, "organisation_staff_viewer", organisation
+    )
+    request = site_aware_request.get("/")
+    request.user = viewer
+    request.organisation = organisation
+
+    assert _staff_toolbar(request) == ([], [], False)
+
+
+@pytest.mark.django_db
+def test_a_roles_viewer_keeps_the_role_filter(staff_request):
+    request, _ = staff_request
+
+    assert _staff_toolbar(request) == (["Role"], [], False)
 
 
 @pytest.mark.django_db

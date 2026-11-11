@@ -902,7 +902,8 @@ def test_reset_in_the_sheet_keeps_the_sort(mock_site_context: Site) -> None:
 def test_sheet_title_follows_the_controls_it_holds(
     mock_site_context: Site, path: str, sheet_id: str, title: str
 ) -> None:
-    stub = make_stub(name="row-00")
+    # The children table's Parent filter lists "in-scope" stubs only.
+    stub = make_stub(name="in-scope-00")
 
     html = fetch(f"stubs/{stub.pk}/{path}").content.decode()
 
@@ -1260,8 +1261,11 @@ class _DefaultedFilterTablePanel(DataTablePanel):
     table_key = "stub"
 
 
-def _render_defaulted_filter_table(data: dict[str, str]) -> lxml.html.HtmlElement:
-    panel = _DefaultedFilterTablePanel(
+def _render_defaulted_filter_table(
+    data: dict[str, str],
+    panel_class: type[DataTablePanel] = _DefaultedFilterTablePanel,
+) -> lxml.html.HtmlElement:
+    panel = panel_class(
         PanelContext(
             request=RequestFactory().get("/p", data),
             instance=None,
@@ -1304,6 +1308,39 @@ def test_clear_all_shows_once_a_defaulted_filter_leaves_its_default(
 
     (clear_link,) = document.xpath(".//a[normalize-space()='Clear all']")
     assert "stub-kind" not in clear_link.get("href")
+
+
+class _NoChoicesFilterTable(StubDataTable):
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [
+            ChoiceFilter(
+                "kind",
+                "Kind",
+                lookup="kind",
+                choices=[],
+                default=("a",),
+                always_shown=True,
+            )
+        ]
+
+
+class _NoChoicesFilterTablePanel(DataTablePanel):
+    title = "No choices"
+    data_table = _NoChoicesFilterTable
+    table_key = "stub"
+
+
+@pytest.mark.django_db
+def test_a_filter_with_no_choices_is_offered_nowhere(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({}, _NoChoicesFilterTablePanel)
+
+    text = " ".join(document.text_content().split())
+    assert "Kind:" not in text
+    assert "Add filter" not in text
+    assert "Clear all" not in text
 
 
 def test_show_all_changes_selects_every_choice_of_each_defaulted_filter() -> None:

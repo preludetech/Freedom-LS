@@ -435,8 +435,14 @@ class DataTable:
                 announcement += f", sorted by {sorted_by}"
 
         filters = cls.get_filters()
+        # A filter with no choices for this request has nothing to offer, so
+        # it is left off the toolbar, "Add filter" and the phone sheet alike.
         toolbar = [
-            _toolbar_entry(request, query, table_filter) for table_filter in filters
+            entry
+            for entry in (
+                _toolbar_entry(request, query, table_filter) for table_filter in filters
+            )
+            if entry["choices"]
         ]
         filter_keys = [table_filter.key for table_filter in filters]
 
