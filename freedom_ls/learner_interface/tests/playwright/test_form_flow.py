@@ -413,7 +413,7 @@ def test_a_preselected_phone_country_does_not_count_as_an_answer(
     )
     summary = page.get_by_test_id("answered-summary")
     expect(summary).to_have_text("0 of 1 answered")
-    page.get_by_label("Phone number").fill("082 123 4567")
+    page.get_by_label("Phone number").fill("82 123 4567")
     expect(summary).to_have_text("1 of 1 answered")
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

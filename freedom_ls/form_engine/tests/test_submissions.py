@@ -340,7 +340,7 @@ def test_valid_phone_answer_is_stored_as_e164(mock_site_context, phone_question)
         [phone_question],
         _post_data(
             {
-                f"question_{phone_question.id}": ["082 123 4567"],
+                f"question_{phone_question.id}": ["82 123 4567"],
                 f"phone_country_{phone_question.id}": ["ZA"],
             }
         ),

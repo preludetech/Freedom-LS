@@ -11,14 +11,16 @@ from freedom_ls.form_engine.phone_numbers import (
     country_choices,
     display_phone,
     e164_phone_answer,
-    national_phone,
+    phone_after_calling_code,
     phone_answer_error,
+    phone_example,
+    phone_examples,
     stored_phone_country,
 )
 
 ZA_MESSAGE = (
     'You entered "{text}". Enter a valid phone number for South Africa, '
-    "like 010 123 4567."
+    "like 71 123 4567."
 )
 ITALIAN_NATIONAL = phonenumbers.format_number(
     phonenumbers.example_number("IT"), PhoneNumberFormat.NATIONAL
@@ -28,9 +30,9 @@ ITALIAN_NATIONAL = phonenumbers.format_number(
 @pytest.mark.parametrize(
     ("text", "country", "expected"),
     [
-        ("082 123 4567", "ZA", "+27821234567"),
+        ("82 123 4567", "ZA", "+27821234567"),
         ("+27 82 123 4567", "GB", "+27821234567"),
-        ("(082) 123-4567", "ZA", "+27821234567"),
+        ("(82) 123-4567", "ZA", "+27821234567"),
         (ITALIAN_NATIONAL, "IT", "+390212345678"),
     ],
 )
@@ -48,7 +50,32 @@ def test_national_number_without_a_country_asks_for_one() -> None:
     )
 
 
-@pytest.mark.parametrize("text", ["hello", "099 123 4567"])
+@pytest.mark.parametrize(
+    ("text", "extra"),
+    [("082 123 4567", "0"), ("27821234567", "27"), ("0027 82 123 4567", "0027")],
+)
+def test_number_typed_with_digits_before_the_calling_code_follows_is_rejected(
+    text: str, extra: str
+) -> None:
+    assert phone_answer_error(text, "ZA") == (
+        f'You entered "{text}". Leave out the {extra} at the start, like 71 123 4567.'
+    )
+
+
+def test_number_that_does_not_end_with_the_national_number_names_the_calling_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        phonenumbers, "national_significant_number", lambda number: "999999999"
+    )
+
+    assert phone_answer_error("82 123 4567", "ZA") == (
+        'You entered "82 123 4567". Enter the number that follows +27, '
+        "like 71 123 4567."
+    )
+
+
+@pytest.mark.parametrize("text", ["hello", "99 123 4567"])
 def test_invalid_national_number_names_the_country_and_an_example(text: str) -> None:
     assert phone_answer_error(text, "ZA") == ZA_MESSAGE.format(text=text)
 
@@ -61,12 +88,12 @@ def test_invalid_international_number_asks_for_a_country_code() -> None:
 
 
 def test_number_with_an_extension_is_rejected() -> None:
-    assert phone_answer_error("082 123 4567 ext. 12", "ZA") == (
-        'You entered "082 123 4567 ext. 12". Enter the number without an extension.'
+    assert phone_answer_error("82 123 4567 ext. 12", "ZA") == (
+        'You entered "82 123 4567 ext. 12". Enter the number without an extension.'
     )
 
 
-@pytest.mark.parametrize("text", ["0800 FLOWERS", "082 123 4S67"])
+@pytest.mark.parametrize("text", ["0800 FLOWERS", "82 123 4S67"])
 def test_number_written_with_letters_is_rejected(text: str) -> None:
     assert phone_answer_error(text, "ZA") == ZA_MESSAGE.format(text=text)
 
@@ -75,6 +102,9 @@ def test_invalid_number_message_omits_the_example_when_the_country_has_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(phonenumbers, "example_number", lambda country: None)
+    monkeypatch.setattr(
+        phonenumbers, "example_number_for_type", lambda country, kind: None
+    )
 
     assert phone_answer_error("hello", "ZA") == (
         'You entered "hello". Enter a valid phone number for South Africa.'
@@ -125,22 +155,23 @@ def test_stored_phone_country_names_the_country_of_an_e164_answer(
 @pytest.mark.parametrize(
     ("stored", "expected"),
     [
-        ("+27821234567", "082 123 4567"),
+        ("+27821234567", "82 123 4567"),
+        ("+390212345678", "02 1234 5678"),
         ("082 123 4567", "082 123 4567"),
         ("hello", "hello"),
     ],
 )
-def test_national_phone_formats_e164_and_leaves_legacy_text_as_typed(
+def test_phone_after_calling_code_drops_the_calling_code_and_leaves_legacy_text(
     stored: str, expected: str
 ) -> None:
-    assert national_phone(stored) == expected
+    assert phone_after_calling_code(stored) == expected
 
 
 def test_non_geographic_number_has_no_country_and_keeps_its_stored_text() -> None:
     stored = "+80012345678"
 
     assert stored_phone_country(stored) is None
-    assert national_phone(stored) == stored
+    assert phone_after_calling_code(stored) == stored
 
 
 @pytest.mark.parametrize(
@@ -159,10 +190,35 @@ def test_refilled_country_and_number_resubmit_to_the_stored_answer(
     stored: str,
 ) -> None:
     country = stored_phone_country(stored) or ""
-    number = national_phone(stored)
+    number = phone_after_calling_code(stored)
 
     assert phone_answer_error(number, country) is None
     assert e164_phone_answer(number, country) == stored
+
+
+@pytest.mark.parametrize(
+    ("country", "expected"), [("ZA", "71 123 4567"), ("GB", "7400 123456")]
+)
+def test_phone_example_is_a_mobile_number_written_after_its_calling_code(
+    country: str, expected: str
+) -> None:
+    assert phone_example(country) == expected
+
+
+def test_phone_example_is_none_when_the_library_has_no_example(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(phonenumbers, "example_number", lambda country: None)
+    monkeypatch.setattr(
+        phonenumbers, "example_number_for_type", lambda country, kind: None
+    )
+
+    assert phone_example("ZA") is None
+
+
+@pytest.mark.parametrize("country", sorted(phonenumbers.SUPPORTED_REGIONS))
+def test_every_country_example_is_an_accepted_answer(country: str) -> None:
+    assert phone_answer_error(phone_examples()[country], country) is None
 
 
 @pytest.mark.parametrize(
