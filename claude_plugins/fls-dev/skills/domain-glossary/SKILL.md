@@ -104,6 +104,21 @@ through two client organisations has **two `Learner` rows and one `User`**.
 
 ---
 
+## Staff — `freedom_ls/learner_management/`
+
+| Term | Defined at | Means |
+| --- | --- | --- |
+| `StaffMember` | `models.py` | A user who helps run an organisation's learners, whether or not they teach. The counterpart of `Learner` and independent of it: one user may hold both in an organisation. `can()` counts an organisation or cohort role only while the user has an active row. A row may exist with no role. |
+| `organisation_staff_viewer` | `role_based_permissions/roles.py` | An organisation-level role. Sees the names on the organisation's staff list and changes nothing. Carries `view_organisation_staff`. |
+| `organisation_staff_roles_viewer` | `role_based_permissions/roles.py` | An organisation-level role. Sees the staff list with each person's roles and changes nothing. Carries `view_organisation_staff` and `view_organisation_staff_roles`. |
+| `staff_member.added` | `audit_log/actions.py` | A user was made a staff member with no role. Giving a role is `role.assigned`. |
+| **visible staff** (coined) | `queries.py` `visible_staff` | For one actor and one organisation, the active staff whose names the actor may see: all of them for a holder of `view_organisation_staff`, otherwise those holding a role on a cohort the actor may give `cohort_viewer` on. A set of `User` rows, since staff are users. |
+| **pickable staff** (coined) | `queries.py` `pickable_staff` | The users an actor may pick when adding staff: their visible staff, plus the organisation's active learners for someone who holds `add_staffmember`. Not "candidate", which the messaging policy has taken. |
+| `target` (of a role) | `queries.py` `role_target` | Where a staff role is held: `"organisation"` for a role in `ORGANISATION_ROLES`, otherwise `"cohort"`. Distinct from the `target` argument of `assign_role`, which is the object the role is given on. |
+| **may edit own roles** (coined) | `role_assignment.py` `_may_act_on_self` | Whether an actor may add or deactivate their own role of a type on a target. It holds exactly when they may assign that role on that target, on an organisation or a cohort in it and never on the site. |
+
+---
+
 ## Progress — `freedom_ls/learner_progress/models.py`
 
 | Term | Defined at | Means |
@@ -185,7 +200,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | Verb | Means | Not |
 | --- | --- | --- |
 | `created` | A standalone object now exists: `cohort.created`. | |
-| `added` | An association now exists: a learner in an organisation (`learner.added`), in a cohort (`cohort_membership.added`), or registered for a course (`registration.added`, `cohort_registration.added`). | `registered`, `enrolled`, `granted` |
+| `added` | An association now exists: a learner in an organisation (`learner.added`), in a cohort (`cohort_membership.added`), or registered for a course (`registration.added`, `cohort_registration.added`), or a user made a staff member with no role (`staff_member.added`). | `registered`, `enrolled`, `granted` |
 | `deactivated` / `reactivated` | An `is_active` flag went False / True, on any model that has one. | `unregistered`, `suspended`, `removed`, `revoked` (for an `is_active` flip), `reregistered` |
 | `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort). | |
 | `deleted` | A standalone object was deleted: `cohort.deleted`. | |
@@ -225,7 +240,7 @@ Do not give these a second meaning.
 | **collection** | `ContentCollectionItem.collection` only. | Keep it for that; don't widen it. |
 | **is_active** | Several different things across several models: a learner active in the organisation (`Learner`), a registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`), an active cohort (`Cohort`), a staff member active in the organisation (`StaffMember`), an account that cannot sign in (`User`), a role assignment in force (`SiteRoleAssignment`, `ObjectRoleAssignment`), and a list entry retired from the pickers (`JobTitle`, `Department`, `Location`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. Setting it to False is **deactivating**; setting it back is **reactivating**; the state is **Inactive** — in UI copy, audit log labels, webhook event types, identifiers and docs alike (see the Changes section above). Not "unregister", "suspend", "remove" or "revoke" for an `is_active` flip ("revoke" is kept for ending an `ApiKey`, `api_key.revoked`): those either name a different action or invent a new one. "Remove" and "delete" are kept for rows that are actually deleted, such as a `CohortMembership`. The one exception is the list entries, which are **retired**. |
 | **registered**, **registration** | Course access: a `LearnerCourseRegistration` or `CohortCourseRegistration`. | For an account being created: **signup** (`SiteSignupPolicy`, `user.signed_up`). |
-| **removed** | A row that was actually deleted (`cohort_membership.removed`, `role.removed`). | For an `is_active` flip: **deactivated**; for the state: **inactive**. |
+| **removed** | A row that was actually deleted (`cohort_membership.removed`, `role.removed`). One copy exception: the **Remove from cohort** button on a person's cohort role deactivates the role (`role.deactivated`), and `RemoveFromCohortBulkAction` keeps the label for its real deletion of a `CohortMembership`. | For an `is_active` flip: **deactivated**; for the state: **inactive**. |
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
