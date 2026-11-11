@@ -409,6 +409,8 @@ def test_the_toolbar_is_one_row_at_tablet_and_desktop_widths(
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
     LearnerFactory(organisation=organisation)
+    # Add filter shows only while a hidden filter has a choice to offer.
+    CohortFactory(organisation=organisation, name="Evening group")
 
     for viewport in QA_VIEWPORTS[1:]:
         page.set_viewport_size(viewport)
