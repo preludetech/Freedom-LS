@@ -9,11 +9,10 @@ import pytest
 from freedom_ls.mail import settings_defaults
 
 
-def test_prod_settings_send_email_in_the_request_by_default(
+def test_prod_settings_queue_email_when_no_backend_is_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The default has to work for a deployment running nothing but the web process:
-    # queued mail with no worker behind it is accepted and never sent.
+    """The default backend is the contract under test: production queues unless told otherwise."""
     monkeypatch.setenv("HOST_DOMAIN", "example.test")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
@@ -21,23 +20,22 @@ def test_prod_settings_send_email_in_the_request_by_default(
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
-    assert prod.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    assert prod.EMAIL_BACKEND == "freedom_ls.mail.backends.QueuedEmailBackend"
     assert prod.EMAIL_TIMEOUT == settings_defaults.EMAIL_TIMEOUT_SECONDS
 
 
-def test_prod_settings_let_a_deployment_opt_into_queueing(
+def test_prod_settings_let_a_deployment_send_through_smtp_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The other half of the choice: a deployment that runs fls_run_worker turns
-    # queueing on here and keeps the SMTP round trip out of the request.
+    # A deployment that runs no worker sets the SMTP backend and sends in the request.
     monkeypatch.setenv("HOST_DOMAIN", "example.test")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
-    monkeypatch.setenv("EMAIL_BACKEND", "freedom_ls.mail.backends.QueuedEmailBackend")
+    monkeypatch.setenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
-    assert prod.EMAIL_BACKEND == "freedom_ls.mail.backends.QueuedEmailBackend"
+    assert prod.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
 
 
 def test_email_timeout_default_is_a_positive_int() -> None:

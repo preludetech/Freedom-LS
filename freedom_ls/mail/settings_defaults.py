@@ -11,8 +11,8 @@ from __future__ import annotations
 
 # Socket timeout for each SMTP operation, in seconds. Unset, smtplib inherits Python's
 # global default of None and a black-holed connection hangs forever -- holding the
-# request open when mail is sent in the request, and stalling every other queued task
-# behind it when a deployment has opted into QueuedEmailBackend. Ten seconds absorbs a
+# request open when a deployment sends in the request, and stalling every other queued
+# task behind it when the worker sends through QueuedEmailBackend. Ten seconds absorbs a
 # slow TLS handshake without failing legitimate sends, and stays far inside
 # WORKER_MAX_TASK_SECONDS.
 EMAIL_TIMEOUT_SECONDS: int = 10

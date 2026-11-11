@@ -50,7 +50,7 @@ def check_email_upstream_backend_is_not_the_queue(
     spot. No mail is delivered either way, and nothing else reports it.
 
     Not a --deploy check: it only fires where the queueing backend is actually
-    selected, which is dev by default and production once a deployment opts in, so
+    selected, which is dev and, unless EMAIL_BACKEND overrides it, production, so
     a developer should meet this at runserver rather than at release time.
     """
     from django.conf import settings

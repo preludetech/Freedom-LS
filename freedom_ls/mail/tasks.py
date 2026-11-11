@@ -3,9 +3,9 @@
 The task carries only the id of an ``OutboundEmail`` row. ``fls_run_worker``
 claims the row, rebuilds the message from its payload and sends it through
 EMAIL_UPSTREAM_BACKEND, which is what actually talks to the mail server. Dev
-settings select the queueing backend; production sends in the request unless a
-deployment opts in, because choosing it commits that deployment to running a
-worker. Without one the mail is accepted and never sent.
+and production settings select the queueing backend. A deployment that runs no
+worker must set EMAIL_BACKEND to the SMTP backend, because queued mail with no
+worker behind it is accepted and never sent.
 """
 
 from __future__ import annotations

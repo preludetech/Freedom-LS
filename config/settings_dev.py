@@ -87,10 +87,9 @@ HEADLESS_SERVE_SPECIFICATION = True
 # Development email is captured by Mailpit (see dev_db/docker-compose.yaml).
 # Browse the inbox at http://localhost:8025
 
-# Dev opts into queueing, which production does not do by default. Dev's TASKS is
-# ImmediateBackend, so the task runs inline and Mailpit still receives the mail within
-# the request -- what this buys is that manual QA exercises the serialise/rebuild
-# round-trip, which is the part a deployment that turns queueing on depends on.
+# Dev uses the same queueing backend as production. Dev's TASKS is ImmediateBackend, so
+# the task runs inline and Mailpit still receives the mail within the request, while
+# manual QA exercises the serialise/rebuild round-trip production depends on.
 EMAIL_BACKEND = "freedom_ls.mail.backends.QueuedEmailBackend"
 EMAIL_UPSTREAM_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "localhost"
