@@ -112,6 +112,10 @@ A control that changes a thing sits where the thing is shown, so the person chan
 looking at without going somewhere else. A new panel or action goes next to what it changes. A
 Settings tab is the last resort, for actions with no home of their own.
 
+The cohort Settings tab is the Name, Staff and Status panels. The learner Settings tab is the Name
+and Account panels. On the Staff table, Add role sits in the Staff member actions column, beside the
+person it gives a role to; the per-role actions sit in the Role actions column.
+
 ## Visual checklist
 
 What QA checks in a screenshot of any FLS page.
