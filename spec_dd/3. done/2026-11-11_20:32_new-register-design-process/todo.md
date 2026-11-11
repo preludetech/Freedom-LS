@@ -29,6 +29,6 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 5. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) On their own branches, replace `design_prompt.md` in `spec_dd/2. in progress/design_educator-interface-bulk-action/` with the design's Artifact link, and create `design_prompt.md` holding the link in `spec_dd/2. in progress/educator-interface-design-learner-csv-upload-design-fix/`, then register each (spec: Documentation and downstream)
 - [ ] (user) Remove the worktree and delete the branch once main has it
