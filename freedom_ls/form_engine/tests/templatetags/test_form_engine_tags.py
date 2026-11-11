@@ -211,6 +211,54 @@ def test_phone_field_state_shows_a_stored_legacy_answer_as_typed(mock_site_conte
 
 
 @pytest.mark.django_db
+def test_phone_field_state_refills_the_country_and_national_number_of_a_stored_answer(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+    answer = QuestionAnswerFactory(question=question, text_answer="+27821234567")
+
+    state = phone_field_state(
+        _phone_context(question, existing_answers={question.id: answer})
+    )
+
+    assert (state["country"], state["number"]) == ("ZA", "082 123 4567")
+
+
+@pytest.mark.django_db
+def test_phone_field_state_prefers_a_rejected_answer_over_a_stored_one(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+    answer = QuestionAnswerFactory(question=question, text_answer="+27821234567")
+    rejected = RejectedAnswer(text="hello", message="m", country="GB")
+
+    state = phone_field_state(
+        _phone_context(
+            question, rejected=rejected, existing_answers={question.id: answer}
+        )
+    )
+
+    assert (state["country"], state["number"]) == ("GB", "hello")
+
+
+@pytest.mark.django_db
+def test_phone_question_renders_the_stored_country_as_selected(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+    answer = QuestionAnswerFactory(question=question, text_answer="+27821234567")
+
+    markup = render_to_string(
+        "form_engine/question.html",
+        {
+            "question": question,
+            "existing_answers": {question.id: answer},
+            "rejected_answers": {},
+        },
+    )
+
+    assert '<option value="ZA" selected>' in markup
+
+
+@pytest.mark.django_db
 def test_phone_question_renders_a_labelled_country_select(mock_site_context):
     question = FormQuestionFactory(type="phone")
 

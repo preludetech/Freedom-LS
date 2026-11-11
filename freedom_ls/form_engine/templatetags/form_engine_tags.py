@@ -5,7 +5,11 @@ from __future__ import annotations
 from django import template
 from django.template import Context
 
-from freedom_ls.form_engine.phone_numbers import country_choices
+from freedom_ls.form_engine.phone_numbers import (
+    country_choices,
+    national_phone,
+    stored_phone_country,
+)
 from freedom_ls.form_engine.typed_answers import format_answer
 from freedom_ls.form_engine.uploads import (
     ACCEPT_ATTRIBUTE,
@@ -42,7 +46,9 @@ def phone_field_state(context: Context) -> dict[str, object]:
         country, number = rejected.country, rejected.text
     else:
         answer = (context.get("existing_answers") or {}).get(question.id)
-        country, number = "", answer.text_answer if answer else ""
+        stored = answer.text_answer if answer else ""
+        country = stored_phone_country(stored) or ""
+        number = national_phone(stored)
     return {"country": country, "number": number, "choices": country_choices()}
 
 
