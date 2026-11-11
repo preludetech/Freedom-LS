@@ -7,6 +7,7 @@ from phonenumbers import PhoneNumberFormat
 from django.utils import translation
 
 from freedom_ls.form_engine.phone_numbers import (
+    browser_country,
     country_choices,
     display_phone,
     e164_phone_answer,
@@ -162,3 +163,27 @@ def test_refilled_country_and_number_resubmit_to_the_stored_answer(
 
     assert phone_answer_error(number, country) is None
     assert e164_phone_answer(number, country) == stored
+
+
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        ("en-ZA", "ZA"),
+        ("en-GB,en;q=0.9", "GB"),
+        ("en, fr-FR;q=0.8", "FR"),
+        ("fr-FR;q=0.5, de-DE;q=0.9", "DE"),
+        ("en-ZA;q=0, fr-FR;q=0.5", "FR"),
+        ("zh-Hant-TW", "TW"),
+        ("es-419", None),
+        ("en", None),
+        ("*", None),
+        ("", None),
+        ("en-001", None),
+        (";;;,=", None),
+        ("en-ZA;q=banana", None),
+    ],
+)
+def test_browser_country_reads_the_country_an_accept_language_header_prefers(
+    header: str, expected: str | None
+) -> None:
+    assert browser_country(header) == expected
