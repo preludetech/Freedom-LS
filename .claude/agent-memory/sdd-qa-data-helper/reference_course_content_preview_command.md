@@ -22,3 +22,7 @@ Facts learned:
 - `c-content-link` calls `Topic.preview_url`, which reverses a commented-out URL: ANY topic holding
   a content-link 500s on render (Reading does in this seed, deliberately, per caller).
 - Cohort registration fans out a CourseProgress per member; purge CourseProgress before Course.
+- Nov 11 2026 run: this branch DB holds ONLY the 4 QA courses (no demo_content loaded), so the
+  application-gated demo course (demo_content/functionality_demo_application_gated, uuid
+  271eeb30-...) is absent unless `content_save demo_content DemoDev` is run. demodev@ (pk 7) exists.
+- Verify CohortMembership via `learner__user__email` (FK is to Learner, not User).
