@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -41,6 +42,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html, format_html_join, strip_tags
 from django.utils.http import urlencode
 
 from freedom_ls.accounts.models import User
@@ -1847,10 +1849,21 @@ class CourseDetailsPanel(InstanceDetailsPanel):
     }
 
     def get_rows(self) -> list[dict[str, object]]:
+        course = cast(Course, self._bound_instance())
         rows: list[dict[str, object]] = []
         for name, row in zip(self.fields, super().get_rows(), strict=True):
             if row["value"] in ("", self.empty_value_display):
                 continue
+            if name == "learning_outcomes":
+                # One item per outcome: an outcome can hold a comma.
+                row["value"] = format_html(
+                    '<ul class="list-disc pl-5">{}</ul>',
+                    format_html_join(
+                        "",
+                        "<li>{}</li>",
+                        ((outcome,) for outcome in course.learning_outcomes),
+                    ),
+                )
             rows.append({**row, "label": self.labels.get(name, row["label"])})
         return rows
 
@@ -2024,6 +2037,15 @@ class CourseContentPanel(Panel):
         return [PreviewContentAction(), PreviewCourseDetailsAction()]
 
 
+def _condition_question_text(page: FormPage) -> str:
+    """The question a page's condition is on, as the learner reads it but
+    without its markup, so it can sit inside a sentence."""
+    if page.condition_option is None:
+        return ""
+    rendered = page.condition_option.question.rendered_question()
+    return html.unescape(strip_tags(rendered)).strip()
+
+
 def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]:
     """One page of the form, on or off any condition, laid out the way the
     form page partial expects, with no sitting behind it. Without a page, a
@@ -2049,7 +2071,12 @@ def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]
         if preview_page
         else "",
         "preview_pages": [
-            {"page": page, "page_children": path.children_of(page)} for page in pages
+            {
+                "page": page,
+                "page_children": path.children_of(page),
+                "condition_question": _condition_question_text(page),
+            }
+            for page in pages
         ],
         "page_position": position,
         "total_pages": path.page_count,

@@ -16,7 +16,7 @@ meets first when it has several.
             <h3 class="text-lg font-semibold">{{ entry.page.title }}</h3>
         {% endif %}
         {% if entry.page.condition_option %}
-            <p class="text-sm text-muted">Shown only if {{ entry.page.condition_option.question.question }} is answered {{ entry.page.condition_option.text }}</p>
+            <p class="text-sm text-muted">Shown only if {{ entry.condition_question }} is answered {{ entry.page.condition_option.text }}</p>
         {% endif %}
         {% with page_children=entry.page_children %}
             {% include "form_engine/partials/page_children.html" %}
@@ -36,14 +36,7 @@ meets first when it has several.
                     {% if total_pages > 1 %}
                         {% comment %}The learner's start page: the counts, and no way to start.{% endcomment %}
                         <div class="flex flex-wrap gap-2">
-                            <c-chip variant="muted" class="text-on-surface">
-                                <c-icon name="notes" class="size-4 text-secondary" />
-                                {{ question_count }} question{{ question_count|pluralize }}
-                            </c-chip>
-                            <c-chip variant="muted" class="text-on-surface">
-                                <c-icon name="folder" class="size-4 text-secondary" />
-                                {{ total_pages }} page{{ total_pages|pluralize }}
-                            </c-chip>
+                            {% include "form_engine/partials/form_facts.html" with page_count=total_pages %}
                         </div>
                     {% else %}
                         {% for entry in preview_pages %}{% partial form_page %}{% endfor %}

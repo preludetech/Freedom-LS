@@ -1,0 +1,13 @@
+{% comment %}
+The facts a form's start page gives before anyone starts: how many
+questions and how many pages. Reads question_count and page_count. The
+caller wraps the chips, so it chooses how they align.
+{% endcomment %}
+<c-chip variant="muted" class="text-on-surface">
+    <c-icon name="notes" class="size-4 text-secondary" />
+    {{ question_count }} question{{ question_count|pluralize }}
+</c-chip>
+<c-chip variant="muted" class="text-on-surface">
+    <c-icon name="folder" class="size-4 text-secondary" />
+    {{ page_count }} page{{ page_count|pluralize }}
+</c-chip>

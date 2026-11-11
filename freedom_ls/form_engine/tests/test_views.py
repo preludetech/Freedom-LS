@@ -658,6 +658,46 @@ def test_the_empty_picker_is_a_button_wrapping_the_input(mock_site_context, sitt
 
 
 @pytest.mark.django_db
+def test_a_read_only_sitting_without_a_file_says_none_is_attached(
+    mock_site_context, sitting
+):
+    """A submitted application reopened read-only, with an optional upload
+    left blank."""
+    form_progress, question = sitting
+
+    markup = render_to_string(
+        "form_engine/inputs/file_upload.html",
+        {
+            "question": question,
+            "form_progress": form_progress,
+            "answer_file": None,
+            "read_only": True,
+        },
+    )
+
+    assert "No file attached." in markup
+    assert "File upload question" not in markup
+    assert 'type="file"' not in markup
+
+
+@pytest.mark.django_db
+def test_a_read_only_question_with_no_sitting_names_its_type(
+    mock_site_context, sitting
+):
+    """A form shown with nobody sitting it, as an educator's preview shows
+    one, has no answer to report."""
+    _form_progress, question = sitting
+
+    markup = render_to_string(
+        "form_engine/inputs/file_upload.html",
+        {"question": question, "answer_file": None, "read_only": True},
+    )
+
+    assert "File upload question" in markup
+    assert "No file attached." not in markup
+
+
+@pytest.mark.django_db
 def test_the_replace_picker_sits_level_with_the_remove_button(
     mock_site_context, client, sitting
 ):

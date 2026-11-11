@@ -32,7 +32,11 @@ which happen without a page load.
     </label>
 {% endpartialdef %}
 
-{% if read_only and not answer_file %}
+{% comment %}
+With no sitting (an educator's preview) there is no answer to report, so
+the question names its type instead of claiming nothing was attached.
+{% endcomment %}
+{% if read_only and not form_progress %}
 <p class="text-sm text-muted">File upload question</p>
 {% else %}
 <div id="question-{{ question.id }}-file"

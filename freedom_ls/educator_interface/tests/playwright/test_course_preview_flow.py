@@ -177,7 +177,7 @@ def test_educator_previews_course_content(
             _press_escape_and_expect_closed(page)
 
             # A multi-page form's page row previews that page alone.
-            survey_toggle = page.get_by_role("button", name="Collapse Survey")
+            survey_toggle = page.get_by_role("button", name="Survey", exact=True)
             page_row = page.locator("tr", has_text="Your thoughts")
             expect(page_row).to_be_visible()
             survey_toggle.click()

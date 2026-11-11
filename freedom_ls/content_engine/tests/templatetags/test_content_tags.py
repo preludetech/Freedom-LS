@@ -291,7 +291,32 @@ class TestGetContentByPath:
         assert get_content_by_path("../3. quiz/form.md", source) == expected
 
 
-# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+class TestContentLinkComponent:
+    """c-content-link, rendered through a topic's markdown."""
+
+    def test_a_link_to_an_existing_topic_renders_its_text(
+        self, mock_site_context
+    ) -> None:
+        """There is no page to link a topic to yet, so the text stands alone
+        rather than the render failing on a URL that cannot be built."""
+        TopicFactory(file_path="1. welcome/content.md")
+        source = TopicFactory(
+            file_path="2. reading/content.md",
+            content=(
+                'Go back to <c-content-link path="../1. welcome/content.md">'
+                "the Welcome topic</c-content-link>."
+            ),
+        )
+
+        html = source.rendered_content()
+
+        assert "the Welcome topic" in html
+        assert (
+            "text-error" not in html
+        )  # ---------------------------------------------------------------------------
+
+
 # get_published_article_by_path
 # ---------------------------------------------------------------------------
 

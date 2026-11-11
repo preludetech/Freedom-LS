@@ -709,10 +709,29 @@ def test_course_details_show_each_set_field_with_the_learner_label(
         "Beginner",
         "Duration ~2 hours",
         "Time limit 90 days",
-        "Solve equations, Plot graphs",
+        "Solve equations",
+        "Plot graphs",
         "Lessons 1",
     ):
         assert expected in text
+
+
+@pytest.mark.django_db
+def test_course_details_list_each_learning_outcome_on_its_own(
+    staff_client: Client,
+):
+    """An outcome can hold a comma, so joining them with commas would lose
+    where one ends and the next begins."""
+    organisation = OrganisationFactory()
+    course = CourseFactory(learning_outcomes=["Read, write and speak", "Plan"])
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+    (panel,) = document.cssselect("section[data-panel='details']")
+
+    items = [li.text_content().strip() for li in panel.cssselect("ul li")]
+    assert items == ["Read, write and speak", "Plan"]
 
 
 @pytest.mark.django_db
@@ -7324,6 +7343,9 @@ def test_course_content_part_rows_are_expandable_buttons(staff_client: Client):
 
     (button,) = panel.cssselect("button[aria-controls]")
     assert button.get("aria-expanded") == "true"
+    # aria-expanded carries the state, so the name holds no verb that would
+    # be wrong once the group is collapsed.
+    assert button.get("aria-label") == part.title
     row_ids = {node.get("id") for node in panel.cssselect("tbody tr[id]")}
     controlled = set(str(button.get("aria-controls")).split())
     assert len(controlled) == 2
@@ -7497,6 +7519,44 @@ def test_opening_a_topic_preview_renders_it_read_only_in_the_wide_dialog(
     assert "<form" not in html
     assert "Mark complete" not in html
     assert "<nav" not in html
+
+
+@pytest.mark.django_db
+def test_the_course_page_loads_katex_before_the_content_components(
+    staff_client: Client,
+):
+    """A previewed equation typesets only when KaTeX is on the page by the
+    time the equation component starts."""
+    organisation = OrganisationFactory()
+    course, _item = _course_with_topic()
+
+    html = staff_client.get(
+        _interface_url(organisation.slug, f"courses/{course.pk}")
+    ).content.decode()
+
+    assert "content_engine/vendor/katex/katex.min.css" in html
+    katex_script = html.index("content_engine/vendor/katex/katex.min.js")
+    assert katex_script < html.index("content_engine/js/alpine-components.js")
+
+
+@pytest.mark.django_db
+def test_a_topic_holding_a_content_link_previews(staff_client: Client):
+    organisation = OrganisationFactory()
+    TopicFactory(file_path="1. welcome/content.md")
+    topic = TopicFactory(
+        file_path="2. reading/content.md",
+        content=(
+            'Go back to <c-content-link path="../1. welcome/content.md">'
+            "the Welcome topic</c-content-link>."
+        ),
+    )
+    course, item = _course_with_topic(topic)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(f"{url}?item={item.pk}", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert "the Welcome topic" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -7746,6 +7806,36 @@ def test_a_page_previews_alone_headed_by_its_place_and_its_condition(
     assert "Third page" not in html
     assert "<strong>everything</strong>" not in html
     assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_page_condition_names_its_question_as_rendered_text(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    form = FormFactory(title="Survey")
+    first = FormPageFactory(form=form, title="First page", order=0)
+    gate = FormQuestionFactory(form_page=first, question="**Did you** attend?", order=0)
+    option = QuestionOptionFactory(question=gate, text="No", order=0)
+    second = FormPageFactory(
+        form=form, title="Second page", order=1, condition_option=option
+    )
+    course, item = _course_with_form(form)
+    url = _preview_url(staff_client, organisation, course)
+
+    response = staff_client.get(
+        f"{url}?item={item.pk}&page={second.pk}", HTTP_HX_REQUEST="true"
+    )
+
+    (note,) = [
+        p
+        for p in lxml.html.fromstring(response.content).cssselect("p")
+        if p.text_content().startswith("Shown only if")
+    ]
+    assert " ".join(note.text_content().split()) == (
+        "Shown only if Did you attend? is answered No"
+    )
+    assert note.cssselect("p p") == []
 
 
 @pytest.mark.django_db

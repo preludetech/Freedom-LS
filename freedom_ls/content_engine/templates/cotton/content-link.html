@@ -6,10 +6,11 @@ It can be a Topic or a Form.
 TODO.
     - non-preview link
     - leading and trailing whitespace issue
+Until a topic has a page of its own to link to, the text stands alone.
 {% endcomment %}
 {% with content_obj=path|get_content_by_path:content_instance %}
 {% if content_obj %}
-<a href="{{ content_obj.preview_url }}" class="">{{ slot }} </a>
+<span>{{ slot }} </span>
 {% else %}
 <span class="text-error" title="Content not found: {{ path }}">{{ slot }}</span>
 {% endif %}

@@ -41,7 +41,7 @@ its child rows; a child row hides with any group above it.
                                                     class="group -my-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-on-surface aria-expanded:text-primary"
                                                     aria-expanded="true"
                                                     aria-controls="{{ row.child_row_ids|join:' ' }}"
-                                                    aria-label="Collapse {{ row.title }}"
+                                                    aria-label="{{ row.title }}"
                                                     data-row="{{ row.row_id }}"
                                                     x-bind:aria-expanded="expandedAttr"
                                                     x-on:click="toggle">

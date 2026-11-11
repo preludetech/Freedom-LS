@@ -46,7 +46,9 @@ editing" brings the form back with everything typed into it.
      * fold, gone once the end is reached. The pseudo-element is the last
      * flow child of the scroll container, so sticky pins it to the visible
      * bottom; the negative margin keeps it from adding to the scroll
-     * height. appModal keeps data-more-below current. */
+     * height. appModal keeps data-more-below current. The fade is the
+     * dialog's own background, inherited and masked, so it matches
+     * whatever colour a theme gives .panel-surface. */
     #app-modal::after {
         content: "";
         position: sticky;
@@ -55,7 +57,8 @@ editing" brings the form back with everything typed into it.
         height: 3rem;
         margin-top: -3rem;
         pointer-events: none;
-        background: linear-gradient(to bottom, transparent, var(--color-surface));
+        background-color: inherit;
+        mask-image: linear-gradient(to bottom, transparent, #000);
         opacity: 0;
         transition: opacity 150ms ease;
     }

@@ -42,14 +42,7 @@
 
             {% comment %}Fact pills{% endcomment %}
             <div class="flex flex-wrap justify-center gap-2">
-                <c-chip variant="muted" class="text-on-surface">
-                    <c-icon name="notes" class="size-4 text-secondary" />
-                    {{ question_count }} question{{ question_count|pluralize }}
-                </c-chip>
-                <c-chip variant="muted" class="text-on-surface">
-                    <c-icon name="folder" class="size-4 text-secondary" />
-                    {{ page_count }} page{{ page_count|pluralize }}
-                </c-chip>
+                {% include "form_engine/partials/form_facts.html" %}
             </div>
 
             {% comment %}=== PREVIOUS ATTEMPTS ==={% endcomment %}
