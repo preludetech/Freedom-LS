@@ -28,6 +28,8 @@ from freedom_ls.form_engine.typed_answers import RejectedAnswer
         (QuestionType.DATE, "1987-03-14", "March 14, 1987"),
         (QuestionType.TIME, "14:30", "2:30 p.m."),
         (QuestionType.SHORT_TEXT, "Freda", "Freda"),
+        (QuestionType.PHONE, "+27821234567", "+27 82 123 4567"),
+        (QuestionType.PHONE, "082 123 4567", "082 123 4567"),
     ],
 )
 def test_answer_display_delegates_to_format_answer(

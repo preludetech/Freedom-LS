@@ -8,6 +8,7 @@ from django.utils import translation
 
 from freedom_ls.form_engine.phone_numbers import (
     country_choices,
+    display_phone,
     e164_phone_answer,
     phone_answer_error,
 )
@@ -92,3 +93,17 @@ def test_country_choices_fall_back_to_the_code_when_the_language_has_no_name() -
         choices = country_choices()
 
     assert ("MK", "MK (+389)") in choices
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        ("+27821234567", "+27 82 123 4567"),
+        ("082 123 4567", "082 123 4567"),
+        ("hello", "hello"),
+    ],
+)
+def test_display_phone_formats_e164_and_leaves_legacy_text_as_typed(
+    stored: str, expected: str
+) -> None:
+    assert display_phone(stored) == expected
