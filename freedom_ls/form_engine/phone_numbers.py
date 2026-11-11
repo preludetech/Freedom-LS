@@ -128,3 +128,24 @@ def e164_phone_answer(text: str, country: str) -> str:
     if number is None:
         raise ValueError(f"not a phone number: {text!r}")
     return phonenumbers.format_number(number, PhoneNumberFormat.E164)
+
+
+def _stored(text: str) -> PhoneNumber | None:
+    """A stored answer as a phone number, or None for a legacy row (one that
+    does not parse as E.164).
+
+    Parsed with no country and never re-validated: a row accepted under an
+    older release of the library must keep rendering after an upgrade, and a
+    legacy row must stay readable.
+    """
+    if not text.startswith("+"):
+        return None
+    return _parsed(text, "")
+
+
+def display_phone(text: str) -> str:
+    """A stored answer in international format, or the raw text."""
+    number = _stored(text)
+    if number is None:
+        return text
+    return phonenumbers.format_number(number, PhoneNumberFormat.INTERNATIONAL)

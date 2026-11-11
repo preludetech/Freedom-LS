@@ -27,7 +27,7 @@ from django.utils import formats
 from django.utils.dateparse import parse_date, parse_time
 
 from .enums import QuestionType
-from .phone_numbers import phone_answer_error
+from .phone_numbers import display_phone, phone_answer_error
 
 if TYPE_CHECKING:
     from .models import FormQuestion
@@ -245,5 +245,8 @@ def format_answer(question_type: str, text: str) -> str:
     if question_type == QuestionType.TIME:
         time_value = parsed_time(text)
         return formats.time_format(time_value) if time_value is not None else text
+
+    if question_type == QuestionType.PHONE:
+        return display_phone(text)
 
     return text

@@ -403,3 +403,11 @@ def test_format_answer_falls_back_to_the_raw_string_when_unparseable():
 
 def test_format_answer_returns_untouched_text_for_a_plain_type():
     assert format_answer("short_text", "hello there") == "hello there"
+
+
+def test_format_answer_renders_a_stored_phone_number_in_international_format():
+    assert format_answer("phone", "+27821234567") == "+27 82 123 4567"
+
+
+def test_format_answer_leaves_a_legacy_phone_answer_as_typed():
+    assert format_answer("phone", "082 123 4567") == "082 123 4567"
