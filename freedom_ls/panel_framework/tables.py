@@ -226,6 +226,11 @@ class DataTable:
     #: cell rendering) below md, for a denser layout than the generic card
     #: gives. `None` keeps the default.
     card_template: str | None = None
+    #: Show the cards wherever the table's own container is too narrow for
+    #: its columns, rather than only below md: at 768, and beside an open
+    #: quick view. For a table whose row of columns and buttons would
+    #: otherwise sit behind a sideways scroll.
+    cards_when_narrow: bool = False
     #: A template rendered under a row, hidden until the row's toggle opens
     #: it (a <details> disclosure below md). None means rows have no detail
     #: and the table renders no toggle column.
@@ -505,6 +510,7 @@ class DataTable:
             "secondary_columns": secondary_columns,
             "sortable_columns": sortable_columns,
             "card_template": cls.card_template,
+            "cards_when_narrow": cls.cards_when_narrow,
             "row_detail_template": cls.row_detail_template,
             "empty_state_template": cls.empty_state_template,
             "empty_message": cls.empty_message,

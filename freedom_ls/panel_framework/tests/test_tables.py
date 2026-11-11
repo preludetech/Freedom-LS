@@ -1343,6 +1343,59 @@ def test_a_filter_with_no_choices_is_offered_nowhere(
     assert "Clear all" not in text
 
 
+class _NarrowCardsTable(StubDataTable):
+    cards_when_narrow = True
+
+
+class _NarrowCardsTablePanel(DataTablePanel):
+    title = "Narrow cards"
+    data_table = _NarrowCardsTable
+    table_key = "stub"
+
+
+def _table_and_card_classes(
+    document: lxml.html.HtmlElement,
+) -> tuple[set[str], set[str], set[str]]:
+    """The classes on the wrapper around the table and its cards, on the
+    table region and on the card list."""
+    (wrapper,) = document.cssselect("[data-table-layout]")
+    (region,) = wrapper.cssselect("[role='region']")
+    (cards,) = wrapper.xpath("./ul")
+    return (
+        set(wrapper.get("class", "").split()),
+        set(region.get("class", "").split()),
+        set(cards.get("class", "").split()),
+    )
+
+
+@pytest.mark.django_db
+def test_a_table_switches_to_cards_by_the_viewport_by_default(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({}, _DefaultedFilterTablePanel)
+
+    wrapper, region, cards = _table_and_card_classes(document)
+
+    assert "@container" not in wrapper
+    assert {"hidden", "md:block"} <= region
+    assert "md:hidden" in cards
+
+
+@pytest.mark.django_db
+def test_a_cards_when_narrow_table_switches_by_its_own_containers_width(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({}, _NarrowCardsTablePanel)
+
+    wrapper, region, cards = _table_and_card_classes(document)
+
+    assert "@container" in wrapper
+    assert {"hidden", "@min-[58rem]:block"} <= region
+    assert "md:block" not in region
+    assert "@min-[58rem]:hidden" in cards
+    assert "md:hidden" not in cards
+
+
 def test_show_all_changes_selects_every_choice_of_each_defaulted_filter() -> None:
     request = RequestFactory().get("/", {"stub-page": "3"})
     query = _DefaultedFilterTable.parse_query(request, "stub")

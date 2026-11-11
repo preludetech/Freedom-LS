@@ -136,6 +136,61 @@ def test_add_change_and_remove_a_cohort_admin_refreshes_the_list(
     expect(main.locator("[data-card-primary-line]").first).to_be_visible()
 
 
+def _staff_buttons_outside_the_viewport(page: Page) -> list[str]:
+    """The labels of the Staff list's visible buttons that are cut off by, or
+    sit beyond, either side of the viewport."""
+    labels: list[str] = page.evaluate(
+        """() => [...document.querySelectorAll('[data-table-region] .btn')]
+            .filter((button) => button.offsetParent !== null)
+            .filter((button) => {
+                const box = button.getBoundingClientRect();
+                return box.left < 0 || box.right > window.innerWidth;
+            })
+            .map((button) => button.textContent.trim())"""
+    )
+    return labels
+
+
+def test_the_staff_list_is_cards_wherever_its_table_would_not_fit(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """Four columns of roles and buttons need more room than a tablet, or the
+    space beside the quick view, gives."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+    colleague = UserFactory(first_name="Cara", last_name="Colleague")
+    assign_role(grantor, colleague, "cohort_viewer", cohort)
+    main = page.locator("#main-content")
+    table = main.get_by_role("table")
+    card = main.locator("[data-card-primary-line]").first
+
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
+    expect(table).to_be_visible()
+    expect(card).to_be_hidden()
+
+    main.get_by_role("row").filter(has_text="Cara Colleague").locator(
+        "[hx-get*='__quick-view']"
+    ).click()
+    expect(page.get_by_text("Quick view", exact=True)).to_be_visible()
+    expect(card).to_be_visible()
+    expect(table).to_be_hidden()
+    assert _staff_buttons_outside_the_viewport(page) == []
+    assert_no_horizontal_overflow(page)
+
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(interface_url(live_server, organisation.slug, "staff"))
+    expect(card).to_be_visible()
+    expect(table).to_be_hidden()
+    assert _staff_buttons_outside_the_viewport(page) == []
+    assert_no_horizontal_overflow(page)
+
+
 def test_clear_filters_after_a_no_match_search_empties_the_search_box(
     live_server,
     educator_logged_in_page: Page,

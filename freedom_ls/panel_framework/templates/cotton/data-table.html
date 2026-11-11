@@ -31,7 +31,8 @@
         empty_no_results=""
         sheet_hidden_inputs=""
         reset_changes=""
-        entry_count="" />
+        entry_count=""
+        cards_when_narrow="" />
 
 <div id="{{ region_id }}" data-table-region class="panel-data-table"{% if bulk_actions %} x-data="tableSelection"{% endif %}>
     <div tabindex="-1" data-table-anchor></div>
@@ -53,7 +54,7 @@
         inside the bulk form, not the search form in the toolbar above: the
         handlers sync every page checkbox they find through the bulk form.
         {% endcomment %}
-        <div class="px-4 py-2 sm:px-6 md:hidden">
+        <div class="px-4 py-2 sm:px-6 {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}">
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox"
                        aria-label="Select all on this page"
@@ -65,7 +66,15 @@
         </div>
     {% endif %}
 
-    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto md:block {{ class }}">
+    {% comment %}
+    The table shows from md up and the cards below it. A table that declares
+    cards_when_narrow switches on the width of this wrapper instead, so it is
+    cards wherever its columns would not fit: beside an open quick view as
+    well as on a narrow screen. 58rem is what a row of four columns with
+    buttons needs.
+    {% endcomment %}
+    <div{% if cards_when_narrow %} class="@container"{% endif %} data-table-layout>
+    <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto {% if cards_when_narrow %}@min-[58rem]:block{% else %}md:block{% endif %} {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a
         rule beneath set it apart from the rows.
@@ -173,7 +182,7 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border md:hidden"{% if row_detail_template %} x-data="rowDetail"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template %} x-data="rowDetail"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
@@ -188,6 +197,7 @@
             <li class="py-8 text-center text-muted">{% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}</li>
         {% endif %}
     </ul>
+    </div>
 
     {% if bulk_actions %}</form>{% endif %}
     {% if entry_count %}{% include "panel_framework/partials/table_footer.html" %}{% endif %}
