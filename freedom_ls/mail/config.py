@@ -8,6 +8,8 @@ class MailSettings(AppSettings):
     EMAIL_MAX_ATTEMPTS: int
     EMAIL_RETRY_DELAYS: list[int]
     EMAIL_RETRY_JITTER_RATIO: float
+    HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS: int
+    HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE: int
 
     declared_settings = {
         # The backend the worker actually sends through, once QueuedEmailBackend has
@@ -30,6 +32,13 @@ class MailSettings(AppSettings):
         # Upper bound on the random extra wait added to each delay, as a fraction
         # of that delay.
         "EMAIL_RETRY_JITTER_RATIO": Setting(default=0.2),
+        # How far past its due time a pending or failed row must be before
+        # housekeeping enqueues it again. Longer than the worker's usual pickup
+        # delay, so a row whose task is merely queued is not enqueued twice.
+        "HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS": Setting(default=300),
+        # Most rows one housekeeping run enqueues, oldest first, so a long
+        # outage cannot flood the queue in one run.
+        "HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE": Setting(default=500),
     }
 
 

@@ -48,6 +48,7 @@ from freedom_ls.learner_management.models import (
     LearnerImport,
     LearnerImportRow,
 )
+from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.bulk_actions import RecordedBulkAction
 from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
@@ -1261,3 +1262,28 @@ class TestRunHousekeepingSweepsBulkRecords:
             len(outcome.sweep_failures),
             BulkActionRun._base_manager.filter(pk=old.pk).exists(),
         ) == (1, False)
+
+
+@pytest.mark.django_db
+class TestDueOutboundEmailSweep:
+    def test_overdue_email_is_requeued_and_noted(
+        self, database_task_backend: None
+    ) -> None:
+        OutboundEmailFactory(next_attempt_at=timezone.now() - timedelta(hours=1))
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.notes == ["Requeued 1 outbound email(s) past due."]
+
+    def test_database_error_from_the_sweep_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.requeue_due_outbound_email",
+            side_effect=DatabaseError("down"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == ["due outbound email sweep failed: down"]
