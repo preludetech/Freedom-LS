@@ -14,8 +14,10 @@ from django.core import mail
 from django.tasks import TaskResultStatus
 from django.utils import timezone
 
+from freedom_ls.mail.errors import UpstreamSendCountZeroError
 from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.mail.models import OutboundEmail
+from freedom_ls.mail.retry import DEAD_LETTER_MESSAGE
 from freedom_ls.mail.serialisation import serialise_message
 from freedom_ls.mail.tasks import (
     PERMANENT_FAILURE_MESSAGE,
@@ -28,8 +30,10 @@ from freedom_ls.mail.tests.conftest import (
     LONG_URL,
     REFUSING,
     REJECTING,
+    ZERO_SENT,
     body_parts,
     make_message,
+    run_attempts,
 )
 
 
@@ -109,28 +113,6 @@ class TestSendOutboundEmail:
 
         assert mail.outbox == []
 
-    def test_an_upstream_error_propagates_and_leaves_the_row_sending(
-        self, settings: pytest_django.fixtures.SettingsWrapper
-    ) -> None:
-        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
-        email = OutboundEmailFactory()
-
-        with pytest.raises(ConnectionRefusedError):
-            send_outbound_email(str(email.pk))
-
-        email.refresh_from_db()
-        assert email.status == OutboundEmail.Status.SENDING
-
-    def test_an_upstream_error_fails_the_task_under_the_task_backend(
-        self, settings: pytest_django.fixtures.SettingsWrapper
-    ) -> None:
-        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
-        email = OutboundEmailFactory()
-
-        result = enqueue_send(email.pk)
-
-        assert result.status == TaskResultStatus.FAILED
-
 
 @pytest.mark.django_db
 class TestPermanentFailure:
@@ -195,3 +177,76 @@ class TestPermanentFailure:
         result = enqueue_send(email.pk)
 
         assert result.status == TaskResultStatus.FAILED
+
+
+@pytest.mark.django_db
+class TestTransientFailure:
+    def test_a_refusing_upstream_leaves_the_row_failed_and_due_later(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+        email = OutboundEmailFactory()
+
+        send_outbound_email(str(email.pk))
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.FAILED
+        assert email.attempt_count == 1
+        assert OutboundEmail.objects.filter(
+            pk=email.pk, next_attempt_at__gt=timezone.now()
+        ).exists()
+        assert email.last_error.startswith("builtins.ConnectionRefusedError")
+
+    def test_a_refusing_upstream_does_not_fail_the_task(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+        email = OutboundEmailFactory()
+
+        result = enqueue_send(email.pk)
+
+        assert result.status == TaskResultStatus.SUCCESSFUL
+
+    def test_walking_the_ladder_dead_letters_the_row_at_the_attempt_cap(
+        self,
+        settings: pytest_django.fixtures.SettingsWrapper,
+        sentry_events: list[dict],
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+        settings.EMAIL_MAX_ATTEMPTS = 3
+        email = OutboundEmailFactory()
+
+        run_attempts(email, 4)
+
+        assert email.status == OutboundEmail.Status.DEAD_LETTER
+        assert email.attempt_count == 3
+        assert [event["message"] for event in sentry_events] == [DEAD_LETTER_MESSAGE]
+
+    @pytest.mark.usefixtures("upstream_locmem")
+    def test_a_host_that_comes_back_partway_up_the_ladder_gets_the_message(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+        email = OutboundEmailFactory()
+        run_attempts(email, 2)
+        settings.EMAIL_UPSTREAM_BACKEND = (
+            "django.core.mail.backends.locmem.EmailBackend"
+        )
+
+        run_attempts(email, 1)
+
+        assert email.status == OutboundEmail.Status.SENT
+        assert email.attempt_count == 3
+        assert len(mail.outbox) == 1
+
+    def test_an_upstream_reporting_zero_sent_leaves_the_row_failed(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = ZERO_SENT
+        email = OutboundEmailFactory()
+
+        send_outbound_email(str(email.pk))
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.FAILED
+        assert UpstreamSendCountZeroError.__name__ in email.last_error

@@ -14,15 +14,20 @@ from smtplib import SMTPDataError
 import pytest
 import pytest_django.fixtures
 import sentry_sdk
+import time_machine
 from sentry_sdk.transport import Transport
 
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import EmailMessage
 
+from freedom_ls.mail.models import OutboundEmail
+from freedom_ls.mail.tasks import send_outbound_email
+
 LOCMEM = "django.core.mail.backends.locmem.EmailBackend"
 REFUSING = "freedom_ls.mail.tests.conftest.RefusingEmailBackend"
 REJECTING = "freedom_ls.mail.tests.conftest.RejectingEmailBackend"
+ZERO_SENT = "freedom_ls.mail.tests.conftest.ZeroSentEmailBackend"
 BUGGY = "freedom_ls.mail.tests.conftest.BuggyEmailBackend"
 LONG_URL = "https://example.test/account/password/reset/key/" + "a" * 80 + "/"
 
@@ -50,6 +55,26 @@ class BuggyEmailBackend(BaseEmailBackend):
 
     def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         raise ValueError("bug in our own code")
+
+
+class ZeroSentEmailBackend(BaseEmailBackend):
+    """An upstream that raises nothing and reports that no message went out."""
+
+    def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
+        return 0
+
+
+def run_attempts(email: OutboundEmail, count: int) -> None:
+    """Run ``count`` send attempts, each at the time the row says it is due.
+
+    Stops the clock at each ``next_attempt_at`` so the due-time guard in the
+    worker lets the attempt through, and leaves ``email`` refreshed.
+    """
+    for _ in range(count):
+        email.refresh_from_db()
+        with time_machine.travel(email.next_attempt_at, tick=False):
+            send_outbound_email(str(email.pk))
+    email.refresh_from_db()
 
 
 class _RecordingTransport(Transport):

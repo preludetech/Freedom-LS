@@ -22,11 +22,13 @@ from freedom_ls.mail.config import config
 from freedom_ls.mail.encoding import set_8bit_encoding
 from freedom_ls.mail.errors import (
     SendErrorKind,
+    UpstreamSendCountZeroError,
     classify_send_error,
     describe_error,
     report_outbound_email,
 )
 from freedom_ls.mail.models import LAST_ERROR_MAX_LENGTH, OutboundEmail
+from freedom_ls.mail.retry import schedule_retry
 from freedom_ls.mail.serialisation import SerialisedMessage, deserialise_message
 
 # Ahead of the default 0 that webhook delivery and report rendering enqueue at.
@@ -46,16 +48,18 @@ PERMANENT_FAILURE_MESSAGE = (
 def send_serialised_email(payload: SerialisedMessage) -> None:
     """Rebuild a queued message and send it through the upstream backend.
 
-    Failures propagate rather than being swallowed. The worker marks the task
-    result FAILED and the task framework's own task_finished receiver logs that
-    at ERROR with the traceback attached, which reaches the console handler and,
-    where a DSN is configured, Sentry. Swallowing here would instead mark the
-    task successful and drop the mail with no signal anywhere.
+    A failure propagates to send_outbound_email, which records it on the row.
+    An upstream that reports no message sent without raising is treated as a
+    failure too, so a silent drop is retried instead of marked sent.
     """
     message = deserialise_message(payload)
     set_8bit_encoding(message)
     connection = get_connection(backend=config.EMAIL_UPSTREAM_BACKEND)
-    connection.send_messages([message])
+    sent = connection.send_messages([message])
+    if not sent:
+        raise UpstreamSendCountZeroError(
+            f"{config.EMAIL_UPSTREAM_BACKEND} raised nothing and reported 0 messages sent."
+        )
 
 
 @task(priority=EMAIL_TASK_PRIORITY)
@@ -78,8 +82,8 @@ def enqueue_send(email_id: UUID, run_after: datetime | None = None) -> TaskResul
 def send_outbound_email(email_id: str) -> None:
     """Claim one row and send it.
 
-    A permanent failure ends the row. Any other error propagates, leaving it
-    sending.
+    A permanent failure ends the row and a transient one schedules a retry or
+    dead-letters it. Any other error propagates, leaving the row sending.
     """
     now = timezone.now()
     # One UPDATE is the whole guard: a second worker and a redelivered task can
@@ -102,11 +106,15 @@ def send_outbound_email(email_id: str) -> None:
     # Every exception is caught because the classifier is what decides, and it
     # needs to see them all. An unclassified one is re-raised untouched.
     except Exception as exc:
-        if classify_send_error(exc) is SendErrorKind.PERMANENT:
+        kind = classify_send_error(exc)
+        if kind is SendErrorKind.PERMANENT:
             email.status = Status.PERMANENT_FAILURE
             email.last_error = describe_error(exc)
             email.save(update_fields=["status", "last_error"])
             report_outbound_email(email, PERMANENT_FAILURE_MESSAGE)
+            return
+        if kind is SendErrorKind.TRANSIENT:
+            schedule_retry(email, exc)
             return
         # The row stays in sending. A bug in our own code is reported loudly by
         # the failed task, not retried quietly. The cause is kept on the row so

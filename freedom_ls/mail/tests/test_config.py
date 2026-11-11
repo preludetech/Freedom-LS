@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django_tasks_db.management.commands.prune_db_task_results import Command
+
 from freedom_ls.mail.config import config
 
 
@@ -19,3 +21,18 @@ class TestEmailUpstreamBackendDefault:
             config.EMAIL_UPSTREAM_BACKEND
             != "freedom_ls.mail.backends.QueuedEmailBackend"
         )
+
+
+class TestRetryLadderBounds:
+    def test_the_full_ladder_ends_before_task_results_are_pruned(self) -> None:
+        prune_days = (
+            Command().create_parser("manage.py", "x").get_default("min_age_days")
+        )
+        full_jitter = 1 + config.EMAIL_RETRY_JITTER_RATIO
+
+        ladder_seconds = sum(config.EMAIL_RETRY_DELAYS) * full_jitter
+
+        assert ladder_seconds < prune_days * 24 * 3600
+
+    def test_the_ladder_has_a_delay_for_every_retry(self) -> None:
+        assert len(config.EMAIL_RETRY_DELAYS) + 1 >= config.EMAIL_MAX_ATTEMPTS

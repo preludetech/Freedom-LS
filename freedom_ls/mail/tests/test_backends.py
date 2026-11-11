@@ -209,6 +209,16 @@ class TestInlineFailureReport:
         with pytest.raises(QueuedEmailNotSentError, match="ConnectionRefusedError"):
             QueuedEmailBackend().send_messages([make_message()])
 
+    def test_a_failed_inline_send_leaves_the_row_failed_for_a_later_attempt(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+
+        with pytest.raises(QueuedEmailNotSentError):
+            QueuedEmailBackend().send_messages([make_message()])
+
+        assert OutboundEmail.objects.get().status == OutboundEmail.Status.FAILED
+
     def test_a_failed_inline_send_is_swallowed_when_fail_silently(
         self, settings: pytest_django.fixtures.SettingsWrapper
     ) -> None:

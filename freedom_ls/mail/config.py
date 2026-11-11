@@ -5,6 +5,9 @@ from freedom_ls.base.app_settings import AppSettings, Setting
 
 class MailSettings(AppSettings):
     EMAIL_UPSTREAM_BACKEND: str
+    EMAIL_MAX_ATTEMPTS: int
+    EMAIL_RETRY_DELAYS: list[int]
+    EMAIL_RETRY_JITTER_RATIO: float
 
     declared_settings = {
         # The backend the worker actually sends through, once QueuedEmailBackend has
@@ -17,6 +20,16 @@ class MailSettings(AppSettings):
         "EMAIL_UPSTREAM_BACKEND": Setting(
             default="django.core.mail.backends.smtp.EmailBackend"
         ),
+        # Total sends tried for one message, the first included, before it is
+        # dead-lettered.
+        "EMAIL_MAX_ATTEMPTS": Setting(default=6),
+        # Seconds to wait after each failed attempt, in order. A failure past the
+        # end of the list reuses the last entry. The full ladder must finish well
+        # inside the window after which finished task results are pruned.
+        "EMAIL_RETRY_DELAYS": Setting(default=[60, 300, 900, 1800, 3600]),
+        # Upper bound on the random extra wait added to each delay, as a fraction
+        # of that delay.
+        "EMAIL_RETRY_JITTER_RATIO": Setting(default=0.2),
     }
 
 
