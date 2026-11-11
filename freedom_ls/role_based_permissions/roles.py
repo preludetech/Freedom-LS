@@ -64,6 +64,9 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
+                    # On a cohort this opens its History tab, where the
+                    # admin reads the changes made to it, their own included.
+                    "freedom_ls_audit_log.view_auditlogentry",
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
                     "freedom_ls_learner_management.add_cohortmembership",

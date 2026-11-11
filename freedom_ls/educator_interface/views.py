@@ -1083,6 +1083,13 @@ class LearnerHistoryPanel(HistoryPanel):
         "deactivating them are recorded here."
     )
 
+    def has_permission(self, request: HttpRequest) -> bool:
+        """A learner's history spans every cohort they belong to, so it
+        opens only for someone who may read the whole organisation's audit
+        log, not for a cohort admin of one of those cohorts."""
+        organisation = cast(Learner, self.instance).organisation
+        return self.ctx.config.has_capability(request, self.capability, organisation)
+
     @property
     def scope_label(self) -> str:
         return cast(Learner, self.instance).user.display_name

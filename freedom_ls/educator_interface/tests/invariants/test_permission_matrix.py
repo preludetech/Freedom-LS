@@ -195,7 +195,10 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         },
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
-        "cohort_admin": set(),
+        # A cohort grant covers the cohort and, as every cohort grant does,
+        # the learners in it. The learner page's History panel asks for the
+        # organisation instead, so a cohort admin opens cohort History only.
+        "cohort_admin": {("cohort", OWN), ("learner", OWN)},
         "cohort_viewer": set(),
     },
     ADD_COHORT: {

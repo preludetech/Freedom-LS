@@ -11,7 +11,7 @@ _Last updated: 2026-11-11_
 - Educators create, rename, deactivate and delete cohorts, and register a cohort for courses. See [Cohorts](#cohorts).
 - The Courses list shows each course's visibility and interest count. A course's page shows its details and an outline of its content, and any topic or form can be previewed as a learner would see it, without recording progress. Visibility is read-only here. See [Courses](#courses).
 - Organisation admins add staff, assign and deactivate their roles, and deactivate or reactivate them. See [Staff and roles](#staff-and-roles).
-- Site and organisation admins see who changed what and when, on learner and cohort pages and in an Audit log. See [History](#history).
+- Site and organisation admins see who changed what and when, on learner and cohort pages and in an Audit log, and a cohort admin sees it on the cohorts they administer. See [History](#history).
 - A cohort's progress report shows on screen, with a PDF to download. See [Reports](#reports).
 - Access is granted by role: site admin, organisation admin, cohort admin or cohort viewer. See [Access control](#access-control).
 - **Limits:** educators cannot see or set deadlines, and moving or deleting in bulk and updating existing learners from a file are not built. See [Limits](#limits).
@@ -161,7 +161,7 @@ Confirming a removal or deactivation (removing a learner from a cohort, deactiva
 
 ![Audit log table of when, who, what, target and details, with an Add filter control](screenshots/educator_audit_log.png)
 
-The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see it and the History tabs; cohort admins and cohort viewers do not.
+The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see the Audit log and a learner's History tab. A cohort admin also sees the History tab of a cohort they administer. Cohort viewers see neither.
 
 Not recorded: anything before the feature was installed (there is no backfill), records edited directly in the Django admin, and logins. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 

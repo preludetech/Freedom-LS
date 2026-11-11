@@ -2120,6 +2120,80 @@ def test_the_history_tab_shows_the_code_of_a_deactivated_action(
     assert rows[0][2] == "widget.exploded"
 
 
+def _cohort_history_access(
+    client: Client, organisation: Organisation, cohort: Cohort
+) -> tuple[bool, int]:
+    """Whether the cohort page lists a History tab, and the status of the
+    tab's own URL."""
+    page = client.get(_interface_url(organisation.slug, f"cohorts/{cohort.pk}"))
+    hrefs = []
+    if page.status_code == 200:
+        document = lxml.html.fromstring(page.content.decode())
+        (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
+        hrefs = [a.get("href").rsplit("/", 1)[-1] for a in nav.cssselect("a")]
+    response = client.get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/history")
+    )
+    return "history" in hrefs, response.status_code
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_reads_the_history_of_a_cohort_they_administer(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    colleague = UserFactory()
+    assign_role(grantor, colleague, "cohort_viewer", cohort)
+    client = logged_in_client(educator)
+
+    shown = _cohort_history_access(client, organisation, cohort)
+    history = client.get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/history")
+    )
+
+    assert shown == (True, 200)
+    assert "Role assigned" in history.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_no_history_on_a_cohort_they_do_not_administer(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    own = cast(Cohort, CohortFactory(organisation=organisation))
+    other = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", own)
+    assign_role(grantor, educator, "cohort_viewer", other)
+
+    assert _cohort_history_access(logged_in_client(educator), organisation, other) == (
+        False,
+        404,
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_no_organisation_audit_log(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    response = logged_in_client(educator).get(
+        _interface_url(organisation.slug, "audit-log")
+    )
+
+    assert response.status_code == 404
+
+
 @pytest.mark.django_db
 def test_a_cohort_admin_gets_no_history_tab_and_a_404_on_its_url(
     mock_site_context, logged_in_client
@@ -7465,9 +7539,15 @@ def test_the_audit_log_export_leaves_out_another_sites_entries(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
-@pytest.mark.parametrize("target", ["cohort_history", "audit_log"])
-def test_a_cohort_role_gets_a_404_on_the_cohort_history_and_audit_log_exports(
+@pytest.mark.parametrize(
+    ("role", "target"),
+    [
+        ("cohort_admin", "audit_log"),
+        ("cohort_viewer", "cohort_history"),
+        ("cohort_viewer", "audit_log"),
+    ],
+)
+def test_a_cohort_role_gets_a_404_on_the_exports_it_may_not_read(
     mock_site_context, logged_in_client, role: str, target: str
 ):
     organisation = OrganisationFactory()
@@ -7484,6 +7564,24 @@ def test_a_cohort_role_gets_a_404_on_the_cohort_history_and_audit_log_exports(
     response = logged_in_client(educator).get(url, {key: "csv"})
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_exports_the_history_of_a_cohort_they_administer(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    response = logged_in_client(educator).get(
+        _cohort_history_url(cohort), {"history-export": "csv"}
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/csv")
 
 
 @pytest.mark.django_db

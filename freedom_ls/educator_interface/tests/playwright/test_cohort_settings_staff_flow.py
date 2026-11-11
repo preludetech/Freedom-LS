@@ -1,10 +1,9 @@
 """E2E Playwright flow for the Staff section of a cohort's Settings tab as a
 cohort admin sees it: change a viewer to a cohort admin, remove them from the
-cohort. A cohort admin holds no audit-log capability, so the History tab is
-not theirs to open and the audit entries are read from the database. Refusals, headers and audit
-entries are covered by test_actions.py; what only a browser shows is the
-dialog steps replacing one another inside the open modal, the list behind it
-refreshing, and the tab's layout at each viewport.
+cohort, then read both changes on the cohort's History tab. Refusals, headers
+and audit entries are covered by test_actions.py; what only a browser shows
+is the dialog steps replacing one another inside the open modal, the list
+behind it refreshing, and the tab's layout at each viewport.
 """
 
 from __future__ import annotations
@@ -15,8 +14,6 @@ from playwright.sync_api import Page, expect
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.audit_log.models import AuditLogEntry
-from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -71,14 +68,17 @@ def test_a_cohort_admin_changes_then_removes_a_viewer_and_reads_it_in_history(
     expect(modal).to_be_hidden()
     expect(main.get_by_text("Vera Viewer")).to_have_count(0)
 
-    actions = list(
-        AuditLogEntry.unscoped.filter(
-            actor=cohort_admin_user, subjects__contains=[subject_key(viewer)]
-        )
-        .order_by("created_at", "pk")
-        .values_list("action", flat=True)
-    )
-    assert actions == ["role.assigned", "role.deactivated", "role.deactivated"]
+    page.get_by_role("navigation", name="Cohort sections").get_by_role(
+        "link", name="History"
+    ).click()
+    entries = main.get_by_role("row").filter(has_text="Vera Viewer")
+    # Newest first: the removal, the two halves of the role change, and the
+    # grant the test began with.
+    expect(entries).to_have_count(4)
+    expect(entries.nth(0)).to_contain_text("Role deactivated")
+    expect(entries.nth(1)).to_contain_text("Role deactivated")
+    expect(entries.nth(2)).to_contain_text("Role assigned")
+    expect(entries.nth(3)).to_contain_text("Role assigned")
 
     page.goto(interface_url(live_server, organisation.slug, settings_path))
     for viewport in QA_VIEWPORTS:
