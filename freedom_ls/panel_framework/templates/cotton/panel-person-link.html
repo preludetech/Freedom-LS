@@ -19,10 +19,16 @@ Attributes:
   hx_nav          On: the link navigates with HTMX into #main-content, as the
                   data-table link cell does. Read through the `flag` filter.
 
+The `badges` slot holds the person's status badges ("You", "Inactive"). They
+sit on a line under the name and email, outside the link so they stay out of
+its accessible name, indented to the name's left edge (the md avatar's width
+plus its gap).
+
 The `trigger` slot replaces the quick-view trigger with the caller's own
 control, for a row whose trigger has to be a <button>.
 {% endcomment %}
 <span class="flex items-center justify-between gap-2 {{ class }}" {{ attrs }}>
+    <span class="min-w-0">
     {% if href %}
         <a href="{{ href }}"
            class="min-w-0 font-bold text-on-surface no-underline hover:text-primary"
@@ -31,10 +37,12 @@ control, for a row whose trigger has to be a <button>.
                hx-target="#main-content"
                hx-push-url="true"
                hx-swap="outerHTML"
-           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></a>
+           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" /></a>
     {% else %}
-        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" /></span>
+        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" /></span>
     {% endif %}
+    {% if badges %}<span class="mt-1 flex flex-wrap gap-1 pl-11">{{ badges }}</span>{% endif %}
+    </span>
     {% if trigger %}
         {{ trigger }}
     {% elif quick_view_url %}

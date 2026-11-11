@@ -23,6 +23,10 @@ Attributes:
                so "False", "false", "0", "none" and an empty string all
                count as off.
 
+The `badges` slot holds the person's status badges ("You", "Inactive"). They
+sit on their own line under the name and email, left-aligned with the name,
+and the avatar stays centred on the name and email.
+
 The initials circle is aria-hidden; the name carries the accessible name.
 
 Six colour slots, not the course accent slots theme.css reserves for course
@@ -43,12 +47,13 @@ this component.
     .panel-avatar-6 { background-color: color-mix(in oklab, var(--color-secondary) 42%, var(--color-surface)); }
 }</style>
 
-<div class="flex items-center gap-3" {{ attrs }}>
+<div class="{% if name_hidden|flag %}flex{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} items-center" {{ attrs }}>
     <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
     {% if not name_hidden|flag %}
         <span class="min-w-0">
             <span class="block truncate">{{ name }}</span>
             {% if secondary %}<span class="block truncate text-sm font-normal text-muted">{{ secondary }}</span>{% endif %}
         </span>
+        {% if badges %}<span class="col-start-2 mt-1 flex flex-wrap gap-1 font-normal">{{ badges }}</span>{% endif %}
     {% endif %}
 </div>

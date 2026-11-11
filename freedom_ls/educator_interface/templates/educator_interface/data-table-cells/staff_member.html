@@ -5,15 +5,18 @@ email under it when the user has a name. A nameless user is shown by the
 email alone. There is no link because a staff member has no page of their own;
 for a viewer who may see roles, a trigger beside the name opens the staff
 quick view, which lists each role with who added it and when.
-The markers sit beside the chip: "You" for the viewer's own row, "Inactive"
-for a missing or inactive organisation membership, "Account inactive" for an
-inactive user, and "Also a learner" for an active Learner row in the same
-organisation.
+The badges sit under the name and email, in the person link's badges slot:
+"You" for the viewer's own row, "Inactive" for a missing or inactive
+organisation membership, "Account inactive" for an inactive user, and "Also a
+learner" for an active Learner row in the same organisation.
 {% endcomment %}
-<span class="flex flex-wrap items-center gap-2 md:max-w-56">
-    <c-panel-person-link name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" quick_view_url="{% if shows_roles %}{{ staff_url }}/{{ object.pk }}/__quick-view{% endif %}" class="min-w-0 max-w-full" />
-    {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}
-    {% if object.is_inactive %}<c-panel-status-badge tone="muted" label="Inactive" />{% endif %}
-    {% if not object.is_active %}<c-panel-status-badge tone="muted" label="Account inactive" />{% endif %}
-    {% if object.learner_rows %}<c-panel-status-badge tone="muted" label="Also a learner" />{% endif %}
-</span>
+<c-panel-person-link name="{{ object.display_name }}" user_id="{{ object.pk }}" secondary="{% if object.first_name or object.last_name %}{{ object.email }}{% endif %}" quick_view_url="{% if shows_roles %}{{ staff_url }}/{{ object.pk }}/__quick-view{% endif %}" class="min-w-0 md:max-w-56">
+    {% if object.pk == viewer.pk or object.is_inactive or not object.is_active or object.learner_rows %}
+        <c-slot name="badges">
+            {% if object.pk == viewer.pk %}<c-panel-status-badge tone="info" label="You" />{% endif %}
+            {% if object.is_inactive %}<c-panel-status-badge tone="muted" label="Inactive" />{% endif %}
+            {% if not object.is_active %}<c-panel-status-badge tone="muted" label="Account inactive" />{% endif %}
+            {% if object.learner_rows %}<c-panel-status-badge tone="muted" label="Also a learner" />{% endif %}
+        </c-slot>
+    {% endif %}
+</c-panel-person-link>

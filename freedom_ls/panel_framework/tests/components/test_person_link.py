@@ -57,3 +57,26 @@ def test_hx_nav_makes_the_link_swap_into_main_content() -> None:
     assert link.get("hx-target") == "#main-content"
     assert link.get("hx-push-url") == "true"
     assert link.get("hx-swap") == "outerHTML"
+
+
+def test_badges_sit_under_the_name_outside_the_link() -> None:
+    html = render_cotton(
+        '<c-panel-person-link name="Thandi Mokoena" user_id="42" href="/people/42">'
+        '<c-slot name="badges"><span class="badge">Also a learner</span></c-slot>'
+        "</c-panel-person-link>"
+    )
+
+    root = lxml.html.fromstring(html)
+    link = root.findall(".//a")[0]
+    badge = root.xpath('.//span[@class="badge"]')[0]
+    badge_line = badge.getparent()
+
+    assert "Also a learner" not in link.text_content()
+    assert badge_line.getprevious() is link
+    assert "pl-11" in badge_line.get("class", "").split()
+
+
+def test_without_badges_no_badge_line_renders() -> None:
+    html = render_cotton('<c-panel-person-link name="Thandi Mokoena" user_id="42" />')
+
+    assert "pl-11" not in html

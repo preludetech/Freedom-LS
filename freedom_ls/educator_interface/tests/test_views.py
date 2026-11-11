@@ -3095,7 +3095,9 @@ def test_the_inactive_marker_is_muted(role_holder_client):
     )
 
     (marker,) = [
-        e for e in row.cssselect("span") if e.text_content().strip() == "Inactive"
+        e
+        for e in row.cssselect("[data-tone]")
+        if e.text_content().strip() == "Inactive"
     ]
     assert marker.get("data-tone") == "muted"
 

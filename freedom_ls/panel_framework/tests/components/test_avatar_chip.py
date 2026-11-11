@@ -68,3 +68,17 @@ def test_name_hidden_false_string_shows_the_name() -> None:
     )
 
     assert "Thandi Mokoena</span>" in html
+
+
+def test_badges_sit_in_the_name_column_under_the_name() -> None:
+    html = render_cotton(
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" secondary="t@example.com">'
+        '<c-slot name="badges"><span class="badge">You</span></c-slot>'
+        "</c-panel-avatar-chip>"
+    )
+
+    match = re.search(r'<span class="([^"]*)"><span class="badge">You</span>', html)
+
+    assert match is not None
+    assert "col-start-2" in match.group(1).split()
+    assert html.index("t@example.com") < html.index("You")

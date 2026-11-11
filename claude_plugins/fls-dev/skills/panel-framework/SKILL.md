@@ -102,6 +102,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A person in a list row is `<c-panel-attention-row>`: the name `text-sm font-semibold`, the chip
   `size="sm"` with its centre on the name's first line. `<c-panel-avatar-chip size="lg">` is for a
   page header only.
+- A person's badges ("You", "Inactive", "Also a learner") go in the `badges` slot of
+  `<c-panel-person-link>` or `<c-panel-avatar-chip>`, never beside the component. The slot puts
+  them on their own line under the name and email, left-aligned with the name, and the avatar
+  stays beside the name and email.
 - A row of figures is `<c-panel-stat-row>`, a grid at every width (two columns on a phone), so the
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
@@ -244,7 +248,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   table too; hovering an empty table's message tints nothing.
 - A list of records in a panel has the same fields in the same places on every row, never
   dash-joined sentences; a row of figures lines its labels up in columns at every width; a person
-  in a list row has a small name and a small avatar centred on the name's first line.
+  in a list row has a small name and a small avatar centred on the name's first line; a person's
+  badges sit on a line under the name and email, their left edge on the name's left edge.
 - A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
