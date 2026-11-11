@@ -54,6 +54,9 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
   in its own column, on the same line as its item; the buttons that act on the whole row take the
   last column. One cell never stacks both kinds.
+- A table whose columns do not fit its own container shows as cards, never behind a sideways
+  scroll. The table declares it (`cards_when_narrow`) and the switch reads the container's width,
+  not the viewport's, so it also holds beside an open quick view.
 - A row the viewer cannot act on states its fields and leaves its buttons column empty: no note
   saying why, no link to the page where it can be changed.
 - A row's own record is opened in the quick view; detail a row does not need to be scanned (who
@@ -260,7 +263,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A sheet on a phone has rounded top corners and a header with a close control; a quick view
   leaves the page behind it undimmed and tappable, a modal dims it.
 - A dialog, sheet, table or selection bar (More menu included) stays inside the viewport at every
-  width, title and every button included.
+  width, title and every button included. A table with action columns is cards at 768 and beside
+  an open quick view, with no button cut off or behind a sideways scroll.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
