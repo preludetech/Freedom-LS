@@ -1,4 +1,4 @@
-"""Tests for freedom_ls_mail.E001."""
+"""Tests for freedom_ls_mail.E001 and freedom_ls_mail.W001."""
 
 from __future__ import annotations
 
@@ -6,7 +6,10 @@ from django.core.checks import registry
 from django.test import override_settings
 
 from freedom_ls.mail.backends import QueuedEmailBackend
-from freedom_ls.mail.checks import check_email_upstream_backend_is_not_the_queue
+from freedom_ls.mail.checks import (
+    check_email_upstream_backend_is_not_the_queue,
+    check_task_backend_can_defer_email_retries,
+)
 
 QUEUED_BACKEND = "freedom_ls.mail.backends.QueuedEmailBackend"
 SMTP_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -66,3 +69,33 @@ def test_no_error_when_the_queue_is_not_in_use() -> None:
 def test_an_unimportable_upstream_returns_no_errors() -> None:
     # Django raises on the first send for this; one id, one meaning.
     assert check_email_upstream_backend_is_not_the_queue() == []
+
+
+IMMEDIATE_TASKS = {
+    "default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}
+}
+DATABASE_TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+
+
+def test_deferral_check_is_registered_as_a_deploy_check() -> None:
+    assert (
+        check_task_backend_can_defer_email_retries
+        in registry.registry.deployment_checks
+    )
+
+
+@override_settings(EMAIL_BACKEND=QUEUED_BACKEND, TASKS=IMMEDIATE_TASKS)
+def test_queue_on_a_task_backend_that_cannot_defer_warns() -> None:
+    messages = check_task_backend_can_defer_email_retries()
+
+    assert [message.id for message in messages] == ["freedom_ls_mail.W001"]
+
+
+@override_settings(EMAIL_BACKEND=QUEUED_BACKEND, TASKS=DATABASE_TASKS)
+def test_queue_on_a_task_backend_that_can_defer_is_quiet() -> None:
+    assert check_task_backend_can_defer_email_retries() == []
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM_BACKEND, TASKS=IMMEDIATE_TASKS)
+def test_deferral_check_is_quiet_when_the_queue_is_not_in_use() -> None:
+    assert check_task_backend_can_defer_email_retries() == []
