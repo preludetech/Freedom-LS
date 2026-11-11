@@ -388,3 +388,33 @@ def test_footer_buttons_share_the_question_column_edges(
             f"{viewport['width']}px: options end at x={option_right}, "
             f"Next ends at x={next_right}"
         )
+
+
+@pytest.mark.browser_context_args(locale="en-ZA")
+def test_a_preselected_phone_country_does_not_count_as_an_answer(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    form = FormFactory(title="Phone Form")
+    form_page = FormPageFactory(form=form, order=0, title="Only Page")
+    FormQuestionFactory(
+        form_page=form_page, type="phone", question="Your phone number", order=0
+    )
+    course = course_with_form(form, title="Phone Course", slug="phone-course")
+    register_user_for_course(course, logged_in_user)
+
+    navigate_to_form(page, live_server, course)
+    start_form(page)
+
+    expect(page.get_by_label("Country").locator("option:checked")).to_have_text(
+        "South Africa (+27)"
+    )
+    summary = page.get_by_test_id("answered-summary")
+    expect(summary).to_have_text("0 of 1 answered")
+    page.get_by_label("Phone number").fill("082 123 4567")
+    expect(summary).to_have_text("1 of 1 answered")
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)

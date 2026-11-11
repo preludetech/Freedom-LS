@@ -6,6 +6,7 @@ from django import template
 from django.template import Context
 
 from freedom_ls.form_engine.phone_numbers import (
+    browser_country,
     country_choices,
     national_phone,
     stored_phone_country,
@@ -35,8 +36,8 @@ def phone_field_state(context: Context) -> dict[str, object]:
     """What the phone question's two controls show: the selected country, the
     number, and the countries on offer.
 
-    Reads `question`, `rejected` and `existing_answers` from the context the
-    question template already holds, so no view computes anything for it.
+    Reads `question`, `rejected`, `existing_answers` and `request` from the
+    context the question template already holds, so no view computes anything for it.
     """
     question = context["question"]
     rejected = context.get("rejected")
@@ -49,6 +50,13 @@ def phone_field_state(context: Context) -> dict[str, object]:
         stored = answer.text_answer if answer else ""
         country = stored_phone_country(stored) or ""
         number = national_phone(stored)
+        if not stored:
+            # Only an empty question takes the browser's hint. Guessing a
+            # country beside a number someone already typed could change
+            # which number it means.
+            request = context.get("request")
+            header = request.headers.get("Accept-Language", "") if request else ""
+            country = browser_country(header) or ""
     return {"country": country, "number": number, "choices": country_choices()}
 
 

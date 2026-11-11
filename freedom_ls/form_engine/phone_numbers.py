@@ -12,7 +12,7 @@ import functools
 import unicodedata
 
 import phonenumbers
-from babel import Locale, UnknownLocaleError
+from babel import Locale, UnknownLocaleError, parse_locale
 from phonenumbers import NumberParseException, PhoneNumber, PhoneNumberFormat
 
 from django.conf import settings
@@ -173,3 +173,46 @@ def national_phone(text: str) -> str:
     if number is None or stored_phone_country(text) is None:
         return text
     return phonenumbers.format_number(number, PhoneNumberFormat.NATIONAL)
+
+
+def _quality(parameters: list[str]) -> float:
+    """The tag's q value: 1 when absent, 0 when unreadable, so a tag with a
+    broken weight is dropped instead of promoted."""
+    for parameter in parameters:
+        name, _, value = parameter.strip().partition("=")
+        if name.strip() == "q":
+            try:
+                return float(value)
+            except ValueError:
+                return 0.0
+    return 1.0
+
+
+def _tag_country(tag: str) -> str | None:
+    """The country a language tag names, or None when it names none on offer."""
+    try:
+        _language, region_subtag, *_rest = parse_locale(tag, sep="-")
+    except ValueError:
+        # "*", an empty tag, or anything else that is not a language tag.
+        return None
+    # Membership also drops the numeric and non-geographic region subtags a
+    # tag can carry: "419", "001", "EU".
+    return region_subtag if region_subtag in SUPPORTED_REGIONS else None
+
+
+def browser_country(accept_language: str) -> str | None:
+    """The country the browser's Accept-Language header names, if any.
+
+    Read by hand instead of through LocaleMiddleware, which would switch the
+    active language for the whole site.
+    """
+    weighted: list[tuple[float, str]] = []
+    for part in accept_language.split(","):
+        tag, *parameters = part.split(";")
+        quality = _quality(parameters)
+        if quality > 0:
+            weighted.append((quality, tag.strip()))
+    # The sort is stable, so tags of equal weight keep the header's order.
+    weighted.sort(key=lambda pair: -pair[0])
+    countries = (_tag_country(tag) for _, tag in weighted)
+    return next((country for country in countries if country is not None), None)
