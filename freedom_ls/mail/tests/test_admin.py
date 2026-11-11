@@ -361,3 +361,162 @@ def test_resend_post_without_csrf_token_is_refused(
     dead.refresh_from_db()
     assert response.status_code == 403
     assert dead.status == Status.DEAD_LETTER
+
+
+def resend_action_url(email: OutboundEmail) -> str:
+    return reverse("admin:freedom_ls_mail_outboundemail_resend_email", args=[email.pk])
+
+
+def test_detail_page_of_dead_letter_row_shows_resend_button(
+    superuser_client: Client,
+) -> None:
+    dead = OutboundEmailFactory(dead_letter=True)
+
+    response = superuser_client.get(detail_url(dead))
+
+    assert resend_action_url(dead) in response.content.decode()
+
+
+def resend_confirm_url(email: OutboundEmail | str) -> str:
+    key = email.pk if isinstance(email, OutboundEmail) else email
+    return reverse("admin:freedom_ls_mail_outboundemail_resend", args=[key])
+
+
+@pytest.mark.parametrize(
+    "factory_kwargs",
+    [{"sent": True}, {"sending": True}, {"dead_letter": True, "scrubbed": True}],
+    ids=["sent", "sending", "scrubbed"],
+)
+def test_detail_page_of_unresendable_row_shows_no_resend_button(
+    superuser_client: Client, factory_kwargs: dict[str, bool]
+) -> None:
+    email = OutboundEmailFactory(**factory_kwargs)
+
+    response = superuser_client.get(detail_url(email))
+
+    assert resend_action_url(email) not in response.content.decode()
+
+
+def test_resend_confirmation_page_names_row_and_changes_nothing(
+    superuser_client: Client, database_task_backend: None
+) -> None:
+    from django_tasks_db.models import DBTaskResult
+
+    dead = OutboundEmailFactory(dead_letter=True, subject="Welcome aboard")
+
+    response = superuser_client.get(resend_confirm_url(dead))
+
+    dead.refresh_from_db()
+    assert "Welcome aboard" in response.content.decode()
+    assert dead.status == Status.DEAD_LETTER
+    assert not DBTaskResult.objects.exists()
+    assert not LogEntry.objects.exists()
+
+
+def test_resend_confirmation_page_does_not_show_body(
+    superuser_client: Client,
+) -> None:
+    email = email_with_body_marker()
+    OutboundEmail.objects.filter(pk=email.pk).update(status=Status.DEAD_LETTER)
+
+    response = superuser_client.get(resend_confirm_url(email))
+
+    assert BODY_MARKER not in response.content.decode()
+
+
+def test_resend_confirmation_post_requeues_row_and_redirects_to_detail(
+    superuser_client: Client,
+    database_task_backend: None,
+    django_capture_on_commit_callbacks,
+) -> None:
+    from django_tasks_db.models import DBTaskResult
+
+    dead = OutboundEmailFactory(dead_letter=True)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = superuser_client.post(resend_confirm_url(dead))
+
+    dead.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == detail_url(dead)
+    assert (dead.status, dead.attempt_count) == (Status.PENDING, 0)
+    assert [row.args_kwargs for row in DBTaskResult.objects.all()] == [
+        {"args": [str(dead.pk)], "kwargs": {}}
+    ]
+    assert LogEntry.objects.filter(action_flag=CHANGE).count() == 1
+
+
+def test_resend_confirmation_page_of_sent_row_shows_reason_and_no_form(
+    superuser_client: Client,
+) -> None:
+    sent = OutboundEmailFactory(sent=True)
+
+    response = superuser_client.get(resend_confirm_url(sent))
+
+    content = response.content.decode()
+    assert "already sent" in content
+    assert 'id="resend-form"' not in content
+
+
+def test_resend_confirmation_post_of_sent_row_queues_nothing_and_warns(
+    superuser_client: Client, database_task_backend: None
+) -> None:
+    from django_tasks_db.models import DBTaskResult
+
+    sent = OutboundEmailFactory(sent=True)
+
+    response = superuser_client.post(resend_confirm_url(sent), follow=True)
+
+    sent.refresh_from_db()
+    assert sent.status == Status.SENT
+    assert not DBTaskResult.objects.exists()
+    assert [m.level_tag for m in get_messages(response.wsgi_request)] == ["warning"]
+
+
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_resend_confirmation_refused_for_staff_user_without_superuser(
+    staff_client: Client, method: str
+) -> None:
+    dead = OutboundEmailFactory(dead_letter=True)
+
+    response = getattr(staff_client, method)(resend_confirm_url(dead))
+
+    dead.refresh_from_db()
+    assert response.status_code == 403
+    assert dead.status == Status.DEAD_LETTER
+
+
+def test_resend_confirmation_redirects_anonymous_user_to_login(
+    mock_site_context: object,
+) -> None:
+    dead = OutboundEmailFactory(dead_letter=True)
+
+    response = Client().get(resend_confirm_url(dead))
+
+    assert response.status_code == 302
+    assert reverse("admin:login") in response.url
+
+
+def test_resend_confirmation_post_without_csrf_token_is_refused(
+    mock_site_context: object,
+) -> None:
+    dead = OutboundEmailFactory(dead_letter=True)
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(UserFactory(superuser=True))
+
+    response = client.post(resend_confirm_url(dead))
+
+    dead.refresh_from_db()
+    assert response.status_code == 403
+    assert dead.status == Status.DEAD_LETTER
+
+
+@pytest.mark.parametrize(
+    "object_id", ["not-a-uuid", "00000000-0000-0000-0000-000000000000"]
+)
+def test_resend_confirmation_gives_404_for_malformed_or_unknown_id(
+    superuser_client: Client, object_id: str
+) -> None:
+    response = superuser_client.get(resend_confirm_url(object_id))
+
+    assert response.status_code == 404

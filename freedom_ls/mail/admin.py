@@ -7,11 +7,18 @@ from collections.abc import Iterable
 from functools import partial
 
 from unfold.admin import ModelAdmin
+from unfold.dataclasses import UnfoldAction
+from unfold.decorators import action as unfold_action
 
 from django.contrib import admin, messages
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import QuerySet
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import URLPattern, path, reverse
 from django.utils import timezone
 
 from freedom_ls.mail.models import OutboundEmail
@@ -69,6 +76,7 @@ class OutboundEmailAdmin(ModelAdmin):
     ]
     readonly_fields = fields
     actions = ["resend_selected"]
+    actions_detail = ["resend_email"]
 
     def has_module_permission(self, request: HttpRequest) -> bool:
         return request.user.is_superuser
@@ -101,6 +109,64 @@ class OutboundEmailAdmin(ModelAdmin):
         self, request: HttpRequest, queryset: QuerySet[OutboundEmail]
     ) -> None:
         self._resend(request, queryset)
+
+    @unfold_action(
+        description="Resend", url_path="resend-email", permissions=["resend"]
+    )
+    def resend_email(
+        self, request: HttpRequest, object_id: str
+    ) -> HttpResponseRedirect:
+        # Unfold renders a detail action as a link, so this is reached by GET
+        # and must change nothing. The confirmation page's POST does the work.
+        return redirect(
+            reverse("admin:freedom_ls_mail_outboundemail_resend", args=[object_id])
+        )
+
+    def get_actions_detail(
+        self, request: HttpRequest, object_id: str
+    ) -> list[UnfoldAction]:
+        email = self.get_object(request, unquote(object_id))
+        if email is None or resend_blocker(email) is not None:
+            return []
+        actions: list[UnfoldAction] = super().get_actions_detail(request, object_id)
+        return actions
+
+    def get_urls(self) -> list[URLPattern]:
+        custom = [
+            path(
+                "<path:object_id>/resend/",
+                self.admin_site.admin_view(self.resend_view),
+                name="freedom_ls_mail_outboundemail_resend",
+            )
+        ]
+        return custom + list(super().get_urls())
+
+    def resend_view(self, request: HttpRequest, object_id: str) -> HttpResponse:
+        """Confirm on GET, resend on POST, for one row.
+
+        admin_view supplies login and CSRF. The permission is checked here as well
+        because this URL can be typed by hand.
+        """
+        if not self.has_resend_permission(request):
+            raise PermissionDenied
+        email = self.get_object(request, unquote(object_id))
+        if email is None:
+            raise Http404
+        change_url = reverse(
+            "admin:freedom_ls_mail_outboundemail_change", args=[email.pk]
+        )
+        if request.method == "POST":
+            self._resend(request, [email])
+            return redirect(change_url)
+        context = {
+            **self.admin_site.each_context(request),
+            "model_admin": self,
+            "title": "Resend email",
+            "email": email,
+            "blocker": resend_blocker(email),
+            "cancel_url": change_url,
+        }
+        return TemplateResponse(request, "admin/mail/resend_confirm.html", context)
 
     def _resend(self, request: HttpRequest, emails: Iterable[OutboundEmail]) -> None:
         """Re-queue each resendable row and tell the admin what happened to the rest."""

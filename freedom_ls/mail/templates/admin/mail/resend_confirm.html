@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% load unfold %}
+
+{% block content %}
+    {% component "unfold/components/card.html" %}
+        {% if blocker %}
+            {% component "unfold/components/text.html" %}
+                This email cannot be resent: {{ blocker }}.
+            {% endcomponent %}
+        {% else %}
+            {% component "unfold/components/text.html" %}
+                This email is queued to send again from the start, with a fresh set of retries.
+            {% endcomponent %}
+        {% endif %}
+
+        <section class="mt-6" id="email-summary">
+            <h2 class="font-semibold">Email</h2>
+            <ul class="mt-2 list-disc pl-6">
+                <li>To: {{ email.recipients|join:", " }}</li>
+                <li>Subject: {{ email.subject }}</li>
+            </ul>
+        </section>
+
+        {% if blocker %}
+            <p class="mt-8"><a href="{{ cancel_url }}">Back</a></p>
+        {% else %}
+            <form method="post" id="resend-form" class="flex flex-wrap items-center gap-4 mt-8">
+                {% csrf_token %}
+                {% component "unfold/components/button.html" with submit=1 variant="primary" %}
+                    Resend
+                {% endcomponent %}
+                <a href="{{ cancel_url }}">Cancel</a>
+            </form>
+        {% endif %}
+    {% endcomponent %}
+{% endblock %}
