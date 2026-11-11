@@ -1354,3 +1354,14 @@ class TestOutboundEmailPruneSweep:
         outcome = run_housekeeping_sweeps()
 
         assert outcome.sweep_failures == ["outbound email prune failed: down"]
+
+
+class TestHousekeepingCommandHelp:
+    def test_help_is_one_list_with_a_single_and_before_the_last_item(self) -> None:
+        """The help text used to carry an "and" before a middle item as well as the last."""
+        from freedom_ls.deployment.management.commands.fls_run_housekeeping import (
+            Command,
+        )
+
+        list_part = Command.help.split(" Runs once")[0]
+        assert list_part.count(" and ") == 1

@@ -13,9 +13,10 @@ class Command(BaseCommand):
     help = (
         "Prune finished task results, clear expired sessions, report task results "
         "left unpicked past the configured window, close any task result still "
-        "claimed past the configured window, and close any cohort report still "
-        "rendering past its own window, requeue outgoing email that is past due, re-send email a dead worker "
-        "left unfinished, and delete old outgoing email records. Runs once and exits."
+        "claimed past the configured window, close any cohort report still "
+        "rendering past its own window, requeue outgoing email that is past due, "
+        "re-send email a dead worker left unfinished, and delete old outgoing "
+        "email records. Runs once and exits."
     )
 
     def handle(self, *args: object, **options: object) -> None:
