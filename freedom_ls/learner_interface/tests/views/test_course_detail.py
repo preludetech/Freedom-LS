@@ -1551,7 +1551,7 @@ def test_detail_outline_shows_a_visitor_no_deadline(due_topic_course):
     assert "Missed deadline" not in html
 
 
-# --- Closing shows on the course detail outline, without dates ---
+# --- The course detail outline: closed status for screen readers, no deadline information ---
 
 AFTER_CLOSE = datetime(2020, 1, 10, 12, 0, tzinfo=UTC)
 CLOSED_STATUS = '<span class="sr-only">Closed</span>'
@@ -1565,7 +1565,7 @@ def _without_sr_only(html: str) -> str:
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
 def test_detail_outline_marks_a_closed_topic_closed_without_a_date(due_topic_course):
-    """The outline agrees with the player's: a closed item reads Closed, not Not started."""
+    """The status agrees with the player's: a closed item reads Closed, not Not started."""
     course, topic, user, client = due_topic_course
     set_due_date(course, topic, due_date=date(2020, 1, 1))
     CourseDeadlineConfigFactory(course=course, close_items="on")
@@ -1575,8 +1575,7 @@ def test_detail_outline_marks_a_closed_topic_closed_without_a_date(due_topic_cou
 
     assert CLOSED_STATUS in html
     assert '<span class="sr-only">Not started</span>' not in html
-    # Sighted learners get the chip, not just the icon's colour.
-    assert "Closed" in _without_sr_only(html)
+    assert "Closed" not in _without_sr_only(html)
     assert "<time" not in html
 
 
@@ -1623,8 +1622,8 @@ def test_detail_outline_marks_a_part_whose_child_closed_closed(mock_site_context
     html = _detail_html(client, course)
 
     assert html.count(CLOSED_STATUS) == 2
-    # One chip: the topic's own row. The part row summarises its children without a date.
-    assert _without_sr_only(html).count("Closed") == 1
+    visible_text = re.sub(r"<[^>]+>", " ", _without_sr_only(html))
+    assert "Closed" not in visible_text
     assert "<time" not in html
 
 
@@ -1918,3 +1917,22 @@ def test_an_ended_learner_still_reaches_a_hidden_course(mock_site_context, clien
     course = _ended_learner_detail(client, visibility=CourseVisibility.HIDDEN)
 
     assert _detail_response_as(client, course).status_code == 200
+
+
+@pytest.mark.django_db
+@time_machine.travel(AFTER_CLOSE, tick=False)
+def test_detail_outline_shows_no_deadline_label_on_a_closed_row(due_topic_course):
+    course, topic, user, client = due_topic_course
+    set_due_date(course, topic, due_date=date(2020, 1, 1))
+    CourseDeadlineConfigFactory(course=course, close_items="on")
+    course_progress_record(course, user)
+
+    html = _detail_html(client, course)
+    outline = lxml.html.fromstring(html).cssselect("nav[aria-label='Course outline']")[
+        0
+    ]
+    row = outline.cssselect("li")[0]
+
+    assert outline.cssselect('[data-testid="outline-row-date"]') == []
+    assert outline.cssselect('[data-testid="deadline-label"]') == []
+    assert row.cssselect("span.truncate")[0].getnext() is None

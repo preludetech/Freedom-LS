@@ -55,17 +55,30 @@ Course progress lives under the breadcrumbs on mobile only — on desktop the
 docked outline panel carries its own progress, so the header stays uncluttered.
 {% endcomment %}
 {% block header_extra %}
-    {% if current_entry.due_at and current_entry.status != "COMPLETE" %}
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2" data-testid="player-item-deadline">
-            {% include "learner_interface/partials/deadline_labels.html" with child=current_entry %}
-        </div>
-    {% endif %}
     {% if course_progress %}
         <div class="mt-2 mb-4 lg:hidden">
             <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}" accent_slot_key="{{ course.accent_slot_key }}" label="Progress for {{ course.title }}" bar_class="h-1.5" label_class="text-xs font-medium tabular-nums text-muted" />
         </div>
     {% endif %}
 {% endblock header_extra %}
+
+{% comment %}The item's deadline is an inline <c-deadline-label> above its title, left-aligned at every
+width, with room above and below so it does not crowd the breadcrumbs or the title. Pages put
+their title in item_page_title so the line can sit above it. A page whose title lives in its
+body (the form pages) renders an empty title here, and the line then stands alone under the
+breadcrumbs. The h1 keeps its own top margin when there is no line above it.{% endcomment %}
+{% block page_title %}
+    {% comment %}deadline_tier is set exactly when the item has a deadline and is not complete.{% endcomment %}
+    {% if current_entry.deadline_tier %}
+        {% with child=current_entry %}
+            <div class="mt-6 space-y-1" data-testid="player-item-deadline">
+                <c-deadline-label tier="{{ child.deadline_tier }}" today_word="true" layout="inline">{% include "learner_interface/partials/deadline_labels.html#date-text" %}</c-deadline-label>
+                {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="inline" %}
+            </div>
+        {% endwith %}
+    {% endif %}
+    <div class="{% if current_entry.deadline_tier %}[&_h1]:mt-3{% endif %}">{% block item_page_title %}{% include "partials/page_title.html" %}{% endblock item_page_title %}</div>
+{% endblock page_title %}
 
 {% block sidebar_content %}
     {% comment %}

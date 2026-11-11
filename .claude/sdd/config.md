@@ -80,6 +80,7 @@
 - Brand visual system: .claude/skills/brand-guidelines/visual.md
 - Brand voice and copy: .claude/skills/brand-guidelines/voice.md
 - Panel framework pages: claude_plugins/fls-dev/skills/panel-framework/SKILL.md
+- Educator interface pages: claude_plugins/fls-dev/skills/educator-interface/SKILL.md
 
 ## Vocabulary Sources
 

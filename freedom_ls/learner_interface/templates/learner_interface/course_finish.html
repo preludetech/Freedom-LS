@@ -58,12 +58,14 @@
                             <span class="text-on-surface">{{ item.content.title }}</span>
                             {% comment %}Only a sitting that finished without passing has
                             anything to retry; everything else is still to be started.{% endcomment %}
+                            {% comment %}One width for every button, so the column lines up
+                            whatever the label.{% endcomment %}
                             {% if item.is_retry %}
-                                <c-button href="{{ item.url }}" icon_left="retry">
+                                <c-button href="{{ item.url }}" icon_left="retry" class="sm:w-40 justify-center">
                                     Retry quiz
                                 </c-button>
                             {% else %}
-                                <c-button href="{{ item.url }}" icon_left="next">
+                                <c-button href="{{ item.url }}" icon_left="next" class="sm:w-40 justify-center">
                                     {% if item.is_quiz %}Start quiz{% elif item.is_form %}Start form{% else %}Go to item{% endif %}
                                 </c-button>
                             {% endif %}
@@ -88,14 +90,14 @@
                     {% if course_progress.started_at %}
                         <div class="flex justify-between">
                             <span class="font-medium">Started:</span>
-                            <span>{{ course_progress.started_at|date:"F j, Y" }}</span>
+                            <span><c-date :value="course_progress.started_at" /></span>
                         </div>
                     {% endif %}
                     {% comment %}No Completed row while the completion is withheld — it would render blank.{% endcomment %}
                     {% if course_progress.completed_time %}
                         <div class="flex justify-between">
                             <span class="font-medium">Completed:</span>
-                            <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
+                            <span><c-date :value="course_progress.completed_time" /></span>
                         </div>
                     {% endif %}
                 </div>

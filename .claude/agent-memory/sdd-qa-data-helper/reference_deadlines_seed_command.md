@@ -57,3 +57,113 @@ a fourth completion unasked. Complete topics like the player does: `TopicProgres
 course_progress=, collection_item=, defaults={site_id, topic})`, then set complete_time + save() (signal
 recalcs; 3/7 = 43%). Verify unlock with `_fetch_player_progress_maps` + `get_content_status` in
 learner_interface/utils.py. CourseProgress has `learner` (not `user`); user = cp.learner.user.
+
+## §0.3 items 3-5 of the learner-interface-deadlines frontend QA (Nov 2026)
+Today override (fresh / What to Expect, FIXED site-today 23:59) + `QA Long Deadline Titles` course
+(slug qa-long-deadline-titles, org QA Deadlines Org via course.organisations M2M -> single_organisation()
+drives the dashboard byline, fresh registered) + delete ALL Site/Org/CourseDeadlineConfig rows.
+Scripted, idempotent, run right after the seed:
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_deadline_today_and_long_title_script.py`
+It reuses the outline-scenario command's _course/_topic/_place helpers. Note: it deletes the
+CourseDeadlineConfig that qa_create_deadline_outline_scenario leaves on "Deadline Outline Course"
+(the plan demands zero config rows) -- report that. A third ask -> promote to a qa_helpers command.
+Run 3 (Nov 6 2026, after a rebase): caller said "reuse the script", so ran it as-is (content_save -> seed -> script).
+DB was NOT empty despite the rebuild warning; the seed cleaned the residue. LearnerCourseRegistration FK is `course`
+(not `collection`). Next ask: promote to a qa_helpers command (`--with-today-and-long-title` on the seed) up front.
+
+## Band states for §1.2.5 / §1.3.1 / §1.3.5 (Nov 2026) -- scripted
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_deadline_band_progress_script.py`
+(A restored: 3 topics + passed KC + Course Feedback; B solo: 5 topics + the seed's open KC answered
+correctly and completed; C fresh registered on the plain course). Prints every created pk. Asserts
+no prior attempt on A's forms, so re-run only after the seed. Never touches fresh's parts record.
+- **Plan error (§1.3.1)**: solo/parts' content time limit (90d from created_at now-100d = ~Oct 24) is
+  ALSO a missed deadline, earlier than Course Feedback (yesterday), so the band reads "Missed deadline
+  Course <date>", not "Course Feedback ... Closes ...". `card_deadline_line` adds the time limit even
+  with end_course_access=off. Report it; don't paper over it unasked (fix would be a course-wide
+  FIXED LearnerDeadlineOverride >= today on solo/parts).
+- Course Feedback (item 7) needs Summary (item 6) COMPLETE to be READY; the caller asked for Going
+  Deeper too. KC is QUIZ pass 80 -> answer correct options or it stays FAILED and blocks item 6.
+- Factories need `site=<Site>`, not `site_id=` (NotNull on formprogress.site_id).
+- Course `completed_time` is only set by the finish view (learner_interface/views.py ~2156).
+- Caller then asked for that fix: course-wide FIXED override site-today+30 on solo/parts via the
+  seed's `_fixed_override(cp, cp.site, _local_today()+30d)` -> band "Missed deadline Course Feedback
+  2 Nov Closes 5 Nov", next = Course. Expect this ask again with every §1.3.1 run; offer it up front.
+- §1.3.5 (fresh completes the plain course) scripted: `qa_deadline_fresh_plain_complete_script.py`
+  (6 topics + survey answered + CP.completed_time; card lands under "Learning history", no band).
+  The tester had already opened item 1 in the browser, so its TopicProgress pre-existed (no
+  complete_time) -- get_or_create, and report it as modified, not created.
+- §5.5 cleanup (done Nov 2026): the long-titles course is PROTECTed by fresh's registration + record
+  and its placements are generic-FK (no cascade from Course): delete CP -> registration -> placements
+  -> topics (slug qa-long-deadline-*) -> course, THEN re-run the seed (it strips every override,
+  completion and sitting, and wipes all of fresh's registrations incl. the plain course). Seed pks for
+  overrides/configs/attempts change on every run.
+
+## Re-arming the band states WITHOUT re-running the seed (Nov 6 2026)
+Caller asked: reset fresh/parts to baseline (tester had walked items 1-4 + opened KC), then the
+band states again. Scripted the reset: `qa_deadline_fresh_parts_reset_script.py` (deletes fresh/parts
+TopicProgress + CFA + FormProgress, recalcs to 0%, asserts overrides untouched). Then the band script
+and the plain-complete script ran as-is. The seed run had again wiped the solo/parts course-wide
+override, so the band read "Missed deadline Course 27 Oct": re-added `_fixed_override(cp, site,
+_local_today()+30d)` (an override, not a config row -- caller had said "don't change their deadline
+config"). Third time this fix was needed: next time fold it into the band script.
+Verify with django.test.Client(HTTP_HOST="127.0.0.1") + force_login + regex-stripped HTML of "/" and
+"/courses/<slug>/<n>/"; DemoDev domain is 127.0.0.1:8000, set settings.ALLOWED_HOSTS=["*"] in-shell.
+
+## Course-wide mark_overdue=off row on the parts course (Nov 2026)
+Asked for a CourseDeadlineConfig (parts course, mark_overdue='off', rest model default 'inherit')
+to prove the fresh learner's past-due Welcome reads UPCOMING not MISSED. Made with
+`CourseDeadlineConfigFactory(course=c, site=c.site, mark_overdue='off')`; caller will delete it.
+Model defaults are 'inherit' (resolve to settings: close/end_access off, grace 0) -- "defaults" means inherit,
+not explicit 'off'. Verify via scratch script: get_deadline_policy().resolve(cp) + course_deadlines_for([cp])
++ get_course_index(...) + _item_rows -> row['deadline_tier']. Shared by all 4 qa_deadline_* parts
+learners (no higher layer sets mark_overdue). Dashboard "Missed deadline" text from QA Long Deadline Titles is unrelated.
+
+## Promoted to commands (Nov 9 2026, uncommitted in the worktree at the time)
+The scripts above now have qa_helpers commands (all `--site-name`, default DemoDev):
+- `qa_create_deadlines_seed_extras` = today override + long-title course + strip Site/Org/Course config rows
+  (replaces qa_deadline_today_and_long_title_script.py). Run order: content_save -> seed -> extras.
+- `qa_course_deadline_config --course-slug S --action add|delete [--mark-overdue off ...]`
+- `qa_set_item_completion --learner E --course-slug S --item "Title" (repeatable) --action complete|undo [--finish-course]`
+  Forms: answers every correct option + complete(); undo DELETES every FormProgress for that form on the
+  record, including the seed's open KC attempt on solo -> after undo on solo, re-run the seed to restore it.
+- After extras, Cohort config (1) + LearnerCourseRegistration configs (3) remain: those are the seed's
+  §0.3-item-2 policies, NOT the "no config rows" rule (which names only Site/Org/Course).
+
+## Band re-arm via commands only (Nov 9 2026, run 4) -- no scripts needed now
+fresh/parts reset: `qa_reset_learner_progress --learner qa_deadline_fresh@email.com --course-slug functionality-demo-course-parts --include-topics`
+(keeps overrides + other registrations). Fresh on plain: seed's `_individual_registration` + `_record_for` in a shell.
+restored all 7 / solo 6 (not Course Feedback): `qa_set_item_completion ... --action complete` (solo's open seed KC sitting is reused).
+Results: restored 100%, completed_time None (app does NOT auto-stamp; card stays "In progress");
+solo 86%, band again "Missed deadline Course 30 Oct" (time-limit plan error above) -- reported, fix offered, not applied unasked.
+
+## Full baseline restore (Nov 9 2026, run 5)
+seed -> extras -> fresh on plain via `_individual_registration(fresh, plain, site)` + `_record_for(fresh, plain, site, learner_registration=reg)`
+in a shell. The seed strips the solo/parts course-wide override (5 LearnerDeadlineOverrides removed, re-made 4).
+LearnerDeadlineOverride fields: collection_item (NULL = course-wide), kind, due_date, due_time, course_progress.
+
+Nov 2026 (again): caller asked to delete the parts-course CourseDeadlineConfig
+(`qa_course_deadline_config --site-name DemoDev --course-slug functionality-demo-course-parts --action delete`)
+then complete fresh/plain. The plain-complete script ran as-is (fresh's plain record was at 0%, no TP/CFA).
+
+## §5.6 cleanup (Nov 9 2026) -- undo of qa_create_deadlines_seed_extras WITHOUT re-running the seed
+Caller asked for targeted removal only (no seed re-run): fresh's today LDO, then long course in order
+CP -> LearnerCourseRegistration -> ContentCollectionItem (collection_type=Course, collection_id) ->
+Topics (slug qa-long-deadline-titles-*) -> Course (cascades 1 Course_organisations row). Config rows
+were already zero. ContentCollectionItem's generic child accessor is `.child`, not `.child_object`.
+If asked again, promote to a `--undo` flag on qa_create_deadlines_seed_extras.
+
+## §1.3 step 1 (late learner: 3 topics + KC submitted) (Nov 10 2026)
+`qa_set_item_completion --learner qa_deadline_solo@email.com --course-slug functionality-demo-course-parts
+--item Welcome --item "What to Expect" --item "Key Ideas" --item "Knowledge Check" --action complete`
+-> 57% (4/7), reuses the seed's open KC sitting. Dashboard band then reads "Missed deadline Course 30 Oct"
+(time-limit plan error again), NOT Course Feedback; Course Feedback stays BLOCKED in the player until
+Going Deeper + Summary are done (band ignores reachability: `_missed_and_next` takes the earliest
+unfinished due_at). Reported both, applied neither unasked. Undo: same command `--action undo`, then
+re-open KC with the seed's `_open_attempt(cp, _item_titled(course,"Knowledge Check"), cp.site)`.
+Follow-up the same day: the caller asked for Going Deeper + Summary too -> 86%, Course Feedback READY at /7/
+(card unchanged, no override wanted). GOTCHA: my test-client GET of /courses/<slug>/4/ during verification
+created an open TopicProgress for Going Deeper (the player creates one on view). Probe player URLs
+only for items that are already complete, or report the row the probe created.
+Then the caller asked for the course-wide override after all (4th time): `_fixed_override(cp, cp.site, _local_today()+30d)`
+-> card "Missed deadline Course Feedback 8 Nov Closes 11 Nov". The seed's CF due date was fixed 2026-11-08 (not
+re-dated per run), so "yesterday / closes in 2 days" in the plan drifts. NEXT TIME: offer override + GD/Summary up front.

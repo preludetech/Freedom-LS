@@ -18,7 +18,7 @@ No "View all" link.
 
                 {% comment %}Date{% endcomment %}
                 <div class="text-sm text-muted">
-                    {{ progress.completed_time|date:"j M Y" }}
+                    <c-date :value="progress.completed_time" />
                 </div>
 
                 {% comment %}Score (QUIZ only) or completion indicator{% endcomment %}

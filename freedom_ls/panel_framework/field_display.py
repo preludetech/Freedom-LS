@@ -71,11 +71,7 @@ from django.forms.utils import pretty_name
 from django.utils import formats, timezone
 from django.utils.hashable import make_hashable
 
-# The one way the interface writes a date and a date-time: "3 Nov 2026" and
-# "3 Nov 2026, 07:37". Templates that format a value themselves use the same
-# two strings, and the shared date-time partial renders the second.
-DATE_DISPLAY_FORMAT = "j M Y"
-DATETIME_DISPLAY_FORMAT = "j M Y, H:i"
+from freedom_ls.base.date_display import DATE_DISPLAY_FORMAT, DATETIME_DISPLAY_FORMAT
 
 # django-stubs doesn't cover `template_localtime`, though it exists at runtime;
 # this typed alias keeps the call sites below free of Any. getattr, not direct

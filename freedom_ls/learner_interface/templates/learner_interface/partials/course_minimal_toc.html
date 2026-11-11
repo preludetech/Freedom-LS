@@ -1,19 +1,14 @@
 {% load course_storage_keys deadline_tags %}
 
 {% partialdef due-date %}
-    {% comment %} Its own line under the title, indented by deadline_indent so it starts
-    under the row's icon. hide_deadlines keeps every date off an outline that shows only
-    status; a closed row still gets its chip there, so the state is not told by colour alone. {% endcomment %}
-    {% if child.due_at and child.status != "COMPLETE" %}
-        {% if not hide_deadlines %}
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 {{ deadline_indent }}">
-                {% include "learner_interface/partials/deadline_labels.html" %}
-            </div>
-        {% elif child.is_closed %}
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 {{ deadline_indent }}">
-                <c-chip variant="error" size="xs" icon="deadline" class="forced-colors:border">Closed</c-chip>
-            </div>
-        {% endif %}
+    {% comment %}At the right of the row line: one minimal <c-deadline-label>, the coloured icon and
+    date. A row shows one deadline, so the close date stays off it. hide_deadlines keeps all
+    deadline information off an outline that shows only status: no date, no "Closed", no tier
+    icon. deadline_tier is set exactly when the row has a deadline and is not complete.{% endcomment %}
+    {% if child.deadline_tier and not hide_deadlines %}
+        <span class="shrink-0 inline-flex items-center gap-1 text-xs" data-testid="outline-row-date">
+            <c-deadline-label tier="{{ child.deadline_tier }}" layout="minimal"><span class="whitespace-nowrap">{% include "learner_interface/partials/deadline_labels.html#tier-date" with date_format="short" %}</span></c-deadline-label>
+        </span>
     {% endif %}
 {% endpartialdef %}
 
@@ -59,6 +54,7 @@
     <span class="flex-1 min-w-0 truncate {{ text_size }}">
         {% partial content-title %}
     </span>
+    {% partial due-date %}
 {% endpartialdef %}
 
 {% partialdef course-children %}
@@ -103,16 +99,12 @@
                             class="list-none ml-6 mt-1 space-y-1">
                             {% if child.children %}
                                 {% for part_child in child.children %}
-                                    <li class="flex flex-col gap-y-0.5 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                                    <li class="text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
                                         <div class="flex items-center gap-1 min-w-0">
                                             {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter text_size="text-xs" counter_width="w-8" %}
                                                 {% partial content-row-inner %}
                                             {% endwith %}
                                         </div>
-                                        {% comment %} pl-9 = the w-8 counter plus the gap-1 after it. {% endcomment %}
-                                        {% with child=part_child deadline_indent="pl-9" %}
-                                            {% partial due-date %}
-                                        {% endwith %}
                                     </li>
                                 {% endfor %}
                             {% else %}
@@ -124,16 +116,12 @@
                     </li>
                 {% else %}
                     {% comment %} Regular content item (Topic, Form, Course). {% endcomment %}
-                    <li class="flex flex-col gap-y-0.5 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                    <li class="py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
                         <div class="flex items-center gap-2 min-w-0">
                             {% with parent_counter=forloop.counter text_size="text-sm" counter_width="w-5" %}
                                 {% partial content-row-inner %}
                             {% endwith %}
                         </div>
-                        {% comment %} pl-7 = the w-5 counter plus the gap-2 after it. {% endcomment %}
-                        {% with deadline_indent="pl-7" %}
-                            {% partial due-date %}
-                        {% endwith %}
                     </li>
                 {% endif %}
             {% endfor %}

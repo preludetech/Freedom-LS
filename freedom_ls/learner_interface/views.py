@@ -48,15 +48,12 @@ from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
 from freedom_ls.deadlines.consequences import (
-    access_end_instant,
     is_closed,
-    shows_overdue,
 )
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import AfterAccessEnded
 from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
 from freedom_ls.deadlines.resolver import (
-    NO_DEADLINE,
     CourseDeadlines,
     course_deadlines,
     course_deadlines_for,
@@ -115,12 +112,12 @@ from .dashboard_sections import (
 from .utils import (
     BLOCKED,
     CLOSED,
-    COMPLETE,
     IN_PROGRESS,
     READY,
     UNRESOLVED,
     CourseListingStatus,
     Unresolved,
+    card_deadline_line,
     current_entry,
     current_entry_status,
     derive_listing_status,
@@ -135,105 +132,13 @@ from .utils import (
     get_is_registered,
     get_item_part,
     get_resume_index,
+    next_deadline_card,
     next_entry,
     outstanding_items,
     previous_entry,
     stamp_card_organisation,
     stamp_course_access_badge,
 )
-
-COURSE_DEADLINE_TITLE = "Course"
-
-
-@dataclass(frozen=True)
-class CardDeadline:
-    """One deadline the card names: the item's title and when it is due."""
-
-    title: str
-    due_at: datetime
-    is_overdue: bool
-    status: str
-    closes_at: datetime | None = None
-    is_closed: bool = False
-
-
-@dataclass(frozen=True)
-class CardDeadlineLine:
-    """The card's one deadline line: the earliest past deadline wins over the next one.
-
-    ``missed`` is the earliest past, unfinished deadline; its ``is_overdue`` says whether
-    it carries the "Missed deadline" chip, which ``mark_overdue`` off withholds.
-    """
-
-    missed: CardDeadline | None
-    next: CardDeadline | None
-    access_ends_at: datetime | None = None
-
-
-def _card_deadline_line(
-    flat: list[dict],
-    course_deadlines: CourseDeadlines | None,
-    deadline_policy: ResolvedDeadlinePolicy | None,
-    now: datetime,
-) -> CardDeadlineLine:
-    # Only leaf rows carry due_at; a completed leaf is neither missed nor next. A past
-    # leaf counts as missed whether or not it carries the overdue mark or has closed. An
-    # in-progress course is never complete, so the time limit's overdue check takes
-    # completed=False.
-    open_leaves = [
-        row
-        for row in flat
-        if row.get("due_at") is not None and row["status"] != COMPLETE
-    ]
-    missed = [
-        CardDeadline(
-            row["title"],
-            row["due_at"],
-            row["is_overdue"],
-            row["status"],
-            row["closes_at"],
-            row["is_closed"],
-        )
-        for row in open_leaves
-        if row["due_at"] <= now
-    ]
-    upcoming = [
-        CardDeadline(
-            row["title"],
-            row["due_at"],
-            False,
-            row["status"],
-            row["closes_at"],
-        )
-        for row in open_leaves
-        if row["due_at"] > now
-    ]
-    time_limit = course_deadlines.time_limit if course_deadlines else NO_DEADLINE
-    if time_limit.due_at is not None:
-        overdue = deadline_policy is not None and shows_overdue(
-            time_limit, deadline_policy, False, now
-        )
-        (missed if time_limit.due_at <= now else upcoming).append(
-            CardDeadline(COURSE_DEADLINE_TITLE, time_limit.due_at, overdue, IN_PROGRESS)
-        )
-
-    def earliest(deadlines: list[CardDeadline]) -> CardDeadline | None:
-        return min(deadlines, key=lambda deadline: deadline.due_at, default=None)
-
-    # Only an end still ahead is announced; one already past has ended the access, and the
-    # card then reads "Access ended" instead of carrying a deadline line.
-    access_ends_at = (
-        access_end_instant(time_limit, deadline_policy)
-        if deadline_policy is not None
-        else None
-    )
-    if access_ends_at is not None and access_ends_at <= now:
-        access_ends_at = None
-    return CardDeadlineLine(
-        missed=earliest(missed),
-        next=earliest(upcoming),
-        access_ends_at=access_ends_at,
-    )
 
 
 def _annotate_next_up(
@@ -282,7 +187,7 @@ def _annotate_next_up(
     )
     setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
-    line = _card_deadline_line(flat, course_deadlines, deadline_policy, now)
+    line = card_deadline_line(children, course_deadlines, deadline_policy, now)
     setattr(course, "missed_deadline", line.missed)  # noqa: B010
     setattr(course, "next_deadline", line.next)  # noqa: B010
     setattr(course, "access_ends_at", line.access_ends_at)  # noqa: B010
@@ -1356,6 +1261,24 @@ def _blocked_item_redirect(
     return None
 
 
+@dataclass(frozen=True)
+class PlayerCourseIndex:
+    """The outline the player gates and chrome both read, with what it was resolved from, so
+    the deadline the panel names is picked from the same rows and instants as the gates."""
+
+    rows: list[dict]
+    course_deadlines: CourseDeadlines | None
+    deadline_policy: ResolvedDeadlinePolicy | None
+    now: datetime
+
+    @classmethod
+    def empty(cls) -> PlayerCourseIndex:
+        """An outline with no rows: what the chrome draws when the policy keeps nothing."""
+        return cls(
+            rows=[], course_deadlines=None, deadline_policy=None, now=timezone.now()
+        )
+
+
 def _player_course_index(
     user: RequestUser,
     course: Course,
@@ -1363,22 +1286,27 @@ def _player_course_index(
     course_progress: CourseProgress | None,
     *,
     access_ended_outline: bool = False,
-) -> list[dict]:
+) -> PlayerCourseIndex:
     """The outline the player gates and chrome both read, with deadlines resolved from the
     record so every gate sees blocking and closing as the learner's table of contents does.
 
     ``access_ended_outline`` is for a learner whose access ended but who keeps the outline:
     only finished items stay linked."""
-    return get_course_index(
+    now = timezone.now()
+    course_deadlines = _deadlines_or_none(course_progress)
+    deadline_policy = _deadline_policy_or_none(course_progress)
+    rows = get_course_index(
         user=user,
         course=course,
         current_index=index,
         can_access_content=True,
         course_progress=course_progress,
-        course_deadlines=_deadlines_or_none(course_progress),
-        deadline_policy=_deadline_policy_or_none(course_progress),
+        course_deadlines=course_deadlines,
+        deadline_policy=deadline_policy,
+        now=now,
         access_ended_outline=access_ended_outline,
     )
+    return PlayerCourseIndex(rows, course_deadlines, deadline_policy, now)
 
 
 def _unlocked_next_url(next_url: str | None, course_index: list[dict]) -> str | None:
@@ -1490,13 +1418,14 @@ def view_course_item(request, course_slug, index):
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
-    course_index = _player_course_index(
+    player_index = _player_course_index(
         request.user,
         course,
         index,
         course_progress,
         access_ended_outline=_shows_ended_outline(decision),
     )
+    course_index = player_index.rows
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
     )
@@ -1534,8 +1463,9 @@ def view_course_item(request, course_slug, index):
         current_item,
         index,
         viewable_items=viewable_items,
-        course_index=course_index,
+        course_index=player_index,
         course_progress=course_progress,
+        access_ended_outline=_shows_ended_outline(decision),
     )
 
     entry = current_entry(course_index)
@@ -1633,7 +1563,7 @@ def _player_chrome_context(
     current_item: Topic | Form,
     index: int,
     viewable_items: list | None = None,
-    course_index: list[dict] | None = None,
+    course_index: PlayerCourseIndex | None = None,
     course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
     access_ended_outline: bool = False,
 ) -> dict:
@@ -1646,7 +1576,8 @@ def _player_chrome_context(
     means "there is no record", and is not the same as leaving it out.
 
     ``access_ended_outline`` shapes the outline it builds for a learner whose access
-    ended but who keeps the outline; it is ignored when ``course_index`` is passed in.
+    ended but who keeps the outline; it also withholds the next-deadline card. When
+    ``course_index`` is passed in, it is built by the caller with that same flag.
     """
     user = request.user
     if viewable_items is None:
@@ -1687,9 +1618,25 @@ def _player_chrome_context(
             access_ended_outline=access_ended_outline,
         )
 
+    rows = course_index.rows
+    course_complete = (
+        course_progress is not None and course_progress.completed_time is not None
+    )
+    if access_ended_outline or course_complete:
+        # Neither carries a deadline on the dashboard either.
+        next_deadline = None
+    else:
+        next_deadline = next_deadline_card(
+            rows,
+            course_index.course_deadlines,
+            course_index.deadline_policy,
+            course_index.now,
+        )
+
     return {
-        "course_index": course_index,
-        "current_entry": current_entry(course_index),
+        "course_index": rows,
+        "current_entry": current_entry(rows),
+        "next_deadline_card": next_deadline,
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -1848,7 +1795,9 @@ def form_start(request, course_slug, index):
         request.user,
         course,
         index,
-        course_index=_player_course_index(request.user, course, index, course_progress),
+        course_index=_player_course_index(
+            request.user, course, index, course_progress
+        ).rows,
         refuse_closed=True,
     )
     if blocked is not None:
@@ -1903,6 +1852,8 @@ def _render_form_fill_page(
     course_progress: CourseProgress | None,
     form_progress: FormProgress | None,
     submission: PageSubmission,
+    *,
+    course_index: PlayerCourseIndex | None = None,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
 
@@ -1911,6 +1862,8 @@ def _render_form_fill_page(
     the attempt without it. Both callers have already resolved the page, so both
     hand it over rather than paying for it twice — and both record it as reached
     here, so leaving by the dialog moves the resume point just as paging does.
+    ``course_index`` is the outline a caller already built for its gate, so the
+    chrome does not build it again; a caller with no gate leaves it out.
     """
 
     def url_for_page(number: int) -> str:
@@ -1933,7 +1886,12 @@ def _render_form_fill_page(
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(
-            request, course, form, index, course_progress=course_progress
+            request,
+            course,
+            form,
+            index,
+            course_index=course_index,
+            course_progress=course_progress,
         ),
         **answered_counts(form_progress, current.questions, current.path),
         # URLs the exit dialog acts on.
@@ -1969,11 +1927,12 @@ def form_fill_page(
     # Gated ahead of the POST branch below, which saves answers and can complete
     # the attempt: a refused page must write nothing at all. Closed forms are
     # refused too, so an attempt cannot be continued past the close instant.
+    player_index = _player_course_index(request.user, course, index, course_progress)
     blocked = _blocked_item_redirect(
         request.user,
         course,
         index,
-        course_index=_player_course_index(request.user, course, index, course_progress),
+        course_index=player_index.rows,
         refuse_closed=True,
     )
     if blocked is not None:
@@ -2045,6 +2004,7 @@ def form_fill_page(
         course_progress,
         form_progress,
         submission,
+        course_index=player_index,
     )
 
 
@@ -2126,7 +2086,9 @@ def course_form_complete(request, course_slug, index):
         course,
         form,
         index,
-        course_index=[] if access_ended and not keeps_outline else None,
+        course_index=(
+            PlayerCourseIndex.empty() if access_ended and not keeps_outline else None
+        ),
         course_progress=course_progress,
         access_ended_outline=keeps_outline,
     )

@@ -6,14 +6,17 @@
 
 {% block header_width %}max-w-reading{% endblock header_width %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=item_title %}{% endblock page_title %}
+{% block item_page_title %}{% include "partials/page_title.html" with page_title=item_title %}{% endblock item_page_title %}
 
 {% block content %}
     <c-page flush="true" class="pt-0 lg:pt-0">
         <div class="space-y-8" x-data="coursePlayer">
-            <c-callout level="warning" class="mx-auto max-w-reading">
-                <p>Closed on {% local_time entry.closes_at %}. Ask your educator if you need more time.</p>
-            </c-callout>
+            {% comment %}The closed state is a large icon with the text centred under it.{% endcomment %}
+            <div class="mx-auto max-w-reading flex flex-col items-center gap-3 py-12 text-center" data-testid="item-closed">
+                <span aria-hidden="true" class="inline-flex text-muted"><c-icon name="locked" class="size-12" /></span>
+                <p class="font-semibold text-on-surface">Closed on {% local_time entry.closes_at %}.</p>
+                <p class="text-muted">Ask your educator if you need more time.</p>
+            </div>
 
             {% if submit_and_exit_url %}
                 <form method="post" action="{{ submit_and_exit_url }}" class="mx-auto max-w-reading">

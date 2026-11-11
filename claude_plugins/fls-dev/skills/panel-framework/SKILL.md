@@ -6,10 +6,13 @@ allowed-tools: Read, Grep, Glob
 
 # Panel framework
 
-`freedom_ls/panel_framework` is the toolkit every educator-facing management page is built from. A
-rule about how one of its pages looks or behaves lives here, not in the brand guidelines and not in
-a generic plugin: a trigger size, a table footer, a sheet's chrome. `Skill(brand-guidelines)` owns
-colour, type and the brand components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
+`freedom_ls/panel_framework` is a toolkit for building management pages from panels: tables,
+record pages, actions, filters, dialogs. A rule about how a panel-framework page looks or behaves
+lives here, not in the brand guidelines and not in a generic plugin: a trigger size, a table
+footer, a sheet's chrome. An app built on the framework keeps its own page-by-page rules (which
+page holds which action) in its own skill: for the educator interface that is
+`Skill(fls-dev:educator-interface)`. `Skill(brand-guidelines)` owns colour, type and the brand
+components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 
 ## What it is
 
@@ -48,18 +51,16 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
   row, a card. The one full-size pair is `<c-modal-footer>`'s Cancel and confirm, because that is
   the decision the dialog asks for.
 - Buttons in a table cell or a card sit inside `<c-data-table-actions>`, which owns the gap; the
-  buttons carry no margins. Per-item buttons come first and the row's own action (Deactivate staff
-  member) last, at the bottom of the cell.
-- Two buttons in one row never share a bare verb: "Deactivate role" beside "Deactivate staff
-  member", never beside "Deactivate".
+  buttons carry no margins. Per-item buttons come first and the row's own action last, at the bottom of
+  the cell.
+- Two buttons in one row each name their object, so no two share a bare verb.
 
 ### Controls are components
 
-Every anchor under `freedom_ls/panel_framework/templates/` and
-`freedom_ls/educator_interface/templates/` is a control. The base layer underlines every `<a>`, and
+Every anchor in a panel-framework page is a control. The base layer underlines every `<a>`, and
 that underline means "a link inside prose", which these templates never hold. A control takes the
-component for its job: a person gets `<c-panel-person-link>` (avatar and name, the one way a learner
-or staff member is linked from a row, a card, an attention list or a dialog), a back link
+component for its job: a person gets `<c-panel-person-link>` (avatar and name, the one way a person
+is linked from a row, a card, an attention list or a dialog), a back link
 `<c-back-link>`, a text action ("Edit", "Change", "Clear all") `<c-button variant="link">`, and a
 clickable row, a sort header or a filter choice the row-link style (`no-underline text-on-surface`,
 or `text-muted` for a secondary one). An anchor whose class list names neither `no-underline` nor
@@ -75,13 +76,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 ### Tables
 
 - The footer states the entry count at the left, in line with the pager, on a single-page table
-  too ("12 learners", "Showing 1–10 of 80 learners"). It renders from `entry_count`, so a table
+  too ("12 records", "Showing 1–10 of 80 records"). It renders from `entry_count`, so a table
   never writes its own.
 - An empty table shows `<c-panel-empty-state>` inside the data table's empty row, which carries
   `hover:bg-transparent` so the empty state takes no row hover.
-- A log or History table sorts on `created_at`, `actor_label`, `action` and `target_label` and
-  filters on who, what and when (`AuditActorFilter`, `AuditActionFilter`, `AuditPeriodFilter`),
-  on the organisation Audit log and on every History tab alike.
 - A person in a list row is `<c-panel-attention-row>`: the name `text-sm font-semibold`, the chip
   `size="sm"` with its centre on the name's first line. `<c-panel-avatar-chip size="lg">` is for a
   page header only.
@@ -109,8 +107,8 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
 - A dialog ends in `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the
   default slot at the right, the primary last; three or more group at the right.
   `<c-button-group>` is for buttons outside a dialog.
-- A confirm dialog states what is true now and what the action changes ("Current cohort: Cohort A.
-  Sam will be removed from Cohort A."). A disabled action shows its reason beside the control, and
+- A confirm dialog states what is true now and what the action changes, naming the records it
+  touches. A disabled action shows its reason beside the control, and
   the control names it with `aria-describedby`.
 - The modal host and the side panel clip horizontal overflow and the title wraps, so a dialog
   stays inside the viewport at every width, 375px included, title and every button included.
@@ -133,10 +131,16 @@ the viewport at 375px; the list reserves its height beneath itself while it is f
   and adds the next. A textarea that asks for one record per line is an import wearing a form's
   clothes; a list goes to an import page with a preview.
 - A record's own name is a field with a Save button on its Settings panel, posted inline to the
-  `edit` action (`renders_in_footer = False`), as the cohort Settings tab does, not a dialog.
+  `edit` action (`renders_in_footer = False`), not a dialog.
   Dialogs are for confirmations and multi-field forms.
 - Entering an email for a person who may already exist searches as you type and offers the
   matches, so the person picks rather than remembers.
+
+### Placement
+
+A control sits beside the thing it changes, as the brand's visual system says; a Settings panel
+holds only the actions with no home of their own. Which page of an app holds which action is that
+app's skill.
 
 ### Padding, gaps and phones
 
@@ -169,7 +173,6 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   share a bare verb.
 - The table footer states the entry count at the left, in line with the pager, on a single-page
   table too; hovering an empty table's message tints nothing.
-- A log or History table has sort headers and the Who, What and When filters.
 - A list of records in a panel has the same fields in the same places on every row, never
   dash-joined sentences; a row of figures lines its labels up in columns at every width; a person
   in a list row has a small name and a small avatar centred on the name's first line.
@@ -182,4 +185,5 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
-- A Settings tab holds only actions that have no home beside the thing they change.
+- A control sits beside the thing it changes; a Settings panel holds only actions that have no
+  home beside the thing they change.

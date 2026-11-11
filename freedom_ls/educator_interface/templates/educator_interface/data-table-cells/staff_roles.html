@@ -15,7 +15,7 @@ deactivating would not change what they can do.
         <li>
             <span class="block font-bold text-on-surface">{{ entry.display_name }}</span>
             <span class="block text-on-surface" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
-            <span class="block text-xs text-muted">Added {{ entry.assigned_at|date:"j M Y" }} by {{ entry.assigned_by.display_name|default:"Not recorded" }}</span>
+            <span class="block text-xs text-muted">Added <c-date :value="entry.assigned_at" /> by {{ entry.assigned_by.display_name|default:"Not recorded" }}</span>
             <c-data-table-actions class="mt-2 empty:hidden">
                 {% if object.pk != viewer.pk and entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
                     <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />

@@ -2,6 +2,8 @@
 
 The brand as it reaches markup. FLS is themed: every colour, face and radius reaches a template through a role token or a component, and the `default` theme maps the brand onto those tokens. Style through the token and the component, so a theme that repoints one applies everywhere. `Skill(fls-dev:frontend-styling)` owns the token mechanics (the `on-*` pairings, which roles have `*-hover`); this file owns what the brand means by them.
 
+Every rule here holds on every FLS page. A feature's own layout, its component's props and the spacing on one screen live in that feature's spec, its component's doc comment and `docs/product/`.
+
 ## Colour
 
 ### Palette
@@ -76,11 +78,14 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A panel-framework page or component (a table, an action, a filter, the quick view, a dialog or sheet, the selection bar) | `Skill(fls-dev:panel-framework)`: it names the component for each job and how it looks |
 | A destructive action | `variant="error"`, reserved for irreversible actions |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
-| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Missed deadline, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
+| A status badge | `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`, on any screen: panel-framework pages, dashboards, learner-facing views. Choose it by what the badge says, not where it sits. If it names the state of a record (Active, Stalled, Draft), it's a status badge. It wraps `c-chip`, limits the tones to the five status meanings and keeps the badge legible in forced-colours mode. |
 | A label that isn't a status | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` for tags, levels and categories. `primary` and `secondary` live here because they carry no status meaning. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs. |
 | A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
+| A page a person cannot use (closed or blocked) | A large centred `<c-icon>` (`size-12`) with the explanation as plain text under it, never a callout box |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
+| A date or a date-time | `<c-date :value="…" />` / `<c-datetime :value="…" />`; a deadline in the learner's own zone is `{% local_time %}`. `voice.md` says how dates read |
+| A learner deadline, time limit, close date or access date ("Deadline", "Missed deadline", "Closes", "Closed", "Access ends", "Access ended") | `<c-deadline-label tier="…" layout="inline\|stacked\|minimal">`, the one style for any deadline a learner sees: coloured icon, bold tier word, date in `text-muted font-mono`. Each date is its own label, a separate element under the one before it, never text inside another label's slot. Lines in the same block share one layout; none is plain text |
 | A progress bar | `<c-course-progress-bar>`, tinted to the course's own accent |
 | A modal | `#app-modal` (the shared native `<dialog>`) opened by `<c-modal-trigger>`; it gets its scrim from `.modal-backdrop-host` |
 
@@ -94,24 +99,13 @@ Where you do write utilities, keep to Tailwind's spacing scale and use `rounded-
 
 **A long list inside a block scrolls in its own region.** When a block can hold more than about ten rows (an import's error rows, say), cap its height (`max-h-96 overflow-y-auto`) so the page around it stays short. Make the region focusable (`tabindex="0"`, `role="region"`, an `aria-label`) and keep the table header sticky.
 
-**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both. The learner import result shows the "Added…" summary in one `<c-panel-card>` and the error block as its own panel beside it in the stack.
+**Separate outcomes get separate panels.** A result page puts what succeeded and what failed in two sibling panels, never one card holding both.
 
 ## Placement
 
 A control that changes a thing sits where the thing is shown, so the person changes what they are
-looking at without going somewhere else:
-
-| Thing shown | Control beside it |
-|---|---|
-| A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
-| A learner's Courses tab | Register for a course |
-| A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration: the list is the only place an inactive registration is shown, so Reactivate has no other home |
-| A cohort's Settings tab | The name field, the Staff list with Add staff member, Deactivate, Delete |
-| A cohort's Learners tab | Add learners, Remove, Move |
-| A learner's Settings tab | Edit name, Resend setup email, Deactivate / Reactivate: the actions with no home of their own |
-
-A new panel or action goes next to what it changes. The Settings tab is the last resort, not the
-default.
+looking at without going somewhere else. A new panel or action goes next to what it changes. A
+Settings tab is the last resort, for actions with no home of their own.
 
 ## Visual checklist
 
@@ -119,12 +113,14 @@ What QA checks in a screenshot of any FLS page.
 
 - A person is linked with the avatar-and-name person link, never a bare name.
 - A link that acts as a control carries no prose underline; a link inside prose does.
-- A control that changes a thing sits beside the thing it changes, as the Placement table says; a
-  Settings tab holds only the actions with no home of their own.
+- A control that changes a thing sits beside the thing it changes; a Settings tab holds only the
+  actions with no home of their own.
 - Status badges carry one of the five status tones; a label that is not a status is a chip.
 - Every button label sits on one line at 375px, 768px and 1280px.
 - A block with a long list (more than about ten rows) scrolls inside a capped region; the page does not grow with the list.
 - What succeeded and what failed sit in separate panels, not one card.
+- A page a person cannot use shows a large centred icon with text under it, not a callout.
+- Every deadline, close-date, time-limit or access-date line a learner sees ("Closes" included) has its own coloured icon and bold tier word, with the date in muted mono; none is plain text, and none sits inside another deadline's block.
 
 ## Example page
 

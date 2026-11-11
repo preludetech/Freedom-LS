@@ -15,7 +15,7 @@
                             <c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" />
                             <p class="text-sm text-muted">{{ detail.completed_item_count }} of {{ detail.total_item_count }} items</p>
                             <p class="text-sm text-muted">
-                                {% if detail.last_completed_at %}Last completed: {{ detail.last_completed_title }}, {{ detail.last_completed_at|date:"j M Y" }}{% else %}Nothing completed yet{% endif %}
+                                {% if detail.last_completed_at %}Last completed: {{ detail.last_completed_title }}, <c-date :value="detail.last_completed_at" />{% else %}Nothing completed yet{% endif %}
                             </p>
                             {% if detail.completed_items %}
                                 <details class="text-sm">
@@ -24,7 +24,7 @@
                                         {% for item in detail.completed_items %}
                                             <li class="flex flex-wrap justify-between gap-x-4">
                                                 <span>{{ item.title }}</span>
-                                                <span class="text-muted">{{ item.completed_at|date:"j M Y" }}</span>
+                                                <span class="text-muted"><c-date :value="item.completed_at" /></span>
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -49,7 +49,7 @@
                                                 {% for attempt in quiz.attempts %}
                                                     <tr>
                                                         <td class="pr-4">{{ attempt.attempt_number }}</td>
-                                                        <td class="pr-4 whitespace-nowrap">{{ attempt.completed_at|date:"j M Y" }}</td>
+                                                        <td class="pr-4 whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
                                                         <td class="pr-4">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
                                                         <td class="pr-4">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
                                                         <td class="pr-4 whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>

@@ -1,0 +1,30 @@
+{% load deadline_tags %}
+{% comment %}
+The bottom line of a course card or row, below the progress bar. At the left, the first of:
+access ended, the earliest missed deadline, the next deadline. "Access ends" sits under it, as
+the same stacked label. At
+the right, the Details link. Each is a stacked <c-deadline-label>, never a chip. When the deadline has
+under 10rem beside it, the link drops to its own line, still at the right.
+
+Required context: course (access_ended_at, access_ends_at, missed_deadline, next_deadline, slug,
+title) and show_time_zone_to_learners. A course the view did not annotate lacks the deadline
+attributes, which {% if %} tolerates.
+{% endcomment %}
+<div class="flex flex-wrap items-center justify-between gap-2 mt-auto" data-testid="course-footer-line">
+    <div class="min-w-0 flex-1 basis-40 space-y-2" data-testid="course-deadline-line">
+        {% if course.access_ended_at %}
+            <div data-testid="course-status-access_ended">
+                <c-deadline-label tier="ACCESS_ENDED" layout="stacked"><span class="whitespace-nowrap">{% local_time course.access_ended_at format="short" %}</span></c-deadline-label>
+            </div>
+        {% elif course.missed_deadline or course.next_deadline %}
+            {% with child=course.missed_deadline|default:course.next_deadline %}
+                <c-deadline-label tier="{{ child.deadline_tier }}" detail="{{ child.title }}" layout="stacked">{% include "learner_interface/partials/deadline_labels.html#date-text" with date_format="short" %}</c-deadline-label>
+                {% include "learner_interface/partials/deadline_labels.html#closes-label" with layout="stacked" date_format="short" %}
+            {% endwith %}
+        {% endif %}
+        {% include "learner_interface/partials/deadline_labels.html#access-ends-line" %}
+    </div>
+    <div class="ml-auto shrink-0">
+        {% include "learner_interface/partials/course_details_link.html" %}
+    </div>
+</div>

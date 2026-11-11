@@ -41,7 +41,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
             </c-panel-stat-row>
 
             {% if is_loaded %}
-                {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of {{ figures.figures_as_of|date:"j M Y, H:i" }}</p>{% endif %}
+                {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of <c-datetime :value="figures.figures_as_of" /></p>{% endif %}
                 {% for excluded in figures.excluded %}
                     <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ excluded.message }}</p>
                 {% endfor %}

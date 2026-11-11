@@ -8,24 +8,28 @@ Standard fields land in standard places:
   icon + colour  -> <c-course-row-shell> accent panel (accent_slot_key, icon)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
                     status is ever shown; no duplicate chip/badge). Rows show no
-                    "Not registered" status: an unregistered row has no eyebrow
-  details        -> course_details_link.html, on its own right-aligned line in
-                    the footer slot (bottom-right of the row, below everything)
+                    "Not registered" status: an unregistered row has no eyebrow.
+                    "Access ended" is the exception: it sits bottom-left on the
+                    footer line (course_footer_line.html) as an icon and text
+  details        -> course_details_link.html, right of the deadline on the footer
+                    line (bottom-right of the row, below everything)
   title + link   -> stretched title link (card_title_link.html)
   price          -> eyebrow right, as a muted chip
   organisation   -> eyebrow, left, with the difficulty
                     (course_row_eyebrow_left.html); the byline renders only
                     where the view stamps card_organisation
-  deadline       -> course_deadline_line.html (missed deadline, else next deadline);
-                    the all-courses page passes no deadlines, so the line is dashboard-only
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress
-                    only, above the details link
+                    only, above the footer line
+  deadline       -> the footer line, the row's last line, under a divider
+                    (course_footer_line.html: access ended, else missed deadline, else
+                    next deadline, then "Access ends"), an icon and text; the
+                    all-courses page passes no deadlines, so only Details shows there
 
 Title-link target by status:
   complete                 -> course_finish
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
-  access ended (access_ended_at set) -> course_detail, with the "Access ended" eyebrow
+  access ended (access_ended_at set) -> course_detail, with "Access ended" on the bottom line
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in the eyebrow slot.
@@ -57,12 +61,8 @@ show_time_zone_to_learners.
     <c-slot name="eyebrow">
         {% include "learner_interface/partials/course_row_eyebrow_left.html" with organisation=course.card_organisation %}
         <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-            {% if course.listing_status != "not_registered" %}
-                {% if course.access_ended_at %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True as_chip=True %}
-                {% else %}
-                    {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
-                {% endif %}
+            {% if course.listing_status != "not_registered" and not course.access_ended_at %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True as_chip=True %}
             {% elif not user.is_authenticated and course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
@@ -80,8 +80,6 @@ show_time_zone_to_learners.
         </p>
     {% endif %}
 
-    {% include "learner_interface/partials/course_deadline_line.html" %}
-
     <c-slot name="footer">
         {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
             <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
@@ -90,8 +88,10 @@ show_time_zone_to_learners.
                                    bar_class="h-1.5"
                                    label_class="text-xs font-medium tabular-nums text-muted" />
         {% endif %}
-        <div class="flex justify-end">
-            {% include "learner_interface/partials/course_details_link.html" %}
+        {% comment %}The deadline is the row's last line, under a divider below the progress bar.
+        A row with nothing dated keeps Details on its own line with no divider.{% endcomment %}
+        <div class="{% if course.access_ended_at or course.missed_deadline or course.next_deadline or course.access_ends_at %}mt-3 border-t border-border pt-3{% endif %}">
+            {% include "learner_interface/partials/course_footer_line.html" %}
         </div>
     </c-slot>
 </c-course-row-shell>

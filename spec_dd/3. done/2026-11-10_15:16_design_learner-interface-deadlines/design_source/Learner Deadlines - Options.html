@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Learner deadlines — options</title>
+<link rel="stylesheet" href="design-system/kit.css" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles-mobile.css" />
+<link rel="stylesheet" href="styles-deadlines.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>body{margin:0;background:#ECEEF3;font-family:var(--font-body)}#root{min-height:100vh}.dc-section-title{font-family:var(--font-heading)!important}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="components/Primitives.jsx"></script>
+<script type="text/babel" src="components/TopBar.jsx"></script>
+<script type="text/babel" src="components/Dashboard.jsx"></script>
+<script type="text/babel" src="components/CoursePlayer.jsx"></script>
+<script type="text/babel" src="components/Mobile.jsx"></script>
+<script type="text/babel" src="components/Deadlines.jsx"></script>
+<script type="text/babel" src="components/DeadlinesPlayer.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"card":"twoLine","hero":"strip","panel":"list","alert":"banner","sb":"next","outline":"date","header":"chip","banner":"bar","drawer":"none"}/*EDITMODE-END*/;
+
+const Key = () => {
+  const ex = { overdue: dlById("airlaw-q2"), today: dlById("rpas-m3"), soon: dlById("comms"), upcoming: dlById("rpas-exam") };
+  const tones = [
+    ["overdue", "Overdue", "Past the date. Solid red; the only filled state."],
+    ["today", "Due today", "Shows the time instead of the date."],
+    ["soon", "Due soon", "Within 7 days. Amber."],
+    ["upcoming", "Upcoming", "More than 7 days out. Neutral."],
+  ];
+  return (
+    <div className="dl-key">
+      <div>
+        <h3>Urgency</h3>
+        <p className="sub">Every deadline shows the date and the time left, e.g. "Due 02 Mar · 3 days left".</p>
+        {tones.map(([t, n, d]) => (
+          <div key={t} className="dl-key-row"><DLTile d={ex[t]} /><div><div className="n">{n}</div><div className="d">{d}</div><div className="p"><DLPill d={ex[t]} /></div></div></div>
+        ))}
+      </div>
+      <div>
+        <h3>What happens after the date</h3>
+        <p className="sub">Set by the course provider per deadline, and always shown next to it.</p>
+        {[["info", "Target date", "Informational. Nothing locks or changes."], ["late", "Marked late", "Still possible to submit; may carry a penalty, e.g. 10% per day."], ["locks", "Locks", "Access, booking or exam window closes."]].map(([k, n, d]) => (
+          <div key={k} className="dl-key-row"><div className="dl-key-ic"><i className={`ph ph-${DL_CONS[k].icon}`}></i></div><div><div className="n">{n}</div><div className="d">{d}</div></div></div>
+        ))}
+        <h3 style={{ marginTop: 28 }}>What can have a deadline</h3>
+        <div className="dl-key-row" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="p" style={{ marginTop: 0 }}>{Object.entries(DL_KIND).filter(([k]) => k !== "assessment").map(([k, v]) => <span key={k} className="dl-pill dl-t-upcoming"><i className={`ph ph-${v.icon}`}></i>{v.label}</span>)}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Tab = ({ children, h = 1180 }) => (
+  <div style={{ width: 820, height: h, margin: "30px auto", overflow: "hidden", background: "#fff", border: "1px solid var(--border)", borderRadius: 8 }}>{children}</div>
+);
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const playerDl = { ...(DL_SB[t.sb] || {}), ...(DL_OUTLINE[t.outline] || {}), ...(DL_HEADER[t.header] || {}), ...(DL_BANNER[t.banner] || {}), ...(DL_DRAWER[t.drawer] || {}) };
+  const radio = (k, label, opts) => <TweakRadio label={label} value={t[k]} options={opts.map(([value, l]) => ({ value, label: l }))} onChange={(v) => setTweak(k, v)} />;
+  const sel = (k, label, opts) => <TweakSelect label={label} value={t[k]} options={opts.map(([value, l]) => ({ value, label: l }))} onChange={(v) => setTweak(k, v)} />;
+  return (
+    <>
+      <DesignCanvas initialZoom={0.3} background="#ECEEF3">
+        <DCSection id="key" title="Deadline states — today is Fri 27 Feb" subtitle="The same four urgency levels and three outcomes are used everywhere below.">
+          <DCArtboard id="key" label="Urgency, outcome and deadline types" width={1180} height={620}><Key /></DCArtboard>
+        </DCSection>
+        <DCSection id="cards" title="Dashboard · course cards" subtitle="Each card shows its most pressing deadline. Weather has none; Comms is due in 3 days; Air Law has an overdue quiz.">
+          <DCArtboard id="card-a" label="A · Status pill — replaces the current 'Due Mar 14'" width={1180} height={480}><DLCardsFrag v="pill" /></DCArtboard>
+          <DCArtboard id="card-b" label="B · Two lines — date, then what's due and what happens" width={1180} height={480}><DLCardsFrag v="twoLine" /></DCArtboard>
+          <DCArtboard id="card-c" label="C · Band under the thumbnail — names the item" width={1180} height={510}><DLCardsFrag v="band" /></DCArtboard>
+        </DCSection>
+        <DCSection id="hero" title="Dashboard · continue-learning hero" subtitle="Module 3 of RPAS Standard is due today.">
+          <DCArtboard id="hero-a" label="A · Chip in the chip row" width={1180} height={300}><DLHeroFrag v="chip" /></DCArtboard>
+          <DCArtboard id="hero-b" label="B · Date tile above Resume" width={1180} height={320}><DLHeroFrag v="tile" /></DCArtboard>
+          <DCArtboard id="hero-c" label="C · Strip under progress — plus what's next" width={1180} height={330}><DLHeroFrag v="strip" /></DCArtboard>
+        </DCSection>
+        <DCSection id="panel" title="Dashboard · upcoming deadlines" subtitle="All courses, next 3 weeks. Sits between the hero and In progress, or replaces the stats.">
+          <DCArtboard id="panel-a" label="A · Grouped list — Overdue / This week / Later" width={1180} height={780}><div className="dl-frag"><DLListPanel /></div></DCArtboard>
+          <DCArtboard id="panel-b" label="B · Timeline — three weeks at a glance" width={1180} height={480}><div className="dl-frag"><DLTimelinePanel /></div></DCArtboard>
+          <DCArtboard id="panel-c" label="C · Rail — next 4, in place of the stats" width={1440} height={560}><DLDashFrame panel="rail" alert="none" /></DCArtboard>
+        </DCSection>
+        <DCSection id="alert" title="Dashboard · top-of-page alert" subtitle="Shown only when something is overdue or due today.">
+          <DCArtboard id="alert-a" label="A · Banner — the most urgent item, with its action" width={1440} height={420}><DLDashFrame alert="banner" panel="none" /></DCArtboard>
+          <DCArtboard id="alert-b" label="B · Summary chips in the greeting" width={1440} height={420}><DLDashFrame alert="chips" panel="none" /></DCArtboard>
+          <DCArtboard id="alert-c" label="C · Two cards — overdue and due today side by side" width={1440} height={420}><DLDashFrame alert="stack" panel="none" /></DCArtboard>
+        </DCSection>
+        <DCSection id="p-sb" title="Course player · outline sidebar header">
+          <DCArtboard id="sb-a" label="A · Course due date under progress" width={1440} height={900}><DLPlayerFrame dl={DL_SB.line} /></DCArtboard>
+          <DCArtboard id="sb-b" label="B · Next-deadline card" width={1440} height={900}><DLPlayerFrame dl={DL_SB.next} /></DCArtboard>
+          <DCArtboard id="sb-c" label="C · Deadlines shortcut in the sidebar footer" width={1440} height={900}><DLPlayerFrame dl={DL_SB.shortcut} /></DCArtboard>
+        </DCSection>
+        <DCSection id="p-outline" title="Course player · per module and section" subtitle="Modules 3, 4, 7, 8 and section 3.5 have deadlines.">
+          <DCArtboard id="ol-a" label="A · Date replaces the duration" width={1440} height={900}><DLPlayerFrame dl={DL_OUTLINE.date} /></DCArtboard>
+          <DCArtboard id="ol-b" label="B · Line under the module — date and outcome" width={1440} height={900}><DLPlayerFrame dl={DL_OUTLINE.below} /></DCArtboard>
+        </DCSection>
+        <DCSection id="p-head" title="Course player · section header">
+          <DCArtboard id="hd-a" label="A · Chip beside the content type" width={1440} height={900}><DLPlayerFrame dl={DL_HEADER.chip} /></DCArtboard>
+          <DCArtboard id="hd-b" label="B · Block on the right, with time zone and outcome" width={1440} height={900}><DLPlayerFrame dl={DL_HEADER.block} /></DCArtboard>
+        </DCSection>
+        <DCSection id="p-banner" title="Course player · due-soon / overdue banner">
+          <DCArtboard id="bn-a" label="A · Bar across the top of the content" width={1440} height={900}><DLPlayerFrame dl={DL_BANNER.bar} /></DCArtboard>
+          <DCArtboard id="bn-b" label="B · Callout at the top of the article" width={1440} height={900}><DLPlayerFrame dl={DL_BANNER.inline} /></DCArtboard>
+        </DCSection>
+        <DCSection id="p-drawer" title="Course player · all course deadlines">
+          <DCArtboard id="dr-a" label="A · Side drawer — opened from the sidebar shortcut" width={1440} height={1000}><DLPlayerFrame dl={DL_DRAWER.side} /></DCArtboard>
+          <DCArtboard id="dr-b" label="B · Popover — opened from the header chip" width={1440} height={900}><DLPlayerFrame dl={DL_DRAWER.popover} /></DCArtboard>
+        </DCSection>
+        <DCSection id="assembled" title="Assembled — mix options with Tweaks" subtitle="Defaults: B cards, C hero, A list, A banner · B sidebar, A outline, A header, A bar.">
+          <DCArtboard id="as-dash" label="Dashboard" width={1440} height={2560}><DLDashFrame card={t.card} hero={t.hero} panel={t.panel} alert={t.alert} /></DCArtboard>
+          <DCArtboard id="as-player" label="Course player" width={1440} height={1000}><DLPlayerFrame dl={playerDl} /></DCArtboard>
+        </DCSection>
+        <DCSection id="tablet" title="Tablet — 820 × 1180">
+          <DCArtboard id="tb-dash" label="Dashboard · banner, hero pill, list, card pills" width={880} height={1240}><Tab><TabletDashboard alertSlot={<DLBanner />} heroDl={<div style={{ marginTop: 10 }}><DLPill d={dlById("rpas-m3")} size="sm" text="Module 3 due today · 23:59" /></div>} deadlinesSlot={<DLMobileList tablet />} cardDue={dlTabletCard} /></Tab></DCArtboard>
+          <DCArtboard id="tb-player" label="Player · next-deadline card, outline dates, bar" width={880} height={1240}><Tab><TabletPlayer dl={DL_TABLET_PLAYER} /></Tab></DCArtboard>
+        </DCSection>
+        <DCSection id="mobile" title="Mobile — 390 × 844">
+          <DCArtboard id="m-dash" label="Dashboard" width={460} height={920}><IOSDevice width={402} height={874} title=""><MobileDashboard alertSlot={<DLMobileAlert />} heroDl={<DLMobileHero />} deadlinesSlot={<DLMobileList />} cardDue={dlMobileCard} /></IOSDevice></DCArtboard>
+          <DCArtboard id="m-player" label="Player · bar under the progress" width={460} height={920}><IOSDevice width={402} height={874} title=""><MobilePlayer dl={DL_MOBILE_PLAYER} /></IOSDevice></DCArtboard>
+          <DCArtboard id="m-toc" label="Player · outline sheet with dates" width={460} height={920}><IOSDevice width={402} height={874} title=""><MobilePlayer dl={DL_MOBILE_PLAYER} initialToc /></IOSDevice></DCArtboard>
+          <DCArtboard id="m-sheet" label="Player · deadlines sheet" width={460} height={920}><IOSDevice width={402} height={874} title=""><MobilePlayer dl={{ ...DL_MOBILE_PLAYER, sheet: <DLMobileSheet /> }} /></IOSDevice></DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Dashboard">
+          {sel("card", "Course cards", [["pill", "A · Pill"], ["twoLine", "B · Two lines"], ["band", "C · Band"]])}
+          {sel("hero", "Hero", [["chip", "A · Chip"], ["tile", "B · Tile"], ["strip", "C · Strip"]])}
+          {sel("panel", "Upcoming panel", [["list", "A · List"], ["timeline", "B · Timeline"], ["rail", "C · Rail"], ["none", "None"]])}
+          {sel("alert", "Top alert", [["banner", "A · Banner"], ["chips", "B · Chips"], ["stack", "C · Cards"], ["none", "None"]])}
+        </TweakSection>
+        <TweakSection title="Course player">
+          {sel("sb", "Sidebar header", [["line", "A · Course date"], ["next", "B · Next card"], ["shortcut", "C · Shortcut"], ["none", "None"]])}
+          {radio("outline", "Outline", [["date", "A · Date"], ["below", "B · Line"], ["none", "None"]])}
+          {radio("header", "Header", [["chip", "A · Chip"], ["block", "B · Block"], ["none", "None"]])}
+          {radio("banner", "Banner", [["bar", "A · Bar"], ["inline", "B · Callout"], ["none", "None"]])}
+          {radio("drawer", "All deadlines", [["side", "Drawer"], ["popover", "Popover"], ["none", "Closed"]])}
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

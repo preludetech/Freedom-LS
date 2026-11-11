@@ -509,6 +509,16 @@ def test_the_site_zone_drives_the_resolved_instant(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_course_deadlines_records_the_site_zone(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Pacific/Kiritimati")
+    record = course_progress_record(CourseFactory(), UserFactory())
+
+    deadlines = course_deadlines(record)
+
+    assert deadlines.zone == ZoneInfo("Pacific/Kiritimati")
+
+
+@pytest.mark.django_db
 def test_another_sites_zone_is_not_read(mock_site_context):
     other_site = SiteFactory()
     SiteTimeZoneConfigFactory(site=other_site, time_zone="Pacific/Auckland")

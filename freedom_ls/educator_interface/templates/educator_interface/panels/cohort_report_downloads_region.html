@@ -10,6 +10,7 @@ first line, which the header's disabled Generate button is described by, and
 a failed row for the same reason is not repeated as an error. A report
 generated before the cohort grew is still offered.
 {% endcomment %}
+{% load fls_base_filters %}
 <div id="{{ region_id }}" class="space-y-3"
      {% if in_flight and not is_stalled %}
      hx-get="{{ base_url }}" hx-trigger="every {{ poll_seconds }}s"
@@ -33,11 +34,11 @@ generated before the cohort grew is still offered.
             <tbody>
                 {% for row in rows %}
                     <tr>
-                        <td class="whitespace-nowrap">{% if row.kind == "ready" %}{{ row.report.finished_at|date:"j M Y, H:i" }}{% else %}{{ row.report.requested_at|date:"j M Y, H:i" }}{% endif %}</td>
+                        <td class="whitespace-nowrap">{% if row.kind == "ready" %}<c-datetime :value="row.report.finished_at" />{% else %}<c-datetime :value="row.report.requested_at" />{% endif %}</td>
                         <td>{{ row.report.requested_by.display_name|default:"the system" }}</td>
                         <td class="text-right">
                             {% if row.kind == "ready" %}
-                                <c-button variant="secondary" size="small" icon_left="download" href="{{ row.pdf_url }}" hx-boost="false" aria_label="Download the report generated {{ row.report.finished_at|date:"j M Y, H:i" }}">Download</c-button>
+                                <c-button variant="secondary" size="small" icon_left="download" href="{{ row.pdf_url }}" hx-boost="false" aria_label="Download the report generated {{ row.report.finished_at|display_datetime }}">Download</c-button>
                             {% elif row.kind == "in_flight" %}
                                 <span class="inline-flex items-center gap-2 text-muted"><c-icon name="loading" class="size-4 animate-spin" /> Generating…</span>
                             {% elif row.kind == "stalled" %}

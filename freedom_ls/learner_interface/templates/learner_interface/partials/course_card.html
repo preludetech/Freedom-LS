@@ -8,17 +8,21 @@ Standard fields land in standard places via the shared skeleton and partials:
   organisation   -> <c-course-card-shell> avatar overlapping the bottom of
                     the hero (card_organisation)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
-                    status is ever shown; no duplicate chip/badge)
+                    status is ever shown; no duplicate chip/badge). "Access ended"
+                    is the exception: it sits bottom-left on the footer line
+                    (course_footer_line.html) as an icon and text
   title + link   -> stretched title link (card_title_link.html)
-  details        -> course_details_link.html (own right-aligned line)
-  deadline       -> course_deadline_line.html (missed deadline, else next deadline)
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
+  deadline       -> footer slot, the card's last line, below the progress bar
+                    (course_footer_line.html: access ended, else missed deadline, else
+                    next deadline, then "Access ends"), an icon and text
+  details        -> course_details_link.html, right of the deadline on that line
 
 Title-link target by status:
   complete                 -> course_finish
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
-  access ended (access_ended_at set) -> course_detail, with the "Access ended" eyebrow
+  access ended (access_ended_at set) -> course_detail, with "Access ended" on the bottom line
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in place of the registration eyebrow — the badge is an access signal, not a
@@ -52,9 +56,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
             {% elif course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
-        {% elif course.access_ended_at %}
-            {% include "learner_interface/partials/course_status_eyebrow.html" with status="access_ended" access_ended_at=course.access_ended_at with_icon=True %}
-        {% else %}
+        {% elif not course.access_ended_at %}
             {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
         {% endif %}
     </c-slot>
@@ -71,18 +73,16 @@ current_price, card_organisation), user and show_time_zone_to_learners.
         </p>
     {% endif %}
 
-    {% include "learner_interface/partials/course_deadline_line.html" %}
-
-    <div class="flex justify-end mt-auto">
-        {% include "learner_interface/partials/course_details_link.html" %}
-    </div>
-
-    {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
-        <c-slot name="footer">
-            <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
-                                   accent_slot_key="{{ course.accent_slot_key }}"
-                                   label="Progress for {{ course.title }}"
-                                   label_class="text-sm font-medium tabular-nums" />
-        </c-slot>
-    {% endif %}
+    <c-slot name="footer">
+        {% comment %}The deadline is the card's last line, below the progress bar.{% endcomment %}
+        <div class="mt-auto space-y-3 pt-1">
+            {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
+                <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
+                                       accent_slot_key="{{ course.accent_slot_key }}"
+                                       label="Progress for {{ course.title }}"
+                                       label_class="text-sm font-medium tabular-nums" />
+            {% endif %}
+            {% include "learner_interface/partials/course_footer_line.html" %}
+        </div>
+    </c-slot>
 </c-course-card-shell>
