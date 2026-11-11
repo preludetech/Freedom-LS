@@ -30,6 +30,7 @@ Reuse these registered components before writing a new one. Each app registers i
 | `threadPane` | `comms` | `comms/thread.html` | Sets `--thread-top` to the site header's height on `#thread-pane`, so whatever htmx swaps into it fills the viewport below the header |
 | `conversationThread` | `comms` | `comms/partials/thread.html` | Keeps the composer in view, opens the log at its newest message, follows new entries only when the reader is at the bottom, otherwise counts them on a "New messages" button |
 | `questionFileUpload` | `form_engine` | `form_engine/inputs/file_upload.html` | Refuses an oversized file in the browser on `htmx:confirm`, before it uploads |
+| `phoneHint` | `form_engine` | `form_engine/inputs/phone_input.html` | Swaps the phone question's example hint when the country changes, reading the examples from a `json_script` block; hides it with no country |
 | `coursePart` | `learner_interface` | `learner_interface/partials/course_minimal_toc.html` | Expand/collapse with localStorage |
 | `coursePlayer` | `learner_interface` | `learner_interface/course_topic.html`, `course_form.html`, `course_item_closed.html` | Scrolls the outline's current row into view on load |
 | `examRunner` | `learner_interface` | `learner_interface/course_form_page.html` | Exam runner root: `beforeunload` warning once an answer is edited, focuses the page heading on load |

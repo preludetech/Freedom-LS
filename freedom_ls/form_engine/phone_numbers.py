@@ -13,7 +13,12 @@ import unicodedata
 
 import phonenumbers
 from babel import Locale, UnknownLocaleError, parse_locale
-from phonenumbers import NumberParseException, PhoneNumber, PhoneNumberFormat
+from phonenumbers import (
+    NumberParseException,
+    PhoneNumber,
+    PhoneNumberFormat,
+    PhoneNumberType,
+)
 
 from django.conf import settings
 from django.utils import translation
@@ -75,8 +80,8 @@ def _parsed(text: str, country: str) -> PhoneNumber | None:
 
     A leading + wins over the selected country: a pasted or autofilled
     international number is read as typed, whatever the picker says. For any
-    other number the library strips the country's own trunk prefix, so no
-    digit is added or removed by hand.
+    other number the library strips a trunk prefix or calling code it finds;
+    `_extra_digits_message` reports what it stripped.
     """
     default_country = None if text.startswith("+") else country or None
     try:
@@ -103,7 +108,38 @@ def phone_answer_error(text: str, country: str) -> str | None:
     # is far more often a mistake than a vanity number.
     if any(ch.isalpha() for ch in text) or not phonenumbers.is_valid_number(number):
         return _invalid_message(text, country)
+    if not text.startswith("+"):
+        return _extra_digits_message(text, country, number)
     return None
+
+
+def _like(country: str) -> str:
+    example = phone_example(country)
+    return f", like {example}" if example is not None else ""
+
+
+def _extra_digits_message(text: str, country: str, number: PhoneNumber) -> str | None:
+    """Why `text` is refused when it holds more than the digits that follow the
+    calling code, or None when it holds exactly those.
+
+    The picker reads "South Africa (+27)", so the box beside it holds what
+    follows +27. A trunk 0, a calling code or an international prefix typed in
+    front changes the number read that way, even though the library strips it.
+    """
+    typed = phonenumbers.normalize_digits_only(text)
+    national = phonenumbers.national_significant_number(number)
+    if typed == national:
+        return None
+    if typed.endswith(national):
+        extra = typed[: -len(national)]
+        return (
+            f'You entered "{text}". Leave out the {extra} at the start{_like(country)}.'
+        )
+    calling_code = phonenumbers.country_code_for_region(country)
+    return (
+        f'You entered "{text}". Enter the number that follows '
+        f"+{calling_code}{_like(country)}."
+    )
 
 
 def _invalid_message(text: str, country: str) -> str:
@@ -113,13 +149,40 @@ def _invalid_message(text: str, country: str) -> str:
             f"with + and its country code."
         )
     name = _country_name(country, _active_language())
-    example = phonenumbers.example_number(country)
-    like = (
-        f", like {phonenumbers.format_number(example, PhoneNumberFormat.NATIONAL)}"
-        if example is not None
-        else ""
+    return (
+        f'You entered "{text}". Enter a valid phone number for {name}{_like(country)}.'
     )
-    return f'You entered "{text}". Enter a valid phone number for {name}{like}.'
+
+
+def _after_calling_code(number: PhoneNumber) -> str:
+    """`number` as it is typed beside its country: no calling code, no trunk
+    prefix (`82 123 4567`), so it resubmits to the same number."""
+    international = phonenumbers.format_number(number, PhoneNumberFormat.INTERNATIONAL)
+    return international.removeprefix(f"+{number.country_code}").strip()
+
+
+def phone_example(country: str) -> str | None:
+    """An example number for `country`, written as it follows the calling code.
+
+    A mobile number where the library has one: it is what most people type.
+    """
+    example = phonenumbers.example_number_for_type(
+        country, PhoneNumberType.MOBILE
+    ) or phonenumbers.example_number(country)
+    return _after_calling_code(example) if example is not None else None
+
+
+@functools.cache
+def _phone_examples() -> tuple[tuple[str, str], ...]:
+    examples = ((country, phone_example(country)) for country in SUPPORTED_REGIONS)
+    return tuple(
+        (country, example) for country, example in examples if example is not None
+    )
+
+
+def phone_examples() -> dict[str, str]:
+    """`phone_example` for every supported country that has one."""
+    return dict(_phone_examples())
 
 
 def e164_phone_answer(text: str, country: str) -> str:
@@ -163,16 +226,17 @@ def stored_phone_country(text: str) -> str | None:
     return country if country in SUPPORTED_REGIONS else None
 
 
-def national_phone(text: str) -> str:
-    """A stored answer in national format, for refilling the number input.
+def phone_after_calling_code(text: str) -> str:
+    """A stored answer as it is typed beside its country, for refilling the
+    number input.
 
-    The raw text when there is no country to select beside it: a national
-    number with no country would not resubmit to the number that is stored.
+    The raw text when there is no country to select beside it: a number with
+    no country would not resubmit to the number that is stored.
     """
     number = _stored(text)
     if number is None or stored_phone_country(text) is None:
         return text
-    return phonenumbers.format_number(number, PhoneNumberFormat.NATIONAL)
+    return _after_calling_code(number)
 
 
 def _quality(parameters: list[str]) -> float:

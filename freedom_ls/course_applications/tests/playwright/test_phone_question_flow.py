@@ -48,13 +48,14 @@ def test_an_applicant_is_asked_for_a_country_before_a_national_number_is_accepte
     country = logged_in_page.get_by_label("Country")
     expect(country.locator("option:checked")).to_have_text("Choose a country")
     logged_in_page.get_by_label("Your name").fill("Ada Lovelace")
-    logged_in_page.get_by_label("Phone number").fill("082 123 4567")
+    expect(logged_in_page.get_by_text("For example:")).to_be_hidden()
+    logged_in_page.get_by_label("Phone number").fill("82 123 4567")
     logged_in_page.get_by_role("button", name="Next").click()
 
     expect(
         logged_in_page.get_by_text("Choose a country, or start the number")
     ).to_be_visible()
-    expect(logged_in_page.get_by_label("Phone number")).to_have_value("082 123 4567")
+    expect(logged_in_page.get_by_label("Phone number")).to_have_value("82 123 4567")
     for viewport in QA_VIEWPORTS:
         logged_in_page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(logged_in_page)
@@ -91,8 +92,14 @@ def test_an_applicant_whose_browser_names_a_country_finds_it_chosen(
 
     country = logged_in_page.get_by_label("Country")
     expect(country.locator("option:checked")).to_have_text("South Africa (+27)")
+    expect(logged_in_page.get_by_text("For example: 71 123 4567")).to_be_visible()
     logged_in_page.get_by_label("Your name").fill("Ada Lovelace")
     logged_in_page.get_by_label("Phone number").fill("082 123 4567")
+    logged_in_page.get_by_role("button", name="Next").click()
+
+    expect(logged_in_page.get_by_text("Leave out the 0 at the start")).to_be_visible()
+
+    logged_in_page.get_by_label("Phone number").fill("82 123 4567")
     logged_in_page.get_by_role("button", name="Next").click()
     logged_in_page.get_by_role("button", name="Next").click()
 
@@ -103,7 +110,43 @@ def test_an_applicant_whose_browser_names_a_country_finds_it_chosen(
     expect(
         logged_in_page.get_by_label("Country").locator("option:checked")
     ).to_have_text("South Africa (+27)")
-    expect(logged_in_page.get_by_label("Phone number")).to_have_value("082 123 4567")
+    expect(logged_in_page.get_by_label("Phone number")).to_have_value("82 123 4567")
     for viewport in QA_VIEWPORTS:
         logged_in_page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(logged_in_page)
+
+
+@pytest.mark.playwright
+@pytest.mark.browser_context_args(locale="en-ZA")
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_the_example_hint_follows_the_chosen_country(
+    live_server, logged_in_page: Page, logged_in_user
+):
+    course, form = gated_course_with_form()
+    FormQuestionFactory(
+        form_page=form.pages.get(order=0),
+        type="phone",
+        order=10,
+        question="Your phone number",
+        required=False,
+    )
+
+    logged_in_page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    hint = logged_in_page.get_by_text("For example:")
+    expect(hint).to_have_text("For example: 71 123 4567")
+
+    logged_in_page.get_by_label("Country").select_option("GB")
+
+    expect(hint).to_have_text("For example: 7400 123456")
+
+    logged_in_page.get_by_label("Country").select_option("")
+
+    expect(hint).to_be_hidden()

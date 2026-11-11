@@ -328,7 +328,7 @@ def test_invalid_url_is_rejected_naming_value():
 def test_phone_answer_with_a_country_is_accepted():
     question = _StubQuestion(type="phone")
 
-    assert answer_error(question, "082 123 4567", "ZA") is None
+    assert answer_error(question, "82 123 4567", "ZA") is None
 
 
 def test_phone_answer_without_a_country_is_rejected():

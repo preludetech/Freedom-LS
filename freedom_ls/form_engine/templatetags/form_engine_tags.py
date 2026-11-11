@@ -8,7 +8,9 @@ from django.template import Context
 from freedom_ls.form_engine.phone_numbers import (
     browser_country,
     country_choices,
-    national_phone,
+    phone_after_calling_code,
+    phone_example,
+    phone_examples,
     stored_phone_country,
 )
 from freedom_ls.form_engine.typed_answers import format_answer
@@ -34,7 +36,7 @@ def upload_limits() -> dict[str, object]:
 @register.simple_tag(takes_context=True)
 def phone_field_state(context: Context) -> dict[str, object]:
     """What the phone question's two controls show: the selected country, the
-    number, and the countries on offer.
+    number, the countries on offer, and the example hint for each country.
 
     Reads `question`, `rejected`, `existing_answers` and `request` from the
     context the question template already holds, so no view computes anything for it.
@@ -49,7 +51,7 @@ def phone_field_state(context: Context) -> dict[str, object]:
         answer = (context.get("existing_answers") or {}).get(question.id)
         stored = answer.text_answer if answer else ""
         country = stored_phone_country(stored) or ""
-        number = national_phone(stored)
+        number = phone_after_calling_code(stored)
         if not stored:
             # Only an empty question takes the browser's hint. Guessing a
             # country beside a number someone already typed could change
@@ -57,7 +59,14 @@ def phone_field_state(context: Context) -> dict[str, object]:
             request = context.get("request")
             header = request.headers.get("Accept-Language", "") if request else ""
             country = browser_country(header) or ""
-    return {"country": country, "number": number, "choices": country_choices()}
+    return {
+        "country": country,
+        "number": number,
+        "choices": country_choices(),
+        "example": (phone_example(country) or "") if country else "",
+        "examples": phone_examples(),
+        "examples_id": f"phone_examples_{question.id}",
+    }
 
 
 @register.filter

@@ -217,7 +217,7 @@ def test_phone_field_state_shows_a_stored_legacy_answer_as_typed(mock_site_conte
 
 
 @pytest.mark.django_db
-def test_phone_field_state_refills_the_country_and_national_number_of_a_stored_answer(
+def test_phone_field_state_refills_the_country_and_the_number_after_its_calling_code(
     mock_site_context,
 ):
     question = FormQuestionFactory(type="phone")
@@ -227,7 +227,7 @@ def test_phone_field_state_refills_the_country_and_national_number_of_a_stored_a
         _phone_context(question, existing_answers={question.id: answer})
     )
 
-    assert (state["country"], state["number"]) == ("ZA", "082 123 4567")
+    assert (state["country"], state["number"]) == ("ZA", "82 123 4567")
 
 
 @pytest.mark.django_db
@@ -436,18 +436,62 @@ def test_rejected_phone_answer_points_the_number_input_at_the_error(
 
     markup = _render(question, rejected_answers={question.id: rejected})
 
-    assert f'aria-describedby="question_{question.id}_error"' in markup
+    assert (
+        f'aria-describedby="question_{question.id}_hint question_{question.id}_error"'
+        in markup
+    )
     assert f'id="question_{question.id}_error"' in markup
 
 
 @pytest.mark.django_db
-def test_phone_question_needs_no_javascript(mock_site_context):
+def test_phone_number_input_is_described_by_its_example_hint(mock_site_context):
     question = FormQuestionFactory(type="phone")
 
     markup = _render(question)
 
-    assert "x-data" not in markup
-    assert "<script" not in markup
+    assert f'aria-describedby="question_{question.id}_hint"' in markup
+    assert f'id="question_{question.id}_hint"' in markup
+
+
+@pytest.mark.django_db
+def test_phone_hint_shows_the_selected_country_example_without_javascript(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+    answer = QuestionAnswerFactory(question=question, text_answer="+27821234567")
+
+    markup = render_to_string(
+        "form_engine/question.html",
+        {
+            "question": question,
+            "existing_answers": {question.id: answer},
+            "rejected_answers": {},
+        },
+    )
+
+    assert '<span x-text="example">71 123 4567</span>' in markup
+
+
+@pytest.mark.django_db
+def test_phone_field_state_has_no_example_without_a_country(mock_site_context):
+    question = FormQuestionFactory(type="phone")
+
+    state = phone_field_state(_phone_context(question))
+
+    assert state["example"] == ""
+
+
+@pytest.mark.django_db
+def test_phone_field_state_gives_the_example_for_the_selected_country(
+    mock_site_context,
+):
+    question = FormQuestionFactory(type="phone")
+
+    state = phone_field_state(
+        _phone_context(question, request=_british_browser_request())
+    )
+
+    assert state["example"] == "7400 123456"
 
 
 @pytest.mark.django_db
