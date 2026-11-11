@@ -276,6 +276,7 @@ flowchart TB
     google_tag -.-> learner_management
     learner_interface -.-> course_applications
     learner_interface -.-> markdown_rendering
+    mail -.-> accounts
     mail -.-> deployment
     markdown_rendering -.-> content_engine
     meta_pixel -.-> accounts
@@ -327,7 +328,7 @@ flowchart TB
 | learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, markdown_rendering |
 | learner_management | accounts, api, audit_log, base, content_engine, organisations, panel_framework, role_based_permissions, site_aware_models, webhooks | — |
 | learner_progress | accounts, api, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
-| mail | base | deployment |
+| mail | base | accounts, deployment |
 | markdown_rendering | base | content_engine |
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management |
