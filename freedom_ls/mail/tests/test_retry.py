@@ -9,6 +9,8 @@ import pytest
 import pytest_django.fixtures
 import time_machine
 
+from django.core.mail import EmailMessage
+
 from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.retry import (
@@ -79,13 +81,16 @@ class TestScheduleRetry:
         assert queued.args_kwargs == {"args": [str(email.pk)], "kwargs": {}}
         assert queued.run_after == email.next_attempt_at
 
-    def test_under_the_immediate_backend_nothing_is_enqueued(self, mocker) -> None:
-        enqueue = mocker.patch("freedom_ls.mail.tasks.enqueue_send")
+    def test_under_the_immediate_backend_the_row_stays_failed_and_is_not_sent(
+        self, mailoutbox: list[EmailMessage]
+    ) -> None:
         email = OutboundEmailFactory(sending=True)
 
         schedule_retry(email, ConnectionRefusedError("down"))
 
-        enqueue.assert_not_called()
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.FAILED
+        assert mailoutbox == []
 
     def test_at_the_cap_the_row_is_dead_lettered_and_reported_once(
         self,
