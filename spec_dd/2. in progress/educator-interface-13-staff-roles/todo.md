@@ -33,7 +33,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: add glossary rows to `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md` for `StaffMember`, `organisation_staff_viewer`, `organisation_staff_roles_viewer`, `staff_member.added`, visible staff, pickable staff, `target` of a role and may edit own roles, and the "Remove from cohort" exception in the "removed" row (spec: Documentation and downstream, Terminology)
 - [x] (cmd) Run `/sdd:document`: in `.claude/skills/brand-guidelines/visual.md` "Placement", note that the cohort Settings tab is the Name, Staff and Status panels, the learner Settings tab the Name and Account panels, and the Staff row puts Add role in the Staff member actions column (spec: Documentation and downstream)
 - [x] (cmd) Run `/sdd:document`: add `staff_member.added` to the action table in `freedom_ls/audit_log/README.md` (spec: Documentation and downstream)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
