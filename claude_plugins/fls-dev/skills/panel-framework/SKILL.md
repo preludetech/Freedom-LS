@@ -139,6 +139,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   ("Topic", "Form", "Form page", "Course details"). The title says it is a preview, so no callout
   does. The previewed content sits in the learner's reading column (`max-w-reading mx-auto`),
   as the learner page shows it, never the dialog's full width.
+- `#app-modal` has one wide size, for content previews only; no other dialog widens. A fragment opts
+  in by putting `data-modal-size="wide"` on its root. It changes the width (about
+  `min(92vw, 64rem)` from 640px up) and the max-height (95dvh); the height, the scrolling and the
+  sticky header stay the shared rule's.
 - A multi-page form previews one page at a time, each from its own outline row ("Page 2 of 3:
   Tell us more", with its "Shown only if…" line); the form's own row previews the learner's start
   page: title, intro and the question and page counts, with no button.
