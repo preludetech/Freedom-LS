@@ -96,6 +96,7 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `role.assigned` | Role assigned | Staff and roles | user | the object the role is on | `role`, `role_label`, `scope` |
 | `role.deactivated` | Role deactivated | Staff and roles | user | the object the role is on | `role`, `role_label`, `scope` |
 | `role.removed` | Role removed | Staff and roles | user | the cohort being deleted | `role`, `role_label`, `scope` |
+| `staff_member.added` | Staff member added | Staff and roles | staff member | its user | |
 | `staff_member.deactivated` | Staff member deactivated | Staff and roles | staff member | its user | |
 | `staff_member.reactivated` | Staff member reactivated | Staff and roles | staff member | its user | |
 | `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
