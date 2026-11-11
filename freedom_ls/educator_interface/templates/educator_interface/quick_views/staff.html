@@ -11,7 +11,7 @@ quick view's registrations. Context: entries (RoleEntry list).
                 <li data-testid="quick-view-role">
                     <span class="block font-medium">{{ entry.display_name }}</span>
                     <span class="block text-sm text-muted">{{ entry.full_scope }}</span>
-                    <span class="block text-sm text-muted">Added {{ entry.assigned_at|date:"j M Y" }}{% if entry.assigned_by %} by {{ entry.assigned_by.display_name }}{% endif %}</span>
+                    <span class="block text-sm text-muted">Added <c-date :value="entry.assigned_at" />{% if entry.assigned_by %} by {{ entry.assigned_by.display_name }}{% endif %}</span>
                 </li>
             {% empty %}
                 <li>No roles yet</li>

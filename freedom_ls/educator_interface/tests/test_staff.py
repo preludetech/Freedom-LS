@@ -353,7 +353,7 @@ def test_the_staff_quick_view_says_when_and_by_whom_each_role_was_added(
 
     text = " ".join(response.content.decode().split())
     assert response.status_code == 200
-    assert "Added 3 Nov 2026 by Ada Admin" in text
+    assert 'Added <time datetime="2026-11-03">3 Nov 2026</time> by Ada Admin' in text
     assert (
         "Added 3 Nov 2026"
         not in table.cssselect("[data-table-region]")[0].text_content()
