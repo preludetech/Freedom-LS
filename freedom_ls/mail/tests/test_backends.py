@@ -194,6 +194,7 @@ class TestQueuedEmailBackend:
         enqueue.assert_called_once_with(OutboundEmail.objects.get().pk)
 
 
+# transaction=True: the backend defers enqueue to on_commit inside a transaction, so the inline send must run outside one.
 @pytest.mark.django_db(transaction=True)
 class TestInlineFailureReport:
     """Outside a transaction an inline task backend has already attempted the send."""
@@ -218,6 +219,7 @@ class TestInlineFailureReport:
         assert sent == 0
 
 
+# transaction=True: the backend defers enqueue to on_commit inside a transaction, so the task row is only written outside one.
 @pytest.mark.django_db(transaction=True)
 def test_the_database_task_backend_carries_only_the_row_id(
     settings: pytest_django.fixtures.SettingsWrapper,
