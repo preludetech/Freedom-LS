@@ -17,7 +17,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
-- [ ] (user) Register one of your own Design Artifacts on a scratch spec directory with `/sdd:register_design` and check it writes `design_source/project/canvas.json`, every artboard's `.dc.html`, the `_blob/` assets, one PNG per artboard and a `design.md` with Link, Version and Entry file lines; then run it with a `claude.ai/design/p/` link and with a link to an Artifact you cannot edit and check it stops pointing at the README section (spec: Success criteria)
+- [x] (user) Register one of your own Design Artifacts on a scratch spec directory with `/sdd:register_design` and check it writes `design_source/project/canvas.json`, every artboard's `.dc.html`, the `_blob/` assets, one PNG per artboard and a `design.md` with Link, Version and Entry file lines; then run it with a `claude.ai/design/p/` link and with a link to an Artifact you cannot edit and check it stops pointing at the README section (spec: Success criteria)
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 
 ## 4. Documentation and pull request
