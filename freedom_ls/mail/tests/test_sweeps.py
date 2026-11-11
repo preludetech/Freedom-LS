@@ -20,6 +20,7 @@ from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.sweeps import (
     STUCK_LAST_ERROR,
     STUCK_MESSAGE,
+    prune_outbound_email,
     recover_stuck_outbound_email,
     requeue_due_outbound_email,
 )
@@ -29,6 +30,8 @@ NOW = "2026-01-01T12:00:00+00:00"
 GRACE_SECONDS = 300
 STUCK_WINDOW_SECONDS = 3600
 MAX_ATTEMPTS = 6
+RETENTION_DAYS = 30
+PAYLOAD_DAYS = 3
 
 
 def hours_ago(hours: int) -> datetime:
@@ -47,6 +50,8 @@ def pinned_sweep_settings(settings: pytest_django.fixtures.SettingsWrapper) -> N
     settings.HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE = 500
     settings.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS = STUCK_WINDOW_SECONDS
     settings.EMAIL_MAX_ATTEMPTS = MAX_ATTEMPTS
+    settings.EMAIL_OUTBOUND_RETENTION_DAYS = RETENTION_DAYS
+    settings.EMAIL_FAILED_PAYLOAD_RETENTION_DAYS = PAYLOAD_DAYS
 
 
 @pytest.mark.django_db
@@ -295,3 +300,95 @@ class TestRecoverStuckOutboundEmail:
         email.refresh_from_db()
         assert email.status == OutboundEmail.Status.SENT
         assert len(mailoutbox) == 1
+
+
+def created_days_ago(email: OutboundEmail, days: int) -> OutboundEmail:
+    # created_at is auto_now_add, so it can only be moved after the insert.
+    OutboundEmail.objects.filter(pk=email.pk).update(
+        created_at=timezone.now() - timedelta(days=days)
+    )
+    return email
+
+
+def attempted_days_ago(email: OutboundEmail, days: int) -> OutboundEmail:
+    OutboundEmail.objects.filter(pk=email.pk).update(
+        last_attempt_at=timezone.now() - timedelta(days=days)
+    )
+    return email
+
+
+@pytest.mark.django_db
+class TestPruneOutboundEmail:
+    @pytest.mark.parametrize("trait", ["sent", "permanent_failure", "dead_letter"])
+    def test_terminal_row_past_retention_is_deleted(self, trait: str) -> None:
+        email = OutboundEmailFactory(**{trait: True})
+        created_days_ago(email, RETENTION_DAYS + 1)
+
+        prune_outbound_email()
+
+        assert not OutboundEmail.objects.filter(pk=email.pk).exists()
+
+    @pytest.mark.parametrize("trait", ["sent", "permanent_failure", "dead_letter"])
+    def test_terminal_row_inside_retention_is_kept(self, trait: str) -> None:
+        email = OutboundEmailFactory(**{trait: True})
+        created_days_ago(email, RETENTION_DAYS - 1)
+
+        prune_outbound_email()
+
+        assert OutboundEmail.objects.filter(pk=email.pk).exists()
+
+    @pytest.mark.parametrize(
+        "traits",
+        [{}, {"failed": True}, {"sending": True}],
+        ids=["pending", "failed", "sending"],
+    )
+    def test_unfinished_row_of_any_age_is_neither_deleted_nor_scrubbed(
+        self, traits: dict[str, bool]
+    ) -> None:
+        email = OutboundEmailFactory(**traits)
+        created_days_ago(email, RETENTION_DAYS * 10)
+        attempted_days_ago(email, RETENTION_DAYS * 10)
+
+        prune_outbound_email()
+
+        email.refresh_from_db()
+        assert email.payload != {}
+        assert email.scrubbed_at is None
+
+    @pytest.mark.parametrize("trait", ["permanent_failure", "dead_letter"])
+    def test_failed_row_past_payload_window_loses_only_its_body(
+        self, trait: str
+    ) -> None:
+        email = OutboundEmailFactory(**{trait: True})
+        attempted_days_ago(email, PAYLOAD_DAYS + 1)
+        expected_error = email.last_error
+
+        prune_outbound_email()
+
+        email.refresh_from_db()
+        assert email.payload == {}
+        assert email.scrubbed_at == timezone.now()
+        assert email.recipients == ["learner@example.test"]
+        assert email.subject == "Reset your password"
+        assert email.last_error == expected_error
+
+    @pytest.mark.parametrize("trait", ["permanent_failure", "dead_letter"])
+    def test_failed_row_inside_payload_window_keeps_its_body(self, trait: str) -> None:
+        email = OutboundEmailFactory(**{trait: True})
+        attempted_days_ago(email, PAYLOAD_DAYS - 1)
+
+        prune_outbound_email()
+
+        email.refresh_from_db()
+        assert email.payload != {}
+        assert email.scrubbed_at is None
+
+    def test_old_failed_row_resent_recently_keeps_its_body(self) -> None:
+        email = OutboundEmailFactory(permanent_failure=True)
+        created_days_ago(email, PAYLOAD_DAYS + 10)
+        attempted_days_ago(email, 1)
+
+        prune_outbound_email()
+
+        email.refresh_from_db()
+        assert email.payload != {}

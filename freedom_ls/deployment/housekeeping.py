@@ -25,6 +25,7 @@ from freedom_ls.deployment.config import config
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import ImportStatus, LearnerImport
 from freedom_ls.mail.sweeps import (
+    prune_outbound_email,
     recover_stuck_outbound_email,
     requeue_due_outbound_email,
 )
@@ -355,7 +356,8 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
     """Run both sweeps, the late-task check, the orphan reap and the mail sweeps.
 
     The mail sweeps enqueue outgoing email that is past due and re-drive email a
-    dead worker left in sending.
+    dead worker left in sending. The prune deletes old
+    outgoing email records and drops the body of old failed ones.
 
     Each step gets its own try/except so no failure stops a later step: a prune that
     dies must still leave expired sessions cleared, and both must still leave the
@@ -507,6 +509,12 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
                 f"{len(dead_lettered)} outbound email(s) stuck in sending were "
                 f"dead-lettered."
             )
+
+    try:
+        prune_outbound_email()
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"outbound email prune failed: {exc}")
 
     return HousekeepingOutcome(
         sweep_failures=sweep_failures, findings=findings, notes=notes

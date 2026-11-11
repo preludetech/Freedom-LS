@@ -14,6 +14,8 @@ from freedom_ls.mail.tasks import enqueue_send
 
 Status = OutboundEmail.Status
 
+TERMINAL_STATUSES = (Status.SENT, Status.PERMANENT_FAILURE, Status.DEAD_LETTER)
+
 STUCK_LAST_ERROR = "The worker sending this email stopped before it finished."
 STUCK_MESSAGE = (
     "An outgoing email was left in sending by a worker that did not finish it."
@@ -86,3 +88,20 @@ def recover_stuck_outbound_email() -> list[OutboundEmail]:
         else:
             enqueue_send(email.pk)
     return dead_lettered
+
+
+def prune_outbound_email() -> None:
+    """Delete finished rows past retention and drop the body of old failed ones."""
+    now = timezone.now()
+    OutboundEmail.objects.filter(
+        status__in=TERMINAL_STATUSES,
+        created_at__lt=now - timedelta(days=config.EMAIL_OUTBOUND_RETENTION_DAYS),
+    ).delete()
+    # Measured from the last attempt, not from creation, so a row an admin
+    # resent keeps its body for the full window after it fails again.
+    OutboundEmail.objects.filter(
+        status__in=(Status.PERMANENT_FAILURE, Status.DEAD_LETTER),
+        scrubbed_at__isnull=True,
+        last_attempt_at__lt=now
+        - timedelta(days=config.EMAIL_FAILED_PAYLOAD_RETENTION_DAYS),
+    ).update(payload={}, scrubbed_at=now)

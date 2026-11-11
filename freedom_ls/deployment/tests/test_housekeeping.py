@@ -1338,3 +1338,19 @@ class TestStuckOutboundEmailSweep:
         outcome = run_housekeeping_sweeps()
 
         assert outcome.sweep_failures == ["stuck outbound email sweep failed: down"]
+
+
+@pytest.mark.django_db
+class TestOutboundEmailPruneSweep:
+    def test_database_error_from_the_sweep_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.prune_outbound_email",
+            side_effect=DatabaseError("down"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == ["outbound email prune failed: down"]

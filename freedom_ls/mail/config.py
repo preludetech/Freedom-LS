@@ -8,6 +8,8 @@ class MailSettings(AppSettings):
     EMAIL_MAX_ATTEMPTS: int
     EMAIL_RETRY_DELAYS: list[int]
     EMAIL_RETRY_JITTER_RATIO: float
+    EMAIL_OUTBOUND_RETENTION_DAYS: int
+    EMAIL_FAILED_PAYLOAD_RETENTION_DAYS: int
     HOUSEKEEPING_DUE_EMAIL_GRACE_SECONDS: int
     HOUSEKEEPING_EMAIL_REQUEUE_BATCH_SIZE: int
     HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS: int
@@ -33,6 +35,13 @@ class MailSettings(AppSettings):
         # Upper bound on the random extra wait added to each delay, as a fraction
         # of that delay.
         "EMAIL_RETRY_JITTER_RATIO": Setting(default=0.2),
+        # Days a sent, permanently failed or dead-lettered row is kept, counted
+        # from its creation, before housekeeping deletes it.
+        "EMAIL_OUTBOUND_RETENTION_DAYS": Setting(default=30),
+        # Days a permanently failed or dead-lettered row keeps its message body,
+        # counted from its last attempt, so an operator can still resend it.
+        # After that the body is dropped and the row keeps only its metadata.
+        "EMAIL_FAILED_PAYLOAD_RETENTION_DAYS": Setting(default=3),
         # How far past its due time a pending or failed row must be before
         # housekeeping enqueues it again. Longer than the worker's usual pickup
         # delay, so a row whose task is merely queued is not enqueued twice.
