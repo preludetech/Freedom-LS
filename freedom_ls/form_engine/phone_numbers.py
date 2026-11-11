@@ -149,3 +149,27 @@ def display_phone(text: str) -> str:
     if number is None:
         return text
     return phonenumbers.format_number(number, PhoneNumberFormat.INTERNATIONAL)
+
+
+def stored_phone_country(text: str) -> str | None:
+    """The country of a stored E.164 answer, or None for a legacy row or a
+    number that belongs to no supported country."""
+    number = _stored(text)
+    if number is None:
+        return None
+    # The library answers None for a number shared by no single country and
+    # "001" for a non-geographic one; neither is a country on offer.
+    country = phonenumbers.region_code_for_number(number)
+    return country if country in SUPPORTED_REGIONS else None
+
+
+def national_phone(text: str) -> str:
+    """A stored answer in national format, for refilling the number input.
+
+    The raw text when there is no country to select beside it: a national
+    number with no country would not resubmit to the number that is stored.
+    """
+    number = _stored(text)
+    if number is None or stored_phone_country(text) is None:
+        return text
+    return phonenumbers.format_number(number, PhoneNumberFormat.NATIONAL)
