@@ -16,8 +16,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide whether short South African mobile-range numbers such as 082 123 (stored +2782123), which phonenumbers' is_valid_number accepts, should be refused, then either add a stricter check or correct Test 4 steps 4 and 6 in 3. frontend_qa.md (see B1 in qa_report.md)
 
 ## 4. Documentation and pull request
 
