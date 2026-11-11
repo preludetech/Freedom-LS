@@ -73,18 +73,27 @@ def test_admin_index_hides_module_from_staff_user(staff_client: Client) -> None:
     assert changelist_url() not in response.content.decode()
 
 
-def test_superuser_gets_200_from_changelist(superuser_client: Client) -> None:
+def test_changelist_lists_row_subject_and_recipient(superuser_client: Client) -> None:
+    OutboundEmailFactory(
+        subject="Listed subject line", recipients=["listed@example.test"]
+    )
+
     response = superuser_client.get(changelist_url())
 
-    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Listed subject line" in content
+    assert "listed@example.test" in content
 
 
-def test_superuser_gets_200_from_detail_page(superuser_client: Client) -> None:
-    email = OutboundEmailFactory()
+def test_detail_page_renders_fields_read_only(superuser_client: Client) -> None:
+    email = OutboundEmailFactory(subject="Read only subject")
 
     response = superuser_client.get(detail_url(email))
 
-    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Read only subject" in content
+    assert 'name="subject"' not in content
+    assert 'name="_save"' not in content
 
 
 def test_changelist_does_not_show_body(superuser_client: Client) -> None:
