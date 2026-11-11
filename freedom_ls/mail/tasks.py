@@ -20,7 +20,13 @@ from django.utils import timezone
 
 from freedom_ls.mail.config import config
 from freedom_ls.mail.encoding import set_8bit_encoding
-from freedom_ls.mail.models import OutboundEmail
+from freedom_ls.mail.errors import (
+    SendErrorKind,
+    classify_send_error,
+    describe_error,
+    report_outbound_email,
+)
+from freedom_ls.mail.models import LAST_ERROR_MAX_LENGTH, OutboundEmail
 from freedom_ls.mail.serialisation import SerialisedMessage, deserialise_message
 
 # Ahead of the default 0 that webhook delivery and report rendering enqueue at.
@@ -31,6 +37,10 @@ from freedom_ls.mail.serialisation import SerialisedMessage, deserialise_message
 EMAIL_TASK_PRIORITY = 10
 
 Status = OutboundEmail.Status
+
+PERMANENT_FAILURE_MESSAGE = (
+    "An outgoing email failed permanently and will not be retried."
+)
 
 
 def send_serialised_email(payload: SerialisedMessage) -> None:
@@ -66,7 +76,11 @@ def enqueue_send(email_id: UUID, run_after: datetime | None = None) -> TaskResul
 
 
 def send_outbound_email(email_id: str) -> None:
-    """Claim one row and send it. Any send error propagates, leaving it sending."""
+    """Claim one row and send it.
+
+    A permanent failure ends the row. Any other error propagates, leaving it
+    sending.
+    """
     now = timezone.now()
     # One UPDATE is the whole guard: a second worker and a redelivered task can
     # race for the row and exactly one wins. The due-time filter stops a stray
@@ -83,7 +97,24 @@ def send_outbound_email(email_id: str) -> None:
     if not claimed:
         return
     email = OutboundEmail.objects.get(pk=email_id)
-    send_serialised_email(email.payload)
+    try:
+        send_serialised_email(email.payload)
+    # Every exception is caught because the classifier is what decides, and it
+    # needs to see them all. An unclassified one is re-raised untouched.
+    except Exception as exc:
+        if classify_send_error(exc) is SendErrorKind.PERMANENT:
+            email.status = Status.PERMANENT_FAILURE
+            email.last_error = describe_error(exc)
+            email.save(update_fields=["status", "last_error"])
+            report_outbound_email(email, PERMANENT_FAILURE_MESSAGE)
+            return
+        # The row stays in sending. A bug in our own code is reported loudly by
+        # the failed task, not retried quietly. The cause is kept on the row so
+        # the admin shows why once housekeeping moves it on.
+        OutboundEmail.objects.filter(pk=email.pk).update(
+            last_error=describe_error(exc)[:LAST_ERROR_MAX_LENGTH]
+        )
+        raise
     # Nothing runs between the send and this write: a crash here re-sends the
     # message, so the window is kept as small as one statement.
     sent_at = timezone.now()

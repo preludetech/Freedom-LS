@@ -7,11 +7,14 @@ backend are all tested against.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from email.message import MIMEPart
+from smtplib import SMTPDataError
 
 import pytest
 import pytest_django.fixtures
+import sentry_sdk
+from sentry_sdk.transport import Transport
 
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail.backends.base import BaseEmailBackend
@@ -19,6 +22,8 @@ from django.core.mail.message import EmailMessage
 
 LOCMEM = "django.core.mail.backends.locmem.EmailBackend"
 REFUSING = "freedom_ls.mail.tests.conftest.RefusingEmailBackend"
+REJECTING = "freedom_ls.mail.tests.conftest.RejectingEmailBackend"
+BUGGY = "freedom_ls.mail.tests.conftest.BuggyEmailBackend"
 LONG_URL = "https://example.test/account/password/reset/key/" + "a" * 80 + "/"
 
 
@@ -31,6 +36,44 @@ class RefusingEmailBackend(BaseEmailBackend):
 
     def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         raise ConnectionRefusedError("mail host is not listening")
+
+
+class RejectingEmailBackend(BaseEmailBackend):
+    """A mail host that refuses the message outright with a 550."""
+
+    def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
+        raise SMTPDataError(550, b"mailbox unavailable: learner@example.test")
+
+
+class BuggyEmailBackend(BaseEmailBackend):
+    """An upstream that fails with an error no mail host would raise."""
+
+    def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
+        raise ValueError("bug in our own code")
+
+
+class _RecordingTransport(Transport):
+    def __init__(self, events: list[dict]) -> None:
+        super().__init__()
+        self.events = events
+
+    def capture_envelope(self, envelope: object) -> None:
+        event = envelope.get_event()
+        if event is not None:
+            self.events.append(event)
+
+
+@pytest.fixture
+def sentry_events() -> Iterator[list[dict]]:
+    """Sentry events captured in memory instead of sent anywhere."""
+    events: list[dict] = []
+    sentry_sdk.init(
+        dsn="http://public@localhost/1",
+        transport=_RecordingTransport(events),
+        default_integrations=False,
+    )
+    yield events
+    sentry_sdk.get_global_scope().set_client(None)
 
 
 @pytest.fixture

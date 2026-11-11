@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import email.policy
+import json
 from datetime import timedelta
 from uuid import uuid4
 
@@ -17,13 +18,16 @@ from freedom_ls.mail.factories import OutboundEmailFactory
 from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.serialisation import serialise_message
 from freedom_ls.mail.tasks import (
+    PERMANENT_FAILURE_MESSAGE,
     enqueue_send,
     send_outbound_email,
     send_serialised_email,
 )
 from freedom_ls.mail.tests.conftest import (
+    BUGGY,
     LONG_URL,
     REFUSING,
+    REJECTING,
     body_parts,
     make_message,
 )
@@ -121,6 +125,71 @@ class TestSendOutboundEmail:
         self, settings: pytest_django.fixtures.SettingsWrapper
     ) -> None:
         settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+        email = OutboundEmailFactory()
+
+        result = enqueue_send(email.pk)
+
+        assert result.status == TaskResultStatus.FAILED
+
+
+@pytest.mark.django_db
+class TestPermanentFailure:
+    def test_a_permanent_error_ends_the_row_at_one_attempt(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REJECTING
+        email = OutboundEmailFactory()
+
+        send_outbound_email(str(email.pk))
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.PERMANENT_FAILURE
+        assert email.attempt_count == 1
+        assert email.last_error.startswith("smtplib.SMTPDataError")
+
+    def test_a_permanent_error_does_not_fail_the_task(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REJECTING
+        email = OutboundEmailFactory()
+
+        result = enqueue_send(email.pk)
+
+        assert result.status == TaskResultStatus.SUCCESSFUL
+
+    def test_a_permanent_error_is_reported_without_recipient_or_error_text(
+        self,
+        settings: pytest_django.fixtures.SettingsWrapper,
+        sentry_events: list[dict],
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REJECTING
+        email = OutboundEmailFactory()
+
+        send_outbound_email(str(email.pk))
+
+        assert len(sentry_events) == 1
+        assert sentry_events[0]["message"] == PERMANENT_FAILURE_MESSAGE
+        serialised = json.dumps(sentry_events[0])
+        assert "learner@example.test" not in serialised
+        assert "mailbox unavailable" not in serialised
+
+    def test_an_unclassified_error_names_its_cause_on_the_row(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = BUGGY
+        email = OutboundEmailFactory()
+
+        with pytest.raises(ValueError, match="bug in our own code"):
+            send_outbound_email(str(email.pk))
+
+        email.refresh_from_db()
+        assert email.status == OutboundEmail.Status.SENDING
+        assert email.last_error.startswith("builtins.ValueError")
+
+    def test_an_unclassified_error_fails_the_task(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = BUGGY
         email = OutboundEmailFactory()
 
         result = enqueue_send(email.pk)
