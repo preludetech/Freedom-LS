@@ -1,20 +1,21 @@
 {% comment %}
 The Role actions column: one line per role, the same height as the role's
 line in the Roles column, holding the buttons that act on that role alone:
-Deactivate role when the viewer may give that role, and Change cohorts on a
-cohort role of an active account. The viewer's own roles follow the same
-rule as anyone else's. A role the viewer may not give keeps an empty line,
-so the lines below stay level with their roles.
+Deactivate role when the viewer may give that role, on at least one of its
+cohorts for a cohort role, and Change cohorts on such a cohort role of an
+active account. The viewer's own roles follow the same rule as anyone
+else's. A role the viewer cannot act on keeps an empty line, so the lines
+below stay level with their roles.
 {% endcomment %}
 {% if shows_roles %}
 <ul class="m-0 flex list-none flex-col gap-2 p-0">
     {% for entry in object.role_entries %}
         <li class="flex min-h-12 items-center">
             <c-data-table-actions layout="line">
-                {% if entry.role in grantable_role_keys and row_action_urls.deactivate_role %}
+                {% if entry.role in object.actionable_roles and row_action_urls.deactivate_role %}
                     <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" variant="secondary" size="small" />
                 {% endif %}
-                {% if object.is_active and entry.target == "cohort" and entry.role in grantable_role_keys and row_action_urls.change_cohorts %}
+                {% if object.is_active and entry.target == "cohort" and entry.role in object.actionable_roles and row_action_urls.change_cohorts %}
                     <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" variant="secondary" size="small" />
                 {% endif %}
             </c-data-table-actions>

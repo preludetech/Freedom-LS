@@ -492,6 +492,40 @@ def _row_triggers(document: lxml.html.HtmlElement, user: User) -> list[str]:
     ]
 
 
+def _role_triggers(document: lxml.html.HtmlElement, user: User) -> list[str]:
+    """The labels of the buttons on `user`'s role entries, in page order."""
+    return [
+        button.text_content().strip()
+        for button in document.cssselect("td button[hx-get]")
+        if f"user={user.pk}" in button.get("hx-get") and "role=" in button.get("hx-get")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_gets_role_buttons_only_on_roles_held_on_their_cohorts(
+    mock_site_context, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    own = CohortFactory(organisation=organisation)
+    foreign = CohortFactory(organisation=organisation)
+    grantor = UserFactory(superuser=True)
+    viewer = UserFactory(staff=True)
+    assign_role(grantor, viewer, "cohort_admin", own)
+    assign_role(grantor, viewer, "organisation_staff_roles_viewer", organisation)
+    near = UserFactory()
+    assign_role(grantor, near, "cohort_viewer", own)
+    assign_role(grantor, near, "cohort_viewer", foreign)
+    far = UserFactory()
+    assign_role(grantor, far, "cohort_viewer", foreign)
+
+    document = _staff_page(logged_in_client(viewer), organisation)
+
+    assert (_role_triggers(document, near), _role_triggers(document, far)) == (
+        ["Deactivate role", "Change cohorts"],
+        [],
+    )
+
+
 @pytest.mark.django_db
 def test_add_role_is_the_first_row_trigger(staff_client: Client) -> None:
     organisation = OrganisationFactory()

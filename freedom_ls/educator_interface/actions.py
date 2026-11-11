@@ -208,6 +208,43 @@ def roles_grantable_on(request: HttpRequest, cohort: Cohort) -> set[str]:
     }
 
 
+def role_reach(request: HttpRequest, role: str) -> set[Cohort]:
+    """The cohorts the grantor may give or take `role` on, inactive ones
+    included, computed once per role and kept on the request."""
+    scoped = cast("OrganisationScopedRequest", request)
+    cached: dict[str, set[Cohort]] | None = getattr(scoped, "role_reach", None)
+    if cached is None:
+        cached = {}
+        scoped.role_reach = cached
+    if role not in cached:
+        cached[role] = set(
+            cohorts_visible_to(
+                cast("User", scoped.user),
+                scoped.organisation,
+                capability=ASSIGN.format(role=role),
+            )
+        )
+    return cached[role]
+
+
+def actionable_roles(request: HttpRequest, entries: list[RoleEntry]) -> set[str]:
+    """The roles among `entries` the grantor may deactivate or change: an
+    organisation role they may give, and a cohort role held on at least one
+    cohort within their reach."""
+    grantable = {g.role for g in grantable_roles_for(request)}
+    return {
+        entry.role
+        for entry in entries
+        if entry.role in grantable
+        and (
+            entry.target == "organisation"
+            or any(
+                cohort in role_reach(request, entry.role) for cohort in entry.cohorts
+            )
+        )
+    }
+
+
 def role_entries_shown_to(
     request: HttpRequest, entries: list[RoleEntry]
 ) -> list[RoleEntry]:
@@ -2525,15 +2562,7 @@ class StaffRoleAction(PanelAction):
         return current_role_entries(user, _organisation(ctx))
 
     def _reach(self, ctx: PanelContext, role: str) -> set[Cohort]:
-        """The cohorts the grantor may give or take `role` on, inactive
-        ones included."""
-        return set(
-            cohorts_visible_to(
-                cast("User", ctx.request.user),
-                _organisation(ctx),
-                capability=ASSIGN.format(role=role),
-            )
-        )
+        return role_reach(ctx.request, role)
 
     def _entry(self, ctx: PanelContext, entries: list[RoleEntry]) -> RoleEntry:
         """The entry the `role` parameter names, from `entries`."""
@@ -2548,8 +2577,7 @@ class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
     """Takes one role entry off a staff member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
-    cohort in reach is a 404 dialog and a 403 submit, since the trigger
-    renders by role alone."""
+    cohort in reach has no trigger, and is a 404 dialog and a 403 submit."""
 
     label = "Deactivate role"
     action_name = "deactivate_role"
@@ -2652,7 +2680,9 @@ class CohortChange(NamedTuple):
 
 class ChangeCohortsAction(StaffRoleAction):
     """Adds and removes the cohorts of one cohort-role entry in a single
-    transaction, after a confirmation that names what is gained and lost."""
+    transaction, after a confirmation that names what is gained and lost. An
+    entry with no cohort in the grantor's reach has no trigger and is a 404:
+    giving that role on another cohort is Add role's job."""
 
     label = "Change cohorts"
     action_name = "change_cohorts"
@@ -2666,6 +2696,13 @@ class ChangeCohortsAction(StaffRoleAction):
             if grantable.role == role and grantable.cohorts is not None:
                 return grantable.cohorts
         raise Http404("This role is not given on cohorts here")
+
+    def _entry(self, ctx: PanelContext, entries: list[RoleEntry]) -> RoleEntry:
+        entry = super()._entry(ctx, entries)
+        reach = self._reach(ctx, entry.role)
+        if not any(cohort in reach for cohort in entry.cohorts):
+            raise Http404("No cohort of this role is within the grantor's reach")
+        return entry
 
     def _plan(
         self, ctx: PanelContext, entry: RoleEntry, chosen: list[Cohort]

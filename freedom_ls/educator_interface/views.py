@@ -100,6 +100,7 @@ from freedom_ls.educator_interface.actions import (
     RemoveFromCohortAction,
     RemoveStaffFromCohortAction,
     ResendSetupEmailAction,
+    actionable_roles,
     bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
@@ -269,6 +270,7 @@ class OrganisationScopedRequest(HttpRequest):
     panel_announcement: str
     panel_extra_oob: list[str]
     grantable_roles: list[GrantableRole]
+    role_reach: dict[str, set[Cohort]]
 
     may_see_staff_roles: bool
     works_with_cohorts: bool
@@ -2439,6 +2441,9 @@ class StaffDataTable(DataTable):
     default_sort = "first_name"
     empty_message = "No staff yet. Add the first staff member to give someone access to this organisation."
     empty_no_results = "No staff members match these filters."
+    # Four columns, two of them buttons, need more room than a tablet or the
+    # space beside the quick view gives.
+    cards_when_narrow = True
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -2483,6 +2488,7 @@ class StaffDataTable(DataTable):
         for row in page_obj.object_list:
             row.is_site_level = row.pk in site_level_ids
             row.role_entries = staff_role_entries(row, site)
+            row.actionable_roles = actionable_roles(request, row.role_entries)
             row.is_inactive = not any(m.is_active for m in row.member_rows)
         return page_obj
 

@@ -4656,6 +4656,23 @@ def test_a_held_cohort_outside_the_grantors_reach_is_listed_read_only(
 
 
 @pytest.mark.django_db
+def test_changing_cohorts_of_a_role_with_no_cohort_in_reach_is_refused_and_writes_nothing(
+    admin_client, organisation, monkeypatch
+):
+    unreachable = _cohort(organisation)
+    mine = _cohort(organisation)
+    user = _staff_member_holding("cohort_viewer", unreachable)
+    _reach_only(monkeypatch, mine)
+    before = _active_roles(user)
+
+    dialog = _change_dialog(admin_client, organisation, user)
+    response = _change(admin_client, organisation, user, [mine])
+
+    assert (dialog.status_code, response.status_code) == (404, 404)
+    assert _active_roles(user) == before
+
+
+@pytest.mark.django_db
 def test_an_inactive_held_cohort_is_listed_read_only(admin_client, organisation):
     active = _cohort(organisation)
     dormant = _cohort(organisation, name="Dormant group")
