@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import replace
 from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
 
@@ -56,10 +55,10 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     CohortPickerForm,
     CohortSetForm,
+    EducatorReasonForm,
     LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
-    ReasonForm,
     StaffEmailForm,
     choice_error,
 )
@@ -157,6 +156,7 @@ from freedom_ls.panel_framework.actions import (
     EditAction,
     FormPanelAction,
     PanelAction,
+    ReasonMixin,
     changed_response,
     count_noun,
     count_phrase,
@@ -382,33 +382,10 @@ class RequiresActiveCohortMixin(PanelAction):
         return super().handle_submit(ctx)
 
 
-class ReasonMixin(PanelAction):
-    """A confirm dialog that takes an optional reason, which the submit reads
-    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
-    is, so the reason is validated before any other submit handling. An
-    action with its own submit overrides handle_confirmed_submit, never
-    handle_submit, and one that builds its own context calls
-    super().get_context_data so the reason field is in it."""
+class EducatorReasonMixin(ReasonMixin):
+    """A reason dialog that words its field the educator way."""
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        context = super().get_context_data(ctx)
-        context.setdefault("reason_form", ReasonForm())
-        return context
-
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        form = ReasonForm(ctx.request.POST)
-        if not form.is_valid():
-            context = {**self.get_context_data(ctx), "reason_form": form}
-            html = render_to_string(self.template_name, context, request=ctx.request)
-            return HttpResponse(html, status=422)
-        return self.handle_confirmed_submit(
-            replace(ctx, reason=str(form.cleaned_data["reason"]))
-        )
-
-    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
-        """The submit once the reason is valid and on `ctx`: the next
-        handle_submit in the MRO."""
-        return super().handle_submit(ctx)
+    reason_form_class = EducatorReasonForm
 
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
@@ -530,7 +507,9 @@ class CohortStateAction(PanelAction):
         return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
-class DeactivateCohortAction(ReasonMixin, RequiresActiveCohortMixin, CohortStateAction):
+class DeactivateCohortAction(
+    EducatorReasonMixin, RequiresActiveCohortMixin, CohortStateAction
+):
     label = "Deactivate"
     action_name = "deactivate"
     blocked_phrase = "deactivate it"
@@ -565,7 +544,7 @@ class ReactivateCohortAction(CohortStateAction):
         )
 
 
-class DeleteEmptyCohortAction(ReasonMixin, DeleteAction):
+class DeleteEmptyCohortAction(EducatorReasonMixin, DeleteAction):
     """Deletes a cohort that has no memberships and no course registrations.
 
     A cohort that is not empty is neither offered the action nor allowed to
@@ -701,7 +680,7 @@ class LearnerStateAction(PanelAction):
         return navigation_response(current_page_within(ctx.request, ctx.page_url))
 
 
-class DeactivateLearnerAction(ReasonMixin, LearnerStateAction):
+class DeactivateLearnerAction(EducatorReasonMixin, LearnerStateAction):
     label = "Deactivate"
     action_name = "deactivate"
     target_state = False
@@ -783,7 +762,7 @@ KEEPING_NAMES_SHOWN = 10
 
 
 class DeactivateCohortRegistrationAction(
-    ReasonMixin, RequiresActiveCohortMixin, PanelAction
+    EducatorReasonMixin, RequiresActiveCohortMixin, PanelAction
 ):
     """Deactivates one of the cohort's active course registrations, after
     confirmation. The registration travels as a `registration` parameter, so
@@ -904,7 +883,7 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         return _registration_changed_response(self._learner)
 
 
-class DeactivateRegistrationAction(ReasonMixin, PanelAction):
+class DeactivateRegistrationAction(EducatorReasonMixin, PanelAction):
     """Deactivates one of the learner's active individual registrations, after
     confirmation. The registration travels as a `registration` parameter, so
     the action resolves on the registrations card and renders per row there,
@@ -1131,7 +1110,7 @@ class MembershipAction(PanelAction):
         return _membership_changed_response(ids, ids)
 
 
-class RemoveFromCohortAction(ReasonMixin, MembershipAction):
+class RemoveFromCohortAction(EducatorReasonMixin, MembershipAction):
     label = "Remove from cohort"
     action_name = "remove_from_cohort"
     blocked_phrase = "remove learners from it"
@@ -2631,7 +2610,7 @@ class StaffRoleAction(PanelAction):
         return [cohort for cohort in entry.cohorts if cohort in reach]
 
 
-class DeactivateRoleAction(ReasonMixin, StaffRoleAction):
+class DeactivateRoleAction(EducatorReasonMixin, StaffRoleAction):
     """Takes one role entry off a staff member: on the organisation, or on every
     cohort of the entry the grantor can act on. A cohort outside the
     grantor's reach keeps the role, and the dialog says so. An entry with no
@@ -2902,7 +2881,7 @@ class StaffMemberStateAction(PanelAction):
         return StaffMember.objects.filter(user=user, organisation=organisation).first()
 
 
-class DeactivateStaffMemberAction(ReasonMixin, StaffMemberStateAction):
+class DeactivateStaffMemberAction(EducatorReasonMixin, StaffMemberStateAction):
     label = "Deactivate staff member"
     action_name = "deactivate"
     template_name = "educator_interface/modal/deactivate_staff_member_confirmation.html"

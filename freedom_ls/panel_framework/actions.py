@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable
+from dataclasses import replace
 from typing import cast
 from urllib.parse import urlsplit
 
@@ -17,6 +18,7 @@ from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.panel_framework.forms import ReasonForm
 
 
 def _model_capability(model: type[Model] | Model, verb: str) -> str:
@@ -522,3 +524,34 @@ class DeleteAction(PanelAction):
 
     def has_permission(self, ctx: PanelContext) -> bool:
         return ctx.instance is not None and super().has_permission(ctx)
+
+
+class ReasonMixin(PanelAction):
+    """A confirm dialog that takes an optional reason, which the submit reads
+    from `ctx.reason`. List it first in the bases, as RequiresActiveCohortMixin
+    is, so the reason is validated before any other submit handling. An
+    action with its own submit overrides handle_confirmed_submit, never
+    handle_submit, and one that builds its own context calls
+    super().get_context_data so the reason field is in it."""
+
+    reason_form_class: type[ReasonForm] = ReasonForm
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        context = super().get_context_data(ctx)
+        context.setdefault("reason_form", self.reason_form_class())
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = self.reason_form_class(ctx.request.POST)
+        if not form.is_valid():
+            context = {**self.get_context_data(ctx), "reason_form": form}
+            html = render_to_string(self.template_name, context, request=ctx.request)
+            return HttpResponse(html, status=422)
+        return self.handle_confirmed_submit(
+            replace(ctx, reason=str(form.cleaned_data["reason"]))
+        )
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        """The submit once the reason is valid and on `ctx`: the next
+        handle_submit in the MRO."""
+        return super().handle_submit(ctx)

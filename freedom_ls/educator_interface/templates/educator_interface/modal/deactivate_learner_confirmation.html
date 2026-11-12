@@ -16,7 +16,7 @@ on_default_organisation, action_url.
             <p>If they self-register for an open course, they are reactivated.</p>
         {% endif %}
     </c-modal-body>
-    {% include "educator_interface/partials/reason_field.html" %}
+    {% include "panel_framework/partials/reason_field.html" %}
 
     <c-modal-footer>
         <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>

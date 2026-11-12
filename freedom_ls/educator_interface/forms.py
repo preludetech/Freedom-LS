@@ -6,7 +6,6 @@ from django.db.models import QuerySet
 from django.http import QueryDict
 
 from freedom_ls.accounts.models import User
-from freedom_ls.audit_log.models import REASON_LENGTH
 from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -19,6 +18,7 @@ from freedom_ls.learner_management.queries import (
     registerable_courses_for,
     registerable_courses_for_learner,
 )
+from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
@@ -297,12 +297,8 @@ class CohortSetForm(forms.Form):
     )
 
 
-class ReasonForm(forms.Form):
-    reason = forms.CharField(
-        required=False,
-        max_length=REASON_LENGTH,
-        strip=True,
-        label="Reason (optional)",
-        help_text="Only staff can see this. It is shown in the history.",
-        widget=forms.TextInput(attrs={"maxlength": str(REASON_LENGTH)}),
-    )
+class EducatorReasonForm(ReasonForm):
+    """The reason dialog's form, with the help text that tells an educator who
+    sees the reason."""
+
+    reason_help_text = "Only staff can see this. It is shown in the history."

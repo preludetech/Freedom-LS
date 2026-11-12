@@ -1,4 +1,4 @@
-"""Every action with a reason field validates it through ReasonMixin.
+"""Every educator action with a reason field validates it through ReasonMixin.
 
 ReasonMixin.handle_submit is the one place the posted reason is cleaned and
 put on the context; an action that overrides handle_submit itself, or lists
@@ -11,18 +11,20 @@ from __future__ import annotations
 import inspect
 
 from freedom_ls.educator_interface import actions
-from freedom_ls.educator_interface.actions import ReasonMixin
+from freedom_ls.panel_framework.actions import ReasonMixin
 
 
 def _reason_actions() -> list[type[ReasonMixin]]:
     return [
         cls
         for _, cls in inspect.getmembers(actions, inspect.isclass)
-        if issubclass(cls, ReasonMixin) and cls is not ReasonMixin
+        if issubclass(cls, ReasonMixin)
+        and cls is not ReasonMixin
+        and cls is not actions.EducatorReasonMixin
     ]
 
 
-def test_every_reason_action_submits_through_the_mixin():
+def test_every_reason_action_submits_through_the_mixin() -> None:
     found = _reason_actions()
     bypassing = [
         cls.__name__
@@ -30,5 +32,5 @@ def test_every_reason_action_submits_through_the_mixin():
         if cls.handle_submit is not ReasonMixin.handle_submit
     ]
 
-    assert found
+    assert len(found) == 8
     assert bypassing == []
