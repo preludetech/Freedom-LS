@@ -255,7 +255,9 @@ def test_an_answer_starting_with_a_formula_trigger_is_escaped(staff_client):
     assert row["Your name"] == "'=1+1"
 
 
-def test_an_exported_phone_answer_is_escaped_like_a_formula_trigger(staff_client):
+def test_an_exported_phone_answer_is_escaped_like_a_formula_trigger(
+    staff_client: Client,
+) -> None:
     course, form = gated_course_with_form()
     application = _application_for(course, form)
     _answer(application, _form_questions(form)[0], text_answer="+27821234567")
