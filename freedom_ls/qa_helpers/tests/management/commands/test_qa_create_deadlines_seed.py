@@ -241,16 +241,30 @@ def _item_deadline(record: CourseProgress, title: str) -> datetime | None:
     return course_deadlines(record).items[item.pk].due_at
 
 
-@pytest.mark.django_db
-def test_seed_pause_and_extension_states_survive_two_runs(qa_site):
+PAUSE_AND_EXTENSION_EMAILS = (
+    "qa_deadline_paused@email.com",
+    "qa_deadline_paused_open@email.com",
+    "qa_deadline_resumed@email.com",
+    "qa_deadline_extended@email.com",
+)
+
+
+@pytest.fixture
+def seeded_once(qa_site) -> Course:
     parts = _parts_course()
     CourseFactory(slug="functionality-demo-show-end-with-topic")
-
     call_command("qa_create_deadlines_seed")
+    return parts
+
+
+@pytest.mark.django_db
+def test_rerun_keeps_the_paused_learner_paused_with_a_planned_resume(seeded_once):
+    # Act
     call_command("qa_create_deadlines_seed")
 
+    # Assert
     now = timezone.now()
-    paused = _seed_record("qa_deadline_paused@email.com", parts)
+    paused = _seed_record("qa_deadline_paused@email.com", seeded_once)
     paused_open = open_pause(paused, now)
     assert paused_open is not None
     assert paused_open.planned_resume_on is not None
@@ -259,19 +273,41 @@ def test_seed_pause_and_extension_states_survive_two_runs(qa_site):
     assert paused.form_attempts.count() == 1
     assert paused.topic_progress.count() == 2
 
-    no_resume = _seed_record("qa_deadline_paused_open@email.com", parts)
-    no_resume_pause = open_pause(no_resume, now)
+
+@pytest.mark.django_db
+def test_rerun_keeps_the_open_ended_pause_without_a_planned_resume(seeded_once):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
+    no_resume = _seed_record("qa_deadline_paused_open@email.com", seeded_once)
+    no_resume_pause = open_pause(no_resume, timezone.now())
     assert no_resume_pause is not None
     assert no_resume_pause.planned_resume_on is None
 
-    resumed = _seed_record("qa_deadline_resumed@email.com", parts)
+
+@pytest.mark.django_db
+def test_rerun_keeps_the_resumed_learners_ended_pause(seeded_once):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
+    now = timezone.now()
+    resumed = _seed_record("qa_deadline_resumed@email.com", seeded_once)
     assert open_pause(resumed, now) is None
     pause = CoursePause._base_manager.get(course_progress=resumed)
     assert pause.ended_at is not None
     assert pause.paused_days(now, course_deadlines(resumed).zone) == 3
 
-    extended = _seed_record("qa_deadline_extended@email.com", parts)
-    assert open_pause(extended, now) is None
+
+@pytest.mark.django_db
+def test_rerun_keeps_the_extended_learners_extensions(seeded_once):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
+    extended = _seed_record("qa_deadline_extended@email.com", seeded_once)
+    assert open_pause(extended, timezone.now()) is None
     assert sorted(
         DeadlineExtension._base_manager.filter(course_progress=extended).values_list(
             "days", flat=True
@@ -281,21 +317,45 @@ def test_seed_pause_and_extension_states_survive_two_runs(qa_site):
     assert key_ideas_due is not None
     assert timedelta(days=27) < key_ideas_due - extended.created_at < timedelta(days=29)
 
-    for email in (
-        "qa_deadline_paused@email.com",
-        "qa_deadline_paused_open@email.com",
-        "qa_deadline_resumed@email.com",
-        "qa_deadline_extended@email.com",
-    ):
-        record = _seed_record(email, parts)
-        assert (
-            CourseProgress._base_manager.filter(
-                learner__user__email=email, course=parts
-            ).count()
-            == 1
-        )
-        assert now - record.created_at > timedelta(days=9)
-        assert record.topic_progress.filter(
-            topic__title="Welcome", complete_time__lt=now - timedelta(days=8)
-        ).exists()
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("email", PAUSE_AND_EXTENSION_EMAILS)
+def test_rerun_leaves_one_course_record_per_pause_and_extension_learner(
+    seeded_once, email
+):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
+    assert (
+        CourseProgress._base_manager.filter(
+            learner__user__email=email, course=seeded_once
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("email", PAUSE_AND_EXTENSION_EMAILS)
+def test_rerun_keeps_the_learners_aged_registration_and_welcome_completion(
+    seeded_once, email
+):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
+    now = timezone.now()
+    record = _seed_record(email, seeded_once)
+    assert now - record.created_at > timedelta(days=9)
+    assert record.topic_progress.filter(
+        topic__title="Welcome", complete_time__lt=now - timedelta(days=8)
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_rerun_leaves_three_pause_records_in_total(seeded_once):
+    # Act
+    call_command("qa_create_deadlines_seed")
+
+    # Assert
     assert CoursePause._base_manager.count() == 3
