@@ -434,6 +434,16 @@ def test_an_untracked_signed_in_get_writes_nothing(signed_in_client) -> None:
 
 
 @pytest.mark.django_db
+def test_a_signed_in_referral_redirect_writes_no_touch(signed_in_client) -> None:
+    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+    url = reverse("referral_tracking:follow_go", kwargs={"code": referral_code.code})
+
+    signed_in_client.get(url, {"utm_source": "x"})
+
+    assert not AttributionTouch._base_manager.exists()
+
+
+@pytest.mark.django_db
 def test_a_signed_in_tracked_get_whose_view_raises_still_writes_the_touch(
     mock_site_context, site
 ) -> None:

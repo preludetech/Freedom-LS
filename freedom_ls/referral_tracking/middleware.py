@@ -8,6 +8,7 @@ from datetime import datetime
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
 from django.http.response import HttpResponseBase
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 from django.utils.cache import patch_cache_control, patch_vary_headers
 
@@ -26,7 +27,23 @@ from freedom_ls.referral_tracking.counters import (
     increment_first_touch,
 )
 from freedom_ls.referral_tracking.models import ATTRIBUTION_KEY_FIELDS
+from freedom_ls.referral_tracking.views import follow_referral_code
 from freedom_ls.site_aware_models.models import get_cached_site
+
+
+def _is_referral_redirect(request: HttpRequest) -> bool:
+    """Whether the request is for the `/go/` or `/d/` referral redirect.
+
+    The redirect view calls `suppress_capture()` only once it runs, which is too
+    late for the signed-in touch written before the view. Resolving the path
+    here keeps that touch on the landing the redirect leads to, so its
+    `landing_path` names the real page rather than the redirect.
+    """
+    try:
+        match = resolve(request.path_info)
+    except Resolver404:
+        return False
+    return match.func is follow_referral_code
 
 
 class AttributionCaptureMiddleware:
@@ -69,7 +86,7 @@ class AttributionCaptureMiddleware:
         # request resolves no session.
         if request.user.is_authenticated:
             site = get_cached_site(request)
-            if isinstance(site, Site):
+            if isinstance(site, Site) and not _is_referral_redirect(request):
                 record_live_touch(
                     request=request,
                     user=request.user,
