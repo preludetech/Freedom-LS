@@ -746,7 +746,8 @@ class _BulkConfirmation:
             "wording": self.wording,
             "notice": self.notice,
             "expected_count": self.expected_count,
-            "confirm_disabled": self.confirm_disabled,
+            "confirm_disabled": self.confirm_disabled or bool(self.error),
+            "confirm_disabled_reason": self.error,
             "form": self.form,
         }
 

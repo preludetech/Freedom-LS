@@ -35,9 +35,9 @@ def test_instance_dialogs_and_heading(
 
     page.goto(f"{base}/{stub.pk}/__tabs/details")
 
-    # A read-only fragment focuses its heading on open.
+    # A message dialog focuses its Close button on open.
     page.get_by_role("button", name="View Info").click()
-    expect(page.get_by_role("heading", name="Stub Info")).to_be_focused()
+    expect(modal.locator("footer button[x-on\\:click=cancel]")).to_be_focused()
 
     # A click in the dialog's own padding leaves it open.
     modal.click(position={"x": 5, "y": 5})

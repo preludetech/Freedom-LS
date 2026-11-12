@@ -9442,3 +9442,131 @@ def test_the_change_role_dialog_offers_only_grantable_cohort_roles_with_the_held
     }
     assert radios == {"cohort_viewer": True, "cohort_admin": False}
     assert "Change Ada Lovelace's role on Evening group?" in _text(response)
+
+
+# the refusals answer with the framework's message dialog
+
+
+def _assert_message_dialog(response, title: str, message: str) -> None:
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 422
+    assert document.get_element_by_id("app-modal-title").text_content() == title
+    assert message in _text(response)
+    (close,) = [
+        el for el in document.iter("button") if el.text_content().strip() == "Close"
+    ]
+    assert close.get("autofocus") is not None
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1, is_active=False)
+
+    response = _post(
+        staff_client, _cohort_url(organisation, cohort, "/__actions/deactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{cohort} is inactive",
+        "The change was not made. Reactivate the cohort from its Settings tab to "
+        "deactivate it.",
+    )
+
+
+@pytest.mark.django_db
+def test_an_already_active_cohort_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 1)
+
+    response = _post(
+        staff_client, _cohort_url(organisation, cohort, "/__actions/reactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{cohort} is already active",
+        "Nothing changed. Someone else may have reactivated it already.",
+    )
+
+
+@pytest.mark.django_db
+def test_an_already_changed_learner_refusal_is_a_message_dialog(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    response = _post(
+        staff_client, _learner_state_url(organisation, learner, "reactivate")
+    )
+
+    _assert_message_dialog(
+        response,
+        f"{learner.user.display_name} was already changed",
+        "Nothing changed. Someone else may have already used Reactivate on this "
+        "learner.",
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_recently_sent_setup_email_refusal_is_a_message_dialog(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(staff_client, _resend_url(organisation, learner))
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    minutes = config.SETUP_EMAIL_RESEND_SECONDS // 60
+    _assert_message_dialog(
+        response,
+        "Setup email sent recently",
+        f"{learner.user.display_name} was sent a setup email recently. "
+        f"Try again in {minutes} minutes.",
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_an_already_set_up_account_refusal_is_a_message_dialog(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    name = learner.user.display_name
+    _assert_message_dialog(
+        response,
+        f"{name} has already set up their account",
+        f"Nothing was sent. {name} has signed in or set a password since this "
+        "page loaded.",
+    )
+
+
+@pytest.mark.django_db
+def test_a_refused_role_change_is_a_message_dialog(
+    admin_client, organisation, monkeypatch
+):
+    UserFactory(email="ada@example.com")
+
+    def refuse(*args: object, **kwargs: object) -> None:
+        raise RoleChangeRefused(RefusalReason.SELF)
+
+    monkeypatch.setattr("freedom_ls.educator_interface.actions.assign_role", refuse)
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    _assert_message_dialog(
+        response,
+        "This change wasn't made",
+        "You can't change your own roles. Ask another organisation admin.",
+    )

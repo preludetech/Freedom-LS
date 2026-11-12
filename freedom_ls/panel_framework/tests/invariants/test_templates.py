@@ -370,11 +370,11 @@ HAND_PADDED_BODY = re.compile(r'<div class="[^"]*\bpx-6\b[^"]*"')
 
 
 def _dialog_parts_source(path: Path) -> str:
-    """The template's text, with read_only.html's parts counted for its children."""
+    """The template's text, with message.html's parts counted for its children."""
     text = path.read_text()
-    if '{% extends "panel_framework/modal/read_only.html" %}' in text:
+    if '{% extends "panel_framework/modal/message.html" %}' in text:
         text += (
-            TEMPLATES_DIR / "panel_framework" / "modal" / "read_only.html"
+            TEMPLATES_DIR / "panel_framework" / "modal" / "message.html"
         ).read_text()
     return text
 

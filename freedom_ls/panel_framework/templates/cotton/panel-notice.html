@@ -1,0 +1,18 @@
+<c-vars tone="info" title="" />
+
+{% comment %}
+A compact boxed sentence inside a panel or dialog, toned from the theme
+tokens, with no outer margin of its own (the parent spaces its children).
+
+Attributes:
+  tone   info (default), warning, error or success. `error` is an alert and
+         `success` a status, so a screen reader announces each when it
+         appears; `info` and `warning` are read in place.
+  title  A bold first line above the slot (default none).
+
+The default slot is the sentence.
+{% endcomment %}
+<div class="rounded-md border p-3 text-sm text-on-surface {% if tone == 'error' %}border-error/20 bg-error/10{% elif tone == 'warning' %}border-warning/20 bg-warning/10{% elif tone == 'success' %}border-success/20 bg-success/10{% else %}border-info/20 bg-info/10{% endif %}"{% if tone == 'error' %} role="alert"{% elif tone == 'success' %} role="status"{% endif %} {{ attrs }}>
+    {% if title %}<strong class="block font-semibold">{{ title }}</strong>{% endif %}
+    {{ slot }}
+</div>

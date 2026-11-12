@@ -1,7 +1,8 @@
 {% comment %}
 The modal fragment a bulk action's htmx POST returns, loaded into the shared
 #app-modal. Context: title, action, action_url, selection, count, noun, error, notice,
-wording, expected_count, confirm_disabled, form (the action's own form, if any).
+wording, expected_count, confirm_disabled, confirm_disabled_reason (the text that
+disables the confirm button), form (the action's own form, if any).
 With JavaScript off the server renders it into #app-modal, open over the page,
 and passes page_url: Cancel and the close control are then links back to it.
 {% endcomment %}
