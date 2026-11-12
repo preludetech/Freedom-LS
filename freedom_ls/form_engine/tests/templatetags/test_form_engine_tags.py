@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.http import HttpRequest
 from django.template import Context, Template
 from django.template.loader import render_to_string
@@ -310,6 +311,52 @@ def test_phone_field_state_preselects_the_browser_country_without_an_answer(
     )
 
     assert (state["country"], state["number"]) == ("GB", "")
+
+
+def _american_browser_post(question: FormQuestion, country: str) -> HttpRequest:
+    return RequestFactory().post(
+        "/",
+        {f"phone_country_{question.id}": country, f"question_{question.id}": ""},
+        HTTP_ACCEPT_LANGUAGE="en-US",
+    )
+
+
+@pytest.mark.django_db
+def test_phone_field_state_keeps_the_submitted_country_beside_a_blank_number(
+    mock_site_context: Site,
+) -> None:
+    question = FormQuestionFactory(type="phone")
+
+    state = phone_field_state(
+        _phone_context(question, request=_american_browser_post(question, "ZA"))
+    )
+
+    assert (state["country"], state["number"]) == ("ZA", "")
+
+
+@pytest.mark.django_db
+def test_phone_field_state_keeps_a_submitted_empty_country_over_the_browser(
+    mock_site_context: Site,
+) -> None:
+    question = FormQuestionFactory(type="phone")
+
+    state = phone_field_state(
+        _phone_context(question, request=_american_browser_post(question, ""))
+    )
+
+    assert state["country"] == ""
+
+
+@pytest.mark.django_db
+def test_phone_field_state_takes_the_browser_country_on_a_post_from_another_page(
+    mock_site_context: Site,
+) -> None:
+    question = FormQuestionFactory(type="phone")
+    request = RequestFactory().post("/", {}, HTTP_ACCEPT_LANGUAGE="en-GB")
+
+    state = phone_field_state(_phone_context(question, request=request))
+
+    assert state["country"] == "GB"
 
 
 @pytest.mark.django_db
