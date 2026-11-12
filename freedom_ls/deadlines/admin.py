@@ -32,8 +32,9 @@ from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
-from freedom_ls.deadlines.admin_views import pause_view, resume_view
+from freedom_ls.deadlines.admin_views import extend_view, pause_view, resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
+from freedom_ls.deadlines.forms import CollectionItemChoiceField
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
@@ -43,6 +44,7 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     CourseDeadlineConfig,
     CoursePause,
+    DeadlineExtension,
     DeadlineKind,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
@@ -89,14 +91,6 @@ def duplicate_error(collection_item_id: UUID | None) -> ValidationError:
     if collection_item_id is None:
         return ValidationError(TIME_LIMIT_DUPLICATE, code="unique")
     return ValidationError(ITEM_DUPLICATE, code="unique")
-
-
-class CollectionItemChoiceField(forms.ModelChoiceField):
-    def label_from_instance(self, obj: ContentCollectionItem) -> str:
-        child = obj.child
-        if child is None:
-            return str(obj.pk)
-        return f"{child.title} ({child.file_path})"
 
 
 class DeadlineOverrideForm(ConstraintValidationFormMixin):
@@ -463,13 +457,28 @@ def effective_deadline_policy(
     )
 
 
-class CoursePauseInline(TabularInline):
+class ReadOnlyInline(TabularInline):
+    """A record's rows that only a service writes, so the inline offers no add, change or
+    delete."""
+
+    exclude = ["site"]
+    extra = 0
+
+    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+
+class CoursePauseInline(ReadOnlyInline):
     """A record's pauses, newest first. Read-only: a pause is started and ended through the
     pause and resume pages, which write the audit entry and the webhook with it."""
 
     model = CoursePause
-    exclude = ["site"]
-    extra = 0
     fields = [
         "started_at",
         "planned_resume_on",
@@ -482,15 +491,6 @@ class CoursePauseInline(TabularInline):
     ]
     readonly_fields = fields
     verbose_name = "pause"
-
-    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
 
     def get_queryset(self, request: HttpRequest) -> models.QuerySet[CoursePause]:
         rows: models.QuerySet[CoursePause] = super().get_queryset(request)
@@ -586,6 +586,77 @@ class CoursePauseAdmin(SiteAwareModelAdmin):
         return False
 
 
+class DeadlineExtensionInline(ReadOnlyInline):
+    """A record's extensions, newest first. Read-only: an extension is added through the
+    extend page, which writes the audit entry, the webhook and the notification with it."""
+
+    model = DeadlineExtension
+    fields = [
+        "created_at",
+        "target_kind",
+        "collection_item",
+        "days",
+        "requested_date",
+        "reason",
+        "set_by",
+    ]
+    readonly_fields = fields
+    verbose_name = "deadline extension"
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineExtension]:
+        rows: models.QuerySet[DeadlineExtension] = super().get_queryset(request)
+        return (
+            rows.select_related("site", "set_by", "collection_item")
+            .prefetch_related("collection_item__child")
+            .order_by("-created_at")
+        )
+
+
+@admin.register(DeadlineExtension)
+class DeadlineExtensionAdmin(SiteAwareModelAdmin):
+    """Every extension on the site, for finding who was given more time and by whom."""
+
+    list_display = [
+        "course_progress",
+        "created_at",
+        "target_kind",
+        "collection_item",
+        "days",
+        "set_by",
+    ]
+    list_filter = [
+        ("course_progress__course", AutocompleteSelectFilter),
+        "target_kind",
+        ("set_by", RelatedDropdownFilter),
+        ("created_at", InclusiveRangeDateTimeFilter),
+    ]
+    list_filter_submit = True
+    list_select_related = (
+        "course_progress__learner__user",
+        "course_progress__course",
+        "collection_item",
+        "set_by",
+    )
+    search_fields = (
+        "course_progress__learner__user__email",
+        "course_progress__learner__user__first_name",
+        "course_progress__learner__user__last_name",
+    )
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineExtension]:
+        rows: models.QuerySet[DeadlineExtension] = super().get_queryset(request)
+        return rows.prefetch_related("collection_item__child")
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+
 # This change page belongs to an app below this one in docs/app_structure.md, so the override
 # inline is added from here rather than imported there. The seam adds rather than replaces.
 CohortCourseRegistrationAdmin.inlines = [
@@ -600,6 +671,7 @@ CourseProgressAdmin.inlines = [
     *CourseProgressAdmin.inlines,
     LearnerDeadlineOverrideInline,
     CoursePauseInline,
+    DeadlineExtensionInline,
 ]
 setattr(CourseProgressAdmin, "effective_deadlines", effective_deadlines)  # noqa: B010
 setattr(  # noqa: B010
@@ -629,6 +701,7 @@ setattr(  # noqa: B010
 
 PAUSE_URL_NAME = "freedom_ls_learner_progress_courseprogress_pause"
 RESUME_URL_NAME = "freedom_ls_learner_progress_courseprogress_resume"
+EXTEND_URL_NAME = "freedom_ls_learner_progress_courseprogress_extend"
 
 
 @unfold_action(
@@ -649,6 +722,17 @@ def resume_course_action(
     return redirect(reverse(f"admin:{RESUME_URL_NAME}", args=[object_id]))
 
 
+@unfold_action(
+    description="Extend deadline",
+    url_path="extend-deadline-action",
+    permissions=["change"],
+)
+def extend_deadline_action(
+    model_admin: ModelAdmin, request: HttpRequest, object_id: str
+) -> HttpResponseRedirect:
+    return redirect(reverse(f"admin:{EXTEND_URL_NAME}", args=[object_id]))
+
+
 # The wrappers call the implementation they replace by name: zero-argument super() has no
 # class cell in a function defined outside the class body.
 _courseprogress_get_urls = CourseProgressAdmin.get_urls
@@ -666,6 +750,11 @@ def _get_urls(self: CourseProgressAdmin) -> list[URLPattern]:
             "<path:object_id>/resume/",
             self.admin_site.admin_view(partial(resume_view, model_admin=self)),
             name=RESUME_URL_NAME,
+        ),
+        path(
+            "<path:object_id>/extend/",
+            self.admin_site.admin_view(partial(extend_view, model_admin=self)),
+            name=EXTEND_URL_NAME,
         ),
         *list(_courseprogress_get_urls(self)),
     ]
@@ -687,6 +776,7 @@ def _get_actions_detail(
 
 setattr(CourseProgressAdmin, "pause_course_action", pause_course_action)  # noqa: B010
 setattr(CourseProgressAdmin, "resume_course_action", resume_course_action)  # noqa: B010
+setattr(CourseProgressAdmin, "extend_deadline_action", extend_deadline_action)  # noqa: B010
 setattr(CourseProgressAdmin, "get_urls", _get_urls)  # noqa: B010
 setattr(CourseProgressAdmin, "get_actions_detail", _get_actions_detail)  # noqa: B010
 setattr(  # noqa: B010
@@ -696,6 +786,7 @@ setattr(  # noqa: B010
         *getattr(CourseProgressAdmin, "actions_detail", []),
         "pause_course_action",
         "resume_course_action",
+        "extend_deadline_action",
     ],
 )
 
