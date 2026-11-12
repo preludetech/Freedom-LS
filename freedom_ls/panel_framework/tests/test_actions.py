@@ -1116,9 +1116,6 @@ def test_the_delete_fragment_lists_cancel_then_delete_after_its_body(
     assert document.cssselect("form footer button[type='submit']")
 
 
-# -- ConfirmAction tests -------------------------------------------------
-
-
 class StubConfirmAction(ConfirmAction):
     label = "Archive"
     action_name = "stub_confirm"
