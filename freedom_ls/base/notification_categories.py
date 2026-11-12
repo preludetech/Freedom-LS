@@ -64,6 +64,15 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         colour=NotificationColour.SUCCESS,
     ),
     NotificationCategory(
+        key="deadline.extended",
+        label=_("Deadline extended"),
+        icon="deadline",
+        message=_("%(summary)s"),
+        url_builder="freedom_ls.learner_interface.notification_urls.course_detail_url",
+        colour=NotificationColour.INFO,
+        rollup=False,
+    ),
+    NotificationCategory(
         key="bulk_action.finished",
         label=_("Bulk action"),
         icon="check_all",

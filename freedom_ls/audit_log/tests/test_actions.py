@@ -171,6 +171,21 @@ def test_the_registry_is_built_once_per_value_of_the_setting():
         ("course.paused", {"planned_resume_on": None}, "No planned resume"),
         ("course.resumed", {"shift_days": 1}, "Deadlines moved by 1 day"),
         ("course.resumed", {"shift_days": 4}, "Deadlines moved by 4 days"),
+        (
+            "deadline.extended",
+            {"target_kind": "collection_item", "collection_item": "Week 1", "days": 3},
+            "Week 1 +3 days",
+        ),
+        (
+            "deadline.extended",
+            {"target_kind": "time_limit", "collection_item": None, "days": 1},
+            "Course time limit +1 day",
+        ),
+        (
+            "deadline.extended",
+            {"target_kind": "course", "collection_item": None, "days": 5},
+            "Whole course +5 days",
+        ),
     ],
 )
 def test_course_progress_actions_describe_their_details(code, details, expected):
