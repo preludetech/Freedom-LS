@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
@@ -181,3 +182,26 @@ def test_email_address_verify_action_skips_an_address_on_another_site(
 
     other_site_email_address.refresh_from_db()
     assert other_site_email_address.verified is False
+
+
+@pytest.mark.django_db
+def test_user_admin_change_form_post_leaves_the_stored_picture_unchanged(staff_client):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    url = reverse("admin:freedom_ls_accounts_user_change", args=[user.pk])
+
+    staff_client.post(
+        url,
+        {
+            "email": user.email,
+            "first_name": "Changed",
+            "last_name": "",
+            "is_active": "on",
+            "profile_picture": SimpleUploadedFile(
+                "evil.png", b"not an image", content_type="image/png"
+            ),
+        },
+    )
+
+    user = User._base_manager.get(pk=user.pk)
+    assert user.profile_picture.name == stored_name
