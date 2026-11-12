@@ -1,0 +1,577 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - navigation [ref=f3e5]:
+      - generic [ref=f3e7]:
+        - link "settings" [ref=f3e8] [cursor=pointer]:
+          - /url: /admin/
+        - link "Django administration" [ref=f3e13] [cursor=pointer]:
+          - /url: /admin/
+      - region "scrollable content" [ref=f3e17]:
+        - generic [ref=f3e18]:
+          - list [ref=f3e20]:
+            - listitem [ref=f3e21]:
+              - heading [level=2] [ref=f3e22]:
+                - link "Accounts" [ref=f3e23] [cursor=pointer]:
+                  - /url: /admin/account/
+              - list [ref=f3e24]:
+                - listitem [ref=f3e25]:
+                  - link "Email addresses" [ref=f3e26] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/
+          - list [ref=f3e28]:
+            - listitem [ref=f3e29]:
+              - heading [level=2] [ref=f3e30]:
+                - link "Accounts" [ref=f3e31] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_accounts/
+              - list [ref=f3e32]:
+                - listitem [ref=f3e33]:
+                  - link "Legal consents" [ref=f3e34] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/legalconsent/
+                - listitem [ref=f3e35]:
+                  - link "Site signup policys" [ref=f3e36] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/
+                - listitem [ref=f3e37]:
+                  - link "Users" [ref=f3e38] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/
+          - list [ref=f3e40]:
+            - listitem [ref=f3e41]:
+              - heading [level=2] [ref=f3e42]:
+                - link "API" [ref=f3e43] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_api/
+              - list [ref=f3e44]:
+                - listitem [ref=f3e45]:
+                  - link "API keys" [ref=f3e46] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_api/apikey/
+          - list [ref=f3e48]:
+            - listitem [ref=f3e49]:
+              - heading [level=2] [ref=f3e50]:
+                - link "Audit log" [ref=f3e51] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_audit_log/
+              - list [ref=f3e52]:
+                - listitem [ref=f3e53]:
+                  - link "Audit log entries" [ref=f3e54] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_audit_log/auditlogentry/
+          - list [ref=f3e56]:
+            - listitem [ref=f3e57]:
+              - heading [level=2] [ref=f3e58]:
+                - link "Axes" [ref=f3e59] [cursor=pointer]:
+                  - /url: /admin/axes/
+              - list [ref=f3e60]:
+                - listitem [ref=f3e61]:
+                  - link "Access attempts" [ref=f3e62] [cursor=pointer]:
+                    - /url: /admin/axes/accessattempt/
+                - listitem [ref=f3e63]:
+                  - link "Access failures" [ref=f3e64] [cursor=pointer]:
+                    - /url: /admin/axes/accessfailurelog/
+                - listitem [ref=f3e65]:
+                  - link "Access logs" [ref=f3e66] [cursor=pointer]:
+                    - /url: /admin/axes/accesslog/
+          - list [ref=f3e68]:
+            - listitem [ref=f3e69]:
+              - heading [level=2] [ref=f3e70]:
+                - link "Content engine" [ref=f3e71] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_content_engine/
+              - list [ref=f3e72]:
+                - listitem [ref=f3e73]:
+                  - link "Activities" [ref=f3e74] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/
+                - listitem [ref=f3e75]:
+                  - link "Articles" [ref=f3e76] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/article/
+                - listitem [ref=f3e77]:
+                  - link "Content collection items" [ref=f3e78] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/
+                - listitem [ref=f3e79]:
+                  - link "Course categorys" [ref=f3e80] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursecategory/
+                - listitem [ref=f3e81]:
+                  - link "Course parts" [ref=f3e82] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/
+                - listitem [ref=f3e83]:
+                  - link "Courses" [ref=f3e84] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/
+                - listitem [ref=f3e85]:
+                  - link "Files" [ref=f3e86] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/
+                - listitem [ref=f3e87]:
+                  - link "Topics" [ref=f3e88] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/
+          - list [ref=f3e90]:
+            - listitem [ref=f3e91]:
+              - heading [level=2] [ref=f3e92]:
+                - link "Course applications" [ref=f3e93] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_applications/
+              - list [ref=f3e94]:
+                - listitem [ref=f3e95]:
+                  - link "Anonymous applicants" [ref=f3e96] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_applications/anonymousapplicant/
+                - listitem [ref=f3e97]:
+                  - link "Course applications" [ref=f3e98] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_applications/courseapplication/
+          - list [ref=f3e100]:
+            - listitem [ref=f3e101]:
+              - heading [level=2] [ref=f3e102]:
+                - link "Course interest" [ref=f3e103] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_interest/
+              - list [ref=f3e104]:
+                - listitem [ref=f3e105]:
+                  - link "Course interests" [ref=f3e106] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/
+          - list [ref=f3e108]:
+            - listitem [ref=f3e109]:
+              - heading [level=2] [ref=f3e110]:
+                - link "Course recommendations" [ref=f3e111] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_recommendations/
+              - list [ref=f3e112]:
+                - listitem [ref=f3e113]:
+                  - link "Recommended courses" [ref=f3e114] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/
+          - list [ref=f3e116]:
+            - listitem [ref=f3e117]:
+              - heading [level=2] [ref=f3e118]:
+                - link "Deadlines" [ref=f3e119] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_deadlines/
+              - list [ref=f3e120]:
+                - listitem [ref=f3e121]:
+                  - link "Cohort course registration deadline configs" [ref=f3e122] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/cohortcourseregistrationdeadlineconfig/
+                - listitem [ref=f3e123]:
+                  - link "Cohort deadline configs" [ref=f3e124] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/cohortdeadlineconfig/
+                - listitem [ref=f3e125]:
+                  - link "Course deadline configs" [ref=f3e126] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/coursedeadlineconfig/
+                - listitem [ref=f3e127]:
+                  - link "Learner course registration deadline configs" [ref=f3e128] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/learnercourseregistrationdeadlineconfig/
+                - listitem [ref=f3e129]:
+                  - link "Organisation deadline configs" [ref=f3e130] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/organisationdeadlineconfig/
+                - listitem [ref=f3e131]:
+                  - link "Site deadline configs" [ref=f3e132] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_deadlines/sitedeadlineconfig/
+          - list [ref=f3e134]:
+            - listitem [ref=f3e135]:
+              - heading [level=2] [ref=f3e136]:
+                - link "Form engine" [ref=f3e137] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_form_engine/
+              - list [ref=f3e138]:
+                - listitem [ref=f3e139]:
+                  - link "Form contents" [ref=f3e140] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/
+                - listitem [ref=f3e141]:
+                  - link "Form pages" [ref=f3e142] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/
+                - listitem [ref=f3e143]:
+                  - link "Form progress records" [ref=f3e144] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/
+                - listitem [ref=f3e145]:
+                  - link "Form questions" [ref=f3e146] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/
+                - listitem [ref=f3e147]:
+                  - link "Forms" [ref=f3e148] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/
+                - listitem [ref=f3e149]:
+                  - link "Question answer files" [ref=f3e150] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswerfile/
+                - listitem [ref=f3e151]:
+                  - link "Question answers" [ref=f3e152] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/
+                - listitem [ref=f3e153]:
+                  - link "Question options" [ref=f3e154] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/
+          - list [ref=f3e156]:
+            - listitem [ref=f3e157]:
+              - heading [level=2] [ref=f3e158]:
+                - link "HR attributes" [ref=f3e159] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/
+              - list [ref=f3e160]:
+                - listitem [ref=f3e161]:
+                  - link "Departments" [ref=f3e162] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/department/
+                - listitem [ref=f3e163]:
+                  - link "Job titles" [ref=f3e164] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/jobtitle/
+                - listitem [ref=f3e165]:
+                  - link "Locations" [ref=f3e166] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/location/
+          - list [ref=f3e168]:
+            - listitem [ref=f3e169]:
+              - heading [level=2] [ref=f3e170]:
+                - link "Learner management" [ref=f3e171] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_management/
+              - list [ref=f3e172]:
+                - listitem [ref=f3e173]:
+                  - link "Cohort course registrations" [ref=f3e174] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/
+                - listitem [ref=f3e175]:
+                  - link "Cohorts" [ref=f3e176] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/
+                - listitem [ref=f3e177]:
+                  - link "Learner course registrations" [ref=f3e178] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/
+                - listitem [ref=f3e179]:
+                  - link "Learners" [ref=f3e180] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/
+          - list [ref=f3e182]:
+            - listitem [ref=f3e183]:
+              - heading [level=2] [ref=f3e184]:
+                - link "Learner progress" [ref=f3e185] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_progress/
+              - list [ref=f3e186]:
+                - listitem [ref=f3e187]:
+                  - link "Course form attempts" [ref=f3e188] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/
+                - listitem [ref=f3e189]:
+                  - link "Course progress records" [ref=f3e190] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/
+                - listitem [ref=f3e191]:
+                  - link "Topic progress records" [ref=f3e192] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/
+          - list [ref=f3e194]:
+            - listitem [ref=f3e195]:
+              - heading [level=2] [ref=f3e196]:
+                - link "Mail" [ref=f3e197] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/
+              - list [ref=f3e198]:
+                - listitem [ref=f3e199]:
+                  - link "Outbound emails" [ref=f3e200] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/
+          - list [ref=f3e202]:
+            - listitem [ref=f3e203]:
+              - heading [level=2] [ref=f3e204]:
+                - link "Messaging policy" [ref=f3e205] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_messaging_policy/
+              - list [ref=f3e206]:
+                - listitem [ref=f3e207]:
+                  - link "Cohort course registration messaging configs" [ref=f3e208] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/cohortcourseregistrationmessagingconfig/
+                - listitem [ref=f3e209]:
+                  - link "Cohort messaging configs" [ref=f3e210] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/cohortmessagingconfig/
+                - listitem [ref=f3e211]:
+                  - link "Learner course registration messaging configs" [ref=f3e212] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/learnercourseregistrationmessagingconfig/
+                - listitem [ref=f3e213]:
+                  - link "Learner messaging configs" [ref=f3e214] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/learnermessagingconfig/
+                - listitem [ref=f3e215]:
+                  - link "Organisation messaging configs" [ref=f3e216] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/organisationmessagingconfig/
+                - listitem [ref=f3e217]:
+                  - link "Site messaging configs" [ref=f3e218] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_messaging_policy/sitemessagingconfig/
+          - list [ref=f3e220]:
+            - listitem [ref=f3e221]:
+              - heading [level=2] [ref=f3e222]:
+                - link "Organisations" [ref=f3e223] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_organisations/
+              - list [ref=f3e224]:
+                - listitem [ref=f3e225]:
+                  - link "Organisations" [ref=f3e226] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/
+          - list [ref=f3e228]:
+            - listitem [ref=f3e229]:
+              - heading [level=2] [ref=f3e230]:
+                - link "Referral tracking" [ref=f3e231] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_referral_tracking/
+              - list [ref=f3e232]:
+                - listitem [ref=f3e233]:
+                  - link "First touch counts" [ref=f3e234] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/firsttouchcount/
+                - listitem [ref=f3e235]:
+                  - link "Referral code hits" [ref=f3e236] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcodehit/
+                - listitem [ref=f3e237]:
+                  - link "Referral codes" [ref=f3e238] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/
+                - listitem [ref=f3e239]:
+                  - link "Signup attributions" [ref=f3e240] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/signupattribution/
+          - list [ref=f3e242]:
+            - listitem [ref=f3e243]:
+              - heading [level=2] [ref=f3e244]:
+                - link "Registration rules" [ref=f3e245] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_registration_rules/
+              - list [ref=f3e246]:
+                - listitem [ref=f3e247]:
+                  - link "Registration rules" [ref=f3e248] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_registration_rules/registrationrule/
+          - list [ref=f3e250]:
+            - listitem [ref=f3e251]:
+              - heading [level=2] [ref=f3e252]:
+                - link "Reports" [ref=f3e253] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_reports/
+              - list [ref=f3e254]:
+                - listitem [ref=f3e255]:
+                  - link "Generated reports" [ref=f3e256] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_reports/generatedreport/
+          - list [ref=f3e258]:
+            - listitem [ref=f3e259]:
+              - heading [level=2] [ref=f3e260]:
+                - link "Site aware models" [ref=f3e261] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_site_aware_models/
+              - list [ref=f3e262]:
+                - listitem [ref=f3e263]:
+                  - link "Site time zones" [ref=f3e264] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_site_aware_models/sitetimezoneconfig/
+          - list [ref=f3e266]:
+            - listitem [ref=f3e267]:
+              - heading [level=2] [ref=f3e268]:
+                - link "Tasks Database Backend" [ref=f3e269] [cursor=pointer]:
+                  - /url: /admin/django_tasks_database/
+              - list [ref=f3e270]:
+                - listitem [ref=f3e271]:
+                  - link "Task Results" [ref=f3e272] [cursor=pointer]:
+                    - /url: /admin/django_tasks_database/dbtaskresult/
+          - list [ref=f3e274]:
+            - listitem [ref=f3e275]:
+              - heading [level=2] [ref=f3e276]:
+                - link "Webhooks" [ref=f3e277] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_webhooks/
+              - list [ref=f3e278]:
+                - listitem [ref=f3e279]:
+                  - link "Webhook deliveries" [ref=f3e280] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookdelivery/
+                - listitem [ref=f3e281]:
+                  - link "Webhook endpoints" [ref=f3e282] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/
+                - listitem [ref=f3e283]:
+                  - link "Webhook events" [ref=f3e284] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookevent/
+                - listitem [ref=f3e285]:
+                  - link "Webhook secrets" [ref=f3e286] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/
+      - generic [ref=f3e288] [cursor=pointer]:
+        - generic [ref=f3e289]: D
+        - generic [ref=f3e290]:
+          - generic [ref=f3e291]: demodev@email.com
+          - generic [ref=f3e292]: demodev@email.com
+        - generic [ref=f3e293]: unfold_more
+    - generic [ref=f3e294]:
+      - generic [ref=f3e299]:
+        - generic [ref=f3e300] [cursor=pointer]: dock_to_right
+        - heading "Mail chevron_right Outbound emails" [level=1] [ref=f3e303]:
+          - link "Mail" [ref=f3e304] [cursor=pointer]:
+            - /url: /admin/freedom_ls_mail/
+          - generic [ref=f3e305]: chevron_right
+          - link "Outbound emails" [ref=f3e306] [cursor=pointer]:
+            - /url: /admin/freedom_ls_mail/outboundemail/
+      - list [ref=f3e309]:
+        - listitem [ref=f3e310]:
+          - generic [ref=f3e311]: Successfully signed in as demodev@email.com.
+      - generic [ref=f3e317]:
+        - generic [ref=f3e318]:
+          - search [ref=f3e320]:
+            - generic [ref=f3e321]:
+              - button "search" [ref=f3e322]
+              - textbox "Type to search" [ref=f3e324]
+              - generic [ref=f3e325]: /
+          - generic [ref=f3e326] [cursor=pointer]:
+            - text: Filters
+            - generic [ref=f3e327]: filter_list
+        - region "scrollable content" [ref=f3e333]:
+          - table [ref=f3e335]:
+            - rowgroup [ref=f3e336]:
+              - row [ref=f3e337]:
+                - columnheader [ref=f3e338]:
+                  - checkbox "Select all objects on this page for an action" [ref=f3e342]: check_small
+                - columnheader "Recipients" [ref=f3e343]
+                - columnheader [ref=f3e346]:
+                  - link "Subject" [ref=f3e349] [cursor=pointer]:
+                    - /url: "?o=2"
+                - columnheader [ref=f3e350]:
+                  - link "Status" [ref=f3e353] [cursor=pointer]:
+                    - /url: "?o=3"
+                - columnheader [ref=f3e354]:
+                  - link "Attempt count" [ref=f3e357] [cursor=pointer]:
+                    - /url: "?o=4"
+                - columnheader [ref=f3e358]:
+                  - link "Next attempt at" [ref=f3e361] [cursor=pointer]:
+                    - /url: "?o=5"
+                - columnheader [ref=f3e362]:
+                  - link "Last attempt at" [ref=f3e365] [cursor=pointer]:
+                    - /url: "?o=6"
+                - columnheader "Last error" [ref=f3e366]
+            - rowgroup [ref=f3e369]:
+              - row [ref=f3e370]:
+                - cell [ref=f3e371]:
+                  - checkbox "Select record" [ref=f3e372]: check_small
+                - rowheader [ref=f3e373]:
+                  - link "qa-claim-1794416980383@example.test" [ref=f3e374] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/ef9fe5f7-84c9-4701-80d3-0b3323bf4f61/change/
+                - cell "[FirstClass] Continue your application for Functionality Demo - Application gated course" [ref=f3e375]
+                - cell "Sent" [ref=f3e376]
+                - cell "1" [ref=f3e377]
+                - cell "Nov. 11, 2026, 5:09 p.m." [ref=f3e378]
+                - cell "Nov. 11, 2026, 5:09 p.m." [ref=f3e379]
+                - cell [ref=f3e380]
+            - rowgroup [ref=f3e381]:
+              - row [ref=f3e382]:
+                - cell [ref=f3e383]:
+                  - checkbox "Select record" [ref=f3e384]: check_small
+                - rowheader [ref=f3e385]:
+                  - link "learner@example.test" [ref=f3e386] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/cdb9e6fc-89dd-4f11-b8f9-119c28c47c82/change/
+                - cell "QA Row C scrubbed dead letter" [ref=f3e387]
+                - cell "Dead Letter" [ref=f3e388]
+                - cell "6" [ref=f3e389]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e390]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e391]
+                - 'cell "builtins.ConnectionRefusedError: mail host is not listening" [ref=f3e392]'
+            - rowgroup [ref=f3e393]:
+              - row [ref=f3e394]:
+                - cell [ref=f3e395]:
+                  - checkbox "Select record" [ref=f3e396]: check_small
+                - rowheader [ref=f3e397]:
+                  - link "learner@example.test" [ref=f3e398] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/ca3789b3-41b6-4dc4-b28e-38038068647d/change/
+                - cell "QA Row D sent" [ref=f3e399]
+                - cell "Sent" [ref=f3e400]
+                - cell "1" [ref=f3e401]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e402]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e403]
+                - cell [ref=f3e404]
+            - rowgroup [ref=f3e405]:
+              - row [ref=f3e406]:
+                - cell [ref=f3e407]:
+                  - checkbox "Select record" [ref=f3e408]: check_small
+                - rowheader [ref=f3e409]:
+                  - link "learner@example.test" [ref=f3e410] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/b8d2aef1-a50e-4915-b4d4-db7d58ad39c7/change/
+                - cell "QA Row B permanent failure" [ref=f3e411]
+                - cell "Sent" [ref=f3e412]
+                - cell "1" [ref=f3e413]
+                - cell "Nov. 11, 2026, 5:05 p.m." [ref=f3e414]
+                - cell "Nov. 11, 2026, 5:05 p.m." [ref=f3e415]
+                - cell [ref=f3e416]
+            - rowgroup [ref=f3e417]:
+              - row [ref=f3e418]:
+                - cell [ref=f3e419]:
+                  - checkbox "Select record" [ref=f3e420]: check_small
+                - rowheader [ref=f3e421]:
+                  - link "search-me@example.test" [ref=f3e422] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/7ebb36c5-ddf3-4450-9c57-01090f8aa14f/change/
+                - cell "Findable subject QA" [ref=f3e423]
+                - cell "Permanent Failure" [ref=f3e424]
+                - cell "1" [ref=f3e425]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e426]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e427]
+                - 'cell "smtplib.SMTPDataError: (550, b''mailbox unavailable'')" [ref=f3e428]'
+            - rowgroup [ref=f3e429]:
+              - row [ref=f3e430]:
+                - cell [ref=f3e431]:
+                  - checkbox "Select record" [ref=f3e432]: check_small
+                - rowheader [ref=f3e433]:
+                  - link "learner@example.test" [ref=f3e434] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/6dc1d1e0-f71e-4027-9ba8-fb75f5bd006b/change/
+                - cell "QA Row F failed due" [ref=f3e435]
+                - cell "Sent" [ref=f3e436]
+                - cell "3" [ref=f3e437]
+                - cell "Nov. 11, 2026, 5:06 p.m." [ref=f3e438]
+                - cell "Nov. 11, 2026, 5:06 p.m." [ref=f3e439]
+                - cell [ref=f3e440]
+            - rowgroup [ref=f3e441]:
+              - row [ref=f3e442]:
+                - cell [ref=f3e443]:
+                  - checkbox "Select record" [ref=f3e444]: check_small
+                - rowheader [ref=f3e445]:
+                  - link "demodev@email.com" [ref=f3e446] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/4ce8dc97-a801-4665-8efc-dbadcdf18a7a/change/
+                - cell "[FirstClass] Reset your password" [ref=f3e447]
+                - cell "Sent" [ref=f3e448]
+                - cell "1" [ref=f3e449]
+                - cell "Nov. 11, 2026, 5:06 p.m." [ref=f3e450]
+                - cell "Nov. 11, 2026, 5:06 p.m." [ref=f3e451]
+                - cell [ref=f3e452]
+            - rowgroup [ref=f3e453]:
+              - row [ref=f3e454]:
+                - cell [ref=f3e455]:
+                  - checkbox "Select record" [ref=f3e456]: check_small
+                - rowheader [ref=f3e457]:
+                  - link "learner@example.test" [ref=f3e458] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/30d1f6ea-74f4-4562-9dda-221eda371a09/change/
+                - cell "QA Row A dead letter" [ref=f3e459]
+                - cell "Sent" [ref=f3e460]
+                - cell "1" [ref=f3e461]
+                - cell "Nov. 11, 2026, 5:05 p.m." [ref=f3e462]
+                - cell "Nov. 11, 2026, 5:05 p.m." [ref=f3e463]
+                - cell [ref=f3e464]
+            - rowgroup [ref=f3e465]:
+              - row [ref=f3e466]:
+                - cell [ref=f3e467]:
+                  - checkbox "Select record" [ref=f3e468]: check_small
+                - rowheader [ref=f3e469]:
+                  - link "learner@example.test" [ref=f3e470] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_mail/outboundemail/12c98249-8a3a-434d-a7d2-abf7318f4bb9/change/
+                - cell "QA Row E sending" [ref=f3e471]
+                - cell "Sending" [ref=f3e472]
+                - cell "1" [ref=f3e473]
+                - cell "Nov. 11, 2026, 5:03 p.m." [ref=f3e474]
+                - cell "Nov. 11, 2026, 5:02 p.m." [ref=f3e475]
+                - cell [ref=f3e476]
+      - generic [ref=f3e477]: 9 outbound emails
+  - list [ref=f3e481]:
+    - listitem [ref=f3e482]:
+      - link "Hide »" [ref=f3e483] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e484]:
+      - link "Toggle Theme" [ref=f3e485] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e488]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e489]
+      - link "History /admin/freedom_ls_mail/outboundemail/" [ref=f3e490] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e491]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e492]
+      - link "Versions Django 6.0.4" [ref=f3e493] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e494]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e495]
+      - 'link "Time CPU: 351.14ms (381.62ms)" [ref=f3e496] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f3e497]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e498]
+      - link "Settings" [ref=f3e499] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e500]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e501]
+      - link "Headers" [ref=f3e502] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e503]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e504]
+      - link "Request changelist_view" [ref=f3e505] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e506]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e507]
+      - link "SQL 7 queries in 43.97ms" [ref=f3e508] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e509]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e510]
+      - link "Static files 23 files used" [ref=f3e511] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e512]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e513]
+      - link "Templates admin/change_list.html" [ref=f3e514] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e515]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e516]
+      - link "Alerts" [ref=f3e517] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e518]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e519]
+      - link "Cache 0 calls in 0.00ms" [ref=f3e520] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e521]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e522]
+      - link "Signals 128 receivers of 15 signals" [ref=f3e523] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e524]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f3e525]
+      - link "Community" [ref=f3e526] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f3e527]:
+      - checkbox "Enable for next and successive requests" [ref=f3e528]
+      - generic [ref=f3e529]: Intercept redirects
+    - listitem [ref=f3e530]:
+      - checkbox "Enable for next and successive requests" [ref=f3e531]
+      - generic [ref=f3e532]: Profiling

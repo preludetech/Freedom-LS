@@ -1,0 +1,210 @@
+- generic [active] [ref=f81e1]:
+  - generic [ref=f81e3]:
+    - generic [ref=f81e8]:
+      - generic [ref=f81e9] [cursor=pointer]: dock_to_right
+      - heading "Mail chevron_right Outbound emails" [level=1] [ref=f81e12]:
+        - link "Mail" [ref=f81e13] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/
+        - generic [ref=f81e14]: chevron_right
+        - link "Outbound emails" [ref=f81e15] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/outboundemail/
+    - generic [ref=f81e21]:
+      - generic [ref=f81e22]:
+        - search [ref=f81e24]:
+          - generic [ref=f81e25]:
+            - button "search" [ref=f81e26]
+            - textbox "Type to search" [ref=f81e28]
+            - generic [ref=f81e29]: /
+        - generic [ref=f81e30] [cursor=pointer]:
+          - text: Filters
+          - generic [ref=f81e31]: filter_list
+      - region "scrollable content" [ref=f81e37]:
+        - table [ref=f81e39]:
+          - rowgroup [ref=f81e40]:
+            - row [ref=f81e41]:
+              - columnheader "Select all objects on this page for an action Select all rows" [ref=f81e42]:
+                - generic [ref=f81e45]:
+                  - checkbox "Select all objects on this page for an action" [ref=f81e46]: check_small
+                  - generic [ref=f81e47]: Select all rows
+          - rowgroup [ref=f81e48]:
+            - row [ref=f81e49]:
+              - cell [ref=f81e50]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e51]: check_small
+              - rowheader [ref=f81e52]:
+                - text: Recipients
+                - link "qa-claim-1794416980383@example.test" [ref=f81e53] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/ef9fe5f7-84c9-4701-80d3-0b3323bf4f61/change/
+              - cell "subject [FirstClass] Continue your application for Functionality Demo - Application gated course" [ref=f81e54]
+              - cell "status Sent" [ref=f81e55]
+              - cell "attempt count 1" [ref=f81e56]
+              - cell "next attempt at Nov. 11, 2026, 5:09 p.m." [ref=f81e57]
+              - cell "last attempt at Nov. 11, 2026, 5:09 p.m." [ref=f81e58]
+              - cell "Last error" [ref=f81e59]
+          - rowgroup [ref=f81e60]:
+            - row [ref=f81e61]:
+              - cell [ref=f81e62]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e63]: check_small
+              - rowheader [ref=f81e64]:
+                - text: Recipients
+                - link "qa-row-d@example.test" [ref=f81e65] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/d54e4aed-a195-4fbc-b19f-cf09e5e68ff3/change/
+              - cell "subject QA Row D sent" [ref=f81e66]
+              - cell "status Sent" [ref=f81e67]
+              - cell "attempt count 1" [ref=f81e68]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e69]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e70]
+              - cell "Last error" [ref=f81e71]
+          - rowgroup [ref=f81e72]:
+            - row [ref=f81e73]:
+              - cell [ref=f81e74]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e75]: check_small
+              - rowheader [ref=f81e76]:
+                - text: Recipients
+                - link "search-me@example.test" [ref=f81e77] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/cbd045e1-04b4-4823-bedf-cc10faf09b00/change/
+              - cell "subject Findable subject QA" [ref=f81e78]
+              - cell "status Permanent Failure" [ref=f81e79]
+              - cell "attempt count 1" [ref=f81e80]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e81]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e82]
+              - 'cell "Last error smtplib.SMTPDataError: (550, b''mailbox unavailable'')" [ref=f81e83]'
+          - rowgroup [ref=f81e84]:
+            - row [ref=f81e85]:
+              - cell [ref=f81e86]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e87]: check_small
+              - rowheader [ref=f81e88]:
+                - text: Recipients
+                - link "qa-claim-1794481868289@example.test" [ref=f81e89] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/7023ce22-99b4-410e-86e2-79d498a0e629/change/
+              - cell "subject [FirstClass] Continue your application for Functionality Demo - Application gated course" [ref=f81e90]
+              - cell "status Sent" [ref=f81e91]
+              - cell "attempt count 1" [ref=f81e92]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e93]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e94]
+              - cell "Last error" [ref=f81e95]
+          - rowgroup [ref=f81e96]:
+            - row [ref=f81e97]:
+              - cell [ref=f81e98]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e99]: check_small
+              - rowheader [ref=f81e100]:
+                - text: Recipients
+                - link "qa-row-a@example.test" [ref=f81e101] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/5926c643-0ad9-488b-a1c3-7cb937075b95/change/
+              - cell "subject QA Row A dead_letter" [ref=f81e102]
+              - cell "status Dead Letter" [ref=f81e103]
+              - cell "attempt count 6" [ref=f81e104]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e105]
+              - cell "last attempt at Nov. 12, 2026, 10:11 a.m." [ref=f81e106]
+              - 'cell "Last error smtplib.SMTPServerDisconnected: Connection unexpectedly closed while sending DAT" [ref=f81e107]'
+          - rowgroup [ref=f81e108]:
+            - row [ref=f81e109]:
+              - cell [ref=f81e110]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e111]: check_small
+              - rowheader [ref=f81e112]:
+                - text: Recipients
+                - link "demodev@email.com" [ref=f81e113] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/4ce8dc97-a801-4665-8efc-dbadcdf18a7a/change/
+              - cell "subject [FirstClass] Reset your password" [ref=f81e114]
+              - cell "status Sent" [ref=f81e115]
+              - cell "attempt count 1" [ref=f81e116]
+              - cell "next attempt at Nov. 11, 2026, 5:06 p.m." [ref=f81e117]
+              - cell "last attempt at Nov. 11, 2026, 5:06 p.m." [ref=f81e118]
+              - cell "Last error" [ref=f81e119]
+          - rowgroup [ref=f81e120]:
+            - row [ref=f81e121]:
+              - cell [ref=f81e122]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e123]: check_small
+              - rowheader [ref=f81e124]:
+                - text: Recipients
+                - link "qa-row-b@example.test" [ref=f81e125] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/3f30dfc5-e997-47f0-a1ca-2c5c804f4873/change/
+              - cell "subject QA Row B permanent_failure" [ref=f81e126]
+              - cell "status Permanent Failure" [ref=f81e127]
+              - cell "attempt count 1" [ref=f81e128]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e129]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e130]
+              - 'cell "Last error smtplib.SMTPRecipientsRefused: (550, b''5.1.1 mailbox unavailable'')" [ref=f81e131]'
+          - rowgroup [ref=f81e132]:
+            - row [ref=f81e133]:
+              - cell [ref=f81e134]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e135]: check_small
+              - rowheader [ref=f81e136]:
+                - text: Recipients
+                - link "demodev@email.com" [ref=f81e137] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/372f9bbe-d56f-4f04-9cfa-96ebe6a8186b/change/
+              - cell "subject [FirstClass] Reset your password" [ref=f81e138]
+              - cell "status Sent" [ref=f81e139]
+              - cell "attempt count 1" [ref=f81e140]
+              - cell "next attempt at Nov. 12, 2026, 11:08 a.m." [ref=f81e141]
+              - cell "last attempt at Nov. 12, 2026, 11:08 a.m." [ref=f81e142]
+              - cell "Last error" [ref=f81e143]
+          - rowgroup [ref=f81e144]:
+            - row [ref=f81e145]:
+              - cell [ref=f81e146]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e147]: check_small
+              - rowheader [ref=f81e148]:
+                - text: Recipients
+                - link "qa-row-g@example.test" [ref=f81e149] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/2fbe997d-0e52-449a-b842-888fe748bcc1/change/
+              - cell "subject QA Row G sent old" [ref=f81e150]
+              - cell "status Sent" [ref=f81e151]
+              - cell "attempt count 1" [ref=f81e152]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e153]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e154]
+              - cell "Last error" [ref=f81e155]
+          - rowgroup [ref=f81e156]:
+            - row [ref=f81e157]:
+              - cell [ref=f81e158]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e159]: check_small
+              - rowheader [ref=f81e160]:
+                - text: Recipients
+                - link "qa-row-f@example.test" [ref=f81e161] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/1313b1b6-51c9-42a2-bb3d-0b0e2fba013f/change/
+              - cell "subject QA Row F failed" [ref=f81e162]
+              - cell "status Failed" [ref=f81e163]
+              - cell "attempt count 2" [ref=f81e164]
+              - cell "next attempt at Nov. 12, 2026, 10:41 a.m." [ref=f81e165]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e166]
+              - 'cell "Last error builtins.ConnectionRefusedError: mail host is not listening" [ref=f81e167]'
+          - rowgroup [ref=f81e168]:
+            - row [ref=f81e169]:
+              - cell [ref=f81e170]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e171]: check_small
+              - rowheader [ref=f81e172]:
+                - text: Recipients
+                - link "qa-row-e@example.test" [ref=f81e173] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/097273cf-3be6-4e84-a3d9-0538f23b0a07/change/
+              - cell "subject QA Row E sending" [ref=f81e174]
+              - cell "status Sending" [ref=f81e175]
+              - cell "attempt count 1" [ref=f81e176]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e177]
+              - cell "last attempt at Nov. 12, 2026, 11:10 a.m." [ref=f81e178]
+              - cell "Last error" [ref=f81e179]
+          - rowgroup [ref=f81e180]:
+            - row [ref=f81e181]:
+              - cell [ref=f81e182]:
+                - text: Select record
+                - checkbox "Select record" [ref=f81e183]: check_small
+              - rowheader [ref=f81e184]:
+                - text: Recipients
+                - link "qa-row-c@example.test" [ref=f81e185] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_mail/outboundemail/002b13e7-1b24-466c-8f02-092c4b157492/change/
+              - cell "subject QA Row C dead_letter scrubbed" [ref=f81e186]
+              - cell "status Dead Letter" [ref=f81e187]
+              - cell "attempt count 6" [ref=f81e188]
+              - cell "next attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e189]
+              - cell "last attempt at Nov. 12, 2026, 11:11 a.m." [ref=f81e190]
+              - 'cell "Last error builtins.ConnectionRefusedError: mail host is not listening" [ref=f81e191]'
+    - generic [ref=f81e192]: 12 outbound emails
+  - generic "Show toolbar" [ref=f81e196]: DJDT

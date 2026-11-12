@@ -1,0 +1,24 @@
+- generic [active] [ref=f87e1]:
+  - generic [ref=f87e3]:
+    - generic [ref=f87e8]:
+      - generic [ref=f87e9] [cursor=pointer]: dock_to_right
+      - heading "Mail chevron_right Outbound emails chevron_right Resend email" [level=1] [ref=f87e12]:
+        - link "Mail" [ref=f87e13] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/
+        - generic [ref=f87e14]: chevron_right
+        - link "Outbound emails" [ref=f87e15] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/outboundemail/
+        - generic [ref=f87e16]: chevron_right
+        - generic [ref=f87e17]: Resend email
+    - generic [ref=f87e21]:
+      - paragraph [ref=f87e22]: Resend queues this email again from the start, with a fresh set of retries.
+      - generic [ref=f87e23]:
+        - heading "Email" [level=2] [ref=f87e24]
+        - list [ref=f87e25]:
+          - listitem [ref=f87e26]: "To: search-me@example.test"
+          - listitem [ref=f87e27]: "Subject: Findable subject QA"
+      - generic [ref=f87e28]:
+        - button "Resend" [ref=f87e29] [cursor=pointer]
+        - link "Cancel" [ref=f87e30] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/outboundemail/cbd045e1-04b4-4823-bedf-cc10faf09b00/change/
+  - generic "Show toolbar" [ref=f87e32]: DJDT

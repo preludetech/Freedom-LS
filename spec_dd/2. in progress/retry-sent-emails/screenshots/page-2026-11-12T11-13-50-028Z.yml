@@ -1,0 +1,59 @@
+- generic [active] [ref=f86e1]:
+  - generic [ref=f86e3]:
+    - generic [ref=f86e7]:
+      - generic [ref=f86e8]:
+        - generic [ref=f86e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f86e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_mail/outboundemail/
+        - heading "Mail chevron_right Outbound emails chevron_right QA Row B permanent_failure (permanent_failure)" [level=1] [ref=f86e14]:
+          - link "Mail" [ref=f86e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_mail/
+          - generic [ref=f86e16]: chevron_right
+          - link "Outbound emails" [ref=f86e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_mail/outboundemail/
+          - generic [ref=f86e18]: chevron_right
+          - link "QA Row B permanent_failure (permanent_failure)" [ref=f86e19] [cursor=pointer]:
+            - /url: /admin/freedom_ls_mail/outboundemail/3f30dfc5-e997-47f0-a1ca-2c5c804f4873/change/
+      - link "more_horiz" [ref=f86e22] [cursor=pointer]:
+        - /url: "#"
+    - group [ref=f86e29]:
+      - generic [ref=f86e30]:
+        - generic [ref=f86e32]:
+          - generic [ref=f86e33]: Message id
+          - generic [ref=f86e35]: <message-1@example.test>
+        - generic [ref=f86e38]:
+          - generic [ref=f86e39]: Recipients
+          - generic [ref=f86e41]: "[ \"qa-row-b@example.test\" ]"
+        - generic [ref=f86e47]:
+          - generic [ref=f86e48]: Subject
+          - generic [ref=f86e50]: QA Row B permanent_failure
+        - generic [ref=f86e53]:
+          - generic [ref=f86e54]: Status
+          - generic [ref=f86e56]: Permanent Failure
+        - generic [ref=f86e59]:
+          - generic [ref=f86e60]: Attempt count
+          - generic [ref=f86e62]: "1"
+        - generic [ref=f86e65]:
+          - generic [ref=f86e66]: Next attempt at
+          - generic [ref=f86e68]: Nov. 12, 2026, 11:11 a.m.
+        - generic [ref=f86e71]:
+          - generic [ref=f86e72]: Last attempt at
+          - generic [ref=f86e74]: Nov. 12, 2026, 11:11 a.m.
+        - generic [ref=f86e77]:
+          - generic [ref=f86e78]: Last error
+          - generic [ref=f86e80]: "smtplib.SMTPRecipientsRefused: (550, b'5.1.1 mailbox unavailable')"
+        - generic [ref=f86e83]:
+          - generic [ref=f86e84]: Created at
+          - generic [ref=f86e86]: Nov. 12, 2026, 11:11 a.m.
+        - generic [ref=f86e89]:
+          - generic [ref=f86e90]: Sent at
+          - generic [ref=f86e92]: "-"
+        - generic [ref=f86e95]:
+          - generic [ref=f86e96]: Scrubbed at
+          - generic [ref=f86e98]: "-"
+        - generic [ref=f86e101]:
+          - generic [ref=f86e102]: Body
+          - generic [ref=f86e104]: Stored until the email is sent or its retention period ends.
+    - link "Close" [ref=f86e110] [cursor=pointer]:
+      - /url: /admin/freedom_ls_mail/outboundemail/
+  - generic "Show toolbar" [ref=f86e112]: DJDT
