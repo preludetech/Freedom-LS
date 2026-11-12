@@ -1,0 +1,21 @@
+{% comment %}
+A searchable checklist of cohorts with a running "N selected" label. Context:
+cohort_rows (pk, name, checked, and roles when filter_by_role is set).
+filter_by_role makes the list follow the role chosen in the same dialog:
+each row carries data-roles and the checklist refilters on the
+staff-role-chosen event.
+{% endcomment %}
+<div x-data="cohortChecklist"{% if filter_by_role %} x-on:staff-role-chosen.window="filter"{% endif %} class="space-y-2">
+    <div class="flex items-center gap-3">
+        <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border-input bg-surface px-3 py-2">
+        <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
+    </div>
+    <div class="max-h-48 space-y-1 overflow-y-auto">
+        {% for row in cohort_rows %}
+        <label data-cohort-row data-name="{{ row.name|lower }}"{% if filter_by_role %} data-roles="{{ row.roles }}"{% endif %} class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
+            <input type="checkbox" name="cohorts" value="{{ row.pk }}" x-on:change="count"{% if row.checked %} checked{% endif %}>
+            <span class="min-w-0 break-words">{{ row.name }}</span>
+        </label>
+        {% endfor %}
+    </div>
+</div>

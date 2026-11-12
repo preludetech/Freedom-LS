@@ -10,25 +10,12 @@ removes_role and staff_member_state (missing, inactive or active).
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
-      hx-disabled-elt="#app-modal-body button[type='submit']">
+      hx-disabled-elt="find button[type='submit']">
     <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
     <c-modal-body>
         <p>{{ entry.display_name }} on these cohorts.</p>
-        <div x-data="cohortChecklist" class="space-y-2">
-            <div class="flex items-center gap-3">
-                <input type="search" x-model="query" x-on:input="filter" aria-label="Search cohorts" placeholder="Search cohorts" class="min-w-0 flex-1 rounded-md border border-border-input bg-surface px-3 py-2">
-                <span class="shrink-0 text-muted" x-text="selectedLabel"></span>
-            </div>
-            <div class="max-h-48 space-y-1 overflow-y-auto">
-                {% for row in cohort_rows %}
-                <label data-cohort-row data-name="{{ row.name|lower }}" class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-surface-2">
-                    <input type="checkbox" name="cohorts" value="{{ row.pk }}" x-on:change="count"{% if row.checked %} checked{% endif %}>
-                    <span class="min-w-0 break-words">{{ row.name }}</span>
-                </label>
-                {% endfor %}
-            </div>
-        </div>
+        {% include "educator_interface/partials/cohort_checklist.html" %}
         {% if read_only %}
         <div>
             <p class="font-semibold">Kept as they are</p>
@@ -37,7 +24,7 @@ removes_role and staff_member_state (missing, inactive or active).
         {% endif %}
     </c-modal-body>
     <c-modal-footer>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Checking...">Change cohorts</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Checking…">Change cohorts</c-button>
     </c-modal-footer>
 </form>
 {% elif step == "confirmation" %}
@@ -45,7 +32,7 @@ removes_role and staff_member_state (missing, inactive or active).
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
-      hx-disabled-elt="#app-modal-body button[type='submit']">
+      hx-disabled-elt="find button[type='submit']">
     <input type="hidden" name="user" value="{{ staff_member.pk }}">
     <input type="hidden" name="role" value="{{ entry.role }}">
     <input type="hidden" name="confirmed" value="1">
@@ -61,7 +48,7 @@ removes_role and staff_member_state (missing, inactive or active).
         {% endif %}
     </c-modal-body>
     <c-modal-footer>
-        <c-button type="submit" variant="primary" loading="true" loading_text="Saving...">{% if removes_role %}Deactivate{% else %}Change cohorts{% endif %}</c-button>
+        <c-button type="submit" variant="primary" loading="true" loading_text="Saving…">{% if removes_role %}Deactivate{% else %}Change cohorts{% endif %}</c-button>
     </c-modal-footer>
 </form>
 {% endif %}

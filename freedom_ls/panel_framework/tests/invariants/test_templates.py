@@ -553,3 +553,103 @@ def test_every_expand_chevron_turns_when_its_control_opens() -> None:
                     offenders.append(f"{path.relative_to(root)}: {match.group(0)}")
 
     assert offenders == []
+
+
+DIALOG_BODIES = tuple(
+    path
+    for path in DIALOG_TEMPLATES
+    if path.name not in ("modal_host.html", "table_sheet.html")
+)
+MODAL_BODY_SPAN = re.compile(r"<c-modal-body\b.*?</c-modal-body>", re.DOTALL)
+STEP_BRANCH = re.compile(r"\bstep == ")
+EDUCATOR_PYTHON_FILES = sorted(
+    (FREEDOM_LS_PACKAGE_DIR / "educator_interface").glob("*.py")
+)
+
+
+def _dialog_id(path: Path) -> str:
+    return path.name
+
+
+@pytest.mark.parametrize("path", DIALOG_BODIES, ids=_dialog_id)
+def test_every_dialog_renders_one_modal_footer_outside_its_body(path: Path) -> None:
+    """A dialog template holds one footer per step it renders, or none when
+    it extends a template that supplies it; the footer is never inside the
+    body, which is the part that scrolls under it."""
+    text = path.read_text()
+    steps = max(1, len(STEP_BRANCH.findall(text)))
+    footers = [m.start() for m in re.finditer(r"<c-modal-footer\b", text)]
+    inside_body = [
+        start
+        for start in footers
+        for span in MODAL_BODY_SPAN.finditer(text)
+        if span.start() < start < span.end()
+    ]
+
+    assert inside_body == []
+    assert len(footers) <= steps
+    if "{% extends" in text:
+        assert footers == []
+
+
+FORBIDDEN_IN_DIALOGS = {
+    "a hand-written Cancel button": re.compile(r">\s*Cancel\s*</(c-)?button>"),
+    "text-sm": re.compile(r"(?<![\w-])text-sm\b"),
+    "px-6 py-4": re.compile(r"px-6 py-4"),
+    "a bg-error/10 box": re.compile(r"bg-error/10"),
+    "<c-callout>": re.compile(r"<c-callout\b"),
+}
+
+
+@pytest.mark.parametrize("rule", sorted(FORBIDDEN_IN_DIALOGS))
+def test_no_dialog_template_hand_writes_what_a_component_owns(rule: str) -> None:
+    offenders = [
+        path.name
+        for path in DIALOG_BODIES
+        if FORBIDDEN_IN_DIALOGS[rule].search(path.read_text())
+    ]
+
+    assert offenders == []
+
+
+def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
+    offenders = [
+        f"{path.name}: {match}"
+        for path in DIALOG_BODIES
+        for match in re.findall(r'loading_text="[^"]*"', path.read_text())
+        if "..." in match
+    ]
+
+    assert offenders == []
+
+
+# `find` matches the first element only, so a form with several submit
+# buttons names all of them through the modal body instead.
+MULTI_SUBMIT_DIALOGS = {"form.html"}
+
+
+def test_every_dialog_disables_only_its_own_submit_buttons() -> None:
+    offenders = [
+        f"{path.name}: {match}"
+        for path in DIALOG_BODIES
+        if path.name not in MULTI_SUBMIT_DIALOGS
+        for match in re.findall(r'hx-disabled-elt="[^"]*"', path.read_text())
+        if match != "hx-disabled-elt=\"find button[type='submit']\""
+    ]
+
+    assert offenders == []
+
+
+def test_no_educator_module_sets_the_modal_trigger_template_by_hand() -> None:
+    """The framework's modal action classes own the modal trigger, so an app
+    extends one of them instead of naming the template."""
+    offenders = [
+        path.name
+        for path in EDUCATOR_PYTHON_FILES
+        if re.search(
+            r'trigger_template_name\s*=\s*"panel_framework/partials/modal_trigger.html"',
+            path.read_text(),
+        )
+    ]
+
+    assert offenders == []

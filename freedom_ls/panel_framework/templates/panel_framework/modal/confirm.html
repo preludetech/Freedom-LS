@@ -29,7 +29,7 @@ Blocks: title, hidden_fields, body, reason and confirm_button.
     </c-modal-body>
 
     <c-modal-footer focus_cancel="true" cancel_href="{{ page_url }}">
-        {% if confirm_disabled_reason %}<p id="confirm-disabled-reason" class="text-sm text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
+        {% if confirm_disabled_reason %}<p id="confirm-disabled-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
         {% block confirm_button %}
             <c-button type="submit"
                       variant="{{ confirm_variant }}"

@@ -4961,6 +4961,17 @@ class TestOversight:
         MessageFactory(conversation=conversation, sender=educator, body="oversight me")
         return organisation, educator, learner, conversation
 
+    def test_the_oversight_dialog_ends_in_a_close_button(self, msg_client_for, scene):
+        organisation, _educator, learner, conversation = scene
+        admin = _msg_educator(organisation)
+
+        response = _open_conversation(msg_client_for(admin), learner, conversation.pk)
+
+        page = lxml.html.fromstring(response.content.decode())
+        assert [b.text_content().strip() for b in page.cssselect("footer button")][
+            -1:
+        ] == ["Close"]
+
     def test_an_organisation_admin_reads_the_thread_read_only(
         self, msg_client_for, scene
     ):
