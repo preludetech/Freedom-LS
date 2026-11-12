@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import phonenumbers
 import pytest
 from phonenumbers import PhoneNumberFormat
+from pytest_django.fixtures import SettingsWrapper
 
 from django.utils import translation
 
+from freedom_ls.form_engine import phone_numbers
 from freedom_ls.form_engine.phone_numbers import (
     browser_country,
     country_choices,
@@ -34,6 +38,11 @@ ITALIAN_NATIONAL = phonenumbers.format_number(
         ("+27 82 123 4567", "GB", "+27821234567"),
         ("(82) 123-4567", "ZA", "+27821234567"),
         (ITALIAN_NATIONAL, "IT", "+390212345678"),
+        ("(+27) 82 123 4567", "", "+27821234567"),
+        ("(+27) 82 123 4567", "US", "+27821234567"),
+        # An invisible direction mark, as a contacts app puts before a copied number.
+        ("‪+27 82 123 4567", "", "+27821234567"),
+        ("‪+27 82 123 4567", "US", "+27821234567"),
     ],
 )
 def test_valid_phone_answer_is_accepted_and_stored_as_e164(
@@ -80,9 +89,14 @@ def test_invalid_national_number_names_the_country_and_an_example(text: str) -> 
     assert phone_answer_error(text, "ZA") == ZA_MESSAGE.format(text=text)
 
 
-def test_invalid_international_number_asks_for_a_country_code() -> None:
-    assert phone_answer_error("+27 12", "ZA") == (
-        'You entered "+27 12". Enter a valid phone number, starting with + '
+@pytest.mark.parametrize(
+    ("text", "country"), [("+27 12", "ZA"), ("(+27) 12", ""), ("(+27) 12", "US")]
+)
+def test_invalid_international_number_asks_for_a_country_code(
+    text: str, country: str
+) -> None:
+    assert phone_answer_error(text, country) == (
+        f'You entered "{text}". Enter a valid phone number, starting with + '
         "and its country code."
     )
 
@@ -126,6 +140,58 @@ def test_country_choices_fall_back_to_the_code_when_the_language_has_no_name() -
         choices = country_choices()
 
     assert ("MK", "MK (+389)") in choices
+
+
+@pytest.fixture
+def _fresh_locale_caches() -> Iterator[None]:
+    """The country names are cached per language, and these tests change what
+    a language resolves to."""
+    phone_numbers._locale.cache_clear()
+    phone_numbers._country_choices.cache_clear()
+    yield
+    phone_numbers._locale.cache_clear()
+    phone_numbers._country_choices.cache_clear()
+
+
+@pytest.mark.usefixtures("_fresh_locale_caches")
+def test_country_choices_use_the_site_language_when_babel_lacks_the_active_one(
+    settings: SettingsWrapper,
+) -> None:
+    settings.LANGUAGE_CODE = "fr"
+
+    with translation.override("udm"):
+        choices = country_choices()
+
+    assert ("ZA", "Afrique du Sud (+27)") in choices
+
+
+@pytest.mark.usefixtures("_fresh_locale_caches")
+def test_country_choices_are_english_when_babel_lacks_the_site_language_too(
+    settings: SettingsWrapper,
+) -> None:
+    settings.LANGUAGE_CODE = "udm"
+
+    with translation.override("udm"):
+        choices = country_choices()
+
+    assert ("ZA", "South Africa (+27)") in choices
+
+
+LEGACY_TEXT_STARTING_WITH_A_PLUS = [
+    "+27 82 123 4567 (mom)",
+    "+27 82 123 4567 home",
+    "+27 82 CALL ME",
+    "+27 82 123 4567",
+]
+
+
+@pytest.mark.parametrize("stored", LEGACY_TEXT_STARTING_WITH_A_PLUS)
+def test_stored_text_that_is_not_exactly_e164_is_shown_and_refilled_as_typed(
+    stored: str,
+) -> None:
+    assert display_phone(stored) == stored
+    assert stored_phone_country(stored) is None
+    assert phone_after_calling_code(stored) == stored
 
 
 @pytest.mark.parametrize(
