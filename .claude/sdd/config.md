@@ -5,6 +5,9 @@
 - Setup script: .claude/fls-dev/scripts/install_dev.sh
 - Teardown script: .claude/fls-dev/scripts/dev_db_delete.sh
 - Parallel batches: 3
+- Memory capacity: .claude/ds/scripts/run_tests.sh --capacity
+- Batch memory (MB): 3584
+- Worker memory (MB):
 
 ## Rebase Hooks
 

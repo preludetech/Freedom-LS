@@ -121,6 +121,18 @@ uv run pytest -m "not playwright and not fls_internal and not ci_only and not we
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 
+## Memory settings
+
+The test runner sizes its xdist worker count to free memory. `claude_plugins/django-stack/resources/test_tiers.md` defines what each setting means; this section records FLS's values and how they were measured.
+
+Measured 2026-11-12, each rounded up to the next 256 MB:
+
+- `per_worker_mb = 768` and `max_workers = 4` in `[tool.test_tiers.memory]` in `pyproject.toml`. `max_workers` matches the cap the root `conftest.py` puts on `-n auto`. 768 is the largest proportional set size (Pss) of one worker plus its Chromium, 669 MB.
+- `Batch memory (MB): 3584` in `.claude/sdd/config.md`, with `Memory capacity` pointing at `run_tests.sh --capacity`. 3584 is the largest Pss of the whole process tree under the runner during the full tier, 3402 MB.
+- `Worker memory (MB)` is blank: the session that measured it shared a process with its subagent, so there was no process of its own to size.
+
+To re-measure, run the full tier through the runner in the background and sample beside it with a throwaway script kept out of version control. Every 2 seconds, find each process of your user whose `/proc/<pid>/environ` holds `PYTEST_XDIST_WORKER=`. The root of each group is the one whose parent lacks the variable, and the group is that root and its descendants. Sum `Pss` from `/proc/<pid>/smaps_rollup` over each group, and over the whole tree under the `run_tests.py` process. Keep the largest of each, round both up to the next 256 MB, and write them to the places above. For `Worker memory (MB)`, take the `Pss` of the session's `claude` process, rounded the same way, when the session started after the batch did.
+
 ## Collection safety for optional apps — FLS example
 
 `ds:testing` covers the generic technique. FLS's concrete target is `freedom_ls.course_applications`:

@@ -124,6 +124,11 @@ escalation = [
 # runs their tests.
 markers = "not ci_only and not weasyprint"
 
+[tool.test_tiers.memory]
+# Matches the cap the root conftest.py puts on `-n auto`.
+max_workers = 4
+per_worker_mb = 768
+
 # This repository hosts the plugins; their scripts and templates are tested in tests/.
 [[tool.test_tiers.tooling]]
 glob = "claude_plugins/*/scripts/**"
