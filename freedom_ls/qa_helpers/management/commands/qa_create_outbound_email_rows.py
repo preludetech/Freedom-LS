@@ -115,7 +115,18 @@ def _row_specs() -> list[RowSpec]:
                 "next_attempt_at": now - timedelta(minutes=30),
             },
         ),
-        RowSpec("G", "QA Row G sent old", {"sent": True}, False, created_days_ago=40),
+        RowSpec(
+            "G",
+            "QA Row G sent old",
+            {"sent": True},
+            False,
+            overrides={
+                "last_attempt_at": now - timedelta(days=40),
+                "sent_at": now - timedelta(days=40),
+                "scrubbed_at": now - timedelta(days=40),
+            },
+            created_days_ago=40,
+        ),
         RowSpec(
             "H",
             FINDABLE_SUBJECT,
