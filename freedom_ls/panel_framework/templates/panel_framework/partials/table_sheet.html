@@ -29,12 +29,7 @@ when htmx swaps this fragment in.
                           hx-get="{{ base_url }}{{ reset_qs }}"
                           hx-target="#{{ region_id }}"
                           hx-swap="outerHTML">Reset</c-button>
-                <button type="button"
-                        x-on:click="close"
-                        aria-label="Close"
-                        class="-me-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
-                    <c-icon name="close" class="size-5" />
-                </button>
+                <c-panel-close-button />
             </div>
 
             {% for entry in toolbar %}
@@ -90,8 +85,7 @@ when htmx swaps this fragment in.
             {% endfor %}
 
 
-            <c-modal-footer class="mt-auto -mx-4 -mb-4">
-                <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button></c-slot>
+            <c-modal-footer cancel_click="close" class="mt-auto -mx-4 -mb-4">
                 <c-button type="submit" variant="primary">Show results</c-button>
             </c-modal-footer>
         </form>

@@ -147,7 +147,7 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   between its blocks; the footer is never inside the body or another padded element. A read-only
   dialog (`panel_framework/modal/read_only.html`) ends in a Close footer like every other. The
   discard prompt in the modal host uses the same three components.
-- A dialog ends in `<c-modal-footer>`: Cancel in its `cancel` slot at the left, the actions in the
+- A dialog ends in `<c-modal-footer>`: it renders its own Cancel at the left (`cancel`, `cancel_href`, `cancel_click`, `focus_cancel`), the actions in the
   default slot at the right, the primary last; three or more group at the right.
   `<c-button-group>` is for buttons outside a dialog.
 - A confirmation is a modal in `#app-modal`, never a page of its own. Without JavaScript the

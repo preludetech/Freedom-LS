@@ -124,14 +124,7 @@ editing" brings the form back with everything typed into it.
         x-data="appModal"
         aria-labelledby="app-modal-title"
         class="modal-backdrop-host panel-surface rounded-t-2xl border border-border text-on-surface shadow-xl max-sm:border-b-0 sm:rounded-lg">
-    <div data-modal-discard-prompt hidden>
-        <c-modal-header title_id="app-modal-discard-title" closable="">Discard changes?</c-modal-header>
-        <c-modal-body><p>The changes you made haven't been saved.</p></c-modal-body>
-        <c-modal-footer>
-            <c-slot name="cancel"><c-button variant="secondary" x-on:click="keepEditing" autofocus>Keep editing</c-button></c-slot>
-            <c-button variant="error" x-on:click="discard">Discard</c-button>
-        </c-modal-footer>
-    </div>
+    {% include "panel_framework/partials/discard_prompt.html" with title_id="app-modal-discard-title" %}
     {% comment %}
     A fragment that replaces the body while the dialog is open (a bulk
     result) announces through this region. It sits inside the dialog because

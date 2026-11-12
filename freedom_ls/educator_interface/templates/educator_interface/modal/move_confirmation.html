@@ -14,9 +14,7 @@ form_title) replaces the form when there is no cohort to move them to.
 <c-modal-body>
     <p>Nothing changed. {{ learner.user.display_name }} is no longer a member of {{ cohort }}, so they cannot be moved from it.</p>
 </c-modal-body>
-<c-modal-footer>
-    <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button></c-slot>
-</c-modal-footer>
+<c-modal-footer cancel="Close" />
 {% elif empty_message %}
 {% include "panel_framework/modal/form.html" %}
 {% else %}
@@ -65,7 +63,6 @@ form_title) replaces the form when there is no cohort to move them to.
     </c-modal-body>
 
     <c-modal-footer>
-        <c-slot name="cancel"><c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button></c-slot>
         {% if destination %}
             <c-button type="submit" variant="primary" loading="true" loading_text="Moving…">Move</c-button>
         {% else %}

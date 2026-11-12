@@ -382,7 +382,7 @@ def test_unsent_draft_asks_before_the_drawer_is_left(
     make_stub(name="Beta")
     quick_view = page.locator("#quick-view")
     content = page.locator("[data-stub-quick-view]")
-    prompt = page.locator("[data-quick-view-discard-prompt]")
+    prompt = page.locator("#quick-view [data-discard-prompt]")
     note = page.get_by_label("Note")
     page.set_viewport_size(QA_VIEWPORTS[2])
     page.goto(f"{live_server.url}{_LIST_PATH}")

@@ -9,7 +9,5 @@ data-htmx-swap-error lets the htmx:beforeSwap listener swap this 403 in.
     <p>{{ who_to_ask }}</p>
     </c-modal-body>
 
-    <c-modal-footer>
-        <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Close</c-button></c-slot>
-    </c-modal-footer>
+    <c-modal-footer cancel="Close" focus_cancel="true" />
 </div>

@@ -12,8 +12,7 @@ cohort_course_count, action_url.
     <p>Learners and their progress were kept. You can deactivate the cohort again at any time.</p>
 </c-modal-body>
 
-<c-modal-footer>
-    <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
+<c-modal-footer focus_cancel="true">
     <form hx-post="{{ action_url }}"
           hx-target="#app-modal-body"
           hx-swap="innerHTML"

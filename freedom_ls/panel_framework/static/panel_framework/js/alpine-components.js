@@ -95,6 +95,20 @@ function focusTriggerOrMain(trigger) {
     if (main) main.focus();
 }
 
+// Writes the dirty form's own discard wording into a host's discard prompt,
+// as text and never HTML, and leaves the prompt's defaults when the form
+// names none. Shared by appModal and quickView.
+function fillDiscardPrompt(prompt, form) {
+    const title = prompt.querySelector("[data-discard-title]");
+    const body = prompt.querySelector("[data-discard-body]");
+    if (title && form && form.dataset.discardTitle) {
+        title.textContent = form.dataset.discardTitle;
+    }
+    if (body && form && form.dataset.discardBody) {
+        body.textContent = form.dataset.discardBody;
+    }
+}
+
 // Tracks whether the first form inside a container differs from what it held
 // at the last snapshot(), so a field edited and then changed back reads clean.
 // Both FormData objects come from the same form element, so their entries()
@@ -332,8 +346,9 @@ document.addEventListener("alpine:init", () => {
         // The prompt takes the fragment's place, and the dialog's
         // accessible name moves to the prompt's heading with it.
         _showDiscardPrompt() {
-            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            const prompt = this._dialog.querySelector("[data-discard-prompt]");
             if (!prompt) return;
+            fillDiscardPrompt(prompt, this._body.querySelector("form"));
             this._body.hidden = true;
             prompt.hidden = false;
             this._dialog.setAttribute("aria-labelledby", "app-modal-discard-title");
@@ -341,7 +356,7 @@ document.addEventListener("alpine:init", () => {
             if (keepEditingButton) keepEditingButton.focus();
         },
         _hideDiscardPrompt() {
-            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            const prompt = this._dialog.querySelector("[data-discard-prompt]");
             if (prompt) prompt.hidden = true;
             this._body.hidden = false;
             this._dialog.setAttribute("aria-labelledby", "app-modal-title");
@@ -381,7 +396,7 @@ document.addEventListener("alpine:init", () => {
             );
             this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
             this._discardPrompt = this._qvDialog.querySelector(
-                "[data-quick-view-discard-prompt]",
+                "[data-discard-prompt]",
             );
             // Hidden inputs (the composer's draft flag and send key) are
             // rewritten by scripts and by every send; only fields a person
@@ -530,15 +545,15 @@ document.addEventListener("alpine:init", () => {
         requestClose() {
             this._requestClose();
         },
-        // Brings the draft back in place of the discard prompt.
-        keepDraft() {
+        // Brings the form back in place of the discard prompt.
+        keepEditing() {
             this._hideDiscardPrompt();
             const field = this._qvBody.querySelector("textarea, input:not([type=hidden]), select");
             if (field) field.focus();
         },
-        // The prompt has already confirmed the loss of the draft, so the
+        // The prompt has already confirmed the loss of the input, so the
         // action it held runs without the guard.
-        discardDraft() {
+        discard() {
             const action = this._pendingAction;
             this._hideDiscardPrompt();
             this._qvDirty = false;
@@ -670,6 +685,7 @@ document.addEventListener("alpine:init", () => {
                 return;
             }
             this._pendingAction = pendingAction;
+            fillDiscardPrompt(this._discardPrompt, this._qvBody.querySelector("form"));
             this._qvBody.hidden = true;
             this._discardPrompt.hidden = false;
             const keepButton = this._discardPrompt.querySelector("[autofocus]");
