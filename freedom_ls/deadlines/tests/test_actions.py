@@ -15,6 +15,7 @@ from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.comms.models import Notification
 from freedom_ls.deadlines.actions import (
     DeadlineActionError,
+    announce_planned_resume,
     pause_course,
     resume_course,
 )
@@ -426,6 +427,103 @@ class TestResumeCourse:
         result = resume_course(record, actor=UserFactory(), reason="Back", now=NOW)
 
         assert result is None
+
+
+@pytest.mark.django_db
+class TestAnnouncePlannedResume:
+    def _due_pause(self, **kwargs: object) -> CoursePause:
+        defaults: dict[str, object] = {
+            "started_at": datetime(2026, 3, 1, 8, 0, tzinfo=UTC),
+            "planned_resume_on": date(2026, 3, 5),
+        }
+        pause: CoursePause = CoursePauseFactory(**{**defaults, **kwargs})
+        return pause
+
+    def test_announces_once_under_two_callers(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        pause = self._due_pause()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            first = announce_planned_resume(pause, now=NOW)
+            second = announce_planned_resume(pause, now=NOW)
+
+        assert (first, second) == (True, False)
+        assert AuditLogEntry.unscoped.filter(action="course.resumed").count() == 1
+        assert len(_events("course.resumed")) == 1
+        assert Notification.objects.filter(category="course.resumed").count() == 1
+        pause.refresh_from_db()
+        assert pause.resume_announced_at == NOW
+
+    def test_the_second_caller_with_a_stale_copy_announces_nothing(
+        self, mock_site_context
+    ):
+        pause = self._due_pause()
+        stale = CoursePause._base_manager.get(pk=pause.pk)
+
+        announce_planned_resume(pause, now=NOW)
+        result = announce_planned_resume(stale, now=NOW)
+
+        assert result is False
+        assert AuditLogEntry.unscoped.filter(action="course.resumed").count() == 1
+
+    def test_records_the_end_at_the_planned_instant(self, mock_site_context):
+        pause = self._due_pause()
+
+        announce_planned_resume(pause, now=NOW)
+
+        pause.refresh_from_db()
+        assert pause.ended_at == datetime(2026, 3, 5, tzinfo=UTC)
+        assert AuditLogEntry.unscoped.get(action="course.resumed").actor is None
+
+    def test_keeps_an_end_staff_already_recorded(self, mock_site_context):
+        ended = datetime(2026, 3, 3, tzinfo=UTC)
+        pause = self._due_pause(ended_at=ended)
+
+        announce_planned_resume(pause, now=NOW)
+
+        pause.refresh_from_db()
+        assert pause.ended_at == ended
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"resume_announced_at": datetime(2026, 3, 6, tzinfo=UTC)},
+            {"planned_resume_on": date(2026, 3, 11)},
+            {"planned_resume_on": None},
+        ],
+        ids=["already-announced", "not-yet-due", "no-planned-resume"],
+    )
+    def test_skips_a_pause_that_is_not_due(self, mock_site_context, overrides):
+        pause = self._due_pause(**overrides)
+
+        result = announce_planned_resume(pause, now=NOW)
+
+        assert result is False
+        assert AuditLogEntry.unscoped.filter(action="course.resumed").count() == 0
+        assert Notification.objects.filter(category="course.resumed").count() == 0
+
+    def test_skips_a_pause_staff_ended_early(self, mock_site_context):
+        record = CourseProgressFactory()
+        pause = self._due_pause(
+            course_progress=record, planned_resume_on=date(2026, 3, 11)
+        )
+        resume_course(record, actor=UserFactory(), reason="Back", now=NOW)
+        pause.refresh_from_db()
+
+        result = announce_planned_resume(pause, now=NOW + timedelta(days=2))
+
+        assert result is False
+        assert AuditLogEntry.unscoped.filter(action="course.resumed").count() == 1
+
+    def test_now_defaults_to_the_current_instant(self, mock_site_context):
+        pause = self._due_pause()
+
+        with time_machine.travel(NOW, tick=False):
+            announce_planned_resume(pause)
+
+        pause.refresh_from_db()
+        assert pause.resume_announced_at == NOW
 
 
 @time_machine.travel(NOW, tick=False)

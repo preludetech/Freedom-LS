@@ -195,6 +195,15 @@ def resume_course(
     return pause
 
 
+def announce_planned_resume(pause: CoursePause, *, now: datetime | None = None) -> bool:
+    """Close a pause whose planned resume has passed and announce it once, with no actor.
+    False when it is not yet due or another caller already announced it."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        locked = _locked(pause.course_progress)
+        return _announce_planned_resume(pause, locked, now)
+
+
 def _announce_planned_resume(
     pause: CoursePause, locked: CourseProgress, now: datetime
 ) -> bool:
