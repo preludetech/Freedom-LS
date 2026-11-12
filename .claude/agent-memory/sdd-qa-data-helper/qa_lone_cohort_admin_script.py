@@ -25,7 +25,7 @@ with _site_context(site):
     su = User._base_manager.get(site=site, email="demodev@email.com", is_superuser=True)
     west = Organisation._base_manager.get(site=site, slug="westside")
     cw = _ensure_cohort(site, west, "Cohort W")
-    ca = _ensure_user(site, "w.cohortadmin@qa.test", "Wanda", "Westcohort")
+    ca = _ensure_user(site, "w.admin@qa.test", "Wanda", "Wadmin")
     assign_object_role(ca, cw, "cohort_admin", assigned_by=su)
 
     cohort_ct = ContentType.objects.get_for_model(Cohort)
