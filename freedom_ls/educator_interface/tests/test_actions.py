@@ -88,6 +88,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.bulk_actions import (
+    BULK_ACTIONS,
     BulkCount,
     BulkOutcome,
     BulkResult,
@@ -8348,7 +8349,7 @@ _BULK_ACTION_WEIGHTS: dict[str, tuple[str, str, str]] = {
 
 
 def test_every_bulk_action_has_an_expected_weight_and_loading_text():
-    registered = {cls.__name__ for cls in actions_module.BULK_ACTIONS.values()}
+    registered = {cls.__name__ for cls in BULK_ACTIONS.values()}
 
     assert registered == set(_BULK_ACTION_WEIGHTS)
 
@@ -8356,9 +8357,7 @@ def test_every_bulk_action_has_an_expected_weight_and_loading_text():
 @pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
 def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
     (action_class,) = [
-        cls
-        for cls in actions_module.BULK_ACTIONS.values()
-        if cls.__name__ == class_name
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
 
     assert (
@@ -8374,9 +8373,7 @@ def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
     class_name: str, count: int
 ):
     (action_class,) = [
-        cls
-        for cls in actions_module.BULK_ACTIONS.values()
-        if cls.__name__ == class_name
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
     ]
     cleaned_data: dict[str, object] = {
         "cohort": Cohort(name="Cohort A"),

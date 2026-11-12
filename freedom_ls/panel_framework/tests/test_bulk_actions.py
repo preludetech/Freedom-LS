@@ -23,6 +23,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.bulk_actions import (
+    BULK_ACTIONS,
     FAILED_REASON,
     BackgroundRun,
     BulkAction,
@@ -30,7 +31,11 @@ from freedom_ls.panel_framework.bulk_actions import (
     BulkOutcome,
     BulkResult,
     BulkResultEntry,
+    ConfirmationWording,
+    PermittedBulkAction,
     Selection,
+    bulk_actions_for_table,
+    register_bulk_action,
     resolve_selection,
 )
 from freedom_ls.panel_framework.bulk_runs import run_bulk_action
@@ -1479,3 +1484,219 @@ def test_a_notice_is_not_an_alert(mock_site_context: Site) -> None:
     ]
     assert notice.getparent().get("role") is None
     assert notice.get("role") is None
+
+
+class _PermittedStubAction(PermittedBulkAction[AbstractBaseUser]):
+    """Changes the active stub rows a scope names, skips inactive ones."""
+
+    label = "Retire"
+    action_name = "retire"
+    table_key = "permitted_stubs"
+    capability = "retire"
+    unchanged_reason = "already retired"
+    noun_model = StubModel
+    scope_seen: object = None
+
+    def scope_for_request(self, request: HttpRequest) -> Model | None:
+        return StubModel(name="scope")
+
+    def permitted(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        scope: Model | None,
+        queryset: QuerySet,
+        cleaned_data: dict[str, object],
+    ) -> QuerySet:
+        type(self).scope_seen = scope
+        return queryset.exclude(name__startswith="locked")
+
+    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
+        return None if cast(StubModel, obj).is_active else self.unchanged_reason
+
+    def perform(
+        self, obj: Model, cleaned_data: dict[str, object], actor: AbstractBaseUser
+    ) -> bool:
+        return cast(StubModel, obj).is_active
+
+    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
+        return f"Retire {count} rows."
+
+    def consequences(
+        self,
+        queryset: QuerySet,
+        classified: dict[str, BulkOutcome] | None,
+        cleaned_data: dict[str, object],
+    ) -> list[str]:
+        return ["They stay retired."]
+
+
+def _post_request() -> HttpRequest:
+    request = RequestFactory().post("/stubs")
+    request.user = AnonymousUser()
+    return request
+
+
+@pytest.fixture
+def restore_registry() -> object:
+    saved = dict(BULK_ACTIONS)
+    yield
+    BULK_ACTIONS.clear()
+    BULK_ACTIONS.update(saved)
+
+
+def _permitted_classification(
+    mock_site_context: Site,
+) -> tuple[_PermittedStubAction, dict[str, BulkOutcome], dict[str, StubModel]]:
+    rows = {
+        "open": make_stub(name="open"),
+        "retired": make_stub(name="retired", is_active=False),
+        "locked": make_stub(name="locked-row"),
+    }
+    action = _PermittedStubAction()
+    classified = action.classify_all(
+        _post_request(),
+        StubModel.objects.filter(pk__in=[row.pk for row in rows.values()]),
+        {},
+    )
+    assert classified is not None
+    return action, classified, rows
+
+
+def test_a_permitted_action_classifies_changed_and_skipped_rows(
+    mock_site_context: Site,
+) -> None:
+    action, classified, rows = _permitted_classification(mock_site_context)
+
+    assert classified[str(rows["open"].pk)] == BulkOutcome("changed")
+    assert classified[str(rows["retired"].pk)] == BulkOutcome(
+        "skipped", "already retired"
+    )
+    assert classified[str(rows["locked"].pk)] == BulkOutcome(
+        "skipped", action.not_permitted_reason()
+    )
+    assert action.changed_count(classified) == 1
+    assert action.changed_keys(classified) == [str(rows["open"].pk)]
+
+
+def test_the_scope_for_the_request_reaches_permitted(mock_site_context: Site) -> None:
+    _PermittedStubAction.scope_seen = None
+
+    _permitted_classification(mock_site_context)
+
+    scope = _PermittedStubAction.scope_seen
+    assert isinstance(scope, StubModel)
+    assert scope.name == "scope"
+
+
+def test_scope_for_request_has_no_default() -> None:
+    class Unscoped(PermittedBulkAction[AbstractBaseUser]):
+        noun_model = StubModel
+
+    with pytest.raises(NotImplementedError):
+        Unscoped().scope_for_request(RequestFactory().post("/stubs"))
+
+
+def test_apply_reports_changed_and_the_unchanged_reason(
+    mock_site_context: Site,
+) -> None:
+    action, _classified, rows = _permitted_classification(mock_site_context)
+    user = AnonymousUser()
+
+    assert action.apply(user, rows["open"], {}) == BulkOutcome("changed")
+    assert action.apply(user, rows["retired"], {}) == BulkOutcome(
+        "skipped", "already retired"
+    )
+    assert action.apply(user, rows["locked"], {}) == BulkOutcome(
+        "skipped", action.not_permitted_reason()
+    )
+
+
+def test_the_sentence_title_and_consequences_word_the_confirmation(
+    mock_site_context: Site,
+) -> None:
+    action, classified, _rows = _permitted_classification(mock_site_context)
+    request = _post_request()
+
+    wording = action.confirmation_wording(
+        request, StubModel.objects.all(), classified, {}
+    )
+
+    assert wording.sentence == "Retire 1 rows."
+    assert action.confirmation_title(1, {}) == "Retire 1 rows?"
+    assert wording.consequences == ["They stay retired."]
+    assert wording.skip_lines == [
+        "1 is already retired and will be skipped.",
+        f"1 is {action.not_permitted_reason()} and will be skipped.",
+    ]
+
+
+def test_a_skip_reason_is_worded_in_both_tenses() -> None:
+    action = _PermittedStubAction()
+    item = BulkCount(status="skipped", reason="already retired", count=2)
+
+    assert action.confirmation_skip_line(item) == (
+        "2 are already retired and will be skipped."
+    )
+    assert action.result_line(item) == "2 were already retired."
+
+
+def test_overridden_skip_wording_replaces_both_tenses() -> None:
+    class Reworded(_PermittedStubAction):
+        def confirmation_skip_line(self, item: BulkCount) -> str:
+            return f"{item.count} rows need no change."
+
+        def result_line(self, item: BulkCount) -> str:
+            return f"{item.count} rows needed no change."
+
+    item = BulkCount(status="skipped", reason="already retired", count=3)
+
+    assert Reworded().confirmation_skip_line(item) == "3 rows need no change."
+    assert Reworded().result_line(item) == "3 rows needed no change."
+
+
+def test_a_confirmation_renders_the_skip_lines_it_is_given() -> None:
+    html = render_to_string(
+        "panel_framework/partials/bulk_confirmation_message.html",
+        {
+            "wording": ConfirmationWording(
+                sentence="Retire 1 rows.", skip_lines=["Two rows need no change."]
+            )
+        },
+    )
+
+    assert "<li>Two rows need no change.</li>" in html
+
+
+def test_bulk_actions_for_table_lists_one_tables_actions_in_registration_order(
+    restore_registry: object,
+) -> None:
+    class First(_PermittedStubAction):
+        action_name = "first"
+
+    class Second(_PermittedStubAction):
+        action_name = "second"
+
+    class Elsewhere(_PermittedStubAction):
+        table_key = "elsewhere"
+        action_name = "elsewhere"
+
+    for cls in (Second, Elsewhere, First):
+        register_bulk_action(cls)
+
+    assert [type(a) for a in bulk_actions_for_table("permitted_stubs")] == [
+        Second,
+        First,
+    ]
+    assert bulk_actions_for_table("no_such_table") == []
+
+
+def test_registering_a_table_and_name_twice_overwrites(
+    restore_registry: object,
+) -> None:
+    class Replacement(_PermittedStubAction):
+        pass
+
+    register_bulk_action(_PermittedStubAction)
+    register_bulk_action(Replacement)
+
+    assert [type(a) for a in bulk_actions_for_table("permitted_stubs")] == [Replacement]

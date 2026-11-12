@@ -101,7 +101,6 @@ from freedom_ls.educator_interface.actions import (
     RemoveStaffFromCohortAction,
     ResendSetupEmailAction,
     actionable_roles,
-    bulk_actions_for_table,
     cohort_not_empty_sentence,
     cohort_state_actions,
     grantable_roles_for,
@@ -207,7 +206,7 @@ from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
 )
-from freedom_ls.panel_framework.bulk_actions import BulkAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
 from freedom_ls.panel_framework.config import config as panel_framework_config
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import PeriodFilter, TableFilter, ToggleFilter

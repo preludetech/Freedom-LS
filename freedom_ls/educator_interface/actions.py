@@ -173,9 +173,9 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.bulk_actions import (
     BulkCount,
     BulkOutcome,
-    ConfirmationWording,
+    PermittedBulkAction,
     RecordedBulkAction,
-    count_outcomes,
+    register_bulk_action,
 )
 from freedom_ls.panel_framework.bulk_runs import run_summary
 from freedom_ls.panel_framework.context import PanelContext
@@ -2812,76 +2812,20 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
         return staff_member_changed_response(user, ctx)
 
 
-BULK_ACTIONS: dict[tuple[str, str], type[EducatorBulkAction]] = {}
-
-
-def register_bulk_action[ActionT: type[EducatorBulkAction]](cls: ActionT) -> ActionT:
-    """Class decorator: file the action under its table and name, in
-    registration order, which is the order the action bar lists them."""
-    BULK_ACTIONS[(cls.table_key, cls.action_name)] = cls
-    return cls
-
-
-def bulk_actions_for_table(table_key: str) -> list[EducatorBulkAction]:
-    return [
-        action_class()
-        for (key, _name), action_class in BULK_ACTIONS.items()
-        if key == table_key
-    ]
-
-
-class EducatorBulkAction(RecordedBulkAction):
+class EducatorBulkAction(PermittedBulkAction[User]):
     """A bulk action over the rows of an educator-interface table, scoped to
     the organisation the request was made under.
 
     Each object is changed with the same capability and service its
-    single-object action uses. `permitted` decides which objects the user may
-    change; it is read once per preview and once per run, so the preview and
-    the run agree and the cost does not grow with the selection. Subclasses
-    fill in the hooks; the defaults suit an action with no target picker.
+    single-object action uses.
     """
-
-    capability: str
-    #: The skip reason when the service reports nothing changed.
-    unchanged_reason: str = ""
-    #: The pks `permitted` returned, set by `prepare`.
-    permitted_ids: frozenset[object] = frozenset()
 
     def has_permission(self, request: HttpRequest) -> bool:
         scoped = cast("OrganisationScopedRequest", request)
         return can_on_any(scoped.user, scoped.organisation, self.capability)
 
-    def permitted(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> QuerySet:
-        """`queryset` narrowed to the objects the user may act on."""
-        raise NotImplementedError
-
-    def skip_reason(self, obj: Model, cleaned_data: dict[str, object]) -> str | None:
-        """The reason this permitted object would be skipped, from its
-        current state; None when it would change."""
-        return None
-
-    def prepare(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        scope: Model | None,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> None:
-        self.permitted_ids = frozenset(
-            self.permitted(
-                user, cast(Organisation, scope), queryset, cleaned_data
-            ).values_list("pk", flat=True)
-        )
-
-    def perform(self, obj: Model, cleaned_data: dict[str, object], actor: User) -> bool:
-        """Call the service; False when it reports nothing changed."""
-        raise NotImplementedError
+    def scope_for_request(self, request: HttpRequest) -> Model | None:
+        return cast("OrganisationScopedRequest", request).organisation
 
     def objects_for_keys(self, scope: Model | None, keys: list[str]) -> QuerySet:
         # Narrowed to the run's organisation, so a key from another one can
@@ -2904,91 +2848,6 @@ class EducatorBulkAction(RecordedBulkAction):
             user=cast("User", request.user), target=run, site_id=run.site_id
         )
 
-    def not_permitted_reason(self) -> str:
-        return (
-            f"{self.noun_model._meta.verbose_name_plural} "
-            "you don't have permission to change"
-        )
-
-    def classify_all(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        cleaned_data: dict[str, object],
-    ) -> dict[str, BulkOutcome] | None:
-        scoped = cast("OrganisationScopedRequest", request)
-        self.prepare(scoped.user, scoped.organisation, queryset, cleaned_data)
-        outcomes: dict[str, BulkOutcome] = {}
-        for obj in self.with_related(queryset):
-            if obj.pk not in self.permitted_ids:
-                outcomes[str(obj.pk)] = BulkOutcome(
-                    "skipped", self.not_permitted_reason()
-                )
-            elif (reason := self.skip_reason(obj, cleaned_data)) is not None:
-                outcomes[str(obj.pk)] = BulkOutcome("skipped", reason)
-            else:
-                outcomes[str(obj.pk)] = BulkOutcome("changed")
-        return outcomes
-
-    def changed_count(self, classified: dict[str, BulkOutcome] | None) -> int:
-        counts = count_outcomes(classified or {})
-        return sum(item.count for item in counts if item.status == "changed")
-
-    def changed_keys(self, classified: dict[str, BulkOutcome] | None) -> list[str]:
-        return [
-            key
-            for key, outcome in (classified or {}).items()
-            if outcome.status == "changed"
-        ]
-
-    def sentence(self, count: int, cleaned_data: dict[str, object]) -> str:
-        """The confirmation sentence for the `count` objects that will change."""
-        raise NotImplementedError
-
-    def confirmation_title(self, count: int, cleaned_data: dict[str, object]) -> str:
-        """The sentence, asked: every dialog's heading is its sentence with
-        a question mark, so wording lives in one place."""
-        return self.sentence(count, cleaned_data).removesuffix(".") + "?"
-
-    def consequences(
-        self,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> list[str]:
-        """What the change means beyond itself, one line each. None by default."""
-        return []
-
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
-        return ConfirmationWording(
-            sentence=self.sentence(self.changed_count(classified), cleaned_data),
-            skips=wording.skips,
-            consequences=self.consequences(queryset, classified, cleaned_data),
-        )
-
-    def apply(
-        self,
-        user: AbstractBaseUser | AnonymousUser,
-        obj: Model,
-        cleaned_data: dict[str, object],
-    ) -> BulkOutcome:
-        if obj.pk not in self.permitted_ids:
-            return BulkOutcome("skipped", self.not_permitted_reason())
-        if self.perform(obj, cleaned_data, cast("User", user)):
-            return BulkOutcome("changed")
-        # The service said nothing changed, so the reason the preview gave
-        # applies here too.
-        return BulkOutcome("skipped", self.unchanged_reason)
-
 
 class LearnerBulkAction(EducatorBulkAction):
     """A bulk action over the rows of the learners table."""
@@ -3005,14 +2864,14 @@ class LearnerBulkAction(EducatorBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
         return queryset.filter(
-            pk__in=learners_permitted_for(user, organisation, self.capability).values(
-                "pk"
-            )
+            pk__in=learners_permitted_for(
+                user, cast(Organisation, scope), self.capability
+            ).values("pk")
         )
 
 
@@ -3043,7 +2902,7 @@ class CohortMembershipBulkAction(LearnerBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
@@ -3374,37 +3233,16 @@ class ResendSetupEmailBulkAction(LearnerBulkAction):
             return f"{emails} sent recently."
         return super().result_line(item)
 
-    def confirmation_wording(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet,
-        classified: dict[str, BulkOutcome] | None,
-        cleaned_data: dict[str, object],
-    ) -> ConfirmationWording:
-        wording = super().confirmation_wording(
-            request, queryset, classified, cleaned_data
-        )
+    def confirmation_skip_line(self, item: BulkCount) -> str:
         # "account already set up" names its own subject, so it cannot follow
-        # the "N is/are" the skip lines put in front of a reason; result_line
-        # words both of this action's reasons for the same cause.
-        set_up = sum(
-            skip.count for skip in wording.skips if skip.reason == self.unchanged_reason
-        )
-        return ConfirmationWording(
-            sentence=wording.sentence,
-            skips=[
-                skip for skip in wording.skips if skip.reason != self.unchanged_reason
-            ],
-            consequences=(
-                [
-                    f"{count_noun(Learner, set_up)} "
-                    f"{'is' if set_up == 1 else 'are'} "
-                    "already set up and will be skipped."
-                ]
-                if set_up
-                else []
-            ),
-        )
+        # the "N is/are" the default line puts in front of a reason.
+        if item.reason == self.unchanged_reason:
+            return (
+                f"{count_noun(Learner, item.count)} "
+                f"{'is' if item.count == 1 else 'are'} "
+                "already set up and will be skipped."
+            )
+        return super().confirmation_skip_line(item)
 
 
 class CohortBulkAction(EducatorBulkAction):
@@ -3419,13 +3257,13 @@ class CohortBulkAction(EducatorBulkAction):
     def permitted(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        organisation: Organisation,
+        scope: Model | None,
         queryset: QuerySet,
         cleaned_data: dict[str, object],
     ) -> QuerySet:
         return queryset.filter(
             pk__in=cohorts_visible_to(
-                user, organisation, capability=self.capability
+                user, cast(Organisation, scope), capability=self.capability
             ).values("pk")
         )
 
