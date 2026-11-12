@@ -9,7 +9,9 @@
     Profile
 </h1>
 
- <form method="POST" >
+<c-panel-avatar-chip size="lg" :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :picture_url="request.user.profile_picture_url" />
+
+<form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         {{form}}
 

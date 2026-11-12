@@ -10,11 +10,17 @@ from allauth.core import context as allauth_context
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
+from django.core.files import File
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
+
+from .images import encode_profile_picture
+from .validators import validate_profile_picture
 
 if TYPE_CHECKING:
     from django_stubs_ext import StrPromise
@@ -28,11 +34,31 @@ logger = logging.getLogger(__name__)
 
 
 class UserForm(forms.ModelForm):
+    profile_picture = forms.FileField(
+        required=False,
+        label="Profile picture",
+        help_text=(
+            "JPEG, PNG or WebP, up to 10 MB. Square pictures work best; "
+            "others are cropped to the centre."
+        ),
+        # Not ClearableFileInput: it would print the stored key and a
+        # signed link beside the input.
+        widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+    )
+
     class Meta:
         model = User
-        # TODO: allow the user to upload a profile picture
+        fields = ["first_name", "last_name", "profile_picture"]
 
-        fields = ["first_name", "last_name"]
+    def clean_profile_picture(self) -> File | None:
+        upload = self.cleaned_data.get("profile_picture")
+        if not isinstance(upload, UploadedFile):
+            # No new file: the field hands back what the user already has.
+            return upload
+        encoded = encode_profile_picture(validate_profile_picture(upload))
+        # Storage only ever receives the re-encoded WebP. The name is a
+        # placeholder; the upload_to callable picks the key.
+        return ContentFile(encoded, name="profile_picture.webp")
 
 
 def _get_request_or_none():

@@ -15,6 +15,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest, HttpResponse
 from django.test import Client, override_settings
 from django.urls import reverse
@@ -29,6 +30,8 @@ from freedom_ls.accounts.tests._auth_page_helpers import (
     _next_param,
 )
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
+from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
+from freedom_ls.accounts.validators import WRONG_TYPE
 
 if TYPE_CHECKING:
     # Stub-only: the test client's response carries `templates`, which a plain
@@ -929,3 +932,80 @@ class TestSignUpAnalyticsEventEndToEnd:
             """gtag('event', 'sign_up', {"method": "email"})"""
             in response.content.decode()
         )
+
+
+# Tests for the account profile page.
+
+
+def _picture_srcs(html: str) -> list[str]:
+    return re.findall(r'<img data-profile-picture\s+src="([^"]+)"', html)
+
+
+@pytest.mark.django_db
+def test_profile_page_renders_a_multipart_form_with_a_described_image_input(
+    mock_site_context,
+):
+    client = Client()
+    client.force_login(UserFactory())
+
+    html = client.get(reverse("accounts:account_profile")).content.decode()
+
+    assert 'enctype="multipart/form-data"' in html
+    assert 'accept="image/jpeg,image/png,image/webp"' in html
+    assert 'aria-describedby="id_profile_picture_helptext"' in html
+    assert "JPEG, PNG or WebP, up to 10 MB." in html
+
+
+@pytest.mark.django_db
+def test_valid_picture_post_redirects_and_the_page_then_shows_the_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(first_name="Ada", last_name="Lovelace")
+    client = Client()
+    client.force_login(user)
+    profile_url = reverse("accounts:account_profile")
+
+    response = client.post(
+        profile_url,
+        {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "profile_picture": SimpleUploadedFile("me.jpg", jpeg_bytes()),
+        },
+    )
+    page = client.get(profile_url).content.decode()
+
+    assert (response.status_code, response.url) == (302, profile_url)
+    # The header trigger and the chip above the form.
+    assert len(_picture_srcs(page)) == 2
+
+
+@pytest.mark.django_db
+def test_refused_picture_re_renders_with_the_error_and_the_saved_state(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(
+        first_name="Ada", last_name="Lovelace", with_profile_picture=True
+    )
+    saved_name = user.profile_picture.name
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("accounts:account_profile"),
+        {
+            "first_name": "Grace",
+            "last_name": "Hopper",
+            "profile_picture": SimpleUploadedFile("me.png", b"not an image"),
+        },
+    )
+    html = response.content.decode()
+
+    user.refresh_from_db()
+    assert response.status_code == 200
+    assert WRONG_TYPE in html
+    assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
+    assert user.profile_picture.name == saved_name
+    assert 'value="Grace"' in html
+    assert "Ada Lovelace" in html
+    assert len(_picture_srcs(html)) == 2
