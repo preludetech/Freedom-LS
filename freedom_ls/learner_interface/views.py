@@ -282,9 +282,9 @@ def _annotate_registered_courses(
     (0%) or in_progress (>0%).
     """
     records = course_progress_by_course_for(user, courses)
-    deadlines_by_record = course_deadlines_for(records.values())
-    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     now = timezone.now()
+    deadlines_by_record = course_deadlines_for(records.values(), now=now)
+    policies_by_record = get_deadline_policy().resolve_for(list(records.values()))
     decisions = backend.get_access_many(user=user, courses=courses)
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
@@ -304,6 +304,10 @@ def _annotate_registered_courses(
         # progress, so a finished item would read as missed: no deadlines then.
         course_decision = decisions[course.pk]
         setattr(course, "access_ended_at", course_decision.access_ended_at)  # noqa: B010
+        setattr(course, "paused_at", course_decision.paused_at)  # noqa: B010
+        setattr(  # noqa: B010
+            course, "planned_resume_at", course_decision.planned_resume_at
+        )
         record = records.get(course.pk)
         _annotate_next_up(
             course,
@@ -811,6 +815,8 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         if entry.status in in_player:
             decision = decisions[course.pk]
             setattr(course, "access_ended_at", decision.access_ended_at)  # noqa: B010
+            setattr(course, "paused_at", decision.paused_at)  # noqa: B010
+            setattr(course, "planned_resume_at", decision.planned_resume_at)  # noqa: B010
             # The listing resolved the record already; the catalogue shows no
             # deadline line, so none are resolved here.
             _annotate_next_up(
