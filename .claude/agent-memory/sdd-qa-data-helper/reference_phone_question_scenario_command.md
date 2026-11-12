@@ -31,3 +31,10 @@ submitted sitting via queryset.update(completed_time=None, furthest_page_reached
 Verification: a real login POST works with `Client(HTTP_HOST="127.0.0.1:<tester port>")` even though
 Site.domain is `127.0.0.1:8000`. `HTTP_HOST="testserver"` 500s in allauth's
 `_get_login_attempts_cache_key` (Site.DoesNotExist) — not a real bug, just the wrong host.
+
+## Re-arming the QA Phone Form for demodev (asked twice in one QA run, Nov 2026)
+`uv run python manage.py shell < .claude/agent-memory/sdd-qa-data-helper/qa_phone_course_demodev_reset_script.py`
+Deletes demodev's FormProgress on `qa-phone-form` (cascades CourseFormAttempt + QuestionAnswer) and
+the CourseProgress on `qa-phone-course`; keeps the LearnerCourseRegistration. Does NOT touch the
+password (unlike re-running the command). The registration model is `LearnerCourseRegistration`
+(course FK, learner__user), not UserCourseRegistration.
