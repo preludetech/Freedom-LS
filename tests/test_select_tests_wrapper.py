@@ -1,12 +1,13 @@
-"""Tests for the generated `select_tests.sh` wrapper.
+"""Tests for the generated `select_tests.sh` and `run_tests.sh` wrappers.
 
 `uv` is replaced with a stub executable that only logs its own invocation, so the
-real selection script never runs.
+real plugin scripts never run.
 """
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -14,18 +15,31 @@ import pytest
 from tests.stub_tools import StubTools, run_script, write_stub
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = (
-    REPO_ROOT
-    / "claude_plugins"
-    / "django-stack"
-    / "templates"
-    / "wrapper_scripts"
-    / "select_tests.sh"
+WRAPPER_DIR = REPO_ROOT / ".claude" / "ds" / "scripts"
+TEMPLATE_DIR = (
+    REPO_ROOT / "claude_plugins" / "django-stack" / "templates" / "wrapper_scripts"
 )
-WRAPPER = REPO_ROOT / ".claude" / "ds" / "scripts" / "select_tests.sh"
-PLUGIN_SCRIPT = (
-    REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "select_tests.py"
-)
+PLUGIN_SCRIPT_DIR = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts"
+
+
+@dataclass(frozen=True)
+class WrapperCase:
+    template: Path
+    wrapper: Path
+    plugin_script: Path
+
+
+WRAPPER_CASES = [
+    pytest.param(
+        WrapperCase(
+            template=TEMPLATE_DIR / f"{name}.sh",
+            wrapper=WRAPPER_DIR / f"{name}.sh",
+            plugin_script=PLUGIN_SCRIPT_DIR / f"{name}.py",
+        ),
+        id=name,
+    )
+    for name in ("select_tests", "run_tests")
+]
 
 
 @pytest.fixture
@@ -36,43 +50,46 @@ def stub_tools(tmp_path: Path) -> StubTools:
     return StubTools(bin_dir=bin_dir, log_file=tmp_path / "log.txt")
 
 
+@pytest.mark.parametrize("case", WRAPPER_CASES)
 def test_wrapper_runs_the_plugin_script_with_its_arguments_through_uv(
-    stub_tools: StubTools, tmp_path: Path
+    case: WrapperCase, stub_tools: StubTools, tmp_path: Path
 ) -> None:
     # Arrange
     environment = stub_tools.env()
 
     # Act
-    result = run_script(WRAPPER, tmp_path, environment, args=["a.py", "b.py"])
+    result = run_script(case.wrapper, tmp_path, environment, args=["a.py", "b.py"])
 
     # Assert
     (logged,) = stub_tools.log_lines()
     command, subcommand, interpreter, script, *arguments = logged.split()
     assert result.returncode == 0
     assert [command, subcommand, interpreter] == ["uv", "run", "python"]
-    assert os.path.normpath(script) == str(PLUGIN_SCRIPT)
+    assert os.path.normpath(script) == str(case.plugin_script)
     assert arguments == ["a.py", "b.py"]
 
 
+@pytest.mark.parametrize("case", WRAPPER_CASES)
 def test_wrapper_exits_with_the_exit_code_of_uv(
-    stub_tools: StubTools, tmp_path: Path
+    case: WrapperCase, stub_tools: StubTools, tmp_path: Path
 ) -> None:
     # Arrange
     environment = stub_tools.env(STUB_UV_EXIT_CODE=2)
 
     # Act
-    result = run_script(WRAPPER, tmp_path, environment)
+    result = run_script(case.wrapper, tmp_path, environment)
 
     # Assert
     assert result.returncode == 2
 
 
-def test_template_differs_from_the_generated_wrapper_only_on_the_plugins_root_line() -> (
-    None
-):
+@pytest.mark.parametrize("case", WRAPPER_CASES)
+def test_template_differs_from_the_generated_wrapper_only_on_the_plugins_root_line(
+    case: WrapperCase,
+) -> None:
     # Arrange
-    template_lines = TEMPLATE.read_text().splitlines()
-    wrapper_lines = WRAPPER.read_text().splitlines()
+    template_lines = case.template.read_text().splitlines()
+    wrapper_lines = case.wrapper.read_text().splitlines()
 
     # Act
     differing = [
@@ -83,8 +100,9 @@ def test_template_differs_from_the_generated_wrapper_only_on_the_plugins_root_li
     assert differing == [('PLUGINS_ROOT="__PLUGINS_ROOT__"', 'PLUGINS_ROOT="."')]
 
 
+@pytest.mark.parametrize("case", WRAPPER_CASES)
 def test_wrapper_runs_the_plugin_script_from_the_project_root(
-    stub_tools: StubTools, tmp_path: Path
+    case: WrapperCase, stub_tools: StubTools, tmp_path: Path
 ) -> None:
     # Arrange
     (stub_tools.bin_dir / "uv").write_text(
@@ -93,7 +111,7 @@ def test_wrapper_runs_the_plugin_script_from_the_project_root(
     environment = stub_tools.env()
 
     # Act
-    result = run_script(WRAPPER, tmp_path, environment)
+    result = run_script(case.wrapper, tmp_path, environment)
 
     # Assert
     assert result.returncode == 0

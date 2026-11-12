@@ -1129,7 +1129,13 @@ def test_dependency_cycle_lists_each_importer_once(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["select_tests.py", "check_test_mirroring.py", "generate_app_map.py"]
+    "name",
+    [
+        "select_tests.py",
+        "check_test_mirroring.py",
+        "generate_app_map.py",
+        "run_tests.py",
+    ],
 )
 def test_plugin_script_starts_with_its_shebang(name: str) -> None:
     # Arrange
