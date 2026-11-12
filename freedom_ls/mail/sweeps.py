@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from freedom_ls.mail.config import config
@@ -64,7 +65,7 @@ def recover_stuck_outbound_email() -> list[OutboundEmail]:
     dead_lettered: list[OutboundEmail] = []
     stuck = OutboundEmail.objects.filter(
         status=Status.SENDING, last_attempt_at__lt=cutoff
-    )
+    ).defer("payload")
     for email in stuck:
         out_of_attempts = email.attempt_count >= config.EMAIL_MAX_ATTEMPTS
         new_status = Status.DEAD_LETTER if out_of_attempts else Status.FAILED
@@ -93,12 +94,15 @@ def recover_stuck_outbound_email() -> list[OutboundEmail]:
 def prune_outbound_email() -> None:
     """Delete finished rows past retention and drop the body of old failed ones."""
     now = timezone.now()
-    OutboundEmail.objects.filter(
+    # Both windows are measured from the last attempt, not from creation, so a
+    # row an admin resent keeps its record, and its body, for the full window
+    # after it finishes again.
+    OutboundEmail.objects.alias(
+        last_activity_at=Coalesce("last_attempt_at", "created_at")
+    ).filter(
         status__in=TERMINAL_STATUSES,
-        created_at__lt=now - timedelta(days=config.EMAIL_OUTBOUND_RETENTION_DAYS),
+        last_activity_at__lt=now - timedelta(days=config.EMAIL_OUTBOUND_RETENTION_DAYS),
     ).delete()
-    # Measured from the last attempt, not from creation, so a row an admin
-    # resent keeps its body for the full window after it fails again.
     OutboundEmail.objects.filter(
         status__in=(Status.PERMANENT_FAILURE, Status.DEAD_LETTER),
         scrubbed_at__isnull=True,

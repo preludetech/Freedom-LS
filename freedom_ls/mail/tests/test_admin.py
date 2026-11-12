@@ -533,3 +533,14 @@ def test_resend_confirmation_gives_404_for_malformed_or_unknown_id(
     response = superuser_client.get(resend_confirm_url(object_id))
 
     assert response.status_code == 404
+
+
+def test_admin_queryset_does_not_load_the_body(mock_site_context: object) -> None:
+    OutboundEmailFactory()
+    request = RequestFactory().get(changelist_url())
+    request.user = UserFactory(superuser=True)
+    model_admin = OutboundEmailAdmin(OutboundEmail, admin.site)
+
+    email = model_admin.get_queryset(request).get()
+
+    assert "payload" in email.get_deferred_fields()

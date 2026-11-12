@@ -35,6 +35,21 @@ from freedom_ls.deployment.config import config
 logger = logging.getLogger("django_tasks_db")
 
 WATCHDOG_POLL_SECONDS = 30
+
+
+def task_ceiling_seconds() -> int:
+    """The longest a task can still be running before its worker is killed.
+
+    A task may run for WORKER_MAX_TASK_SECONDS, after which the heartbeat is left
+    to go stale, and the watchdog only notices on its next poll after that.
+    """
+    return (
+        config.WORKER_MAX_TASK_SECONDS
+        + config.WORKER_HEARTBEAT_MAX_AGE_SECONDS
+        + WATCHDOG_POLL_SECONDS
+    )
+
+
 SENTRY_FLUSH_TIMEOUT_SECONDS = 5
 # How often the ticker holds the heartbeat up during a task. An order of magnitude
 # inside the default WORKER_HEARTBEAT_MAX_AGE_SECONDS, which a config test pins.

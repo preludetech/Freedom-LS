@@ -10,12 +10,13 @@ worker behind it is accepted and never sent.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from django.core.mail import get_connection
 from django.db.models import F
 from django.tasks import TaskResult, task
+from django.tasks.backends.immediate import ImmediateBackend
 from django.utils import timezone
 
 from freedom_ls.mail.config import config
@@ -27,7 +28,7 @@ from freedom_ls.mail.errors import (
     describe_error,
     report_outbound_email,
 )
-from freedom_ls.mail.models import LAST_ERROR_MAX_LENGTH, OutboundEmail
+from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.retry import schedule_retry
 from freedom_ls.mail.serialisation import SerialisedMessage, deserialise_message
 
@@ -37,6 +38,12 @@ from freedom_ls.mail.serialisation import SerialisedMessage, deserialise_message
 # for first. It does not preempt a report already running -- see the deployment
 # docs for the separate-worker escape hatch.
 EMAIL_TASK_PRIORITY = 10
+
+# next_attempt_at is written by the web and housekeeping hosts and compared
+# against the worker's clock. Without this slack, a worker whose clock runs a
+# little behind would pick up a send enqueued to run at once, find it not yet
+# due, and finish without sending it.
+CLAIM_CLOCK_SKEW_TOLERANCE = timedelta(seconds=5)
 
 Status = OutboundEmail.Status
 
@@ -67,6 +74,11 @@ def _send_email_task(email_id: str) -> None:
     send_outbound_email(email_id)
 
 
+def sends_inline() -> bool:
+    """Whether enqueueing a send runs it on this connection before returning."""
+    return isinstance(_send_email_task.get_backend(), ImmediateBackend)
+
+
 def enqueue_send(email_id: UUID, run_after: datetime | None = None) -> TaskResult:
     """Enqueue one attempt at sending a row, optionally not before run_after.
 
@@ -92,7 +104,7 @@ def send_outbound_email(email_id: str) -> None:
     claimed = OutboundEmail.objects.filter(
         pk=email_id,
         status__in=(Status.PENDING, Status.FAILED),
-        next_attempt_at__lte=now,
+        next_attempt_at__lte=now + CLAIM_CLOCK_SKEW_TOLERANCE,
     ).update(
         status=Status.SENDING,
         attempt_count=F("attempt_count") + 1,
@@ -119,9 +131,8 @@ def send_outbound_email(email_id: str) -> None:
         # The row stays in sending. A bug in our own code is reported loudly by
         # the failed task, not retried quietly. The cause is kept on the row so
         # the admin shows why once housekeeping moves it on.
-        OutboundEmail.objects.filter(pk=email.pk).update(
-            last_error=describe_error(exc)[:LAST_ERROR_MAX_LENGTH]
-        )
+        email.last_error = describe_error(exc)
+        email.save(update_fields=["last_error"])
         raise
     # Nothing runs between the send and this write: a crash here re-sends the
     # message, so the window is kept as small as one statement.

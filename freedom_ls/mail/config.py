@@ -36,7 +36,7 @@ class MailSettings(AppSettings):
         # of that delay.
         "EMAIL_RETRY_JITTER_RATIO": Setting(default=0.2),
         # Days a sent, permanently failed or dead-lettered row is kept, counted
-        # from its creation, before housekeeping deletes it.
+        # from its last attempt, before housekeeping deletes it.
         "EMAIL_OUTBOUND_RETENTION_DAYS": Setting(default=30),
         # Days a permanently failed or dead-lettered row keeps its message body,
         # counted from its last attempt, so an operator can still resend it.

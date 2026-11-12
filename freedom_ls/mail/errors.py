@@ -63,7 +63,10 @@ def _is_permanent(exc: BaseException) -> bool:
     ):
         return True
     if isinstance(exc, SMTPRecipientsRefused):
-        return any(500 <= code <= 599 for code, _ in exc.recipients.values())
+        # One 4xx among them is worth a retry: the recipient refused only for
+        # now gets the message on the next attempt.
+        codes = [code for code, _ in exc.recipients.values()]
+        return bool(codes) and all(500 <= code <= 599 for code in codes)
     code = _smtp_code(exc)
     return code is not None and 500 <= code <= 599
 

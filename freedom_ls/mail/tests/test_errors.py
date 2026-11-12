@@ -41,9 +41,15 @@ TRANSIENT = SendErrorKind.TRANSIENT
         (SMTPSenderRefused(553, b"bad sender", "a@example.test"), PERMANENT),
         (
             SMTPRecipientsRefused(
-                {"a@example.test": (450, b"later"), "b@example.test": (550, b"no")}
+                {"a@example.test": (550, b"no"), "b@example.test": (551, b"no")}
             ),
             PERMANENT,
+        ),
+        (
+            SMTPRecipientsRefused(
+                {"a@example.test": (450, b"later"), "b@example.test": (550, b"no")}
+            ),
+            TRANSIENT,
         ),
         (ssl.SSLCertVerificationError("certificate verify failed"), PERMANENT),
         (UnicodeEncodeError("ascii", "é", 0, 1, "ordinal not in range"), PERMANENT),

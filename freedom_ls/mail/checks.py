@@ -9,6 +9,8 @@ E001 — EMAIL_UPSTREAM_BACKEND resolves to the queueing backend itself, so the
        worker would re-enqueue every message instead of sending it. Runs
        everywhere, not only under ``--deploy``, because it fires wherever the
        queueing backend is selected, dev included.
+E002 — EMAIL_RETRY_DELAYS, EMAIL_MAX_ATTEMPTS or EMAIL_RETRY_JITTER_RATIO
+       holds a value the retry ladder cannot use. Runs everywhere.
 W001 — The queueing backend is selected but the task backend cannot defer a
        task, so each retry waits for the next ``fls_run_housekeeping`` run.
        Only runs under ``--deploy``.
@@ -76,6 +78,45 @@ def check_email_upstream_backend_is_not_the_queue(
                 "EMAIL_BACKEND is the one that names the queue."
             ),
             id="freedom_ls_mail.E001",
+        )
+    ]
+
+
+@register()
+def check_email_retry_settings_are_usable(
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """Error when the retry ladder's settings cannot drive a retry.
+
+    They are first read inside the worker's failure handling, after the row is
+    claimed. A value that raises there leaves the row in sending with no cause
+    recorded, and only the stuck-email sweep moves it on, an hour at a time.
+    """
+    from freedom_ls.mail.config import config
+
+    problems: list[str] = []
+    delays = config.EMAIL_RETRY_DELAYS
+    if not isinstance(delays, list) or not delays:
+        problems.append("EMAIL_RETRY_DELAYS must be a non-empty list of seconds")
+    elif not all(
+        isinstance(delay, int) and not isinstance(delay, bool) and delay >= 0
+        for delay in delays
+    ):
+        problems.append("every EMAIL_RETRY_DELAYS entry must be a whole number ≥ 0")
+    if config.EMAIL_MAX_ATTEMPTS < 1:
+        problems.append("EMAIL_MAX_ATTEMPTS must be at least 1")
+    if config.EMAIL_RETRY_JITTER_RATIO < 0:
+        problems.append("EMAIL_RETRY_JITTER_RATIO must not be negative")
+    if not problems:
+        return []
+    return [
+        Error(
+            f"The email retry settings cannot schedule a retry: {'; '.join(problems)}.",
+            hint=(
+                "Leave these settings unset to use FreedomLS's defaults, or fix "
+                "the values named above."
+            ),
+            id="freedom_ls_mail.E002",
         )
     ]
 

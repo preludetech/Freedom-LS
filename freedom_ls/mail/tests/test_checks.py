@@ -1,12 +1,15 @@
-"""Tests for freedom_ls_mail.E001 and freedom_ls_mail.W001."""
+"""Tests for freedom_ls_mail.E001, freedom_ls_mail.E002 and freedom_ls_mail.W001."""
 
 from __future__ import annotations
+
+import pytest
 
 from django.core.checks import registry
 from django.test import override_settings
 
 from freedom_ls.mail.backends import QueuedEmailBackend
 from freedom_ls.mail.checks import (
+    check_email_retry_settings_are_usable,
     check_email_upstream_backend_is_not_the_queue,
     check_task_backend_can_defer_email_retries,
 )
@@ -99,3 +102,40 @@ def test_queue_on_a_task_backend_that_can_defer_is_quiet() -> None:
 @override_settings(EMAIL_BACKEND=LOCMEM_BACKEND, TASKS=IMMEDIATE_TASKS)
 def test_deferral_check_is_quiet_when_the_queue_is_not_in_use() -> None:
     assert check_task_backend_can_defer_email_retries() == []
+
+
+def test_email_retry_settings_check_is_registered() -> None:
+    assert check_email_retry_settings_are_usable in registry.registry.registered_checks
+
+
+@override_settings(
+    EMAIL_RETRY_DELAYS=[60, 300], EMAIL_MAX_ATTEMPTS=1, EMAIL_RETRY_JITTER_RATIO=0
+)
+def test_usable_retry_settings_pass() -> None:
+    assert check_email_retry_settings_are_usable() == []
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"EMAIL_RETRY_DELAYS": []},
+        {"EMAIL_RETRY_DELAYS": [60, -1]},
+        {"EMAIL_RETRY_DELAYS": [60, "300"]},
+        {"EMAIL_RETRY_DELAYS": 60},
+        {"EMAIL_MAX_ATTEMPTS": 0},
+        {"EMAIL_RETRY_JITTER_RATIO": -0.1},
+    ],
+    ids=[
+        "empty_delays",
+        "negative_delay",
+        "string_delay",
+        "delays_not_a_list",
+        "zero_attempts",
+        "negative_jitter",
+    ],
+)
+def test_unusable_retry_setting_returns_one_error(overrides: dict[str, object]) -> None:
+    with override_settings(**overrides):
+        errors = check_email_retry_settings_are_usable()
+
+    assert [error.id for error in errors] == ["freedom_ls_mail.E002"]

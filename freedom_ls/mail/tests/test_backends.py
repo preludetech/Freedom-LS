@@ -116,6 +116,7 @@ class TestQueuedEmailBackend:
         assert sent == 0
         assert mail.outbox == []
 
+    @pytest.mark.usefixtures("database_task_backend")
     def test_the_row_holds_recipients_subject_and_a_pinned_message_id(self) -> None:
         QueuedEmailBackend().send_messages([make_message()])
 
@@ -129,6 +130,7 @@ class TestQueuedEmailBackend:
         assert email.message_id.startswith("<")
         assert email.payload["extra_headers"]["Message-ID"] == email.message_id
 
+    @pytest.mark.usefixtures("database_task_backend")
     @pytest.mark.parametrize("header", ["Message-ID", "Message-Id", "message-id"])
     def test_a_message_id_the_caller_set_is_kept_whatever_its_case(
         self, header: str
@@ -147,17 +149,26 @@ class TestQueuedEmailBackend:
         assert email.message_id == "<caller@example.test>"
         assert id_headers == {header: "<caller@example.test>"}
 
-    def test_sending_the_same_message_twice_writes_two_rows_with_one_message_id(
+    def test_reusing_one_message_object_gives_each_send_its_own_message_id(
         self,
     ) -> None:
+        """A caller looping over recipients with one EmailMessage sends distinct
+        messages, and a mail host de-duplicating by Message-ID would drop all but
+        the first if they shared one."""
         message = make_message()
 
         QueuedEmailBackend().send_messages([message])
         QueuedEmailBackend().send_messages([message])
 
         message_ids = set(OutboundEmail.objects.values_list("message_id", flat=True))
-        assert OutboundEmail.objects.count() == 2
-        assert len(message_ids) == 1
+        assert len(message_ids) == 2
+
+    def test_the_callers_message_is_left_without_a_message_id(self) -> None:
+        message = make_message()
+
+        QueuedEmailBackend().send_messages([message])
+
+        assert "Message-ID" not in message.extra_headers
 
     def test_a_rolled_back_transaction_leaves_no_row_and_no_task(
         self,
@@ -177,7 +188,8 @@ class TestQueuedEmailBackend:
         assert OutboundEmail.objects.count() == 0
         assert DBTaskResult.objects.count() == 0
 
-    def test_inside_a_transaction_the_task_is_enqueued_only_at_commit(
+    @pytest.mark.usefixtures("database_task_backend")
+    def test_inside_a_transaction_a_durable_task_is_enqueued_only_at_commit(
         self, mocker, django_capture_on_commit_callbacks
     ) -> None:
         enqueue = mocker.patch("freedom_ls.mail.backends.enqueue_send")
@@ -194,10 +206,13 @@ class TestQueuedEmailBackend:
         enqueue.assert_called_once_with(OutboundEmail.objects.get().pk)
 
 
-# transaction=True: the backend defers enqueue to on_commit inside a transaction, so the inline send must run outside one.
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 class TestInlineFailureReport:
-    """Outside a transaction an inline task backend has already attempted the send."""
+    """An inline task backend has already attempted the send when the backend returns.
+
+    pytest-django wraps each of these tests in a transaction, so they also cover
+    a send made inside the caller's own atomic block.
+    """
 
     def test_a_failed_inline_send_raises(
         self, settings: pytest_django.fixtures.SettingsWrapper
@@ -227,6 +242,14 @@ class TestInlineFailureReport:
         sent = QueuedEmailBackend(fail_silently=True).send_messages([make_message()])
 
         assert sent == 0
+
+    def test_a_failed_inline_send_inside_an_atomic_block_raises(
+        self, settings: pytest_django.fixtures.SettingsWrapper
+    ) -> None:
+        settings.EMAIL_UPSTREAM_BACKEND = REFUSING
+
+        with pytest.raises(QueuedEmailNotSentError), transaction.atomic():
+            QueuedEmailBackend().send_messages([make_message()])
 
 
 # transaction=True: the backend defers enqueue to on_commit inside a transaction, so the task row is only written outside one.

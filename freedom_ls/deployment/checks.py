@@ -32,9 +32,11 @@ E006 — ALLAUTH_TRUSTED_CLIENT_IP_HEADER and TRUSTED_PROXY_IP_HEADER name
 E007 — Retired. It moved to the mail app as freedom_ls_mail.E001 along with the
        queueing email backend. Do not reuse the number: a downstream silencing
        freedom_ls_deployment.E007 would end up silencing something else.
-E008 — HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS is below the longest a worker can
-       hold a send, so housekeeping would re-drive an email whose worker is still
-       sending it. Runs only under ``manage.py check --deploy``.
+E008 — A housekeeping window (HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS,
+       HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS or
+       HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS) is below the longest a worker
+       can hold a task, so housekeeping would act on work a live worker is still
+       doing. One error per window. Runs only under ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 W002 — Retired. It moved to the google_tag app as freedom_ls_google_tag.W001
@@ -424,39 +426,63 @@ def check_client_ip_headers_agree(
     ]
 
 
+# Each window after which housekeeping decides a worker died and acts on its
+# work, with what goes wrong if it acts while the worker is still alive.
+_HOUSEKEEPING_WINDOW_CONSEQUENCES = {
+    "HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS": (
+        "housekeeping would re-send an email whose worker is still sending it "
+        "and the message would go out twice"
+    ),
+    "HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS": (
+        "housekeeping would mark a task failed while its worker is still running it"
+    ),
+    "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS": (
+        "housekeeping would mark a cohort report failed while its worker is still "
+        "rendering it"
+    ),
+}
+
+
 @register(deploy=True)
-def check_stuck_email_window_covers_task_ceiling(
+def check_housekeeping_windows_cover_task_ceiling(
     **kwargs: object,
 ) -> list[CheckMessage]:
-    """E008: Error when the stuck-email window is shorter than a send can run.
+    """E008: Error for each housekeeping window shorter than a task can run.
 
-    A worker holds a send for at most WORKER_MAX_TASK_SECONDS, and a dead one is
-    only noticed after the heartbeat goes stale and the watchdog next polls. A
-    window below that sum recovers a row whose worker is still alive, and the
-    message is delivered twice.
+    Each window is how long housekeeping waits before treating a worker's work
+    as abandoned. Below the task ceiling, it acts on work a live worker is
+    still doing.
     """
     from freedom_ls.deployment.config import config
-    from freedom_ls.deployment.worker import WATCHDOG_POLL_SECONDS
+    from freedom_ls.deployment.worker import task_ceiling_seconds
     from freedom_ls.mail.config import config as mail_config
 
-    ceiling = (
-        config.WORKER_MAX_TASK_SECONDS
-        + config.WORKER_HEARTBEAT_MAX_AGE_SECONDS
-        + WATCHDOG_POLL_SECONDS
-    )
-    window = mail_config.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS
-    if window >= ceiling:
-        return []
-    return [
-        Error(
-            f"HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS ({window}s) is below the "
-            f"worker task ceiling ({ceiling}s), so housekeeping would re-send an "
-            f"email whose worker is still sending it and the message would go out "
-            f"twice.",
-            hint=(
-                f"Raise HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS to at least "
-                f"{ceiling}, or lower WORKER_MAX_TASK_SECONDS."
-            ),
-            id="freedom_ls_deployment.E008",
+    ceiling = task_ceiling_seconds()
+    windows: dict[str, int] = {
+        "HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS": (
+            mail_config.HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS
+        ),
+        "HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS": (
+            config.HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS
+        ),
+        "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS": (
+            config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS
+        ),
+    }
+    errors: list[CheckMessage] = []
+    for name, consequence in _HOUSEKEEPING_WINDOW_CONSEQUENCES.items():
+        window = windows[name]
+        if window >= ceiling:
+            continue
+        errors.append(
+            Error(
+                f"{name} ({window}s) is below the worker task ceiling "
+                f"({ceiling}s), so {consequence}.",
+                hint=(
+                    f"Raise {name} to at least {ceiling}, or lower "
+                    f"WORKER_MAX_TASK_SECONDS."
+                ),
+                id="freedom_ls_deployment.E008",
+            )
         )
-    ]
+    return errors

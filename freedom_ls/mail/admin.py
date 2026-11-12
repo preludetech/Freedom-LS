@@ -78,6 +78,11 @@ class OutboundEmailAdmin(ModelAdmin):
     actions = ["resend_selected"]
     actions_detail = ["resend_email"]
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[OutboundEmail]:
+        # Nothing the admin shows or resends reads the body, which can be large.
+        queryset: QuerySet[OutboundEmail] = super().get_queryset(request)
+        return queryset.defer("payload")
+
     def has_module_permission(self, request: HttpRequest) -> bool:
         return request.user.is_superuser
 

@@ -8,15 +8,16 @@ from django.test import override_settings
 from freedom_ls.deployment.checks import (
     check_client_ip_headers_agree,
     check_database_cache_tables_exist,
+    check_housekeeping_windows_cover_task_ceiling,
     check_media_aliases_name_their_own_bucket,
     check_media_aliases_not_on_local_disk,
     check_media_aliases_not_shared_with_default,
     check_private_media_aliases_sign_their_urls,
     check_sentry_release_set_when_dsn_set,
-    check_stuck_email_window_covers_task_ceiling,
 )
 from freedom_ls.deployment.storage import build_storages
 from freedom_ls.deployment.tests.helpers import LEGACY_SHARED_BUCKET_ENV, set_env
+from freedom_ls.deployment.worker import WATCHDOG_POLL_SECONDS, task_ceiling_seconds
 
 
 def test_check_is_registered_via_app_ready() -> None:
@@ -633,41 +634,56 @@ def test_neither_client_ip_header_set_returns_no_errors() -> None:
     assert errors == []
 
 
-def test_stuck_email_window_check_is_registered_via_app_ready() -> None:
+HOUSEKEEPING_WINDOWS = (
+    "HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS",
+    "HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS",
+    "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS",
+)
+TASK_CEILING_2130 = {
+    "WORKER_MAX_TASK_SECONDS": 1800,
+    "WORKER_HEARTBEAT_MAX_AGE_SECONDS": 300,
+}
+WINDOWS_AT_3600 = dict.fromkeys(HOUSEKEEPING_WINDOWS, 3600)
+
+
+def test_housekeeping_window_check_is_registered_via_app_ready() -> None:
     assert (
-        check_stuck_email_window_covers_task_ceiling
+        check_housekeeping_windows_cover_task_ceiling
         in registry.registry.deployment_checks
     )
 
 
-@override_settings(
-    WORKER_MAX_TASK_SECONDS=1800,
-    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
-    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=3600,
-)
-def test_stuck_email_window_above_the_task_ceiling_returns_no_errors() -> None:
-    assert check_stuck_email_window_covers_task_ceiling() == []
+def test_task_ceiling_adds_the_watchdog_poll_to_task_and_heartbeat_limits() -> None:
+    with override_settings(**TASK_CEILING_2130):
+        ceiling = task_ceiling_seconds()
+
+    assert ceiling == 1800 + 300 + WATCHDOG_POLL_SECONDS
 
 
-@override_settings(
-    WORKER_MAX_TASK_SECONDS=1800,
-    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
-    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=1800,
-)
-def test_stuck_email_window_below_the_task_ceiling_returns_one_e008() -> None:
-    errors = check_stuck_email_window_covers_task_ceiling()
+def test_housekeeping_windows_above_the_task_ceiling_return_no_errors() -> None:
+    with override_settings(**TASK_CEILING_2130, **WINDOWS_AT_3600):
+        errors = check_housekeeping_windows_cover_task_ceiling()
 
-    assert [error.id for error in errors] == ["freedom_ls_deployment.E008"]
+    assert errors == []
 
 
-@override_settings(
-    WORKER_MAX_TASK_SECONDS=7200,
-    WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
-    HOUSEKEEPING_STUCK_EMAIL_MAX_AGE_SECONDS=3600,
-)
-def test_raising_the_task_ceiling_past_the_stuck_email_window_returns_one_e008() -> (
-    None
-):
-    errors = check_stuck_email_window_covers_task_ceiling()
+@pytest.mark.parametrize("window", HOUSEKEEPING_WINDOWS)
+def test_one_housekeeping_window_below_the_task_ceiling_returns_one_e008_naming_it(
+    window: str,
+) -> None:
+    with override_settings(**TASK_CEILING_2130, **{**WINDOWS_AT_3600, window: 1800}):
+        errors = check_housekeeping_windows_cover_task_ceiling()
 
     assert [error.id for error in errors] == ["freedom_ls_deployment.E008"]
+    assert window in errors[0].msg
+
+
+def test_raising_the_task_ceiling_past_every_window_returns_an_e008_for_each() -> None:
+    with override_settings(
+        WORKER_MAX_TASK_SECONDS=7200,
+        WORKER_HEARTBEAT_MAX_AGE_SECONDS=300,
+        **WINDOWS_AT_3600,
+    ):
+        errors = check_housekeeping_windows_cover_task_ceiling()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E008"] * 3

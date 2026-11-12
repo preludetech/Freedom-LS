@@ -108,6 +108,17 @@ class TestSendOutboundEmail:
         assert mail.outbox == []
         assert email.status == OutboundEmail.Status.FAILED
 
+    def test_a_row_due_a_moment_ahead_of_the_worker_clock_is_sent(self) -> None:
+        """A web host's clock running slightly ahead of the worker's must not
+        strand a row that was enqueued to run at once."""
+        email = OutboundEmailFactory(
+            next_attempt_at=timezone.now() + timedelta(seconds=2)
+        )
+
+        send_outbound_email(str(email.pk))
+
+        assert len(mail.outbox) == 1
+
     def test_an_unknown_id_returns_without_raising(self) -> None:
         send_outbound_email(str(uuid4()))
 

@@ -323,10 +323,21 @@ class TestPruneOutboundEmail:
     def test_terminal_row_past_retention_is_deleted(self, trait: str) -> None:
         email = OutboundEmailFactory(**{trait: True})
         created_days_ago(email, RETENTION_DAYS + 1)
+        attempted_days_ago(email, RETENTION_DAYS + 1)
 
         prune_outbound_email()
 
         assert not OutboundEmail.objects.filter(pk=email.pk).exists()
+
+    @pytest.mark.parametrize("trait", ["sent", "permanent_failure", "dead_letter"])
+    def test_old_row_resent_recently_is_kept(self, trait: str) -> None:
+        email = OutboundEmailFactory(**{trait: True})
+        created_days_ago(email, RETENTION_DAYS + 10)
+        attempted_days_ago(email, 1)
+
+        prune_outbound_email()
+
+        assert OutboundEmail.objects.filter(pk=email.pk).exists()
 
     @pytest.mark.parametrize("trait", ["sent", "permanent_failure", "dead_letter"])
     def test_terminal_row_inside_retention_is_kept(self, trait: str) -> None:

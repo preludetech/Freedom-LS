@@ -5,10 +5,10 @@ as the message is on the queue rather than blocking the request on an SMTP round
 trip.
 
 How much the queue can promise depends on the task backend behind it. A durable
-backend hands the message to a worker and the request learns nothing more. An
-inline one -- what dev and the test suite run -- has already attempted the send
-by the time the task is enqueued, so the outcome is read from the row and
-reported.
+backend hands the message to a worker once the caller's transaction commits,
+and the request learns nothing more. An inline one -- what dev and the test
+suite run -- attempts the send straight away, inside the caller's transaction
+if there is one, so the outcome is read from the row and reported.
 
 Each message is written to an ``OutboundEmail`` row first, and the task carries
 only that row's id.
@@ -20,8 +20,10 @@ sender, allauth's transactional mail included.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Sequence
 from email.utils import make_msgid
+from functools import partial
 
 from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
@@ -35,7 +37,7 @@ from freedom_ls.mail.config import config
 from freedom_ls.mail.encoding import set_8bit_encoding
 from freedom_ls.mail.models import OutboundEmail
 from freedom_ls.mail.serialisation import UnserialisableMessageError, serialise_message
-from freedom_ls.mail.tasks import enqueue_send
+from freedom_ls.mail.tasks import enqueue_send, sends_inline
 
 
 class QueuedEmailNotSentError(Exception):
@@ -58,7 +60,7 @@ class QueuedEmailBackend(BaseEmailBackend):
         # every retry would look like a new message. Pinning it lets a mail
         # client collapse a duplicate delivery. Done before serialising so the
         # payload carries it.
-        message_id = _pin_message_id(message)
+        message, message_id = _with_pinned_message_id(message)
 
         try:
             payload = serialise_message(message)
@@ -87,30 +89,24 @@ class QueuedEmailBackend(BaseEmailBackend):
                 raise
             return False
 
-        # Read before registering: outside a transaction on_commit runs the
-        # callback at once, and afterwards there is no telling which case this
-        # was.
-        in_transaction = transaction.get_connection().in_atomic_block
-        results: list[TaskResult] = []
-
-        def enqueue() -> None:
-            results.append(enqueue_send(email.pk))
-
-        # robust=True: an enqueue that fails after the commit must not fail the
-        # request that already committed. The row stays pending for a later
-        # attempt.
-        transaction.on_commit(enqueue, robust=True)
-
-        if in_transaction or not results or not results[0].is_finished:
+        if not sends_inline():
+            # A worker on another connection cannot see the row until the
+            # caller's transaction commits. robust=True: an enqueue that fails
+            # after the commit must not fail the request that already committed.
+            # The row stays pending for a later attempt.
+            transaction.on_commit(partial(enqueue_send, email.pk), robust=True)
             return True
-        # An inline task backend has already attempted the send. Reporting a
-        # failed attempt as a message sent would leave the caller telling someone
-        # to check an inbox nothing is on its way to.
+
+        # An inline backend runs on this connection, so it sees the row before
+        # any commit and sends now, inside the caller's transaction if there is
+        # one. Reporting a failed attempt as a message sent would leave the
+        # caller telling someone to check an inbox nothing is on its way to.
+        result = enqueue_send(email.pk)
         email.refresh_from_db(fields=["status", "last_error"])
         if email.status == OutboundEmail.Status.SENT:
             return True
         if not self.fail_silently:
-            raise QueuedEmailNotSentError(_failure_detail(email, results[0]))
+            raise QueuedEmailNotSentError(_failure_detail(email, result))
         return False
 
     def _send_now(self, message: EmailMessage) -> bool:
@@ -123,16 +119,22 @@ class QueuedEmailBackend(BaseEmailBackend):
         return bool(connection.send_messages([message]))
 
 
-def _pin_message_id(message: EmailMessage) -> str:
-    """Return the message's Message-ID, minting one when the caller set none."""
+def _with_pinned_message_id(message: EmailMessage) -> tuple[EmailMessage, str]:
+    """Return the message to queue and its Message-ID, minting one if none is set.
+
+    A minted ID goes on a copy, never on the caller's message: a caller that
+    reuses one EmailMessage for several sends would otherwise give every one of
+    them the first send's ID.
+    """
     # Header names are case-insensitive, so a caller's "Message-Id" counts.
     # Adding a second spelling would send two Message-ID headers.
     for name, value in message.extra_headers.items():
         if name.lower() == "message-id":
-            return str(value)
+            return message, str(value)
     message_id = make_msgid(domain=DNS_NAME)
-    message.extra_headers["Message-ID"] = message_id
-    return message_id
+    pinned = copy.copy(message)
+    pinned.extra_headers = {**message.extra_headers, "Message-ID": message_id}
+    return pinned, message_id
 
 
 def _failure_detail(email: OutboundEmail, result: TaskResult) -> str:
