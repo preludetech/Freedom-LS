@@ -11,8 +11,10 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import PanelAction, changed_response
@@ -1199,3 +1201,69 @@ def test_the_bulk_confirm_button_takes_its_variant_and_loading_text_from_the_act
     assert document.cssselect("#app-modal-title")[0].text_content().strip() == (
         "Mark processed?"
     )
+
+
+# The sidebar's polled count reloads on the events its section names.
+
+
+class _CountedSectionConfig(ListViewConfig):
+    url_name = "counted"
+    menu_label = "Counted"
+    model = StubModel
+    instance_view = _StubInstanceView
+
+    @classmethod
+    def get_menu_count_url(cls, request: HttpRequest) -> str | None:
+        return "/count/"
+
+
+class _EventCountedSectionConfig(_CountedSectionConfig):
+    @classmethod
+    def get_menu_count_events(cls) -> tuple[str, ...]:
+        return ("thingChanged", "other:event")
+
+
+class _SpacedEventSectionConfig(_CountedSectionConfig):
+    @classmethod
+    def get_menu_count_events(cls) -> tuple[str, ...]:
+        return ("two words",)
+
+
+class _CommaEventSectionConfig(_CountedSectionConfig):
+    @classmethod
+    def get_menu_count_events(cls) -> tuple[str, ...]:
+        return ("a,b",)
+
+
+def _count_trigger(section: type[ListViewConfig]) -> str:
+    request = RequestFactory().get("/")
+    groups = build_menu_items(
+        [NavGroup("Group", [section])], INTERFACE_URL_NAME, request
+    )
+    html = render_to_string(
+        "panel_framework/partials/sidebar_nav.html", {"menu_groups": groups}
+    )
+    document = lxml.html.fromstring(html)
+    (count,) = document.cssselect('[x-data="refreshTimer"]')
+    return str(count.get("hx-trigger"))
+
+
+class TestMenuCountEvents:
+    def test_a_named_event_is_listened_for_on_the_body(self) -> None:
+        trigger = _count_trigger(_EventCountedSectionConfig)
+
+        assert trigger == (
+            "load, refresh, thingChanged from:body, other:event from:body"
+        )
+
+    def test_a_section_without_events_reloads_on_load_and_refresh_only(self) -> None:
+        assert _count_trigger(_CountedSectionConfig) == "load, refresh"
+
+    @pytest.mark.parametrize(
+        "section", [_SpacedEventSectionConfig, _CommaEventSectionConfig]
+    )
+    def test_an_event_name_with_a_space_or_comma_is_rejected(
+        self, section: type[ListViewConfig]
+    ) -> None:
+        with pytest.raises(ImproperlyConfigured):
+            _count_trigger(section)
