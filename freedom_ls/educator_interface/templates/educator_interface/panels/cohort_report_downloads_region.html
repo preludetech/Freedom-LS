@@ -51,6 +51,6 @@ generated before the cohort grew is still offered.
                 {% endfor %}
         </c-panel-table>
     {% elif not over_limit_message %}
-        <p class="text-sm text-muted">No reports yet.</p>
+        <c-panel-empty-state size="compact" message="No reports yet." />
     {% endif %}
 </div>

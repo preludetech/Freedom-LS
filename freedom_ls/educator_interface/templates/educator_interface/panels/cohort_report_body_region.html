@@ -16,7 +16,7 @@ with incorrect answers), refresh_url.
         </div>
 
         <section aria-labelledby="report-glance-title" class="space-y-3">
-            <h3 id="report-glance-title" class="text-lg font-semibold font-display">Cohort at a glance</h3>
+            <c-panel-heading id="report-glance-title">Cohort at a glance</c-panel-heading>
             <c-panel-stat-row variant="inline">
                 <c-panel-stat-tile variant="inline" label="Learners in cohort" :value="data.cohort_size" />
                 <c-panel-stat-tile variant="inline" label="Median completion" value="{{ data.median_completion }}%" />
@@ -26,7 +26,7 @@ with incorrect answers), refresh_url.
         </section>
 
         <section aria-labelledby="report-attention-title" class="space-y-3">
-            <h3 id="report-attention-title" class="text-lg font-semibold font-display">Learners needing attention</h3>
+            <c-panel-heading id="report-attention-title">Learners needing attention</c-panel-heading>
             {% if data.attention_list.learners %}
                 <c-panel-attention-list>
                     {% for learner in data.attention_list.learners %}
@@ -43,7 +43,7 @@ with incorrect answers), refresh_url.
         </section>
 
         <section aria-labelledby="report-summary-title" class="space-y-3">
-            <h3 id="report-summary-title" class="text-lg font-semibold font-display">Summary of learner progress</h3>
+            <c-panel-heading id="report-summary-title">Summary of learner progress</c-panel-heading>
             {% for section in data.courses %}
                 <c-panel-card :title="section.title" heading_level="4">
                     {% if not section.is_active %}<p class="mb-2 text-sm text-muted">(inactive registration)</p>{% endif %}
@@ -110,7 +110,7 @@ with incorrect answers), refresh_url.
         </section>
 
         <section aria-labelledby="report-confusions-title" class="space-y-3">
-            <h3 id="report-confusions-title" class="text-lg font-semibold font-display">Quiz confusions across the cohort</h3>
+            <c-panel-heading id="report-confusions-title">Quiz confusions across the cohort</c-panel-heading>
             {% for card in confusions %}
                 <c-panel-card :title="card.heading" heading_level="4">
                     <c-panel-table caption="{{ card.heading }}">

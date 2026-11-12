@@ -309,6 +309,10 @@
         @apply bg-surface
     }
 
+    .panel-heading {
+        @apply text-lg font-semibold
+    }
+
     /* Course-detail sign-up / CTA panel. Default sits on the off-white
      * surface-2 tint so it reads as a distinct panel against the page;
      * themes reopen this to retune the panel background. */

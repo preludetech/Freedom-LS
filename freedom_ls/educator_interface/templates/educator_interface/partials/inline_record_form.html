@@ -16,12 +16,7 @@ by id. The fields sit in one row with Save at its end, lined up on the inputs.
       x-on:htmx:after-request="refocus"
       class="space-y-3">
     {% if form.non_field_errors %}
-        <div data-error-summary
-             tabindex="-1"
-             role="alert"
-             class="rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
-            {{ form.non_field_errors }}
-        </div>
+        <c-panel-notice tone="error" data-error-summary tabindex="-1">{{ form.non_field_errors }}</c-panel-notice>
     {% endif %}
     <div class="flex flex-wrap items-end gap-3">
         {% for field in form.visible_fields %}

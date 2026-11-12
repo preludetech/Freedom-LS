@@ -1,0 +1,32 @@
+<c-vars title="" detail="" figure="" href="" class="" />
+
+{% comment %}
+Panel list row — one record in a panel-list: the title in medium weight, the
+detail under it, trailing controls, then the figure at the end.
+
+Attributes:
+  title   The record's name (required).
+  detail  A muted line under the title, such as "via Cohort A" (default none).
+  figure  A value at the end of the row, set in tabular figures (default
+          none). A value of 0 still renders; only the empty string does not.
+  href    Given: the title is a link and the whole row is its tap target,
+          with a trailing "next" icon below md (default none: plain text).
+  class   Extra classes for the <li>.
+
+The default slot holds the trailing controls (a badge, a button, a progress
+bar). It sits above the stretched link so its controls stay clickable.
+{% endcomment %}
+
+<li class="relative flex items-center gap-3 py-3 {{ class }}" {{ attrs }}>
+    <div class="min-w-0 grow">
+        {% if href %}
+            <a href="{{ href }}" class="font-medium text-on-surface no-underline hover:text-primary after:absolute after:inset-0 after:content-['']">{{ title }}</a>
+        {% else %}
+            <span class="font-medium">{{ title }}</span>
+        {% endif %}
+        {% if detail %}<p class="text-sm text-muted">{{ detail }}</p>{% endif %}
+    </div>
+    {% if slot.strip %}<div class="relative z-10 flex shrink-0 items-center gap-2">{{ slot }}</div>{% endif %}
+    {% if figure != "" %}<span class="shrink-0 tabular-nums">{{ figure }}</span>{% endif %}
+    {% if href %}<span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>{% endif %}
+</li>

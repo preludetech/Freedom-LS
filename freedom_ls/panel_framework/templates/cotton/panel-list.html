@@ -1,0 +1,12 @@
+<c-vars class="" />
+
+{% comment %}
+Panel list — a <ul> of panel-list-row items, one record each, divided by
+rules. Every list of records inside a panel, quick view or card is this, so
+rows share one shape. Rows supply their own padding.
+
+Attributes:
+  class  Extra classes for the <ul>.
+{% endcomment %}
+
+<ul class="m-0 list-none divide-y divide-border p-0 {{ class }}" {{ attrs }}>{{ slot }}</ul>

@@ -6,13 +6,14 @@
         <c-panel-card title="Upload a CSV file">
             <p class="text-sm text-muted">Add up to {{ max_rows }} learners at once, {{ max_file_size }} per file. Nothing is created until you review the preview and confirm.</p>
             {% if form.errors %}
-                <div role="alert" tabindex="-1" autofocus class="mt-4 rounded-r-lg border-l-4 border-error bg-error-light p-4 text-on-error-light">
-                    <p class="flex items-center gap-2 font-semibold"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>The file could not be uploaded.</p>
-                    <ul class="mt-2 list-disc pl-5">
-                        {% for field_errors in form.errors.values %}
-                            {% for error in field_errors %}<li>{{ error }}</li>{% endfor %}
-                        {% endfor %}
-                    </ul>
+                <div class="mt-4">
+                    <c-panel-notice tone="error" title="The file could not be uploaded." tabindex="-1" autofocus>
+                        <ul class="mt-2 list-disc pl-5">
+                            {% for field_errors in form.errors.values %}
+                                {% for error in field_errors %}<li>{{ error }}</li>{% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </c-panel-notice>
                 </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">

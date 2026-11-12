@@ -37,3 +37,22 @@ def test_slot_content_renders() -> None:
     )
 
     assert "Create one" in html
+
+
+def test_compact_size_is_a_muted_small_paragraph_with_no_icon() -> None:
+    html = render_cotton(
+        '<c-panel-empty-state size="compact" icon="notes" message="No reports yet." />'
+    )
+
+    assert "<svg" not in html
+    assert re.search(r'<p class="text-sm text-muted">No reports yet\.</p>', html)
+    assert "py-10" not in html
+
+
+def test_compact_size_renders_the_slot() -> None:
+    html = render_cotton(
+        '<c-panel-empty-state size="compact" message="None">'
+        '<c-button href="/new/">Add</c-button></c-panel-empty-state>'
+    )
+
+    assert "Add" in html

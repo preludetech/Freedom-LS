@@ -43,7 +43,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
             {% if is_loaded %}
                 {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of <c-datetime :value="figures.figures_as_of" /></p>{% endif %}
                 {% for excluded in figures.excluded %}
-                    <p class="rounded-md bg-warning-light px-3 py-2 text-sm text-on-warning-light">{{ excluded.message }}</p>
+                    <c-panel-notice tone="warning">{{ excluded.message }}</c-panel-notice>
                 {% endfor %}
             {% endif %}
 
@@ -94,25 +94,20 @@ cohorts, inline, is_organisation_admin; when loaded, figures.
 
     <c-panel-card title="Cohort progress" landmark="true">
         {% if figures.cohort_rows %}
-            <ul class="list-none ml-0 space-y-0 divide-y divide-border">
+            <c-panel-list>
                 {% for row in figures.cohort_rows %}
                     {% resolve_url_path_template row 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
-                    <li class="relative flex items-center gap-3 py-3">
-                        <div class="min-w-0 grow">
-                            <a href="{{ cohort_url }}" class="font-bold text-on-surface no-underline hover:text-primary max-md:after:absolute max-md:after:inset-0 max-md:after:content-['']">{{ row.cohort.name }}</a>
-                            <p class="text-sm text-muted">{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged</p>
-                        </div>
-                        <div class="w-32 shrink-0 text-right">
+                    <c-panel-list-row :title="row.cohort.name" :href="cohort_url" detail="{{ row.learner_count }} learner{{ row.learner_count|pluralize }}, {{ row.flagged_count }} flagged">
+                        <div class="w-32 text-right">
                             {% if row.mean_completion is None %}
                                 <span aria-hidden="true" class="text-muted">—</span><span class="sr-only">No progress to show</span>
                             {% else %}
                                 <c-panel-progress-bar :percentage="row.mean_completion" label="{{ row.cohort.name }} progress" />
                             {% endif %}
                         </div>
-                        <span aria-hidden="true" class="md:hidden text-muted"><c-icon name="next" class="size-5" /></span>
-                    </li>
+                    </c-panel-list-row>
                 {% endfor %}
-            </ul>
+            </c-panel-list>
         {% else %}
             <c-panel-empty-state message="No cohorts could be included in these figures." />
         {% endif %}

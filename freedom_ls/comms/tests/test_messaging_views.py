@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import timedelta
+from html import unescape
 from typing import cast
 from urllib.parse import quote
 
@@ -1430,7 +1431,7 @@ class TestRecipientPicker:
     ) -> None:
         response = logged_in_client(UserFactory()).get(search_url())
 
-        content = response.content.decode()
+        content = unescape(response.content.decode())
         assert "matches ''" not in content
         assert "There's no one you can message here." in content
 

@@ -23,22 +23,18 @@ rows start at their status.
         {% endfor %}
     </c-panel-definition-row>
     <c-panel-definition-row label="Course registrations" class="col-span-2">
-        {# The same row shape as the learner page's Registrations list: the course, how it is held, the figure at the end. #}
-        <ul class="list-none ml-0 space-y-2">
-            {% for registration in registrations %}
-                <li class="flex flex-wrap items-baseline justify-between gap-x-4" data-testid="quick-view-registration">
-                    <span class="font-medium">{{ registration.course.title }}</span>
-                    {% if registration.progress_percentage is not None %}
-                        <span class="tabular-nums">{{ registration.progress_percentage }}%</span>
-                    {% else %}
-                        <span class="text-sm text-muted">No progress yet</span>
-                    {% endif %}
-                    <span class="basis-full text-sm text-muted">{% if registration.cohort %}via {{ registration.cohort }}{% else %}Individual{% endif %}</span>
-                </li>
-            {% empty %}
-                <li>&mdash;</li>
-            {% endfor %}
-        </ul>
+        {% if registrations %}
+            <c-panel-list>
+                {% for registration in registrations %}
+                    <c-panel-list-row :title="registration.course.title"
+                                      detail="{% if registration.cohort %}via {{ registration.cohort }}{% else %}Individual{% endif %}"
+                                      figure="{% if registration.progress_percentage is not None %}{{ registration.progress_percentage }}%{% else %}No progress yet{% endif %}"
+                                      data-testid="quick-view-registration" />
+                {% endfor %}
+            </c-panel-list>
+        {% else %}
+            &mdash;
+        {% endif %}
     </c-panel-definition-row>
 </c-panel-definition-list>
 
@@ -46,7 +42,7 @@ rows start at their status.
     <section class="mt-6 border-t border-border pt-4"
              aria-labelledby="quick-view-message-heading">
         <div class="mb-4 flex items-center justify-between gap-2 border-b border-border pb-3">
-            <h3 id="quick-view-message-heading" class="m-0 text-base font-semibold text-on-surface">Messages</h3>
+            <c-panel-heading id="quick-view-message-heading">Messages</c-panel-heading>
             <a href="{{ open_url }}"
                title="Open conversation"
                class="inline-flex size-8 items-center justify-center rounded-full text-muted no-underline hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
