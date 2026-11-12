@@ -255,7 +255,7 @@ def test_an_answer_starting_with_a_formula_trigger_is_escaped(staff_client):
     assert row["Your name"] == "'=1+1"
 
 
-def test_an_exported_phone_answer_is_escaped_like_a_formula_trigger(
+def test_an_exported_phone_answer_is_its_e164_text_with_no_apostrophe(
     staff_client: Client,
 ) -> None:
     course, form = gated_course_with_form()
@@ -264,7 +264,19 @@ def test_an_exported_phone_answer_is_escaped_like_a_formula_trigger(
 
     row = _export_row(staff_client, application)
 
-    assert row["Your name"] == "'+27821234567"
+    assert row["Your name"] == "+27821234567"
+
+
+def test_an_exported_legacy_phone_answer_starting_with_a_plus_is_escaped(
+    staff_client: Client,
+) -> None:
+    course, form = gated_course_with_form()
+    application = _application_for(course, form)
+    _answer(application, _form_questions(form)[0], text_answer="+27 82 CALL ME")
+
+    row = _export_row(staff_client, application)
+
+    assert row["Your name"] == "'+27 82 CALL ME"
 
 
 def test_a_question_text_starting_with_a_formula_trigger_has_its_header_escaped(
