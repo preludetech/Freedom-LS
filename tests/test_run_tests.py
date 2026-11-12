@@ -258,3 +258,241 @@ def test_missing_meminfo_runs_the_command_as_given_and_says_so(
         "ram: no /proc/meminfo on this platform; running the command as given"
         in result.stdout.splitlines()
     )
+
+
+def write_pyproject(tmp_path: Path, memory_table: str) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        f"[tool.test_tiers.memory]\n{memory_table}\n", encoding="utf-8"
+    )
+
+
+@pytest.mark.parametrize(
+    ("table", "variables", "expected_workers", "expected_source"),
+    [
+        ("max_workers = 3", {}, "3", "max_workers=3 from pyproject"),
+        (
+            "max_workers = 3",
+            {"DS_TEST_MAX_WORKERS": 2},
+            "2",
+            "max_workers=2 from env",
+        ),
+        (
+            "max_workers = 8\nreserve_mb = 8192",
+            {},
+            "2",
+            "reserve_mb=8192 from pyproject",
+        ),
+        (
+            "max_workers = 8\nreserve_mb = 0",
+            {"DS_TEST_RESERVE_MB": 9216},
+            "1",
+            "reserve_mb=9216 from env",
+        ),
+    ],
+)
+def test_env_beats_pyproject_which_beats_the_default(
+    stub_tools: StubTools,
+    tmp_path: Path,
+    table: str,
+    variables: dict[str, int],
+    expected_workers: str,
+    expected_source: str,
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 10_240)
+    write_pyproject(tmp_path, table)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        **variables,
+    )
+
+    # Assert
+    assert logged_tokens(stub_tools)[-2:] == ["-n", expected_workers]
+    assert expected_source in result.stdout
+
+
+def test_ram_line_names_only_settings_that_are_not_the_default(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        DS_TEST_MAX_WORKERS=4,
+    )
+
+    # Assert
+    assert (
+        "ram: MemAvailable 4096 MB, xdist workers -n 2 (max_workers=4 from env)"
+        in result.stdout.splitlines()
+    )
+
+
+@pytest.mark.parametrize(
+    ("table", "expected_message"),
+    [
+        (
+            'per_worker_mb = "big"',
+            "[tool.test_tiers.memory] 'per_worker_mb' must be an integer",
+        ),
+        (
+            "max_workers = true",
+            "[tool.test_tiers.memory] 'max_workers' must be an integer",
+        ),
+        (
+            "max_workers = 0",
+            "[tool.test_tiers.memory] 'max_workers' must be at least 1",
+        ),
+        ('psi_some_avg10_limit = "x"', "'psi_some_avg10_limit' must be a number"),
+        ("bogus = 1", "[tool.test_tiers.memory] unknown key 'bogus'"),
+    ],
+)
+def test_bad_pyproject_memory_table_exits_2_and_names_the_key(
+    stub_tools: StubTools, tmp_path: Path, table: str, expected_message: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+    write_pyproject(tmp_path, table)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest", "-n", "auto"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+    )
+
+    # Assert
+    assert result.returncode == 2
+    assert expected_message in result.stderr
+    assert stub_tools.log_lines() == []
+
+
+def test_memory_that_is_not_a_table_exits_2(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.test_tiers]\nmemory = 3\n", encoding="utf-8"
+    )
+
+    # Act
+    result = run_runner(stub_tools, tmp_path, ["pytest"])
+
+    # Assert
+    assert result.returncode == 2
+    assert "[tool.test_tiers] 'memory' must be a table" in result.stderr
+
+
+def test_malformed_pyproject_exits_2(stub_tools: StubTools, tmp_path: Path) -> None:
+    # Arrange
+    (tmp_path / "pyproject.toml").write_text("[tool\n", encoding="utf-8")
+
+    # Act
+    result = run_runner(stub_tools, tmp_path, ["pytest"])
+
+    # Assert
+    assert result.returncode == 2
+    assert stub_tools.log_lines() == []
+
+
+@pytest.mark.parametrize(
+    ("variable", "expected_message"),
+    [
+        ("DS_TEST_RESERVE_MB", "DS_TEST_RESERVE_MB must be an integer"),
+        ("DS_TEST_PSI_LIMIT", "DS_TEST_PSI_LIMIT must be a number"),
+    ],
+)
+def test_non_numeric_env_var_exits_2_and_names_the_variable(
+    stub_tools: StubTools, tmp_path: Path, variable: str, expected_message: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, 4096)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["pytest"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+        **{variable: "lots"},
+    )
+
+    # Assert
+    assert result.returncode == 2
+    assert expected_message in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("available_mb", "expected"),
+    [
+        (10_240, "8\n"),
+        (2_100, "1\n"),
+        (500, "1\n"),
+    ],
+)
+def test_capacity_is_the_units_that_fit_after_the_reserve(
+    stub_tools: StubTools, tmp_path: Path, available_mb: int, expected: str
+) -> None:
+    # Arrange
+    meminfo = write_meminfo(tmp_path, available_mb)
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["--capacity", "1000"],
+        DS_TEST_MEMINFO_PATH=str(meminfo),
+    )
+
+    # Assert
+    assert result.returncode == 0
+    assert result.stdout == expected
+
+
+def test_capacity_without_meminfo_prints_999(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    missing = tmp_path / "no_such_meminfo"
+
+    # Act
+    result = run_runner(
+        stub_tools,
+        tmp_path,
+        ["--capacity", "1000"],
+        DS_TEST_MEMINFO_PATH=str(missing),
+    )
+
+    # Assert
+    assert result.stdout == "999\n"
+
+
+@pytest.mark.parametrize("unit", ["0", "-5", "abc", "1.5"])
+def test_capacity_unit_that_is_not_a_positive_integer_exits_2(
+    stub_tools: StubTools, tmp_path: Path, unit: str
+) -> None:
+    # Act
+    result = run_runner(stub_tools, tmp_path, ["--capacity", unit])
+
+    # Assert
+    assert result.returncode == 2
+    assert result.stdout == ""
+
+
+def test_capacity_without_a_unit_exits_2(stub_tools: StubTools, tmp_path: Path) -> None:
+    # Act
+    result = run_runner(stub_tools, tmp_path, ["--capacity"])
+
+    # Assert
+    assert result.returncode == 2
