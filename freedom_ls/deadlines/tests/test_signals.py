@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from uuid import UUID
 
@@ -22,11 +23,14 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.signals import collection_items_synced
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
+    DeadlineExtensionFactory,
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.resolver import DeadlineValue, content_defaults_for_course
@@ -91,7 +95,9 @@ def _move_topic_to_part_b(root: Path) -> None:
     (root / PART_A / "moving.md").rename(root / PART_B / "moving.md")
 
 
-def _item_of(override: CohortDeadlineOverride | LearnerDeadlineOverride) -> UUID | None:
+def _item_of(
+    override: CohortDeadlineOverride | LearnerDeadlineOverride | DeadlineExtension,
+) -> UUID | None:
     model = type(override)
     return model._base_manager.get(pk=override.pk).collection_item_id
 
@@ -163,6 +169,49 @@ def test_moving_a_topic_back_carries_the_overrides_to_the_row_it_left(
     assert _row_in_part(_topic(), PART_A).pk == old_row.pk
     assert _item_of(cohort_override) == old_row.pk
     assert _item_of(learner_override) == old_row.pk
+
+
+@pytest.mark.django_db
+def test_every_extension_on_the_stale_and_the_returned_to_row_ends_on_the_new_row(
+    site, mock_site_context, tmp_path
+):
+    old_row, _, learner_override = _first_load_with_overrides(tmp_path, site)
+    record = learner_override.course_progress
+    extend = partial(
+        DeadlineExtensionFactory,
+        site=site,
+        course_progress=record,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+    )
+    carried_with_the_first_move = extend(collection_item=old_row)
+    _move_topic_to_part_b(tmp_path)
+    _load(tmp_path, site)
+    stale_after_move = extend(collection_item=_row_in_part(_topic(), PART_B))
+    already_there = extend(collection_item=old_row)
+    (tmp_path / PART_B / "moving.md").rename(tmp_path / PART_A / "moving.md")
+
+    _load(tmp_path, site)
+
+    assert {
+        _item_of(row)
+        for row in (carried_with_the_first_move, stale_after_move, already_there)
+    } == {old_row.pk}
+
+
+@pytest.mark.django_db
+def test_another_sites_extension_is_never_carried(site, mock_site_context, tmp_path):
+    old_row, _, learner_override = _first_load_with_overrides(tmp_path, site)
+    other_site_extension = DeadlineExtensionFactory(
+        site=SiteFactory(),
+        course_progress=learner_override.course_progress,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=old_row,
+    )
+    _move_topic_to_part_b(tmp_path)
+
+    _load(tmp_path, site)
+
+    assert _item_of(other_site_extension) == old_row.pk
 
 
 @pytest.mark.django_db

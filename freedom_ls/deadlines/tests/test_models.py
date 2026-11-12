@@ -17,16 +17,20 @@ from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
     CoursePauseFactory,
+    DeadlineExtensionFactory,
     LearnerCourseRegistrationDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
     OrganisationDeadlineConfigFactory,
     SiteDeadlineConfigFactory,
 )
 from freedom_ls.deadlines.models import (
+    MAX_EXTENSION_DAYS,
     SWITCH_FIELDS,
     CohortDeadlineOverride,
     CoursePause,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.resolver import DeadlineValue, course_deadlines
@@ -648,3 +652,99 @@ class TestDueForAnnouncement:
         assert not CoursePause.objects.due_for_announcement(
             datetime(2026, 3, 10, 21, 0, tzinfo=UTC), mock_site_context
         ).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "fields",
+    [
+        pytest.param(
+            {"target_kind": ExtensionTarget.COLLECTION_ITEM},
+            id="item-kind-without-item",
+        ),
+        pytest.param(
+            {"target_kind": ExtensionTarget.TIME_LIMIT, "with_item": True},
+            id="time-limit-with-item",
+        ),
+        pytest.param(
+            {"target_kind": ExtensionTarget.COURSE, "with_item": True},
+            id="course-with-item",
+        ),
+        pytest.param({"days": 0}, id="zero-days"),
+        pytest.param({"days": MAX_EXTENSION_DAYS + 1}, id="too-many-days"),
+        pytest.param(
+            {
+                "target_kind": ExtensionTarget.COURSE,
+                "requested_date": date(2026, 3, 20),
+            },
+            id="course-with-requested-date",
+        ),
+    ],
+)
+def test_an_extension_row_that_breaks_a_constraint_is_refused(
+    mock_site_context, fields: dict[str, object]
+) -> None:
+    record, item = _record_item()
+    columns = dict(fields)
+    if columns.pop("with_item", False):
+        columns["collection_item"] = item
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        DeadlineExtensionFactory(course_progress=record, **columns)
+
+
+@pytest.mark.django_db
+def test_extensions_stack_without_a_uniqueness_rule(mock_site_context) -> None:
+    record, item = _record_item()
+
+    for _ in range(2):
+        DeadlineExtensionFactory(
+            course_progress=record,
+            target_kind=ExtensionTarget.COLLECTION_ITEM,
+            collection_item=item,
+        )
+
+    assert record.deadline_extensions.count() == 2
+
+
+@pytest.mark.django_db
+def test_extension_clean_accepts_an_item_of_the_course(mock_site_context) -> None:
+    record, item = _record_item()
+
+    DeadlineExtension(
+        course_progress=record,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=item,
+        days=3,
+    ).clean()
+
+
+@pytest.mark.django_db
+def test_extension_clean_refuses_an_item_of_another_course(mock_site_context) -> None:
+    record, _ = _record_item()
+    _, foreign_item = _record_item()
+    extension = DeadlineExtension(
+        course_progress=record,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=foreign_item,
+        days=3,
+    )
+
+    with pytest.raises(ValidationError) as caught:
+        extension.clean()
+
+    assert "collection_item" in caught.value.message_dict
+
+
+@pytest.mark.django_db
+def test_an_extension_reads_as_the_learner_the_course_the_days_and_the_target(
+    mock_site_context,
+) -> None:
+    extension = DeadlineExtensionFactory(days=7)
+
+    text = str(extension)
+
+    assert str(extension.course_progress.learner) in text
+    assert str(extension.course_progress.course) in text
+    assert "+7 days" in text
+    assert ExtensionTarget.TIME_LIMIT in text
