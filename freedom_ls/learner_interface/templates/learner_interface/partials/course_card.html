@@ -23,6 +23,7 @@ Title-link target by status:
   registered / in_progress -> next_up_url (resume) or course_home fallback
   coming_soon / not_registered -> course_detail
   access ended (access_ended_at set) -> course_detail, with "Access ended" on the bottom line
+  paused (paused_at set) -> course_detail, with "Paused" in the eyebrow and no Continue, next-up or deadline line
 
 Anonymous, not-registered visitors see the access badge (Free / By application)
 in place of the registration eyebrow — the badge is an access signal, not a
@@ -30,10 +31,11 @@ status duplicate.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-missed_deadline, next_deadline, access_ends_at, access_ended_at, access_badge,
+missed_deadline, next_deadline, access_ends_at, access_ended_at, paused_at,
+planned_resume_at, access_badge,
 current_price, card_organisation), user and show_time_zone_to_learners.
 {% endcomment %}
-{% if course.access_ended_at %}
+{% if course.access_ended_at or course.paused_at %}
     {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
@@ -56,6 +58,8 @@ current_price, card_organisation), user and show_time_zone_to_learners.
             {% elif course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
+        {% elif course.paused_at %}
+            {% include "learner_interface/partials/course_status_eyebrow.html" with status="paused" planned_resume_at=course.planned_resume_at with_icon=True %}
         {% elif not course.access_ended_at %}
             {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
         {% endif %}
@@ -67,7 +71,7 @@ current_price, card_organisation), user and show_time_zone_to_learners.
 
     {% include "learner_interface/partials/course_listing_price.html" %}
 
-    {% if course.next_up_title %}
+    {% if course.next_up_title and not course.paused_at %}
         <p class="text-sm text-muted">
             Next up: {{ course.next_up_title }}
         </p>

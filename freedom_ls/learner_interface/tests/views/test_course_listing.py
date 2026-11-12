@@ -27,7 +27,10 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
-from freedom_ls.deadlines.factories import CourseDeadlineConfigFactory
+from freedom_ls.deadlines.factories import (
+    CourseDeadlineConfigFactory,
+    CoursePauseFactory,
+)
 from freedom_ls.learner_interface.tests.helpers import (
     rendered_section,
     section_by_slug,
@@ -2245,3 +2248,84 @@ def test_all_courses_row_says_access_ended_and_links_to_the_detail_page(
     assert f'href="{detail}"' in html
     assert f'href="{home}"' not in html
     assert "Next up" not in html
+
+
+def _paused_all_courses_page(
+    logged_in_client, **pause_fields
+) -> tuple[CourseFactory, str]:
+    user = UserFactory()
+    course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    record = course_progress_record(course, user)
+    CoursePauseFactory(course_progress=record, **pause_fields)
+    response = logged_in_client(user).get(reverse("learner_interface:courses"))
+    return course, response.content.decode()
+
+
+@pytest.mark.django_db
+@time_machine.travel(
+    datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC), tick=False
+)
+def test_all_courses_row_says_paused_until_the_planned_resume(
+    mock_site_context, logged_in_client
+):
+    _course, html = _paused_all_courses_page(
+        logged_in_client,
+        started_at=datetime.datetime(2026, 8, 31, 10, 0, tzinfo=datetime.UTC),
+        planned_resume_on=datetime.date(2026, 12, 12),
+    )
+
+    assert 'data-testid="course-status-paused"' in html
+    assert "Paused until 12 Dec" in " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+
+@pytest.mark.django_db
+@time_machine.travel(
+    datetime.datetime(2026, 9, 1, 10, 0, tzinfo=datetime.UTC), tick=False
+)
+def test_all_courses_row_without_a_planned_resume_says_paused(
+    mock_site_context, logged_in_client
+):
+    _course, html = _paused_all_courses_page(
+        logged_in_client,
+        started_at=datetime.datetime(2026, 8, 31, 10, 0, tzinfo=datetime.UTC),
+    )
+
+    assert 'data-testid="course-status-paused"' in html
+    assert "Paused until" not in html
+
+
+@pytest.mark.django_db
+def test_all_courses_paused_row_links_to_the_detail_page_with_no_next_up(
+    mock_site_context, logged_in_client
+):
+    course, html = _paused_all_courses_page(logged_in_client)
+
+    detail = reverse("learner_interface:course_detail", args=[course.slug])
+    home = reverse("learner_interface:course_home", args=[course.slug])
+    assert f'href="{detail}"' in html
+    assert f'href="{home}"' not in html
+    assert "Next up" not in html
+
+
+# A paused course adds one fixed read of the record's pauses and the site zone it needs,
+# whatever the number of paused courses; the paused courses skip the next-up walk.
+ALL_COURSES_WITH_PAUSES_MAX_QUERIES = ALL_COURSES_MAX_QUERIES + 3
+
+
+@pytest.mark.django_db
+def test_all_courses_query_count_holds_with_a_paused_course_among_several(
+    mock_site_context, logged_in_client, django_assert_max_num_queries
+):
+    user = UserFactory()
+    _three_registered_courses_with_topics(user)
+    for slug in ("course-a", "course-b"):
+        CoursePauseFactory(
+            course_progress=course_progress_record(Course.objects.get(slug=slug), user)
+        )
+    client = logged_in_client(user)
+
+    with django_assert_max_num_queries(ALL_COURSES_WITH_PAUSES_MAX_QUERIES):
+        response = client.get(reverse("learner_interface:courses"))
+
+    assert 'data-testid="course-status-paused"' in response.content.decode()

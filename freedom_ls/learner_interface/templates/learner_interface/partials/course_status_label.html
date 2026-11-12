@@ -4,10 +4,15 @@ course_status_eyebrow.html include it, so neither repeats them. Access ended is 
 status here: course_footer_line.html draws it as a deadline label.
 
 Params:
-  status    — one of: not_registered | registered | in_progress | complete | coming_soon
+  status    — one of: not_registered | registered | in_progress | complete | coming_soon | paused
   with_icon — include the reinforcement icon
+  planned_resume_at — paused only: the planned resume instant, when the pause has one
 {% endcomment %}
-{% if status == "coming_soon" %}
+{% load time_tags %}
+{% if status == "paused" %}
+    {% if with_icon %}<span aria-hidden="true"><c-icon name="paused" class="size-4" /></span>{% endif %}
+    {% if planned_resume_at %}Paused until {% local_time planned_resume_at format="short" %}{% else %}Paused{% endif %}
+{% elif status == "coming_soon" %}
     {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
     Coming soon
 {% elif status == "complete" %}
