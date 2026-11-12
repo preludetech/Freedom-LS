@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import re
 
 import pytest
 from allauth.core.context import request_context
+from PIL import Image
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import (
     SiteAwareSignupForm,
+    UserForm,
     accepted_legal_docs,
     apply_signup_name_policy,
     honeypot_field,
@@ -23,6 +27,12 @@ from freedom_ls.accounts.forms import (
     tripped_honeypot,
 )
 from freedom_ls.accounts.models import LegalConsent
+from freedom_ls.accounts.tests.profile_picture_samples import (
+    gif_bytes,
+    jpeg_bytes,
+    truncated_jpeg_bytes,
+)
+from freedom_ls.accounts.validators import UNREADABLE, WRONG_TYPE
 
 User = get_user_model()
 
@@ -445,3 +455,59 @@ def test_tripped_honeypot_is_false_when_the_field_is_empty():
     form = _cleaned_form("")
 
     assert tripped_honeypot(form) is False
+
+
+def _picture_form(user, data: bytes) -> UserForm:
+    return UserForm(
+        {"first_name": user.first_name, "last_name": user.last_name},
+        {"profile_picture": SimpleUploadedFile("me.jpg", data)},
+        instance=user,
+    )
+
+
+@pytest.mark.django_db
+def test_user_form_stores_a_400_square_webp_under_the_users_prefix(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory()
+    form = _picture_form(user, jpeg_bytes())
+
+    assert form.is_valid(), form.errors
+    saved = form.save()
+
+    with Image.open(io.BytesIO(saved.profile_picture.read())) as stored:
+        assert (stored.format, stored.size) == ("WEBP", (400, 400))
+    assert saved.profile_picture.name.startswith(f"profile_pictures/{user.pk}/")
+
+
+@pytest.mark.django_db
+def test_user_form_without_a_file_keeps_the_existing_picture(
+    mock_site_context, pathless_profile_picture_storage
+):
+    user = UserFactory(with_profile_picture=True)
+    stored_name = user.profile_picture.name
+    form = UserForm({"first_name": "Renamed", "last_name": ""}, {}, instance=user)
+
+    assert form.is_valid(), form.errors
+    form.save()
+
+    user.refresh_from_db()
+    assert (user.first_name, user.profile_picture.name) == ("Renamed", stored_name)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        (b"not an image at all", WRONG_TYPE),
+        (gif_bytes(), WRONG_TYPE),
+        (truncated_jpeg_bytes(), UNREADABLE),
+    ],
+)
+def test_user_form_puts_a_rejected_picture_on_the_field(
+    mock_site_context, data: bytes, message: str
+):
+    form = _picture_form(UserFactory(), data)
+
+    assert not form.is_valid()
+    assert form.errors["profile_picture"] == [message]
