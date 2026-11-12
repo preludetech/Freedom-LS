@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 
 from django.contrib.messages import get_messages
 from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import DatabaseError
 from django.http import QueryDict
 from django.test import Client
 from django.urls import reverse
@@ -44,6 +46,12 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
 )
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
+    ConversionKind,
+    TouchSource,
+)
 
 from .helpers import (
     application_ids_updated_since,
@@ -704,3 +712,83 @@ def test_changing_the_users_password_leaves_updated_at_alone(user_application):
     user.save(update_fields=["password"])
 
     assert _updated_at(user_application) == before
+
+
+LANDING = datetime.now(UTC) - timedelta(days=5)
+APPLIED = LANDING + timedelta(days=2)
+
+
+def _applicant_who_arrived_through_code_a(client: Client) -> CourseApplication:
+    """An anonymous draft started two days after a visit to `?ref=A`."""
+    with time_machine.travel(LANDING, tick=False):
+        client.get("/robots.txt", {"ref": "A"})
+    with time_machine.travel(APPLIED, tick=False):
+        return _start_anonymous_draft(client, "ada@example.com")
+
+
+def _verified_account_for_ada():
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    return user
+
+
+def _application_conversions():
+    return Conversion._base_manager.filter(kind=ConversionKind.COURSE_APPLICATION)
+
+
+def test_signing_in_to_adopt_a_draft_converts_it_with_the_cookie_touch_in_play(
+    client, mock_site_context
+):
+    application = _applicant_who_arrived_through_code_a(client)
+    user = _verified_account_for_ada()
+
+    _sign_in(client, user)
+
+    conversion = _application_conversions().get()
+    assert (
+        conversion.user,
+        conversion.occurred_at,
+        conversion.first_referral_code,
+        conversion.last_referral_code,
+    ) == (user, application.created_at, "A", "A")
+
+
+def test_signing_in_to_adopt_a_draft_flushes_the_cookie_as_login_flush(
+    client, mock_site_context
+):
+    _applicant_who_arrived_through_code_a(client)
+    user = _verified_account_for_ada()
+
+    _sign_in(client, user)
+
+    assert list(
+        AttributionTouch._base_manager.values_list("recorded_via", flat=True)
+    ) == [TouchSource.LOGIN_FLUSH]
+
+
+def test_signing_in_over_a_held_submission_converts_no_application(
+    client, mock_site_context
+):
+    application = _applicant_who_arrived_through_code_a(client)
+    user = _verified_account_for_ada()
+    CourseApplicationFactory(user=user, course=application.course)
+
+    _sign_in(client, user)
+
+    assert _application_conversions().count() == 0
+
+
+def test_a_failed_conversion_write_leaves_the_adoption_and_the_login_intact(
+    client, mock_site_context, mocker
+):
+    application = _applicant_who_arrived_through_code_a(client)
+    user = _verified_account_for_ada()
+    mocker.patch.object(
+        Conversion._base_manager, "get_or_create", side_effect=DatabaseError("boom")
+    )
+    mocker.patch("freedom_ls.referral_tracking.best_effort.sentry_sdk")
+
+    _sign_in(client, user)
+
+    application.refresh_from_db()
+    assert (application.user, "_auth_user_id" in client.session) == (user, True)

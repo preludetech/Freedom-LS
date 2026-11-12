@@ -23,6 +23,11 @@ from freedom_ls.course_applications.models import (
     CourseApplication,
     claim_link_max_age,
 )
+from freedom_ls.referral_tracking.conversions import (
+    flush_cookie_touches,
+    record_conversion,
+)
+from freedom_ls.referral_tracking.models import ConversionKind, TouchSource
 
 # A namespace for the signature, not a secret.
 CLAIM_TOKEN_SALT = "freedom_ls.course_applications.claim"  # noqa: S105
@@ -208,6 +213,28 @@ def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
     return ClaimOwner(login_owner, verified=False)
 
 
+def convert_attached_application(
+    *,
+    request: HttpRequest | None,
+    user: User,
+    application: CourseApplication,
+    source: TouchSource,
+) -> None:
+    """Flush the claimant's cookie, then freeze the codes in play when they applied.
+
+    The flush runs here as well as in the signup and login receivers because
+    receiver order is not guaranteed; a second flush writes nothing twice.
+    """
+    flush_cookie_touches(request=request, user=user, source=source)
+    record_conversion(
+        user=user,
+        kind=ConversionKind.COURSE_APPLICATION,
+        target=application,
+        occurred_at=application.created_at,
+        target_label=application.course.title,
+    )
+
+
 def attach_claimed_application(
     request: HttpRequest, application: CourseApplication, *, link_version: int
 ) -> ClaimOutcome | None:
@@ -260,6 +287,15 @@ def attach_claimed_application(
         # The attribution receiver listens here; sending the signal keeps its
         # best-effort handling rather than copying it.
         user_signed_up.send(sender=User, request=request, user=user)
+    if attached.application.pk == application.pk:
+        convert_attached_application(
+            request=request,
+            user=user,
+            application=application,
+            source=(
+                TouchSource.SIGNUP_FLUSH if owner is None else TouchSource.LOGIN_FLUSH
+            ),
+        )
     return ClaimOutcome(
         user,
         application=attached.application,
