@@ -23,7 +23,7 @@ not_empty_sentence, is_empty.
                 <ul class="m-0 list-none divide-y divide-border p-0">
                     {% for user, role in educators %}
                         <li class="flex items-center justify-between gap-3 py-2">
-                            <c-panel-avatar-chip name="{{ user.display_name }}" user_id="{{ user.pk }}" secondary="{% if user.first_name or user.last_name %}{{ user.email }}{% endif %}" class="min-w-0" />
+                            <c-panel-avatar-chip name="{{ user.display_name }}" user_id="{{ user.pk }}" :picture_url="user.profile_picture_url" secondary="{% if user.first_name or user.last_name %}{{ user.email }}{% endif %}" class="min-w-0" />
                             <span class="shrink-0 text-sm text-muted">{{ role }}</span>
                         </li>
                     {% endfor %}
