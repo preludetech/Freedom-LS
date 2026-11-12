@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -16,6 +16,7 @@ from freedom_ls.deadlines.factories import (
     CohortDeadlineConfigFactory,
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
+    CoursePauseFactory,
     LearnerCourseRegistrationDeadlineConfigFactory,
     LearnerDeadlineOverrideFactory,
     OrganisationDeadlineConfigFactory,
@@ -24,6 +25,7 @@ from freedom_ls.deadlines.factories import (
 from freedom_ls.deadlines.models import (
     SWITCH_FIELDS,
     CohortDeadlineOverride,
+    CoursePause,
     DeadlineKind,
     LearnerDeadlineOverride,
 )
@@ -520,3 +522,90 @@ def test_a_learner_fixed_time_limit_resolves_to_the_end_of_that_day_in_the_site_
     due_at = course_deadlines(record).time_limit.due_at
 
     assert due_at == datetime(2026, 3, 1, 23, 59, 59, 999999, tzinfo=JOHANNESBURG)
+
+
+def _pause_record() -> CourseProgress:
+    record: CourseProgress = CourseProgressFactory()
+    return record
+
+
+@pytest.mark.django_db
+def test_a_course_progress_record_cannot_hold_two_unended_pauses(mock_site_context):
+    record = _pause_record()
+    CoursePauseFactory(course_progress=record)
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CoursePauseFactory(course_progress=record)
+
+
+@pytest.mark.django_db
+def test_a_course_progress_record_can_hold_an_ended_pause_beside_an_open_one(
+    mock_site_context,
+):
+    record = _pause_record()
+    started = datetime(2026, 3, 1, tzinfo=UTC)
+    CoursePauseFactory(
+        course_progress=record, started_at=started, ended_at=started + timedelta(days=1)
+    )
+
+    CoursePauseFactory(course_progress=record)
+
+    assert record.pauses.count() == 2
+
+
+@pytest.mark.django_db
+def test_a_pause_cannot_end_before_it_starts(mock_site_context):
+    started = datetime(2026, 3, 1, tzinfo=UTC)
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CoursePauseFactory(started_at=started, ended_at=started - timedelta(seconds=1))
+
+
+def test_end_instant_is_none_for_a_pause_with_no_end_and_no_planned_resume():
+    pause = CoursePause(started_at=datetime(2026, 3, 1, tzinfo=UTC))
+
+    assert pause.end_instant(JOHANNESBURG) is None
+
+
+def test_end_instant_prefers_the_recorded_end_when_it_is_earlier():
+    pause = CoursePause(
+        started_at=datetime(2026, 3, 1, tzinfo=UTC),
+        ended_at=datetime(2026, 3, 3, 8, 0, tzinfo=UTC),
+        planned_resume_on=date(2026, 3, 10),
+    )
+
+    assert pause.end_instant(JOHANNESBURG) == datetime(2026, 3, 3, 8, 0, tzinfo=UTC)
+
+
+def test_a_planned_resume_is_midnight_of_its_day_in_the_site_zone():
+    pause = CoursePause(
+        started_at=datetime(2026, 3, 1, tzinfo=UTC), planned_resume_on=date(2026, 3, 10)
+    )
+
+    assert pause.end_instant(JOHANNESBURG) == datetime(2026, 3, 9, 22, 0, tzinfo=UTC)
+
+
+def test_the_planned_resume_ends_a_pause_that_was_never_closed():
+    pause = CoursePause(
+        started_at=datetime(2026, 3, 1, tzinfo=UTC), planned_resume_on=date(2026, 3, 10)
+    )
+    before = datetime(2026, 3, 9, 21, 0, tzinfo=UTC)
+    after = datetime(2026, 3, 9, 23, 0, tzinfo=UTC)
+
+    assert pause.is_open(before, JOHANNESBURG) is True
+    assert pause.is_open(after, JOHANNESBURG) is False
+
+
+def test_an_open_pause_counts_its_days_up_to_now():
+    pause = CoursePause(started_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC))
+
+    assert pause.paused_days(datetime(2026, 3, 3, 13, 0, tzinfo=UTC), JOHANNESBURG) == 3
+
+
+def test_an_ended_pause_stops_counting_at_its_end():
+    pause = CoursePause(
+        started_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 3, 2, 12, 0, tzinfo=UTC),
+    )
+
+    assert pause.paused_days(datetime(2026, 4, 1, tzinfo=UTC), JOHANNESBURG) == 1

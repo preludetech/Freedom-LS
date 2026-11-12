@@ -7,6 +7,8 @@ import pytest
 import time_machine
 
 from django.conf import settings
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -19,6 +21,7 @@ from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
+    CoursePauseFactory,
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import DeadlineKind
@@ -41,7 +44,10 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.factories import (
+    CourseProgressFactory,
+    TopicProgressFactory,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
@@ -49,6 +55,11 @@ from freedom_ls.tests.factories import SiteFactory
 
 JOHANNESBURG = ZoneInfo("Africa/Johannesburg")
 AMSTERDAM = ZoneInfo("Europe/Amsterdam")
+
+# The worst case reads the layers, the pauses and the two completion reads; neither bound
+# grows with the number of records or items.
+MOST_QUERIES_WITH_ITEMS = 10
+MOST_QUERIES_WITHOUT_ITEMS = 8
 
 FIXED = DeadlineValue(DeadlineKind.FIXED, due_date=date(2026, 3, 20))
 RELATIVE = DeadlineValue(DeadlineKind.RELATIVE, due_days_after_registration=14)
@@ -559,9 +570,9 @@ def test_course_deadlines_cost_the_same_on_a_small_and_a_large_course(
     large = course_progress_record(_course_with_topics(60), UserFactory())
     _warm_process_caches(small)
 
-    with django_assert_max_num_queries(7):
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
         assert len(course_deadlines(small).items) == 6
-    with django_assert_max_num_queries(7):
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
         assert len(course_deadlines(large).items) == 60
 
 
@@ -574,7 +585,7 @@ def test_course_deadlines_for_many_records_costs_the_same_as_for_one(
     ]
     _warm_process_caches(records[0])
 
-    with django_assert_max_num_queries(7):
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
         result = course_deadlines_for(records)
 
     assert set(result) == {record.pk for record in records}
@@ -760,7 +771,7 @@ def test_override_rows_do_not_change_the_query_count(
 ):
     record = record_with_five_overridden_items
 
-    with django_assert_max_num_queries(7):
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
         result = course_deadlines(record)
 
     assert len(result.items) == 5
@@ -850,3 +861,314 @@ def test_another_sites_learner_override_rows_are_not_read(mock_site_context):
     )
 
     assert course_deadlines(record).items[item.pk].source == DeadlineSource.CONTENT
+
+
+# --- pauses ---
+
+
+def _record_with_a_dated_topic(
+    due_date: date, due_time: time | None = None
+) -> tuple[CourseProgress, ContentCollectionItem]:
+    course: Course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    item = collection_item_for(course, topic)
+    item.due_date = due_date
+    item.due_time = due_time
+    item.save()
+    return course_progress_record(course, UserFactory()), item
+
+
+def _pause(record: CourseProgress, started_at: datetime, **fields: object):
+    return CoursePauseFactory(course_progress=record, started_at=started_at, **fields)
+
+
+@pytest.mark.django_db
+def test_an_open_pause_moves_a_date_only_deadline_by_the_days_paused(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    _pause(record, datetime(2026, 3, 10, 12, 0, tzinfo=UTC))
+    now = datetime(2026, 3, 12, 13, 0, tzinfo=UTC)
+
+    resolved = course_deadlines(record, now=now).items[item.pk]
+
+    assert resolved.due_at == datetime(2026, 3, 23, tzinfo=JOHANNESBURG).replace(
+        hour=23, minute=59, second=59, microsecond=999999
+    )
+    assert resolved.shift_days == 3
+
+
+@pytest.mark.django_db
+def test_a_shift_keeps_the_due_time(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20), time(17, 0))
+    _pause(record, datetime(2026, 3, 10, 12, 0, tzinfo=UTC))
+
+    resolved = course_deadlines(
+        record, now=datetime(2026, 3, 11, 12, 0, tzinfo=UTC)
+    ).items[item.pk]
+
+    assert resolved.due_at == datetime(2026, 3, 21, 17, 0, tzinfo=JOHANNESBURG)
+
+
+@pytest.mark.django_db
+def test_a_shift_across_a_dst_change_keeps_the_local_time(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Europe/Amsterdam")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 27), time(9, 0))
+    _pause(record, datetime(2026, 3, 20, 12, 0, tzinfo=UTC))
+
+    resolved = course_deadlines(
+        record, now=datetime(2026, 3, 23, 11, 0, tzinfo=UTC)
+    ).items[item.pk]
+
+    assert resolved.due_at == datetime(2026, 3, 30, 9, 0, tzinfo=AMSTERDAM)
+    assert resolved.due_at.utcoffset() == timedelta(hours=2)
+
+
+@pytest.mark.django_db
+def test_a_pause_moves_the_time_limit_by_the_days_paused(mock_site_context):
+    record, _ = _record_with_a_dated_topic(date(2026, 3, 20))
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    now = datetime(2026, 3, 12, 13, 0, tzinfo=UTC)
+    before = course_deadlines(record, now=now).time_limit
+    _pause(record, datetime(2026, 3, 10, 12, 0, tzinfo=UTC))
+
+    after = course_deadlines(record, now=now).time_limit
+
+    assert before.due_at is not None
+    assert after.due_at == before.due_at + timedelta(days=3)
+    assert after.shift_days == 3
+
+
+@pytest.mark.django_db
+def test_an_open_pause_keeps_an_item_from_becoming_overdue(mock_site_context):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    _pause(record, datetime(2026, 3, 18, 12, 0, tzinfo=UTC))
+    now = datetime(2026, 3, 25, 12, 0, tzinfo=UTC)
+
+    resolved = course_deadlines(record, now=now).items[item.pk]
+
+    assert is_overdue(resolved, False, now) is False
+
+
+@pytest.mark.django_db
+def test_an_item_overdue_by_a_day_at_pause_start_is_still_overdue_after_resume(
+    mock_site_context,
+):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    started = datetime(2026, 3, 22, 0, 0, tzinfo=UTC)
+    _pause(record, started, ended_at=started + timedelta(hours=6))
+    now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+
+    resolved = course_deadlines(record, now=now).items[item.pk]
+
+    assert is_overdue(resolved, False, now) is True
+
+
+@pytest.mark.django_db
+def test_an_item_overdue_by_two_hours_is_not_overdue_after_a_one_hour_pause(
+    mock_site_context,
+):
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20), time(10, 0))
+    started = datetime(2026, 3, 20, 10, 0, tzinfo=UTC)
+    _pause(record, started, ended_at=started + timedelta(hours=1))
+    now = datetime(2026, 3, 20, 11, 30, tzinfo=UTC)
+
+    resolved = course_deadlines(record, now=now).items[item.pk]
+
+    assert is_overdue(resolved, False, now) is False
+
+
+@pytest.mark.django_db
+def test_a_pause_that_began_after_a_topic_was_completed_leaves_it_alone(
+    mock_site_context,
+):
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    TopicProgressFactory(
+        course_progress=record,
+        collection_item=item,
+        topic=item.child,
+        complete_time=datetime(2026, 3, 5, tzinfo=UTC),
+    )
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC)).items[
+        item.pk
+    ]
+
+    assert resolved.shift_days == 0
+
+
+@pytest.mark.django_db
+def test_a_pause_that_began_before_a_topic_was_completed_moves_it(mock_site_context):
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    TopicProgressFactory(
+        course_progress=record,
+        collection_item=item,
+        topic=item.child,
+        complete_time=datetime(2026, 3, 12, tzinfo=UTC),
+    )
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC)).items[
+        item.pk
+    ]
+
+    assert resolved.shift_days == 4
+
+
+def _quiz_record_with_attempt(
+    course_with_scored_quiz, sit_quiz, *, passes: bool, sat_on: datetime
+) -> tuple[CourseProgress, ContentCollectionItem]:
+    course, form, question, right, wrong = course_with_scored_quiz()
+    item = ContentCollectionItem.objects.get(collection_id=course.pk, child_id=form.pk)
+    item.due_date = date(2026, 3, 20)
+    item.save()
+    record = course_progress_record(course, UserFactory())
+    with time_machine.travel(sat_on, tick=False):
+        sit_quiz(record, form, question, right if passes else wrong)
+    return record, item
+
+
+@pytest.mark.django_db
+def test_a_pause_that_began_after_a_passing_attempt_leaves_the_form_alone(
+    mock_site_context, course_with_scored_quiz, sit_quiz
+):
+    record, item = _quiz_record_with_attempt(
+        course_with_scored_quiz,
+        sit_quiz,
+        passes=True,
+        sat_on=datetime(2026, 3, 5, tzinfo=UTC),
+    )
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC)).items[
+        item.pk
+    ]
+
+    assert resolved.shift_days == 0
+
+
+@pytest.mark.django_db
+def test_a_pause_that_began_after_a_failed_attempt_still_moves_the_form(
+    mock_site_context, course_with_scored_quiz, sit_quiz
+):
+    record, item = _quiz_record_with_attempt(
+        course_with_scored_quiz,
+        sit_quiz,
+        passes=False,
+        sat_on=datetime(2026, 3, 5, tzinfo=UTC),
+    )
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC)).items[
+        item.pk
+    ]
+
+    assert resolved.shift_days == 4
+
+
+@pytest.mark.django_db
+def test_the_time_limit_moves_even_when_every_item_was_completed_first(
+    mock_site_context,
+):
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    Course.objects.filter(pk=record.course_id).update(time_limit_days=30)
+    TopicProgressFactory(
+        course_progress=record,
+        collection_item=item,
+        topic=item.child,
+        complete_time=datetime(2026, 3, 5, tzinfo=UTC),
+    )
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC))
+
+    assert resolved.time_limit.shift_days == 4
+    assert resolved.items[item.pk].shift_days == 0
+
+
+@pytest.mark.django_db
+def test_a_none_value_stays_without_a_deadline_or_shift(mock_site_context):
+    shifted = resolve_deadline(
+        [DeadlineLayer(DeadlineSource.LEARNER, DeadlineValue(DeadlineKind.NONE))],
+        date(2026, 3, 1),
+        JOHANNESBURG,
+        shift_days=4,
+    )
+
+    assert shifted.due_at is None
+    assert shifted.shift_days == 0
+
+
+@pytest.mark.django_db
+def test_another_sites_pause_never_applies(mock_site_context):
+    record, item = _record_with_a_dated_topic(date(2026, 3, 20))
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC), site=SiteFactory())
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC))
+
+    assert resolved.items[item.pk].shift_days == 0
+    assert resolved.pause is None
+
+
+@pytest.mark.django_db
+def test_course_deadlines_carries_the_open_pause(mock_site_context):
+    record, _ = _record_with_a_dated_topic(date(2026, 3, 20))
+    pause = _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+
+    resolved = course_deadlines(record, now=datetime(2026, 3, 14, tzinfo=UTC))
+
+    assert resolved.pause == pause
+
+
+@pytest.mark.django_db
+def test_items_false_skips_the_item_deadlines_and_the_completion_reads(
+    mock_site_context, django_assert_max_num_queries
+):
+    record, _ = _record_with_a_dated_topic(date(2026, 3, 20))
+    _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+    _warm_process_caches(record)
+
+    with CaptureQueriesContext(connection) as queries:
+        resolved = course_deadlines(
+            record, now=datetime(2026, 3, 14, tzinfo=UTC), items=False
+        )
+
+    assert resolved.items == {}
+    assert not [q for q in queries if "topicprogress" in q["sql"]]
+    assert len(queries) <= MOST_QUERIES_WITHOUT_ITEMS
+
+
+@pytest.mark.django_db
+def test_a_record_with_a_pause_costs_the_same_on_a_small_and_a_large_course(
+    mock_site_context, django_assert_max_num_queries
+):
+    small = course_progress_record(_course_with_topics(6), UserFactory())
+    large = course_progress_record(_course_with_topics(60), UserFactory())
+    for record in (small, large):
+        _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+        _warm_process_caches(record)
+
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
+        course_deadlines(small)
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
+        course_deadlines(large)
+
+
+@pytest.mark.django_db
+def test_many_paused_records_cost_the_same_as_one(
+    mock_site_context, django_assert_max_num_queries
+):
+    records = [
+        course_progress_record(_course_with_topics(4), UserFactory()) for _ in range(3)
+    ]
+    for record in records:
+        _pause(record, datetime(2026, 3, 10, tzinfo=UTC))
+    _warm_process_caches(records[0])
+
+    with django_assert_max_num_queries(MOST_QUERIES_WITH_ITEMS):
+        course_deadlines_for(records)

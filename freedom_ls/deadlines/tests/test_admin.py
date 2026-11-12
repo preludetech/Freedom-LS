@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -10,6 +10,7 @@ from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import resolve, reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -28,6 +29,7 @@ from freedom_ls.deadlines.admin import TIME_LIMIT_HELP, CohortDeadlineOverrideIn
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
+    CoursePauseFactory,
     LearnerDeadlineOverrideFactory,
     SiteDeadlineConfigFactory,
 )
@@ -1124,3 +1126,50 @@ def test_a_negative_grace_window_is_a_field_error_on_every_config_admin(
     assert response.context["adminform"].form.errors["grace_window"] == [
         "The grace window cannot be negative."
     ]
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_marks_a_shifted_deadline_with_the_days_it_moved(
+    staff_client, mock_site_context
+) -> None:
+    SiteTimeZoneConfigFactory(time_zone="Africa/Johannesburg")
+    record, item = _record_with_item()
+    item.due_date = date(2026, 3, 14)
+    item.save()
+    CoursePauseFactory(
+        course_progress=record,
+        started_at=timezone.now() - timedelta(days=2, hours=1),
+        ended_at=timezone.now() - timedelta(hours=1),
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "(+3 days)" in body
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_says_when_the_course_is_paused(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CoursePauseFactory(course_progress=record)
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "Paused since " in body
+    assert ", until " not in body.split("Paused since ")[1].split("</p>")[0]
+
+
+@pytest.mark.django_db
+def test_effective_deadlines_names_the_planned_resume_of_a_paused_course(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CoursePauseFactory(
+        course_progress=record,
+        planned_resume_on=(timezone.now() + timedelta(days=5)).date(),
+    )
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert ", until " in body.split("Paused since ")[1].split("</p>")[0]

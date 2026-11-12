@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import cast
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from unfold.admin import ModelAdmin, TabularInline
 
@@ -29,6 +30,7 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineConfig,
     CohortDeadlineOverride,
     CourseDeadlineConfig,
+    CoursePause,
     DeadlineKind,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
@@ -370,7 +372,20 @@ class LearnerDeadlineOverrideInline(DeadlineOverrideInline):
 
 def _deadline_line(label: str, resolved: ResolvedDeadline) -> tuple[str, str, str]:
     source = SOURCE_LABELS[resolved.source] if resolved.source is not None else ""
-    return (label, site_zone_text(resolved.due_at) if resolved.due_at else "", source)
+    text = site_zone_text(resolved.due_at) if resolved.due_at else ""
+    if resolved.shift_days:
+        text += f" (+{resolved.shift_days} days)"
+    return (label, text, source)
+
+
+def _paused_line(pause: CoursePause | None, tz: ZoneInfo) -> SafeString:
+    if pause is None:
+        return format_html("{}", "")
+    until = pause.end_instant(tz)
+    text = f"Paused since {site_zone_text(pause.started_at)}"
+    if until is not None:
+        text += f", until {site_zone_text(until)}"
+    return format_html("<p>{}</p>", text)
 
 
 @admin.display(description="Effective deadlines")
@@ -390,10 +405,12 @@ def effective_deadlines(model_admin: ModelAdmin, record: CourseProgress) -> Safe
         lines.append(_deadline_line(title, resolved))
     if deadlines.time_limit.due_at is not None:
         lines.append(_deadline_line("Course time limit end", deadlines.time_limit))
+    paused = _paused_line(deadlines.pause, deadlines.zone)
     if not lines:
-        return format_html("<p>{}</p>", "No deadlines.")
+        return format_html("{}<p>{}</p>", paused, "No deadlines.")
     return format_html(
-        "<ul>{}</ul>",
+        "{}<ul>{}</ul>",
+        paused,
         format_html_join("", "<li>{}: {} ({})</li>", lines),
     )
 
