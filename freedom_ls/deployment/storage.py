@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from botocore.config import Config
 
 from django.core.exceptions import ImproperlyConfigured
@@ -110,6 +112,39 @@ def _credential_pair(purpose: str) -> tuple[str | None, str | None]:
     return env_str("AWS_S3_ACCESS_KEY_ID"), env_str("AWS_S3_SECRET_ACCESS_KEY")
 
 
+def _property_name(purpose: str, prop: str, shared: str) -> str:
+    """The environment variable that sets `prop` for `purpose`.
+
+    The purpose's own variable when it is set, otherwise the shared one.
+    """
+    return first_set_name(f"AWS_S3_{purpose}_{prop}", shared) or shared
+
+
+def media_csp_sources(purpose: str) -> list[str]:
+    """The origins a browser loads `purpose`'s objects from; empty on local disk.
+
+    Reads the same custom domain or endpoint `_alias_entry` hands the storage,
+    so the policy and the URLs the storage mints cannot name different hosts.
+    """
+    bucket, _from_shared = bucket_name_for(purpose)
+    if not bucket:
+        return []
+    custom_domain = env_str(
+        _property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN")
+    )
+    if custom_domain:
+        return [f"https://{custom_domain}"]
+    endpoint = env_str(_property_name(purpose, "ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"))
+    if not endpoint:
+        return []
+    host = urlsplit(endpoint).netloc
+    # A signed URL puts the bucket in the path or in a subdomain of the
+    # endpoint, depending on the addressing style the client picks. The
+    # subdomain is named, never wildcarded: a wildcard would allow every
+    # other bucket on a shared endpoint host.
+    return [f"https://{host}", f"https://{bucket}.{host}"]
+
+
 def _alias_entry(purpose: str) -> dict[str, object]:
     """One STORAGES entry, resolved from the purpose's own environment variables.
 
@@ -124,22 +159,26 @@ def _alias_entry(purpose: str) -> dict[str, object]:
             entry["OPTIONS"] = {"allow_overwrite": True}
         return entry
 
-    def name_for(prop: str, shared: str) -> str:
-        return first_set_name(f"AWS_S3_{purpose}_{prop}", shared) or shared
-
     access_key, secret_key = _credential_pair(purpose)
     return build_s3_media_storage(
         bucket_name=bucket,
         access_key=access_key,
         secret_key=secret_key,
-        endpoint_url=env_str(name_for("ENDPOINT_URL", "AWS_S3_ENDPOINT_URL")),
-        region_name=env_str(name_for("REGION_NAME", "AWS_S3_REGION_NAME")),
-        custom_domain=env_str(name_for("CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN")),
+        endpoint_url=env_str(
+            _property_name(purpose, "ENDPOINT_URL", "AWS_S3_ENDPOINT_URL")
+        ),
+        region_name=env_str(
+            _property_name(purpose, "REGION_NAME", "AWS_S3_REGION_NAME")
+        ),
+        custom_domain=env_str(
+            _property_name(purpose, "CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN")
+        ),
         querystring_auth=env_bool(
-            name_for("QUERYSTRING_AUTH", "AWS_QUERYSTRING_AUTH"), True
+            _property_name(purpose, "QUERYSTRING_AUTH", "AWS_QUERYSTRING_AUTH"), True
         ),
         querystring_expire=env_int(
-            name_for("QUERYSTRING_EXPIRE", "AWS_QUERYSTRING_EXPIRE"), 3600
+            _property_name(purpose, "QUERYSTRING_EXPIRE", "AWS_QUERYSTRING_EXPIRE"),
+            3600,
         ),
         object_parameters=_OBJECT_PARAMETERS.get(purpose),
         file_overwrite=overwrite,
