@@ -1,0 +1,17 @@
+{% comment %}
+The buttons that act on one role of a staff member (`entry`, on `object`):
+Deactivate role when the viewer may give that role, on at least one of its
+cohorts for a cohort role, and Change cohorts on such a cohort role of an
+active account. The viewer's own roles follow the same rule as anyone
+else's. Each accessible name names the role and the person, because a
+person with two roles has two Deactivate role buttons. Shared by the Role
+actions column and the Staff card, so both offer the same buttons.
+{% endcomment %}
+<c-data-table-actions layout="line">
+    {% if entry.role in object.actionable_roles and row_action_urls.deactivate_role %}
+        <c-modal-trigger url="{{ row_action_urls.deactivate_role }}?user={{ object.pk }}&role={{ entry.role }}" label="Deactivate role" aria_label="Deactivate {{ entry.display_name }} for {{ object.display_name }}" variant="secondary" size="small" />
+    {% endif %}
+    {% if object.is_active and entry.target == "cohort" and entry.role in object.actionable_roles and row_action_urls.change_cohorts %}
+        <c-modal-trigger url="{{ row_action_urls.change_cohorts }}?user={{ object.pk }}&role={{ entry.role }}" label="Change cohorts" aria_label="Change {{ entry.display_name }} cohorts for {{ object.display_name }}" variant="secondary" size="small" />
+    {% endif %}
+</c-data-table-actions>

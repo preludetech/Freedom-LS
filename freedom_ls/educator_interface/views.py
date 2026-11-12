@@ -2450,6 +2450,7 @@ class StaffDataTable(DataTable):
     # Four columns, two of them buttons, need more room than a tablet or the
     # space beside the quick view gives.
     cards_when_narrow = True
+    card_template = "educator_interface/partials/staff_card.html"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -3294,6 +3295,18 @@ def interface(
     # every educator page load.
     if request.session.get(LAST_ORGANISATION_SESSION_KEY) != organisation.slug:
         request.session[LAST_ORGANISATION_SESSION_KEY] = organisation.slug
+
+    if not path_string.strip("/"):
+        # The organisation's own URL names no section: land on the first one
+        # the visitor's roles show, as the educator root does.
+        landing = first_visible_section(interface_config, scoped_request)
+        if landing is None:
+            raise Http404
+        return redirect(
+            "educator_interface:interface",
+            organisation_slug=organisation.slug,
+            path_string=landing.url_name,
+        )
 
     is_switch = request.headers.get("X-Organisation-Switch") == "true"
     landed_elsewhere = False

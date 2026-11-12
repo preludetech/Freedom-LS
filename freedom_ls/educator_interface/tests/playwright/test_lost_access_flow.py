@@ -83,7 +83,9 @@ def test_a_confirm_in_an_open_dialog_after_losing_access_lands_on_the_not_found_
     assign_role(UserFactory(superuser=True), viewer, "cohort_viewer", cohort)
     page.goto(interface_url(live_server, organisation.slug, "staff"))
     row = page.locator("#main-content").get_by_role("row").filter(has_text="Vee Viewer")
-    row.get_by_role("button", name="Deactivate role", exact=True).click()
+    row.get_by_role(
+        "button", name="Deactivate Cohort viewer for Vee Viewer", exact=True
+    ).click()
     modal = page.locator("#app-modal")
     expect(modal.get_by_text("They lose")).to_be_visible()
 

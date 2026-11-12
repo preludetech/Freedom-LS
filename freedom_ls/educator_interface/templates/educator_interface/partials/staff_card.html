@@ -1,0 +1,22 @@
+{% comment %}
+One staff member as a card, wherever the Staff table is too narrow for its
+columns. The person comes first, then one block per role holding its name,
+where it applies, and that role's own buttons, so a person with two roles
+shows which Deactivate role belongs to which. The buttons that act on the
+whole person close the card. A viewer who may see names only gets the
+person and the whole-person buttons.
+{% endcomment %}
+<div data-card-primary-line class="font-bold break-words">{% include "educator_interface/data-table-cells/staff_member.html" %}</div>
+{% if shows_roles %}
+    {% if not object.role_entries %}<p class="m-0 mt-2 text-sm text-muted">No roles yet</p>{% endif %}
+    <ul class="m-0 mt-2 flex list-none flex-col gap-3 p-0 text-sm" aria-label="Roles">
+        {% for entry in object.role_entries %}
+            <li class="flex min-w-0 flex-col gap-1">
+                <span class="block font-semibold text-on-surface break-words">{{ entry.display_name }}</span>
+                <span class="block text-on-surface break-words" title="{{ entry.full_scope }}">{{ entry.scope }}</span>
+                {% include "educator_interface/partials/staff_role_buttons.html" %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+<div class="mt-3">{% include "educator_interface/data-table-cells/staff_member_actions.html" %}</div>

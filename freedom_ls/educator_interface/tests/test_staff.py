@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
@@ -599,3 +599,61 @@ def test_a_site_level_admins_row_offers_add_role_and_no_state_trigger(
     document = _staff_page(staff_client, organisation)
 
     assert _row_triggers(document, site_admin) == ["Add role"]
+
+
+def _two_role_member(organisation: Organisation) -> User:
+    member = cast(User, UserFactory(first_name="Oscar", last_name="Owner"))
+    grantor = UserFactory(superuser=True)
+    assign_role(grantor, member, "organisation_admin", organisation)
+    assign_role(
+        grantor, member, "cohort_viewer", CohortFactory(organisation=organisation)
+    )
+    return member
+
+
+@pytest.mark.django_db
+def test_a_staff_card_puts_each_roles_buttons_under_that_role(
+    staff_client: Client,
+) -> None:
+    """A card has no Role actions section: a person with two roles shows
+    which Deactivate role belongs to which role."""
+    organisation = OrganisationFactory()
+    member = _two_role_member(organisation)
+
+    document = _staff_page(staff_client, organisation)
+
+    (card,) = [
+        card
+        for card in document.cssselect("li.panel-data-table-card")
+        if f"user={member.pk}" in lxml.html.tostring(card).decode()
+    ]
+    assert "Role actions" not in card.text_content()
+    blocks = {
+        item.cssselect("span")[0].text_content().strip(): [
+            button.text_content().strip() for button in item.cssselect("button[hx-get]")
+        ]
+        for item in card.cssselect("ul[aria-label='Roles'] > li")
+    }
+    assert blocks == {
+        "Organisation admin": ["Deactivate role"],
+        "Cohort viewer": ["Deactivate role", "Change cohorts"],
+    }
+
+
+@pytest.mark.django_db
+def test_every_role_button_names_its_role_and_person(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    member = _two_role_member(organisation)
+
+    document = _staff_page(staff_client, organisation)
+
+    labels = {
+        button.get("aria-label")
+        for button in document.cssselect("button[hx-get]")
+        if f"user={member.pk}&role=" in button.get("hx-get")
+    }
+    assert labels == {
+        "Deactivate Organisation admin for Oscar Owner",
+        "Deactivate Cohort viewer for Oscar Owner",
+        "Change Cohort viewer cohorts for Oscar Owner",
+    }

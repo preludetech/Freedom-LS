@@ -116,6 +116,29 @@ class TestInterfaceRoot:
 
 
 @pytest.mark.django_db
+class TestBareOrganisationUrl:
+    """/educator/organisations/<slug>/ names no section, so it sends the
+    visitor to the first one their roles show."""
+
+    @pytest.mark.parametrize(
+        ("role", "section"),
+        [("organisation_staff_viewer", "staff"), ("organisation_admin", "dashboard")],
+    )
+    def test_sends_the_visitor_to_the_first_section_they_can_see(
+        self, logged_in_client, role, section
+    ):
+        user = UserFactory(staff=True)
+        organisation = OrganisationFactory()
+        assign_object_role(user, organisation, role)
+        client = logged_in_client(user)
+
+        response = client.get(_interface_url(organisation.slug, ""))
+
+        assert response.status_code == 302
+        assert response["Location"] == _interface_url(organisation.slug, section)
+
+
+@pytest.mark.django_db
 class TestInterfaceResolvesAndAuthorisesOnce:
     def test_unknown_slug_404s(self, logged_in_client):
         client = logged_in_client(UserFactory(staff=True))
