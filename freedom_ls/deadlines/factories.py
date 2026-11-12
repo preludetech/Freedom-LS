@@ -13,7 +13,9 @@ from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     CourseDeadlineConfig,
     CoursePause,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
     OrganisationDeadlineConfig,
@@ -110,3 +112,15 @@ class CoursePauseFactory(SiteAwareFactory):
     course_progress = factory.SubFactory(CourseProgressFactory)
     started_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=1))
     reason = "Learner on leave."
+
+
+class DeadlineExtensionFactory(SiteAwareFactory):
+    """A seven-day extension of the time limit."""
+
+    class Meta:
+        model = DeadlineExtension
+
+    course_progress = factory.SubFactory(CourseProgressFactory)
+    target_kind = ExtensionTarget.TIME_LIMIT
+    days = 7
+    reason = "Learner was ill."

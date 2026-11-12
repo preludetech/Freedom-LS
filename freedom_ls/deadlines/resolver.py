@@ -20,7 +20,9 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
+    DeadlineExtension,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.shifts import (
@@ -344,9 +346,24 @@ def course_deadlines_for(
     if pauses is None:
         pauses = pauses_for(records)
     open_by_record = open_pauses_for(records, now, pauses)
-    paused_ids = [record.pk for record in records if pauses.get(record.pk)]
-    # Only a record with a pause has anything to shift, so the common page pays no read.
-    completed = completion_instants(paused_ids) if items and paused_ids else {}
+    extensions_by_record: dict[UUID, list[DeadlineExtension]] = defaultdict(list)
+    for extension in DeadlineExtension._base_manager.filter(
+        site_id__in={record.site_id for record in records},
+        course_progress_id__in=[record.pk for record in records],
+    ):
+        extensions_by_record[extension.course_progress_id].append(extension)
+    # Only a pause or a whole-course extension is skipped by a completed item, so only a
+    # record with one needs the completion instants and the common page pays no read.
+    shifted_ids = [
+        record.pk
+        for record in records
+        if pauses.get(record.pk)
+        or any(
+            extension.target_kind == ExtensionTarget.COURSE
+            for extension in extensions_by_record.get(record.pk, [])
+        )
+    ]
+    completed = completion_instants(shifted_ids) if items and shifted_ids else {}
 
     result: dict[UUID, CourseDeadlines] = {}
     for record in records:
@@ -354,6 +371,7 @@ def course_deadlines_for(
         course_defaults = defaults[record.course_id]
         sources = ShiftSources(
             pauses=pauses.get(record.pk, []),
+            extensions=extensions_by_record.get(record.pk, []),
             completed_at={
                 item_id: instant
                 for (progress_id, item_id), instant in completed.items()

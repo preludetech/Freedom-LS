@@ -19,11 +19,13 @@ from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CoursePauseFactory,
+    DeadlineExtensionFactory,
     LearnerDeadlineOverrideFactory,
 )
 from freedom_ls.deadlines.models import (
     CohortDeadlineOverride,
     DeadlineKind,
+    ExtensionTarget,
     LearnerDeadlineOverride,
 )
 from freedom_ls.deadlines.queries import (
@@ -134,6 +136,20 @@ def test_canonical_beneath_an_item_row_is_the_default_in_canonical_form(
     override = _item_override(due_date=date(2026, 3, 20), due_time=time(9, 0))
 
     assert canonical_beneath(override) == "fixed:2026-03-20T09:00"
+
+
+@pytest.mark.django_db
+def test_an_extension_leaves_canonical_beneath_unchanged(mock_site_context):
+    override, _ = _learner_override(on_cohort=False)
+    before = canonical_beneath(override)
+
+    DeadlineExtensionFactory(
+        course_progress=override.course_progress,
+        target_kind=ExtensionTarget.COLLECTION_ITEM,
+        collection_item=override.collection_item,
+    )
+
+    assert canonical_beneath(override) == before == "relative:14"
 
 
 @pytest.mark.django_db

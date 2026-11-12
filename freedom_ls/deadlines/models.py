@@ -481,3 +481,79 @@ class CoursePause(SiteAwareModel, TimestampedModel):
         """Whole days this pause has lasted by `now`; an open pause counts up to `now`."""
         end = self.end_instant(tz)
         return shifts.paused_days(self.started_at, min(end, now) if end else now)
+
+
+class ExtensionTarget(models.TextChoices):
+    COLLECTION_ITEM = "collection_item", "Collection item"
+    TIME_LIMIT = "time_limit", "Time limit"
+    COURSE = "course", "Whole course"
+
+
+# Every read adds the days to a date, so an unbounded value would overflow the arithmetic
+# on each read of the learner's deadlines.
+MAX_EXTENSION_DAYS = 3650
+
+
+class DeadlineExtension(SiteAwareModel, TimestampedModel):
+    """Days added to one learner's deadlines on a course. Rows stack by addition."""
+
+    course_progress = models.ForeignKey(
+        CourseProgress, on_delete=models.CASCADE, related_name="deadline_extensions"
+    )
+    target_kind = models.CharField(max_length=15, choices=ExtensionTarget.choices)
+    collection_item = models.ForeignKey(
+        ContentCollectionItem,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    days = models.PositiveIntegerField()
+    requested_date = models.DateField(null=True, blank=True)
+    reason = models.TextField()
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(target_kind=ExtensionTarget.COLLECTION_ITEM)
+                    & Q(collection_item__isnull=False)
+                )
+                | (
+                    ~Q(target_kind=ExtensionTarget.COLLECTION_ITEM)
+                    & Q(collection_item__isnull=True)
+                ),
+                name="deadline_extension_item_only_for_item_target",
+            ),
+            models.CheckConstraint(
+                condition=Q(days__gte=1) & Q(days__lte=MAX_EXTENSION_DAYS),
+                name="deadline_extension_days_in_range",
+            ),
+            models.CheckConstraint(
+                condition=~Q(target_kind=ExtensionTarget.COURSE)
+                | Q(requested_date__isnull=True),
+                name="deadline_extension_course_has_no_requested_date",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        record = self.course_progress
+        return (
+            f"{record.learner} on {record.course}: +{self.days} days "
+            f"({self.target_kind})"
+        )
+
+    def clean(self) -> None:
+        if not self.course_progress_id or self.collection_item is None:
+            return
+        if self.collection_item not in (
+            self.course_progress.course.viewable_collection_items()
+        ):
+            raise ValidationError({"collection_item": "Pick an item of this course."})
