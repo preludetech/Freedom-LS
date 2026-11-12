@@ -5063,6 +5063,18 @@ def test_reactivating_restores_the_capability_and_answers_204(
 
 
 @pytest.mark.django_db
+def test_the_reactivate_dialog_for_someone_with_no_roles_says_so(
+    admin_client, organisation
+):
+    member = StaffMemberFactory(organisation=organisation, is_active=False)
+
+    text = _text(_state_dialog(admin_client, organisation, member.user, "reactivate"))
+
+    assert "They have no roles here" in text
+    assert "take effect again" not in text
+
+
+@pytest.mark.django_db
 def test_the_reactivate_dialog_lists_the_roles_that_take_effect_again(
     admin_client, organisation
 ):

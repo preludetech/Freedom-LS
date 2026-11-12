@@ -1,11 +1,16 @@
 {% comment %}
 The modal fragment a ReactivateStaffMemberAction's GET returns. Context: staff_member,
-roles (a prose list of the roles that take effect again), confirm_url.
+roles (a prose list of the roles that take effect again, empty for someone with
+none), confirm_url.
 {% endcomment %}
 <c-modal-header>Reactivate {{ staff_member.display_name }}?</c-modal-header>
 
 <c-modal-body>
-    <p>These roles take effect again: {{ roles }}.</p>
+    {% if roles %}
+        <p>These roles take effect again: {{ roles }}.</p>
+    {% else %}
+        <p>They have no roles here, so they can't see any cohort until you add a role.</p>
+    {% endif %}
     <p>You can deactivate them again at any time.</p>
 </c-modal-body>
 
