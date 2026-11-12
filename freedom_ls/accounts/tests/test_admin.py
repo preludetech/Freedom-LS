@@ -13,8 +13,16 @@ from freedom_ls.accounts.factories import (
     UserFactory,
 )
 from freedom_ls.accounts.models import LegalConsent, User
-from freedom_ls.referral_tracking.factories import SignupAttributionFactory
-from freedom_ls.referral_tracking.models import SignupAttribution
+from freedom_ls.referral_tracking.factories import (
+    AttributionTouchFactory,
+    ConversionFactory,
+    SignupAttributionFactory,
+)
+from freedom_ls.referral_tracking.models import (
+    AttributionTouch,
+    Conversion,
+    SignupAttribution,
+)
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -90,6 +98,31 @@ def test_user_admin_delete_cascades_to_audit_rows(staff_client):
     assert not User.objects.filter(pk=user.pk).exists()
     assert not LegalConsent.objects.filter(user_id=user.pk).exists()
     assert not SignupAttribution.objects.filter(user_id=user.pk).exists()
+
+
+@pytest.mark.django_db
+def test_user_admin_delete_cascades_to_touches_and_conversions(staff_client):
+    user = UserFactory()
+    touch = AttributionTouchFactory(user=user, referral_code="ALPHA")
+    ConversionFactory(
+        user=user,
+        first_touch=touch,
+        last_touch=touch,
+        first_referral_code="ALPHA",
+        last_referral_code="ALPHA",
+    )
+    url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
+
+    response = staff_client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["perms_lacking"] == set()
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 302
+    assert not AttributionTouch.objects.filter(user_id=user.pk).exists()
+    assert not Conversion.objects.filter(user_id=user.pk).exists()
 
 
 @pytest.mark.django_db
