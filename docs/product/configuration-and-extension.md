@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-12_
 
 ## Summary
 
@@ -173,8 +173,11 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `REGISTRATION_RULE_KINDS` | The ways a registration rule can decide who it matches; a project can add its own. Only attribute matching ships, and it is the default. See [registration rules](./registration-rules.md). |
 | `REGISTRATION_RULE_BATCH_SIZE` | How many learners a rule evaluation handles at a time; defaults to 500. See [registration rules](./registration-rules.md). |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
-| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued — read only when `EMAIL_BACKEND` names the queue. See [deployment](./deployment.md). |
+| `EMAIL_BACKEND` | Outgoing email is queued by default, so a message the mail host refuses for a temporary reason is retried. Set to Django's SMTP backend to send inside the request instead, with no retries. See [deployment](./deployment.md). |
+| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued; SMTP unless set. See [deployment](./deployment.md). |
 | `EMAIL_TIMEOUT` | Socket timeout for outgoing SMTP, recommended whether or not email is queued; left unset, a stalled mail host can hang the request or worker indefinitely. See [deployment](./deployment.md). |
+| `EMAIL_MAX_ATTEMPTS`, `EMAIL_RETRY_DELAYS` | How many times a queued email is tried before FLS gives up on it, and how long it waits between tries. Both have working defaults. |
+| `EMAIL_OUTBOUND_RETENTION_DAYS`, `EMAIL_FAILED_PAYLOAD_RETENTION_DAYS` | How long a record of an outgoing email is kept, and how long a failed email keeps its body so it can still be resent. See [security and data handling](./security-and-data-handling.md#queued-email). |
 | `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
 | `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |

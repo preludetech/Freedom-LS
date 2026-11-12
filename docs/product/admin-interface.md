@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-12_
 
 ## Summary
 
@@ -26,6 +26,7 @@ _Last updated: 2026-11-05_
 - Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. A course registration's admin page shows which rule made it. See [registration rules](./registration-rules.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 - API keys are issued and revoked in the admin. A key's text is shown once, when it is issued, and a key cannot be deleted. See [API Keys](#api-keys).
+- Superusers can see outgoing email, with its status and last error but never its body, and resend one that failed. See [Outgoing Email](#outgoing-email).
 
 ## Unfold
 
@@ -159,3 +160,11 @@ An administrator issues keys here for scripts that read the site's data over the
 ![](screenshots/admin_api_keys.png)
 
 The list shows each key's scopes, status (active, expired or revoked), expiry and when it was last used. One or several keys are revoked after a confirmation page, and scripts using a revoked key stop at once. Once issued, only an active key's name can be changed, and keys are never deleted, so revoked keys stay listed. How keys are stored and what is recorded about their use is in [security and data handling](./security-and-data-handling.md#api-access-built).
+
+## Outgoing Email
+
+Superusers can see the email the system sends, such as password resets, to find out whether a particular message went out and, if not, why. The list is searchable by recipient and subject and filterable by status, and each email's page shows its status, how many attempts were made and the last error, never the message body. Nobody can add, edit or delete an email there, and staff who are not superusers do not see it.
+
+![](screenshots/admin_outgoing_email.png)
+
+A superuser can resend an email in the Permanent Failure or Dead Letter state, one at a time or several at once. An email that was sent, is still being retried, or whose body has already been removed is skipped, with a message saying why; once the body is gone, the only way to send it again is to repeat the original action, such as requesting a new password reset. Nothing resends a failed email automatically after its retries run out. How long bodies and records are kept is in [security and data handling](./security-and-data-handling.md#queued-email).
