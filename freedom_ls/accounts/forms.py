@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     from .legal_docs import LegalDoc
     from .models import SiteSignupPolicy
+    from .models import User as UserModel
 
 User = get_user_model()
 
@@ -59,6 +60,35 @@ class UserForm(forms.ModelForm):
         # Storage only ever receives the re-encoded WebP. The name is a
         # placeholder; the upload_to callable picks the key.
         return ContentFile(encoded, name="profile_picture.webp")
+
+    def save(self, commit: bool = True) -> UserModel:
+        if not commit:
+            # The superseded file is deleted when this save commits, so an
+            # unsaved form has nothing to hang that on.
+            raise ValueError("UserForm.save() does not support commit=False.")
+        superseded = self._stored_profile_picture_name()
+        user: UserModel = super().save()
+        if superseded and superseded != user.profile_picture.name:
+            storage = user.profile_picture.storage
+            # Deferred to commit: a save that rolls back keeps the row
+            # pointing at the old file, so the old file has to survive.
+            transaction.on_commit(lambda: storage.delete(superseded))
+        return user
+
+    def _stored_profile_picture_name(self) -> str:
+        """The picture name the database holds now.
+
+        Read from the database, not the instance: validation has already
+        written the new file onto the instance by the time save() runs.
+        Through the base manager, because `objects` filters to the
+        request's site.
+        """
+        stored = (
+            User._base_manager.filter(pk=self.instance.pk)
+            .values_list("profile_picture", flat=True)
+            .first()
+        )
+        return stored or ""
 
 
 def _get_request_or_none():

@@ -13,7 +13,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
+from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes, png_bytes
 from freedom_ls.accounts.validators import WRONG_TYPE
 from freedom_ls.conftest import reverse_url
 from freedom_ls.tests.playwright_helpers import (
@@ -50,6 +50,25 @@ def test_upload_a_picture_then_a_refused_file(
     header = page.locator("header")
     expect(header.locator("img[data-profile-picture]")).to_have_attribute(
         "src", PICTURE_SRC
+    )
+
+    first_src = main.locator("img[data-profile-picture]").get_attribute("src")
+
+    page.get_by_label("Profile picture").set_input_files(
+        {"name": "new.png", "mimeType": "image/png", "buffer": png_bytes()}
+    )
+    page.get_by_role("button", name="Save").click()
+
+    expect(page.get_by_text("Profile saved")).to_be_visible()
+    expect(main.locator("img[data-profile-picture]")).to_have_attribute(
+        "src", PICTURE_SRC
+    )
+    expect(main.locator("img[data-profile-picture]")).not_to_have_attribute(
+        "src", first_src
+    )
+    replaced_src = main.locator("img[data-profile-picture]").get_attribute("src")
+    expect(header.locator("img[data-profile-picture]")).to_have_attribute(
+        "src", replaced_src
     )
 
     page.get_by_label("Profile picture").set_input_files(
