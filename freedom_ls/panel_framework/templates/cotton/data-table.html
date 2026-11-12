@@ -48,11 +48,24 @@
     {% comment %}space-y-0: the base form rule spaces children apart, and a margin on the bar would lift it off the viewport's bottom edge and move the table under it.{% endcomment %}
     <form method="post" class="space-y-0">{% csrf_token %}<input type="hidden" name="mode" value="keys" x-ref="modeInput">
         {% include "panel_framework/partials/table_selection_bar.html" %}
+    {% endif %}
+
+    {% comment %}
+    The table shows from md up and the cards below it. A table that declares
+    cards_when_narrow switches on the width of this wrapper instead, so it is
+    cards wherever its columns would not fit: beside an open quick view as
+    well as on a narrow screen. 58rem is what a row of four columns with
+    buttons needs.
+    {% endcomment %}
+    <div{% if cards_when_narrow %} class="@container"{% endif %} data-table-layout>
+    {% if bulk_actions %}
         {% comment %}
         The header checkbox lives in the desktop <table>, which is hidden
-        below md, so cards need their own "select all" control. It has to be
-        inside the bulk form, not the search form in the toolbar above: the
-        handlers sync every page checkbox they find through the bulk form.
+        while the cards show, so cards need their own "select all" control.
+        It has to be inside the bulk form, not the search form in the toolbar
+        above: the handlers sync every page checkbox they find through the
+        bulk form. It sits inside this wrapper so that it hides on the same
+        width the cards do.
         {% endcomment %}
         <div class="px-4 py-2 sm:px-6 {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}">
             <label class="inline-flex items-center gap-2 text-sm">
@@ -65,15 +78,6 @@
             </label>
         </div>
     {% endif %}
-
-    {% comment %}
-    The table shows from md up and the cards below it. A table that declares
-    cards_when_narrow switches on the width of this wrapper instead, so it is
-    cards wherever its columns would not fit: beside an open quick view as
-    well as on a narrow screen. 58rem is what a row of four columns with
-    buttons needs.
-    {% endcomment %}
-    <div{% if cards_when_narrow %} class="@container"{% endif %} data-table-layout>
     <div role="region" aria-label="{{ noun|default:"Data"|capfirst }}" tabindex="0" class="hidden overflow-x-auto {% if cards_when_narrow %}@min-[58rem]:block{% else %}md:block{% endif %} {{ class }}">
         {% comment %}
         The header row shares the table's own fill; bold mono labels and a

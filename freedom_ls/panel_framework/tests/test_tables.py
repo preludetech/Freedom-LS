@@ -22,6 +22,7 @@ from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.utils import timezone
 
+from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import ChoiceFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel
@@ -37,6 +38,7 @@ from freedom_ls.tests.site_context import drop_ambient_request
 
 from .helpers import make_stub
 from .stub_panels import (
+    StubBulkAction,
     StubDataTable,
     StubDataTablePanel,
     StubDetailDataTable,
@@ -1394,6 +1396,21 @@ def test_a_cards_when_narrow_table_switches_by_its_own_containers_width(
     assert "md:block" not in region
     assert "@min-[58rem]:hidden" in cards
     assert "md:hidden" not in cards
+
+
+class _NarrowCardsBulkTablePanel(_NarrowCardsTablePanel):
+    def get_bulk_actions(self) -> list[BulkAction]:
+        return [StubBulkAction()]
+
+
+@pytest.mark.django_db
+def test_a_cards_when_narrow_tables_card_select_all_sits_in_the_container_it_switches_on(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({}, _NarrowCardsBulkTablePanel)
+
+    (label,) = document.xpath("//label[contains(., 'Select all on this page')]")
+    assert label.xpath("ancestor::*[@data-table-layout]")
 
 
 def test_show_all_changes_selects_every_choice_of_each_defaulted_filter() -> None:
