@@ -194,6 +194,7 @@ app's skill.
 - Siblings sit apart through the container (`gap-*` or `space-*`); children carry no margins.
 - A list value in a details panel sits flush with its label: the bullets line up with the label's
   first letter. Override the base `ul` margin (`ml-0`) and keep wrapped lines under the text.
+  Its items sit close together: override the base list spacing (`space-y-1`, `py-0` on each item).
 - On a phone a button is 44px tall and as wide as its label, with the small size's text and
   padding; the height is the only thing that grows.
 
@@ -247,6 +248,7 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A page header states each fact once and shows a state badge only for a state that differs from
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
-- A list value in a details panel has its bullets in line with the start of its label.
+- A list value in a details panel has its bullets in line with the start of its label, and its
+  items sit close together, with less gap than between two rows.
 - A control sits beside the thing it changes; a Settings panel holds only actions that have no
   home beside the thing they change.
