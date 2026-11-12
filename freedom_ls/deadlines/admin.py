@@ -391,7 +391,7 @@ def _paused_line(pause: CoursePause | None, tz: ZoneInfo) -> SafeString:
     if pause is None:
         return format_html("{}", "")
     until = pause.end_instant(tz)
-    text = f"Paused since {site_zone_text(pause.started_at)}"
+    text = f"Paused since {site_zone_text(pause.started_at.astimezone(tz))}"
     if until is not None:
         text += f", until {site_zone_text(until)}"
     return format_html("<p>{}</p>", text)
