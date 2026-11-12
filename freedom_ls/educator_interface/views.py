@@ -3119,14 +3119,19 @@ def learner_import_preview(
     ).get_page(request.GET.get("page"))
     for row in page_obj:
         row.tone = PREVIEW_LABEL_TONES[row.preview_label]
+    template = "educator_interface/learner_import_preview.html"
+    if request.headers.get("HX-Request") == "true":
+        # A page link swaps in only the rows card.
+        template = f"{template}#rows"
     return _import_page(
         request,
         scoped,
-        "educator_interface/learner_import_preview.html",
+        template,
         {
             "learner_import": learner_import,
             "page_obj": page_obj,
             "label": label,
+            "pagination_params": urlencode({"label": label}) if label else "",
             "preview_url": _import_url(
                 "learner_import_preview", scoped.organisation, import_id
             ),
