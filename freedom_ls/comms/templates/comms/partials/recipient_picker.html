@@ -36,6 +36,7 @@ state into the messages page's #thread-pane instead of navigating.
                                    class="block min-h-6 px-3 py-2 text-on-surface no-underline hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]">
                                     <c-panel-avatar-chip name="{{ user.display_name }}"
                                                          user_id="{{ user.pk }}"
+                                                         :picture_url="user.profile_picture_url"
                                                          secondary="{% if include_email %}{{ user.email }}{% endif %}" />
                                 </a>
                             </li>

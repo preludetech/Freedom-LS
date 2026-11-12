@@ -1,5 +1,6 @@
 {% if other %}
-    <c-panel-avatar-chip :name="other.display_name" :user_id="other.pk" name_hidden="true" />
+    <c-panel-avatar-chip :name="other.display_name" :user_id="other.pk" name_hidden="true"
+                         :picture_url="other.profile_picture_url" />
 {% else %}
     <span class="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
         <c-icon name="user" class="size-4" aria_label="Deleted user" />
