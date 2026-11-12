@@ -12,7 +12,8 @@ from datetime import timedelta
 from typing import NamedTuple
 
 import sentry_sdk
-from django_tasks import TaskResultStatus
+from django_tasks import DEFAULT_TASK_BACKEND_ALIAS, TaskResultStatus, task_backends
+from django_tasks_db import DatabaseBackend
 from django_tasks_db.models import DBTaskResult, get_date_max
 
 from django.core.management import call_command
@@ -367,11 +368,20 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
     findings: list[str] = []
     notes: list[str] = []
 
-    try:
-        call_command("prune_db_task_results", queue_name="*")
-    except SWEEP_FAILURES as exc:
-        sentry_sdk.capture_exception(exc)
-        sweep_failures.append(f"prune_db_task_results failed: {exc}")
+    # prune_db_task_results refuses any other backend. The immediate backend, the
+    # development and test default, stores no task results, so there is nothing
+    # to prune.
+    if isinstance(task_backends[DEFAULT_TASK_BACKEND_ALIAS], DatabaseBackend):
+        try:
+            call_command("prune_db_task_results", queue_name="*")
+        except SWEEP_FAILURES as exc:
+            sentry_sdk.capture_exception(exc)
+            sweep_failures.append(f"prune_db_task_results failed: {exc}")
+    else:
+        notes.append(
+            "Skipped prune_db_task_results: the default task backend does not "
+            "store task results."
+        )
 
     try:
         call_command("clearsessions")

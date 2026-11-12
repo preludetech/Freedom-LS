@@ -278,6 +278,37 @@ class TestMarkOrphanedRunningTasksFailed:
 
 
 @pytest.mark.django_db
+class TestTaskResultPrune:
+    def test_prune_is_skipped_without_a_database_task_backend(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_call_command = mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command"
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        ran_commands = [call.args[0] for call in mock_call_command.call_args_list]
+        assert "prune_db_task_results" not in ran_commands
+        assert outcome.sweep_failures == []
+        assert any("prune_db_task_results" in note for note in outcome.notes)
+
+    def test_prune_runs_with_a_database_task_backend(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mock_call_command = mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command"
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        ran_commands = [call.args[0] for call in mock_call_command.call_args_list]
+        assert "prune_db_task_results" in ran_commands
+        assert not any("prune_db_task_results" in note for note in outcome.notes)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("database_task_backend")
 class TestRunHousekeepingSweepsIndependence:
     def test_prune_failure_still_runs_session_sweep(self, mocker) -> None:
         def fake_call_command(command_name: str, **kwargs: object) -> None:
@@ -402,7 +433,7 @@ class TestOrphanedTaskReporting:
         mock_sentry.capture_exception.assert_not_called()
 
     def test_prune_failure_still_reaps_orphaned_tasks(
-        self, mocker: MockerFixture
+        self, mocker: MockerFixture, database_task_backend: None
     ) -> None:
         mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
         mocker.patch(
@@ -442,9 +473,18 @@ class TestSessionSweep:
 @pytest.mark.django_db
 class TestFlsRunHousekeepingCommand:
     def test_prune_failure_raises_and_leaves_heartbeat_untouched(
-        self, tmp_path: Path
+        self, mocker: MockerFixture, database_task_backend: None, tmp_path: Path
     ) -> None:
         heartbeat = tmp_path / "heartbeat"
+
+        def fake_call_command(command_name: str, **kwargs: object) -> None:
+            if command_name == "prune_db_task_results":
+                raise CommandError("prune is broken")
+
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command",
+            side_effect=fake_call_command,
+        )
 
         with pytest.raises(CommandError):
             call_command("fls_run_housekeeping", stdout=StringIO())
@@ -1180,9 +1220,12 @@ class TestDeleteFinishedRecords:
 @pytest.mark.django_db
 class TestRunHousekeepingSweepsBulkRecords:
     @pytest.fixture(autouse=True)
-    def _no_delegated_commands(self, mocker: MockerFixture) -> None:
-        # The prune command needs a database task backend the default test
-        # settings do not configure; these tests are about the bulk record sweeps.
+    def _no_delegated_commands(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        # These tests are about the bulk record sweeps, so the delegated commands
+        # are stubbed, and the database backend keeps the prune-skipped note out
+        # of the notes they count.
         mocker.patch("freedom_ls.deployment.housekeeping.call_command")
 
     def test_sweeps_close_and_delete_records_of_both_models(
