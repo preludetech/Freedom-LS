@@ -116,7 +116,7 @@ What runs where:
 - A concrete downstream project runs:
 
 ```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
+uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling" -n auto --dist loadfile
 ```
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.

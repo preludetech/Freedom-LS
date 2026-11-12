@@ -121,8 +121,10 @@ Stop and report only if the file cannot be written.
 A caller may stop before this test run to run its own gate. Otherwise run the portable contract test set and confirm everything passes. This is where the conformance suite above runs, alongside the concrete project's own suite. The set deselects FLS's browser tests, brand/demo-coupled tests, and slow-only tests, because the concrete project is verifying its own wiring, not re-running FLS's regression suite:
 
 ```
-uv run --directory <project-root> pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
+uv run --directory <project-root> pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling" -n auto --dist loadfile
 ```
+
+The set runs in parallel through `pytest-xdist`. `--dist loadfile` keeps a module's tests on one worker, so module-scoped fixtures run once per module. A project without `pytest-xdist` in its dev dependencies rejects `-n`: drop `-n auto --dist loadfile` for it and say so in the report.
 
 If there are front-end changes, use the Playwright MCP to verify things work visually.
 

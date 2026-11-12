@@ -23,7 +23,7 @@ This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-co
   - **cell**: one completed FLS spec integrated into one concrete project. The unit of work, commit, result and retry.
   - **spec name**: the spec's done directory name, `<dir>` in Step 2 (for example `2026-03-18_13:49_webhook-translation-layer`). `<spec>` and `<spec-name>` in this file and in `concrete_spec_integration.md` stand for it; an `Update FLS:` subject names it.
   - **last good**: the project's most recent `Update FLS: <spec-name>` commit, or its HEAD when the run started.
-  - **baseline**: the project's pre-existing failures, the failing node ids of the portable contract test set in `concrete_spec_integration.md` at its current pointer before any spec moves. Step 2b either runs that set or reuses ids a previous run recorded for the same tree.
+  - **baseline**: the project's pre-existing failures, the failing node ids of the portable contract test set in `concrete_spec_integration.md` at its current pointer before any spec moves. Step 2b reuses ids a previous run recorded for the same tree, or starts the baseline **lazy**: empty, filled only by gate failures that also fail at last good (`## Failure handling`). The full set never runs just to take a baseline.
   - **parked**: a project whose cell ended `blocked-on-spec`. Its remaining specs are skipped and the other projects continue.
   - **pull-in**: concrete-project code proposed for moving into FLS.
 
@@ -120,19 +120,19 @@ Per project that is not skipped:
 
 1. **Resumed.** `.sdd-work/update_concrete_baseline_<project>.md` exists, and every commit in `git -C <p> log --format=%H <taken-at>..HEAD` is a `project-commit:` in one of this project's cell result files. Reuse its ids.
 2. **Recorded.** Find the newest `Update FLS: integration report <date>` commit with `git -C <p> log -1 --format=%H --grep='^Update FLS: integration report '`. It qualifies when it is HEAD, or when `git -C <p> diff --name-only <that-sha> HEAD` lists only paths under `spec_dd/`. Its `integration_report.md` must hold a `final-failing-ids` block whose `submodule:` equals the current submodule SHA. Reuse that block's ids. A report without the block (an older run) does not qualify.
-3. **Run.** The portable contract test set in `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed.
+3. **Lazy.** No tests run here. `ids:` starts as `none`, and `## Failure handling` adds each gate failure that also fails at last good.
 
-Any other HEAD, including one `/fls-dev:update_fls` or a person committed, takes source 3: recorded ids are trusted only for a tree this command tested itself. A red baseline does not skip the project.
+Any other HEAD, including one `/fls-dev:update_fls` or a person committed, takes source 3: recorded ids are trusted only for a tree this command tested itself.
 
-Write `.sdd-work/update_concrete_baseline_<project>.md` with one `key: value` line each for `source:` (`resumed`, `recorded <date>` or `run`), `taken-at:` (HEAD), `submodule:` and `ids:` (`none` when green).
+Write `.sdd-work/update_concrete_baseline_<project>.md` with one `key: value` line each for `source:` (`resumed`, `recorded <date>` or `lazy`), `taken-at:` (HEAD), `submodule:` and `ids:` (`none` when empty).
 
-**Scans.** Start every source-3 baseline with `run_in_background`, and spawn the workaround and pull-in workers (`## Workaround removal`, `## Pull-in scan`) for every project in the same message, so the scans run while the tests do. Step 3 starts once every worker has returned and every baseline has finished.
+**Scans.** Spawn the workaround and pull-in workers (`## Workaround removal`, `## Pull-in scan`) for every project in one message. Step 3 starts once every worker has returned.
 
 ## Step 3: Preview and confirm
 
 Print, in this order:
 
-1. One block per project: path, branch, submodule SHA, baseline source and result (`run: green`, `run: N failing`, `recorded <date>: N failing` or `resumed: N failing`), pending count.
+1. One block per project: path, branch, submodule SHA, baseline source and result (`lazy`, `recorded <date>: N failing` or `resumed: N failing`), pending count.
 2. The skipped projects with their reasons.
 3. A matrix with one row per spec: name, completion date, the six flags from its `upgrade_notes.md` frontmatter (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) or `no notes`, and per project `overrides: <paths>` for the paths in `changed_template_paths` that the project overrides, or `-`.
 4. A **will prompt** line per project naming the cells that will stop on a permission prompt and why: `migrate` for `requires_migrations` (or `no notes`), `npm install` for `requires_npm_install`, `seed` for a QA cell whose project may be seeded, and `push` at the end under a push policy. Add one line saying writes into a project prompt unless this session runs in `acceptEdits` mode.
@@ -234,7 +234,7 @@ The worker lists three kinds of workaround:
 
 One line per workaround: `path:line | what it works around | evidence line | removal | matches: <spec> or unmatched`. A match is a comment naming the spec, or naming a symbol, test id, template path or setting that the spec's diff file or notes touch. When several pending specs match, `matches:` names the earliest. The removal column quotes the exact text to delete, since earlier cells can shift line numbers. The file ends with a `status: ok` footer.
 
-**Approval.** In Step 3, one question per matched workaround, labelled with its project and spec, with options `remove` (recommended) and `keep`. An unanswered one is `keep`: removing code is the operator's call. At the cell of the spec it matches, apply each approved removal with `Edit`, locating it by the quoted text; delete a template shadow with `git -C <p> rm <path>`. Text that no longer matches is recorded as unmatched. A `TODO` or `@claude` comment goes only together with the code it annotates, inside an approved removal. The baseline is never recomputed mid-run: a test an `addopts` removal newly selects is judged at the gate like any other, and a failure there means the removal is still needed. Re-running the baseline at the moved pointer would file the spec's own regressions as pre-existing.
+**Approval.** In Step 3, one question per matched workaround, labelled with its project and spec, with options `remove` (recommended) and `keep`. An unanswered one is `keep`: removing code is the operator's call. At the cell of the spec it matches, apply each approved removal with `Edit`, locating it by the quoted text; delete a template shadow with `git -C <p> rm <path>`. Text that no longer matches is recorded as unmatched. A `TODO` or `@claude` comment goes only together with the code it annotates, inside an approved removal. The baseline grows only through the baseline check at last good (`## Failure handling`), never at the moved pointer: a test an `addopts` removal newly selects is judged at the gate like any other, and a failure there means the removal is still needed. Taking baseline ids at the moved pointer would file the spec's own regressions as pre-existing.
 
 **Gate interaction.** The gate runs with the removals applied. When a new failure's node id or file is one an approved removal touched, revert that removal (`git -C <p> checkout -- <path>` for an edit, `git -C <p> checkout HEAD -- <path>` for a deletion), re-run the gate, and record the workaround as still needed. Only then does `## Failure handling` apply to what remains.
 
@@ -250,9 +250,9 @@ A cell fails when a resource step errors or the gate has a new failure. Work in 
 claude_plugins/fls-dev/scripts/concrete_rollback.sh <p> <last-good-sha>
 ```
 
-`<last-good-sha>` is the project's last good. Then run `uv run --directory <p> python manage.py migrate --check`. The Rollback section's closing test run is skipped: last good is always a tree this run already tested, at the baseline or at a passed gate.
+`<last-good-sha>` is the project's last good. Then run `uv run --directory <p> python manage.py migrate --check`. The Rollback section's closing test run is skipped: the check below re-runs the only ids that matter at last good.
 
-**Reused baseline.** When the project's baseline source is `resumed` or `recorded`, a tree identical to the one tested before can still behave differently through `.env`, local services or the venv. So re-run each new failing id once at last good, now that the rollback put the project there. An id that fails there too is pre-existing: add it to the baseline file's `ids:` and retry the cell. That retry does not count as the fix attempt. Classify only the ids that pass at last good.
+**Baseline check.** Every source takes this step. A lazy baseline has never run the set, and a reused one can behave differently on an identical tree through `.env`, local services or the venv. So re-run the new failing ids at last good, now that the rollback put the project there, in one `pytest <id> <id> … -rf` call. An id that fails there too is pre-existing: add it to the baseline file's `ids:` and retry the cell. That retry does not count as the fix attempt. An id that last good does not have (a test the spec added) is new, not pre-existing. Classify only the ids that pass at last good or do not exist there.
 
 Print a stop card: project, spec, step, failing ids, diff stat, class and proposed action.
 
