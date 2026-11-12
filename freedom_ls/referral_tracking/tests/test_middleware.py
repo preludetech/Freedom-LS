@@ -434,7 +434,9 @@ def test_an_untracked_signed_in_get_writes_nothing(signed_in_client) -> None:
 
 
 @pytest.mark.django_db
-def test_a_view_that_raises_writes_no_touch(mock_site_context, site) -> None:
+def test_a_signed_in_tracked_get_whose_view_raises_still_writes_the_touch(
+    mock_site_context, site
+) -> None:
     request = rf.get("/?ref=A")
     request.user = UserFactory()
 
@@ -444,7 +446,7 @@ def test_a_view_that_raises_writes_no_touch(mock_site_context, site) -> None:
     with pytest.raises(RuntimeError):
         AttributionCaptureMiddleware(failing_view)(request)
 
-    assert not AttributionTouch._base_manager.exists()
+    assert AttributionTouch._base_manager.count() == 1
 
 
 def test_a_signed_in_tracked_get_costs_the_live_touch_queries(

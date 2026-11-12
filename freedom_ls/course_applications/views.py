@@ -78,6 +78,8 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.session_access import allow_anonymous_form_progress
+from freedom_ls.referral_tracking.conversions import record_conversion
+from freedom_ls.referral_tracking.models import ConversionKind
 from freedom_ls.site_aware_models.models import get_cached_site
 
 
@@ -86,8 +88,9 @@ def _start_application(
     *,
     user: User | None = None,
     anonymous_applicant: AnonymousApplicant | None = None,
-) -> CourseApplication:
-    """The applicant's application to this course, created if they have none.
+) -> tuple[CourseApplication, bool]:
+    """The applicant's application to this course, created if they have none,
+    and whether this call created it.
 
     The applicant is a signed-in user or an anonymous applicant, never both.
 
@@ -100,7 +103,7 @@ def _start_application(
         # check still converge on one row. An account holds one application
         # per course however it began, so a user's lookup is by course alone.
         app: CourseApplication
-        app, _ = CourseApplication.objects.get_or_create(
+        app, created = CourseApplication.objects.get_or_create(
             course=course,
             **(
                 {"user": user}
@@ -117,7 +120,7 @@ def _start_application(
                 user=user, form=course.application_form
             )
             app.save(update_fields=["form_progress"])
-    return app
+    return app, created
 
 
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
@@ -165,7 +168,15 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         return coming_soon
 
     if course.application_form is not None or request.method == "POST":
-        app = _start_application(course, user=user)
+        app, created = _start_application(course, user=user)
+        if created:
+            record_conversion(
+                user=user,
+                kind=ConversionKind.COURSE_APPLICATION,
+                target=app,
+                occurred_at=app.created_at,
+                target_label=course.title,
+            )
         if app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         record_application_submitted(request, course)
@@ -456,7 +467,7 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
             "course_applications:applicant_details", course_slug=course.slug
         )
     if course.application_form is not None or request.method == "POST":
-        app = _start_application(course, anonymous_applicant=applicant)
+        app, _ = _start_application(course, anonymous_applicant=applicant)
         if app.form_progress is not None:
             # The course gained a form after the details step, so there is a
             # sitting to fill in before anything is submitted.
@@ -626,7 +637,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
             remember_anonymous_applicant(request, applicant)
             if course.application_form is None:
                 return redirect("course_applications:apply", course_slug=course.slug)
-            app = _start_application(course, anonymous_applicant=applicant)
+            app, _ = _start_application(course, anonymous_applicant=applicant)
             if app.form_progress is not None:
                 allow_anonymous_form_progress(request, app.form_progress)
                 if address_changed:
