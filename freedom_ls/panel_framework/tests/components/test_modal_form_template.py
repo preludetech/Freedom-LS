@@ -16,7 +16,7 @@ def test_hidden_field_renders_input_without_label() -> None:
         {
             "form": _FixedCohortForm(),
             "form_title": "Add",
-            "form_url": "/x",
+            "action_url": "/x",
             "submit_buttons": [],
         },
     )
@@ -30,7 +30,7 @@ def _render(**extra: object) -> lxml.html.HtmlElement:
     context: dict[str, object] = {
         "form": _FixedCohortForm(),
         "form_title": "Add",
-        "form_url": "/x",
+        "action_url": "/x",
         "submit_buttons": [],
     }
     context.update(extra)

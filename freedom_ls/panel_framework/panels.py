@@ -390,7 +390,7 @@ class DataTablePanel(Panel):
         columns = self.data_table.get_columns()
         context["table_colspan"] = (
             len(columns)
-            + (1 if self.data_table.row_detail_template else 0)
+            + (1 if self.data_table.row_detail_template_name else 0)
             + (1 if context["bulk_actions"] else 0)
         )
         context["noun"] = self.noun(self.request)

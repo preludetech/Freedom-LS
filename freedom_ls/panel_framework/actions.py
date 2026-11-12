@@ -101,8 +101,8 @@ class PanelAction:
     #: never form- or cascade-related.
     trigger_template_name: str = "panel_framework/partials/action_button.html"
     #: The action's fragment, rendered only by _handle_action on GET, from
-    #: get_context_data(ctx).
-    template_name: str = "panel_framework/partials/action_button.html"
+    #: get_context_data(ctx). An action that only takes a POST leaves it None.
+    template_name: str | None = None
     #: The capability this action asks about, or None to allow it whenever
     #: the config lets the action render at all.
     capability: str | None = None
@@ -162,7 +162,17 @@ class PanelAction:
     def render_fragment(self, ctx: PanelContext) -> HttpResponse:
         """The response to a GET: the action's template with its context. An
         action that can refuse the dialog before it opens overrides this."""
-        return render(ctx.request, self.template_name, self.get_context_data(ctx))
+        return render(
+            ctx.request, self.get_fragment_template_name(), self.get_context_data(ctx)
+        )
+
+    def get_fragment_template_name(self) -> str:
+        if self.template_name is None:
+            raise ImproperlyConfigured(
+                f"{type(self).__name__} has no template_name, so it cannot render "
+                "a fragment on GET."
+            )
+        return self.template_name
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
@@ -178,7 +188,7 @@ def form_fragment_context(
     form: forms.BaseForm,
     *,
     form_title: str,
-    form_url: str,
+    action_url: str,
     submit_buttons: list[dict[str, str]],
     empty_message: str | None = None,
     autofocus: bool = True,
@@ -202,7 +212,7 @@ def form_fragment_context(
         "form": form,
         "field_error_count": field_error_count(form),
         "form_title": form_title,
-        "form_url": form_url,
+        "action_url": action_url,
         "submit_buttons": submit_buttons,
         "empty_message": empty_message,
     }
@@ -247,7 +257,7 @@ class FormPanelAction(ModalPanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process form submission."""
-        self._last_form_url = self.get_action_url(ctx)
+        self._last_action_url = self.get_action_url(ctx)
         form = self.get_form(ctx.request, ctx.instance)
         if form.is_valid():
             return self.form_valid(ctx.request, form)
@@ -260,18 +270,18 @@ class FormPanelAction(ModalPanelAction):
         """Return 422 with re-rendered form."""
         html = render_to_string(
             self.template_name,
-            self._fragment_context(form, self._last_form_url),
+            self._fragment_context(form, self._last_action_url),
             request=request,
         )
         return HttpResponse(html, status=422)
 
     def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
+        self, form: forms.ModelForm, action_url: str
     ) -> dict[str, object]:
         return form_fragment_context(
             form,
             form_title=self.form_title,
-            form_url=form_url,
+            action_url=action_url,
             submit_buttons=self.submit_buttons,
             autofocus=self.autofocus_first_field,
         )
@@ -305,11 +315,11 @@ class CreateInstanceAction(FormPanelAction):
         """Return the URL to redirect to after successful creation."""
         raise NotImplementedError
 
-    def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
+    def _render_empty_form(self, request: HttpRequest, action_url: str) -> str:
         """Re-render the modal form with an empty/unbound form."""
         return render_to_string(
             self.template_name,
-            self._fragment_context(self.form_class(), form_url),
+            self._fragment_context(self.form_class(), action_url),
             request=request,
         )
 
@@ -326,7 +336,7 @@ class CreateInstanceAction(FormPanelAction):
         instance = form.save()
         events = self.get_success_events(instance)
         if request.POST.get("action") == "save_and_add":
-            html = self._render_empty_form(request, self._last_form_url)
+            html = self._render_empty_form(request, self._last_action_url)
             response = HttpResponse(html)
             response["HX-Trigger"] = build_hx_trigger(events)
             return response
@@ -597,7 +607,9 @@ class ReasonMixin(PanelAction):
         form = self.reason_form_class(ctx.request.POST)
         if not form.is_valid():
             context = {**self.get_context_data(ctx), "reason_form": form}
-            html = render_to_string(self.template_name, context, request=ctx.request)
+            html = render_to_string(
+                self.get_fragment_template_name(), context, request=ctx.request
+            )
             return HttpResponse(html, status=422)
         return self.handle_confirmed_submit(
             replace(ctx, reason=str(form.cleaned_data["reason"]))

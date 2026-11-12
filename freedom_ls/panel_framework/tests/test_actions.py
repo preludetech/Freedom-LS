@@ -11,7 +11,7 @@ import pytest
 
 from django import forms
 from django.contrib.sites.models import Site
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -275,11 +275,15 @@ def test_panel_get_actions_returns_empty_list_by_default(
 
 @pytest.mark.django_db
 def test_panel_action_render_returns_button_html(mock_site_context: Site) -> None:
-    """PanelAction renders its button through its own template."""
+    """PanelAction renders its button through its trigger template."""
     item = make_stub(name="action-render")
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    html = _render(StubAction(), _ctx(request, item, "/test/base"))
+    ctx = _ctx(request, item, "/test/base")
+    action = StubAction()
+    html = render_to_string(
+        action.trigger_template_name, action.get_trigger_context(ctx), request=request
+    )
     assert "Do Thing" in html
 
 
@@ -743,6 +747,33 @@ def test_a_get_of_a_form_actions_url_returns_its_fragment(
     assert 'id="app-modal-title"' in content
     assert "hx-post=" in content
     assert "autofocus" in content
+
+
+@pytest.mark.django_db
+def test_the_form_fragment_posts_to_the_actions_url(mock_site_context: Site) -> None:
+    item = make_stub(name="edit-fragment-action-url")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    RecordingCapabilityConfig.reset(answer=True)
+    ctx = _ctx(request, item)
+
+    response = _handle_action(request, _ResolvedAction(action, ctx))
+
+    assert isinstance(response, HttpResponse)
+    (form,) = lxml.html.fromstring(response.content.decode()).cssselect("form")
+    assert form.get("hx-post") == action.get_action_url(ctx)
+
+
+def test_a_get_of_an_action_with_no_template_name_names_the_action_class() -> None:
+    request = RequestFactory().get("/")
+    RecordingCapabilityConfig.reset(answer=True)
+    resolved = _ResolvedAction(StubAction(), _ctx(request))
+
+    with pytest.raises(ImproperlyConfigured, match="StubAction"):
+        _handle_action(request, resolved)
 
 
 @pytest.mark.django_db
@@ -1294,7 +1325,7 @@ def test_a_form_fragment_can_leave_its_first_field_without_autofocus() -> None:
     form.fields["name"] = forms.CharField()
 
     context = form_fragment_context(
-        form, form_title="t", form_url="/u", submit_buttons=[], autofocus=False
+        form, form_title="t", action_url="/u", submit_buttons=[], autofocus=False
     )
 
     rendered = cast(forms.Form, context["form"])

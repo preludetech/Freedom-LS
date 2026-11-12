@@ -1,13 +1,13 @@
 {% comment %}
 The Change cohorts dialog. Context: step (form or confirmation), staff_member,
-entry and form_url. The form step adds cohort_rows (pk, name, checked) and
+entry and action_url. The form step adds cohort_rows (pk, name, checked) and
 read_only (the held cohorts left as they are, each with its reason); the
 confirmation step adds cohort_ids, added and removed (prose lists),
 removes_role and staff_member_state (missing, inactive or active).
 {% endcomment %}
 {% if step == "form" %}
 <c-modal-header>Change cohorts for {{ staff_member.display_name }}</c-modal-header>
-<form hx-post="{{ form_url }}"
+<form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="find button[type='submit']">
@@ -29,7 +29,7 @@ removes_role and staff_member_state (missing, inactive or active).
 </form>
 {% elif step == "confirmation" %}
 <c-modal-header focus_title="true">{% if removes_role %}Deactivate {{ entry.display_name }} for {{ staff_member.display_name }}{% else %}Change cohorts for {{ staff_member.display_name }}{% endif %}</c-modal-header>
-<form hx-post="{{ form_url }}"
+<form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="find button[type='submit']">

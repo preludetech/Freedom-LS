@@ -1,6 +1,6 @@
 {% comment %}
 The modal fragment a FormPanelAction's GET returns. Context: form,
-field_error_count, form_title, form_url, submit_buttons, and optionally
+field_error_count, form_title, action_url, submit_buttons, and optionally
 status_message, a sentence above the fields saying what the previous
 submit did (an "add another" re-render). empty_message, when set,
 replaces the form with that sentence and a Close button.
@@ -10,7 +10,7 @@ replaces the form with that sentence and a Close button.
 {% else %}
 <c-modal-header>{{ form_title }}</c-modal-header>
 
-<form hx-post="{{ form_url }}"
+<form hx-post="{{ action_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
       hx-disabled-elt="#app-modal-body button[type='submit']">

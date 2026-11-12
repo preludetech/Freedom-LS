@@ -69,7 +69,7 @@ def _bar_labels(elements: list[lxml.html.HtmlElement]) -> list[str]:
 
 
 class _CardDetailDataTable(StubCardDataTable):
-    row_detail_template = StubDetailDataTable.row_detail_template
+    row_detail_template_name = StubDetailDataTable.row_detail_template_name
 
 
 class _CardDetailTablePanel(DataTablePanel):

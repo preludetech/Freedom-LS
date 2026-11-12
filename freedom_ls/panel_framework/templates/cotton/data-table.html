@@ -24,10 +24,10 @@
         primary_column=""
         secondary_columns=""
         sortable_columns=""
-        card_template=""
-        row_detail_template=""
+        card_template_name=""
+        row_detail_template_name=""
         table_colspan=""
-        empty_state_template=""
+        empty_state_template_name=""
         empty_no_results=""
         sheet_hidden_inputs=""
         reset_changes=""
@@ -88,7 +88,7 @@
         leading cell empty, which indents the detail in line with the first
         column and reads it as part of the row above.
         {% endcomment %}
-        <table{% if row_detail_template %} x-data="rowDetail"{% endif %} aria-labelledby="{{ region_id }}-caption">
+        <table{% if row_detail_template_name %} x-data="rowDetail"{% endif %} aria-labelledby="{{ region_id }}-caption">
                 <caption id="{{ region_id }}-caption" class="sr-only">{{ noun|default:"Data"|capfirst }}</caption>
                 <thead class="border-b border-border bg-transparent">
                     <tr>
@@ -101,7 +101,7 @@
                        x-bind:disabled="running">
                             </th>
                         {% endif %}
-                        {% if row_detail_template %}<th scope="col" class="w-0 pr-0"><span class="sr-only">Details</span></th>{% endif %}
+                        {% if row_detail_template_name %}<th scope="col" class="w-0 pr-0"><span class="sr-only">Details</span></th>{% endif %}
                         {% for header in header_columns %}
                             <th scope="col"{% if header.column.sortable %} aria-sort="{% if header.state == 'asc' %}ascending{% elif header.state == 'desc' %}descending{% else %}none{% endif %}"{% endif %} class="font-mono text-xs font-bold uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
                                 {% if header.column.sortable %}
@@ -141,7 +141,7 @@
                                                x-bind:disabled="running">
                                     </td>
                                 {% endif %}
-                                {% if row_detail_template %}
+                                {% if row_detail_template_name %}
                                     <td class="w-0 py-2 pr-0">
                                         {% if row.has_row_detail %}
                                             <button type="button"
@@ -159,7 +159,7 @@
                                 {% endif %}
                                 {% for column in columns %}
                                     <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
-                                        {% include column.template with object=row.object column=column %}
+                                        {% include column.template_name with object=row.object column=column %}
 
                                     </td>
                                 {% endfor %}
@@ -169,7 +169,7 @@
                                     {% if bulk_actions %}<td></td>{% endif %}
                                     <td></td>
                                     <td colspan="{% if bulk_actions %}{{ table_colspan|add:-2 }}{% else %}{{ table_colspan|add:-1 }}{% endif %}" class="pt-0">
-                                        {% include row_detail_template with object=row.object %}
+                                        {% include row_detail_template_name with object=row.object %}
                                     </td>
                                 </tr>
                             {% endif %}
@@ -178,7 +178,7 @@
                         {# The empty state is not a row, so it takes none of the row hover. #}
                         <tr class="hover:bg-transparent">
                             <td colspan="{{ table_colspan }}" class="text-center text-muted py-8">
-                                {% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}
+                                {% if empty_state_template_name %}{% include empty_state_template_name %}{% else %}{{ empty_message }}{% endif %}
                             </td>
                         </tr>
                     {% endif %}
@@ -186,19 +186,19 @@
             </table>
     </div>
 
-    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template %} x-data="rowDetail"{% endif %}>
+    <ul class="list-none ml-0 space-y-0 divide-y divide-border {% if cards_when_narrow %}@min-[58rem]:hidden{% else %}md:hidden{% endif %}"{% if row_detail_template_name %} x-data="rowDetail"{% endif %}>
         {% if rows %}
             {% for row in rows %}
                 <c-data-table-card :row="row"
                                     :primary_column="primary_column"
                                     :secondary_columns="secondary_columns"
                                     :selectable="bulk_actions"
-                                    :card_template="card_template"
-                                    :row_detail_template="row_detail_template"
+                                    :card_template_name="card_template_name"
+                                    :row_detail_template_name="row_detail_template_name"
                                     detail_id="{{ region_id }}-card-detail-{{ forloop.counter }}" />
             {% endfor %}
         {% else %}
-            <li class="py-8 text-center text-muted">{% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}</li>
+            <li class="py-8 text-center text-muted">{% if empty_state_template_name %}{% include empty_state_template_name %}{% else %}{{ empty_message }}{% endif %}</li>
         {% endif %}
     </ul>
     </div>
