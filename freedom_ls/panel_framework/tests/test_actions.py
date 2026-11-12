@@ -1163,9 +1163,6 @@ def test_an_over_length_reason_is_a_422_with_the_field_re_rendered(
     assert document.cssselect(".text-error")
 
 
-# -- refusal_response --------------------------------------------------------
-
-
 def _refusal(**kwargs: object) -> HttpResponse:
     request = RequestFactory().post("/")
     request.user = make_staff_user()
