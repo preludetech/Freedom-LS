@@ -326,7 +326,7 @@ def test_a_login_with_the_cookie_after_signup_flush_writes_no_duplicate(
             {
                 "login": "again@example.com",
                 "password": "TestPass123!xyz",  # pragma: allowlist secret
-            },  # pragma: allowlist secret
+            },
         )
 
     assert AttributionTouch._base_manager.filter(user=user).count() == 3
