@@ -8,12 +8,16 @@ from typing import cast
 from urllib.parse import urlsplit
 
 from django import forms
-from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
+from django.core.exceptions import (
+    NON_FIELD_ERRORS,
+    ImproperlyConfigured,
+    ValidationError,
+)
 from django.db import transaction
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.db.models.deletion import ProtectedError
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
@@ -114,6 +118,28 @@ class PanelAction:
     #: but its trigger renders per row (the panel exposes its URL through
     #: `row_action_urls`) rather than in the panel's footer.
     renders_in_footer: bool = True
+    #: The request parameter naming the row a row-scoped action acts on.
+    row_param: str | None = None
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Model]:
+        """The rows this action may act on, already narrowed to what the
+        request may reach. It has no default: a row action must state its
+        scope, so the lookup never runs against an unscoped manager."""
+        raise NotImplementedError
+
+    def get_row_object(self, ctx: PanelContext) -> Model:
+        """The row `row_param` names, from `get_row_queryset`. A missing,
+        malformed or out-of-scope value is a 404."""
+        if self.row_param is None:
+            raise ImproperlyConfigured(f"{type(self).__name__} sets no row_param.")
+        params = ctx.request.POST if ctx.request.method == "POST" else ctx.request.GET
+        # A value the pk field cannot parse is the same miss as an unknown one.
+        try:
+            return get_object_or_404(
+                self.get_row_queryset(ctx), pk=params.get(self.row_param, "")
+            )
+        except (ValueError, ValidationError):
+            raise Http404 from None
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         return self.capability

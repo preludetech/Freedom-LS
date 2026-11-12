@@ -295,22 +295,6 @@ def _action_params(request: HttpRequest) -> Mapping[str, str]:
     return request.POST if request.method == "POST" else request.GET
 
 
-def _uuid_param(request: HttpRequest, name: str) -> UUID:
-    """A UUID the action's trigger sent along. A missing or malformed value is
-    a 404."""
-    return _uuid_from(_action_params(request), name)
-
-
-def _staff_member_param(ctx: PanelContext) -> User:
-    """The staff member named by the action's `user` parameter. A
-    missing, malformed or non-staff value is a 404."""
-    try:
-        pk = int(_action_params(ctx.request).get("user", ""))
-    except ValueError:
-        raise Http404("No such user") from None
-    return get_object_or_404(staff_of(_organisation(ctx)), pk=pk)
-
-
 def inactive_cohort_response(
     ctx: PanelContext, cohort: Cohort, blocked_phrase: str
 ) -> HttpResponse:
@@ -765,15 +749,20 @@ class DeactivateCohortRegistrationAction(
         "educator_interface/modal/deactivate_cohort_registration_confirmation.html"
     )
 
-    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
-        return get_object_or_404(
-            cast(Cohort, ctx.instance).course_registrations.select_related("course"),
-            pk=_uuid_param(ctx.request, "registration"),
-            is_active=True,
+    row_param = "registration"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[CohortCourseRegistration]:
+        return (
+            cast(Cohort, ctx.instance)
+            .course_registrations.select_related("course")
+            .filter(is_active=True)
         )
 
+    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
+        return cast(CohortCourseRegistration, self.get_row_object(ctx))
+
     def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(_uuid_param(ctx.request, "registration"))}
+        return {"registration": str(self._registration(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
@@ -858,19 +847,20 @@ class DeactivateRegistrationAction(EducatorReasonMixin, ConfirmAction):
     loading_text = "Deactivating…"
     template_name = "educator_interface/modal/deactivate_registration_confirmation.html"
 
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        registrations = LearnerCourseRegistration.objects.filter(
+    row_param = "registration"
+
+    def get_row_queryset(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return LearnerCourseRegistration.objects.filter(
             learner=cast(Learner, ctx.instance), is_active=True
         ).select_related("course")
-        return cast(
-            LearnerCourseRegistration,
-            get_object_or_404(
-                registrations, pk=_uuid_param(ctx.request, "registration")
-            ),
-        )
+
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
 
     def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(_uuid_param(ctx.request, "registration"))}
+        return {"registration": str(self._registration(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         learner = cast(Learner, ctx.instance)
@@ -919,19 +909,20 @@ class ReactivateRegistrationAction(ConfirmAction):
     loading_text = "Reactivating…"
     template_name = "educator_interface/modal/reactivate_registration_confirmation.html"
 
-    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
-        registrations = LearnerCourseRegistration.objects.filter(
+    row_param = "registration"
+
+    def get_row_queryset(
+        self, ctx: PanelContext
+    ) -> QuerySet[LearnerCourseRegistration]:
+        return LearnerCourseRegistration.objects.filter(
             learner=cast(Learner, ctx.instance), is_active=False
         ).select_related("course")
-        return cast(
-            LearnerCourseRegistration,
-            get_object_or_404(
-                registrations, pk=_uuid_param(ctx.request, "registration")
-            ),
-        )
+
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        return cast(LearnerCourseRegistration, self.get_row_object(ctx))
 
     def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
-        return {"registration": str(_uuid_param(ctx.request, "registration"))}
+        return {"registration": str(self._registration(ctx).pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         registration = self._registration(ctx)
@@ -1021,6 +1012,11 @@ class MembershipAction(ModalPanelAction):
     blocked_phrase: str
     variant = "secondary"
     renders_in_footer = False
+    row_param = "cohort"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[Cohort]:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return cohorts_visible_to(scoped.user, scoped.organisation)
 
     def perform(
         self, learner: Learner, cohort: Cohort, actor: User, reason: str = ""
@@ -1030,11 +1026,7 @@ class MembershipAction(ModalPanelAction):
     def _cohort(self, ctx: PanelContext) -> Cohort:
         if isinstance(ctx.instance, Cohort):
             return ctx.instance
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        return get_object_or_404(
-            cohorts_visible_to(scoped.user, scoped.organisation),
-            pk=_uuid_param(ctx.request, "cohort"),
-        )
+        return cast(Cohort, self.get_row_object(ctx))
 
     def _pair(self, ctx: PanelContext) -> tuple[Learner, Cohort]:
         if isinstance(ctx.instance, Cohort):
@@ -1043,7 +1035,7 @@ class MembershipAction(ModalPanelAction):
                 learners_visible_to(
                     scoped.user, scoped.organisation, include_inactive=True
                 ),
-                pk=_uuid_param(ctx.request, "learner"),
+                pk=_uuid_from(_action_params(ctx.request), "learner"),
             )
             return learner, ctx.instance
         return cast(Learner, ctx.instance), self._cohort(ctx)
@@ -1086,8 +1078,10 @@ class RemoveFromCohortAction(EducatorReasonMixin, ConfirmAction, MembershipActio
 
     def get_hidden_fields(self, ctx: PanelContext) -> dict[str, str]:
         """The other side of the pair, which the page does not name."""
-        name = "learner" if isinstance(ctx.instance, Cohort) else "cohort"
-        return {name: str(_uuid_param(ctx.request, name))}
+        learner, cohort = self._pair(ctx)
+        if isinstance(ctx.instance, Cohort):
+            return {"learner": str(learner.pk)}
+        return {"cohort": str(cohort.pk)}
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         learner, cohort = self._pair(ctx)
@@ -2156,7 +2150,20 @@ class AddStaffMemberAction(ModalPanelAction):
         return staff_member_changed_response(user, ctx)
 
 
-class AddRoleAction(AddStaffMemberAction):
+class StaffRowMixin(PanelAction):
+    """An action on one staff member, named by the `user` parameter and read
+    through staff_of, so a missing, malformed or non-staff value is a 404."""
+
+    row_param = "user"
+
+    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[User]:
+        return staff_of(_organisation(ctx))
+
+    def _staff_member(self, ctx: PanelContext) -> User:
+        return cast(User, self.get_row_object(ctx))
+
+
+class AddRoleAction(StaffRowMixin, AddStaffMemberAction):
     """Gives one staff member another role, from their row. The person is
     fixed by the `user` parameter, so the dialog opens at the role step and
     the posted email is never read."""
@@ -2171,21 +2178,21 @@ class AddRoleAction(AddStaffMemberAction):
         return has_grantable_roles(ctx)
 
     def _dialog_title(self, ctx: PanelContext) -> str:
-        return f"Add a role for {_staff_member_param(ctx).display_name}"
+        return f"Add a role for {self._staff_member(ctx).display_name}"
 
     def _fixed_person(self, ctx: PanelContext) -> User | None:
-        return _staff_member_param(ctx)
+        return self._staff_member(ctx)
 
     def _posted(self, ctx: PanelContext) -> QueryDict:
         posted = ctx.request.POST.copy()
-        posted["email"] = _staff_member_param(ctx).email
+        posted["email"] = self._staff_member(ctx).email
         return posted
 
     def _match(self, ctx: PanelContext, email: str) -> User:
-        return _staff_member_param(ctx)
+        return self._staff_member(ctx)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        person = _staff_member_param(ctx)
+        person = self._staff_member(ctx)
         form = AddStaffMemberForm(
             None,
             roles=[(g.role, g.role) for g in self._grantable(ctx)],
@@ -2234,7 +2241,7 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
         return cast(Cohort, ctx.instance)
 
 
-class CohortRoleAction(ModalPanelAction):
+class CohortRoleAction(StaffRowMixin, ModalPanelAction):
     """An action on one person's one cohort role on this cohort, named by the
     `user` and `role` parameters. The assignment is re-read on every request;
     one that is gone or inactive is a 404 that the action route answers with
@@ -2254,7 +2261,7 @@ class CohortRoleAction(ModalPanelAction):
 
     def _assignment(self, ctx: PanelContext) -> ObjectRoleAssignment:
         cohort = cast(Cohort, ctx.instance)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         role = _action_params(ctx.request).get("role", "")
         if role_target(role) != "cohort" or role not in STAFF_ROLES:
             raise Http404("Not a cohort role")
@@ -2413,7 +2420,7 @@ class RemoveStaffFromCohortAction(EducatorReasonMixin, CohortRoleAction):
         return staff_member_changed_response(user, ctx)
 
 
-class StaffRoleAction(ModalPanelAction):
+class StaffRoleAction(StaffRowMixin, ModalPanelAction):
     """An action on one role entry of one staff member, named by the `user` and
     `role` parameters. Renders per entry, never in the header. The target
     is re-read on every request through staff_of, so a staff member who has
@@ -2514,7 +2521,7 @@ class DeactivateRoleAction(EducatorReasonMixin, ConfirmAction, StaffRoleAction):
         organisation = _organisation(ctx)
         site = organisation.site
         grantor = cast("User", ctx.request.user)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
         # A role the viewer cannot act on answers as one the person does not
@@ -2554,7 +2561,7 @@ class DeactivateRoleAction(EducatorReasonMixin, ConfirmAction, StaffRoleAction):
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         removed, _ = self._split(ctx, entry)
         targets: list[Organisation | Cohort] = (
@@ -2651,7 +2658,7 @@ class ChangeCohortsAction(StaffRoleAction):
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
         return {"step": "form", **self._dialog(ctx, user, entry)}
 
@@ -2668,7 +2675,7 @@ class ChangeCohortsAction(StaffRoleAction):
         return chosen
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
@@ -2714,7 +2721,7 @@ class ChangeCohortsAction(StaffRoleAction):
         )
 
 
-class StaffMemberStateAction(ConfirmAction):
+class StaffMemberStateAction(StaffRowMixin, ConfirmAction):
     """Flips one staff member's StaffMember row, named by the `user`
     parameter, after confirmation. Renders per row, never in the header."""
 
@@ -2740,7 +2747,7 @@ class DeactivateStaffMemberAction(EducatorReasonMixin, StaffMemberStateAction):
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         return {
             "staff_member": user,
             "organisation": organisation,
@@ -2752,7 +2759,7 @@ class DeactivateStaffMemberAction(EducatorReasonMixin, StaffMemberStateAction):
 
     def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
             raise Http404("The staff member is already inactive")
@@ -2776,7 +2783,7 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
     template_name = "educator_interface/modal/reactivate_staff_member_confirmation.html"
 
     def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         entries = current_role_entries(user, _organisation(ctx))
         return {
             "staff_member": user,
@@ -2787,7 +2794,7 @@ class ReactivateStaffMemberAction(StaffMemberStateAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = _staff_member_param(ctx)
+        user = self._staff_member(ctx)
         row = self._row(user, organisation)
         if row is not None and row.is_active:
             raise Http404("The staff member is already active")
