@@ -22,6 +22,7 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
     PanelAction,
+    ReasonMixin,
     changed_response,
     count_noun,
     current_page_within,
@@ -31,6 +32,7 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.panel_framework.forms import REASON_LENGTH, ReasonForm
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import (
     SectionConfigBase,
@@ -1077,3 +1079,83 @@ def test_a_form_fragment_can_leave_its_first_field_without_autofocus() -> None:
 
     rendered = cast(forms.Form, context["form"])
     assert "autofocus" not in rendered.fields["name"].widget.attrs
+
+
+# -- ReasonMixin tests ---------------------------------------------------
+
+
+class StubReasonAction(ReasonMixin):
+    label = "Archive"
+    action_name = "stub_reason"
+    template_name = "panel_framework/test_reason_dialog.html"
+
+    def handle_confirmed_submit(self, ctx: PanelContext) -> HttpResponse:
+        return HttpResponse(f"reason={ctx.reason}", status=200)
+
+
+class StubWordedReasonForm(ReasonForm):
+    reason_label = "Why archive?"
+    reason_help_text = "Shown to admins."
+
+
+class StubWordedReasonAction(StubReasonAction):
+    reason_form_class = StubWordedReasonForm
+
+
+@pytest.mark.django_db
+def test_a_reason_dialog_renders_the_optional_reason_field(
+    mock_site_context: Site,
+) -> None:
+    ctx = _ctx(RequestFactory().get("/"))
+
+    document = lxml.html.fromstring(_render(StubReasonAction(), ctx))
+
+    (field,) = document.cssselect("form input[name='reason']")
+    assert field.get("maxlength") == "500"
+    label = document.cssselect(f"label[for='{field.get('id')}']")[0]
+    assert label.text_content().strip() == "Reason (optional):"
+
+
+@pytest.mark.django_db
+def test_a_reason_dialog_can_word_its_field_through_the_form_class(
+    mock_site_context: Site,
+) -> None:
+    ctx = _ctx(RequestFactory().get("/"))
+
+    content = _render(StubWordedReasonAction(), ctx)
+
+    assert "Why archive?" in content
+    assert "Shown to admins." in content
+
+
+def test_a_blank_reason_submits() -> None:
+    request = RequestFactory().post("/", {"reason": ""})
+
+    response = StubReasonAction().handle_submit(_ctx(request))
+
+    assert response.status_code == 200
+    assert response.content == b"reason="
+
+
+def test_a_reason_is_stripped_and_put_on_the_context() -> None:
+    request = RequestFactory().post("/", {"reason": "  Left the programme  "})
+
+    response = StubReasonAction().handle_submit(_ctx(request))
+
+    assert response.content == b"reason=Left the programme"
+
+
+@pytest.mark.django_db
+def test_an_over_length_reason_is_a_422_with_the_field_re_rendered(
+    mock_site_context: Site,
+) -> None:
+    too_long = "x" * (REASON_LENGTH + 1)
+    request = RequestFactory().post("/", {"reason": too_long})
+
+    response = StubReasonAction().handle_submit(_ctx(request))
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content.decode())
+    (field,) = document.cssselect("form input[name='reason']")
+    assert field.get("value") == too_long
+    assert document.cssselect(".text-error")

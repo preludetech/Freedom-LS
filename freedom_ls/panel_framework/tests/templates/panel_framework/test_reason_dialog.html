@@ -1,0 +1,7 @@
+{% comment %}
+This is only used in the tests: a confirm dialog that includes the reason field.
+{% endcomment %}
+<form hx-post="/test/__actions/stub_reason">
+    {% include "panel_framework/partials/reason_field.html" %}
+    <button type="submit">Confirm</button>
+</form>

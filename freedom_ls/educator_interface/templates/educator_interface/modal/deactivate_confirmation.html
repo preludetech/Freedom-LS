@@ -21,7 +21,7 @@ cohort_course_count, is_empty, not_empty_sentence, action_url.
             <p>{{ not_empty_sentence }}</p>
         {% endif %}
     </c-modal-body>
-    {% include "educator_interface/partials/reason_field.html" %}
+    {% include "panel_framework/partials/reason_field.html" %}
 
     <c-modal-footer>
         <c-slot name="cancel"><c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button></c-slot>
