@@ -893,7 +893,7 @@ class CellContextTable(StubDataTable):
         return [
             Column(
                 header="Context",
-                template="panel_framework/test_cell_context.html",
+                template_name="panel_framework/test_cell_context.html",
                 card="primary",
             )
         ]
@@ -1014,14 +1014,14 @@ class _RowThingAction(_FooterThingAction):
 
 class RowActionsTable(StubDataTable):
     default_sort = ""  # the stub's sortable Name column is not among these
-    empty_state_template = "panel_framework/test_header_actions_empty.html"
+    empty_state_template_name = "panel_framework/test_header_actions_empty.html"
 
     @staticmethod
     def get_columns() -> list[Column]:
         return [
             Column(
                 header="Row",
-                template="panel_framework/test_row_action.html",
+                template_name="panel_framework/test_row_action.html",
                 card="primary",
             )
         ]

@@ -639,10 +639,10 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         )
 
     def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
+        self, form: forms.ModelForm, action_url: str
     ) -> dict[str, object]:
-        _prepare_register_dialog(self, form, form_url, str(self._cohort))
-        return super()._fragment_context(form, form_url)
+        _prepare_register_dialog(self, form, action_url, str(self._cohort))
+        return super()._fragment_context(form, action_url)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         register_cohort_for_course(
@@ -880,10 +880,12 @@ class RegisterLearnerForCourseAction(FormPanelAction):
         )
 
     def _fragment_context(
-        self, form: forms.ModelForm, form_url: str
+        self, form: forms.ModelForm, action_url: str
     ) -> dict[str, object]:
-        _prepare_register_dialog(self, form, form_url, self._learner.user.display_name)
-        return super()._fragment_context(form, form_url)
+        _prepare_register_dialog(
+            self, form, action_url, self._learner.user.display_name
+        )
+        return super()._fragment_context(form, action_url)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         register_for_course(
@@ -1323,7 +1325,7 @@ def _picker_title[M: Model](
 
 
 def _prepare_register_dialog(
-    action: FormPanelAction, form: forms.BaseForm, form_url: str, subject: str
+    action: FormPanelAction, form: forms.BaseForm, action_url: str, subject: str
 ) -> None:
     """Title a register-for-a-course dialog for `subject` (a learner's or a
     cohort's name) and make its course select re-render it."""
@@ -1334,7 +1336,7 @@ def _prepare_register_dialog(
     action.form_title = _picker_title(
         form, "course", unchosen=f"Register {subject} for a course", chosen=chosen
     )
-    _refresh_on_change(form, "course", form_url)
+    _refresh_on_change(form, "course", action_url)
 
 
 def _picker_fragment(
@@ -1350,7 +1352,7 @@ def _picker_fragment(
     context = form_fragment_context(
         form,
         form_title=title,
-        form_url=action.get_action_url(ctx),
+        action_url=action.get_action_url(ctx),
         submit_buttons=[button],
     )
     html = render_to_string(
@@ -1400,7 +1402,7 @@ class AddToCohortAction(ModalPanelAction):
         return form_fragment_context(
             form,
             form_title=self._title(ctx, form),
-            form_url=self.get_action_url(ctx),
+            action_url=self.get_action_url(ctx),
             submit_buttons=[self._BUTTON],
             empty_message=_empty_message(
                 form,
@@ -1470,7 +1472,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, ModalPanelAction):
         return form_fragment_context(
             form,
             form_title=self._title(ctx),
-            form_url=self.get_action_url(ctx),
+            action_url=self.get_action_url(ctx),
             submit_buttons=[self._BUTTON],
             empty_message=_empty_message(
                 form,
@@ -1550,7 +1552,7 @@ class AddLearnerAction(ModalPanelAction):
             preset=preset,
         )
 
-    def _form_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
+    def _action_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
         url = self.get_action_url(ctx)
         if preset is not None and not isinstance(ctx.instance, Cohort):
             return f"{url}?cohort={preset.pk}"
@@ -1567,7 +1569,7 @@ class AddLearnerAction(ModalPanelAction):
             **form_fragment_context(
                 form,
                 form_title=f"Add a learner to {preset}" if preset else "Add a learner",
-                form_url=self._form_url(ctx, preset),
+                action_url=self._action_url(ctx, preset),
                 submit_buttons=self._BUTTONS,
             ),
             "status_message": status_message,
@@ -1625,7 +1627,7 @@ class AddLearnerAction(ModalPanelAction):
                     "result": result,
                     "added": result.outcome in self._ADDED,
                     "cohort": cohort,
-                    "form_url": self._form_url(ctx, preset),
+                    "action_url": self._action_url(ctx, preset),
                 },
                 request=ctx.request,
             )
@@ -1866,7 +1868,7 @@ class AddStaffMemberAction(ModalPanelAction):
             "dialog_title": self._dialog_title(ctx),
             "form": form,
             "field_error_count": field_error_count(form),
-            "form_url": self.get_action_url(ctx),
+            "action_url": self.get_action_url(ctx),
             "search_url": self.get_action_url(ctx),
             "listbox_id": SEARCH_LISTBOX_ID,
             "searches_pickable_only": not self._may_add_anyone(ctx),
@@ -2041,7 +2043,7 @@ class AddStaffMemberAction(ModalPanelAction):
             "current_entries": role_entries_shown_to(ctx.request, entries),
             "form": form,
             "field_error_count": field_error_count(form),
-            "form_url": self.get_action_url(ctx),
+            "action_url": self.get_action_url(ctx),
             "role_cards": self._role_cards(ctx, entries),
             "preset_cohort": self._preset(ctx),
             "cohort_rows": self._cohort_rows(ctx, chosen),
@@ -2207,7 +2209,7 @@ class AddStaffMemberAction(ModalPanelAction):
                     "creates_account": user is None,
                     "first_name": names[0],
                     "last_name": names[1],
-                    "form_url": self.get_action_url(ctx),
+                    "action_url": self.get_action_url(ctx),
                     "email": email,
                     "role": "",
                     "cohort_ids": [],
@@ -2266,7 +2268,7 @@ class AddStaffMemberAction(ModalPanelAction):
                 "creates_account": user is None,
                 "first_name": names[0],
                 "last_name": names[1],
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
                 "person": self._fixed_person(ctx),
                 "email": email,
                 "role": role,
@@ -2471,7 +2473,7 @@ class ChangeRoleAction(CohortRoleAction):
                 "role": assignment.role,
                 "cohort": ctx.instance,
                 "role_cards": self._role_cards(ctx, assignment.role),
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
             }
         )
         return context
@@ -2789,7 +2791,7 @@ class ChangeCohortsAction(StaffRoleAction):
         return {
             "staff_member": user,
             "entry": entry,
-            "form_url": self.get_action_url(ctx),
+            "action_url": self.get_action_url(ctx),
             "cohort_rows": [
                 {
                     "pk": str(cohort.pk),
@@ -2860,7 +2862,7 @@ class ChangeCohortsAction(StaffRoleAction):
                 "step": "confirmation",
                 "staff_member": user,
                 "entry": entry,
-                "form_url": self.get_action_url(ctx),
+                "action_url": self.get_action_url(ctx),
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
                 "added": join_prose([cohort.name for cohort in plan.added]),
                 "removed": join_prose([cohort.name for cohort in plan.removed]),

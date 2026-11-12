@@ -1,7 +1,7 @@
-<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" row_detail_template="" detail_id="" />
+<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template_name="" row_detail_template_name="" detail_id="" />
 
 {% comment %}
-One row of a table rendered as a card below md. `card_template`, when set on
+One row of a table rendered as a card below md. `card_template_name`, when set on
 the DataTable, replaces the primary/secondary rendering below with its own
 markup for a denser layout; the selection checkbox around it is unchanged
 either way. When the primary column links to the row's page, a decorative
@@ -28,7 +28,7 @@ keeps an empty slot the toggle's width so every card's first line aligns.
                    x-bind:disabled="running">
         </label>
     {% endif %}
-    {% if row_detail_template %}
+    {% if row_detail_template_name %}
         <div class="w-6 shrink-0 self-start pt-1">
             {% if row.has_row_detail %}
                 <button type="button"
@@ -45,13 +45,13 @@ keeps an empty slot the toggle's width so every card's first line aligns.
         </div>
     {% endif %}
     <div class="min-w-0 flex-1 py-1">
-        {% if card_template %}
-            {% include card_template with object=row.object %}
+        {% if card_template_name %}
+            {% include card_template_name with object=row.object %}
         {% else %}
             {% if primary_column %}
                 <div data-card-primary-line class="flex items-center gap-2">
                     <div class="min-w-0 flex-1 font-bold break-words">
-                        {% include primary_column.template with object=row.object column=primary_column %}
+                        {% include primary_column.template_name with object=row.object column=primary_column %}
                     </div>
                     {% if primary_column.is_link %}<span aria-hidden="true"><c-icon name="open_page" class="size-4 shrink-0 text-muted" /></span>{% endif %}
                 </div>
@@ -61,14 +61,14 @@ keeps an empty slot the toggle's width so every card's first line aligns.
                     {% for column in secondary_columns %}
                         <div class="contents">
                             <dt class="max-w-28 text-muted">{{ column.header }}</dt>
-                            <dd class="min-w-0 break-words">{% include column.template with object=row.object column=column in_secondary_line=True %}</dd>
+                            <dd class="min-w-0 break-words">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</dd>
                         </div>
                     {% endfor %}
                 </dl>
             {% endif %}
         {% endif %}
-        {% if row_detail_template and row.has_row_detail %}
-            <div hidden data-row-detail id="{{ detail_id }}" class="mt-1">{% include row_detail_template with object=row.object %}</div>
+        {% if row_detail_template_name and row.has_row_detail %}
+            <div hidden data-row-detail id="{{ detail_id }}" class="mt-1">{% include row_detail_template_name with object=row.object %}</div>
         {% endif %}
     </div>
 </li>

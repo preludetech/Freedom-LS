@@ -363,7 +363,7 @@ def _interface_link(
     drawer instead."""
     return Column(
         header=header,
-        template="cotton/data-table-cells/link.html",
+        template_name="cotton/data-table-cells/link.html",
         text_attr=text_attr,
         fallback_text_attr=fallback_text_attr,
         url_name="educator_interface:interface",
@@ -381,7 +381,7 @@ def _learner_column(attr: str = "") -> Column:
     prefix = f"{attr}__" if attr else ""
     return Column(
         header="Learner",
-        template="educator_interface/data-table-cells/learner.html",
+        template_name="educator_interface/data-table-cells/learner.html",
         attr=attr,
         sortable=True,
         sort_field=f"{prefix}user__first_name",
@@ -394,12 +394,12 @@ def _registration_columns() -> list[Column]:
     return [
         Column(
             header="Status",
-            template="educator_interface/data-table-cells/active_status.html",
+            template_name="educator_interface/data-table-cells/active_status.html",
             attr="is_active",
         ),
         Column(
             header="Registered",
-            template="cotton/data-table-cells/datetime.html",
+            template_name="cotton/data-table-cells/datetime.html",
             attr="registered_at",
             card="md_only",
         ),
@@ -448,22 +448,22 @@ class CohortDataTable(DataTable):
             ),
             Column(
                 header="Status",
-                template="educator_interface/data-table-cells/active_status.html",
+                template_name="educator_interface/data-table-cells/active_status.html",
                 attr="is_active",
             ),
             Column(
                 header="Learners",
-                template="educator_interface/data-table-cells/learner_count.html",
+                template_name="educator_interface/data-table-cells/learner_count.html",
                 attr="learner_count",
                 sortable=True,
             ),
             Column(
                 header="Courses",
-                template="educator_interface/data-table-cells/cohort_courses.html",
+                template_name="educator_interface/data-table-cells/cohort_courses.html",
             ),
             Column(
                 header="Created",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
                 card="md_only",
@@ -513,14 +513,14 @@ class LearnerCohortDataTable(CohortDataTable):
             *CohortDataTable.get_columns(),
             Column(
                 header="Joined",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="joined_at",
                 sortable=True,
                 card="md_only",
             ),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/membership_actions.html",
+                template_name="educator_interface/data-table-cells/membership_actions.html",
                 card="secondary",
             ),
         ]
@@ -617,11 +617,11 @@ class LearnerDataTable(DataTable):
             _learner_column(),
             Column(
                 header="Status",
-                template="educator_interface/data-table-cells/learner_status.html",
+                template_name="educator_interface/data-table-cells/learner_status.html",
             ),
             RelationLinkColumn(
                 header="Cohorts",
-                template="educator_interface/data-table-cells/cohort_links.html",
+                template_name="educator_interface/data-table-cells/cohort_links.html",
                 relation_set="cohortmembership_set.all",
                 link_object_attr="cohort",
                 link_text_attr="cohort.name",
@@ -630,11 +630,11 @@ class LearnerDataTable(DataTable):
             ),
             Column(
                 header="Courses",
-                template="educator_interface/data-table-cells/learner_courses.html",
+                template_name="educator_interface/data-table-cells/learner_courses.html",
             ),
             Column(
                 header="Last active",
-                template="educator_interface/data-table-cells/learner_last_active.html",
+                template_name="educator_interface/data-table-cells/learner_last_active.html",
                 attr="last_active",
                 sortable=True,
             ),
@@ -701,7 +701,7 @@ class CohortLearnerDataTable(LearnerDataTable):
             *LearnerDataTable.get_columns(),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/cohort_member_actions.html",
+                template_name="educator_interface/data-table-cells/cohort_member_actions.html",
                 card="secondary",
             ),
         ]
@@ -888,14 +888,14 @@ class AuditLogEntryTable(DataTable):
     default_sort names so the When header reads as sorted that way."""
 
     page_size = 25
-    card_template = "educator_interface/partials/audit_log_card.html"
+    card_template_name = "educator_interface/partials/audit_log_card.html"
     default_sort = "-created_at"
     noun = "entries"
     noun_singular = "entry"
     empty_message = "Nothing has been recorded yet."
     empty_no_results = "No entries match these filters."
 
-    row_detail_template = "educator_interface/partials/audit_row_detail.html"
+    row_detail_template_name = "educator_interface/partials/audit_row_detail.html"
 
     @staticmethod
     def get_row_label(row: Model) -> str:
@@ -963,21 +963,21 @@ class AuditLogEntryTable(DataTable):
         return [
             Column(
                 header="When",
-                template="cotton/data-table-cells/datetime.html",
+                template_name="cotton/data-table-cells/datetime.html",
                 attr="created_at",
                 sortable=True,
                 cell_class="whitespace-nowrap py-2",
             ),
             Column(
                 header="Who",
-                template="educator_interface/data-table-cells/audit_who.html",
+                template_name="educator_interface/data-table-cells/audit_who.html",
                 sortable=True,
                 sort_field="actor_label",
                 cell_class="py-2",
             ),
             Column(
                 header="What",
-                template="educator_interface/data-table-cells/audit_what.html",
+                template_name="educator_interface/data-table-cells/audit_what.html",
                 card="primary",
                 sortable=True,
                 sort_field="action",
@@ -991,14 +991,14 @@ class AuditLogEntryTable(DataTable):
 class TargetedAuditLogEntryTable(AuditLogEntryTable):
     """Audit log entries that may be about different objects, so each row names its target."""
 
-    card_template = "educator_interface/partials/audit_log_card_targeted.html"
+    card_template_name = "educator_interface/partials/audit_log_card_targeted.html"
 
     @staticmethod
     def get_columns() -> list[Column]:
         when, who, what = AuditLogEntryTable.get_columns()
         target = Column(
             header="Target",
-            template="educator_interface/data-table-cells/audit_target.html",
+            template_name="educator_interface/data-table-cells/audit_target.html",
             sortable=True,
             sort_field="target_label",
             cell_class="py-2",
@@ -1506,7 +1506,7 @@ class CohortCourseRegistrationDataTable(DataTable):
             *_registration_columns(),
             Column(
                 header="",
-                template="educator_interface/data-table-cells/deactivate_registration.html",
+                template_name="educator_interface/data-table-cells/deactivate_registration.html",
                 card="secondary",
             ),
         ]
@@ -1983,29 +1983,29 @@ class CourseDataTable(DataTable):
             _interface_link("Title", "title", "courses/{pk}", card="primary"),
             Column(
                 header="Visibility",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="get_visibility_display",
             ),
             Column(
                 header="Interest",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="interest_count",
                 card="md_only",
             ),
             Column(
                 header="Active Learners",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="total_learner_count",
             ),
             Column(
                 header="Active Cohorts",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="cohort_count",
                 card="md_only",
             ),
             RelationLinkColumn(
                 header="Cohorts",
-                template="educator_interface/data-table-cells/cohort_links.html",
+                template_name="educator_interface/data-table-cells/cohort_links.html",
                 relation_set="cohort_registrations.all",
                 link_object_attr="cohort",
                 link_text_attr="cohort.name",
@@ -2365,7 +2365,7 @@ class CourseCohortRegistrationDataTable(DataTable):
             ),
             Column(
                 header="Cohort status",
-                template="educator_interface/data-table-cells/active_status.html",
+                template_name="educator_interface/data-table-cells/active_status.html",
                 attr="cohort.is_active",
             ),
             *_registration_columns(),
@@ -2463,7 +2463,7 @@ class StaffDataTable(DataTable):
     # Four columns, two of them buttons, need more room than a tablet or the
     # space beside the quick view gives.
     cards_when_narrow = True
-    card_template = "educator_interface/partials/staff_card.html"
+    card_template_name = "educator_interface/partials/staff_card.html"
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -2517,24 +2517,24 @@ class StaffDataTable(DataTable):
         return [
             Column(
                 header="Staff member",
-                template="educator_interface/data-table-cells/staff_member.html",
+                template_name="educator_interface/data-table-cells/staff_member.html",
                 sortable=True,
                 sort_field="first_name",
                 card="primary",
             ),
             Column(
                 header="Roles",
-                template="educator_interface/data-table-cells/staff_roles.html",
+                template_name="educator_interface/data-table-cells/staff_roles.html",
                 card="secondary",
             ),
             Column(
                 header="Role actions",
-                template="educator_interface/data-table-cells/staff_role_actions.html",
+                template_name="educator_interface/data-table-cells/staff_role_actions.html",
                 card="secondary",
             ),
             Column(
                 header="Staff member actions",
-                template="educator_interface/data-table-cells/staff_member_actions.html",
+                template_name="educator_interface/data-table-cells/staff_member_actions.html",
                 card="secondary",
             ),
         ]

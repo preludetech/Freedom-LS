@@ -74,7 +74,7 @@ def test_column_derives_sort_field() -> None:
 def test_a_column_with_a_url_is_a_link() -> None:
     column = Column(
         header="Name",
-        template="cotton/data-table-cells/link.html",
+        template_name="cotton/data-table-cells/link.html",
         text_attr="name",
         url_name="panel_framework_test:framework",
         url_path_template="stubs/{pk}",
@@ -85,7 +85,7 @@ def test_a_column_with_a_url_is_a_link() -> None:
 
 def test_a_column_with_no_url_is_not_a_link() -> None:
     column = Column(
-        header="Name", template="cotton/data-table-cells/text.html", attr="name"
+        header="Name", template_name="cotton/data-table-cells/text.html", attr="name"
     )
 
     assert column.is_link is False
@@ -1063,7 +1063,7 @@ def test_a_sort_keeps_the_default_ordering_behind_it_and_ends_on_pk(
             return [
                 Column(
                     header="SAT score",
-                    template="cotton/data-table-cells/text.html",
+                    template_name="cotton/data-table-cells/text.html",
                     attr="sat_score",
                     sortable=True,
                 )
@@ -1107,7 +1107,7 @@ class _DefaultSortedDataTable(StubDataTable):
             *StubDataTable.get_columns(),
             Column(
                 header="SAT score",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="sat_score",
                 sortable=True,
             ),
@@ -1459,7 +1459,7 @@ def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
 
 
 class _EmptyStateDataTable(StubDataTable):
-    empty_state_template = "panel_framework/test_empty_state.html"
+    empty_state_template_name = "panel_framework/test_empty_state.html"
 
 
 class _EmptyStateTablePanel(DataTablePanel):
@@ -1616,7 +1616,10 @@ def test_get_context_marks_each_row_with_the_has_row_detail_predicate(
         ("row-a", True),
         ("row-b", False),
     ]
-    assert context["row_detail_template"] == StubDetailDataTable.row_detail_template
+    assert (
+        context["row_detail_template_name"]
+        == StubDetailDataTable.row_detail_template_name
+    )
 
 
 def test_get_context_has_no_row_detail_for_a_plain_table(
@@ -1638,7 +1641,7 @@ def test_get_context_has_no_row_detail_for_a_plain_table(
     rows = context["rows"]
     assert isinstance(rows, list)
     assert [row["has_row_detail"] for row in rows] == [False]
-    assert context["row_detail_template"] is None
+    assert context["row_detail_template_name"] is None
 
 
 class _OverriddenExportPanel(StubDataTablePanel):

@@ -159,7 +159,7 @@ class StubDataTable(DataTable):
         return [
             Column(
                 header="Name",
-                template="cotton/data-table-cells/link.html",
+                template_name="cotton/data-table-cells/link.html",
                 text_attr="name",
                 url_name="panel_framework_test:framework",
                 url_path_template="stubs/{pk}",
@@ -169,13 +169,13 @@ class StubDataTable(DataTable):
             ),
             Column(
                 header="Kind",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="get_kind_display",
                 card="secondary",
             ),
             Column(
                 header="SAT score",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="sat_score",
                 card="md_only",
             ),
@@ -348,7 +348,7 @@ class StubChildDataTable(DataTable):
         return [
             Column(
                 header="Parent",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="parent",
             ),
         ]
@@ -391,7 +391,7 @@ class StubPlainDataTable(DataTable):
         return [
             Column(
                 header="Name",
-                template="cotton/data-table-cells/text.html",
+                template_name="cotton/data-table-cells/text.html",
                 attr="name",
                 card="primary",
             ),
@@ -401,7 +401,7 @@ class StubPlainDataTable(DataTable):
 class StubDetailDataTable(StubPlainDataTable):
     """The plain table with a row detail shown only for kind "a" rows."""
 
-    row_detail_template = "panel_framework/test_row_detail.html"
+    row_detail_template_name = "panel_framework/test_row_detail.html"
 
     @staticmethod
     def has_row_detail(row: Model) -> bool:
@@ -444,7 +444,7 @@ class StubCardDataTable(StubDataTable):
     """The same rows and columns as StubDataTable, with its default card
     body replaced by a custom template."""
 
-    card_template = "panel_framework/test_stub_card.html"
+    card_template_name = "panel_framework/test_stub_card.html"
 
 
 class StubCardTablePanel(DataTablePanel):
