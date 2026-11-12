@@ -13,6 +13,7 @@ from PIL import Image
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import transaction
 from django.test import Client
 from django.urls import reverse
 
@@ -477,7 +478,7 @@ def test_user_form_stores_a_400_square_webp_under_the_users_prefix(
 
     with Image.open(io.BytesIO(saved.profile_picture.read())) as stored:
         assert (stored.format, stored.size) == ("WEBP", (400, 400))
-    assert saved.profile_picture.name.startswith(f"profile_pictures/{user.pk}/")
+    assert str(saved.profile_picture.name).startswith(f"profile_pictures/{user.pk}/")
 
 
 @pytest.mark.django_db
@@ -511,3 +512,86 @@ def test_user_form_puts_a_rejected_picture_on_the_field(
 
     assert not form.is_valid()
     assert form.errors["profile_picture"] == [message]
+
+
+@pytest.mark.django_db
+def test_user_form_deletes_the_superseded_picture_on_commit_not_before(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = _picture_form(user, jpeg_bytes())
+    assert form.is_valid(), form.errors
+
+    with django_capture_on_commit_callbacks(execute=False) as callbacks:
+        saved = form.save()
+    still_there_before_commit = storage.exists(old_name)
+    callbacks[0]()
+
+    assert saved.profile_picture.name != old_name
+    assert still_there_before_commit is True
+    assert storage.exists(old_name) is False
+    assert storage.exists(saved.profile_picture.name) is True
+
+
+class _RollBackError(Exception):
+    pass
+
+
+def _save_then_roll_back(form: UserForm) -> None:
+    with transaction.atomic():
+        form.save()
+        raise _RollBackError
+
+
+@pytest.mark.django_db
+def test_user_form_keeps_the_old_picture_when_the_save_rolls_back(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = _picture_form(user, jpeg_bytes())
+    assert form.is_valid(), form.errors
+
+    with (
+        django_capture_on_commit_callbacks(execute=True),
+        pytest.raises(_RollBackError),
+    ):
+        _save_then_roll_back(form)
+
+    assert storage.exists(old_name) is True
+    assert User._base_manager.get(pk=user.pk).profile_picture.name == old_name
+
+
+@pytest.mark.django_db
+def test_user_form_saving_names_alone_deletes_nothing(
+    mock_site_context,
+    pathless_profile_picture_storage,
+    django_capture_on_commit_callbacks,
+):
+    user = UserFactory(with_profile_picture=True)
+    old_name = user.profile_picture.name
+    storage = user.profile_picture.storage
+    form = UserForm({"first_name": "Renamed", "last_name": ""}, {}, instance=user)
+    assert form.is_valid(), form.errors
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        form.save()
+
+    assert callbacks == []
+    assert storage.exists(old_name) is True
+
+
+@pytest.mark.django_db
+def test_user_form_save_without_commit_raises(mock_site_context):
+    form = UserForm({"first_name": "A", "last_name": "B"}, {}, instance=UserFactory())
+    assert form.is_valid(), form.errors
+
+    with pytest.raises(ValueError, match="commit=False"):
+        form.save(commit=False)
