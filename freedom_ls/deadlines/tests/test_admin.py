@@ -25,7 +25,11 @@ from freedom_ls.content_engine.models import (
     CoursePartChildDueDate,
 )
 from freedom_ls.content_engine.tests.helpers import collection_item_for
-from freedom_ls.deadlines.admin import TIME_LIMIT_HELP, CohortDeadlineOverrideInline
+from freedom_ls.deadlines.admin import (
+    TIME_LIMIT_HELP,
+    CohortDeadlineOverrideInline,
+    _policy_value_text,
+)
 from freedom_ls.deadlines.factories import (
     CohortDeadlineOverrideFactory,
     CourseDeadlineConfigFactory,
@@ -948,6 +952,9 @@ INHERIT_POST = {
     "notify_educators": "inherit",
     "grace_window": "",
     "after_access_ended": "inherit",
+    "learners_may_pause": "inherit",
+    "max_pauses": "",
+    "max_pause_days": "",
 }
 
 
@@ -961,6 +968,7 @@ def test_site_config_add_with_every_select_at_inherit_stores_inherit_and_none(
     assert response.status_code == 302
     assert row.close_items == "inherit"
     assert row.grace_window is None
+    assert (row.max_pauses, row.max_pause_days) == (None, None)
 
 
 @pytest.mark.django_db
@@ -1409,3 +1417,32 @@ def test_the_extension_admin_allows_no_add_or_delete(
     )
 
     assert (add.status_code, delete.status_code) == (403, 403)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "text"),
+    [
+        ("max_pauses", 0, "No limit"),
+        ("max_pause_days", 0, "No limit"),
+        ("max_pauses", 3, "3"),
+        ("max_pause_days", 30, "30"),
+        ("learners_may_pause", True, "On"),
+        ("learners_may_pause", False, "Off"),
+    ],
+)
+def test_policy_value_text_renders_a_zero_limit_as_no_limit(field, value, text) -> None:
+    assert _policy_value_text(field, value) == text
+
+
+@pytest.mark.django_db
+def test_effective_policy_lists_the_pause_settings_with_their_deciding_layer(
+    staff_client, mock_site_context
+) -> None:
+    record, _ = _record_with_item()
+    CourseDeadlineConfigFactory(course=record.course, max_pauses=2, max_pause_days=0)
+
+    body = _progress_page(staff_client, record).content.decode()
+
+    assert "learners_may_pause: Off (settings)" in body
+    assert "max_pauses: 2 (course)" in body
+    assert "max_pause_days: No limit (course)" in body

@@ -20,8 +20,11 @@ class DeadlinesConfig(AppSettings):
                 "close_items": False,
                 "end_course_access": False,
                 "notify_educators": False,
+                "learners_may_pause": False,
                 "grace_window": timedelta(0),
                 "after_access_ended": "outline_and_results",
+                "max_pauses": 0,
+                "max_pause_days": 0,
             }
         ),
     }

@@ -40,6 +40,9 @@ class ResolvedDeadlinePolicy:
     grace_window: timedelta
     after_access_ended: str  # an AfterAccessEnded value, never "inherit"
     sources: Mapping[str, str]  # setting name -> name of the layer that decided it
+    learners_may_pause: bool = False
+    max_pauses: int = 0  # 0 means no limit
+    max_pause_days: int = 0  # 0 means no limit
 
 
 class DeadlinePolicy:
@@ -211,6 +214,16 @@ class LayeredDeadlinePolicy(DeadlinePolicy):
             sources["after_access_ended"] = SETTINGS_LAYER
             return str(defaults["after_access_ended"])
 
+        def limit(field: str) -> int:
+            # None inherits; 0 is a value and means no limit, so it stops the walk.
+            for layer, row in layers:
+                value = getattr(row, field) if row is not None else None
+                if value is not None:
+                    sources[field] = layer
+                    return int(value)
+            sources[field] = SETTINGS_LAYER
+            return cast(int, defaults[field])
+
         return ResolvedDeadlinePolicy(
             mark_overdue=switch("mark_overdue"),
             close_items=switch("close_items"),
@@ -219,4 +232,7 @@ class LayeredDeadlinePolicy(DeadlinePolicy):
             grace_window=grace_window(),
             after_access_ended=after_access_ended(),
             sources=sources,
+            learners_may_pause=switch("learners_may_pause"),
+            max_pauses=limit("max_pauses"),
+            max_pause_days=limit("max_pause_days"),
         )

@@ -1,6 +1,6 @@
 """Django system checks for the deadlines app.
 
-E001: DEADLINE_POLICY_DEFAULTS does not name exactly the six settings, or holds a value of
+E001: DEADLINE_POLICY_DEFAULTS does not name exactly the settings, or holds a value of
 the wrong type or outside its choices. The settings layer must always decide, so "inherit"
 and None are not allowed.
 E002: DEADLINE_POLICY does not import, is not a DeadlinePolicy subclass, or names an FLS
@@ -19,6 +19,7 @@ from django.utils.module_loading import import_string
 from freedom_ls.deadlines.config import config
 from freedom_ls.deadlines.models import (
     CONFIG_FIELDS,
+    LIMIT_FIELDS,
     SWITCH_FIELDS,
     AfterAccessEnded,
 )
@@ -38,6 +39,14 @@ def _default_errors(defaults: dict[str, object]) -> list[str]:
     for field in SWITCH_FIELDS:
         if field in defaults and not isinstance(defaults[field], bool):
             problems.append(f"{field} must be True or False, not {defaults[field]!r}")
+    for field in LIMIT_FIELDS:
+        value = defaults.get(field)
+        if field in defaults and not (
+            isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        ):
+            problems.append(
+                f"{field} must be a non-negative whole number, not {value!r}"
+            )
     grace_window = defaults.get("grace_window")
     if "grace_window" in defaults and (
         not isinstance(grace_window, timedelta) or grace_window < timedelta(0)
