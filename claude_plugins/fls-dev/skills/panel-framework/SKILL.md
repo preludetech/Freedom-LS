@@ -112,6 +112,10 @@ its toolbar, so the list starts at the top; help lives in a dialog the page open
   `<c-panel-person-link>` or `<c-panel-avatar-chip>`, never beside the component. The slot puts
   them on their own line under the name and email, left-aligned with the name, and the avatar
   stays beside the name and email.
+- `<c-panel-avatar-chip>` and `<c-panel-person-link>` take `picture_url`, a plain URL the caller
+  resolves and passes bound (`:picture_url="user.profile_picture_url"`; a quoted `{{ }}` turns
+  `None` into the text "None"). Empty shows the initials, which stay under the picture as the
+  fallback when the image fails to load.
 - A row of figures is `<c-panel-stat-row>`, a grid at every width (two columns on a phone), so the
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
