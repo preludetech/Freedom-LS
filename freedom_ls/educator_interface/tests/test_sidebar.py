@@ -295,3 +295,20 @@ def test_the_user_block_shows_initials_alone_for_a_user_without_a_picture(
     assert blocks
     assert not [image for block in blocks for image in block.cssselect("img")]
     assert 'src="None"' not in page
+
+
+@pytest.mark.django_db
+def test_the_educator_shell_loads_the_profile_picture_fallback_script(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory(staff=True, with_profile_picture=True)
+    assign_object_role(user, organisation, "organisation_admin")
+
+    _blocks, page = _sidebar_user_blocks(logged_in_client(user), organisation.slug)
+
+    scripts = lxml.html.fromstring(page).cssselect(
+        "head script[src$='base/js/profile-picture-fallback.js']"
+    )
+    assert len(scripts) == 1
+    assert scripts[0].get("defer") is None

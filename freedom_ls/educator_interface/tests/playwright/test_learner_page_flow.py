@@ -9,8 +9,10 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.files.base import ContentFile
 from django.utils import timezone
 
+from freedom_ls.accounts.tests.profile_picture_samples import png_bytes
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -62,8 +64,11 @@ def test_opening_a_learner_and_their_courses_tab(
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
 
+    educator_user.profile_picture.save("me.png", ContentFile(png_bytes()), save=True)
+
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     list_url = page.url
+    expect(page.locator("#sidebar-user img[data-profile-picture]")).to_be_visible()
     page.get_by_role("link", name="Ada Lovelace").first.click()
 
     expect(page.locator("#instance-title")).to_have_text("Ada Lovelace")
@@ -74,6 +79,15 @@ def test_opening_a_learner_and_their_courses_tab(
     expect(page.get_by_text("Algebra")).to_be_visible()
     expect(page.get_by_text("Nothing completed yet")).to_be_visible()
     learner_url = page.url
+
+    stored = educator_user.profile_picture
+    stored.storage.delete(stored.name)
+    page.reload()
+    sidebar_user = page.locator("#sidebar-user")
+    expect(
+        sidebar_user.first.get_by_text(educator_user.initials, exact=True)
+    ).to_be_visible()
+    expect(sidebar_user.locator("img[data-profile-picture]")).to_have_count(0)
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)

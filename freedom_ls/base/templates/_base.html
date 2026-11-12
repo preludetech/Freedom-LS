@@ -61,6 +61,13 @@
         #interface-main (the listener early-returns).
         {% endcomment %}
         <script src="{% static 'base/js/interface-swap-fallback.js' %}"></script>
+        {% comment %}
+        A plain script, not deferred, so its capture-phase image error listener exists
+        before the first avatar in the body is parsed. It removes an avatar image that
+        fails to load, which uncovers the initials under it. It sits outside any block
+        so pages that override head blocks still load it.
+        {% endcomment %}
+        <script src="{% static 'base/js/profile-picture-fallback.js' %}"></script>
         <script defer
                 src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
         <script defer src="{% static 'base/js/alpine-components.js' %}"></script>
