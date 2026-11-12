@@ -28,7 +28,7 @@ from freedom_ls.tests.playwright_fixtures import (
 from freedom_ls.tests.site_context import site_context
 from freedom_ls.tests.storages import (
     PathlessFileSystemStorage,
-    bind_pathless_logo_storage,
+    bind_pathless_storage,
 )
 
 _ONE_PIXEL_PNG = base64.b64decode(
@@ -82,7 +82,28 @@ def pathless_logo_storage(tmp_path, monkeypatch) -> PathlessFileSystemStorage:
     prove that a specific code path never calls `.path()`, whatever backend
     is configured -- so it is opted into only by the tests making that claim.
     """
-    return bind_pathless_logo_storage(monkeypatch, tmp_path)
+    from freedom_ls.organisations.models import Organisation
+
+    return bind_pathless_storage(
+        monkeypatch,
+        tmp_path,
+        Organisation._meta.get_field("logo"),
+        Organisation._meta.get_field("logo_on_dark"),
+    )
+
+
+@pytest.fixture
+def pathless_profile_picture_storage(
+    tmp_path, monkeypatch
+) -> PathlessFileSystemStorage:
+    """Put a storage double whose `.path()` raises behind `User.profile_picture`."""
+    from django.contrib.auth import get_user_model
+
+    return bind_pathless_storage(
+        monkeypatch,
+        tmp_path,
+        get_user_model()._meta.get_field("profile_picture"),
+    )
 
 
 @pytest.fixture(autouse=True)

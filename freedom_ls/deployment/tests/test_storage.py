@@ -172,7 +172,15 @@ def test_unset_per_bucket_name_falls_back_to_shared_and_matches_default(
 
 
 @pytest.mark.parametrize(
-    "alias", ["default", "course_media", "user_uploads", "reports", "certificates"]
+    "alias",
+    [
+        "default",
+        "course_media",
+        "user_uploads",
+        "profile_pictures",
+        "reports",
+        "certificates",
+    ],
 )
 def test_no_bucket_name_set_falls_back_to_filesystem_storage(alias: str) -> None:
     result = build_storages(staticfiles={"BACKEND": "some.backend"})
@@ -230,7 +238,9 @@ def test_certificates_cache_control_is_immutable_and_year_long(
     }
 
 
-@pytest.mark.parametrize("alias", ["course_media", "user_uploads", "reports"])
+@pytest.mark.parametrize(
+    "alias", ["course_media", "user_uploads", "profile_pictures", "reports"]
+)
 def test_other_media_aliases_carry_no_object_parameters(
     alias: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -261,7 +271,15 @@ def test_public_alias_overwrites_at_an_existing_key(
 
 
 @pytest.mark.parametrize(
-    "alias", ["default", "course_media", "user_uploads", "reports", "certificates"]
+    "alias",
+    [
+        "default",
+        "course_media",
+        "user_uploads",
+        "profile_pictures",
+        "reports",
+        "certificates",
+    ],
 )
 def test_other_aliases_never_overwrite_at_an_existing_key(
     alias: str, monkeypatch: pytest.MonkeyPatch
@@ -297,7 +315,15 @@ def test_default_resolves_from_shared_bucket_name_when_unset(
 
 
 @pytest.mark.parametrize(
-    "alias", ["public", "course_media", "user_uploads", "reports", "certificates"]
+    "alias",
+    [
+        "public",
+        "course_media",
+        "user_uploads",
+        "profile_pictures",
+        "reports",
+        "certificates",
+    ],
 )
 def test_production_env_no_media_alias_matches_default(
     alias: str, production_env: None
@@ -333,6 +359,19 @@ def test_production_env_reports_and_user_uploads_share_bucket_and_credentials(
     assert "custom_domain" not in reports_options
 
 
+def test_production_env_profile_pictures_are_private_and_never_overwritten(
+    production_env: None,
+) -> None:
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["profile_pictures"]
+    )
+
+    assert options["bucket_name"] == "fls-prod-user-data"
+    assert options["file_overwrite"] is False
+    assert options["querystring_auth"] is True
+    assert "object_parameters" not in options
+
+
 def test_per_bucket_access_key_reaches_only_its_own_alias(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -355,7 +394,15 @@ def test_per_bucket_access_key_reaches_only_its_own_alias(
 
 
 @pytest.mark.parametrize(
-    "alias", ["course_media", "user_uploads", "certificates", "reports", "default"]
+    "alias",
+    [
+        "course_media",
+        "user_uploads",
+        "profile_pictures",
+        "certificates",
+        "reports",
+        "default",
+    ],
 )
 def test_per_bucket_access_key_does_not_leak_to_other_aliases(
     alias: str, monkeypatch: pytest.MonkeyPatch

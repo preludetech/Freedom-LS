@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.contrib.auth import get_user_model
@@ -12,6 +14,7 @@ from freedom_ls.accounts.factories import (
     SiteSignupPolicyFactory,
     UserFactory,
 )
+from freedom_ls.accounts.models import profile_picture_upload_to
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 from freedom_ls.tests.factories import SiteFactory
 
@@ -167,3 +170,40 @@ def test_the_users_list_ordering_is_indexed_by_site_updated_at_and_id() -> None:
     )
 
     assert index.fields == ["site", "updated_at", "id"]
+
+
+@pytest.mark.django_db
+class TestProfilePicture:
+    @pytest.mark.parametrize("filename", ["me.png", "a b.JPG", "../../x", ""])
+    def test_upload_to_ignores_the_uploaded_filename(
+        self, mock_site_context, filename: str
+    ):
+        user = UserFactory()
+
+        key = profile_picture_upload_to(user, filename)
+
+        assert re.fullmatch(rf"profile_pictures/{user.pk}/[0-9a-f]{{32}}\.webp", key)
+
+    def test_upload_to_returns_a_different_key_each_call(self, mock_site_context):
+        user = UserFactory()
+
+        assert profile_picture_upload_to(user, "a.png") != profile_picture_upload_to(
+            user, "a.png"
+        )
+
+    def test_url_is_none_without_a_picture(self, mock_site_context):
+        assert UserFactory().profile_picture_url is None
+
+    def test_url_is_the_storage_url_with_a_picture(self, mock_site_context):
+        user = UserFactory(with_profile_picture=True)
+
+        assert user.profile_picture_url == user.profile_picture.storage.url(
+            user.profile_picture.name
+        )
+
+    def test_url_needs_no_filesystem_path(
+        self, mock_site_context, pathless_profile_picture_storage
+    ):
+        user = UserFactory(with_profile_picture=True)
+
+        assert user.profile_picture_url

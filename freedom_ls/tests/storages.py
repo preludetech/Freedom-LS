@@ -10,6 +10,7 @@ import pytest
 
 from django.core.files.base import File
 from django.core.files.storage import FileSystemStorage
+from django.db.models import Field
 from django.utils._os import safe_join
 
 
@@ -63,10 +64,10 @@ class PathlessFileSystemStorage(FileSystemStorage):
         return os.path.getsize(self._real_path(name))
 
 
-def bind_pathless_logo_storage(
-    monkeypatch: pytest.MonkeyPatch, location: str | Path
+def bind_pathless_storage(
+    monkeypatch: pytest.MonkeyPatch, location: str | Path, *fields: Field
 ) -> PathlessFileSystemStorage:
-    """Put a `.path()`-refusing storage behind both Organisation logo fields.
+    """Put a `.path()`-refusing storage behind each of `fields`.
 
     Overriding `settings.STORAGES` cannot do this. `FileField.__init__` calls a
     callable `storage=` once, at model import, and keeps the instance it
@@ -76,11 +77,7 @@ def bind_pathless_logo_storage(
 
     Returns the storage so a test can assert against the double itself.
     """
-    from freedom_ls.organisations.models import Organisation
-
     storage = PathlessFileSystemStorage(location=str(location))
-    for field_name in ("logo", "logo_on_dark"):
-        monkeypatch.setattr(
-            Organisation._meta.get_field(field_name), "storage", storage
-        )
+    for field in fields:
+        monkeypatch.setattr(field, "storage", storage)
     return storage
