@@ -69,6 +69,7 @@ IN_PROGRESS = "IN_PROGRESS"
 COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 CLOSED = "CLOSED"
+PAUSED = "PAUSED"
 
 
 def derive_part_status(child_statuses: list[str]) -> str:
@@ -91,9 +92,12 @@ def derive_part_status(child_statuses: list[str]) -> str:
     blocked too, however much of it is already finished: a part cannot report
     work in flight over rows the learner has no way back into.
 
+    A paused part has nothing open: its unfinished children are paused, so the
+    caller links its first complete child.
+
     Which child the row links to is a separate question the caller answers.
-    Every status but COMPLETE and BLOCKED guarantees an open child for it to
-    route to, so the two can no longer contradict each other.
+    Every status but COMPLETE, BLOCKED and PAUSED guarantees an open child for it
+    to route to, so the two can no longer contradict each other.
     """
     if not child_statuses:
         return BLOCKED
@@ -105,6 +109,8 @@ def derive_part_status(child_statuses: list[str]) -> str:
         return FAILED
     if READY in child_statuses:
         return IN_PROGRESS if COMPLETE in child_statuses else READY
+    if PAUSED in child_statuses:
+        return PAUSED
     if CLOSED in child_statuses:
         return CLOSED
     return BLOCKED
@@ -493,6 +499,7 @@ def get_course_index(
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
     access_ended_outline: bool = False,
+    paused: bool = False,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -513,6 +520,10 @@ def get_course_index(
     the policy resolved for the same record, and decides whether ``is_overdue``
     shows; a caller passes both or neither.
 
+    ``paused`` is for a learner whose course is paused: progress is read without content
+    access, finished rows stay linked, every other open row reads PAUSED with no url,
+    and no row carries a deadline.
+
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
     # Bulk-fetch per-item progress once (two queries) instead of one per item.
@@ -522,7 +533,7 @@ def get_course_index(
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}
-    if (can_access_content or access_ended_outline) and user.is_authenticated:
+    if (can_access_content or access_ended_outline or paused) and user.is_authenticated:
         if isinstance(course_progress, Unresolved):
             # can_access_content implies an authenticated, registered user (it
             # comes from the backend decision), so the cast to User is safe here.
@@ -552,6 +563,7 @@ def get_course_index(
             deadline_policy=deadline_policy,
             now=now,
             access_ended_outline=access_ended_outline,
+            paused=paused,
         )
         children.append(child_dict)
         global_index += items_added
@@ -741,6 +753,7 @@ def create_child_dict_with_flattened_index(
     deadline_policy: ResolvedDeadlinePolicy | None = None,
     now: datetime | None = None,
     access_ended_outline: bool = False,
+    paused: bool = False,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -754,7 +767,9 @@ def create_child_dict_with_flattened_index(
     and auto-expand its part.
 
     ``access_ended_outline`` reads progress without content access and withholds
-    every row that is not COMPLETE, so only finished items stay linked.
+    every row that is not COMPLETE, so only finished items stay linked. ``paused`` reads
+    progress the same way, but marks an unfinished row PAUSED rather than BLOCKED (a row
+    sequential unlock withholds stays BLOCKED) and resolves no deadlines for any row.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
@@ -776,7 +791,7 @@ def create_child_dict_with_flattened_index(
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
-            if can_access_content or access_ended_outline:
+            if can_access_content or access_ended_outline or paused:
                 child_status, part_next_status = get_content_status(
                     part_item,
                     part_next_status,
@@ -795,16 +810,22 @@ def create_child_dict_with_flattened_index(
                 child_url = ""
             if access_ended_outline and child_status != COMPLETE:
                 child_status = BLOCKED
+            if paused and child_status not in (COMPLETE, BLOCKED):
+                child_status = PAUSED
 
             keys = _deadline_keys(
-                part_item, child_status, course_deadlines, deadline_policy, now
+                part_item,
+                child_status,
+                None if paused else course_deadlines,
+                deadline_policy,
+                now,
             )
             child_status = _closed_if_past_close(child_status, keys)
             part_child_index = start_index + items_added + 1
             part_child_dict = {
                 "title": part_child.title,
                 "type": part_child.content_type,
-                "url": child_url if child_status != BLOCKED else None,
+                "url": child_url if child_status not in (BLOCKED, PAUSED) else None,
                 "status": child_status,
                 "is_current": current_index == part_child_index,
                 **keys,
@@ -838,7 +859,7 @@ def create_child_dict_with_flattened_index(
             failed_child = next(
                 (c for c in part_children_dicts if c["status"] == FAILED), None
             )
-            if access_ended_outline:
+            if access_ended_outline or paused:
                 # Only COMPLETE children carry a url here, so the part opens the
                 # first finished one and nothing when none is.
                 complete_child = next(
@@ -874,7 +895,7 @@ def create_child_dict_with_flattened_index(
     else:
         # Regular content item (Topic, Form, etc.)
         items_added = 1
-        if can_access_content or access_ended_outline:
+        if can_access_content or access_ended_outline or paused:
             status, next_status = get_content_status(
                 collection_item, next_status, topic_progress_map, form_placement_map
             )
@@ -887,15 +908,21 @@ def create_child_dict_with_flattened_index(
             url = ""
         if access_ended_outline and status != COMPLETE:
             status = BLOCKED
+        if paused and status not in (COMPLETE, BLOCKED):
+            status = PAUSED
 
         keys = _deadline_keys(
-            collection_item, status, course_deadlines, deadline_policy, now
+            collection_item,
+            status,
+            None if paused else course_deadlines,
+            deadline_policy,
+            now,
         )
         status = _closed_if_past_close(status, keys)
         child_dict = {
             "title": content_item.title,
             "status": status,
-            "url": url if status != BLOCKED else None,
+            "url": url if status not in (BLOCKED, PAUSED) else None,
             "type": content_item.content_type,
             "is_current": current_index == start_index + 1,
             **keys,
