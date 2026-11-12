@@ -4209,6 +4209,36 @@ def test_deactivating_a_viewer_role_deactivates_the_organisation_assignment(
     assert _active_roles(user) == set()
 
 
+@pytest.mark.django_db
+def test_deactivating_your_own_organisation_admin_role_sends_you_to_a_section_you_can_still_see(
+    logged_in_client, organisation
+):
+    """Removing the role that granted the Staff section leaves the actor
+    nowhere to stay on Staff, so the response sends them to the first
+    section they can still see."""
+    cohort = _cohort(organisation)
+    client, actor = _holder_client(logged_in_client, organisation)
+    assign_role(UserFactory(superuser=True), actor, "cohort_viewer", cohort)
+    _holder_client(logged_in_client, organisation)
+
+    response = _remove(client, organisation, actor, "organisation_admin")
+
+    assert response.status_code == 204
+    assert response["HX-Redirect"] == _interface_url(organisation.slug, "dashboard")
+    assert _active_roles(actor) == {("cohort_viewer", str(cohort.pk))}
+
+
+@pytest.mark.django_db
+def test_deactivating_someone_elses_role_keeps_the_actor_on_the_staff_page(
+    admin_client, organisation
+):
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    response = _remove(admin_client, organisation, user, "organisation_staff_viewer")
+
+    assert "HX-Redirect" not in response
+
+
 def _remove_role_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "staff/__actions/deactivate_role")
 
@@ -4440,6 +4470,61 @@ def test_the_remove_confirmation_for_a_site_level_target_says_their_access_is_un
     text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
 
     assert "Their site-level access is unaffected" in text
+    assert "They stay on this organisation's staff list with no roles here." in text
+    assert "takes them off this organisation's staff list" not in text
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_for_a_site_level_target_with_other_roles_does_not_say_no_roles(
+    admin_client, organisation
+):
+    user = _staff_member_holding("cohort_viewer", _cohort(organisation))
+    assign_role(
+        UserFactory(superuser=True), user, "cohort_admin", _cohort(organisation)
+    )
+    assign_role(UserFactory(superuser=True), user, "site_admin", organisation.site)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
+
+    assert "Their site-level access is unaffected" in text
+    assert "with no roles here" not in text
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_for_your_own_role_speaks_to_you(
+    logged_in_client, organisation
+):
+    """Someone removing their own Organisation admin cannot give the role
+    back afterwards, so the dialog speaks to them and promises nothing
+    they lose."""
+    cohort = _cohort(organisation)
+    client, actor = _holder_client(logged_in_client, organisation)
+    assign_role(UserFactory(superuser=True), actor, "cohort_viewer", cohort)
+    _holder_client(logged_in_client, organisation)
+
+    text = _text(_remove_dialog(client, organisation, actor, "organisation_admin"))
+
+    assert "Deactivate your Organisation admin role?" in text
+    assert "You lose Organisation admin on the whole organisation" in text
+    assert "You keep your account and Cohort viewer on" in text
+    assert "Someone who can give this role can give it back to you." in text
+    assert "They " not in text
+    assert "You can give the role again later" not in text
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_for_someone_else_keeps_the_third_person(
+    admin_client, organisation
+):
+    user = _staff_member_holding("organisation_staff_viewer", organisation)
+
+    text = _text(
+        _remove_dialog(admin_client, organisation, user, "organisation_staff_viewer")
+    )
+
+    assert "They lose Organisation staff viewer" in text
+    assert "They keep their account" in text
+    assert "You can give the role again later." in text
 
 
 @pytest.mark.django_db
@@ -9010,6 +9095,24 @@ def test_removing_from_a_cohort_deactivates_that_cohorts_role_only(
     assert response.status_code == 204
     assert _active_roles(user) == {("cohort_viewer", str(other.pk))}
     assert AuditLogEntry.unscoped.filter(action="role.deactivated").count() == 1
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_who_cannot_see_staff_stays_on_the_cohort_after_removing_someone(
+    logged_in_client, organisation
+):
+    """A cohort admin never saw the Staff section, so a change made on a
+    cohort's Settings tab keeps them there."""
+    cohort = _cohort(organisation)
+    client, _admin = _holder_client(logged_in_client, cohort, "cohort_admin")
+    user = _staff_member_holding("cohort_viewer", cohort)
+
+    response = _remove_staff_from_cohort(
+        client, organisation, cohort, user, "cohort_viewer"
+    )
+
+    assert response.status_code == 204
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
