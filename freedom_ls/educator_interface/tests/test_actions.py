@@ -8475,6 +8475,16 @@ def test_add_staff_to_a_cohort_is_offered_only_when_there_is_someone_to_pick(
     assert offered()
 
 
+@pytest.mark.django_db
+def test_add_staff_to_a_cohort_is_offered_to_someone_who_may_add_anyone(organisation):
+    cohort = _cohort(organisation)
+    admin = cast(User, UserFactory(staff=True))
+    assign_role(UserFactory(superuser=True), admin, "organisation_admin", organisation)
+    ctx = _cohort_admin_ctx(organisation, cohort, admin)
+
+    assert AddStaffMemberToCohortAction().is_offered(ctx)
+
+
 def _add_role_url(organisation: Organisation) -> str:
     return _interface_url(organisation.slug, "staff/__actions/add_role")
 

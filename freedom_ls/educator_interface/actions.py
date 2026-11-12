@@ -1820,11 +1820,14 @@ class AddStaffMemberAction(PanelAction):
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
 
+    def _may_add_anyone(self, ctx: PanelContext) -> bool:
+        """Whether this viewer may add any email address to the staff, not
+        only the people they may pick."""
+        return can(cast("User", ctx.request.user), ADD_STAFF_MEMBER, _organisation(ctx))
+
     def _adds_staff(self, ctx: PanelContext) -> bool:
         """Whether this viewer is offered "No roles yet"."""
-        return self.offers_no_role and can(
-            cast("User", ctx.request.user), ADD_STAFF_MEMBER, _organisation(ctx)
-        )
+        return self.offers_no_role and self._may_add_anyone(ctx)
 
     def is_offered(self, ctx: PanelContext) -> bool:
         return bool(self._grantable(ctx))
@@ -1918,7 +1921,7 @@ class AddStaffMemberAction(PanelAction):
         reveals whether an account exists."""
         organisation = _organisation(ctx)
         actor = cast("User", ctx.request.user)
-        if not can(actor, ADD_STAFF_MEMBER, organisation):
+        if not self._may_add_anyone(ctx):
             user = (
                 pickable_staff(actor, organisation).filter(email__iexact=email).first()
             )
@@ -2335,9 +2338,11 @@ class AddStaffMemberToCohortAction(AddStaffMemberAction):
         return ctx.instance
 
     def is_offered(self, ctx: PanelContext) -> bool:
-        return (
-            super().is_offered(ctx)
-            and pickable_staff(
+        # Someone who may add anyone needs nobody to pick from: they can type
+        # an email address.
+        return super().is_offered(ctx) and (
+            self._may_add_anyone(ctx)
+            or pickable_staff(
                 cast("User", ctx.request.user), _organisation(ctx)
             ).exists()
         )
