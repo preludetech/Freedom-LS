@@ -40,9 +40,11 @@ class AttributionCaptureMiddleware:
     cookie or the tally, so a later login cannot record the same landing twice.
 
     The landing and its time are read off the request before the view runs, so
-    nothing the view does can change what gets recorded; the cookie, tally and
-    row are only written once the view has returned successfully, so a view
-    that raises leaves none behind. A request that carries no tracked parameter
+    nothing the view does can change what gets recorded. A signed-in user's
+    touch row is written before the view, so a conversion the view itself
+    starts sees that touch in play; the landing happened, so a view that then
+    raises still leaves the row. The cookie and tally are written once the view
+    has returned successfully. A request that carries no tracked parameter
     does no work at all, and resolves no session.
 
     Every response to a tracked landing carries `Vary: Cookie`, not only the
@@ -63,11 +65,8 @@ class AttributionCaptureMiddleware:
             return self.get_response(request)
         landing = first_touch_from_request(request)
         occurred_at = datetime.fromisoformat(landing["first_seen"])
-        response = self.get_response(request)
-        if is_capture_suppressed(request):
-            return response
-        patch_vary_headers(response, ["Cookie"])
-        # Read only here, after the view, so an untracked request resolves no session.
+        # Read before the view, and only for a tracked GET, so an untracked
+        # request resolves no session.
         if request.user.is_authenticated:
             site = get_cached_site(request)
             if isinstance(site, Site):
@@ -77,7 +76,14 @@ class AttributionCaptureMiddleware:
                     site=site,
                     occurred_at=occurred_at,
                 )
+            response = self.get_response(request)
+            if not is_capture_suppressed(request):
+                patch_vary_headers(response, ["Cookie"])
             return response
+        response = self.get_response(request)
+        if is_capture_suppressed(request):
+            return response
+        patch_vary_headers(response, ["Cookie"])
         first_touch = read_attribution_cookie(request)
         if first_touch is not None:
             # A repeat of the latest key appends nothing and leaves the cookie
