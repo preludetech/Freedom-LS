@@ -1,4 +1,4 @@
-<c-vars name="" user_id="" secondary="" href="" quick_view_url="" hx_nav="" class="" />
+<c-vars name="" user_id="" secondary="" href="" quick_view_url="" hx_nav="" class="" picture_url="" />
 
 {% load panel_tags %}
 
@@ -18,6 +18,8 @@ Attributes:
                   the #quick-view drawer; at least 44px square below md.
   hx_nav          On: the link navigates with HTMX into #main-content, as the
                   data-table link cell does. Read through the `flag` filter.
+  picture_url     Profile picture URL for the avatar chip (default none:
+                  initials). Pass it bound (`:picture_url="..."`).
 
 The `badges` slot holds the person's status badges ("You", "Inactive"). They
 sit on a line under the name and email, outside the link so they stay out of
@@ -37,9 +39,9 @@ control, for a row whose trigger has to be a <button>.
                hx-target="#main-content"
                hx-push-url="true"
                hx-swap="outerHTML"
-           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" /></a>
+           {% endif %}><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" :picture_url="picture_url" /></a>
     {% else %}
-        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" /></span>
+        <span class="min-w-0 font-bold text-on-surface"><c-panel-avatar-chip name="{{ name }}" user_id="{{ user_id }}" secondary="{{ secondary }}" badges="" :picture_url="picture_url" /></span>
     {% endif %}
     {% if badges %}<span class="mt-1 flex flex-wrap gap-1 pl-11">{{ badges }}</span>{% endif %}
     </span>

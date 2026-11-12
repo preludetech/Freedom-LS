@@ -1,4 +1,4 @@
-<c-vars name="" user_id="" initials="" secondary="" size="md" name_hidden="" />
+<c-vars name="" user_id="" initials="" secondary="" size="md" name_hidden="" picture_url="" />
 
 {% load panel_tags %}
 
@@ -22,6 +22,12 @@ Attributes:
                subject rather than two). Read through the `flag` filter,
                so "False", "false", "0", "none" and an empty string all
                count as off.
+
+  picture_url  A plain URL string the caller resolves (default none: initials
+               only). Pass it bound (`:picture_url="..."`), because a quoted
+               `{{ }}` turns `None` into the text "None". The picture covers
+               the initials, which stay in the markup under it as the
+               fallback when the image fails to load.
 
 The `badges` slot holds the person's status badges ("You", "Inactive"). They
 sit on their own line under the name and email, left-aligned with the name,
@@ -48,7 +54,7 @@ this component.
 }</style>
 
 <div class="{% if name_hidden|flag %}flex{% else %}grid grid-cols-[auto_minmax(0,1fr)] gap-x-3{% endif %} items-center" {{ attrs }}>
-    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
+    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% elif size == "sm" %}size-6 text-[0.625rem]{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}{% if picture_url %}<img data-profile-picture src="{{ picture_url }}" alt="" loading="lazy" {% if size == "lg" %}width="52" height="52"{% elif size == "sm" %}width="24" height="24"{% else %}width="32" height="32"{% endif %} class="absolute inset-0 size-full bg-surface object-cover" />{% endif %}</span>
     {% if not name_hidden|flag %}
         <span class="min-w-0">
             <span class="block truncate">{{ name }}</span>

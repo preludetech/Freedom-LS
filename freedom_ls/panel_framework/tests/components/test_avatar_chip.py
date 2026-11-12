@@ -4,7 +4,76 @@ from __future__ import annotations
 
 import re
 
+import lxml.html
+import pytest
+
 from ..cotton_helpers import render_cotton
+
+
+def _circle(html: str) -> lxml.html.HtmlElement:
+    (circle,) = lxml.html.fromstring(html).cssselect("[aria-hidden='true']")
+    return circle
+
+
+@pytest.mark.parametrize(("size", "pixels"), [("sm", "24"), ("md", "32"), ("lg", "52")])
+def test_picture_url_puts_a_sized_image_in_the_circle_over_the_initials(
+    size: str, pixels: str
+) -> None:
+    html = render_cotton(
+        f'<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" size="{size}" '
+        'picture_url="/media/me.webp" />'
+    )
+
+    circle = _circle(html)
+    (image,) = circle.cssselect("img[data-profile-picture]")
+
+    assert image.get("src") == "/media/me.webp"
+    assert image.get("alt") == ""
+    assert image.get("loading") == "lazy"
+    assert image.get("width") == pixels
+    assert image.get("height") == pixels
+    assert circle.text_content().strip() == "TM"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" picture_url="" />',
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" />',
+    ],
+)
+def test_without_a_picture_url_there_is_no_image(source: str) -> None:
+    circle = _circle(render_cotton(source))
+
+    assert not circle.cssselect("img")
+    assert circle.text_content().strip() == "TM"
+
+
+@pytest.mark.parametrize("picture_url", ["", "/media/me.webp"])
+def test_the_circle_is_aria_hidden_and_keeps_its_colour_slot(
+    picture_url: str,
+) -> None:
+    circle = _circle(
+        render_cotton(
+            '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" '
+            ':picture_url="picture_url" />',
+            picture_url=picture_url,
+        )
+    )
+
+    assert circle.get("aria-hidden") == "true"
+    assert "panel-avatar-" in circle.get("class")
+
+
+def test_a_none_picture_url_renders_no_image() -> None:
+    html = render_cotton(
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" '
+        ':picture_url="picture_url" />',
+        picture_url=None,
+    )
+
+    assert "None" not in html
+    assert not _circle(html).cssselect("img")
 
 
 def test_initials_element_is_aria_hidden_and_holds_the_derived_initials() -> None:
