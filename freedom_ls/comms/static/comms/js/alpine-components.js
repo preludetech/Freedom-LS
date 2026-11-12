@@ -7,37 +7,6 @@
  */
 
 /**
- * A poll timer that stops while the tab is hidden and fires once when it comes
- * back, dispatching a "refresh" DOM event on `target` for its hx-trigger.
- *
- * htmx's own trigger syntax can't express "only while the tab is visible"
- * without an inline filter expression, which the CSP build forbids. The first
- * count already came from the page, so the initial start fires no refresh.
- */
-function visibilityPoller(seconds, target) {
-    let timer = null;
-    const stop = () => {
-        if (timer) clearInterval(timer);
-        timer = null;
-    };
-    const refresh = () => target.dispatchEvent(new CustomEvent("refresh"));
-    const start = (refreshNow) => {
-        stop();
-        if (refreshNow) refresh();
-        timer = setInterval(refresh, seconds * 1000);
-    };
-    const onVisibility = () => (document.visibilityState === "visible" ? start(true) : stop());
-    document.addEventListener("visibilitychange", onVisibility);
-    start(false);
-    return {
-        destroy() {
-            stop();
-            document.removeEventListener("visibilitychange", onVisibility);
-        },
-    };
-}
-
-/**
  * Shared by the header bell and the header messages button: one disclosure
  * panel whose content loads each time it opens. Only one header panel is open
  * at a time: opening one announces itself on window and the other closes.
@@ -160,23 +129,6 @@ document.addEventListener("alpine:init", () => {
                 this.destroyPanel();
             },
         });
-    });
-
-    // The header Messages badge (comms/partials/messages_button.html): polls
-    // its own hx-get while the tab is visible.
-    Alpine.data("refreshTimer", () => {
-        let poller = null;
-        return {
-            init() {
-                poller = visibilityPoller(
-                    Number(this.$el.dataset.pollSeconds),
-                    this.$refs.target || this.$el,
-                );
-            },
-            destroy() {
-                poller.destroy();
-            },
-        };
     });
 
     // The composer form (comms/partials/composer.html).

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -185,6 +186,15 @@ class SectionConfigBase:
     def get_menu_count_poll_seconds(cls) -> int:
         """Seconds between polls of `get_menu_count_url`."""
         return 60
+
+    @classmethod
+    def get_menu_count_events(cls) -> tuple[str, ...]:
+        """Names of events on `<body>` that make the polled count reload.
+
+        The count reloads on page load and on its poll; each name here adds
+        a reload when that event fires. A name is letters, digits, `-`, `_`
+        or `:`."""
+        return ()
 
     @classmethod
     def get_instance_label(cls, instance: Model) -> str:
@@ -1400,6 +1410,21 @@ def _respond(
     )
 
 
+_COUNT_EVENT_NAME = re.compile(r"[A-Za-z0-9_:-]+")
+
+
+def _menu_count_events(section: SectionConfig) -> tuple[str, ...]:
+    events = section.get_menu_count_events()
+    for event in events:
+        if not _COUNT_EVENT_NAME.fullmatch(event):
+            raise ImproperlyConfigured(
+                f"{section.__name__}.get_menu_count_events() returned {event!r}. "
+                "An event name holds only letters, digits, '-', '_' and ':', "
+                "because anything else would add modifiers to the htmx trigger."
+            )
+    return events
+
+
 def build_menu_items(
     config: list[NavGroup],
     url_name: str,
@@ -1441,6 +1466,7 @@ def build_menu_items(
                     "scope_key": "-".join(extra_url_kwargs.values()),
                     "count_url": section.get_menu_count_url(request),
                     "count_poll_seconds": section.get_menu_count_poll_seconds(),
+                    "count_events": _menu_count_events(section),
                     "active": is_active,
                     "aria_current": aria_current,
                 }

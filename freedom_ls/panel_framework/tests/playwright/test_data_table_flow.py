@@ -259,7 +259,16 @@ def test_data_table_interaction(
     page.locator(f"#main-content a[href$='/stubs/{stubs[3].pk}']:visible").first.click()
     expect(page.locator("#instance-title")).to_have_text("row-03")
     page.get_by_role("button", name="Open navigation panel").click()
+    navigation = page.locator("dialog[aria-label='Navigation']")
+    expect(navigation).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(navigation).to_be_hidden()
+
+    # On a desktop the sidebar is docked and the filter sheet stays closed.
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(list_url)
     expect(page.locator("dialog[aria-label='Navigation']")).to_be_visible()
+    expect(page.locator("#stubs-sheet")).not_to_have_attribute("open", re.compile(".*"))
 
     # Layout at each viewport.
     for viewport in QA_VIEWPORTS:
